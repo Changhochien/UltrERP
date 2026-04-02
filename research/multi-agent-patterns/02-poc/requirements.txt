@@ -1,0 +1,9 @@
+# FastMCP 2.x required — v3.x pins mcp<1.23 which blocks SDK 1.23+ features
+# See: 01-survey-memo.md "Top 3 Risks" item 3
+fastmcp>=2.0,<3.0
+
+# ASGI server for HTTP/SSE transport
+uvicorn[standard]>=0.27.0,<1.0
+
+# Pydantic for type hints and Field annotations
+pydantic>=2.0,<3.0

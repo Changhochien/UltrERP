@@ -1,0 +1,364 @@
+# Sprint Status
+# Generated: 2026-03-31
+
+sprint:
+  name: "Sprint 1 - Project Foundation"
+  start_date: "2026-03-31"
+  goal: "Establish complete development foundation for UltrERP"
+
+development_status:
+
+  # Epic 1 - Project Foundation
+  epic-1:
+    status: "completed"
+    validation_note: "Implemented, re-reviewed, and revalidated on 2026-04-01 via pnpm test/lint/build, backend pytest/ruff, Alembic upgrade, runtime health checks, Vite proxy verification, pg_isready, and shell syntax checks. The Epic 1 review cycle also closed the restore-target asymmetry in Story 1.4, restored the shared backend deps scaffold for Story 1.2, made root/backend .env loading explicit for Stories 1.1 and 1.5, documented the full Alembic command surface for Story 1.7, and updated backend CI to provision PostgreSQL 17 and run Alembic before pytest for Story 1.3."
+    stories:
+      1-1-developer-environment-setup:
+        status: "completed"
+        story_id: "1.1"
+        validation: "README/bootstrap flow documented and reconciled to pnpm 10.5.2; root and backend .env loading now match the documented setup flow; validation stack rerun clean"
+      1-2-project-structure:
+        status: "completed"
+        story_id: "1.2"
+        validation: "repository scaffold now exists with tracked placeholder directories, modular-monolith backend packages, and the shared backend app/deps.py scaffold restored"
+      1-3-ci-cd-pipeline:
+        status: "completed"
+        story_id: "1.3"
+        validation: "workflow pins pnpm 10.5.2, mirrors validated local commands, provisions PostgreSQL 17 for backend CI, runs Alembic before pytest, and passes YAML diagnostics"
+      1-4-cloud-backup-strategy:
+        status: "completed"
+        story_id: "1.4"
+        validation: "backup scripts pass shell validation, enforce GPG recipient and checksum preconditions, normalize SQLAlchemy-style DATABASE_URL values for PostgreSQL CLI tools, and the restore script now targets the same normalized database semantics as backup"
+      1-5-fastapi-backend-foundation:
+        status: "completed"
+        story_id: "1.5"
+        validation: "FastAPI app, CORS, and health endpoint validated locally; backend settings now load documented root/backend .env files; backend pytest/ruff pass cleanly"
+      1-6-react-frontend-foundation:
+        status: "completed"
+        story_id: "1.6"
+        validation: "frontend build/lint/test pass; proxy target is configurable and client-render smoke test is in place"
+      1-7-database-migrations-setup:
+        status: "completed"
+        story_id: "1.7"
+        validation: "initial Alembic revision aa111dd11c43 generated and upgrade head applied successfully; Alembic fallback URL is aligned with the documented local async DSN and the README now covers revision, downgrade, current, and history commands"
+      1-8-legacy-data-analysis:
+        status: "completed"
+        story_id: "1.8"
+        validation: "legacy migration findings consolidated into docs/legacy/migration-plan.md with corrected orphan profile and shadow-mode plan"
+
+  # Epic 2 - Invoice Lifecycle
+  epic-2:
+    status: "in-progress"
+    validation_note: "Revalidated against Epic 2 compliance review - 2026-03-31; Stories 2.2 and 2.6 remain blocked by missing approved stationery reference asset"
+    recommended_execution_order:
+      - "2.1 Create MIG-Ready Invoice Snapshot"
+      - "2.4 Validate Invoice Totals and Rounding"
+      - "2.3 Void Invoice Before Filing Deadline"
+      - "2.7 Enforce Immutable Invoice Content"
+      - "2.5 Archive MIG 4.1 XML in MinIO"
+      - "2.2 Preview and Print on Approved Stationery after the asset lands"
+      - "2.6 Export PDF from Shared Invoice Renderer"
+    stories:
+      2-1-create-invoice-with-line-items:
+        title: "Create MIG-Ready Invoice Snapshot"
+        status: "ready-for-dev"
+        story_id: "2.1"
+        validation: "updated for government-issued range allocation, buyer snapshot rules, and MIG 4.1 field requirements"
+        prerequisites: []
+      2-2-print-invoice:
+        title: "Preview and Print on Approved Stationery"
+        status: "blocked"
+        story_id: "2.2"
+        validation: "stationery-spec created, but approved reference asset is still missing"
+        prerequisites: ["2.1", "2.4", "approved-stationery-reference-asset"]
+      2-3-void-invoice:
+        title: "Void Invoice Before Filing Deadline"
+        status: "ready-for-dev"
+        story_id: "2.3"
+        validation: "updated to regulatory void-window rule with explicit audit and outbox linkage"
+        prerequisites: ["2.1"]
+      2-4-invoice-totals-validation:
+        title: "Validate Invoice Totals and Rounding"
+        status: "ready-for-dev"
+        story_id: "2.4"
+        validation: "updated for per-line validation, ROUND_HALF_UP, and persisted pricing-mode handling"
+        prerequisites: ["2.1"]
+      2-5-store-invoice-artifacts-minio:
+        title: "Archive MIG 4.1 XML in MinIO"
+        status: "ready-for-dev"
+        story_id: "2.5"
+        validation: "updated with explicit invoice_artifacts schema and environment-aware retention strategy"
+        prerequisites: ["2.1", "2.4", "2.7"]
+      2-6-export-invoice-pdf:
+        title: "Export PDF from Shared Invoice Renderer"
+        status: "blocked"
+        story_id: "2.6"
+        validation: "backend-assisted PDF path defined, but blocked on approved stationery reference asset"
+        prerequisites: ["2.2", "2.4", "approved-stationery-reference-asset"]
+      2-7-invoice-immutability:
+        title: "Enforce Immutable Invoice Content"
+        status: "ready-for-dev"
+        story_id: "2.7"
+        validation: "updated with explicit immutable field inventory and mandatory DB enforcement"
+        prerequisites: ["2.1", "2.3"]
+
+  # Epic 3 - Customer Management
+  epic-3:
+    status: "in-progress"
+    validation_note: "Revalidated on 2026-04-01 against PRD, architecture, UI/UX research, repo PoCs, and web-checked Taiwan business-number guidance; added the missing update story, corrected stale checksum wording in supporting docs, and cleared the final rerun with no material Epic 3 blockers."
+    recommended_execution_order:
+      - "3.2 Validate Taiwan Business Number Checksum"
+      - "3.3 Create Customer Record"
+      - "3.1 Search and Browse Customers"
+      - "3.4 Flag Duplicate Business Number"
+      - "3.5 Update Customer Record"
+    stories:
+      3-2-validate-taiwan-business-number-checksum:
+        title: "Validate Taiwan Business Number Checksum"
+        status: "completed"
+        story_id: "3.2"
+        validation: "Backend and frontend validators implemented with 28 mirrored tests; uses current official divisibility-by-5 rule with seventh-digit special case; expanded-allocation regression fixture 55555555 prevents stale mod-10 regression"
+        prerequisites: []
+      3-3-create-customer-record:
+        title: "Create Customer Record"
+        status: "ready-for-dev"
+        story_id: "3.3"
+        validation: "updated for tenant-aware customer model, contact fields, and credit-limit storage without order-time enforcement"
+        prerequisites: ["3.2"]
+      3-1-search-and-browse-customers:
+        title: "Search and Browse Customers"
+        status: "ready-for-dev"
+        story_id: "3.1"
+        validation: "updated for browse/detail flow, FR50 pagination-or-virtualization guardrails, and MCP list/get alignment"
+        prerequisites: ["3.2", "3.3"]
+      3-4-flag-duplicate-business-number:
+        title: "Flag Duplicate Business Number"
+        status: "ready-for-dev"
+        story_id: "3.4"
+        validation: "updated to block duplicate creation, surface existing-record guidance, and enforce a DB uniqueness invariant"
+        prerequisites: ["3.1", "3.2", "3.3"]
+      3-5-update-customer-record:
+        title: "Update Customer Record"
+        status: "ready-for-dev"
+        story_id: "3.5"
+        validation: "added to cover PRD create/update scope and architecture customers.update contract"
+        prerequisites: ["3.2", "3.3", "3.4"]
+
+  # Epic 4 - Inventory Operations
+  epic-4:
+    status: "in-progress"
+    validation_note: "Revalidated on 2026-04-01 against Epic 4 story docs, PRD, architecture, PostgreSQL search guidance, and ERP receiving workflows; story naming now matches the implementation artifacts and the execution order follows the validated dependency path."
+    recommended_execution_order:
+      - "4.6 Multiple Warehouse Support"
+      - "4.1 Search Products"
+      - "4.2 View Stock Level and Reorder Point"
+      - "4.4 Record Stock Adjustment with Reason Codes"
+      - "4.3 Reorder Alerts"
+      - "4.5 Track Supplier Orders and Auto-Update Stock"
+    stories:
+      4-6-multiple-warehouse-support:
+        title: "Multiple Warehouse Support"
+        status: "ready-for-dev"
+        story_id: "4.6"
+        validation: "updated for warehouse-scoped inventory, transfer atomicity, and persisted session warehouse context"
+        prerequisites: []
+      4-1-search-products:
+        title: "Search Products"
+        status: "ready-for-dev"
+        story_id: "4.1"
+        validation: "updated for hybrid pg_trgm plus tsvector search, GET API semantics, and react-window 2.x virtualization guidance"
+        prerequisites: ["4.6"]
+      4-2-view-stock-level:
+        title: "View Stock Level and Reorder Point"
+        status: "completed"
+        story_id: "4.2"
+        validation: "Code review passed with notes (0 MUST_FIX, 2 SHOULD_FIX, 4 NITs) — all findings fixed: added boundary tests for route validation, fixed stale-data flash in useProductDetail, fixed falsy offset check in fetchProductDetail, improved empty-state UX in ProductDetail component; 14 backend tests pass, frontend lint+build clean"
+        prerequisites: ["4.1", "4.6"]
+      4-4-record-stock-adjustment:
+        title: "Record Stock Adjustment with Reason Codes"
+        status: "completed"
+        story_id: "4.4"
+        validation: "Backend service, route, schemas implemented; POST /adjustments with user-selectable reason codes, quantity validation, insufficient-stock 409, audit trail, reorder alert check; GET /reason-codes endpoint; StockAdjustmentForm frontend component with confirmation dialog; 11 backend tests + 137 total pass; frontend lint/TS clean"
+        prerequisites: ["4.2"]
+      4-3-reorder-alerts:
+        title: "Reorder Alerts"
+        status: "completed"
+        story_id: "4.3"
+        validation: "Backend: GET /alerts/reorder with status/warehouse filtering and PUT /alerts/reorder/{id}/acknowledge endpoints; list_reorder_alerts joins Product+Warehouse for display names; acknowledge_alert validates pending status; alert auto-creation via _check_reorder_alert in transfer/adjustment transactions. Frontend: ReorderAlerts component with status/warehouse filter dropdowns, acknowledge button, color-coded status badges; useReorderAlerts/useAcknowledgeAlert hooks; fetchReorderAlerts/acknowledgeAlert API functions. 11 backend tests + 178 total pass; frontend lint/TS clean"
+        prerequisites: ["4.2", "4.4"]
+      4-5-supplier-orders:
+        title: "Track Supplier Orders and Auto-Update Stock"
+        status: "ready-for-dev"
+        story_id: "4.5"
+        validation: "updated for partial and idempotent receiving, warehouse-specific receipt lines, and migration-backed supplier order tables"
+        prerequisites: ["4.3", "4.4", "4.6"]
+
+  # Epic 5 - Order to Cash
+  epic-5:
+    status: "backlog"
+    stories:
+      5-1-create-order-linked-customer:
+        status: "backlog"
+        story_id: "5.1"
+      5-2-check-stock-availability:
+        status: "backlog"
+        story_id: "5.2"
+      5-3-set-payment-terms:
+        status: "backlog"
+        story_id: "5.3"
+      5-4-auto-generate-invoice:
+        status: "backlog"
+        story_id: "5.4"
+      5-5-update-order-status:
+        status: "backlog"
+        story_id: "5.5"
+
+  # Epic 6 - Payment Handling
+  epic-6:
+    status: "backlog"
+    stories:
+      6-1-record-payment:
+        status: "backlog"
+        story_id: "6.1"
+      6-2-auto-match-payments:
+        status: "backlog"
+        story_id: "6.2"
+      6-3-display-outstanding-status:
+        status: "backlog"
+        story_id: "6.3"
+
+  # Epic 7 - Business Dashboard
+  epic-7:
+    status: "backlog"
+    stories:
+      7-1-morning-dashboard-revenue:
+        status: "backlog"
+        story_id: "7.1"
+      7-2-top-selling-products:
+        status: "backlog"
+        story_id: "7.2"
+      7-3-low-stock-alerts:
+        status: "backlog"
+        story_id: "7.3"
+      7-4-posthog-visitor-count:
+        status: "backlog"
+        story_id: "7.4"
+      7-5-posthog-visitor-tracking:
+        status: "backlog"
+        story_id: "7.5"
+      7-6-posthog-goal-conversions:
+        status: "backlog"
+        story_id: "7.6"
+
+  # Epic 8 - AI Agent Interface
+  epic-8:
+    status: "backlog"
+    stories:
+      8-1-mcp-inventory-check:
+        status: "backlog"
+        story_id: "8.1"
+      8-2-mcp-customer-query:
+        status: "backlog"
+        story_id: "8.2"
+      8-3-mcp-invoice-query:
+        status: "backlog"
+        story_id: "8.3"
+      8-4-mcp-role-scoped-auth:
+        status: "backlog"
+        story_id: "8.4"
+      8-5-taiwan-tax-skills:
+        status: "backlog"
+        story_id: "8.5"
+      8-6-mcp-session-mode-http:
+        status: "backlog"
+        story_id: "8.6"
+
+  # Epic 9 - LINE Integration
+  epic-9:
+    status: "backlog"
+    stories:
+      9-1-line-notification-new-order:
+        status: "backlog"
+        story_id: "9.1"
+      9-2-line-bot-order-submission:
+        status: "backlog"
+        story_id: "9.2"
+      9-3-line-order-confirmation:
+        status: "backlog"
+        story_id: "9.3"
+
+  # Epic 10 - AEO
+  epic-10:
+    status: "backlog"
+    stories:
+      10-1-json-ld-structured-data:
+        status: "backlog"
+        story_id: "10.1"
+      10-2-xml-sitemap:
+        status: "backlog"
+        story_id: "10.2"
+      10-3-product-content-ai-citation:
+        status: "backlog"
+        story_id: "10.3"
+
+  # Epic 11 - User & Access Management
+  epic-11:
+    status: "backlog"
+    stories:
+      11-1-create-users-with-roles:
+        status: "backlog"
+        story_id: "11.1"
+      11-2-rbac-ui:
+        status: "backlog"
+        story_id: "11.2"
+      11-3-rbac-api:
+        status: "backlog"
+        story_id: "11.3"
+      11-4-rbac-mcp-cli:
+        status: "backlog"
+        story_id: "11.4"
+      11-5-human-in-the-loop:
+        status: "backlog"
+        story_id: "11.5"
+      11-6-audit-log:
+        status: "backlog"
+        story_id: "11.6"
+
+  # Epic 12 - Desktop Shell & Tray
+  epic-12:
+    status: "backlog"
+    stories:
+      12-1-virtualized-lists:
+        status: "backlog"
+        story_id: "12.1"
+      12-2-keyboard-shortcuts:
+        status: "backlog"
+        story_id: "12.2"
+      12-3-egui-status-badge:
+        status: "backlog"
+        story_id: "12.3"
+      12-4-system-tray:
+        status: "backlog"
+        story_id: "12.4"
+      12-5-print-preview-performance:
+        status: "backlog"
+        story_id: "12.5"
+
+  # Epic 13 - Shadow-Mode Validation
+  epic-13:
+    status: "backlog"
+    stories:
+      13-1-versioned-reconciliation-spec:
+        status: "backlog"
+        story_id: "13.1"
+      13-2-shadow-mode-discrepancy:
+        status: "backlog"
+        story_id: "13.2"
+      13-3-30-day-parallel-run:
+        status: "backlog"
+        story_id: "13.3"
+      13-4-backup-10-year-retention:
+        status: "backlog"
+        story_id: "13.4"
+
+last_updated: "2026-04-01"

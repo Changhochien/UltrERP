@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ns0:Invoice xmlns:ns0="urn:GEINV:Message:4.1" xmlns="urn:GEINV:Message:4.1">
+  <ns0:Main>
+    <ns0:InvoiceNumber>ZZ12345678</ns0:InvoiceNumber>
+    <ns0:InvoiceDate>20260330</ns0:InvoiceDate>
+    <ns0:InvoiceTime>10:30:00</ns0:InvoiceTime>
+    <ns0:Seller>
+      <ns0:Identifier>543218764</ns0:Identifier>
+      <ns0:Name>UltrERP Co., Ltd.</ns0:Name>
+      <ns0:RoleRemark>發票開立</ns0:RoleRemark>
+    </ns0:Seller>
+    <ns0:Buyer>
+      <ns0:Identifier>278561941</ns0:Identifier>
+      <ns0:Name>Acme Corporation</ns0:Name>
+    </ns0:Buyer>
+    <ns0:RelateNumber>ORD-2026-001</ns0:RelateNumber>
+    <ns0:InvoiceType>07</ns0:InvoiceType>
+    <ns0:GroupMark>0</ns0:GroupMark>
+    <ns0:DonateMark>0</ns0:DonateMark>
+    <ns0:MainRemark>Thank you for your business!</ns0:MainRemark>
+    <ns0:Details>
+      <ns0:ProductItem>
+        <ns0:Description>Enterprise Software License - Annual Subscription</ns0:Description>
+        <ns0:Quantity>1</ns0:Quantity>
+        <ns0:UnitPrice>28500</ns0:UnitPrice>
+        <ns0:Amount>28500</ns0:Amount>
+        <ns0:SequenceNumber>0001</ns0:SequenceNumber>
+        <ns0:TaxType>1</ns0:TaxType>
+        <ns0:Unit>套</ns0:Unit>
+        <ns0:Remark>License key delivered via email</ns0:Remark>
+      </ns0:ProductItem>
+      <ns0:ProductItem>
+        <ns0:Description>Priority Support Service - Monthly Retainer</ns0:Description>
+        <ns0:Quantity>3</ns0:Quantity>
+        <ns0:UnitPrice>5000</ns0:UnitPrice>
+        <ns0:Amount>15000</ns0:Amount>
+        <ns0:SequenceNumber>0002</ns0:SequenceNumber>
+        <ns0:TaxType>1</ns0:TaxType>
+        <ns0:Unit>月</ns0:Unit>
+        <ns0:Remark>January to March 2026</ns0:Remark>
+      </ns0:ProductItem>
+    </ns0:Details>
+    <ns0:Amount>
+      <ns0:SalesAmount>43500</ns0:SalesAmount>
+      <ns0:TaxType>1</ns0:TaxType>
+      <ns0:TaxRate>0.05</ns0:TaxRate>
+      <ns0:TaxAmount>2175</ns0:TaxAmount>
+      <ns0:TotalAmount>45675</ns0:TotalAmount>
+    </ns0:Amount>
+  </ns0:Main>
+</ns0:Invoice>
