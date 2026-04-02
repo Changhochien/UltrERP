@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
+
+logger = logging.getLogger(__name__)
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
@@ -45,8 +48,11 @@ async def check_stock_availability(
 		)
 		.order_by(Warehouse.name)
 	)
-	result = await session.execute(stmt)
-	rows = result.all()
+
+	async with session.begin():
+		await set_tenant(session, tenant_id)
+		result = await session.execute(stmt)
+		rows = result.all()
 
 	warehouses = []
 	total = 0
@@ -120,7 +126,7 @@ async def create_order(
 			tenant_id=tid,
 			customer_id=data.customer_id,
 			order_number=order_number,
-			status="pending",
+			status=OrderStatus.PENDING.value,
 			payment_terms_code=data.payment_terms_code.value,
 			payment_terms_days=int(terms_config["days"]),
 			notes=data.notes,
@@ -205,7 +211,7 @@ async def create_order(
 			after_state={
 				"order_number": order.order_number,
 				"customer_id": str(data.customer_id),
-				"status": "pending",
+				"status": OrderStatus.PENDING.value,
 				"line_count": len(data.lines),
 				"total_amount": str(order.total_amount),
 			},
@@ -247,8 +253,8 @@ async def confirm_order(
 			raise HTTPException(status_code=404, detail="Order not found")
 
 		# Validate status
-		if order.status != "pending":
-			raise HTTPException(status_code=409, detail=f"Order is '{order.status}', not 'pending'")
+		if order.status != OrderStatus.PENDING.value:
+			raise HTTPException(status_code=409, detail=f"Order is '{order.status}', not '{OrderStatus.PENDING.value}'")
 
 		# Validate lines
 		if not order.lines:
@@ -278,6 +284,11 @@ async def confirm_order(
 		try:
 			buyer_identifier_normalized = normalize_buyer_identifier(buyer_type, buyer_identifier if buyer_type == BuyerType.B2B else None)
 		except ValueError:
+			logger.warning(
+				"Customer %s has invalid business_number %r; falling back to B2C",
+				customer.id,
+				buyer_identifier,
+			)
 			buyer_identifier_normalized = "0000000000"
 			buyer_type = BuyerType.B2C
 
@@ -307,7 +318,7 @@ async def confirm_order(
 
 		# Update order
 		now = datetime.now(tz=UTC)
-		order.status = "confirmed"
+		order.status = OrderStatus.CONFIRMED.value
 		order.confirmed_at = now
 		order.invoice_id = invoice.id
 
@@ -318,9 +329,9 @@ async def confirm_order(
 			action="ORDER_STATUS_CHANGED",
 			entity_type="order",
 			entity_id=str(order.id),
-			before_state={"status": "pending"},
+			before_state={"status": OrderStatus.PENDING.value},
 			after_state={
-				"status": "confirmed",
+				"status": OrderStatus.CONFIRMED.value,
 				"invoice_id": str(invoice.id),
 			},
 			correlation_id=str(order.id),
@@ -350,22 +361,22 @@ async def confirm_order(
 async def update_order_status(
 	session: AsyncSession,
 	order_id: uuid.UUID,
-	new_status: str,
+	new_status: str | OrderStatus,
 	tenant_id: uuid.UUID | None = None,
 	actor_id: str = ACTOR_ID,
 ) -> Order:
 	"""Transition order to a new status via state machine."""
 	tid = tenant_id or TENANT_ID
 
-	# Delegate confirmed transition to confirm_order (handles invoice creation)
-	if new_status == OrderStatus.CONFIRMED.value:
-		return await confirm_order(session, order_id, tenant_id=tid, actor_id=actor_id)
-
-	# Validate new_status is a known value
+	# Normalize to OrderStatus enum
 	try:
 		target = OrderStatus(new_status)
 	except ValueError:
 		raise HTTPException(status_code=422, detail=f"Invalid status: {new_status}")
+
+	# Delegate confirmed transition to confirm_order (handles invoice creation)
+	if target is OrderStatus.CONFIRMED:
+		return await confirm_order(session, order_id, tenant_id=tid, actor_id=actor_id)
 
 	async with session.begin():
 		await set_tenant(session, tid)
@@ -387,11 +398,11 @@ async def update_order_status(
 		if target not in ALLOWED_TRANSITIONS.get(current, frozenset()):
 			raise HTTPException(
 				status_code=409,
-				detail=f"Cannot transition from '{order.status}' to '{new_status}'",
+				detail=f"Cannot transition from '{order.status}' to '{target.value}'",
 			)
 
 		old_status = order.status
-		order.status = new_status
+		order.status = target.value
 
 		audit = AuditLog(
 			tenant_id=tid,
@@ -400,7 +411,7 @@ async def update_order_status(
 			entity_type="order",
 			entity_id=str(order.id),
 			before_state={"status": old_status},
-			after_state={"status": new_status},
+			after_state={"status": target.value},
 			correlation_id=str(order.id),
 		)
 		session.add(audit)
@@ -428,8 +439,6 @@ async def list_orders(
 
 	# Count
 	count_stmt = select(func.count()).select_from(Order).where(*filters)
-	result = await session.execute(count_stmt)
-	total = result.scalar() or 0
 
 	# Fetch page
 	offset = (page - 1) * page_size
@@ -440,8 +449,13 @@ async def list_orders(
 		.offset(offset)
 		.limit(page_size)
 	)
-	result = await session.execute(stmt)
-	orders = list(result.scalars().all())
+
+	async with session.begin():
+		await set_tenant(session, tid)
+		result = await session.execute(count_stmt)
+		total = result.scalar() or 0
+		result = await session.execute(stmt)
+		orders = list(result.scalars().all())
 
 	return orders, total
 
@@ -461,8 +475,12 @@ async def get_order(
 			selectinload(Order.customer),
 		)
 	)
-	result = await session.execute(stmt)
-	order = result.scalar_one_or_none()
+
+	async with session.begin():
+		await set_tenant(session, tid)
+		result = await session.execute(stmt)
+		order = result.scalar_one_or_none()
+
 	if order is None:
 		raise HTTPException(status_code=404, detail="Order not found.")
 	return order

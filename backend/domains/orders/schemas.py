@@ -81,7 +81,7 @@ class OrderResponse(BaseModel):
 	tenant_id: uuid.UUID
 	customer_id: uuid.UUID
 	order_number: str
-	status: str
+	status: OrderStatus
 	payment_terms_code: str
 	payment_terms_days: int
 	subtotal_amount: Decimal | None
@@ -103,7 +103,7 @@ class OrderListItem(BaseModel):
 	tenant_id: uuid.UUID
 	customer_id: uuid.UUID
 	order_number: str
-	status: str
+	status: OrderStatus
 	payment_terms_code: str
 	total_amount: Decimal | None
 	created_at: datetime
@@ -141,4 +141,4 @@ class StockCheckResponse(BaseModel):
 
 
 class OrderStatusUpdate(BaseModel):
-	new_status: str = Field(..., min_length=1, max_length=20)
+	new_status: OrderStatus

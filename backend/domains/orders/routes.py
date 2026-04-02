@@ -176,7 +176,7 @@ async def cancel_order_endpoint(
 	session: DbSession,
 ) -> OrderResponse:
 	order = await update_order_status(
-		session, order_id, "cancelled", tenant_id=TENANT_ID, actor_id=ACTOR_ID,
+		session, order_id, OrderStatus.CANCELLED, tenant_id=TENANT_ID, actor_id=ACTOR_ID,
 	)
 	return _to_order_response(order)
 
