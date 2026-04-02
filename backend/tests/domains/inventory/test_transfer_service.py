@@ -21,7 +21,7 @@ class FakeInventoryStock:
 		quantity: int = 100,
 		reorder_point: int = 10,
 		*,
-		tenant_id: str = "t1",
+		tenant_id: uuid.UUID = uuid.UUID("00000000-0000-0000-0000-000000000001"),
 		product_id: uuid.UUID | None = None,
 		warehouse_id: uuid.UUID | None = None,
 	):
@@ -109,7 +109,7 @@ async def test_transfer_rejects_same_warehouse() -> None:
 	with pytest.raises(TransferValidationError, match="different"):
 		await transfer_stock(
 			session,
-			"t1",
+			uuid.UUID("00000000-0000-0000-0000-000000000001"),
 			from_warehouse_id=wh,
 			to_warehouse_id=wh,
 			product_id=uuid.uuid4(),
@@ -124,7 +124,7 @@ async def test_transfer_rejects_zero_quantity() -> None:
 	with pytest.raises(TransferValidationError, match="positive"):
 		await transfer_stock(
 			session,
-			"t1",
+			uuid.UUID("00000000-0000-0000-0000-000000000001"),
 			from_warehouse_id=uuid.uuid4(),
 			to_warehouse_id=uuid.uuid4(),
 			product_id=uuid.uuid4(),
@@ -139,7 +139,7 @@ async def test_transfer_rejects_negative_quantity() -> None:
 	with pytest.raises(TransferValidationError, match="positive"):
 		await transfer_stock(
 			session,
-			"t1",
+			uuid.UUID("00000000-0000-0000-0000-000000000001"),
 			from_warehouse_id=uuid.uuid4(),
 			to_warehouse_id=uuid.uuid4(),
 			product_id=uuid.uuid4(),
@@ -155,7 +155,7 @@ async def test_transfer_rejects_no_source_stock() -> None:
 	with pytest.raises(InsufficientStockError) as exc_info:
 		await transfer_stock(
 			session,
-			"t1",
+			uuid.UUID("00000000-0000-0000-0000-000000000001"),
 			from_warehouse_id=uuid.uuid4(),
 			to_warehouse_id=uuid.uuid4(),
 			product_id=uuid.uuid4(),
@@ -174,7 +174,7 @@ async def test_transfer_rejects_insufficient_stock() -> None:
 	with pytest.raises(InsufficientStockError) as exc_info:
 		await transfer_stock(
 			session,
-			"t1",
+			uuid.UUID("00000000-0000-0000-0000-000000000001"),
 			from_warehouse_id=uuid.uuid4(),
 			to_warehouse_id=uuid.uuid4(),
 			product_id=uuid.uuid4(),
@@ -199,7 +199,7 @@ async def test_transfer_success_creates_records() -> None:
 
 	await transfer_stock(
 		session,
-		"t1",
+		uuid.UUID("00000000-0000-0000-0000-000000000001"),
 		from_warehouse_id=uuid.uuid4(),
 		to_warehouse_id=uuid.uuid4(),
 		product_id=pid,
@@ -230,7 +230,7 @@ async def test_transfer_creates_target_stock_if_absent() -> None:
 
 	await transfer_stock(
 		session,
-		"t1",
+		uuid.UUID("00000000-0000-0000-0000-000000000001"),
 		from_warehouse_id=uuid.uuid4(),
 		to_warehouse_id=uuid.uuid4(),
 		product_id=uuid.uuid4(),
@@ -265,7 +265,7 @@ async def test_transfer_recovers_when_target_stock_created_concurrently() -> Non
 
 	await transfer_stock(
 		session,
-		"t1",
+		uuid.UUID("00000000-0000-0000-0000-000000000001"),
 		from_warehouse_id=source.warehouse_id,
 		to_warehouse_id=existing_target.warehouse_id,
 		product_id=pid,
@@ -291,7 +291,7 @@ async def test_transfer_triggers_reorder_alert() -> None:
 
 	await transfer_stock(
 		session,
-		"t1",
+		uuid.UUID("00000000-0000-0000-0000-000000000001"),
 		from_warehouse_id=uuid.uuid4(),
 		to_warehouse_id=uuid.uuid4(),
 		product_id=uuid.uuid4(),

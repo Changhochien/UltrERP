@@ -17,18 +17,29 @@ from app.main import app
 from common.database import get_db
 
 
+class FakeScalarResult:
+    """Stub for query results returned by session.execute()."""
+
+    def __init__(self, value: object = None) -> None:
+        self._value = value
+
+    def scalar_one_or_none(self) -> object:
+        return self._value
+
+
 class FakeAsyncSession:
     """Minimal async session stub for create-customer API tests."""
 
-    def __init__(self) -> None:
+    def __init__(self, existing_customer: object = None) -> None:
         self.added: list[Any] = []
         self._in_transaction = False
+        self._existing_customer = existing_customer
 
     def add(self, instance: object) -> None:
         self.added.append(instance)
 
-    async def execute(self, statement: object, params: object = None) -> None:
-        pass
+    async def execute(self, statement: object, params: object = None) -> FakeScalarResult:
+        return FakeScalarResult(self._existing_customer)
 
     async def refresh(self, instance: object) -> None:
         # Simulate DB-assigned defaults that the ORM normally populates
@@ -192,3 +203,63 @@ async def test_create_customer_returns_structured_errors() -> None:
         assert "contact_phone" in fields
     finally:
         _teardown(previous_override)
+
+
+# --- Duplicate detection API tests (Story 3.4) ---
+
+
+class _FakeExistingCustomer:
+    """Stub mimicking a Customer ORM object returned by the duplicate pre-check."""
+
+    def __init__(self) -> None:
+        self.id = uuid.UUID("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+        self.company_name = "Existing Corp"
+        self.normalized_business_number = "04595257"
+
+
+async def _override_get_db_with_existing() -> AsyncGenerator[FakeAsyncSession, None]:
+    yield FakeAsyncSession(existing_customer=_FakeExistingCustomer())
+
+
+async def test_create_customer_duplicate_returns_409() -> None:
+    previous_override = app.dependency_overrides.get(get_db, _MISSING_OVERRIDE)
+    app.dependency_overrides[get_db] = _override_get_db_with_existing
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            resp = await client.post("/api/v1/customers", json=_valid_body())
+        assert resp.status_code == 409
+        body = resp.json()
+        assert body["error"] == "duplicate_business_number"
+        assert body["existing_customer_id"] == "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+        assert body["existing_customer_name"] == "Existing Corp"
+        assert body["normalized_business_number"] == "04595257"
+    finally:
+        if previous_override is _MISSING_OVERRIDE:
+            app.dependency_overrides.pop(get_db, None)
+        else:
+            app.dependency_overrides[get_db] = previous_override
+
+
+async def test_duplicate_409_payload_shape_is_stable() -> None:
+    """Verify the 409 response contains exactly the expected keys."""
+    previous_override = app.dependency_overrides.get(get_db, _MISSING_OVERRIDE)
+    app.dependency_overrides[get_db] = _override_get_db_with_existing
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            resp = await client.post("/api/v1/customers", json=_valid_body())
+        assert resp.status_code == 409
+        body = resp.json()
+        expected_keys = {
+            "error",
+            "existing_customer_id",
+            "existing_customer_name",
+            "normalized_business_number",
+        }
+        assert set(body.keys()) == expected_keys
+    finally:
+        if previous_override is _MISSING_OVERRIDE:
+            app.dependency_overrides.pop(get_db, None)
+        else:
+            app.dependency_overrides[get_db] = previous_override

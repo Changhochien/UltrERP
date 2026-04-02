@@ -93,7 +93,7 @@ def _make_warehouse(
 
 	w = FakeWarehouse()
 	w.id = wh_id or uuid.uuid4()
-	w.tenant_id = "default"
+	w.tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
 	w.name = name
 	w.code = code
 	w.location = "台北"
