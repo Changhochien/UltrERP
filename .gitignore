@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.coverage
+.DS_Store
+.env
+
+# IDE-specific agent configs (duplicates of .agents/)
+.gemini/
+
+# Large legacy SQL dumps
+legacy data/
+
