@@ -11,9 +11,10 @@ interface Props {
   customerId: string;
   onClose: () => void;
   onSaved: () => void;
+  onViewCustomer?: (customerId: string) => void;
 }
 
-export function EditCustomerDialog({ customerId, onClose, onSaved }: Props) {
+export function EditCustomerDialog({ customerId, onClose, onSaved, onViewCustomer }: Props) {
   const [customer, setCustomer] = useState<CustomerResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -111,7 +112,10 @@ export function EditCustomerDialog({ customerId, onClose, onSaved }: Props) {
             {duplicate && (
               <DuplicateCustomerWarning
                 duplicate={duplicate}
-                onViewExisting={() => {}}
+                onViewExisting={(id) => {
+                  onClose();
+                  onViewCustomer?.(id);
+                }}
                 onCancel={() => setDuplicate(null)}
               />
             )}

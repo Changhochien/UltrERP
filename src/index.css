@@ -1,0 +1,271 @@
+:root {
+  color: #13211f;
+  background: linear-gradient(160deg, #f6f1e8 0%, #dfe8d8 52%, #d0e5df 100%);
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-height: 100vh;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+}
+
+.hero-card {
+  width: min(40rem, 100%);
+  padding: 2.5rem;
+  border: 1px solid rgba(19, 33, 31, 0.15);
+  border-radius: 1.5rem;
+  background: rgba(255, 252, 247, 0.82);
+  box-shadow: 0 20px 60px rgba(19, 33, 31, 0.12);
+  backdrop-filter: blur(12px);
+}
+
+.hero-card h1 {
+  margin: 0;
+  font-size: clamp(2.5rem, 8vw, 4.5rem);
+  line-height: 0.95;
+}
+
+.hero-card p {
+  margin: 1rem 0 0;
+  font-size: 1.05rem;
+}
+
+.eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.78rem;
+  color: #41655c;
+}
+
+.caption {
+  color: #4f635f;
+}
+
+/* --- Top navigation --- */
+.top-nav {
+  width: min(40rem, 100%);
+  margin-bottom: 1rem;
+}
+
+.top-nav button {
+  background: none;
+  border: none;
+  color: #41655c;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0;
+}
+
+/* --- Customer form --- */
+.customer-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.form-field label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #2a4440;
+}
+
+.form-field input {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid rgba(19, 33, 31, 0.25);
+  border-radius: 0.5rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+  background: rgba(255, 252, 247, 0.6);
+}
+
+.form-field input:focus {
+  outline: 2px solid #41655c;
+  outline-offset: 1px;
+}
+
+.field-error {
+  color: #b22222;
+  font-size: 0.8rem;
+}
+
+.customer-form button[type="submit"] {
+  margin-top: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  background: #41655c;
+  color: #fff;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.customer-form button[type="submit"]:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ---- Search & Browse ---- */
+.search-input {
+  width: 100%;
+  max-width: 480px;
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+  border: 1px solid #b0bfb4;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.results-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+
+.results-table th,
+.results-table td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #d4ddd7;
+}
+
+.results-table th {
+  font-weight: 600;
+  background: #e8ede9;
+}
+
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row:hover {
+  background: #edf3ee;
+}
+
+.empty-row {
+  text-align: center;
+  color: #888;
+  font-style: italic;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pagination button {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---- Detail Dialog ---- */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.dialog-content {
+  background: #fff;
+  border-radius: 8px;
+  padding: 2rem;
+  min-width: 360px;
+  max-width: 520px;
+  position: relative;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.dialog-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.customer-detail dt {
+  font-weight: 600;
+  margin-top: 0.75rem;
+}
+
+.customer-detail dd {
+  margin-left: 0;
+}
+
+/* Duplicate warning */
+.duplicate-warning {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 6px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.duplicate-warning h3 {
+  margin: 0 0 0.5rem;
+  color: #856404;
+}
+
+.duplicate-existing-name {
+  font-size: 1.1rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.duplicate-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  background: #5a6268;
+}

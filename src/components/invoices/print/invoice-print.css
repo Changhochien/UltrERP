@@ -1,0 +1,241 @@
+/* Invoice print stylesheet — A5 landscape pre-printed stationery layout.
+ *
+ * Canonical spec: docs/invoices/stationery-spec.md
+ * Reference asset: docs/Image/Invoice image.jpg
+ *
+ * This stylesheet drives preview, physical print, and (via Story 2.6) PDF export.
+ * All coordinates (mm) are relative to the printable area after margins.
+ */
+
+@page {
+	size: A5 landscape;
+	margin: 8mm 18mm 8mm 8mm;
+}
+
+/* ── Print-only rules ─────────────────────────────────────────────────── */
+
+@media print {
+	body * {
+		visibility: hidden;
+	}
+
+	.invoice-print-sheet,
+	.invoice-print-sheet * {
+		visibility: visible;
+	}
+
+	.invoice-print-sheet {
+		position: absolute;
+		top: 0;
+		left: 0;
+	}
+
+	/* Hide screen-only elements */
+	.print-preview-controls,
+	.top-nav,
+	nav {
+		display: none !important;
+	}
+}
+
+/* ── Sheet container ──────────────────────────────────────────────────── */
+
+.invoice-print-sheet {
+	width: 184mm;
+	min-height: 132mm;
+	font-family: "Noto Sans TC", system-ui, sans-serif;
+	font-size: 9pt;
+	color: #000;
+	box-sizing: border-box;
+}
+
+/* ── Header zone (0–25mm) ─────────────────────────────────────────────── */
+
+.ips-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	margin-bottom: 2mm;
+}
+
+.ips-header-left {
+	display: flex;
+	flex-direction: column;
+	gap: 1mm;
+}
+
+.ips-company-logo {
+	max-width: 30mm;
+	max-height: 18mm;
+}
+
+.ips-company-name {
+	font-size: 11pt;
+	font-weight: 700;
+}
+
+.ips-header-right {
+	text-align: right;
+	font-size: 8pt;
+	line-height: 1.6;
+}
+
+/* ── Date / Document row ──────────────────────────────────────────────── */
+
+.ips-doc-row {
+	display: flex;
+	justify-content: space-between;
+	margin-bottom: 2mm;
+	font-size: 10pt;
+}
+
+.ips-date {
+	text-align: center;
+}
+
+.ips-doc-number {
+	text-align: right;
+}
+
+/* ── Customer info block ──────────────────────────────────────────────── */
+
+.ips-customer {
+	display: flex;
+	justify-content: space-between;
+	border: 0.5pt solid #333;
+	padding: 1.5mm 2mm;
+	margin-bottom: 2mm;
+	font-size: 8pt;
+	line-height: 1.8;
+}
+
+.ips-customer-left,
+.ips-customer-right {
+	display: flex;
+	flex-direction: column;
+}
+
+.ips-customer-left {
+	flex: 1;
+}
+
+.ips-customer-right {
+	flex: 0 0 35%;
+}
+
+.ips-field-label {
+	font-weight: 600;
+	margin-right: 1mm;
+}
+
+/* ── Line items grid ──────────────────────────────────────────────────── */
+
+.ips-grid {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 8pt;
+	margin-bottom: 2mm;
+}
+
+.ips-grid th,
+.ips-grid td {
+	border: 0.5pt solid #333;
+	padding: 1mm 2mm;
+}
+
+.ips-grid th {
+	font-weight: 600;
+	text-align: center;
+	height: 8mm;
+	background: none;
+}
+
+.ips-grid td {
+	height: 6mm;
+	vertical-align: middle;
+}
+
+.ips-grid tbody tr:nth-child(even) {
+	background-color: #f0f0f0;
+}
+
+.ips-col-code {
+	width: 24mm;
+	text-align: left;
+}
+.ips-col-desc {
+	width: 52mm;
+	text-align: left;
+}
+.ips-col-qty {
+	width: 18mm;
+	text-align: right;
+}
+.ips-col-unit {
+	width: 12mm;
+	text-align: center;
+}
+.ips-col-price {
+	width: 22mm;
+	text-align: right;
+}
+.ips-col-net {
+	width: 22mm;
+	text-align: right;
+}
+.ips-col-amount {
+	width: 34mm;
+	text-align: right;
+}
+
+/* ── Footer zone ──────────────────────────────────────────────────────── */
+
+.ips-footer {
+	display: grid;
+	grid-template-columns: 76mm 1fr;
+	border: 0.5pt solid #333;
+	font-size: 8pt;
+}
+
+.ips-footer-left {
+	border-right: 0.5pt solid #333;
+	padding: 1.5mm 2mm;
+}
+
+.ips-footer-right {
+	padding: 1.5mm 2mm;
+}
+
+.ips-footer-row {
+	display: flex;
+	justify-content: space-between;
+	line-height: 2;
+}
+
+.ips-footer-notes {
+	display: flex;
+	justify-content: space-between;
+	border-top: 0.5pt solid #333;
+	padding: 1.5mm 2mm;
+	min-height: 8mm;
+}
+
+.ips-footer-notes-left {
+	flex: 1;
+}
+
+.ips-footer-notes-right {
+	flex: 0 0 35%;
+	text-align: center;
+}
+
+/* ── Copy label (right margin) ────────────────────────────────────────── */
+
+.ips-copy-label {
+	position: absolute;
+	right: -14mm;
+	top: 60mm;
+	writing-mode: vertical-rl;
+	font-size: 8pt;
+	letter-spacing: 2pt;
+}

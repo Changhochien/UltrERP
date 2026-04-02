@@ -5,9 +5,13 @@ import {
   CUSTOMER_CREATE_ROUTE,
   CUSTOMERS_ROUTE,
   HOME_ROUTE,
+  ORDERS_ROUTE,
+  ORDER_CREATE_ROUTE,
+  ORDER_DETAIL_ROUTE,
 } from "./lib/routes";
 import CreateCustomerPage from "./pages/customers/CreateCustomerPage";
 import { CustomerListPage } from "./pages/customers/CustomerListPage";
+import { OrdersPage } from "./pages/orders/OrdersPage";
 
 export const APP_TITLE = "UltrERP";
 export const APP_TAGLINE = "AI-native ERP for Taiwan SMBs";
@@ -44,6 +48,12 @@ function HomePage() {
           <button type="button" onClick={() => navigate(CUSTOMER_CREATE_ROUTE)}>
             Create Customer
           </button>
+          <button type="button" onClick={() => navigate(ORDERS_ROUTE)}>
+            Browse Orders
+          </button>
+          <button type="button" onClick={() => navigate(ORDER_CREATE_ROUTE)}>
+            Create Order
+          </button>
         </nav>
       </section>
     </main>
@@ -74,6 +84,9 @@ export default function App() {
       <Route path={HOME_ROUTE} element={<HomePage />} />
       <Route path={CUSTOMERS_ROUTE} element={<CustomerListRoute />} />
       <Route path={CUSTOMER_CREATE_ROUTE} element={<CreateCustomerRoute />} />
+      <Route path={ORDERS_ROUTE} element={<RoutedPage><OrdersPage /></RoutedPage>} />
+      <Route path={ORDER_CREATE_ROUTE} element={<RoutedPage><OrdersPage /></RoutedPage>} />
+      <Route path={ORDER_DETAIL_ROUTE} element={<RoutedPage><OrdersPage /></RoutedPage>} />
       <Route path="*" element={<Navigate to={HOME_ROUTE} replace />} />
     </Routes>
   );
