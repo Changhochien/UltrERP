@@ -1,0 +1,49 @@
+---
+name: UltrERP
+description: AI-native ERP system for Taiwan SMBs (聯泰興實業) — Brownfield migration from legacy 鼎新-style ERP
+project_type: brownfield
+workflow_type: wds
+
+product_complexity: complex
+tech_stack:
+  frontend: react
+  framework: Tauri 2.x
+  build: Vite
+  backend: FastAPI
+  database: PostgreSQL 17
+  ai: FastMCP 2.14.6, MCP
+  search: pgvector
+  cache: Redis 7
+  storage: MinIO
+component_library: shadcn
+skip_design_system: true
+
+root_folder: _bmad
+output_folder: _bmad
+existing_materials:
+  has_materials: true
+  prd: _bmad-output/planning-artifacts/prd.md
+  sprint_plan: _bmad-output/planning-artifacts/sprint-1.md
+  architecture: docs/superpowers/specs/2026-03-30-erp-architecture-design-v2.md
+  research: research/00-consolidation/whole-picture.md
+
+brief_level: complete
+
+project_context:
+  stakes: small_business_investment
+  involvement: balanced
+  role: product_owner
+  presentation_style: suggest_options
+
+phases_completed:
+  - prd-defined
+  - sprint-planned
+
+routing:
+  current: phase-8-kaizen
+  next: phase-8-kaizen
+
+metadata:
+  created: 2026-03-31
+  author: Hcchang
+  source: prd-analysis
