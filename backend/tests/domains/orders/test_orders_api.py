@@ -237,6 +237,7 @@ async def test_list_payment_terms() -> None:
 
 async def test_list_orders_empty() -> None:
 	session = FakeAsyncSession()
+	session.queue_scalar(None)  # set_tenant
 	session.queue_count(0)  # count query
 	session.queue_scalars([])  # items query
 
@@ -256,6 +257,7 @@ async def test_list_orders_with_items() -> None:
 	o2 = FakeOrder(status="confirmed")
 
 	session = FakeAsyncSession()
+	session.queue_scalar(None)  # set_tenant
 	session.queue_count(2)
 	session.queue_scalars([o1, o2])
 
@@ -274,6 +276,7 @@ async def test_list_orders_with_status_filter() -> None:
 	o1 = FakeOrder(status="pending")
 
 	session = FakeAsyncSession()
+	session.queue_scalar(None)  # set_tenant
 	session.queue_count(1)
 	session.queue_scalars([o1])
 
@@ -299,6 +302,7 @@ async def test_get_order_found() -> None:
 	)
 
 	session = FakeAsyncSession()
+	session.queue_scalar(None)  # set_tenant
 	session.queue_scalar(order)  # get_order query
 
 	prev = _setup(session)
@@ -316,6 +320,7 @@ async def test_get_order_found() -> None:
 
 async def test_get_order_not_found() -> None:
 	session = FakeAsyncSession()
+	session.queue_scalar(None)  # set_tenant
 	session.queue_scalar(None)  # not found
 
 	prev = _setup(session)
@@ -408,6 +413,7 @@ async def test_create_order_success() -> None:
 	session.queue_scalars([product.id])  # product IDs check
 	session.queue_count(100)  # stock availability for line
 	# After flush/commit, reload via get_order:
+	session.queue_scalar(None)  # set_tenant (get_order)
 	session.queue_scalar(order)  # get_order with selectinload
 
 	prev = _setup(session)
@@ -443,6 +449,7 @@ async def test_create_order_with_cod_terms() -> None:
 	session.queue_scalar(customer)  # customer lookup
 	session.queue_scalars([product.id])  # product check
 	session.queue_count(100)  # stock availability for line
+	session.queue_scalar(None)  # set_tenant (get_order)
 	session.queue_scalar(order)  # get_order
 
 	prev = _setup(session)
@@ -491,6 +498,7 @@ async def test_create_order_defaults_to_net30() -> None:
 	session.queue_scalar(customer)  # customer lookup
 	session.queue_scalars([product.id])  # product check
 	session.queue_count(100)  # stock availability for line
+	session.queue_scalar(None)  # set_tenant (get_order)
 	session.queue_scalar(order)  # get_order
 
 	prev = _setup(session)

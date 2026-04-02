@@ -216,13 +216,15 @@ def _queue_confirm_success(session: FakeAsyncSession, order: FakeOrder, customer
 	  4. _create_invoice_core: customer lookup → scalar(customer)
 	  5. _create_invoice_core: number_range lookup → scalar(number_range)
 	  6. flush (invoice + lines), flush (audits)
-	  7. get_order reload: selectinload → scalar(confirmed_order)
+	  7. get_order reload: set_tenant → scalar(None)
+	  8. get_order reload: selectinload → scalar(confirmed_order)
 	"""
 	session.queue_scalar(None)  # set_tenant
 	session.queue_scalar(order)  # order lookup
 	session.queue_scalar(customer)  # customer lookup (confirm_order)
 	session.queue_scalar(customer)  # customer lookup (_create_invoice_core)
 	session.queue_scalar(FakeInvoiceNumberRange())  # number_range
+	session.queue_scalar(None)  # set_tenant (get_order)
 	session.queue_scalar(order)  # get_order reload
 
 

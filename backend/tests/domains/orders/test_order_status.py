@@ -161,10 +161,12 @@ def _queue_status_update(session: FakeAsyncSession, order: FakeOrder):
 	  1. set_tenant → scalar(None)
 	  2. order lookup (with_for_update) → scalar(order)
 	  3. flush (audit)
-	  4. get_order reload → scalar(order)
+	  4. get_order reload: set_tenant → scalar(None)
+	  5. get_order reload → scalar(order)
 	"""
 	session.queue_scalar(None)  # set_tenant
 	session.queue_scalar(order)  # order lookup
+	session.queue_scalar(None)  # set_tenant (get_order)
 	session.queue_scalar(order)  # get_order reload
 
 

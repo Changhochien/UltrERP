@@ -225,6 +225,7 @@ _WH2_ID = uuid.uuid4()
 async def test_check_stock_with_inventory() -> None:
 	"""Stock check returns per-warehouse totals."""
 	session = FakeAsyncSession()
+	session.queue_scalar(None)  # set_tenant
 	session.queue_rows([
 		FakeWarehouseRow(_WH1_ID, "Warehouse A", 50),
 		FakeWarehouseRow(_WH2_ID, "Warehouse B", 30),
@@ -246,6 +247,7 @@ async def test_check_stock_with_inventory() -> None:
 async def test_check_stock_no_inventory() -> None:
 	"""Stock check for product with no inventory returns 0."""
 	session = FakeAsyncSession()
+	session.queue_scalar(None)  # set_tenant
 	session.queue_rows([])
 
 	prev = _setup(session)
@@ -293,6 +295,7 @@ async def test_create_order_populates_stock_snapshot() -> None:
 	session.queue_scalar(customer)  # customer lookup
 	session.queue_scalars([product_id])  # product check
 	session.queue_count(80)  # stock query for line
+	session.queue_scalar(None)  # set_tenant (get_order)
 	session.queue_scalar(order)  # get_order reload
 
 	prev = _setup(session)
@@ -325,6 +328,7 @@ async def test_create_order_insufficient_stock_sets_backorder_note() -> None:
 	session.queue_scalar(customer)  # customer lookup
 	session.queue_scalars([product_id])  # product check
 	session.queue_count(5)  # stock query — only 5 available
+	session.queue_scalar(None)  # set_tenant (get_order)
 	session.queue_scalar(order)  # get_order reload
 
 	prev = _setup(session)
@@ -357,6 +361,7 @@ async def test_create_order_sufficient_stock_no_backorder_note() -> None:
 	session.queue_scalar(customer)  # customer lookup
 	session.queue_scalars([product_id])  # product check
 	session.queue_count(100)  # stock query — 100 available
+	session.queue_scalar(None)  # set_tenant (get_order)
 	session.queue_scalar(order)  # get_order reload
 
 	prev = _setup(session)
