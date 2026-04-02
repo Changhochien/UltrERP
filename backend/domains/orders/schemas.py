@@ -1,0 +1,144 @@
+"""Pydantic schemas for order creation and serialization."""
+
+from __future__ import annotations
+
+import enum
+import uuid
+from datetime import datetime
+from decimal import Decimal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class PaymentTermsCode(str, enum.Enum):
+	NET_30 = "NET_30"
+	NET_60 = "NET_60"
+	COD = "COD"
+
+
+class OrderStatus(str, enum.Enum):
+	PENDING = "pending"
+	CONFIRMED = "confirmed"
+	SHIPPED = "shipped"
+	FULFILLED = "fulfilled"
+	CANCELLED = "cancelled"
+
+
+ALLOWED_TRANSITIONS: dict[OrderStatus, frozenset[OrderStatus]] = {
+	OrderStatus.PENDING: frozenset({OrderStatus.CONFIRMED, OrderStatus.CANCELLED}),
+	OrderStatus.CONFIRMED: frozenset({OrderStatus.SHIPPED}),
+	OrderStatus.SHIPPED: frozenset({OrderStatus.FULFILLED}),
+	OrderStatus.FULFILLED: frozenset(),
+	OrderStatus.CANCELLED: frozenset(),
+}
+
+
+PAYMENT_TERMS_CONFIG: dict[PaymentTermsCode, dict[str, str | int]] = {
+	PaymentTermsCode.NET_30: {"label": "Net 30", "days": 30},
+	PaymentTermsCode.NET_60: {"label": "Net 60", "days": 60},
+	PaymentTermsCode.COD: {"label": "Cash on Delivery", "days": 0},
+}
+
+
+class OrderCreateLine(BaseModel):
+	product_id: uuid.UUID
+	description: str = Field(..., min_length=1, max_length=500)
+	quantity: Decimal = Field(..., gt=0, max_digits=18, decimal_places=3)
+	unit_price: Decimal = Field(..., ge=0, max_digits=20, decimal_places=2)
+	tax_policy_code: str = Field(..., min_length=1, max_length=20)
+
+
+class OrderCreate(BaseModel):
+	customer_id: uuid.UUID
+	payment_terms_code: PaymentTermsCode = PaymentTermsCode.NET_30
+	notes: str | None = Field(default=None, max_length=2000)
+	lines: list[OrderCreateLine] = Field(..., min_length=1, max_length=200)
+
+
+class OrderLineResponse(BaseModel):
+	model_config = ConfigDict(from_attributes=True)
+
+	id: uuid.UUID
+	product_id: uuid.UUID
+	line_number: int
+	quantity: Decimal
+	unit_price: Decimal
+	tax_policy_code: str
+	tax_type: int
+	tax_rate: Decimal
+	tax_amount: Decimal
+	subtotal_amount: Decimal
+	total_amount: Decimal
+	description: str
+	available_stock_snapshot: int | None
+	backorder_note: str | None
+
+
+class OrderResponse(BaseModel):
+	model_config = ConfigDict(from_attributes=True)
+
+	id: uuid.UUID
+	tenant_id: uuid.UUID
+	customer_id: uuid.UUID
+	order_number: str
+	status: str
+	payment_terms_code: str
+	payment_terms_days: int
+	subtotal_amount: Decimal | None
+	tax_amount: Decimal | None
+	total_amount: Decimal | None
+	invoice_id: uuid.UUID | None
+	notes: str | None
+	created_by: str
+	created_at: datetime
+	updated_at: datetime
+	confirmed_at: datetime | None
+	lines: list[OrderLineResponse] = []
+
+
+class OrderListItem(BaseModel):
+	model_config = ConfigDict(from_attributes=True)
+
+	id: uuid.UUID
+	tenant_id: uuid.UUID
+	customer_id: uuid.UUID
+	order_number: str
+	status: str
+	payment_terms_code: str
+	total_amount: Decimal | None
+	created_at: datetime
+	updated_at: datetime
+
+
+class OrderListResponse(BaseModel):
+	items: list[OrderListItem]
+	total: int
+	page: int
+	page_size: int
+
+
+class PaymentTermsItem(BaseModel):
+	code: str
+	label: str
+	days: int
+
+
+class PaymentTermsListResponse(BaseModel):
+	items: list[PaymentTermsItem]
+	total: int
+
+
+class WarehouseStockInfo(BaseModel):
+	warehouse_id: uuid.UUID
+	warehouse_name: str
+	available: int
+
+
+class StockCheckResponse(BaseModel):
+	product_id: uuid.UUID
+	warehouses: list[WarehouseStockInfo]
+	total_available: int
+
+
+class OrderStatusUpdate(BaseModel):
+	new_status: str = Field(..., min_length=1, max_length=20)
