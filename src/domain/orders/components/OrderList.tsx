@@ -18,7 +18,7 @@ const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
 
 export function OrderList({ onSelect }: OrderListProps) {
   const [statusFilter, setStatusFilter] = useState("");
-  const { items, total, page, loading, error, reload } = useOrders({
+  const { items, total, page, pageSize, loading, error, reload } = useOrders({
     status: statusFilter || undefined,
   });
 
@@ -100,7 +100,7 @@ export function OrderList({ onSelect }: OrderListProps) {
                 ← Prev
               </button>
             )}
-            {page * 20 < total && (
+            {page * pageSize < total && (
               <button
                 type="button"
                 onClick={() => void reload(page + 1)}

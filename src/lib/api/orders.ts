@@ -4,6 +4,7 @@ import type {
   OrderCreatePayload,
   OrderListResponse,
   OrderResponse,
+  OrderStatus,
   PaymentTermsListResponse,
   StockCheckResponse,
 } from "../../domain/orders/types";
@@ -81,7 +82,7 @@ export async function checkStock(productId: string): Promise<StockCheckResponse>
 
 export async function updateOrderStatus(
   orderId: string,
-  newStatus: string,
+  newStatus: OrderStatus,
 ): Promise<
   | { ok: true; data: OrderResponse }
   | { ok: false; error: string }

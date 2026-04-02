@@ -7,21 +7,21 @@ import type { OrderStatus } from "../types";
 
 interface StatusAction {
   label: string;
-  targetStatus: string;
+  targetStatus: OrderStatus;
   confirmMessage: string;
   color: string;
 }
 
 const STATUS_ACTIONS: Record<string, StatusAction[]> = {
   pending: [
-    { label: "Confirm Order", targetStatus: "confirmed", confirmMessage: "Confirming this order will auto-generate an invoice. Continue?", color: "#2563eb" },
-    { label: "Cancel Order", targetStatus: "cancelled", confirmMessage: "Are you sure you want to cancel this order?", color: "#dc2626" },
+    { label: "Confirm Order", targetStatus: "confirmed" as OrderStatus, confirmMessage: "Confirming this order will auto-generate an invoice. Continue?", color: "#2563eb" },
+    { label: "Cancel Order", targetStatus: "cancelled" as OrderStatus, confirmMessage: "Are you sure you want to cancel this order?", color: "#dc2626" },
   ],
   confirmed: [
-    { label: "Mark Shipped", targetStatus: "shipped", confirmMessage: "Mark this order as shipped?", color: "#7c3aed" },
+    { label: "Mark Shipped", targetStatus: "shipped" as OrderStatus, confirmMessage: "Mark this order as shipped?", color: "#7c3aed" },
   ],
   shipped: [
-    { label: "Mark Fulfilled", targetStatus: "fulfilled", confirmMessage: "Mark this order as fulfilled?", color: "#059669" },
+    { label: "Mark Fulfilled", targetStatus: "fulfilled" as OrderStatus, confirmMessage: "Mark this order as fulfilled?", color: "#059669" },
   ],
 };
 
@@ -36,7 +36,7 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [activeAction, setActiveAction] = useState<StatusAction | null>(null);
 
-  const handleStatusChange = async (targetStatus: string) => {
+  const handleStatusChange = async (targetStatus: OrderStatus) => {
     setUpdating(true);
     setUpdateError(null);
     const result = await updateOrderStatus(orderId, targetStatus);

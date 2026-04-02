@@ -45,6 +45,7 @@ export function useOrders(options?: {
   const [items, setItems] = useState<OrderListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,6 +61,7 @@ export function useOrders(options?: {
       setItems(res.items);
       setTotal(res.total);
       setPage(res.page);
+      setPageSize(res.page_size);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load");
     } finally {
@@ -71,7 +73,7 @@ export function useOrders(options?: {
     void reload();
   }, [reload]);
 
-  return { items, total, page, loading, error, reload };
+  return { items, total, page, pageSize, loading, error, reload };
 }
 
 /* ── Order detail hook ─────────────────────────────────────── */
