@@ -1,9 +1,10 @@
 /** Form to create a new sales order with dynamic line items. */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePaymentTerms, useCreateOrder } from "../hooks/useOrders";
 import { useStockCheck } from "../hooks/useStockCheck";
 import type { OrderCreatePayload, OrderLineCreate } from "../types";
+import { trackEvent, AnalyticsEvents } from "../../../lib/analytics";
 
 interface OrderFormProps {
   onCreated: (orderId: string) => void;
@@ -23,15 +24,18 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
   const [paymentTermsCode, setPaymentTermsCode] = useState("NET_30");
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<OrderLineCreate[]>([emptyLine()]);
+  const submittingRef = useRef(false);
 
-  // Check stock when product_id changes
+  // Derive stable product-ID key so stock checks only fire on product_id changes
+  const productIdKey = lines.map((l) => l.product_id).join(",");
+
   useEffect(() => {
-    for (const line of lines) {
-      if (line.product_id && line.product_id.length >= 36) {
-        checkProductStock(line.product_id);
+    for (const pid of productIdKey.split(",")) {
+      if (pid && pid.length >= 36) {
+        checkProductStock(pid);
       }
     }
-  }, [lines, checkProductStock]);
+  }, [productIdKey, checkProductStock]);
 
   if (termsLoading) return <p aria-busy="true">Loading…</p>;
   if (termsError) return <div role="alert" style={{ color: "#dc2626" }}>{termsError}</div>;
@@ -54,14 +58,23 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload: OrderCreatePayload = {
-      customer_id: customerId,
-      payment_terms_code: paymentTermsCode as OrderCreatePayload["payment_terms_code"],
-      notes: notes || undefined,
-      lines: validLines,
-    };
-    const result = await create(payload);
-    if (result) onCreated(result.id);
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    try {
+      const payload: OrderCreatePayload = {
+        customer_id: customerId,
+        payment_terms_code: paymentTermsCode as OrderCreatePayload["payment_terms_code"],
+        notes: notes || undefined,
+        lines: validLines,
+      };
+      const result = await create(payload);
+      if (result) {
+        trackEvent(AnalyticsEvents.ORDER_CREATED, { source_page: "/orders" });
+        onCreated(result.id);
+      }
+    } finally {
+      submittingRef.current = false;
+    }
   };
 
   return (

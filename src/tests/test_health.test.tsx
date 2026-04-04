@@ -1,11 +1,18 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import App, { APP_TAGLINE, APP_TITLE } from "../App";
 import { CUSTOMER_CREATE_ROUTE, HOME_ROUTE } from "../lib/routes";
+import { clearTestToken, setTestToken } from "./helpers/auth";
 
 describe("frontend scaffold", () => {
+  beforeEach(() => setTestToken("owner"));
+  afterEach(() => {
+    cleanup();
+    clearTestToken();
+  });
+
   it("renders the app shell content", () => {
     render(
       <MemoryRouter initialEntries={[HOME_ROUTE]}>

@@ -1,5 +1,6 @@
 /** Customer API helpers. */
 
+import { apiFetch } from "../apiFetch";
 import type {
   CustomerCreatePayload,
   CustomerListResponse,
@@ -32,7 +33,7 @@ export async function createCustomer(
 ): Promise<CreateCustomerResult> {
   let resp: Response;
   try {
-    resp = await fetch("/api/v1/customers", {
+    resp = await apiFetch("/api/v1/customers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -82,7 +83,7 @@ export async function listCustomers(params: {
   if (params.page) qs.set("page", String(params.page));
   if (params.page_size) qs.set("page_size", String(params.page_size));
   try {
-    const resp = await fetch(`/api/v1/customers?${qs.toString()}`);
+    const resp = await apiFetch(`/api/v1/customers?${qs.toString()}`);
     if (!resp.ok) {
       return emptyResponse;
     }
@@ -93,7 +94,7 @@ export async function listCustomers(params: {
 }
 
 export async function getCustomer(id: string): Promise<CustomerResponse | null> {
-  const resp = await fetch(`/api/v1/customers/${id}`);
+  const resp = await apiFetch(`/api/v1/customers/${id}`);
   if (!resp.ok) return null;
   return resp.json();
 }
@@ -101,7 +102,7 @@ export async function getCustomer(id: string): Promise<CustomerResponse | null> 
 export async function lookupCustomerByBan(
   businessNumber: string,
 ): Promise<CustomerResponse | null> {
-  const resp = await fetch(
+  const resp = await apiFetch(
     `/api/v1/customers/lookup?business_number=${encodeURIComponent(businessNumber)}`,
   );
   if (!resp.ok) return null;
@@ -123,7 +124,7 @@ export async function updateCustomer(
 ): Promise<UpdateCustomerResult> {
   let resp: Response;
   try {
-    resp = await fetch(`/api/v1/customers/${id}`, {
+    resp = await apiFetch(`/api/v1/customers/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

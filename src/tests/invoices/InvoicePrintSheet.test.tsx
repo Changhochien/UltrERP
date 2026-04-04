@@ -30,7 +30,6 @@ const customer: PrintCustomerInfo = {
 function makeInvoice(overrides: Partial<InvoiceResponse> = {}): InvoiceResponse {
 	return {
 		id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-		tenant_id: "00000000-0000-0000-0000-000000000001",
 		invoice_number: "AB00000001",
 		invoice_date: "2025-07-01",
 		customer_id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",

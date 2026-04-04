@@ -11,7 +11,6 @@ import { exportInvoicePdf } from "../../lib/pdf/invoices";
 function makeInvoice(overrides: Partial<InvoiceResponse> = {}): InvoiceResponse {
 	return {
 		id: "aaaaaaaa-0000-0000-0000-000000000001",
-		tenant_id: "00000000-0000-0000-0000-000000000001",
 		invoice_number: "AA00000001",
 		invoice_date: "2025-03-15",
 		customer_id: "bbbbbbbb-0000-0000-0000-000000000001",

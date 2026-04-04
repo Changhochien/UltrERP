@@ -41,6 +41,7 @@ export interface OrderResponse {
   order_number: string;
   status: OrderStatus;
   customer_id: string;
+  customer_name: string | null;
   payment_terms_code: string;
   payment_terms_days: number;
   subtotal_amount: string;

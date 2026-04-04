@@ -99,7 +99,7 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
           </span>
         </dd>
         <dt><strong>Customer</strong></dt>
-        <dd>{order.customer_id}</dd>
+        <dd>{order.customer_name ?? order.customer_id}</dd>
         <dt><strong>Payment Terms</strong></dt>
         <dd>{order.payment_terms_code} ({order.payment_terms_days} days)</dd>
         <dt><strong>Subtotal</strong></dt>

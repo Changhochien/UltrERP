@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { OrderForm } from "../../domain/orders/components/OrderForm";
 
@@ -68,9 +68,21 @@ describe("OrderForm — stock display", () => {
     await waitFor(() => {
       expect(screen.getByText("New Order")).toBeTruthy();
     });
-    // The stock check is triggered automatically when product_id looks like a UUID
-    // We verify the Stock header exists in the form
-    expect(screen.getByText("Stock")).toBeTruthy();
+
+    // Enter a UUID-length product_id to trigger stock check
+    const productInput = screen.getByLabelText("Line 1 product");
+    fireEvent.change(productInput, {
+      target: { value: "00000000-0000-0000-0000-000000000001" },
+    });
+
+    // Set quantity higher than mock's total_available (5)
+    const qtyInput = screen.getByLabelText("Line 1 quantity");
+    fireEvent.change(qtyInput, { target: { value: "10" } });
+
+    // Wait for the stock warning to appear
+    await waitFor(() => {
+      expect(screen.getByText(/Insufficient stock: 5 units available/)).toBeTruthy();
+    });
     spy.mockRestore();
   });
 });

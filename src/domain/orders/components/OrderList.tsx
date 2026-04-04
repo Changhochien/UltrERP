@@ -66,7 +66,16 @@ export function OrderList({ onSelect }: OrderListProps) {
               {items.map((item) => (
                 <tr
                   key={item.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Order ${item.order_number}`}
                   onClick={() => onSelect(item.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onSelect(item.id);
+                    }
+                  }}
                   style={{ cursor: "pointer" }}
                 >
                   <td>{item.order_number}</td>

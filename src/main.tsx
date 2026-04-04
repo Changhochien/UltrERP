@@ -4,6 +4,9 @@ import { HashRouter } from "react-router-dom";
 
 import App from "./App";
 import "./index.css";
+import { initPostHog } from "./lib/posthog";
+
+initPostHog();
 
 const rootElement = document.getElementById("root");
 

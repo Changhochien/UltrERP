@@ -1,5 +1,6 @@
 /** Orders API helpers. */
 
+import { apiFetch } from "../apiFetch";
 import type {
   OrderCreatePayload,
   OrderListResponse,
@@ -14,7 +15,7 @@ export interface OrderApiError {
 }
 
 export async function fetchPaymentTerms(): Promise<PaymentTermsListResponse> {
-  const resp = await fetch("/api/v1/orders/payment-terms");
+  const resp = await apiFetch("/api/v1/orders/payment-terms");
   if (!resp.ok) throw new Error("Failed to fetch payment terms");
   return resp.json();
 }
@@ -27,7 +28,7 @@ export async function createOrder(
 > {
   let resp: Response;
   try {
-    resp = await fetch("/api/v1/orders", {
+    resp = await apiFetch("/api/v1/orders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -61,19 +62,19 @@ export async function fetchOrders(params?: {
   if (params?.page_size) qs.set("page_size", String(params.page_size));
   const qsStr = qs.toString();
   const url = `/api/v1/orders${qsStr ? `?${qsStr}` : ""}`;
-  const resp = await fetch(url);
+  const resp = await apiFetch(url);
   if (!resp.ok) throw new Error("Failed to fetch orders");
   return resp.json();
 }
 
 export async function fetchOrder(orderId: string): Promise<OrderResponse> {
-  const resp = await fetch(`/api/v1/orders/${encodeURIComponent(orderId)}`);
+  const resp = await apiFetch(`/api/v1/orders/${encodeURIComponent(orderId)}`);
   if (!resp.ok) throw new Error("Order not found");
   return resp.json();
 }
 
 export async function checkStock(productId: string): Promise<StockCheckResponse> {
-  const resp = await fetch(
+  const resp = await apiFetch(
     `/api/v1/orders/check-stock?product_id=${encodeURIComponent(productId)}`,
   );
   if (!resp.ok) throw new Error("Failed to check stock");
@@ -89,7 +90,7 @@ export async function updateOrderStatus(
 > {
   let resp: Response;
   try {
-    resp = await fetch(`/api/v1/orders/${encodeURIComponent(orderId)}/status`, {
+    resp = await apiFetch(`/api/v1/orders/${encodeURIComponent(orderId)}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ new_status: newStatus }),

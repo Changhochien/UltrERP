@@ -1,5 +1,6 @@
 /** Inventory API helpers. */
 
+import { apiFetch } from "../apiFetch";
 import type {
   AcknowledgeAlertResponse,
   CreateSupplierOrderRequest,
@@ -23,7 +24,7 @@ import type {
 export async function fetchWarehouses(
   activeOnly = true,
 ): Promise<WarehouseListResponse> {
-  const resp = await fetch(
+  const resp = await apiFetch(
     `/api/v1/inventory/warehouses?active_only=${activeOnly}`,
   );
   if (!resp.ok) throw new Error("Failed to fetch warehouses");
@@ -31,7 +32,7 @@ export async function fetchWarehouses(
 }
 
 export async function fetchWarehouse(id: string): Promise<Warehouse> {
-  const resp = await fetch(`/api/v1/inventory/warehouses/${id}`);
+  const resp = await apiFetch(`/api/v1/inventory/warehouses/${id}`);
   if (!resp.ok) throw new Error("Warehouse not found");
   return resp.json();
 }
@@ -48,7 +49,7 @@ export async function createTransfer(
   | { ok: true; data: TransferResponse }
   | { ok: false; error: TransferError }
 > {
-  const resp = await fetch("/api/v1/inventory/transfers", {
+  const resp = await apiFetch("/api/v1/inventory/transfers", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -70,7 +71,7 @@ export async function searchProducts(
   const params = new URLSearchParams({ q: query });
   if (options?.limit) params.set("limit", String(options.limit));
   if (options?.warehouseId) params.set("warehouse_id", options.warehouseId);
-  const resp = await fetch(
+  const resp = await apiFetch(
     `/api/v1/inventory/products/search?${params.toString()}`,
     { signal: options?.signal },
   );
@@ -89,13 +90,13 @@ export async function fetchProductDetail(
     params.set("history_offset", String(options.historyOffset));
   const qs = params.toString();
   const url = `/api/v1/inventory/products/${encodeURIComponent(productId)}${qs ? `?${qs}` : ""}`;
-  const resp = await fetch(url);
+  const resp = await apiFetch(url);
   if (!resp.ok) throw new Error("Failed to fetch product detail");
   return resp.json();
 }
 
 export async function fetchReasonCodes(): Promise<ReasonCodeListResponse> {
-  const resp = await fetch("/api/v1/inventory/reason-codes");
+  const resp = await apiFetch("/api/v1/inventory/reason-codes");
   if (!resp.ok) throw new Error("Failed to fetch reason codes");
   return resp.json();
 }
@@ -110,7 +111,7 @@ export async function submitAdjustment(
   | { ok: true; data: StockAdjustmentResponse }
   | { ok: false; error: AdjustmentError }
 > {
-  const resp = await fetch("/api/v1/inventory/adjustments", {
+  const resp = await apiFetch("/api/v1/inventory/adjustments", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -138,7 +139,7 @@ export async function fetchReorderAlerts(options?: {
   if (options?.offset != null) params.set("offset", String(options.offset));
   const qs = params.toString();
   const url = `/api/v1/inventory/alerts/reorder${qs ? `?${qs}` : ""}`;
-  const resp = await fetch(url);
+  const resp = await apiFetch(url);
   if (!resp.ok) throw new Error("Failed to fetch reorder alerts");
   return resp.json();
 }
@@ -149,7 +150,7 @@ export async function acknowledgeAlert(
   | { ok: true; data: AcknowledgeAlertResponse }
   | { ok: false; error: string }
 > {
-  const resp = await fetch(
+  const resp = await apiFetch(
     `/api/v1/inventory/alerts/reorder/${encodeURIComponent(alertId)}/acknowledge`,
     { method: "PUT" },
   );
@@ -166,7 +167,7 @@ export async function acknowledgeAlert(
 export async function fetchSuppliers(
   activeOnly = true,
 ): Promise<SupplierListResponse> {
-  const resp = await fetch(
+  const resp = await apiFetch(
     `/api/v1/inventory/suppliers?active_only=${activeOnly}`,
   );
   if (!resp.ok) throw new Error("Failed to fetch suppliers");
@@ -181,7 +182,7 @@ export async function createSupplierOrder(
   | { ok: true; data: SupplierOrder }
   | { ok: false; error: string }
 > {
-  const resp = await fetch("/api/v1/inventory/supplier-orders", {
+  const resp = await apiFetch("/api/v1/inventory/supplier-orders", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -209,7 +210,7 @@ export async function fetchSupplierOrders(options?: {
   if (options?.offset != null) params.set("offset", String(options.offset));
   const qs = params.toString();
   const url = `/api/v1/inventory/supplier-orders${qs ? `?${qs}` : ""}`;
-  const resp = await fetch(url);
+  const resp = await apiFetch(url);
   if (!resp.ok) throw new Error("Failed to fetch supplier orders");
   return resp.json();
 }
@@ -217,7 +218,7 @@ export async function fetchSupplierOrders(options?: {
 export async function fetchSupplierOrder(
   orderId: string,
 ): Promise<SupplierOrder> {
-  const resp = await fetch(
+  const resp = await apiFetch(
     `/api/v1/inventory/supplier-orders/${encodeURIComponent(orderId)}`,
   );
   if (!resp.ok) throw new Error("Supplier order not found");
@@ -231,7 +232,7 @@ export async function updateSupplierOrderStatus(
   | { ok: true; data: SupplierOrder }
   | { ok: false; error: string }
 > {
-  const resp = await fetch(
+  const resp = await apiFetch(
     `/api/v1/inventory/supplier-orders/${encodeURIComponent(orderId)}/status`,
     {
       method: "PUT",
@@ -256,7 +257,7 @@ export async function receiveSupplierOrder(
   | { ok: true; data: SupplierOrder }
   | { ok: false; error: string }
 > {
-  const resp = await fetch(
+  const resp = await apiFetch(
     `/api/v1/inventory/supplier-orders/${encodeURIComponent(orderId)}/receive`,
     {
       method: "PUT",

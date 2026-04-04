@@ -156,7 +156,7 @@ export default function InvoicePrintSheet({
 				</div>
 				<div className="ips-footer-right">
 					<div className="ips-footer-row">
-						<span className="ips-field-label">合　　計</span>
+						<span className="ips-field-label">{"合\u3000\u3000計"}</span>
 						<span>{formatAmount(invoice.subtotal_amount)}</span>
 					</div>
 					<div className="ips-footer-row">
@@ -164,7 +164,7 @@ export default function InvoicePrintSheet({
 						<span>{formatAmount(invoice.tax_amount)}</span>
 					</div>
 					<div className="ips-footer-row">
-						<span className="ips-field-label">總　　計</span>
+						<span className="ips-field-label">{"總\u3000\u3000計"}</span>
 						<span style={{ fontWeight: 700 }}>
 							{formatAmount(invoice.total_amount)}
 						</span>

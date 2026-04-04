@@ -6,6 +6,7 @@ import { CUSTOMERS_ROUTE, type AppRoute } from "../../lib/routes";
 import { createCustomer, type DuplicateInfo } from "../../lib/api/customers";
 import CustomerForm from "../../components/customers/CustomerForm";
 import DuplicateCustomerWarning from "../../components/customers/DuplicateCustomerWarning";
+import { trackEvent, AnalyticsEvents } from "../../lib/analytics";
 
 export interface CreateCustomerPageProps {
   onNavigate?: (path: AppRoute) => void;
@@ -24,6 +25,7 @@ export default function CreateCustomerPage({ onNavigate }: CreateCustomerPagePro
     try {
       const result = await createCustomer(payload);
       if (result.ok) {
+        trackEvent(AnalyticsEvents.CUSTOMER_CREATED, { source_page: "/customers" });
         setCreated(result.data);
       } else if (result.duplicate) {
         setDuplicate(result.duplicate);
