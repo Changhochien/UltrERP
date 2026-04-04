@@ -1,0 +1,10 @@
+/Volumes/2T_SSD_App/Projects/UltrERP/src-tauri/target/debug/deps/global_hotkey-cd2d96413fe0f798.d: /Users/hcchang/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/global-hotkey-0.7.0/src/lib.rs /Users/hcchang/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/global-hotkey-0.7.0/src/error.rs /Users/hcchang/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/global-hotkey-0.7.0/src/hotkey.rs /Users/hcchang/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/global-hotkey-0.7.0/src/platform_impl/mod.rs /Users/hcchang/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/global-hotkey-0.7.0/src/platform_impl/macos/mod.rs /Users/hcchang/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/global-hotkey-0.7.0/src/platform_impl/macos/ffi.rs
+
+/Volumes/2T_SSD_App/Projects/UltrERP/src-tauri/target/debug/deps/libglobal_hotkey-cd2d96413fe0f798.rmeta: /Users/hcchang/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/global-hotkey-0.7.0/src/lib.rs /Users/hcchang/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/global-hotkey-0.7.0/src/error.rs /Users/hcchang/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/global-hotkey-0.7.0/src/hotkey.rs /Users/hcchang/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/global-hotkey-0.7.0/src/platform_impl/mod.rs /Users/hcchang/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/global-hotkey-0.7.0/src/platform_impl/macos/mod.rs /Users/hcchang/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/global-hotkey-0.7.0/src/platform_impl/macos/ffi.rs
+
+/Users/hcchang/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/global-hotkey-0.7.0/src/lib.rs:
+/Users/hcchang/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/global-hotkey-0.7.0/src/error.rs:
+/Users/hcchang/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/global-hotkey-0.7.0/src/hotkey.rs:
+/Users/hcchang/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/global-hotkey-0.7.0/src/platform_impl/mod.rs:
+/Users/hcchang/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/global-hotkey-0.7.0/src/platform_impl/macos/mod.rs:
+/Users/hcchang/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/global-hotkey-0.7.0/src/platform_impl/macos/ffi.rs:

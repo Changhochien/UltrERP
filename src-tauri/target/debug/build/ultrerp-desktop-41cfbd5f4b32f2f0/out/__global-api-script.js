@@ -1,0 +1,1 @@
+["/Users/hcchang/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-2.10.3/scripts/bundle.global.js","/Users/hcchang/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-plugin-global-shortcut-2.3.1/api-iife.js","/Users/hcchang/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-plugin-notification-2.3.3/api-iife.js"]
