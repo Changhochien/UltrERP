@@ -17,6 +17,7 @@ from httpx import ASGITransport, AsyncClient
 from app.main import app
 from common.database import get_db
 from domains.customers.models import Customer
+from tests.domains.orders._helpers import auth_header
 
 # ── Fake infrastructure ──────────────────────────────────────────
 
@@ -131,7 +132,7 @@ async def test_update_customer_success() -> None:
     prev = _setup(customer=customer)
     try:
         async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://testserver"
+            transport=ASGITransport(app=app), base_url="http://testserver", headers=auth_header()
         ) as client:
             resp = await client.patch(
                 _url(), json={"company_name": "新名稱", "version": 1}
@@ -149,7 +150,7 @@ async def test_update_customer_not_found() -> None:
     prev = _setup(customer=None)
     try:
         async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://testserver"
+            transport=ASGITransport(app=app), base_url="http://testserver", headers=auth_header()
         ) as client:
             resp = await client.patch(
                 _url(), json={"company_name": "新名稱", "version": 1}
@@ -165,7 +166,7 @@ async def test_update_customer_version_conflict() -> None:
     prev = _setup(customer=customer)
     try:
         async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://testserver"
+            transport=ASGITransport(app=app), base_url="http://testserver", headers=auth_header()
         ) as client:
             resp = await client.patch(
                 _url(), json={"company_name": "新名稱", "version": 1}
@@ -190,7 +191,7 @@ async def test_update_customer_duplicate_ban() -> None:
     prev = _setup(customer=customer, duplicate=other)
     try:
         async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://testserver"
+            transport=ASGITransport(app=app), base_url="http://testserver", headers=auth_header()
         ) as client:
             resp = await client.patch(
                 _url(), json={"business_number": "22099131", "version": 1}
@@ -209,7 +210,7 @@ async def test_update_customer_validation_error() -> None:
     prev = _setup(customer=customer)
     try:
         async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://testserver"
+            transport=ASGITransport(app=app), base_url="http://testserver", headers=auth_header()
         ) as client:
             resp = await client.patch(
                 _url(), json={"contact_phone": "bad", "version": 1}
@@ -227,7 +228,7 @@ async def test_update_customer_invalid_email() -> None:
     prev = _setup(customer=customer)
     try:
         async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://testserver"
+            transport=ASGITransport(app=app), base_url="http://testserver", headers=auth_header()
         ) as client:
             resp = await client.patch(
                 _url(), json={"contact_email": "not-email", "version": 1}
@@ -245,7 +246,7 @@ async def test_update_credit_limit_only() -> None:
     prev = _setup(customer=customer)
     try:
         async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://testserver"
+            transport=ASGITransport(app=app), base_url="http://testserver", headers=auth_header()
         ) as client:
             resp = await client.patch(
                 _url(), json={"credit_limit": "50000.00", "version": 1}
@@ -263,7 +264,7 @@ async def test_update_missing_version_rejected() -> None:
     prev = _setup(customer=_make_customer())
     try:
         async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://testserver"
+            transport=ASGITransport(app=app), base_url="http://testserver", headers=auth_header()
         ) as client:
             resp = await client.patch(
                 _url(), json={"company_name": "No version"}

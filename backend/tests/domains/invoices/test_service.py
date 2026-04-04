@@ -15,8 +15,9 @@ from typing import Any
 import pytest
 
 from common.errors import ValidationError
+from common.object_store import InMemoryObjectStore
 from domains.customers.models import Customer
-from domains.invoices.enums import InvoiceStatus
+from domains.invoices.artifact_model import InvoiceArtifact
 from domains.invoices.models import Invoice, InvoiceLine, InvoiceNumberRange
 from domains.invoices.schemas import InvoiceCreate, InvoiceCreateLine
 from domains.invoices.service import (
@@ -37,7 +38,6 @@ from domains.invoices.tax import (
 from domains.invoices.validators import (
     IMMUTABLE_ERROR,
     IMMUTABLE_FIELDS,
-    TotalsDiscrepancy,
     validate_invoice_totals,
 )
 
@@ -146,6 +146,9 @@ class FakeResult:
         self._obj = obj
 
     def scalar_one_or_none(self) -> object | None:
+        return self._obj
+
+    def scalar(self) -> object | None:
         return self._obj
 
 
@@ -336,6 +339,37 @@ class TestCreateInvoice:
             {"field": "invoice_number", "message": "No invoice numbers remain in the active range."}
         ]
 
+    @pytest.mark.asyncio
+    async def test_archives_invoice_artifact_when_store_is_provided(self) -> None:
+        customer = _customer()
+        range_record = _range()
+        payload = _invoice_create(customer_id=customer.id)
+        session = FakeAsyncSession()
+        session.queue_result(customer)
+        session.queue_result(range_record)
+        store = InMemoryObjectStore()
+
+        invoice = await create_invoice(
+            session,
+            payload,
+            artifact_store=store,
+            artifact_storage_policy="object-lock-governance",
+            artifact_retention_class="finance-archive-10y",
+            seller_ban="12345678",
+            seller_name="UltrERP Testing",
+        )
+
+        expected_key = f"{invoice.tenant_id}/mig41/{invoice.id}.xml"
+        artifact_records = [item for item in session.added if isinstance(item, InvoiceArtifact)]
+
+        assert len(artifact_records) == 1
+        assert artifact_records[0].invoice_id == invoice.id
+        assert artifact_records[0].storage_policy == "object-lock-governance"
+        assert artifact_records[0].retention_class == "finance-archive-10y"
+        assert store.get_object("invoice-artifacts", expected_key).startswith(
+            b"<?xml version='1.0' encoding='utf-8'?>",
+        )
+
 
 # ── Void deadline computation ──────────────────────────────────
 
@@ -406,6 +440,7 @@ class TestVoidInvoice:
         invoice = _issued_invoice(invoice_date=date(2025, 3, 20))
         session = FakeAsyncSession()
         session.queue_result(invoice)
+        session.queue_result(Decimal("0"))  # payment check — no payments
 
         # Void on April 1 — well within the May 15 deadline
         result = await void_invoice(
@@ -427,6 +462,7 @@ class TestVoidInvoice:
         invoice = _issued_invoice(invoice_date=date(2025, 3, 20))
         session = FakeAsyncSession()
         session.queue_result(invoice)
+        session.queue_result(Decimal("0"))  # payment check — no payments
 
         # Void on June 1 — past the May 15 deadline
         with pytest.raises(ValueError, match="Void window expired"):

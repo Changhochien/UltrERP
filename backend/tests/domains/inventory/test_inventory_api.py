@@ -11,6 +11,7 @@ from httpx import ASGITransport, AsyncClient
 
 from app.main import app
 from common.database import get_db
+from tests.domains.orders._helpers import auth_header
 
 # ── Fake session for API tests ────────────────────────────────
 
@@ -133,7 +134,7 @@ async def test_list_warehouses_empty() -> None:
 	try:
 		transport = ASGITransport(app=app)
 		async with AsyncClient(
-			transport=transport, base_url="http://testserver",
+			transport=transport, base_url="http://testserver", headers=auth_header(),
 		) as client:
 			resp = await client.get("/api/v1/inventory/warehouses")
 		assert resp.status_code == 200
@@ -152,7 +153,7 @@ async def test_list_warehouses_returns_items() -> None:
 	try:
 		transport = ASGITransport(app=app)
 		async with AsyncClient(
-			transport=transport, base_url="http://testserver",
+			transport=transport, base_url="http://testserver", headers=auth_header(),
 		) as client:
 			resp = await client.get("/api/v1/inventory/warehouses")
 		assert resp.status_code == 200
@@ -173,7 +174,7 @@ async def test_get_warehouse_not_found() -> None:
 	try:
 		transport = ASGITransport(app=app)
 		async with AsyncClient(
-			transport=transport, base_url="http://testserver",
+			transport=transport, base_url="http://testserver", headers=auth_header(),
 		) as client:
 			resp = await client.get(
 				f"/api/v1/inventory/warehouses/{uuid.uuid4()}",
@@ -192,7 +193,7 @@ async def test_get_warehouse_found() -> None:
 	try:
 		transport = ASGITransport(app=app)
 		async with AsyncClient(
-			transport=transport, base_url="http://testserver",
+			transport=transport, base_url="http://testserver", headers=auth_header(),
 		) as client:
 			resp = await client.get(
 				f"/api/v1/inventory/warehouses/{wh_id}",
@@ -212,7 +213,7 @@ async def test_transfer_same_warehouse_returns_422() -> None:
 	try:
 		transport = ASGITransport(app=app)
 		async with AsyncClient(
-			transport=transport, base_url="http://testserver",
+			transport=transport, base_url="http://testserver", headers=auth_header(),
 		) as client:
 			resp = await client.post(
 				"/api/v1/inventory/transfers",
@@ -241,7 +242,7 @@ async def test_transfer_insufficient_stock_returns_409() -> None:
 	try:
 		transport = ASGITransport(app=app)
 		async with AsyncClient(
-			transport=transport, base_url="http://testserver",
+			transport=transport, base_url="http://testserver", headers=auth_header(),
 		) as client:
 			resp = await client.post(
 				"/api/v1/inventory/transfers",

@@ -15,8 +15,29 @@ class InvoiceStatus(StrEnum):
     VOIDED = "voided"
 
 
+class EguiSubmissionStatus(StrEnum):
+    PENDING = "PENDING"
+    QUEUED = "QUEUED"
+    SENT = "SENT"
+    ACKED = "ACKED"
+    FAILED = "FAILED"
+    RETRYING = "RETRYING"
+    DEAD_LETTER = "DEAD_LETTER"
+
+
 # Only these transitions are permitted.
 ALLOWED_TRANSITIONS: dict[InvoiceStatus, frozenset[InvoiceStatus]] = {
     InvoiceStatus.ISSUED: frozenset({InvoiceStatus.VOIDED}),
     InvoiceStatus.VOIDED: frozenset(),
+}
+
+
+ALLOWED_EGUI_SUBMISSION_TRANSITIONS: dict[EguiSubmissionStatus, frozenset[EguiSubmissionStatus]] = {
+    EguiSubmissionStatus.PENDING: frozenset({EguiSubmissionStatus.QUEUED, EguiSubmissionStatus.FAILED}),
+    EguiSubmissionStatus.QUEUED: frozenset({EguiSubmissionStatus.SENT, EguiSubmissionStatus.FAILED}),
+    EguiSubmissionStatus.SENT: frozenset({EguiSubmissionStatus.ACKED, EguiSubmissionStatus.FAILED}),
+    EguiSubmissionStatus.ACKED: frozenset(),
+    EguiSubmissionStatus.FAILED: frozenset({EguiSubmissionStatus.RETRYING, EguiSubmissionStatus.DEAD_LETTER}),
+    EguiSubmissionStatus.RETRYING: frozenset({EguiSubmissionStatus.SENT, EguiSubmissionStatus.DEAD_LETTER}),
+    EguiSubmissionStatus.DEAD_LETTER: frozenset(),
 }

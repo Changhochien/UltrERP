@@ -8,9 +8,9 @@ AWS/MinIO specifics directly.  The same interface is used in production
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Protocol
-
 
 # ---------------------------------------------------------------------------
 # Public data structures
@@ -23,6 +23,7 @@ class PutResult:
 	checksum_sha256: str
 	byte_size: int
 	content_type: str
+	storage_policy: str = "standard"
 
 
 # ---------------------------------------------------------------------------
@@ -38,6 +39,8 @@ class ObjectStore(Protocol):
 		key: str,
 		data: bytes,
 		content_type: str = "application/xml",
+		storage_policy: str = "standard",
+		retention_until: str | None = None,
 	) -> PutResult: ...
 
 	def get_object(self, bucket: str, key: str) -> bytes: ...
@@ -59,6 +62,8 @@ class InMemoryObjectStore:
 		key: str,
 		data: bytes,
 		content_type: str = "application/xml",
+		storage_policy: str = "standard",
+		retention_until: str | None = None,
 	) -> PutResult:
 		self._objects[(bucket, key)] = data
 		return PutResult(
@@ -66,6 +71,7 @@ class InMemoryObjectStore:
 			checksum_sha256=hashlib.sha256(data).hexdigest(),
 			byte_size=len(data),
 			content_type=content_type,
+			storage_policy=storage_policy,
 		)
 
 	def get_object(self, bucket: str, key: str) -> bytes:
@@ -110,20 +116,39 @@ class S3ObjectStore:
 		key: str,
 		data: bytes,
 		content_type: str = "application/xml",
+		storage_policy: str = "standard",
+		retention_until: str | None = None,
 	) -> PutResult:
 		sha = hashlib.sha256(data).hexdigest()
+		put_kwargs: dict[str, object] = {
+			"Bucket": bucket,
+			"Key": key,
+			"Body": data,
+			"ContentType": content_type,
+			"ChecksumSHA256": sha,
+		}
+
+		if storage_policy in {"object-lock-governance", "object-lock-compliance"}:
+			if retention_until is None:
+				raise ValueError(
+					"retention_until is required for object-lock storage policies"
+				)
+			put_kwargs["ObjectLockMode"] = (
+				"GOVERNANCE" if storage_policy == "object-lock-governance" else "COMPLIANCE"
+			)
+			put_kwargs["ObjectLockRetainUntilDate"] = datetime.fromisoformat(
+				f"{retention_until}T00:00:00+00:00",
+			).astimezone(UTC)
+
 		self._client.put_object(
-			Bucket=bucket,
-			Key=key,
-			Body=data,
-			ContentType=content_type,
-			ChecksumSHA256=sha,
+			**put_kwargs,
 		)
 		return PutResult(
 			object_key=key,
 			checksum_sha256=sha,
 			byte_size=len(data),
 			content_type=content_type,
+			storage_policy=storage_policy,
 		)
 
 	def get_object(self, bucket: str, key: str) -> bytes:
@@ -144,6 +169,8 @@ class FailingObjectStore:
 		key: str,
 		data: bytes,
 		content_type: str = "application/xml",
+		storage_policy: str = "standard",
+		retention_until: str | None = None,
 	) -> PutResult:
 		raise ConnectionError("Object store unavailable")
 

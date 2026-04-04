@@ -18,9 +18,8 @@ from domains.invoices.artifacts import (
 	ARTIFACT_KIND_MIG41,
 	archive_invoice_xml,
 )
-from domains.invoices.mig41 import MIG41Error, MIG_NS, generate_mig41_xml
+from domains.invoices.mig41 import MIG_NS, MIG41Error, generate_mig41_xml
 from domains.invoices.models import Invoice, InvoiceLine
-
 
 _TENANT = uuid.UUID("00000000-0000-0000-0000-000000000001")
 _INVOICE_ID = uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
@@ -334,6 +333,36 @@ class TestArchiveInvoiceXml:
 
 		assert artifact.retention_class == "legal-10y"
 		assert artifact.retention_until == "2035-07-01"
+
+	@pytest.mark.asyncio
+	async def test_persists_custom_storage_policy(self) -> None:
+		store = InMemoryObjectStore()
+		session = FakeAsyncSession()
+		inv = _invoice()
+
+		artifact = await archive_invoice_xml(
+			session,
+			inv,
+			store,
+			storage_policy="object-lock-governance",
+		)
+
+		assert artifact.storage_policy == "object-lock-governance"
+
+	@pytest.mark.asyncio
+	async def test_persists_custom_retention_class(self) -> None:
+		store = InMemoryObjectStore()
+		session = FakeAsyncSession()
+		inv = _invoice()
+
+		artifact = await archive_invoice_xml(
+			session,
+			inv,
+			store,
+			retention_class="finance-archive-10y",
+		)
+
+		assert artifact.retention_class == "finance-archive-10y"
 
 	@pytest.mark.asyncio
 	async def test_raises_when_store_unavailable(self) -> None:

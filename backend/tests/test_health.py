@@ -51,7 +51,7 @@ async def test_health_endpoint(monkeypatch) -> None:
         response = await client.get("/api/v1/health")
 
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    assert response.json() == {"status": "ok", "mcp": True}
 
 
 async def test_health_endpoint_returns_503_when_database_is_unavailable(monkeypatch) -> None:

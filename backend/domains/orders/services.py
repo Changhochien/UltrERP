@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import logging
 import uuid
-
-logger = logging.getLogger(__name__)
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
@@ -24,6 +22,8 @@ from common.models.warehouse import Warehouse
 from common.tenant import DEFAULT_TENANT_ID, set_tenant
 from domains.invoices.tax import TaxPolicyCode, calculate_line_amounts, aggregate_invoice_totals
 from domains.orders.schemas import ALLOWED_TRANSITIONS, OrderCreate, OrderStatus, PAYMENT_TERMS_CONFIG, PaymentTermsCode
+
+logger = logging.getLogger(__name__)
 
 TENANT_ID = DEFAULT_TENANT_ID
 ACTOR_ID = str(DEFAULT_TENANT_ID)
@@ -113,10 +113,10 @@ async def create_order(
 				{"field": "lines", "message": f"Products not found: {', '.join(missing)}"},
 			])
 
-		# Generate order number
+		# Generate order number (12 hex chars ≈ 281 trillion combos/day)
 		order_number = (
 			f"ORD-{datetime.now(tz=UTC).strftime('%Y%m%d')}-"
-			f"{uuid.uuid4().hex[:8].upper()}"
+			f"{uuid.uuid4().hex[:12].upper()}"
 		)
 
 		# Resolve payment terms
@@ -264,6 +264,15 @@ async def confirm_order(
 		if order.invoice_id is not None:
 			raise HTTPException(status_code=409, detail="Order already has an invoice")
 
+		# Look up product codes for invoice lines
+		from common.models.product import Product
+
+		line_product_ids = [line.product_id for line in order.lines]
+		result = await session.execute(
+			select(Product.id, Product.code).where(Product.id.in_(line_product_ids))
+		)
+		product_code_map = {row.id: row.code for row in result.all()}
+
 		# Validate customer
 		result = await session.execute(
 			select(Customer).where(
@@ -300,6 +309,7 @@ async def confirm_order(
 			lines=[
 				InvoiceCreateLine(
 					product_id=line.product_id,
+					product_code=product_code_map.get(line.product_id),
 					description=line.description,
 					quantity=line.quantity,
 					unit_price=line.unit_price,

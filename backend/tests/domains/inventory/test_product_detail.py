@@ -11,6 +11,7 @@ from httpx import ASGITransport, AsyncClient
 
 from app.main import app
 from common.database import get_db
+from tests.domains.orders._helpers import auth_header
 
 # ── Fake objects ──────────────────────────────────────────────
 
@@ -165,7 +166,7 @@ def _teardown(previous: Any) -> None:
 
 async def _get(path: str, **params: Any) -> Any:
 	transport = ASGITransport(app=app)
-	async with AsyncClient(transport=transport, base_url="http://test") as c:
+	async with AsyncClient(transport=transport, base_url="http://test", headers=auth_header()) as c:
 		return await c.get(path, params=params)
 
 
@@ -389,7 +390,7 @@ async def test_history_offset_query_param() -> None:
 async def test_invalid_uuid_returns_422() -> None:
 	"""Non-UUID product_id should return 422, not match /products/search."""
 	transport = ASGITransport(app=app)
-	async with AsyncClient(transport=transport, base_url="http://test") as c:
+	async with AsyncClient(transport=transport, base_url="http://test", headers=auth_header()) as c:
 		resp = await c.get("/api/v1/inventory/products/not-a-uuid")
 	assert resp.status_code == 422
 
@@ -398,7 +399,7 @@ async def test_history_limit_zero_returns_422() -> None:
 	"""history_limit=0 violates ge=1 constraint."""
 	product_id = uuid.uuid4()
 	transport = ASGITransport(app=app)
-	async with AsyncClient(transport=transport, base_url="http://test") as c:
+	async with AsyncClient(transport=transport, base_url="http://test", headers=auth_header()) as c:
 		resp = await c.get(
 			f"/api/v1/inventory/products/{product_id}",
 			params={"history_limit": 0},
@@ -410,7 +411,7 @@ async def test_history_limit_exceeds_max_returns_422() -> None:
 	"""history_limit=501 violates le=500 constraint."""
 	product_id = uuid.uuid4()
 	transport = ASGITransport(app=app)
-	async with AsyncClient(transport=transport, base_url="http://test") as c:
+	async with AsyncClient(transport=transport, base_url="http://test", headers=auth_header()) as c:
 		resp = await c.get(
 			f"/api/v1/inventory/products/{product_id}",
 			params={"history_limit": 501},
@@ -422,7 +423,7 @@ async def test_history_offset_negative_returns_422() -> None:
 	"""history_offset=-1 violates ge=0 constraint."""
 	product_id = uuid.uuid4()
 	transport = ASGITransport(app=app)
-	async with AsyncClient(transport=transport, base_url="http://test") as c:
+	async with AsyncClient(transport=transport, base_url="http://test", headers=auth_header()) as c:
 		resp = await c.get(
 			f"/api/v1/inventory/products/{product_id}",
 			params={"history_offset": -1},

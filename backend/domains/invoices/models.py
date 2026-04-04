@@ -99,6 +99,44 @@ class Invoice(Base):
         cascade="all, delete-orphan",
         order_by="InvoiceLine.line_number",
     )
+    egui_submission: Mapped[EguiSubmission | None] = relationship(
+        back_populates="invoice",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
+
+
+class EguiSubmission(Base):
+    __tablename__ = "egui_submissions"
+    __table_args__ = (
+        Index("uq_egui_submissions_tenant_invoice", "tenant_id", "invoice_id", unique=True),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+    invoice_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("invoices.id", name="fk_egui_submissions_invoice_id_invoices"),
+        nullable=False,
+    )
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    mode: Mapped[str] = mapped_column(String(10), nullable=False, default="mock")
+    fia_reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    deadline_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(tz=UTC),
+        onupdate=lambda: datetime.now(tz=UTC),
+    )
+
+    invoice: Mapped[Invoice] = relationship(back_populates="egui_submission")
 
 
 class InvoiceLine(Base):

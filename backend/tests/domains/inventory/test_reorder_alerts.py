@@ -12,6 +12,7 @@ from httpx import ASGITransport, AsyncClient
 from app.main import app
 from common.database import get_db
 from common.models.reorder_alert import AlertStatus
+from tests.domains.orders._helpers import auth_header
 
 # ── Fake objects ──────────────────────────────────────────────
 
@@ -116,13 +117,13 @@ def _teardown(previous: Any) -> None:
 
 async def _get(path: str) -> Any:
 	transport = ASGITransport(app=app)
-	async with AsyncClient(transport=transport, base_url="http://test") as c:
+	async with AsyncClient(transport=transport, base_url="http://test", headers=auth_header()) as c:
 		return await c.get(path)
 
 
 async def _put(path: str) -> Any:
 	transport = ASGITransport(app=app)
-	async with AsyncClient(transport=transport, base_url="http://test") as c:
+	async with AsyncClient(transport=transport, base_url="http://test", headers=auth_header()) as c:
 		return await c.put(path)
 
 

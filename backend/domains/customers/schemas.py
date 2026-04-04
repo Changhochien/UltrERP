@@ -87,3 +87,13 @@ class CustomerListResponse(BaseModel):
     page_size: int
     total_count: int
     total_pages: int
+
+
+class CustomerOutstandingSummary(BaseModel):
+    """Outstanding balance summary for a customer."""
+
+    total_outstanding: Decimal
+    overdue_count: int
+    overdue_amount: Decimal
+    invoice_count: int
+    currency_code: str = "TWD"

@@ -3,22 +3,87 @@
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from common.auth import require_role
+from common.config import get_settings
 from common.database import get_db
 from common.errors import ValidationError, error_response
+from common.object_store import S3ObjectStore
 from domains.invoices.pdf import DEFAULT_SELLER, generate_invoice_pdf, pdf_filename
-from domains.invoices.schemas import InvoiceCreate, InvoiceResponse, VoidInvoiceRequest
-from domains.invoices.service import create_invoice, get_invoice, void_invoice
+from domains.invoices.schemas import (
+	EguiSubmissionResponse,
+    InvoiceCreate,
+    InvoiceListItem,
+    InvoiceListResponse,
+    InvoiceResponse,
+    VoidInvoiceRequest,
+)
+from domains.invoices.service import (
+    compute_invoice_payment_summary,
+    create_invoice,
+    get_invoice,
+	get_invoice_egui_submission,
+    list_invoices,
+	refresh_invoice_egui_submission,
+	serialize_invoice_egui_submission,
+    void_invoice,
+)
 from domains.invoices.validators import IMMUTABLE_ERROR
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_role("finance", "sales"))])
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
+
+
+def _build_invoice_artifact_store() -> S3ObjectStore | None:
+    settings = get_settings()
+    if not (
+        settings.object_store_endpoint_url
+        and settings.object_store_access_key
+        and settings.object_store_secret_key
+    ):
+        return None
+
+    return S3ObjectStore(
+        endpoint_url=settings.object_store_endpoint_url,
+        access_key=settings.object_store_access_key,
+        secret_key=settings.object_store_secret_key,
+        region=settings.object_store_region,
+    )
+
+
+@router.get("", response_model=InvoiceListResponse)
+async def list_all(
+    session: DbSession,
+	payment_status: Literal["paid", "unpaid", "partial", "overdue"] | None = Query(
+		default=None
+	),
+	sort_by: Literal["created_at", "invoice_date", "outstanding_balance"] = Query(
+		default="created_at"
+	),
+    sort_order: str = Query(default="desc", pattern="^(asc|desc)$"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+) -> InvoiceListResponse:
+    items, total = await list_invoices(
+        session,
+        page=page,
+        page_size=page_size,
+        payment_status=payment_status or None,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
+    return InvoiceListResponse(
+        items=[InvoiceListItem(**item) for item in items],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.post(
@@ -28,7 +93,16 @@ DbSession = Annotated[AsyncSession, Depends(get_db)]
 )
 async def create(data: InvoiceCreate, session: DbSession) -> InvoiceResponse | JSONResponse:
 	try:
-		invoice = await create_invoice(session, data)
+		settings = get_settings()
+		invoice = await create_invoice(
+			session,
+			data,
+			artifact_store=_build_invoice_artifact_store(),
+			artifact_retention_class=settings.invoice_artifact_retention_class,
+			artifact_storage_policy=settings.invoice_artifact_storage_policy,
+			seller_ban=settings.invoice_seller_ban,
+			seller_name=settings.invoice_seller_name,
+		)
 		return InvoiceResponse.model_validate(invoice)
 	except ValidationError as exc:
 		return JSONResponse(
@@ -42,13 +116,80 @@ async def create(data: InvoiceCreate, session: DbSession) -> InvoiceResponse | J
 	response_model=InvoiceResponse,
 )
 async def get(invoice_id: uuid.UUID, session: DbSession) -> InvoiceResponse | JSONResponse:
-	invoice = await get_invoice(session, invoice_id)
-	if invoice is None:
+	from common.tenant import DEFAULT_TENANT_ID, set_tenant
+
+	settings = get_settings()
+	async with session.begin():
+		await set_tenant(session, DEFAULT_TENANT_ID)
+		invoice = await get_invoice(session, invoice_id)
+		if invoice is None:
+			return JSONResponse(
+				status_code=404,
+				content={"detail": "Invoice not found"},
+			)
+		summary = await compute_invoice_payment_summary(session, invoice, DEFAULT_TENANT_ID)
+		egui_submission = await get_invoice_egui_submission(
+			session,
+			invoice,
+			DEFAULT_TENANT_ID,
+			enabled=settings.egui_tracking_enabled,
+			mode=settings.egui_submission_mode,
+		)
+
+	resp = InvoiceResponse.model_validate(invoice)
+	updates: dict[str, object] = {**summary}
+	if egui_submission is not None:
+		updates["egui_submission"] = EguiSubmissionResponse.model_validate(
+			serialize_invoice_egui_submission(egui_submission, invoice)
+		)
+	resp = resp.model_copy(update=updates)
+	return resp
+
+
+@router.post(
+	"/{invoice_id}/egui/refresh",
+	response_model=EguiSubmissionResponse,
+)
+async def refresh_egui(invoice_id: uuid.UUID, session: DbSession) -> EguiSubmissionResponse | JSONResponse:
+	from common.tenant import DEFAULT_TENANT_ID, set_tenant
+
+	settings = get_settings()
+	if not settings.egui_tracking_enabled:
 		return JSONResponse(
 			status_code=404,
-			content={"detail": "Invoice not found"},
+			content={"detail": "eGUI tracking is not enabled"},
 		)
-	return InvoiceResponse.model_validate(invoice)
+	if settings.egui_submission_mode != "mock":
+		return JSONResponse(
+			status_code=503,
+			content={"detail": "Live eGUI refresh is not implemented"},
+		)
+
+	async with session.begin():
+		await set_tenant(session, DEFAULT_TENANT_ID)
+		invoice = await get_invoice(session, invoice_id)
+		if invoice is None:
+			return JSONResponse(
+				status_code=404,
+				content={"detail": "Invoice not found"},
+			)
+		egui_submission = await refresh_invoice_egui_submission(
+			session,
+			invoice,
+			DEFAULT_TENANT_ID,
+			enabled=settings.egui_tracking_enabled,
+			mode=settings.egui_submission_mode,
+		)
+
+	if egui_submission is None:
+		return JSONResponse(
+			status_code=404,
+			content={"detail": "eGUI tracking is not enabled"},
+		)
+
+	return EguiSubmissionResponse.model_validate(
+		serialize_invoice_egui_submission(egui_submission, invoice)
+	)
 
 
 @router.post(
@@ -81,7 +222,11 @@ async def export_pdf(
 	invoice_id: uuid.UUID,
 	session: DbSession,
 ) -> Response | JSONResponse:
-	invoice = await get_invoice(session, invoice_id)
+	from common.tenant import DEFAULT_TENANT_ID, set_tenant
+
+	async with session.begin():
+		await set_tenant(session, DEFAULT_TENANT_ID)
+		invoice = await get_invoice(session, invoice_id)
 	if invoice is None:
 		return JSONResponse(
 			status_code=404,

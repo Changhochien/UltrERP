@@ -18,6 +18,7 @@ from httpx import ASGITransport, AsyncClient
 from app.main import app
 from common.database import get_db
 from domains.customers.models import Customer
+from tests.domains.orders._helpers import auth_header
 
 DEFAULT_TENANT = uuid.UUID("00000000-0000-0000-0000-000000000001")
 
@@ -137,7 +138,7 @@ class TestListEndpoint:
             _FakeResult(items=[]),
         ])
         try:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url()) as c:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()) as c:
                 r = await c.get("/api/v1/customers")
             assert r.status_code == 200
             body = r.json()
@@ -157,7 +158,7 @@ class TestListEndpoint:
             _FakeResult(items=[c1]),
         ])
         try:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url()) as c:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()) as c:
                 r = await c.get("/api/v1/customers")
             assert r.status_code == 200
             body = r.json()
@@ -175,7 +176,7 @@ class TestListEndpoint:
             _FakeResult(items=[_make_customer()]),
         ])
         try:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url()) as c:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()) as c:
                 r = await c.get("/api/v1/customers", params={"page": 2, "page_size": 10})
             assert r.status_code == 200
             body = r.json()
@@ -194,7 +195,7 @@ class TestListEndpoint:
             _FakeResult(items=[c1]),
         ])
         try:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url()) as c:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()) as c:
                 r = await c.get("/api/v1/customers", params={"q": "Match"})
             assert r.status_code == 200
             assert r.json()["total_count"] == 1
@@ -214,7 +215,7 @@ class TestGetByIdEndpoint:
             _FakeResult(value=c),
         ])
         try:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url()) as cl:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()) as cl:
                 r = await cl.get(f"/api/v1/customers/{c.id}")
             assert r.status_code == 200
             assert r.json()["id"] == str(c.id)
@@ -228,7 +229,7 @@ class TestGetByIdEndpoint:
             _FakeResult(value=None),
         ])
         try:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url()) as c:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()) as c:
                 r = await c.get(f"/api/v1/customers/{uuid.uuid4()}")
             assert r.status_code == 404
         finally:
@@ -238,7 +239,7 @@ class TestGetByIdEndpoint:
     async def test_invalid_uuid(self) -> None:
         previous_override = _install_db_override([])
         try:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url()) as c:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()) as c:
                 r = await c.get("/api/v1/customers/not-a-uuid")
             assert r.status_code == 422
         finally:
@@ -257,7 +258,7 @@ class TestLookupEndpoint:
             _FakeResult(value=c),
         ])
         try:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url()) as cl:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()) as cl:
                 r = await cl.get("/api/v1/customers/lookup", params={"business_number": "04595252"})
             assert r.status_code == 200
             assert r.json()["normalized_business_number"] == "04595252"
@@ -271,7 +272,7 @@ class TestLookupEndpoint:
             _FakeResult(value=None),
         ])
         try:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url()) as c:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()) as c:
                 r = await c.get("/api/v1/customers/lookup", params={"business_number": "99999999"})
             assert r.status_code == 404
         finally:
@@ -281,7 +282,7 @@ class TestLookupEndpoint:
     async def test_missing_param(self) -> None:
         previous_override = _install_db_override([])
         try:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url()) as c:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()) as c:
                 r = await c.get("/api/v1/customers/lookup")
             assert r.status_code == 422
         finally:

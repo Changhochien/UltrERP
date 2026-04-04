@@ -8,6 +8,7 @@ from httpx import ASGITransport, AsyncClient
 
 from app.main import app
 from common.database import get_db
+from tests.domains.orders._helpers import auth_header
 
 # ── Fake DB layer ──────────────────────────────────────────────
 
@@ -67,7 +68,7 @@ async def test_search_requires_min_3_chars() -> None:
 	try:
 		transport = ASGITransport(app=app)
 		async with AsyncClient(
-			transport=transport, base_url="http://testserver",
+			transport=transport, base_url="http://testserver", headers=auth_header(),
 		) as client:
 			resp = await client.get(
 				"/api/v1/inventory/products/search",
@@ -84,7 +85,7 @@ async def test_search_rejects_blank_query() -> None:
 	try:
 		transport = ASGITransport(app=app)
 		async with AsyncClient(
-			transport=transport, base_url="http://testserver",
+			transport=transport, base_url="http://testserver", headers=auth_header(),
 		) as client:
 			resp = await client.get(
 				"/api/v1/inventory/products/search",
@@ -120,7 +121,7 @@ async def test_search_returns_results() -> None:
 	try:
 		transport = ASGITransport(app=app)
 		async with AsyncClient(
-			transport=transport, base_url="http://testserver",
+			transport=transport, base_url="http://testserver", headers=auth_header(),
 		) as client:
 			resp = await client.get(
 				"/api/v1/inventory/products/search",
@@ -143,7 +144,7 @@ async def test_search_empty_results() -> None:
 	try:
 		transport = ASGITransport(app=app)
 		async with AsyncClient(
-			transport=transport, base_url="http://testserver",
+			transport=transport, base_url="http://testserver", headers=auth_header(),
 		) as client:
 			resp = await client.get(
 				"/api/v1/inventory/products/search",
@@ -165,7 +166,7 @@ async def test_search_limit_parameter() -> None:
 	try:
 		transport = ASGITransport(app=app)
 		async with AsyncClient(
-			transport=transport, base_url="http://testserver",
+			transport=transport, base_url="http://testserver", headers=auth_header(),
 		) as client:
 			resp = await client.get(
 				"/api/v1/inventory/products/search",
@@ -182,7 +183,7 @@ async def test_search_limit_exceeds_max() -> None:
 	try:
 		transport = ASGITransport(app=app)
 		async with AsyncClient(
-			transport=transport, base_url="http://testserver",
+			transport=transport, base_url="http://testserver", headers=auth_header(),
 		) as client:
 			resp = await client.get(
 				"/api/v1/inventory/products/search",
@@ -200,7 +201,7 @@ async def test_search_strips_whitespace_and_rejects_short() -> None:
 	try:
 		transport = ASGITransport(app=app)
 		async with AsyncClient(
-			transport=transport, base_url="http://testserver",
+			transport=transport, base_url="http://testserver", headers=auth_header(),
 		) as client:
 			# " a " has length 3 (passes min_length) but strips to "a" (1 char)
 			resp = await client.get(
@@ -236,7 +237,7 @@ async def test_search_with_warehouse_id() -> None:
 	try:
 		transport = ASGITransport(app=app)
 		async with AsyncClient(
-			transport=transport, base_url="http://testserver",
+			transport=transport, base_url="http://testserver", headers=auth_header(),
 		) as client:
 			resp = await client.get(
 				"/api/v1/inventory/products/search",
@@ -259,7 +260,7 @@ async def test_search_special_characters_in_query() -> None:
 	try:
 		transport = ASGITransport(app=app)
 		async with AsyncClient(
-			transport=transport, base_url="http://testserver",
+			transport=transport, base_url="http://testserver", headers=auth_header(),
 		) as client:
 			for q in ["100%", "foo_bar", "it's", "test; DROP"]:
 				resp = await client.get(
@@ -291,7 +292,7 @@ async def test_search_multiple_results_returned() -> None:
 	try:
 		transport = ASGITransport(app=app)
 		async with AsyncClient(
-			transport=transport, base_url="http://testserver",
+			transport=transport, base_url="http://testserver", headers=auth_header(),
 		) as client:
 			resp = await client.get(
 				"/api/v1/inventory/products/search",
@@ -323,7 +324,7 @@ async def test_search_result_schema_fields() -> None:
 	try:
 		transport = ASGITransport(app=app)
 		async with AsyncClient(
-			transport=transport, base_url="http://testserver",
+			transport=transport, base_url="http://testserver", headers=auth_header(),
 		) as client:
 			resp = await client.get(
 				"/api/v1/inventory/products/search",

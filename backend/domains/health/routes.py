@@ -13,9 +13,11 @@ def _database_unavailable(exc: SQLAlchemyError) -> HTTPException:
 		detail="database unavailable",
 	)
 @router.get("")
-async def get_health() -> dict[str, str]:
+async def get_health() -> dict[str, str | bool]:
 	try:
 		async with AsyncSessionLocal() as session:
-			return await health_status(session)
+			result = await health_status(session)
+			result["mcp"] = True
+			return result
 	except SQLAlchemyError as exc:
 		raise _database_unavailable(exc) from exc

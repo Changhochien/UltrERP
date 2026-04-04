@@ -80,6 +80,7 @@ class OrderResponse(BaseModel):
 	id: uuid.UUID
 	tenant_id: uuid.UUID
 	customer_id: uuid.UUID
+	customer_name: str | None = None
 	order_number: str
 	status: OrderStatus
 	payment_terms_code: str

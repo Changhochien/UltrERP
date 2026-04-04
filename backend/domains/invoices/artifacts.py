@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import uuid
 from datetime import date
 from typing import TYPE_CHECKING
@@ -11,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.object_store import ObjectStore, PutResult
 from domains.invoices.artifact_model import InvoiceArtifact
-from domains.invoices.mig41 import MIG41Error, generate_mig41_xml
+from domains.invoices.mig41 import generate_mig41_xml
 
 if TYPE_CHECKING:
 	from domains.invoices.models import Invoice
@@ -36,6 +35,8 @@ async def archive_invoice_xml(
 	*,
 	seller_ban: str = "000000000",
 	seller_name: str = "UltrERP",
+	retention_class: str = "legal-10y",
+	storage_policy: str = "standard",
 ) -> InvoiceArtifact:
 	"""Generate MIG 4.1 XML, upload to object store, persist metadata.
 
@@ -50,11 +51,14 @@ async def archive_invoice_xml(
 	)
 
 	key = _object_key(invoice)
+	retention_until = _retention_until(invoice.invoice_date)
 	result: PutResult = store.put_object(
 		bucket=ARTIFACT_BUCKET,
 		key=key,
 		data=xml_bytes,
 		content_type="application/xml",
+		storage_policy=storage_policy,
+		retention_until=retention_until,
 	)
 
 	if not result.checksum_sha256 or result.byte_size <= 0:
@@ -72,9 +76,9 @@ async def archive_invoice_xml(
 		content_type=result.content_type,
 		checksum_sha256=result.checksum_sha256,
 		byte_size=result.byte_size,
-		retention_class="legal-10y",
-		retention_until=_retention_until(invoice.invoice_date),
-		storage_policy="standard",
+		retention_class=retention_class,
+		retention_until=retention_until,
+		storage_policy=result.storage_policy,
 	)
 
 	session.add(artifact)

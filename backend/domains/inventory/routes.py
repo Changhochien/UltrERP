@@ -5,12 +5,20 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Header, Query, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from common.auth import require_role
 from common.database import get_db
+from common.models.product import Product
 from common.models.stock_adjustment import ReasonCode
 from common.tenant import DEFAULT_TENANT_ID
+from domains.aeo.content import generate_aeo_content
+from domains.aeo.jsonld import generate_product_jsonld
+from domains.approval.checks import needs_approval
+from domains.approval.schemas import ApprovalRequiredResponse
+from domains.approval.service import create_approval
 from domains.inventory.schemas import (
 	USER_SELECTABLE_REASON_CODES,
 	AcknowledgeAlertResponse,
@@ -61,6 +69,8 @@ from domains.inventory.services import (
 router = APIRouter()
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
+ReadUser = Annotated[dict, Depends(require_role("warehouse", "sales"))]
+WriteUser = Annotated[dict, Depends(require_role("warehouse"))]
 
 # Hardcoded tenant for MVP — replaced by auth middleware later
 TENANT_ID = DEFAULT_TENANT_ID
@@ -75,6 +85,7 @@ ACTOR_ID = "system"
 )
 async def list_warehouses_endpoint(
 	session: DbSession,
+	_user: ReadUser,
 	active_only: bool = Query(True),
 ) -> WarehouseList:
 	warehouses = await list_warehouses(
@@ -93,6 +104,7 @@ async def list_warehouses_endpoint(
 async def get_warehouse_endpoint(
 	warehouse_id: uuid.UUID,
 	session: DbSession,
+	_user: ReadUser,
 ) -> WarehouseResponse:
 	warehouse = await get_warehouse(session, TENANT_ID, warehouse_id)
 	if warehouse is None:
@@ -111,6 +123,7 @@ async def get_warehouse_endpoint(
 async def create_warehouse_endpoint(
 	data: WarehouseCreate,
 	session: DbSession,
+	_user: WriteUser,
 ) -> WarehouseResponse:
 	warehouse = await create_warehouse(
 		session,
@@ -135,6 +148,7 @@ async def create_warehouse_endpoint(
 async def create_transfer_endpoint(
 	data: TransferRequest,
 	session: DbSession,
+	_user: WriteUser,
 ) -> TransferResponse:
 	try:
 		transfer = await transfer_stock(
@@ -171,7 +185,7 @@ async def create_transfer_endpoint(
 	"/reason-codes",
 	response_model=ReasonCodeListResponse,
 )
-async def list_reason_codes() -> ReasonCodeListResponse:
+async def list_reason_codes(_user: ReadUser) -> ReasonCodeListResponse:
 	items = [
 		ReasonCodeItem(
 			value=rc.value,
@@ -189,10 +203,14 @@ async def list_reason_codes() -> ReasonCodeListResponse:
 	"/adjustments",
 	response_model=StockAdjustmentResponse,
 	status_code=status.HTTP_201_CREATED,
+	responses={202: {"model": ApprovalRequiredResponse}},
 )
 async def create_adjustment_endpoint(
 	data: StockAdjustmentRequest,
 	session: DbSession,
+	user: WriteUser,
+	actor_type: str = Header(default="user", alias="X-Actor-Type"),
+	actor_id_header: str | None = Header(default=None, alias="X-Actor-Id"),
 ) -> StockAdjustmentResponse:
 	# Validate reason code is user-selectable
 	if data.reason_code not in USER_SELECTABLE_REASON_CODES:
@@ -210,6 +228,44 @@ async def create_adjustment_endpoint(
 			detail=f"Unknown reason code: {data.reason_code}",
 		)
 
+	if actor_type not in {"user", "agent", "line_bot", "automation"}:
+		raise HTTPException(
+			status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+			detail="Invalid X-Actor-Type header",
+		)
+
+	actor_id = actor_id_header or str(user.get("sub") or ACTOR_ID)
+
+	if needs_approval(
+		actor_type=actor_type,
+		action="inventory.adjust",
+		quantity=data.quantity_change,
+	):
+		approval = await create_approval(
+			session,
+			action="inventory.adjust",
+			entity_type="stock_adjustment",
+			entity_id=None,
+			requested_by=actor_id,
+			requested_by_type=actor_type,
+			context={
+				"product_id": str(data.product_id),
+				"warehouse_id": str(data.warehouse_id),
+				"quantity_change": data.quantity_change,
+				"reason_code": data.reason_code,
+				"notes": data.notes,
+			},
+		)
+		await session.commit()
+		return JSONResponse(
+			status_code=status.HTTP_202_ACCEPTED,
+			content=ApprovalRequiredResponse(
+				approval_required=True,
+				approval_request_id=approval.id,
+				status=approval.status,
+			).model_dump(mode="json"),
+		)
+
 	try:
 		result = await create_stock_adjustment(
 			session,
@@ -218,7 +274,7 @@ async def create_adjustment_endpoint(
 			warehouse_id=data.warehouse_id,
 			quantity_change=data.quantity_change,
 			reason_code=reason,
-			actor_id=ACTOR_ID,
+			actor_id=actor_id,
 			notes=data.notes,
 		)
 		await session.commit()
@@ -247,6 +303,7 @@ async def create_adjustment_endpoint(
 )
 async def search_products_endpoint(
 	session: DbSession,
+	_user: ReadUser,
 	q: str = Query(..., min_length=3, max_length=100),
 	limit: int = Query(20, ge=1, le=100),
 	warehouse_id: uuid.UUID | None = Query(None),
@@ -279,6 +336,7 @@ async def search_products_endpoint(
 async def get_product_detail_endpoint(
 	product_id: uuid.UUID,
 	session: DbSession,
+	_user: ReadUser,
 	history_limit: int = Query(100, ge=1, le=500),
 	history_offset: int = Query(0, ge=0),
 ) -> ProductDetailResponse:
@@ -297,6 +355,47 @@ async def get_product_detail_endpoint(
 	return ProductDetailResponse(**detail)
 
 
+# ── JSON-LD structured data endpoint ──────────────────────────
+
+@router.get(
+	"/products/{product_id}/jsonld",
+	include_in_schema=False,
+)
+async def get_product_jsonld(
+	product_id: uuid.UUID,
+	session: DbSession,
+) -> JSONResponse:
+	"""Return schema.org Product JSON-LD structured data."""
+	product = await session.get(Product, product_id)
+	if not product:
+		raise HTTPException(
+			status_code=status.HTTP_404_NOT_FOUND,
+			detail="Product not found",
+		)
+	jsonld = generate_product_jsonld(product)
+	return JSONResponse(content=jsonld, media_type="application/ld+json")
+
+
+# ── AEO content endpoint ─────────────────────────────────────
+
+@router.get(
+	"/products/{product_id}/aeo",
+	include_in_schema=False,
+)
+async def get_product_aeo(
+	product_id: uuid.UUID,
+	session: DbSession,
+) -> dict:
+	"""Return AEO-optimized content bundle for a product."""
+	product = await session.get(Product, product_id)
+	if not product:
+		raise HTTPException(
+			status_code=status.HTTP_404_NOT_FOUND,
+			detail="Product not found",
+		)
+	return generate_aeo_content(product)
+
+
 # ── Stock query endpoints ─────────────────────────────────────
 
 @router.get(
@@ -306,6 +405,7 @@ async def get_product_detail_endpoint(
 async def get_product_stocks(
 	product_id: uuid.UUID,
 	session: DbSession,
+	_user: ReadUser,
 	warehouse_id: uuid.UUID | None = Query(None),
 ) -> list[InventoryStockResponse]:
 	stocks = await get_inventory_stocks(
@@ -325,6 +425,7 @@ async def get_product_stocks(
 )
 async def list_reorder_alerts_endpoint(
 	session: DbSession,
+	_user: ReadUser,
 	status: str | None = Query(None, pattern="^(pending|acknowledged|resolved)$"),
 	warehouse_id: uuid.UUID | None = Query(None),
 	limit: int = Query(50, ge=1, le=200),
@@ -351,6 +452,7 @@ async def list_reorder_alerts_endpoint(
 async def acknowledge_alert_endpoint(
 	alert_id: uuid.UUID,
 	session: DbSession,
+	_user: WriteUser,
 ) -> AcknowledgeAlertResponse:
 	result = await acknowledge_alert(
 		session,
@@ -375,6 +477,7 @@ async def acknowledge_alert_endpoint(
 )
 async def list_suppliers_endpoint(
 	session: DbSession,
+	_user: ReadUser,
 	active_only: bool = Query(True),
 ) -> SupplierListResponse:
 	suppliers = await list_suppliers(
@@ -396,6 +499,7 @@ async def list_suppliers_endpoint(
 async def create_supplier_order_endpoint(
 	data: SupplierOrderCreate,
 	session: DbSession,
+	_user: WriteUser,
 ) -> SupplierOrderResponse:
 	result = await create_supplier_order(
 		session,
@@ -416,6 +520,7 @@ async def create_supplier_order_endpoint(
 )
 async def list_supplier_orders_endpoint(
 	session: DbSession,
+	_user: ReadUser,
 	status_filter: str | None = Query(
 		None,
 		alias="status",
@@ -446,6 +551,7 @@ async def list_supplier_orders_endpoint(
 async def get_supplier_order_endpoint(
 	order_id: uuid.UUID,
 	session: DbSession,
+	_user: ReadUser,
 ) -> SupplierOrderResponse:
 	order = await get_supplier_order(session, TENANT_ID, order_id)
 	if order is None:
@@ -464,6 +570,7 @@ async def update_supplier_order_status_endpoint(
 	order_id: uuid.UUID,
 	data: UpdateOrderStatusRequest,
 	session: DbSession,
+	_user: WriteUser,
 ) -> SupplierOrderResponse:
 	try:
 		result = await update_supplier_order_status(
@@ -496,6 +603,7 @@ async def receive_supplier_order_endpoint(
 	order_id: uuid.UUID,
 	data: ReceiveOrderRequest,
 	session: DbSession,
+	_user: WriteUser,
 ) -> SupplierOrderResponse:
 	try:
 		result = await receive_supplier_order(
