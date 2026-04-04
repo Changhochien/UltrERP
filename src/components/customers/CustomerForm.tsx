@@ -1,6 +1,10 @@
 /** Reusable customer create/edit form component. */
 
 import { useState } from "react";
+
+import { SurfaceMessage } from "../layout/PageLayout";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
 import type { CustomerCreatePayload } from "../../domain/customers/types";
 import { validateTaiwanBusinessNumber } from "../../lib/validation/taiwanBusinessNumber";
 
@@ -78,115 +82,123 @@ export default function CustomerForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="customer-form" noValidate>
-      {formErrors.length > 0 && (
-        <div className="form-error-summary" role="alert">
+    <form onSubmit={handleSubmit} className="grid gap-4" noValidate>
+      {formErrors.length > 0 ? (
+        <SurfaceMessage tone="danger" role="alert">
           {formErrors.map((error) => (
             <p key={error.message}>{error.message}</p>
           ))}
-        </div>
-      )}
+        </SurfaceMessage>
+      ) : null}
 
-      <div className="form-field">
-        <label htmlFor="company_name">Company Name *</label>
-        <input
-          id="company_name"
-          value={form.company_name}
-          onChange={(e) => handleChange("company_name", e.target.value)}
-          maxLength={200}
-          required
-        />
-        {fieldError("company_name") && (
-          <span className="field-error" role="alert">{fieldError("company_name")}</span>
-        )}
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="space-y-2">
+          <span>Company Name *</span>
+          <Input
+            id="company_name"
+            value={form.company_name}
+            onChange={(e) => handleChange("company_name", e.target.value)}
+            maxLength={200}
+            required
+          />
+          {fieldError("company_name") ? (
+            <span className="text-sm text-destructive" role="alert">{fieldError("company_name")}</span>
+          ) : null}
+        </label>
+
+        <label className="space-y-2">
+          <span>Business Number (統一編號) *</span>
+          <Input
+            id="business_number"
+            value={form.business_number}
+            onChange={(e) => handleChange("business_number", e.target.value)}
+            maxLength={20}
+            required
+          />
+          {fieldError("business_number") ? (
+            <span className="text-sm text-destructive" role="alert">{fieldError("business_number")}</span>
+          ) : null}
+        </label>
       </div>
 
-      <div className="form-field">
-        <label htmlFor="business_number">Business Number (統一編號) *</label>
-        <input
-          id="business_number"
-          value={form.business_number}
-          onChange={(e) => handleChange("business_number", e.target.value)}
-          maxLength={20}
-          required
-        />
-        {fieldError("business_number") && (
-          <span className="field-error" role="alert">{fieldError("business_number")}</span>
-        )}
-      </div>
-
-      <div className="form-field">
-        <label htmlFor="billing_address">Billing Address</label>
-        <input
+      <label className="space-y-2">
+        <span>Billing Address</span>
+        <Input
           id="billing_address"
           value={form.billing_address}
           onChange={(e) => handleChange("billing_address", e.target.value)}
           maxLength={500}
         />
+      </label>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="space-y-2">
+          <span>Contact Name *</span>
+          <Input
+            id="contact_name"
+            value={form.contact_name}
+            onChange={(e) => handleChange("contact_name", e.target.value)}
+            maxLength={100}
+            required
+          />
+          {fieldError("contact_name") ? (
+            <span className="text-sm text-destructive" role="alert">{fieldError("contact_name")}</span>
+          ) : null}
+        </label>
+
+        <label className="space-y-2">
+          <span>Contact Phone *</span>
+          <Input
+            id="contact_phone"
+            value={form.contact_phone}
+            onChange={(e) => handleChange("contact_phone", e.target.value)}
+            maxLength={30}
+            required
+          />
+          {fieldError("contact_phone") ? (
+            <span className="text-sm text-destructive" role="alert">{fieldError("contact_phone")}</span>
+          ) : null}
+        </label>
       </div>
 
-      <div className="form-field">
-        <label htmlFor="contact_name">Contact Name *</label>
-        <input
-          id="contact_name"
-          value={form.contact_name}
-          onChange={(e) => handleChange("contact_name", e.target.value)}
-          maxLength={100}
-          required
-        />
-        {fieldError("contact_name") && (
-          <span className="field-error" role="alert">{fieldError("contact_name")}</span>
-        )}
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="space-y-2">
+          <span>Contact Email *</span>
+          <Input
+            id="contact_email"
+            type="email"
+            value={form.contact_email}
+            onChange={(e) => handleChange("contact_email", e.target.value)}
+            maxLength={254}
+            required
+          />
+          {fieldError("contact_email") ? (
+            <span className="text-sm text-destructive" role="alert">{fieldError("contact_email")}</span>
+          ) : null}
+        </label>
+
+        <label className="space-y-2">
+          <span>Credit Limit</span>
+          <Input
+            id="credit_limit"
+            type="number"
+            step="0.01"
+            min="0"
+            value={form.credit_limit}
+            onChange={(e) => handleChange("credit_limit", e.target.value)}
+            required
+          />
+          {fieldError("credit_limit") ? (
+            <span className="text-sm text-destructive" role="alert">{fieldError("credit_limit")}</span>
+          ) : null}
+        </label>
       </div>
 
-      <div className="form-field">
-        <label htmlFor="contact_phone">Contact Phone *</label>
-        <input
-          id="contact_phone"
-          value={form.contact_phone}
-          onChange={(e) => handleChange("contact_phone", e.target.value)}
-          maxLength={30}
-          required
-        />
-        {fieldError("contact_phone") && (
-          <span className="field-error" role="alert">{fieldError("contact_phone")}</span>
-        )}
+      <div>
+        <Button type="submit" disabled={submitting}>
+          {submitting ? submittingLabel : submitLabel}
+        </Button>
       </div>
-
-      <div className="form-field">
-        <label htmlFor="contact_email">Contact Email *</label>
-        <input
-          id="contact_email"
-          type="email"
-          value={form.contact_email}
-          onChange={(e) => handleChange("contact_email", e.target.value)}
-          maxLength={254}
-          required
-        />
-        {fieldError("contact_email") && (
-          <span className="field-error" role="alert">{fieldError("contact_email")}</span>
-        )}
-      </div>
-
-      <div className="form-field">
-        <label htmlFor="credit_limit">Credit Limit</label>
-        <input
-          id="credit_limit"
-          type="number"
-          step="0.01"
-          min="0"
-          value={form.credit_limit}
-          onChange={(e) => handleChange("credit_limit", e.target.value)}
-          required
-        />
-        {fieldError("credit_limit") && (
-          <span className="field-error" role="alert">{fieldError("credit_limit")}</span>
-        )}
-      </div>
-
-      <button type="submit" disabled={submitting}>
-        {submitting ? submittingLabel : submitLabel}
-      </button>
     </form>
   );
 }

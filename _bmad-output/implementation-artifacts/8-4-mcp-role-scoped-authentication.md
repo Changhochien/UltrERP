@@ -278,3 +278,4 @@ Claude Opus 4.6 (fast mode)
 - Wired middleware in `mcp_server.py` via `mcp.add_middleware()`
 - Admin meta-scope bypasses per-tool scope checks
 - 8 tests in `backend/tests/test_mcp_auth.py`, all passing
+- 2026-04-04 follow-up: `parse_api_keys()` now accepts a plain non-JSON `MCP_API_KEYS=<token>` value as a single admin-scoped local-dev key while keeping the JSON-object mapping as the primary production format.

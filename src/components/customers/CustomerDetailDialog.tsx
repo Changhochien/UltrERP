@@ -1,6 +1,10 @@
 /** Modal dialog showing full customer details. */
 
 import { useEffect, useState } from "react";
+
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import type { CustomerResponse } from "../../domain/customers/types";
 import { getCustomer } from "../../lib/api/customers";
 
@@ -36,18 +40,31 @@ export function CustomerDetailDialog({ customerId, onClose, onEdit }: Props) {
   }, [customerId]);
 
   return (
-    <div className="dialog-overlay" onClick={onClose}>
-      <div className="dialog-content" onClick={(e) => e.stopPropagation()}>
-        <button className="dialog-close" onClick={onClose}>
-          ✕
-        </button>
+    <Dialog open onOpenChange={(open) => {
+      if (!open) {
+        onClose();
+      }
+    }}>
+      <DialogContent className="w-[min(96vw,42rem)]">
+        <DialogHeader>
+          <DialogTitle>Customer Detail</DialogTitle>
+          <DialogDescription>View the current billing and contact profile for this customer.</DialogDescription>
+        </DialogHeader>
         {loading ? (
           <p>Loading…</p>
         ) : !customer ? (
           <p>Customer not found.</p>
         ) : (
-          <>
-            <dl className="customer-detail">
+          <div className="space-y-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant={customer.status === "active" ? "success" : "outline"} className="normal-case tracking-normal">
+                {customer.status}
+              </Badge>
+              <Badge variant="outline" className="normal-case tracking-normal">
+                BAN {customer.normalized_business_number}
+              </Badge>
+            </div>
+            <dl className="gap-y-4">
               <dt>Company Name</dt>
               <dd>{customer.company_name}</dd>
               <dt>BAN</dt>
@@ -65,14 +82,14 @@ export function CustomerDetailDialog({ customerId, onClose, onEdit }: Props) {
               <dt>Status</dt>
               <dd>{customer.status}</dd>
             </dl>
-            {onEdit && (
-              <button type="button" onClick={onEdit} style={{ marginTop: "1rem" }}>
+            {onEdit ? (
+              <Button type="button" onClick={onEdit}>
                 Edit
-              </button>
-            )}
-          </>
+              </Button>
+            ) : null}
+          </div>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

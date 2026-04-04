@@ -38,7 +38,7 @@ export default function InvoicePrintSheet({
 	seller,
 }: InvoicePrintSheetProps) {
 	return (
-		<div className="invoice-print-sheet" style={{ position: "relative" }}>
+		<div className="invoice-print-sheet">
 			{/* ── Header ── */}
 			<div className="ips-header">
 				<div className="ips-header-left">
@@ -165,7 +165,7 @@ export default function InvoicePrintSheet({
 					</div>
 					<div className="ips-footer-row">
 						<span className="ips-field-label">{"總\u3000\u3000計"}</span>
-						<span style={{ fontWeight: 700 }}>
+						<span className="ips-total-amount">
 							{formatAmount(invoice.total_amount)}
 						</span>
 					</div>

@@ -3,6 +3,10 @@
 import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 
+import { ThemeToggle } from "../components/theme/ThemeToggle";
+import { Button } from "../components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { Input } from "../components/ui/input";
 import { useAuth } from "../hooks/useAuth";
 import { HOME_ROUTE } from "../lib/routes";
 
@@ -33,41 +37,65 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="app-shell" style={{ maxWidth: "400px", margin: "4rem auto" }}>
-      <h1>UltrERP Login</h1>
-      <form onSubmit={handleSubmit}>
-        {error && (
-          <p className="error-message" role="alert">
-            {error}
-          </p>
-        )}
-        <div className="form-field">
-          <label htmlFor="login-email">Email</label>
-          <input
-            id="login-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoComplete="email"
-            autoFocus
-          />
-        </div>
-        <div className="form-field">
-          <label htmlFor="login-password">Password</label>
-          <input
-            id="login-password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            autoComplete="current-password"
-          />
-        </div>
-        <button type="submit" disabled={submitting}>
-          {submitting ? "Logging in…" : "Log in"}
-        </button>
-      </form>
+    <main className="mx-auto flex min-h-screen w-full max-w-6xl items-center px-6 py-16">
+      <div className="grid w-full gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(22rem,28rem)] lg:items-center">
+        <section className="space-y-6">
+          <div className="inline-flex items-center rounded-full border border-border/80 bg-background/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-primary/80">
+            UltrERP
+          </div>
+          <div className="space-y-3">
+            <h1 className="max-w-xl text-4xl font-semibold tracking-tight sm:text-5xl">Modern ERP operations, built for Taiwan SMB workflows.</h1>
+            <p className="max-w-xl text-base leading-7 text-muted-foreground">
+              Sign in to manage customers, invoices, orders, payments, and inventory from a unified operational workspace.
+            </p>
+          </div>
+        </section>
+
+        <Card>
+          <CardHeader className="flex flex-row items-start justify-between gap-4">
+            <div className="space-y-1">
+              <CardTitle>UltrERP Login</CardTitle>
+              <CardDescription>Use your workspace credentials to enter the ERP shell.</CardDescription>
+            </div>
+            <ThemeToggle />
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error ? (
+                <p className="rounded-xl border border-destructive/20 bg-destructive/8 px-4 py-3 text-sm text-destructive" role="alert">
+                  {error}
+                </p>
+              ) : null}
+              <div className="space-y-2">
+                <label htmlFor="login-email">Email</label>
+                <Input
+                  id="login-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="login-password">Password</label>
+                <Input
+                  id="login-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                />
+              </div>
+              <Button type="submit" disabled={submitting} className="w-full">
+                {submitting ? "Logging in…" : "Log in"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </main>
   );
 }

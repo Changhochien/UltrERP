@@ -1,6 +1,11 @@
 /** Reorder alerts list with filtering and acknowledge action. */
 
 import { useMemo, useState } from "react";
+
+import { DataTable, DataTableToolbar } from "../../../components/layout/DataTable";
+import { SectionCard } from "../../../components/layout/PageLayout";
+import { Badge } from "../../../components/ui/badge";
+import { Button } from "../../../components/ui/button";
 import { useWarehouses } from "../hooks/useWarehouses";
 import {
   useReorderAlerts,
@@ -35,134 +40,97 @@ export function ReorderAlerts() {
     if (ok) void reload();
   };
 
+  const statusVariant = (status: string) => {
+    switch (status) {
+      case "pending":
+        return "warning" as const;
+      case "acknowledged":
+        return "default" as const;
+      case "resolved":
+        return "success" as const;
+      default:
+        return "outline" as const;
+    }
+  };
+
   return (
-    <section aria-label="Reorder alerts">
-      <h2>Reorder Alerts</h2>
-
-      {/* Filters */}
-      <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-        <label>
-          Status:{" "}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            aria-label="Filter by status"
-          >
-            {STATUS_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          Warehouse:{" "}
-          <select
-            value={warehouseFilter}
-            onChange={(e) => setWarehouseFilter(e.target.value)}
-            aria-label="Filter by warehouse"
-            disabled={whLoading}
-          >
-            <option value="">All warehouses</option>
-            {warehouses.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      {/* Error display */}
-      {(error || ackError) && (
-        <div role="alert" style={{ color: "#dc2626", marginBottom: 12 }}>
-          {error || ackError}
-        </div>
-      )}
-
-      {/* Loading */}
-      {loading && <p aria-busy="true">Loading alerts…</p>}
-
-      {/* Empty state */}
-      {!loading && alerts.length === 0 && (
-        <p>No reorder alerts found.</p>
-      )}
-
-      {/* Alert table */}
-      {alerts.length > 0 && (
-        <>
-          <p style={{ marginBottom: 8 }}>
-            Showing {alerts.length} of {total} alerts
-          </p>
-          <table aria-label="Reorder alerts list">
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>Warehouse</th>
-                <th>Current Stock</th>
-                <th>Reorder Point</th>
-                <th>Status</th>
-                <th>Created</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {alerts.map((a) => (
-                <tr key={a.id}>
-                  <td>{a.product_name}</td>
-                  <td>{a.warehouse_name}</td>
-                  <td
-                    style={{
-                      color: a.current_stock < a.reorder_point ? "#dc2626" : undefined,
-                      fontWeight: a.current_stock < a.reorder_point ? 600 : undefined,
-                    }}
-                  >
-                    {a.current_stock}
-                  </td>
-                  <td>{a.reorder_point}</td>
-                  <td>
-                    <span
-                      style={{
-                        padding: "2px 8px",
-                        borderRadius: 4,
-                        fontSize: "0.85em",
-                        background:
-                          a.status === "pending"
-                            ? "#fef3c7"
-                            : a.status === "acknowledged"
-                              ? "#dbeafe"
-                              : "#d1fae5",
-                        color:
-                          a.status === "pending"
-                            ? "#92400e"
-                            : a.status === "acknowledged"
-                              ? "#1e40af"
-                              : "#065f46",
-                      }}
-                    >
-                      {a.status}
-                    </span>
-                  </td>
-                  <td>{new Date(a.created_at).toLocaleDateString()}</td>
-                  <td>
-                    {a.status === "pending" && (
-                      <button
-                        type="button"
-                        onClick={() => void handleAcknowledge(a.id)}
-                        disabled={submitting}
-                        aria-label={`Acknowledge alert for ${a.product_name}`}
-                      >
-                        Acknowledge
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </>
-      )}
-    </section>
+    <SectionCard title="Reorder Alerts" description="Prioritized low-stock exceptions for the current warehouse scope.">
+      <DataTable
+        columns={[
+          { id: "product_name", header: "Product", sortable: true, getSortValue: (item) => item.product_name, cell: (item) => <span className="font-medium">{item.product_name}</span> },
+          { id: "warehouse_name", header: "Warehouse", sortable: true, getSortValue: (item) => item.warehouse_name, cell: (item) => item.warehouse_name },
+          {
+            id: "current_stock",
+            header: "Current Stock",
+            sortable: true,
+            getSortValue: (item) => item.current_stock,
+            cell: (item) => (
+              <span className={item.current_stock < item.reorder_point ? "font-semibold text-destructive" : undefined}>
+                {item.current_stock}
+              </span>
+            ),
+          },
+          { id: "reorder_point", header: "Reorder Point", sortable: true, getSortValue: (item) => item.reorder_point, cell: (item) => item.reorder_point },
+          {
+            id: "status",
+            header: "Status",
+            sortable: true,
+            getSortValue: (item) => item.status,
+            cell: (item) => (
+              <Badge variant={statusVariant(item.status)} className="normal-case tracking-normal">
+                {item.status}
+              </Badge>
+            ),
+          },
+          { id: "created_at", header: "Created", sortable: true, getSortValue: (item) => new Date(item.created_at).getTime(), cell: (item) => new Date(item.created_at).toLocaleDateString() },
+          {
+            id: "actions",
+            header: "Action",
+            cell: (item) => item.status === "pending" ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => void handleAcknowledge(item.id)}
+                disabled={submitting}
+                aria-label={`Acknowledge alert for ${item.product_name}`}
+              >
+                Acknowledge
+              </Button>
+            ) : "—",
+          },
+        ]}
+        data={alerts}
+        loading={loading}
+        error={error || ackError}
+        emptyTitle="No reorder alerts found."
+        emptyDescription="Critical stock alerts will appear here once inventory crosses reorder thresholds."
+        toolbar={(
+          <DataTableToolbar>
+            <div className="text-sm text-muted-foreground">{alerts.length > 0 ? `Showing ${alerts.length} of ${total} alerts` : "Filter by status and warehouse."}</div>
+            <div className="flex flex-col gap-3 md:flex-row md:items-center">
+              <label className="flex flex-col items-start gap-2 text-sm font-medium text-foreground sm:flex-row sm:items-center sm:gap-3">
+                <span>Status</span>
+                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filter by status" className="w-full sm:w-44">
+                  {STATUS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col items-start gap-2 text-sm font-medium text-foreground sm:flex-row sm:items-center sm:gap-3">
+                <span>Warehouse</span>
+                <select value={warehouseFilter} onChange={(event) => setWarehouseFilter(event.target.value)} aria-label="Filter by warehouse" className="w-full sm:w-52" disabled={whLoading}>
+                  <option value="">All warehouses</option>
+                  {warehouses.map((warehouse) => (
+                    <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </DataTableToolbar>
+        )}
+        getRowId={(item) => item.id}
+      />
+    </SectionCard>
   );
 }

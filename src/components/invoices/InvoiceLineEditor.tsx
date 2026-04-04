@@ -1,6 +1,10 @@
 import type { InvoiceDraftLine } from "../../domain/invoices/types";
 import { INVOICE_TAX_POLICY_OPTIONS } from "../../domain/invoices/types";
 
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+
 interface InvoiceLinePreview {
 	subtotalAmount: number;
 	taxAmount: number;
@@ -36,21 +40,21 @@ export function InvoiceLineEditor({
 	onRemove,
 }: InvoiceLineEditorProps) {
 	return (
-		<fieldset style={{ marginBottom: 16, padding: 12, border: "1px solid #e5e7eb", borderRadius: 8 }}>
+		<fieldset className="space-y-4 rounded-2xl border border-border/80 bg-background/70 p-4 shadow-sm">
 			<legend>Line {index + 1}</legend>
-			<div style={{ display: "grid", gap: 12 }}>
-				<label>
+			<div className="grid gap-4">
+				<label className="space-y-2">
 					Product Code
-					<input
+					<Input
 						type="text"
 						value={line.product_code}
 						onChange={(event) => onChange({ ...line, product_code: event.target.value })}
 					/>
 				</label>
 
-				<label>
+				<label className="space-y-2">
 					Description
-					<input
+					<Input
 						type="text"
 						value={line.description}
 						onChange={(event) => onChange({ ...line, description: event.target.value })}
@@ -58,10 +62,10 @@ export function InvoiceLineEditor({
 					/>
 				</label>
 
-				<div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
-					<label>
+				<div className="grid gap-4 md:grid-cols-3">
+					<label className="space-y-2">
 						Quantity
-						<input
+						<Input
 							type="number"
 							step="0.001"
 							min="0.001"
@@ -71,9 +75,9 @@ export function InvoiceLineEditor({
 						/>
 					</label>
 
-					<label>
+					<label className="space-y-2">
 						Unit Price
-						<input
+						<Input
 							type="number"
 							step="0.01"
 							min="0"
@@ -83,7 +87,7 @@ export function InvoiceLineEditor({
 						/>
 					</label>
 
-					<label>
+					<label className="space-y-2">
 						Tax Policy
 						<select
 							value={line.tax_policy_code}
@@ -98,19 +102,19 @@ export function InvoiceLineEditor({
 					</label>
 				</div>
 
-				<div style={{ display: "grid", gap: 4, fontSize: "0.95rem" }}>
-					<span>Tax Type: {preview.taxType}</span>
-					<span>Tax Rate: {(preview.taxRate * 100).toFixed(0)}%</span>
-					<span>Subtotal: {currencyCode} {formatAmount(preview.subtotalAmount)}</span>
-					<span>Tax: {currencyCode} {formatAmount(preview.taxAmount)}</span>
-					<span>Total: {currencyCode} {formatAmount(preview.totalAmount)}</span>
+				<div className="grid gap-3 md:grid-cols-5">
+					<Badge variant="outline" className="justify-center normal-case tracking-normal">Tax Type: {preview.taxType}</Badge>
+					<Badge variant="outline" className="justify-center normal-case tracking-normal">Tax Rate: {(preview.taxRate * 100).toFixed(0)}%</Badge>
+					<Badge variant="outline" className="justify-center normal-case tracking-normal">Subtotal: {currencyCode} {formatAmount(preview.subtotalAmount)}</Badge>
+					<Badge variant="outline" className="justify-center normal-case tracking-normal">Tax: {currencyCode} {formatAmount(preview.taxAmount)}</Badge>
+					<Badge variant="default" className="justify-center normal-case tracking-normal">Total: {currencyCode} {formatAmount(preview.totalAmount)}</Badge>
 				</div>
 
 				{canRemove && (
 					<div>
-						<button type="button" onClick={onRemove}>
+						<Button type="button" variant="outline" onClick={onRemove}>
 							Remove Line
-						</button>
+						</Button>
 					</div>
 				)}
 			</div>

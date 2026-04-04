@@ -1,14 +1,18 @@
 import ReconciliationScreen from "../domain/payments/components/ReconciliationScreen";
+import { PageHeader, SectionCard } from "../components/layout/PageLayout";
 
 export function PaymentsPage() {
   return (
-    <section className="hero-card" style={{ width: "min(72rem, 100%)" }}>
-      <h1 style={{ fontSize: "2rem", lineHeight: 1.1 }}>Payments</h1>
-      <p className="caption">Reconcile inbound payments and resolve suggested matches.</p>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Payments"
+        title="Payments"
+        description="Reconcile inbound payments, confirm system suggestions, and manually resolve remaining exceptions."
+      />
 
-      <div style={{ marginTop: "1.5rem" }}>
+      <SectionCard title="Reconciliation Workspace" description="Operational matching workflow for open inbound payments.">
         <ReconciliationScreen />
-      </div>
-    </section>
+      </SectionCard>
+    </div>
   );
 }

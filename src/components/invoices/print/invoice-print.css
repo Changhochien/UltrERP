@@ -36,6 +36,23 @@
 	nav {
 		display: none !important;
 	}
+
+	.print-preview-dialog {
+		position: static;
+		height: auto;
+		width: auto;
+		overflow: visible;
+	}
+
+	.print-preview-surface {
+		margin: 0;
+		background: transparent;
+		padding: 0;
+		border-radius: 0;
+		box-shadow: none;
+		max-width: none;
+		overflow: visible;
+	}
 }
 
 /* ── Sheet container ──────────────────────────────────────────────────── */
@@ -43,10 +60,59 @@
 .invoice-print-sheet {
 	width: 184mm;
 	min-height: 132mm;
+	position: relative;
 	font-family: "Noto Sans TC", system-ui, sans-serif;
 	font-size: 9pt;
 	color: #000;
 	box-sizing: border-box;
+}
+
+.print-preview-dialog {
+	left: 0;
+	top: 0;
+	height: 100vh;
+	width: 100vw;
+	max-width: none;
+	transform: none;
+	overflow-y: auto;
+	border: 0;
+	padding: 0;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+}
+
+.print-preview-dialog > button {
+	display: none;
+}
+
+.print-preview-shell {
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.print-preview-controls {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	display: flex;
+	width: 100%;
+	justify-content: center;
+	gap: 0.75rem;
+	padding: 1rem;
+	box-sizing: border-box;
+}
+
+.print-preview-surface {
+	margin: 2rem auto;
+	background-color: #fff;
+	padding: 8mm 18mm 8mm 8mm;
+	border-radius: 1.5rem;
+	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+	max-width: calc(100vw - 2rem);
+	overflow-x: auto;
 }
 
 /* ── Header zone (0–25mm) ─────────────────────────────────────────────── */
@@ -210,6 +276,10 @@
 	display: flex;
 	justify-content: space-between;
 	line-height: 2;
+}
+
+.ips-total-amount {
+	font-weight: 700;
 }
 
 .ips-footer-notes {

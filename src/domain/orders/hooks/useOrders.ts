@@ -149,14 +149,16 @@ export function statusLabel(s: OrderStatus): string {
   return STATUS_LABELS[s] ?? s;
 }
 
-const STATUS_COLORS: Record<OrderStatus, string> = {
-  pending: "#6b7280",
-  confirmed: "#2563eb",
-  shipped: "#7c3aed",
-  fulfilled: "#16a34a",
-  cancelled: "#dc2626",
+type OrderStatusBadgeVariant = "neutral" | "info" | "success" | "destructive";
+
+const STATUS_BADGE_VARIANTS: Record<OrderStatus, OrderStatusBadgeVariant> = {
+  pending: "neutral",
+  confirmed: "info",
+  shipped: "info",
+  fulfilled: "success",
+  cancelled: "destructive",
 };
 
-export function statusColor(s: OrderStatus): string {
-  return STATUS_COLORS[s] ?? "#6b7280";
+export function statusBadgeVariant(s: OrderStatus): OrderStatusBadgeVariant {
+  return STATUS_BADGE_VARIANTS[s] ?? "neutral";
 }

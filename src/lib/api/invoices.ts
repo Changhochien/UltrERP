@@ -19,6 +19,16 @@ interface ApiErrorDetailResponse {
 
 const NETWORK_ERROR_MESSAGE = "Unable to reach the server. Please try again.";
 
+export class ApiResponseError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ApiResponseError";
+    this.status = status;
+  }
+}
+
 function networkErrorDetail(): ApiError["detail"] {
   return [{ field: "", message: NETWORK_ERROR_MESSAGE }];
 }
@@ -105,7 +115,12 @@ export async function refreshInvoiceEguiStatus(
     `/api/v1/invoices/${encodeURIComponent(invoiceId)}/egui/refresh`,
     { method: "POST" },
   );
-  if (!resp.ok) throw new Error("Failed to refresh eGUI status");
+  if (!resp.ok) {
+    throw new ApiResponseError(
+      resp.status,
+      await responseErrorMessage(resp, "Failed to refresh eGUI status"),
+    );
+  }
   return resp.json();
 }
 

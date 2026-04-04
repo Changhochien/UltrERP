@@ -211,3 +211,4 @@ async def get_db():
 
 - CORS origins are now configurable through settings while preserving the default browser and Tauri origins.
 - Database connection configuration retains PgBouncer-safe `statement_cache_size=0` and adds explicit asyncpg timeouts.
+- 2026-04-04 follow-up: `backend/common/config.py` now normalizes both JSON-array and bracketed comma-separated `CORS_ORIGINS` values so `Settings()` still loads when a shell-exported value overrides the repo `.env` entry.

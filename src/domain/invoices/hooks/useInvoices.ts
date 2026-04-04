@@ -179,25 +179,28 @@ export function paymentStatusLabel(status: string): string {
   }
 }
 
-export function paymentStatusColor(status: string): string {
+type InvoiceStatusBadgeVariant = "neutral" | "info" | "success" | "warning" | "destructive";
+
+export function paymentStatusBadgeVariant(status: string): InvoiceStatusBadgeVariant {
   switch (status) {
-    case "paid": return "#16a34a";
-    case "partial": return "#ca8a04";
-    case "unpaid": return "#6b7280";
-    case "overdue": return "#dc2626";
-    case "voided": return "#9ca3af";
-    default: return "#374151";
+    case "paid": return "success";
+    case "partial": return "warning";
+    case "overdue": return "destructive";
+    case "queued":
+    case "sent":
+      return "info";
+    default: return "neutral";
   }
 }
 
-export function eguiStatusColor(status: string): string {
+export function eguiStatusBadgeVariant(status: string): InvoiceStatusBadgeVariant {
   switch (status) {
-    case "ACKED": return "#15803d";
+    case "ACKED": return "success";
     case "FAILED":
-    case "DEAD_LETTER": return "#b91c1c";
-    case "RETRYING": return "#b45309";
+    case "DEAD_LETTER": return "destructive";
+    case "RETRYING": return "warning";
     case "QUEUED":
-    case "SENT": return "#1d4ed8";
-    default: return "#475569";
+    case "SENT": return "info";
+    default: return "neutral";
   }
 }

@@ -6,7 +6,17 @@ import type {
 import type { DesktopNotificationRequest } from "./notifications";
 
 export const DESKTOP_EGUI_STORAGE_KEY = "ultrerp_desktop_egui_watch_v1";
+export const DESKTOP_EGUI_SCOPE_KEY = "ultrerp_desktop_egui_scope_v1";
 const MAX_TRACKED_INVOICES = 25;
+const ALL_EGUI_STATUSES = new Set<InvoiceEguiStatus>([
+  "PENDING",
+  "QUEUED",
+  "SENT",
+  "ACKED",
+  "FAILED",
+  "RETRYING",
+  "DEAD_LETTER",
+]);
 const NOTIFIABLE_STATUSES = new Set<InvoiceEguiStatus>([
   "SENT",
   "ACKED",
@@ -39,6 +49,53 @@ export interface RunDesktopEguiNotificationCycleOptions {
   ) => Promise<{ delivered: boolean }>;
   onError?: (message: string, error: unknown) => void;
   now?: () => string;
+  shouldContinue?: () => boolean;
+}
+
+function isInvoiceEguiStatus(value: unknown): value is InvoiceEguiStatus {
+  return typeof value === "string" && ALL_EGUI_STATUSES.has(value as InvoiceEguiStatus);
+}
+
+function isTrackedEguiInvoice(value: unknown): value is TrackedEguiInvoice {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as Partial<TrackedEguiInvoice>;
+  return Boolean(
+    typeof candidate.invoiceId === "string"
+      && typeof candidate.invoiceNumber === "string"
+      && isInvoiceEguiStatus(candidate.lastSeenStatus)
+      && typeof candidate.updatedAt === "string"
+      && (
+        candidate.lastNotifiedStatus == null
+        || isInvoiceEguiStatus(candidate.lastNotifiedStatus)
+      ),
+  );
+}
+
+function sanitizeTrackedInvoices(value: unknown): TrackedEguiInvoiceMap {
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).filter(([, entry]) => isTrackedEguiInvoice(entry)),
+  ) as TrackedEguiInvoiceMap;
+}
+
+function errorStatus(error: unknown): number | null {
+  if (!error || typeof error !== "object" || !("status" in error)) {
+    return null;
+  }
+
+  const status = (error as { status?: unknown }).status;
+  return typeof status === "number" ? status : null;
+}
+
+function isPermanentTrackedInvoiceError(error: unknown): boolean {
+  const status = errorStatus(error);
+  return status === 401 || status === 403 || status === 404;
 }
 
 function readTrackedInvoices(): TrackedEguiInvoiceMap {
@@ -52,8 +109,7 @@ function readTrackedInvoices(): TrackedEguiInvoiceMap {
   }
 
   try {
-    const parsed = JSON.parse(raw) as TrackedEguiInvoiceMap;
-    return parsed && typeof parsed === "object" ? parsed : {};
+    return sanitizeTrackedInvoices(JSON.parse(raw));
   } catch {
     return {};
   }
@@ -72,6 +128,21 @@ function pruneTrackedInvoices(state: TrackedEguiInvoiceMap): TrackedEguiInvoiceM
     .sort(([, left], [, right]) => right.updatedAt.localeCompare(left.updatedAt))
     .slice(0, MAX_TRACKED_INVOICES);
   return Object.fromEntries(entries);
+}
+
+export function synchronizeTrackedEguiScope(scopeKey: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const previousScope = localStorage.getItem(DESKTOP_EGUI_SCOPE_KEY);
+  const hasTrackedInvoices = localStorage.getItem(DESKTOP_EGUI_STORAGE_KEY) !== null;
+
+  if (hasTrackedInvoices && previousScope !== scopeKey) {
+    localStorage.removeItem(DESKTOP_EGUI_STORAGE_KEY);
+  }
+
+  localStorage.setItem(DESKTOP_EGUI_SCOPE_KEY, scopeKey);
 }
 
 export function shouldNotifyEguiTransition(
@@ -116,7 +187,9 @@ export function buildEguiTransitionNotification(
 export async function runDesktopEguiNotificationCycle(
   options: RunDesktopEguiNotificationCycleOptions,
 ): Promise<void> {
-  if (await options.isWindowVisible()) {
+  const shouldContinue = options.shouldContinue ?? (() => true);
+
+  if (!shouldContinue() || await options.isWindowVisible()) {
     return;
   }
 
@@ -130,8 +203,20 @@ export async function runDesktopEguiNotificationCycle(
   let changed = false;
 
   for (const trackedInvoice of trackedInvoices) {
+    if (!shouldContinue()) {
+      return;
+    }
+
+    if (await options.isWindowVisible()) {
+      return;
+    }
+
     try {
       const submission = await options.refreshInvoiceStatus(trackedInvoice.invoiceId);
+      if (!shouldContinue()) {
+        return;
+      }
+
       const nextStatus = submission.status;
       if (nextStatus === trackedInvoice.lastSeenStatus) {
         continue;
@@ -145,9 +230,14 @@ export async function runDesktopEguiNotificationCycle(
       };
 
       if (
-        shouldNotifyEguiTransition(previousStatus, nextStatus)
+        !await options.isWindowVisible()
+        && shouldNotifyEguiTransition(previousStatus, nextStatus)
         && trackedInvoice.lastNotifiedStatus !== nextStatus
       ) {
+        if (!shouldContinue()) {
+          return;
+        }
+
         const result = await options.notify(
           buildEguiTransitionNotification(
             trackedInvoice.invoiceNumber,
@@ -155,6 +245,11 @@ export async function runDesktopEguiNotificationCycle(
             nextStatus,
           ),
         );
+
+        if (!shouldContinue()) {
+          return;
+        }
+
         if (result.delivered) {
           nextTrackedInvoice.lastNotifiedStatus = nextStatus;
         }
@@ -163,6 +258,12 @@ export async function runDesktopEguiNotificationCycle(
       state[trackedInvoice.invoiceId] = nextTrackedInvoice;
       changed = true;
     } catch (error) {
+      if (isPermanentTrackedInvoiceError(error)) {
+        delete state[trackedInvoice.invoiceId];
+        changed = true;
+        continue;
+      }
+
       options.onError?.(
         `Failed to refresh tracked eGUI state for invoice ${trackedInvoice.invoiceId}.`,
         error,
@@ -170,7 +271,7 @@ export async function runDesktopEguiNotificationCycle(
     }
   }
 
-  if (changed) {
+  if (shouldContinue() && changed) {
     writeTrackedInvoices(state);
   }
 }

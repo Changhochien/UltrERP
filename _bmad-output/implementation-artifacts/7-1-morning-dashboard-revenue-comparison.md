@@ -212,3 +212,4 @@ Claude Opus 4.6 (via GitHub Copilot)
 - Revenue source decision documented: invoices.total_amount over orders.total_amount for financial accuracy
 - Dashboard page scaffold designed as root route, future stories (7.2-7.6) will add widgets to same page
 - Decimal serialization warning based on Pydantic v2 behavior observed in Epic 6 schemas
+- 2026-04-04 follow-up: the shared tenant helper used by dashboard services now calls `SELECT set_config('app.tenant_id', :tid, true)` because asyncpg rejects parameterized `SET LOCAL`; this restored `GET /api/v1/dashboard/revenue-summary` in the authenticated dashboard flow.

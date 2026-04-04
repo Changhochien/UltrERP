@@ -1,13 +1,78 @@
+import json
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import AliasChoices, Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import AliasChoices, Field, field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ENV_FILES = (str(PROJECT_ROOT / ".env"), str(BACKEND_ROOT / ".env"))
+
+
+def _normalize_origins(values: list[str] | tuple[str, ...]) -> tuple[str, ...]:
+	return tuple(
+		item
+		for item in (str(value).strip() for value in values)
+		if item
+	)
+
+
+def _parse_cors_origins(raw: str) -> tuple[str, ...]:
+	raw = raw.strip()
+	if not raw:
+		return ()
+
+	try:
+		decoded = json.loads(raw)
+	except json.JSONDecodeError:
+		trimmed = raw.removeprefix("[").removesuffix("]")
+		if not trimmed:
+			return ()
+		return tuple(
+			item
+			for item in (part.strip().strip('"\'') for part in trimmed.split(","))
+			if item
+		)
+
+	if isinstance(decoded, str):
+		decoded = decoded.strip()
+		return (decoded,) if decoded else ()
+
+	if isinstance(decoded, (list, tuple)):
+		return _normalize_origins(decoded)
+
+	raise ValueError(
+		"CORS_ORIGINS must be a JSON array, a single origin, or a comma-separated list."
+	)
+
+
+def _parse_string_tuple(raw: str) -> tuple[str, ...]:
+	raw = raw.strip()
+	if not raw:
+		return ()
+
+	try:
+		decoded = json.loads(raw)
+	except json.JSONDecodeError:
+		trimmed = raw.removeprefix("[").removesuffix("]")
+		if not trimmed:
+			return ()
+		return tuple(
+			item
+			for item in (part.strip().strip('"\'') for part in trimmed.split(","))
+			if item
+		)
+
+	if isinstance(decoded, str):
+		decoded = decoded.strip()
+		return (decoded,) if decoded else ()
+
+	if isinstance(decoded, (list, tuple)):
+		return _normalize_origins(tuple(str(item) for item in decoded))
+
+	raise ValueError("Expected a JSON array, a single value, or a comma-separated list.")
 
 
 class Settings(BaseSettings):
@@ -26,7 +91,7 @@ class Settings(BaseSettings):
 		default="INFO",
 		validation_alias=AliasChoices("LOG_LEVEL", "log_level"),
 	)
-	cors_origins: tuple[str, ...] = Field(
+	cors_origins: Annotated[tuple[str, ...], NoDecode] = Field(
 		default=("http://localhost:5173", "tauri://localhost"),
 		validation_alias=AliasChoices("CORS_ORIGINS", "cors_origins"),
 	)
@@ -138,6 +203,39 @@ class Settings(BaseSettings):
 			"approval_expiry_hours",
 		),
 	)
+	legacy_import_data_dir: str = Field(
+		default=str(PROJECT_ROOT / "legacy-migration-pipeline" / "extracted_data"),
+		validation_alias=AliasChoices("LEGACY_IMPORT_DATA_DIR", "legacy_import_data_dir"),
+	)
+	legacy_import_schema: str = Field(
+		default="raw_legacy",
+		validation_alias=AliasChoices("LEGACY_IMPORT_SCHEMA", "legacy_import_schema"),
+	)
+	legacy_import_required_tables: Annotated[tuple[str, ...], NoDecode] = Field(
+		default=("tbscust", "tbsstock", "tbsslipx", "tbsslipdtx", "tbsstkhouse"),
+		validation_alias=AliasChoices(
+			"LEGACY_IMPORT_REQUIRED_TABLES",
+			"legacy_import_required_tables",
+		),
+	)
+
+	@field_validator("cors_origins", mode="before")
+	@classmethod
+	def _validate_cors_origins(cls, value: Any) -> tuple[str, ...] | Any:
+		if isinstance(value, (list, tuple)):
+			return _normalize_origins(value)
+		if isinstance(value, str):
+			return _parse_cors_origins(value)
+		return value
+
+	@field_validator("legacy_import_required_tables", mode="before")
+	@classmethod
+	def _validate_legacy_import_required_tables(cls, value: Any) -> tuple[str, ...] | Any:
+		if isinstance(value, (list, tuple)):
+			return _normalize_origins(tuple(str(item) for item in value))
+		if isinstance(value, str):
+			return _parse_string_tuple(value)
+		return value
 
 
 @lru_cache(maxsize=1)

@@ -1,7 +1,10 @@
 /** Paginated invoice list with payment status columns, filter, and sort. */
 
 import { useState } from "react";
-import { useInvoices, paymentStatusLabel, paymentStatusColor } from "../hooks/useInvoices";
+
+import { DataTable, DataTableToolbar, type DataTableSortState } from "../../../components/layout/DataTable";
+import { Badge } from "../../../components/ui/badge";
+import { useInvoices, paymentStatusBadgeVariant, paymentStatusLabel } from "../hooks/useInvoices";
 
 interface InvoiceListProps {
   onSelect: (invoiceId: string) => void;
@@ -17,158 +20,113 @@ const PAYMENT_STATUS_OPTIONS: Array<{ value: string; label: string }> = [
 
 export function InvoiceList({ onSelect }: InvoiceListProps) {
   const [statusFilter, setStatusFilter] = useState("");
-  const [sortBy, setSortBy] = useState("outstanding_balance");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [sortState, setSortState] = useState<DataTableSortState>({
+    columnId: "outstanding_balance",
+    direction: "desc",
+  });
 
   const { items, total, page, pageSize, loading, error, reload } = useInvoices({
     payment_status: statusFilter || undefined,
-    sort_by: sortBy,
-    sort_order: sortOrder,
+    sort_by: sortState.columnId,
+    sort_order: sortState.direction,
   });
-
-  const toggleSort = (col: string) => {
-    if (sortBy === col) {
-      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
-    } else {
-      setSortBy(col);
-      setSortOrder("desc");
-    }
-  };
-
-  const sortArrow = (col: string) =>
-    sortBy === col ? (sortOrder === "asc" ? " ↑" : " ↓") : "";
 
   return (
     <section aria-label="Invoice list">
-      <h2>Invoices</h2>
-
-      <div style={{ marginBottom: 12, display: "flex", gap: 8 }}>
-        <label htmlFor="inv-payment-status">Payment Status: </label>
-        <select
-          id="inv-payment-status"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
-          {PAYMENT_STATUS_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {error && (
-        <div role="alert" style={{ color: "#dc2626" }}>
-          {error}
-        </div>
-      )}
-
-      {loading && <p aria-busy="true">Loading…</p>}
-
-      {!loading && items.length === 0 && <p>No invoices found.</p>}
-
-      {!loading && items.length > 0 && (
-        <>
-          <table aria-label="Invoices table">
-            <thead>
-              <tr>
-                <th>Invoice #</th>
-                <th
-                  style={{ cursor: "pointer" }}
-                  onClick={() => toggleSort("invoice_date")}
-                >
-                  Date{sortArrow("invoice_date")}
-                </th>
-                <th>Total</th>
-                <th>Paid</th>
-                <th
-                  style={{ cursor: "pointer" }}
-                  onClick={() => toggleSort("outstanding_balance")}
-                >
-                  Outstanding{sortArrow("outstanding_balance")}
-                </th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr
-                  key={item.id}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Invoice ${item.invoice_number}`}
-                  onClick={() => onSelect(item.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      onSelect(item.id);
-                    }
-                  }}
-                  style={{
-                    cursor: "pointer",
-                    backgroundColor: item.payment_status === "overdue" ? "#fef2f2" : undefined,
-                    borderLeft: item.payment_status === "overdue" ? "4px solid #dc2626" : undefined,
-                  }}
-                >
-                  <td>{item.invoice_number}</td>
-                  <td>{item.invoice_date}</td>
-                  <td>{item.currency_code} {item.total_amount}</td>
-                  <td>{item.currency_code} {item.amount_paid}</td>
-                  <td>{item.currency_code} {item.outstanding_balance}</td>
-                  <td>
-                    <span
-                      style={{
-                        color: paymentStatusColor(item.payment_status),
-                        fontWeight: 600,
-                      }}
-                    >
-                      {paymentStatusLabel(item.payment_status)}
-                    </span>
-                    {item.payment_status === "overdue" && item.days_overdue > 0 && (
-                      <span
-                        style={{
-                          marginLeft: 6,
-                          background: "#dc2626",
-                          color: "#fff",
-                          padding: "1px 6px",
-                          borderRadius: 4,
-                          fontSize: "0.75em",
-                        }}
-                      >
-                        {item.days_overdue}d
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <div style={{ marginTop: 8 }}>
-            <span>
-              Page {page} · {total} total
-            </span>
-            {page > 1 && (
-              <button
-                type="button"
-                onClick={() => void reload(page - 1)}
-                style={{ marginLeft: 8 }}
+      <DataTable
+        columns={[
+          {
+            id: "invoice_number",
+            header: "Invoice #",
+            sortable: true,
+            cell: (item) => <span className="font-medium">{item.invoice_number}</span>,
+          },
+          {
+            id: "invoice_date",
+            header: "Date",
+            sortable: true,
+            cell: (item) => item.invoice_date,
+          },
+          {
+            id: "total_amount",
+            header: "Total",
+            cell: (item) => `${item.currency_code} ${item.total_amount}`,
+          },
+          {
+            id: "amount_paid",
+            header: "Paid",
+            cell: (item) => `${item.currency_code} ${item.amount_paid}`,
+          },
+          {
+            id: "outstanding_balance",
+            header: "Outstanding",
+            sortable: true,
+            cell: (item) => `${item.currency_code} ${item.outstanding_balance}`,
+          },
+          {
+            id: "payment_status",
+            header: "Status",
+            cell: (item) => (
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={paymentStatusBadgeVariant(item.payment_status)} className="normal-case tracking-normal">
+                  {paymentStatusLabel(item.payment_status)}
+                </Badge>
+                {item.payment_status === "overdue" && item.days_overdue > 0 ? (
+                  <Badge variant="destructive" className="normal-case tracking-normal">
+                    {item.days_overdue}d
+                  </Badge>
+                ) : null}
+              </div>
+            ),
+          },
+        ]}
+        data={items}
+        loading={loading}
+        error={error}
+        emptyTitle="No invoices found."
+        emptyDescription="Adjust the payment filter or try again later."
+        toolbar={(
+          <DataTableToolbar>
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold tracking-tight">Invoices</h2>
+              <p className="text-sm text-muted-foreground">Browse invoice status and payment progress.</p>
+            </div>
+            <label className="flex flex-col items-start gap-2 text-sm font-medium text-foreground sm:flex-row sm:items-center sm:gap-3">
+              <span>Payment Status:</span>
+              <select
+                id="inv-payment-status"
+                aria-label="Payment Status:"
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+                className="w-full sm:w-44"
               >
-                ← Prev
-              </button>
-            )}
-            {page * pageSize < total && (
-              <button
-                type="button"
-                onClick={() => void reload(page + 1)}
-                style={{ marginLeft: 8 }}
-              >
-                Next →
-              </button>
-            )}
-          </div>
-        </>
-      )}
+                {PAYMENT_STATUS_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </DataTableToolbar>
+        )}
+        summary={items.length > 0 ? `Showing ${items.length} invoices on this page.` : undefined}
+        page={page}
+        pageSize={pageSize}
+        totalItems={total}
+        onPageChange={(nextPage) => {
+          void reload(nextPage);
+        }}
+        sortState={sortState}
+        onSortChange={setSortState}
+        getRowId={(item) => item.id}
+        rowLabel={(item) => `Invoice ${item.invoice_number}`}
+        onRowClick={(item) => onSelect(item.id)}
+        getRowClassName={(item) =>
+          item.payment_status === "overdue"
+            ? "border-l-4 border-destructive bg-destructive/5 hover:bg-destructive/10"
+            : undefined
+        }
+      />
     </section>
   );
 }

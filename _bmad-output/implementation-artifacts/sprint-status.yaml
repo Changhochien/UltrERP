@@ -478,14 +478,14 @@ development_status:
         story_id: "12.4"
         title: "System Tray Mode with Notifications"
         story_file: "12-4-system-tray.md"
-        validation: "Validated on 2026-04-04 against the implemented repo: the root Tauri shell now hides to tray on close, restores the existing window from tray click/menu actions, and exits only through an explicit quit path. Browser-safe desktop window/notification bridges and hidden eGUI transition monitoring reuse the Story 12.3 server-owned state source, suppress duplicate notifications locally, and degrade cleanly when notification permission is denied. Focused validation is green via cargo check, focused Vitest coverage for the new desktop bridge/monitor slices plus InvoiceDetail, and pnpm build; manual macOS/Windows hardware verification is documented in docs/superpowers/specs/2026-04-04-system-tray-mode.md."
+        validation: "Validated on 2026-04-04 against the implemented repo: the root Tauri shell now hides to tray on close, restores the existing window from tray click/menu actions, and exits only through an explicit quit path. Browser-safe desktop window/notification bridges and hidden eGUI transition monitoring reuse the Story 12.3 server-owned state source, suppress duplicate notifications locally, and degrade cleanly when notification permission is denied. Code-review follow-up hardened watcher session scoping, hidden-cycle cancellation/visibility rechecks, permanent-error eviction for inaccessible tracked invoices, and malformed local-state sanitization. Focused validation is green via cargo check, focused Vitest coverage for the new desktop bridge/monitor slices plus InvoiceDetail, and pnpm build; manual macOS/Windows hardware verification is documented in docs/superpowers/specs/2026-04-04-system-tray-mode.md."
         prerequisites: ["12-2-keyboard-shortcuts", "12-3-egui-status-badge"]
       12-5-print-preview-performance:
-        status: "ready-for-dev"
+        status: "review"
         story_id: "12.5"
         title: "Print Preview Performance"
         story_file: "12-5-print-preview-performance.md"
-        validation: "The story is correctly framed as an optimization because preview, shared print sheet, and print helpers already exist; current code has no performance instrumentation or E2E harness, so the first implementation step must measure open-to-preview time and then optimize the shared renderer path without forking InvoicePrintSheet."
+        validation: "Validated on 2026-04-04 against the implemented repo: invoice detail now opens print preview through a real click-to-preview-ready path instrumented with the `ultrerp:invoice-print-preview-open` User Timing measure. The preview shell is lazy-loaded and prefetched, `InvoicePrintSheet` remains the single shared renderer, customer print payload is prepared ahead of modal mount through the existing customer detail API, a large-fixture preview modal test is in place, and the manual target-hardware performance recipe is documented in docs/superpowers/specs/2026-04-04-print-preview-performance.md. Code-review follow-up hardened preview-shell recovery, retry behavior, and timing-measure lifecycle. Frontend validation passed via focused preview tests plus `pnpm test`, `pnpm lint`, and `pnpm build`; actual target-hardware timing execution remains a manual review step rather than a completed automated proof."
         prerequisites: []
 
   # Epic 13 - Shadow-Mode Validation
@@ -505,4 +505,101 @@ development_status:
         status: "backlog"
         story_id: "13.4"
 
-last_updated: "2026-04-04"
+  # Epic 14 - Traditional Chinese i18n (Duolanguage Support)
+  epic-14:
+    status: "in-progress"
+    recommended_execution_order:
+      - "14.1 i18n Infrastructure Setup"
+      - "14.2 English Translation Baseline"
+      - "14.3 Traditional Chinese Translation"
+      - "14.4 Language Switcher Component"
+      - "14.5 Browser Language Auto-Detection"
+      - "14.6 Chinese Font Integration"
+    stories:
+      14-1-i18n-infrastructure-setup:
+        status: "review"
+        story_id: "14.1"
+        title: "i18n Infrastructure Setup"
+        story_file: "14-1-i18n-infrastructure-setup.md"
+        prerequisites: []
+      14-2-english-translation-baseline:
+        status: "ready-for-dev"
+        story_id: "14.2"
+        title: "English Translation Baseline"
+        story_file: "14-2-english-translation-baseline.md"
+        prerequisites: ["14-1-i18n-infrastructure-setup"]
+      14-3-traditional-chinese-translation:
+        status: "ready-for-dev"
+        story_id: "14.3"
+        title: "Traditional Chinese Translation"
+        story_file: "14-3-traditional-chinese-translation.md"
+        prerequisites: ["14-2-english-translation-baseline"]
+      14-4-language-switcher-component:
+        status: "ready-for-dev"
+        story_id: "14.4"
+        title: "Language Switcher Component"
+        story_file: "14-4-language-switcher-component.md"
+        prerequisites: ["14-3-traditional-chinese-translation"]
+      14-5-browser-language-auto-detection:
+        status: "ready-for-dev"
+        story_id: "14.5"
+        title: "Browser Language Auto-Detection"
+        story_file: "14-5-browser-language-auto-detection.md"
+        prerequisites: ["14-1-i18n-infrastructure-setup"]
+      14-6-chinese-font-integration:
+        status: "ready-for-dev"
+        story_id: "14.6"
+        title: "Chinese Font Integration"
+        story_file: "14-6-chinese-font-integration.md"
+        prerequisites: ["14-3-traditional-chinese-translation"]
+
+  # Epic 15 - Legacy Data Import Pipeline
+  epic-15:
+    status: "in-progress"
+    recommended_execution_order:
+      - "15.1 Raw Legacy Staging Import"
+      - "15.2 Canonical Master Data Normalization"
+      - "15.3 Product Variant Mapping Workflow"
+      - "15.4 Canonical Historical Transaction Import"
+      - "15.5 Migration Validation and Replay Safety"
+      - "15.6 Agent-Invocable Legacy Import Skill"
+    stories:
+      15-1-raw-legacy-staging-import:
+        status: "review"
+        story_id: "15.1"
+        title: "Raw Legacy Staging Import"
+        story_file: "15-1-raw-legacy-staging-import.md"
+        validation: "Validated on 2026-04-05 via uv-managed Ruff and pytest (7 focused tests), Alembic upgrade head, live CLI staging of tbscust+tbsstock into raw_legacy, successful rerun of the same batch ID, and control-table verification that replacement semantics kept runs=1 and table_runs=2."
+        prerequisites: []
+      15-2-canonical-master-data-normalization:
+        status: "backlog"
+        story_id: "15.2"
+        title: "Canonical Master Data Normalization"
+        story_file: "15-2-canonical-master-data-normalization.md"
+        prerequisites: ["15.1"]
+      15-3-product-variant-mapping-workflow:
+        status: "backlog"
+        story_id: "15.3"
+        title: "Product Variant Mapping Workflow"
+        story_file: "15-3-product-variant-mapping-workflow.md"
+        prerequisites: ["15.1", "15.2"]
+      15-4-canonical-historical-transaction-import:
+        status: "backlog"
+        story_id: "15.4"
+        title: "Canonical Historical Transaction Import"
+        story_file: "15-4-canonical-historical-transaction-import.md"
+        prerequisites: ["15.2", "15.3"]
+      15-5-migration-validation-and-replay-safety:
+        status: "backlog"
+        story_id: "15.5"
+        title: "Migration Validation and Replay Safety"
+        story_file: "15-5-migration-validation-and-replay-safety.md"
+        prerequisites: ["15.1", "15.2", "15.3", "15.4"]
+      15-6-agent-invocable-legacy-import-skill:
+        status: "backlog"
+        story_id: "15.6"
+        title: "Agent-Invocable Legacy Import Skill"
+        story_file: "15-6-agent-invocable-legacy-import-skill.md"
+        prerequisites: ["15.1", "15.5"]
+
+last_updated: "2026-04-05"

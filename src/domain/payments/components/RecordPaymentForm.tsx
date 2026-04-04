@@ -1,6 +1,10 @@
 /** Form for recording a payment against an invoice. */
 
 import { useState } from "react";
+
+import { SurfaceMessage } from "../../../components/layout/PageLayout";
+import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
 import type { PaymentMethod } from "../types";
 import { useCreatePayment } from "../hooks/usePayments";
 
@@ -64,18 +68,18 @@ export default function RecordPaymentForm({
 	};
 
 	return (
-		<form onSubmit={handleSubmit} data-testid="record-payment-form">
-			<h3>Record Payment</h3>
+		<form onSubmit={handleSubmit} data-testid="record-payment-form" className="space-y-4">
+			<h3 className="text-base font-semibold tracking-tight">Record Payment</h3>
 
-			{formError && (
-				<div role="alert" style={{ color: "red" }}>
+			{formError ? (
+				<SurfaceMessage tone="danger" role="alert">
 					{formError}
-				</div>
-			)}
+				</SurfaceMessage>
+			) : null}
 
-			<div>
+			<div className="space-y-2">
 				<label htmlFor="payment-amount">Amount</label>
-				<input
+				<Input
 					id="payment-amount"
 					type="number"
 					step="0.01"
@@ -85,14 +89,14 @@ export default function RecordPaymentForm({
 					onChange={(e) => setAmount(e.target.value)}
 					required
 				/>
-				{parsedAmount > outstandingBalance && (
-					<span style={{ color: "red" }}>
+				{parsedAmount > outstandingBalance ? (
+					<span className="text-sm text-destructive">
 						Amount exceeds outstanding balance ({outstandingBalance})
 					</span>
-				)}
+				) : null}
 			</div>
 
-			<div>
+			<div className="space-y-2">
 				<label htmlFor="payment-method">Payment Method</label>
 				<select
 					id="payment-method"
@@ -108,9 +112,9 @@ export default function RecordPaymentForm({
 				</select>
 			</div>
 
-			<div>
+			<div className="space-y-2">
 				<label htmlFor="payment-date">Payment Date</label>
-				<input
+				<Input
 					id="payment-date"
 					type="date"
 					value={paymentDate}
@@ -119,9 +123,9 @@ export default function RecordPaymentForm({
 				/>
 			</div>
 
-			<div>
+			<div className="space-y-2">
 				<label htmlFor="reference-number">Reference Number</label>
-				<input
+				<Input
 					id="reference-number"
 					type="text"
 					maxLength={100}
@@ -130,7 +134,7 @@ export default function RecordPaymentForm({
 				/>
 			</div>
 
-			<div>
+			<div className="space-y-2">
 				<label htmlFor="payment-notes">Notes</label>
 				<textarea
 					id="payment-notes"
@@ -140,13 +144,13 @@ export default function RecordPaymentForm({
 				/>
 			</div>
 
-			<div>
-				<button type="submit" disabled={!isValid || isLoading}>
+			<div className="flex gap-3">
+				<Button type="submit" disabled={!isValid || isLoading}>
 					{isLoading ? "Recording..." : "Record Payment"}
-				</button>
-				<button type="button" onClick={onCancel}>
+				</Button>
+				<Button type="button" variant="outline" onClick={onCancel}>
 					Cancel
-				</button>
+				</Button>
 			</div>
 		</form>
 	);

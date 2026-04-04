@@ -62,6 +62,13 @@ So that I can monitor background work even when the main window is closed.
   - [x] Add unit/integration coverage for the frontend bridge and notification dedupe logic where feasible
   - [x] Add a manual runbook proving: close -> tray, tray click -> restore, state change -> notify, quit -> exit
 
+### Review Findings
+
+- [x] [Review][Patch] Scope tracked eGUI watcher state to the authenticated desktop session [src/components/desktop/DesktopTrayController.tsx:1]
+- [x] [Review][Patch] Recheck cancellation and window visibility during hidden poll cycles [src/lib/desktop/eguiMonitor.ts:116]
+- [x] [Review][Patch] Evict permanently inaccessible tracked invoices from the hidden poll store [src/lib/desktop/eguiMonitor.ts:116]
+- [x] [Review][Patch] Validate parsed watcher entries before sorting or rewriting local state [src/lib/desktop/eguiMonitor.ts:40]
+
 ## Dev Notes
 
 ### Repo Reality
@@ -114,12 +121,14 @@ GitHub Copilot (GPT-5.4)
 - Browser-safe desktop bridges now cover window restore/hide and notification delivery, while a hidden tray controller reuses the server-owned eGUI refresh surface and locally suppresses duplicate notifications.
 - Focused validation passed with `cargo check`, `pnpm exec vitest run src/lib/desktop/__tests__/eguiMonitor.test.ts src/lib/desktop/__tests__/window.test.ts src/lib/desktop/__tests__/notifications.test.ts src/domain/invoices/__tests__/InvoiceDetail.test.tsx`, and `pnpm build`.
 - Manual macOS and Windows validation steps are captured in `docs/superpowers/specs/2026-04-04-system-tray-mode.md`; those hardware checks remain the only outstanding non-automated confirmation.
+- Story 12.4 code review then hardened the desktop watcher by scoping local tracker state to the authenticated desktop session, rechecking cancellation and window visibility during hidden poll cycles, evicting permanently inaccessible tracked invoices, and sanitizing malformed persisted watcher entries before reuse.
 
 ### Change Log
 
 - 2026-04-04: Revalidated Story 12.4 prerequisites, removed the stale blocked status, and implemented production tray lifecycle handling in the root Tauri shell.
 - 2026-04-04: Added browser-safe desktop window and notification bridges, hidden eGUI transition monitoring with dedupe, and focused frontend regression coverage.
 - 2026-04-04: Added the system tray manual validation runbook and synchronized the sprint tracker to the validated implementation state.
+- 2026-04-04: Completed Story 12.4 review follow-up by hardening watcher session scoping, hidden-cycle cancellation/visibility checks, permanent-error eviction, and local tracker-state validation.
 
 ### File List
 
@@ -133,6 +142,7 @@ GitHub Copilot (GPT-5.4)
 - src/lib/desktop/__tests__/eguiMonitor.test.ts
 - src/lib/desktop/__tests__/notifications.test.ts
 - src/lib/desktop/__tests__/window.test.ts
+- src/lib/api/invoices.ts
 - src/lib/desktop/eguiMonitor.ts
 - src/lib/desktop/notifications.ts
 - src/lib/desktop/window.ts

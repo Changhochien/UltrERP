@@ -2,6 +2,11 @@
 
 import { useState } from "react";
 
+import { Button } from "../../../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
+import { Skeleton } from "../../../components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table";
+import { cn } from "../../../lib/utils";
 import { useTopProducts } from "../hooks/useDashboard";
 
 function formatTWD(value: string): string {
@@ -13,65 +18,75 @@ export function TopProductsCard() {
   const { data, isLoading, error } = useTopProducts(period);
 
   return (
-    <div className="kpi-card" data-testid="top-products-card">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h3>Top Selling Products</h3>
-        <div className="toggle-group" role="group" aria-label="Period toggle">
-          <button
+    <Card data-testid="top-products-card" className="h-full">
+      <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <CardTitle>Top Selling Products</CardTitle>
+          <p className="text-sm text-muted-foreground">Revenue leaders for the current trading window.</p>
+        </div>
+        <div className="flex items-center gap-2" role="group" aria-label="Period toggle">
+          <Button
             type="button"
-            className={period === "day" ? "toggle--active" : ""}
+            size="sm"
+            variant={period === "day" ? "default" : "outline"}
+            className={cn(period === "day" && "toggle--active")}
             onClick={() => setPeriod("day")}
             aria-pressed={period === "day"}
           >
             Today
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className={period === "week" ? "toggle--active" : ""}
+            size="sm"
+            variant={period === "week" ? "default" : "outline"}
+            className={cn(period === "week" && "toggle--active")}
             onClick={() => setPeriod("week")}
             aria-pressed={period === "week"}
           >
             This Week
-          </button>
+          </Button>
         </div>
-      </div>
+      </CardHeader>
+      <CardContent className="space-y-4 pt-0">
 
-      {isLoading && (
-        <div data-testid="top-products-loading">
-          <div className="skeleton" style={{ height: "4rem" }} />
-        </div>
-      )}
+        {isLoading && (
+          <div data-testid="top-products-loading" className="space-y-3">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-40 w-full" />
+          </div>
+        )}
 
-      {error && <p className="error-text">{error}</p>}
+        {error && <p className="text-sm text-destructive">{error}</p>}
 
-      {!isLoading && !error && data && data.items.length === 0 && (
-        <p className="empty-state" data-testid="top-products-empty">
-          No sales data for this period
-        </p>
-      )}
+        {!isLoading && !error && data && data.items.length === 0 && (
+          <p className="rounded-xl border border-border/70 bg-muted/35 px-4 py-6 text-sm text-muted-foreground" data-testid="top-products-empty">
+            No sales data for this period
+          </p>
+        )}
 
-      {!isLoading && !error && data && data.items.length > 0 && (
-        <table className="kpi-table" data-testid="top-products-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Product</th>
-              <th>Qty Sold</th>
-              <th>Revenue</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.items.map((item, idx) => (
-              <tr key={item.product_id}>
-                <td>{idx + 1}</td>
-                <td>{item.product_name}</td>
-                <td>{Number(item.quantity_sold).toLocaleString("en-US")}</td>
-                <td>{formatTWD(item.revenue)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
+        {!isLoading && !error && data && data.items.length > 0 && (
+          <Table data-testid="top-products-table">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-16">#</TableHead>
+                <TableHead>Product</TableHead>
+                <TableHead>Qty Sold</TableHead>
+                <TableHead className="text-right">Revenue</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.items.map((item, idx) => (
+                <TableRow key={item.product_id}>
+                  <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                  <TableCell className="font-medium">{item.product_name}</TableCell>
+                  <TableCell>{Number(item.quantity_sold).toLocaleString("en-US")}</TableCell>
+                  <TableCell className="text-right font-medium">{formatTWD(item.revenue)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
   );
 }

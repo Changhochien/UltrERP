@@ -19,6 +19,10 @@ class AlertStatus(str, enum.Enum):
 	RESOLVED = "resolved"
 
 
+def _alert_status_values(enum_cls: type[AlertStatus]) -> list[str]:
+	return [status.value for status in enum_cls]
+
+
 class ReorderAlert(Base):
 	__tablename__ = "reorder_alert"
 	__table_args__ = (
@@ -42,7 +46,12 @@ class ReorderAlert(Base):
 	current_stock: Mapped[int] = mapped_column(Integer, nullable=False)
 	reorder_point: Mapped[int] = mapped_column(Integer, nullable=False)
 	status: Mapped[AlertStatus] = mapped_column(
-		Enum(AlertStatus, name="alert_status_enum", create_constraint=True),
+		Enum(
+			AlertStatus,
+			name="alert_status_enum",
+			create_constraint=True,
+			values_callable=_alert_status_values,
+		),
 		default=AlertStatus.PENDING,
 		nullable=False,
 	)

@@ -1,6 +1,11 @@
 /** Form to create a new sales order with dynamic line items. */
 
 import { useEffect, useRef, useState } from "react";
+
+import { SurfaceMessage } from "../../../components/layout/PageLayout";
+import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table";
 import { usePaymentTerms, useCreateOrder } from "../hooks/useOrders";
 import { useStockCheck } from "../hooks/useStockCheck";
 import type { OrderCreatePayload, OrderLineCreate } from "../types";
@@ -38,7 +43,7 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
   }, [productIdKey, checkProductStock]);
 
   if (termsLoading) return <p aria-busy="true">Loading…</p>;
-  if (termsError) return <div role="alert" style={{ color: "#dc2626" }}>{termsError}</div>;
+  if (termsError) return <div role="alert" className="text-sm text-destructive">{termsError}</div>;
 
   const updateLine = (idx: number, patch: Partial<OrderLineCreate>) => {
     setLines((prev) =>
@@ -78,21 +83,19 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
   };
 
   return (
-    <section aria-label="Create order">
-      <h2>New Order</h2>
+    <section aria-label="Create order" className="space-y-5">
+      <div className="space-y-1">
+        <h2 className="text-xl font-semibold tracking-tight">New Order</h2>
+        <p className="text-sm text-muted-foreground">Create a sales order with live stock visibility per line item.</p>
+      </div>
 
-      {error && (
-        <div role="alert" style={{ color: "#dc2626", marginBottom: 12 }}>
-          {error}
-        </div>
-      )}
+      {error ? <SurfaceMessage tone="danger">{error}</SurfaceMessage> : null}
 
-      <form onSubmit={(e) => void handleSubmit(e)} aria-label="Order form">
-        {/* Header fields */}
-        <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
-          <div>
-            <label htmlFor="ord-customer">Customer ID: </label>
-            <input
+      <form onSubmit={(e) => void handleSubmit(e)} aria-label="Order form" className="space-y-6">
+        <div className="grid gap-4 md:grid-cols-3">
+          <label className="space-y-2">
+            <span>Customer ID:</span>
+            <Input
               id="ord-customer"
               type="text"
               required
@@ -100,181 +103,150 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
               onChange={(e) => setCustomerId(e.target.value)}
               placeholder="Customer UUID"
             />
-          </div>
+          </label>
 
-          <div>
-            <label htmlFor="ord-terms">Payment terms: </label>
-            <select
-              id="ord-terms"
-              value={paymentTermsCode}
-              onChange={(e) => setPaymentTermsCode(e.target.value)}
-            >
+          <label className="space-y-2">
+            <span>Payment terms:</span>
+            <select id="ord-terms" value={paymentTermsCode} onChange={(e) => setPaymentTermsCode(e.target.value)}>
               {paymentTerms.map((t) => (
-                <option key={t.code} value={t.code}>
-                  {t.label}
-                </option>
+                <option key={t.code} value={t.code}>{t.label}</option>
               ))}
             </select>
-          </div>
+          </label>
 
-          <div>
-            <label htmlFor="ord-notes">Notes: </label>
-            <input
+          <label className="space-y-2">
+            <span>Notes:</span>
+            <Input
               id="ord-notes"
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Optional notes"
             />
-          </div>
+          </label>
         </div>
 
-        {/* Line items */}
-        <h3>Order Lines</h3>
-        <table aria-label="Order line items">
-          <thead>
-            <tr>
-              <th>Product ID</th>
-              <th>Description</th>
-              <th>Quantity</th>
-              <th>Unit Price</th>
-              <th>Tax Policy</th>
-              <th>Stock</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {lines.map((line, idx) => (
-              <tr key={idx}>
-                <td>
-                  <input
-                    type="text"
-                    required
-                    value={line.product_id}
-                    onChange={(e) =>
-                      updateLine(idx, { product_id: e.target.value })
-                    }
-                    placeholder="Product UUID"
-                    aria-label={`Line ${idx + 1} product`}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="text"
-                    required
-                    value={line.description}
-                    onChange={(e) =>
-                      updateLine(idx, { description: e.target.value })
-                    }
-                    placeholder="Description"
-                    aria-label={`Line ${idx + 1} description`}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    required
-                    min={1}
-                    step="any"
-                    value={line.quantity}
-                    onChange={(e) =>
-                      updateLine(idx, { quantity: Number(e.target.value) })
-                    }
-                    style={{ width: 80 }}
-                    aria-label={`Line ${idx + 1} quantity`}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    required
-                    min={0}
-                    step="0.01"
-                    value={line.unit_price}
-                    onChange={(e) =>
-                      updateLine(idx, { unit_price: Number(e.target.value) })
-                    }
-                    style={{ width: 100 }}
-                    aria-label={`Line ${idx + 1} unit price`}
-                  />
-                </td>
-                <td>
-                  <select
-                    value={line.tax_policy_code}
-                    onChange={(e) =>
-                      updateLine(idx, { tax_policy_code: e.target.value })
-                    }
-                    aria-label={`Line ${idx + 1} tax policy`}
-                  >
-                    <option value="standard">Standard (5%)</option>
-                    <option value="zero">Zero rated</option>
-                    <option value="exempt">Exempt</option>
-                    <option value="special">Special</option>
-                  </select>
-                </td>
-                <td>
-                  {(() => {
-                    const pid = line.product_id;
-                    if (!pid || pid.length < 36) return null;
-                    if (stockLoading[pid]) return <span aria-busy="true">…</span>;
-                    const info = stockData[pid];
-                    if (!info) return null;
-                    const avail = info.total_available;
-                    const insufficient = line.quantity > avail;
-                    return (
-                      <span
-                        aria-label={`Line ${idx + 1} stock`}
-                        style={{ color: insufficient ? "#dc2626" : "#16a34a", fontWeight: 600 }}
-                      >
-                        {avail} avail
-                        {insufficient && (
-                          <span style={{ display: "block", fontSize: "0.8em" }}>
-                            Insufficient stock: {avail} units available
-                          </span>
-                        )}
-                      </span>
-                    );
-                  })()}
-                </td>
-                <td>
-                  {lines.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeLine(idx)}
-                      aria-label={`Remove line ${idx + 1}`}
-                      style={{ color: "#dc2626" }}
+        <div className="overflow-hidden rounded-2xl border border-border/80 bg-card/90 shadow-sm">
+          <Table aria-label="Order line items">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Product ID</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Quantity</TableHead>
+                <TableHead>Unit Price</TableHead>
+                <TableHead>Tax Policy</TableHead>
+                <TableHead>Stock</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {lines.map((line, idx) => (
+                <TableRow key={idx}>
+                  <TableCell>
+                    <Input
+                      type="text"
+                      required
+                      value={line.product_id}
+                      onChange={(e) => updateLine(idx, { product_id: e.target.value })}
+                      placeholder="Product UUID"
+                      aria-label={`Line ${idx + 1} product`}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="text"
+                      required
+                      value={line.description}
+                      onChange={(e) => updateLine(idx, { description: e.target.value })}
+                      placeholder="Description"
+                      aria-label={`Line ${idx + 1} description`}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      required
+                      min={1}
+                      step="any"
+                      value={line.quantity}
+                      onChange={(e) => updateLine(idx, { quantity: Number(e.target.value) })}
+                      aria-label={`Line ${idx + 1} quantity`}
+                      className="w-24"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      required
+                      min={0}
+                      step="0.01"
+                      value={line.unit_price}
+                      onChange={(e) => updateLine(idx, { unit_price: Number(e.target.value) })}
+                      aria-label={`Line ${idx + 1} unit price`}
+                      className="w-28"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <select
+                      value={line.tax_policy_code}
+                      onChange={(e) => updateLine(idx, { tax_policy_code: e.target.value })}
+                      aria-label={`Line ${idx + 1} tax policy`}
                     >
-                      ✕
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                      <option value="standard">Standard (5%)</option>
+                      <option value="zero">Zero rated</option>
+                      <option value="exempt">Exempt</option>
+                      <option value="special">Special</option>
+                    </select>
+                  </TableCell>
+                  <TableCell>
+                    {(() => {
+                      const pid = line.product_id;
+                      if (!pid || pid.length < 36) return null;
+                      if (stockLoading[pid]) return <span aria-busy="true">…</span>;
+                      const info = stockData[pid];
+                      if (!info) return null;
+                      const avail = info.total_available;
+                      const insufficient = line.quantity > avail;
+                      return (
+                        <span aria-label={`Line ${idx + 1} stock`} className={insufficient ? "font-semibold text-destructive" : "font-semibold text-success-token"}>
+                          {avail} avail
+                          {insufficient ? (
+                            <span className="block text-xs font-normal text-destructive">Insufficient stock: {avail} units available</span>
+                          ) : null}
+                        </span>
+                      );
+                    })()}
+                  </TableCell>
+                  <TableCell>
+                    {lines.length > 1 ? (
+                      <Button type="button" variant="ghost" size="sm" onClick={() => removeLine(idx)} aria-label={`Remove line ${idx + 1}`}>
+                        Remove
+                      </Button>
+                    ) : null}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
 
-        <button
-          type="button"
-          onClick={() => setLines((prev) => [...prev, emptyLine()])}
-          style={{ marginTop: 8, marginBottom: 16 }}
-        >
-          + Add Line
-        </button>
+        <Button type="button" variant="outline" onClick={() => setLines((prev) => [...prev, emptyLine()])}>
+          Add Line
+        </Button>
 
-        {hasInvalidLines && (
-          <p role="alert" style={{ color: "#b45309", marginBottom: 12 }}>
+        {hasInvalidLines ? (
+          <SurfaceMessage tone="warning">
             {lines.length - validLines.length} line(s) incomplete — fill in product ID, description, and quantity (&gt; 0).
-          </p>
-        )}
+          </SurfaceMessage>
+        ) : null}
 
-        {/* Actions */}
-        <div style={{ display: "flex", gap: 8 }}>
-          <button type="submit" disabled={!canSubmit || submitting}>
+        <div className="flex gap-3">
+          <Button type="submit" disabled={!canSubmit || submitting}>
             {submitting ? "Creating…" : "Create Order"}
-          </button>
-          <button type="button" onClick={onCancel}>
+          </Button>
+          <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
-          </button>
+          </Button>
         </div>
       </form>
     </section>

@@ -1,7 +1,12 @@
 /** Read-only order detail view with line items and status actions. */
 
 import { useState } from "react";
-import { useOrderDetail, statusLabel, statusColor } from "../hooks/useOrders";
+
+import { DataTable } from "../../../components/layout/DataTable";
+import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayout";
+import { Badge } from "../../../components/ui/badge";
+import { Button } from "../../../components/ui/button";
+import { useOrderDetail, statusBadgeVariant, statusLabel } from "../hooks/useOrders";
 import { updateOrderStatus } from "../../../lib/api/orders";
 import type { OrderStatus } from "../types";
 
@@ -9,19 +14,18 @@ interface StatusAction {
   label: string;
   targetStatus: OrderStatus;
   confirmMessage: string;
-  color: string;
 }
 
 const STATUS_ACTIONS: Record<string, StatusAction[]> = {
   pending: [
-    { label: "Confirm Order", targetStatus: "confirmed" as OrderStatus, confirmMessage: "Confirming this order will auto-generate an invoice. Continue?", color: "#2563eb" },
-    { label: "Cancel Order", targetStatus: "cancelled" as OrderStatus, confirmMessage: "Are you sure you want to cancel this order?", color: "#dc2626" },
+    { label: "Confirm Order", targetStatus: "confirmed" as OrderStatus, confirmMessage: "Confirming this order will auto-generate an invoice. Continue?" },
+    { label: "Cancel Order", targetStatus: "cancelled" as OrderStatus, confirmMessage: "Are you sure you want to cancel this order?" },
   ],
   confirmed: [
-    { label: "Mark Shipped", targetStatus: "shipped" as OrderStatus, confirmMessage: "Mark this order as shipped?", color: "#7c3aed" },
+    { label: "Mark Shipped", targetStatus: "shipped" as OrderStatus, confirmMessage: "Mark this order as shipped?" },
   ],
   shipped: [
-    { label: "Mark Fulfilled", targetStatus: "fulfilled" as OrderStatus, confirmMessage: "Mark this order as fulfilled?", color: "#059669" },
+    { label: "Mark Fulfilled", targetStatus: "fulfilled" as OrderStatus, confirmMessage: "Mark this order as fulfilled?" },
   ],
 };
 
@@ -50,124 +54,113 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
   };
 
   if (loading) return <p aria-busy="true">Loading…</p>;
-  if (error) return <div role="alert" style={{ color: "#dc2626" }}>{error}</div>;
+  if (error) return <div role="alert" className="text-sm text-destructive">{error}</div>;
   if (!order) return <p>Order not found.</p>;
 
   const actions = STATUS_ACTIONS[order.status] ?? [];
 
   return (
-    <section aria-label="Order detail">
-      <button type="button" onClick={onBack} style={{ marginBottom: 12 }}>
-        ← Back to list
-      </button>
+    <section aria-label="Order detail" className="space-y-5">
+      <Button type="button" variant="outline" onClick={onBack}>
+        Back to list
+      </Button>
 
-      <h2>Order {order.order_number}</h2>
-
-      {actions.length > 0 && !activeAction && (
-        <div style={{ marginBottom: 12, display: "flex", gap: 8 }}>
-          {actions.map((action) => (
-            <button
-              key={action.targetStatus}
-              type="button"
-              onClick={() => setActiveAction(action)}
-              style={{ background: action.color, color: "#fff", padding: "6px 16px", border: "none", borderRadius: 4, cursor: "pointer" }}
-            >
-              {action.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {activeAction && (
-        <div role="dialog" aria-label="Confirm status change" style={{ border: "1px solid #e5e7eb", padding: 16, marginBottom: 16, borderRadius: 8, background: "#f9fafb" }}>
-          <p>{activeAction.confirmMessage}</p>
-          {updateError && <p role="alert" style={{ color: "#dc2626" }}>{updateError}</p>}
-          <button type="button" onClick={() => handleStatusChange(activeAction.targetStatus)} disabled={updating} style={{ marginRight: 8 }}>
-            {updating ? "Updating…" : `Yes, ${activeAction.label}`}
-          </button>
-          <button type="button" onClick={() => { setActiveAction(null); setUpdateError(null); }}>
-            Cancel
-          </button>
-        </div>
-      )}
-
-      <dl style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 16px", marginBottom: 16 }}>
-        <dt><strong>Status</strong></dt>
-        <dd>
-          <span style={{ color: statusColor(order.status as OrderStatus), fontWeight: 600 }}>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="space-y-2">
+          <h2 className="text-xl font-semibold tracking-tight">Order {order.order_number}</h2>
+          <Badge variant={statusBadgeVariant(order.status as OrderStatus)} className="normal-case tracking-normal">
             {statusLabel(order.status as OrderStatus)}
-          </span>
-        </dd>
-        <dt><strong>Customer</strong></dt>
-        <dd>{order.customer_name ?? order.customer_id}</dd>
-        <dt><strong>Payment Terms</strong></dt>
-        <dd>{order.payment_terms_code} ({order.payment_terms_days} days)</dd>
-        <dt><strong>Subtotal</strong></dt>
-        <dd>${order.subtotal_amount}</dd>
-        <dt><strong>Tax</strong></dt>
-        <dd>${order.tax_amount}</dd>
-        <dt><strong>Total</strong></dt>
-        <dd><strong>${order.total_amount}</strong></dd>
-        {order.invoice_id && (
-          <>
-            <dt><strong>Invoice</strong></dt>
-            <dd>{order.invoice_id}</dd>
-          </>
-        )}
-        {order.notes && (
-          <>
-            <dt><strong>Notes</strong></dt>
-            <dd>{order.notes}</dd>
-          </>
-        )}
-        <dt><strong>Created</strong></dt>
-        <dd>{new Date(order.created_at).toLocaleString()}</dd>
-        {order.confirmed_at && (
-          <>
-            <dt><strong>Confirmed</strong></dt>
-            <dd>{new Date(order.confirmed_at).toLocaleString()}</dd>
-          </>
-        )}
-      </dl>
+          </Badge>
+        </div>
+        {actions.length > 0 && !activeAction ? (
+          <div className="flex flex-wrap gap-2">
+            {actions.map((action) => (
+              <Button key={action.targetStatus} type="button" onClick={() => setActiveAction(action)}>
+                {action.label}
+              </Button>
+            ))}
+          </div>
+        ) : null}
+      </div>
 
-      <h3>Line Items</h3>
-      <table aria-label="Order line items">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Description</th>
-            <th>Qty</th>
-            <th>Unit Price</th>
-            <th>Tax</th>
-            <th>Subtotal</th>
-            <th>Total</th>
-            <th>Stock</th>
-          </tr>
-        </thead>
-        <tbody>
-          {order.lines.map((line) => (
-            <tr key={line.id}>
-              <td>{line.line_number}</td>
-              <td>{line.description}</td>
-              <td>{line.quantity}</td>
-              <td>${line.unit_price}</td>
-              <td>${line.tax_amount}</td>
-              <td>${line.subtotal_amount}</td>
-              <td>${line.total_amount}</td>
-              <td>
-                {line.available_stock_snapshot != null && (
-                  <span>{line.available_stock_snapshot}</span>
-                )}
-                {line.backorder_note && (
-                  <span style={{ color: "#dc2626", display: "block", fontSize: "0.85em" }}>
-                    {line.backorder_note}
-                  </span>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {activeAction ? (
+        <SectionCard title="Confirm status change" description={activeAction.confirmMessage}>
+          <div role="dialog" aria-label="Confirm status change" className="space-y-4">
+            {updateError ? <SurfaceMessage tone="danger">{updateError}</SurfaceMessage> : null}
+            <div className="flex gap-3">
+              <Button type="button" onClick={() => handleStatusChange(activeAction.targetStatus)} disabled={updating}>
+                {updating ? "Updating…" : `Yes, ${activeAction.label}`}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => { setActiveAction(null); setUpdateError(null); }}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </SectionCard>
+      ) : null}
+
+      <SectionCard title="Order Summary" description="Customer, pricing, and operational timestamps.">
+        <dl className="gap-y-4">
+          <dt>Customer</dt>
+          <dd>{order.customer_name ?? order.customer_id}</dd>
+          <dt>Payment Terms</dt>
+          <dd>{order.payment_terms_code} ({order.payment_terms_days} days)</dd>
+          <dt>Subtotal</dt>
+          <dd>${order.subtotal_amount}</dd>
+          <dt>Tax</dt>
+          <dd>${order.tax_amount}</dd>
+          <dt>Total</dt>
+          <dd><strong>${order.total_amount}</strong></dd>
+          {order.invoice_id ? (
+            <>
+              <dt>Invoice</dt>
+              <dd>{order.invoice_id}</dd>
+            </>
+          ) : null}
+          {order.notes ? (
+            <>
+              <dt>Notes</dt>
+              <dd>{order.notes}</dd>
+            </>
+          ) : null}
+          <dt>Created</dt>
+          <dd>{new Date(order.created_at).toLocaleString()}</dd>
+          {order.confirmed_at ? (
+            <>
+              <dt>Confirmed</dt>
+              <dd>{new Date(order.confirmed_at).toLocaleString()}</dd>
+            </>
+          ) : null}
+        </dl>
+      </SectionCard>
+
+      <SectionCard title="Line Items" description="Commercial and stock detail for each order line.">
+        <DataTable
+          columns={[
+            { id: "line_number", header: "#", sortable: true, getSortValue: (line) => line.line_number, cell: (line) => line.line_number },
+            { id: "description", header: "Description", sortable: true, getSortValue: (line) => line.description, cell: (line) => line.description },
+            { id: "quantity", header: "Qty", sortable: true, getSortValue: (line) => Number(line.quantity), cell: (line) => line.quantity },
+            { id: "unit_price", header: "Unit Price", sortable: true, getSortValue: (line) => Number(line.unit_price), cell: (line) => `$${line.unit_price}` },
+            { id: "tax_amount", header: "Tax", sortable: true, getSortValue: (line) => Number(line.tax_amount), cell: (line) => `$${line.tax_amount}` },
+            { id: "subtotal_amount", header: "Subtotal", sortable: true, getSortValue: (line) => Number(line.subtotal_amount), cell: (line) => `$${line.subtotal_amount}` },
+            { id: "total_amount", header: "Total", sortable: true, getSortValue: (line) => Number(line.total_amount), cell: (line) => `$${line.total_amount}` },
+            {
+              id: "stock",
+              header: "Stock",
+              cell: (line) => (
+                <div className="text-sm">
+                  {line.available_stock_snapshot != null ? <span>{line.available_stock_snapshot}</span> : null}
+                  {line.backorder_note ? <span className="block text-destructive">{line.backorder_note}</span> : null}
+                </div>
+              ),
+            },
+          ]}
+          data={order.lines}
+          emptyTitle="No line items."
+          emptyDescription="Order line items will appear here once the order is populated."
+          getRowId={(line) => line.id}
+        />
+      </SectionCard>
     </section>
   );
 }

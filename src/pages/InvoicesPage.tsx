@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { PageHeader, SectionCard } from "../components/layout/PageLayout";
+import { Button } from "../components/ui/button";
 import { InvoiceDetail } from "../domain/invoices/components/InvoiceDetail";
 import { InvoiceList } from "../domain/invoices/components/InvoiceList";
 import { usePermissions } from "../hooks/usePermissions";
@@ -12,26 +14,37 @@ export function InvoicesPage() {
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
 
   return (
-    <section className="hero-card" style={{ width: "min(72rem, 100%)" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "flex-start" }}>
-        <div>
-          <h1 style={{ fontSize: "2rem", lineHeight: 1.1 }}>Invoices</h1>
-          <p className="caption">Browse invoice status and payment progress.</p>
-        </div>
-        {canWrite("invoices") && (
-          <button type="button" onClick={() => navigate(INVOICE_CREATE_ROUTE)}>
-            Create Invoice
-          </button>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Finance"
+        title="Invoices"
+        description="Payment-aware invoice operations with list filtering, detail drill-in, and print workflows."
+        actions={(
+          <div className="flex flex-wrap gap-3">
+            {selectedInvoiceId ? (
+              <Button type="button" variant="outline" onClick={() => setSelectedInvoiceId(null)}>
+                Back to list
+              </Button>
+            ) : null}
+            {canWrite("invoices") ? (
+              <Button type="button" onClick={() => navigate(INVOICE_CREATE_ROUTE)}>
+                Create Invoice
+              </Button>
+            ) : null}
+          </div>
         )}
-      </div>
+      />
 
-      <div style={{ marginTop: "1.5rem" }}>
+      <SectionCard
+        title={selectedInvoiceId ? "Invoice Detail" : "Invoice Workspace"}
+        description={selectedInvoiceId ? "Inspect invoice totals, payment history, and print readiness." : "Track outstanding balances, overdue accounts, and payment status."}
+      >
         {selectedInvoiceId ? (
           <InvoiceDetail invoiceId={selectedInvoiceId} onBack={() => setSelectedInvoiceId(null)} />
         ) : (
           <InvoiceList onSelect={setSelectedInvoiceId} />
         )}
-      </div>
-    </section>
+      </SectionCard>
+    </div>
   );
 }

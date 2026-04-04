@@ -1,4 +1,3 @@
----
 stepsCompleted:
   - step-01-validate-prerequisites
   - step-02-design-epics
@@ -9,6 +8,10 @@ inputDocuments:
     type: "prd"
   - path: "docs/superpowers/specs/2026-03-30-erp-architecture-design-v2.md"
     type: "architecture"
+  - path: "docs/legacy/migration-plan.md"
+    type: "legacy-migration-plan"
+  - path: "research/legacy-data/03-findings.md"
+    type: "legacy-poc-findings"
 ---
 
 # UltrERP - Epic Breakdown
@@ -104,6 +107,15 @@ This document provides the complete epic and story breakdown for UltrERP, decomp
 - FR54: Sensitive write actions triggered through AI or automation require explicit human confirmation before execution
 - FR55: Shadow-mode comparison uses a separately versioned reconciliation spec and produces actionable discrepancy alerts
 
+**Legacy Import & Cutover Readiness:**
+- FR56: Admin can bulk-load extracted legacy ERP tables into a read-only `raw_legacy` staging schema without altering the source exports
+- FR57: System normalizes ROC dates, sentinel dates, and core master data into canonical import-ready values during migration
+- FR58: System resolves legacy product-code variants through an explicit mapping table and preserves unresolved rows via `UNKNOWN` fallback instead of dropping transactions
+- FR59: Admin can import historical parties, products, warehouses, inventory, sales, and purchase data into UltrERP with source lineage preserved
+- FR60: System generates import validation, orphan, and discrepancy reports after each migration run
+- FR61: Admin can rerun a migration batch idempotently for a defined tenant and cutoff window without duplicating canonical records
+- FR62: Operators and AI agents can invoke the reviewed legacy-import workflow through a stable CLI surface and a task-specific skill that wraps it safely
+
 ### NonFunctional Requirements
 
 **Performance:**
@@ -151,6 +163,13 @@ This document provides the complete epic and story breakdown for UltrERP, decomp
 - NFR30: asyncpg with statement_cache_size=0 for PgBouncer compatibility
 - NFR31: tenant_id present in all tables for future multi-tenant migration
 
+**Migration Reliability:**
+- NFR32: Bulk legacy staging import completes within an operator-acceptable window on target hardware by using PostgreSQL-native bulk loading rather than row-by-row inserts
+- NFR33: Every imported canonical record preserves source lineage metadata sufficient for audit, replay, and discrepancy investigation
+- NFR34: Migration runs are idempotent and resumable at batch scope without creating duplicate canonical records
+- NFR35: Unresolved severity-1 migration discrepancies block cutover and produce operator-readable reports
+- NFR36: Agent-invoked migration steps are constrained to reviewed CLI commands and require explicit confirmation for destructive or high-impact import scopes
+
 ### Additional Requirements
 
 From Architecture Document:
@@ -170,6 +189,15 @@ From Architecture Document:
 - AR12: Tauri 2.x spawns Python sidecar via CARGO_MANIFEST_DIR for solo mode
 - AR13: tenant_id in all tables, SET LOCAL for session context
 - AR14: API versioning at /api/v1/* path level
+
+**Legacy Import Investigation:**
+- AR15: Legacy import reads from exported CSV assets or SQL-dump-derived extracts only; the legacy source remains strictly read-only
+- AR16: Raw import lands in PostgreSQL `raw_legacy` staging tables first and uses bulk-loading plus lineage columns (`_legacy_table`, `_legacy_pk`, batch/run identifiers, import status)
+- AR17: Migration schema changes and canonical writes follow the repo's Alembic/SQLAlchemy/PostgreSQL conventions; the PoC `psycopg2` scripts remain reference material, not the production implementation surface
+- AR18: Product-code resolution uses `raw_legacy.product_code_mapping` plus analyst-reviewed mappings and an `UNKNOWN` placeholder to preserve unresolved transactions without inventing false certainty
+- AR19: `1900-01-01` is treated as a legacy empty-date sentinel and ROC dates are normalized to AD before canonical import
+- AR20: Severity-1 migration discrepancies block cutover; severity-2 issues remain reportable and auditable during shadow-mode
+- AR21: The reusable import entry point is a CLI-first workflow under the backend codebase, while the agent-facing skill lives in a supported skills directory and references the CLI/resources instead of embedding business logic in markdown alone
 
 ### UX Design Requirements
 
@@ -231,6 +259,10 @@ Users can run the app from system tray with keyboard shortcuts and background no
 System validates correctness against legacy ERP during parallel run before cutover.
 **FRs covered:** FR55, NFR20, NFR22
 
+### Epic 15: Legacy Data Import Pipeline
+Operations and AI agents can stage, map, import, and validate legacy ERP data into UltrERP through a repeatable CLI-backed workflow plus a task-specific skill that preserves lineage and exposes unresolved data-quality issues instead of hiding them.
+**FRs covered:** FR56-FR62, NFR32-NFR36, AR15-AR21
+
 ---
 
 ## FR Coverage Map
@@ -290,6 +322,13 @@ FR52: Epic 12 - eGUI status badge and state persistence
 FR53: Epic 12 - System tray mode with notifications
 FR54: Epic 11 - Human confirmation for AI/automation writes
 FR55: Epic 13 - Shadow-mode reconciliation with discrepancy alerts
+FR56: Epic 15 - Bulk-load extracted legacy data into raw_legacy staging
+FR57: Epic 15 - Normalize ROC dates, sentinel dates, and master data for import
+FR58: Epic 15 - Resolve product variants through mapping table and UNKNOWN fallback
+FR59: Epic 15 - Import parties, products, warehouses, inventory, and transactions with source lineage
+FR60: Epic 15 - Generate migration validation, orphan, and discrepancy reports
+FR61: Epic 15 - Rerun migration batches idempotently without duplicate canonical records
+FR62: Epic 15 - Expose the migration workflow through a stable CLI and agent-usable skill
 
 ---
 
@@ -1366,3 +1405,211 @@ So that we comply with Taiwan tax requirements.
 **Then** retention is enforced by record class
 **And** backups support 10+ year recovery
 **And** company-policy can extend beyond 10 years
+
+---
+
+## Epic 14: Traditional Chinese i18n (Duolanguage Support)
+
+### Epic Goal
+
+System displays all UI text in both English and Traditional Chinese (zh-Hant), with automatic browser language detection and manual language switching, providing a truly bilingual ERP experience for Taiwan SMB users.
+
+### Story 14.1: i18n Infrastructure Setup
+
+As a system,
+I want to integrate react-i18next with locale detection and lazy-loaded translation files,
+So that the application is ready for multilingual support.
+
+**Acceptance Criteria:**
+
+**Given** the React application is bootstrapped
+**When** the user first loads the application
+**Then** i18next is configured with react-i18next, i18next-browser-languagedetector, and i18next-http-backend
+**And** supported languages are ['en', 'zh-Hant']
+**And** fallback language is 'en'
+**And** translation files are lazy-loaded from /locales/{lng}/{ns}.json
+**And** detection order is: localStorage → navigator.language → querystring
+**And** language preference is cached in localStorage under key 'i18nextLng'
+
+### Story 14.2: English Translation Baseline
+
+As a system,
+I want all current UI strings extracted to English translation files,
+So that we have a complete English baseline to translate from.
+
+**Acceptance Criteria:**
+
+**Given** i18next is configured
+**When** the application renders UI components
+**Then** all visible text strings are sourced from translation keys
+**And** English translation files exist at /public/locales/en/common.json
+**And** common.json contains keys for: nav, buttons, labels, messages, errors, validation
+**And** all existing React components use the useTranslation hook or t() function
+**And** no hardcoded English strings remain in component render methods
+
+### Story 14.3: Traditional Chinese Translation
+
+As a system,
+I want complete Traditional Chinese (zh-Hant) translation files,
+So that Taiwanese users see all text in their native language.
+
+**Acceptance Criteria:**
+
+**Given** English baseline exists
+**When** user selects zh-Hant language
+**Then** all UI text displays in Traditional Chinese
+**And** translation files exist at /public/locales/zh-Hant/common.json
+**And** Chinese plural handling uses only 'other' category (no singular/plural distinction)
+**And** all vocabulary uses Taiwanese variants (例如: 電腦 rather than 計算機 for computer)
+**And** character conversion (OpenCC-style) is NOT used for UI translation
+
+### Story 14.4: Language Switcher Component
+
+As a user,
+I want to manually switch between English and Traditional Chinese,
+So that I can use the app in my preferred language.
+
+**Acceptance Criteria:**
+
+**Given** the application is loaded
+**When** the user clicks the language switcher
+**Then** a dropdown shows available languages: English, 繁體中文
+**And** selecting a language immediately re-renders all UI text without page reload
+**And** selected language is persisted to localStorage
+**And** the switcher displays the current language name/flag
+**And** the switcher is accessible from the sidebar or header
+
+### Story 14.5: Browser Language Auto-Detection
+
+As a system,
+I want to automatically detect and apply the user's browser language preference,
+So that users see the correct language on first visit without manual selection.
+
+**Acceptance Criteria:**
+
+**Given** it's the user's first visit
+**When** the application loads
+**Then** navigator.language is read (e.g., "zh-TW", "zh-Hant", "zh-CN")
+**And** the system maps it to supported locale (zh-TW/zh-Hant → zh-Hant, others → en)
+**And** detected language is applied before first render
+**And** if navigator.language starts with 'zh', zh-Hant is selected by default
+
+### Story 14.6: Chinese Font Integration
+
+As a system,
+I want proper Traditional Chinese font rendering,
+So that all Chinese characters display correctly without missing glyph issues.
+
+**Acceptance Criteria:**
+
+**Given** the application displays Chinese text
+**When** the page renders
+**Then** the font stack includes: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif
+**And** Noto Sans TC is loaded via Google Fonts (or self-hosted for China accessibility)
+**And** font-display is set to 'optional' for performance
+**And** Chinese text renders without tofu (missing character) issues
+
+---
+
+## Epic 15: Legacy Data Import Pipeline
+
+### Epic Goal
+
+Operations and AI agents can stage, map, import, and validate legacy ERP data into UltrERP through a repeatable CLI-backed workflow plus a task-specific skill that preserves lineage and exposes unresolved data-quality issues instead of hiding them.
+
+### Stories
+
+### Story 15.1: Raw Legacy Staging Import
+
+As a migration operator,
+I want extracted legacy CSVs loaded into a read-only staging schema,
+So that every migration run starts from a reproducible source snapshot inside PostgreSQL.
+
+**Acceptance Criteria:**
+
+**Given** a verified legacy export set is available
+**When** I run the staging import command
+**Then** the pipeline creates or refreshes `raw_legacy` tables for the configured batch
+**And** the staging workflow is exposed through a stable CLI command surface that later skill automation can call
+**And** loads the source files with PostgreSQL-native bulk loading rather than row-by-row inserts
+**And** records source table, source key, batch/run identifier, and import status for every staged row
+
+### Story 15.2: Canonical Master Data Normalization
+
+As a migration operator,
+I want ROC dates, sentinel dates, and core master records normalized before canonical import,
+So that downstream loads use consistent customer, supplier, product, and warehouse data.
+
+**Acceptance Criteria:**
+
+**Given** raw legacy tables are loaded
+**When** the normalization step runs
+**Then** ROC-encoded dates are converted to AD dates
+**And** `1900-01-01` sentinel values are converted according to the documented import policy
+**And** customer/supplier, product, and warehouse staging outputs are generated with deterministic legacy-to-canonical keys
+
+### Story 15.3: Product Variant Mapping Workflow
+
+As a data analyst,
+I want unresolved legacy product variants managed through an explicit mapping workflow,
+So that transaction history is preserved without claiming false product certainty.
+
+**Acceptance Criteria:**
+
+**Given** the migration pipeline encounters legacy product codes not present in the product master
+**When** the mapping workflow runs
+**Then** exact matches are auto-linked into `raw_legacy.product_code_mapping`
+**And** unresolved codes are surfaced for analyst review with confidence metadata
+**And** rows that remain unresolved are routed to an `UNKNOWN` placeholder product instead of being dropped
+
+### Story 15.4: Canonical Historical Transaction Import
+
+As a migration operator,
+I want staged legacy headers and lines imported into UltrERP's canonical tables,
+So that historical sales, purchase, inventory, and party data are available in the new system.
+
+**Acceptance Criteria:**
+
+**Given** normalized master data and product mappings are available
+**When** I run the canonical import step
+**Then** parties, products, warehouses, inventory, sales headers/lines, and purchase headers/lines load into the approved UltrERP schema
+**And** every canonical record retains lineage back to the originating legacy table and source identifier
+**And** unresolved variant rows use the documented fallback behavior rather than violating foreign keys
+
+### Story 15.5: Migration Validation and Replay Safety
+
+As a cutover owner,
+I want migration runs to emit actionable validation reports and support safe reruns,
+So that cutover is blocked by real data problems while repeat imports remain auditable.
+
+**Acceptance Criteria:**
+
+**Given** a migration batch completes
+**When** validation runs
+**Then** the system produces row-count reconciliation, orphan/mapping summaries, and severity-ranked discrepancy reports
+**And** emits machine-readable artifacts that a reviewed agent skill can inspect without scraping prose only
+**And** unresolved severity-1 issues block cutover readiness
+**And** rerunning the same batch or cutoff window does not create duplicate canonical records
+
+### Story 15.6: Agent-Invocable Legacy Import Skill
+
+As an operator working with an AI agent,
+I want the agent to invoke the reviewed legacy-import workflow through a dedicated skill backed by the CLI,
+So that the workflow is reusable, guided, and safe across VS Code, Copilot CLI, and coding-agent contexts.
+
+**Acceptance Criteria:**
+
+**Given** the legacy import CLI exposes stable subcommands
+**When** the agent loads the legacy-import skill
+**Then** the skill tells the agent which CLI subcommands to run for staging, normalization, canonical import, and validation
+**And** references supporting resources from the skill directory rather than duplicating the import logic in markdown alone
+
+**Given** the skill is packaged for agent discovery
+**When** the skill is installed in the repository
+**Then** it lives in a supported skills directory with valid frontmatter (`name`, `description`, and invocation behavior)
+**And** its directory name matches the skill name
+
+**Given** the skill may invoke terminal commands
+**When** tool permissions are configured
+**Then** shell execution is left unapproved by default or tightly scoped to the reviewed CLI path
+**And** destructive or high-impact import scopes still require explicit operator confirmation

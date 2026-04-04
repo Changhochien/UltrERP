@@ -247,3 +247,8 @@ Alert selection feeds into Story 4.5 (Supplier Orders) for bulk order creation f
 - `backend/domains/inventory/routes.py`
 - `src/domain/inventory/components/ReorderAlerts.tsx`
 - `src/domain/dashboard/components/LowStockWidget.tsx`
+
+### Completion Notes List
+
+- 2026-04-04 follow-up: `backend/common/models/reorder_alert.py` now supplies SQLAlchemy `Enum(..., values_callable=...)` so PostgreSQL `alert_status_enum` receives lowercase values (`pending`, `acknowledged`, `resolved`) instead of Python member names.
+- This fixed the runtime PostgreSQL enum failure that was breaking reorder-alert queries in both inventory workflows and the dashboard low-stock widget.

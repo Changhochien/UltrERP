@@ -213,15 +213,17 @@ export function statusLabel(s: SupplierOrderStatus): string {
   return STATUS_LABELS[s] ?? s;
 }
 
-const STATUS_COLORS: Record<SupplierOrderStatus, string> = {
-  pending: "#6b7280",
-  confirmed: "#2563eb",
-  shipped: "#7c3aed",
-  partially_received: "#d97706",
-  received: "#16a34a",
-  cancelled: "#dc2626",
+type SupplierOrderStatusBadgeVariant = "neutral" | "info" | "success" | "warning" | "destructive";
+
+const STATUS_BADGE_VARIANTS: Record<SupplierOrderStatus, SupplierOrderStatusBadgeVariant> = {
+  pending: "neutral",
+  confirmed: "info",
+  shipped: "info",
+  partially_received: "warning",
+  received: "success",
+  cancelled: "destructive",
 };
 
-export function statusColor(s: SupplierOrderStatus): string {
-  return STATUS_COLORS[s] ?? "#6b7280";
+export function statusBadgeVariant(s: SupplierOrderStatus): SupplierOrderStatusBadgeVariant {
+  return STATUS_BADGE_VARIANTS[s] ?? "neutral";
 }

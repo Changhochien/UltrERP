@@ -1,6 +1,18 @@
 /** Stock adjustment form for recording inventory changes with reason codes. */
 
 import { useState } from "react";
+
+import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayout";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../../components/ui/dialog";
+import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
 import { useWarehouses } from "../hooks/useWarehouses";
 import {
   useReasonCodes,
@@ -43,153 +55,130 @@ export function StockAdjustmentForm() {
   };
 
   return (
-    <section aria-label="Stock adjustment form">
-      <h2>Record Stock Adjustment</h2>
+    <section aria-label="Stock adjustment form" className="space-y-5">
+      <div className="space-y-1">
+        <h2 className="text-xl font-semibold tracking-tight">Record Stock Adjustment</h2>
+        <p className="text-sm text-muted-foreground">Post manual stock movements with warehouse and reason-code control.</p>
+      </div>
 
-      {error && (
-        <div role="alert" style={{ color: "#dc2626", marginBottom: 12 }}>
-          {error}
-        </div>
-      )}
-
-      {result && (
-        <div role="status" style={{ color: "#16a34a", marginBottom: 12 }}>
+      {error ? <SurfaceMessage tone="danger">{error}</SurfaceMessage> : null}
+      {result ? (
+        <SurfaceMessage tone="success" role="status">
           Adjustment recorded. Updated stock: {result.updated_stock} units.
-        </div>
-      )}
+        </SurfaceMessage>
+      ) : null}
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          setShowConfirm(true);
-        }}
-        aria-label="Adjustment form"
-      >
-        <div style={{ marginBottom: 8 }}>
-          <label htmlFor="adj-product">Product ID: </label>
-          <input
-            id="adj-product"
-            type="text"
-            required
-            value={productId}
-            onChange={(e) => setProductId(e.target.value)}
-            placeholder="Enter product UUID"
-          />
-        </div>
-
-        <div style={{ marginBottom: 8 }}>
-          <label htmlFor="adj-warehouse">Warehouse: </label>
-          <select
-            id="adj-warehouse"
-            required
-            value={warehouseId}
-            onChange={(e) => setWarehouseId(e.target.value)}
-          >
-            <option value="">Select warehouse</option>
-            {warehouses.map((wh) => (
-              <option key={wh.id} value={wh.id}>
-                {wh.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div style={{ marginBottom: 8 }}>
-          <label htmlFor="adj-quantity">Quantity change: </label>
-          <input
-            id="adj-quantity"
-            type="number"
-            required
-            value={quantityChange}
-            onChange={(e) => setQuantityChange(Number(e.target.value))}
-            aria-describedby="qty-hint"
-          />
-          <small id="qty-hint" style={{ display: "block", color: "#6b7280" }}>
-            Positive to add, negative to remove
-          </small>
-        </div>
-
-        <div style={{ marginBottom: 8 }}>
-          <label htmlFor="adj-reason">Reason code: </label>
-          <select
-            id="adj-reason"
-            required
-            value={reasonCode}
-            onChange={(e) => setReasonCode(e.target.value)}
-          >
-            <option value="">Select reason</option>
-            {codes.map((rc) => (
-              <option key={rc.value} value={rc.value}>
-                {rc.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div style={{ marginBottom: 8 }}>
-          <label htmlFor="adj-notes">Notes (optional): </label>
-          <textarea
-            id="adj-notes"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            maxLength={1000}
-            rows={2}
-          />
-        </div>
-
-        <button type="submit" disabled={!canSubmit || submitting}>
-          {submitting ? "Submitting…" : "Record Adjustment"}
-        </button>
-      </form>
-
-      {showConfirm && (
-        <div
-          role="dialog"
-          aria-label="Confirm adjustment"
-          aria-modal="true"
-          style={{
-            position: "fixed",
-            inset: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "rgba(0,0,0,0.5)",
+      <SectionCard title="Adjustment Form" description="Enter the product, warehouse, quantity delta, and reason code for the stock change.">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            setShowConfirm(true);
           }}
+          aria-label="Adjustment form"
+          className="grid gap-4"
         >
-          <div
-            style={{
-              background: "#fff",
-              padding: 24,
-              borderRadius: 8,
-              maxWidth: 400,
-            }}
-          >
-            <p>
-              Confirm adjustment of{" "}
-              <strong>
-                {quantityChange > 0 ? "+" : ""}
-                {quantityChange}
-              </strong>{" "}
-              units ({reasonCode})?
-            </p>
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button
-                type="button"
-                onClick={() => setShowConfirm(false)}
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="space-y-2">
+              <span>Product ID</span>
+              <Input
+                id="adj-product"
+                type="text"
+                required
+                value={productId}
+                onChange={(e) => setProductId(e.target.value)}
+                placeholder="Enter product UUID"
+              />
+            </label>
+
+            <label className="space-y-2">
+              <span>Warehouse</span>
+              <select
+                id="adj-warehouse"
+                required
+                value={warehouseId}
+                onChange={(e) => setWarehouseId(e.target.value)}
               >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleSubmit()}
-                disabled={submitting}
-              >
-                Confirm
-              </button>
-            </div>
+                <option value="">Select warehouse</option>
+                {warehouses.map((warehouse) => (
+                  <option key={warehouse.id} value={warehouse.id}>
+                    {warehouse.name}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
-        </div>
-      )}
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="space-y-2">
+              <span>Quantity change</span>
+              <Input
+                id="adj-quantity"
+                type="number"
+                required
+                value={quantityChange}
+                onChange={(e) => setQuantityChange(Number(e.target.value))}
+                aria-describedby="qty-hint"
+              />
+              <small id="qty-hint" className="text-sm text-muted-foreground">
+                Positive to add, negative to remove
+              </small>
+            </label>
+
+            <label className="space-y-2">
+              <span>Reason code</span>
+              <select
+                id="adj-reason"
+                required
+                value={reasonCode}
+                onChange={(e) => setReasonCode(e.target.value)}
+              >
+                <option value="">Select reason</option>
+                {codes.map((reason) => (
+                  <option key={reason.value} value={reason.value}>
+                    {reason.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <label className="space-y-2">
+            <span>Notes (optional)</span>
+            <textarea
+              id="adj-notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              maxLength={1000}
+              rows={3}
+            />
+          </label>
+
+          <div>
+            <Button type="submit" disabled={!canSubmit || submitting}>
+              {submitting ? "Submitting…" : "Record Adjustment"}
+            </Button>
+          </div>
+        </form>
+      </SectionCard>
+
+      <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <DialogContent aria-label="Confirm adjustment">
+          <DialogHeader>
+            <DialogTitle>Confirm adjustment</DialogTitle>
+            <DialogDescription>
+              Confirm adjustment of <strong>{quantityChange > 0 ? "+" : ""}{quantityChange}</strong> units ({reasonCode}).
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setShowConfirm(false)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={() => void handleSubmit()} disabled={submitting}>
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

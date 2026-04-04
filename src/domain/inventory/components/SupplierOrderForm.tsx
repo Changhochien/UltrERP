@@ -1,6 +1,11 @@
 /** Form to create a new supplier order with dynamic line items. */
 
 import { useState } from "react";
+
+import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayout";
+import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table";
 import { useWarehouses } from "../hooks/useWarehouses";
 import {
   useSuppliers,
@@ -72,160 +77,146 @@ export function SupplierOrderForm({
   };
 
   return (
-    <section aria-label="Create supplier order">
-      <h2>New Supplier Order</h2>
+    <section aria-label="Create supplier order" className="space-y-5">
+      <div className="space-y-1">
+        <h2 className="text-xl font-semibold tracking-tight">New Supplier Order</h2>
+        <p className="text-sm text-muted-foreground">Create a supplier PO with warehouse-specific receiving lines.</p>
+      </div>
 
-      {error && (
-        <div role="alert" style={{ color: "#dc2626", marginBottom: 12 }}>
-          {error}
-        </div>
-      )}
+      {error ? <SurfaceMessage tone="danger">{error}</SurfaceMessage> : null}
 
-      <form onSubmit={(e) => void handleSubmit(e)} aria-label="Order form">
-        {/* Header fields */}
-        <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
-          <div>
-            <label htmlFor="so-supplier">Supplier: </label>
-            <select
-              id="so-supplier"
-              required
-              value={supplierId}
-              onChange={(e) => setSupplierId(e.target.value)}
-            >
-              <option value="">Select supplier</option>
-              {suppliers.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+      <form onSubmit={(e) => void handleSubmit(e)} aria-label="Order form" className="space-y-6">
+        <SectionCard title="Order Header" description="Supplier and expected arrival details for the purchase order.">
+          <div className="grid gap-4 md:grid-cols-3">
+            <label className="space-y-2">
+              <span>Supplier</span>
+              <select
+                id="so-supplier"
+                required
+                value={supplierId}
+                onChange={(e) => setSupplierId(e.target.value)}
+              >
+                <option value="">Select supplier</option>
+                {suppliers.map((supplier) => (
+                  <option key={supplier.id} value={supplier.id}>
+                    {supplier.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-2">
+              <span>Order date</span>
+              <Input
+                id="so-date"
+                type="date"
+                required
+                value={orderDate}
+                onChange={(e) => setOrderDate(e.target.value)}
+              />
+            </label>
+
+            <label className="space-y-2">
+              <span>Expected arrival</span>
+              <Input
+                id="so-arrival"
+                type="date"
+                value={expectedArrival}
+                onChange={(e) => setExpectedArrival(e.target.value)}
+              />
+            </label>
+          </div>
+        </SectionCard>
+
+        <SectionCard title="Order Lines" description="Warehouse-scoped line items for the supplier order.">
+          <div className="overflow-hidden rounded-2xl border border-border/80 bg-card/90 shadow-sm">
+            <Table aria-label="Order line items">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Product ID</TableHead>
+                  <TableHead>Warehouse</TableHead>
+                  <TableHead>Quantity</TableHead>
+                  <TableHead>Unit Cost</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {lines.map((line, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell>
+                      <Input
+                        type="text"
+                        required
+                        value={line.product_id}
+                        onChange={(e) => updateLine(idx, { product_id: e.target.value })}
+                        placeholder="Product UUID"
+                        aria-label={`Line ${idx + 1} product`}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <select
+                        required
+                        value={line.warehouse_id}
+                        onChange={(e) => updateLine(idx, { warehouse_id: e.target.value })}
+                        aria-label={`Line ${idx + 1} warehouse`}
+                      >
+                        <option value="">Select</option>
+                        {warehouses.map((warehouse) => (
+                          <option key={warehouse.id} value={warehouse.id}>
+                            {warehouse.name}
+                          </option>
+                        ))}
+                      </select>
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        required
+                        min={1}
+                        value={line.quantity}
+                        onChange={(e) => updateLine(idx, { quantity: Number(e.target.value) })}
+                        aria-label={`Line ${idx + 1} quantity`}
+                        className="w-24"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={line.unit_cost}
+                        onChange={(e) => updateLine(idx, { unit_cost: Number(e.target.value) })}
+                        aria-label={`Line ${idx + 1} unit cost`}
+                        className="w-28"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {lines.length > 1 ? (
+                        <Button type="button" variant="ghost" size="sm" onClick={() => removeLine(idx)} aria-label={`Remove line ${idx + 1}`}>
+                          Remove
+                        </Button>
+                      ) : null}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
 
-          <div>
-            <label htmlFor="so-date">Order date: </label>
-            <input
-              id="so-date"
-              type="date"
-              required
-              value={orderDate}
-              onChange={(e) => setOrderDate(e.target.value)}
-            />
+          <div className="mt-4">
+            <Button type="button" variant="outline" onClick={() => setLines((prev) => [...prev, emptyLine()])}>
+              Add Line
+            </Button>
           </div>
+        </SectionCard>
 
-          <div>
-            <label htmlFor="so-arrival">Expected arrival: </label>
-            <input
-              id="so-arrival"
-              type="date"
-              value={expectedArrival}
-              onChange={(e) => setExpectedArrival(e.target.value)}
-            />
-          </div>
-        </div>
-
-        {/* Line items */}
-        <h3>Order Lines</h3>
-        <table aria-label="Order line items">
-          <thead>
-            <tr>
-              <th>Product ID</th>
-              <th>Warehouse</th>
-              <th>Quantity</th>
-              <th>Unit Cost</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {lines.map((line, idx) => (
-              <tr key={idx}>
-                <td>
-                  <input
-                    type="text"
-                    required
-                    value={line.product_id}
-                    onChange={(e) =>
-                      updateLine(idx, { product_id: e.target.value })
-                    }
-                    placeholder="Product UUID"
-                    aria-label={`Line ${idx + 1} product`}
-                  />
-                </td>
-                <td>
-                  <select
-                    required
-                    value={line.warehouse_id}
-                    onChange={(e) =>
-                      updateLine(idx, { warehouse_id: e.target.value })
-                    }
-                    aria-label={`Line ${idx + 1} warehouse`}
-                  >
-                    <option value="">Select</option>
-                    {warehouses.map((w) => (
-                      <option key={w.id} value={w.id}>
-                        {w.name}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    required
-                    min={1}
-                    value={line.quantity}
-                    onChange={(e) =>
-                      updateLine(idx, { quantity: Number(e.target.value) })
-                    }
-                    style={{ width: 80 }}
-                    aria-label={`Line ${idx + 1} quantity`}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={line.unit_cost}
-                    onChange={(e) =>
-                      updateLine(idx, { unit_cost: Number(e.target.value) })
-                    }
-                    style={{ width: 100 }}
-                    aria-label={`Line ${idx + 1} unit cost`}
-                  />
-                </td>
-                <td>
-                  {lines.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeLine(idx)}
-                      aria-label={`Remove line ${idx + 1}`}
-                      style={{ color: "#dc2626" }}
-                    >
-                      ✕
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <button
-          type="button"
-          onClick={() => setLines((prev) => [...prev, emptyLine()])}
-          style={{ marginTop: 8, marginBottom: 16 }}
-        >
-          + Add Line
-        </button>
-
-        {/* Actions */}
-        <div style={{ display: "flex", gap: 8 }}>
-          <button type="submit" disabled={!canSubmit || submitting}>
+        <div className="flex gap-3">
+          <Button type="submit" disabled={!canSubmit || submitting}>
             {submitting ? "Creating…" : "Create Order"}
-          </button>
-          <button type="button" onClick={onCancel}>
+          </Button>
+          <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
-          </button>
+          </Button>
         </div>
       </form>
     </section>

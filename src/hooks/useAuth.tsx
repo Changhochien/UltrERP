@@ -21,11 +21,28 @@ interface AuthContextValue {
   user: AuthUser | null;
   token: string | null;
   isAuthenticated: boolean;
+  isAuthLoading: boolean;
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+const DEV_AUTO_LOGIN_ENABLED = import.meta.env.DEV
+  && import.meta.env.MODE !== "test"
+  && import.meta.env.VITE_DEV_AUTO_LOGIN === "true";
+
+let devAutoLoginPromise: Promise<{ ok: boolean; error?: string }> | null = null;
+
+function runDevAutoLogin(
+  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>,
+) {
+  devAutoLoginPromise ??= login("admin@ultr.dev", "admin123").finally(() => {
+    devAutoLoginPromise = null;
+  });
+
+  return devAutoLoginPromise;
+}
 
 function decodePayload(token: string): AuthUser | null {
   try {
@@ -54,6 +71,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const user = useMemo(() => (token ? decodePayload(token) : null), [token]);
+  const isAuthenticated = !!user;
+  const [isAuthLoading, setIsAuthLoading] = useState(
+    () => DEV_AUTO_LOGIN_ENABLED && !getStoredToken(),
+  );
 
   useEffect(() => {
     function syncTokenFromStorage() {
@@ -96,6 +117,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(id);
   }, [token]);
 
+  // Dev auto-login: bypass the login form when VITE_DEV_AUTO_LOGIN is set
+  useEffect(() => {
+    if (!DEV_AUTO_LOGIN_ENABLED) {
+      setIsAuthLoading(false);
+      return;
+    }
+    if (isAuthenticated) {
+      setIsAuthLoading(false);
+      return;
+    }
+    runDevAutoLogin(login).finally(() => setIsAuthLoading(false));
+  }, []);
+
   async function login(email: string, password: string): Promise<{ ok: boolean; error?: string }> {
     let resp: Response;
     try {
@@ -128,15 +162,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const value: AuthContextValue = useMemo(
-    () => ({ user, token, isAuthenticated: !!user, login, logout }),
-    [user, token],
+    () => ({ user, token, isAuthenticated: !!user, isAuthLoading, login, logout }),
+    [user, token, isAuthLoading],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
+  const ctx = useOptionalAuth();
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
+}
+
+export function useOptionalAuth(): AuthContextValue | null {
+  return useContext(AuthContext);
 }

@@ -1,6 +1,10 @@
 /** Form for recording a payment without a specific invoice (for reconciliation). */
 
 import { useEffect, useState } from "react";
+
+import { SurfaceMessage } from "../../../components/layout/PageLayout";
+import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
 import type { PaymentMethod } from "../types";
 import type { CustomerSummary } from "../../customers/types";
 import { createUnmatchedPayment } from "../../../lib/api/payments";
@@ -72,16 +76,16 @@ export default function RecordUnmatchedPayment({
 	};
 
 	return (
-		<form onSubmit={handleSubmit} data-testid="record-unmatched-payment-form">
-			<h3>Record Unmatched Payment</h3>
+		<form onSubmit={handleSubmit} data-testid="record-unmatched-payment-form" className="space-y-4">
+			<h3 className="text-base font-semibold tracking-tight">Record Unmatched Payment</h3>
 
-			{formError && (
-				<div role="alert" style={{ color: "red" }}>
+			{formError ? (
+				<SurfaceMessage tone="danger" role="alert">
 					{formError}
-				</div>
-			)}
+				</SurfaceMessage>
+			) : null}
 
-			<div>
+			<div className="space-y-2">
 				<label htmlFor="customer-id">Customer</label>
 				<select
 					id="customer-id"
@@ -98,9 +102,9 @@ export default function RecordUnmatchedPayment({
 				</select>
 			</div>
 
-			<div>
+			<div className="space-y-2">
 				<label htmlFor="unmatched-amount">Amount</label>
-				<input
+				<Input
 					id="unmatched-amount"
 					type="number"
 					step="0.01"
@@ -111,7 +115,7 @@ export default function RecordUnmatchedPayment({
 				/>
 			</div>
 
-			<div>
+			<div className="space-y-2">
 				<label htmlFor="unmatched-method">Payment Method</label>
 				<select
 					id="unmatched-method"
@@ -126,9 +130,9 @@ export default function RecordUnmatchedPayment({
 				</select>
 			</div>
 
-			<div>
+			<div className="space-y-2">
 				<label htmlFor="unmatched-date">Payment Date</label>
-				<input
+				<Input
 					id="unmatched-date"
 					type="date"
 					value={paymentDate}
@@ -137,9 +141,9 @@ export default function RecordUnmatchedPayment({
 				/>
 			</div>
 
-			<div>
+			<div className="space-y-2">
 				<label htmlFor="unmatched-ref">Reference Number</label>
-				<input
+				<Input
 					id="unmatched-ref"
 					type="text"
 					maxLength={100}
@@ -148,7 +152,7 @@ export default function RecordUnmatchedPayment({
 				/>
 			</div>
 
-			<div>
+			<div className="space-y-2">
 				<label htmlFor="unmatched-notes">Notes</label>
 				<textarea
 					id="unmatched-notes"
@@ -158,13 +162,13 @@ export default function RecordUnmatchedPayment({
 				/>
 			</div>
 
-			<div>
-				<button type="submit" disabled={!isValid || isLoading}>
+			<div className="flex gap-3">
+				<Button type="submit" disabled={!isValid || isLoading}>
 					{isLoading ? "Submitting…" : "Record Payment"}
-				</button>
-				<button type="button" onClick={onCancel}>
+				</Button>
+				<Button type="button" variant="outline" onClick={onCancel}>
 					Cancel
-				</button>
+				</Button>
 			</div>
 		</form>
 	);

@@ -1,7 +1,10 @@
 /** Paginated order list with status filter. */
 
 import { useState } from "react";
-import { useOrders, statusLabel, statusColor } from "../hooks/useOrders";
+
+import { DataTable, DataTableToolbar } from "../../../components/layout/DataTable";
+import { Badge } from "../../../components/ui/badge";
+import { useOrders, statusBadgeVariant, statusLabel } from "../hooks/useOrders";
 
 interface OrderListProps {
   onSelect: (orderId: string) => void;
@@ -24,103 +27,80 @@ export function OrderList({ onSelect }: OrderListProps) {
 
   return (
     <section aria-label="Order list">
-      <h2>Orders</h2>
-
-      <div style={{ marginBottom: 12, display: "flex", gap: 8 }}>
-        <label htmlFor="ol-status">Status: </label>
-        <select
-          id="ol-status"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
-          {STATUS_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {error && (
-        <div role="alert" style={{ color: "#dc2626" }}>
-          {error}
-        </div>
-      )}
-
-      {loading && <p aria-busy="true">Loading…</p>}
-
-      {!loading && items.length === 0 && <p>No orders found.</p>}
-
-      {!loading && items.length > 0 && (
-        <>
-          <table aria-label="Orders table">
-            <thead>
-              <tr>
-                <th>Order #</th>
-                <th>Status</th>
-                <th>Total</th>
-                <th>Created</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr
-                  key={item.id}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Order ${item.order_number}`}
-                  onClick={() => onSelect(item.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      onSelect(item.id);
-                    }
-                  }}
-                  style={{ cursor: "pointer" }}
-                >
-                  <td>{item.order_number}</td>
-                  <td>
-                    <span
-                      style={{
-                        color: statusColor(item.status),
-                        fontWeight: 600,
-                      }}
-                    >
-                      {statusLabel(item.status)}
-                    </span>
-                  </td>
-                  <td>${item.total_amount}</td>
-                  <td>{new Date(item.created_at).toLocaleDateString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <div style={{ marginTop: 8 }}>
-            <span>
-              Page {page} · {total} total
-            </span>
-            {page > 1 && (
-              <button
-                type="button"
-                onClick={() => void reload(page - 1)}
-                style={{ marginLeft: 8 }}
+      <DataTable
+        columns={[
+          {
+            id: "order_number",
+            header: "Order #",
+            sortable: true,
+            getSortValue: (item) => item.order_number,
+            cell: (item) => <span className="font-medium">{item.order_number}</span>,
+          },
+          {
+            id: "status",
+            header: "Status",
+            sortable: true,
+            getSortValue: (item) => item.status,
+            cell: (item) => (
+              <Badge variant={statusBadgeVariant(item.status)} className="normal-case tracking-normal">
+                {statusLabel(item.status)}
+              </Badge>
+            ),
+          },
+          {
+            id: "total_amount",
+            header: "Total",
+            sortable: true,
+            getSortValue: (item) => Number(item.total_amount),
+            cell: (item) => `$${item.total_amount}`,
+          },
+          {
+            id: "created_at",
+            header: "Created",
+            sortable: true,
+            getSortValue: (item) => new Date(item.created_at).getTime(),
+            cell: (item) => new Date(item.created_at).toLocaleDateString(),
+          },
+        ]}
+        data={items}
+        loading={loading}
+        error={error}
+        emptyTitle="No orders found."
+        emptyDescription="Adjust the status filter or create a new order."
+        toolbar={(
+          <DataTableToolbar>
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold tracking-tight">Orders</h2>
+              <p className="text-sm text-muted-foreground">Current order pipeline and fulfillment status.</p>
+            </div>
+            <label className="flex flex-col items-start gap-2 text-sm font-medium text-foreground sm:flex-row sm:items-center sm:gap-3">
+              <span>Status:</span>
+              <select
+                id="ol-status"
+                aria-label="Status:"
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+                className="w-full sm:w-44"
               >
-                ← Prev
-              </button>
-            )}
-            {page * pageSize < total && (
-              <button
-                type="button"
-                onClick={() => void reload(page + 1)}
-                style={{ marginLeft: 8 }}
-              >
-                Next →
-              </button>
-            )}
-          </div>
-        </>
-      )}
+                {STATUS_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </DataTableToolbar>
+        )}
+        page={page}
+        pageSize={pageSize}
+        totalItems={total}
+        onPageChange={(nextPage) => {
+          void reload(nextPage);
+        }}
+        getRowId={(item) => item.id}
+        rowLabel={(item) => `Order ${item.order_number}`}
+        onRowClick={(item) => onSelect(item.id)}
+      />
     </section>
   );
 }

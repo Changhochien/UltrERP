@@ -43,7 +43,7 @@ workflowType: 'prd'
 
 **Deployment:** Hybrid topology — one codebase, switchable between solo (local sidecar + PostgreSQL) and team (central server + shared PostgreSQL) via config. MCP endpoint always present.
 
-**Technology:** Tauri 2.x + Vite + React 19 + FastAPI + FastMCP 2.14.6 + PostgreSQL 17 + pgvector + Redis 7 + MinIO
+**Technology:** Tauri 2.x + Vite + React 19 + Tailwind CSS + shadcn/ui + FastAPI + FastMCP 2.14.6 + PostgreSQL 17 + pgvector + Redis 7 + MinIO
 
 **Key constraint:** Clean switch from legacy 鼎新-style ERP. Shadow-mode validation required before old system is retired.
 
@@ -342,6 +342,180 @@ LINE integration scope:
 - Order notifications to staff via LINE Notify/Messaging API
 - Customer can submit orders via LINE BOT (text-based, auto-parsed into Orders module)
 - LINE Pay consideration for future (not MVP)
+
+---
+
+## UI Design
+
+### Stack
+
+- **Styling:** Tailwind CSS v4 — utility-first CSS, design-token-driven, dark-mode ready
+- **Component library:** shadcn/ui — copy-paste Radix UI primitives, fully customizable, no runtime dependency on a component npm package
+- **Icons:** Lucide React — consistent 24px stroke icons, tree-shakeable
+- **Font:** Inter (Google Fonts) — clean sans-serif, optimized for UI density and screen reading
+- **No:** custom CSS files, CSS Modules, styled-components, or any custom design system outside Tailwind tokens
+
+### shadcn/ui Components (MVP)
+
+| Component | Usage |
+|-----------|-------|
+| `Sidebar` + `SidebarMenu` | Primary navigation — collapsible, grouped by domain (Dashboard, Invoices, Customers, Inventory, Orders, Payments, Admin) |
+| `Card` | KPI widgets, list item containers, detail panels |
+| `Table` | Invoice list, customer list, order list, inventory — sortable, paginated |
+| `Badge` | Payment status labels, role badges, alert counts |
+| `Button` | All CTAs — primary, secondary, ghost, destructive variants |
+| `Input` | All form fields |
+| `Select` | Dropdowns (customer, product, tax policy) |
+| `Dialog` | Invoice detail, customer detail, confirmation modals |
+| `Skeleton` | Loading states for all async data |
+| `Separator` | Section dividers |
+| `Avatar` | User role badge in nav |
+| `DropdownMenu` | Nav user menu (role, logout) |
+| `Tabs` | Invoice status filter, dashboard widget tabs |
+| `ScrollArea` | Long lists, modal content overflow |
+| `Sheet` | Mobile sidebar / responsive nav drawer |
+| `Tooltip` | Icon-only nav items, truncated text |
+
+### Design Tokens (Tailwind Config)
+
+```js
+// tailwind.config.ts — design token overrides
+colors: {
+  border: "hsl(var(--border))",
+  input: "hsl(var(--input))",
+  ring: "hsl(var(--ring))",
+  background: "hsl(var(--background))",
+  foreground: "hsl(var(--foreground))",
+  primary: {
+    DEFAULT: "hsl(var(--primary))",   // brand: deep sage green
+    foreground: "hsl(var(--primary-foreground))",
+  },
+  secondary: {
+    DEFAULT: "hsl(var(--secondary))",
+    foreground: "hsl(var(--secondary-foreground))",
+  },
+  muted: {
+    DEFAULT: "hsl(var(--muted))",
+    foreground: "hsl(var(--muted-foreground))",
+  },
+  accent: {
+    DEFAULT: "hsl(var(--accent))",
+    foreground: "hsl(var(--accent-foreground))",
+  },
+  destructive: {
+    DEFAULT: "hsl(var(--destructive))",
+    foreground: "hsl(var(--destructive-foreground))",
+  },
+  border: "hsl(var(--border))",
+  // Taiwan ERP semantic palette
+  success: "hsl(142 71% 35%)",   // green — paid, in-stock
+  warning: "hsl(45 93% 47%)",    // amber — partial, low-stock
+  danger: "hsl(0 72% 51%)",     // red — overdue, critical-stock
+}
+```
+
+### Layout Pattern
+
+```
+┌─────────────────────────────────────────────────────┐
+│  Sidebar (240px)  │  Main Content Area             │
+│                   │                                │
+│  [Logo]           │  [Page Header]                 │
+│  ─────────────    │  ───────────────────────────     │
+│  Dashboard       │  Page content                   │
+│  Invoices        │  (Card / Table / Form)         │
+│  Customers       │                                │
+│  Inventory       │                                │
+│  Orders         │                                │
+│  Payments       │                                │
+│  ─────────────   │                                │
+│  Admin          │                                │
+│  ─────────────   │                                │
+│  [User Avatar]   │                                │
+└─────────────────────────────────────────────────┘
+```
+
+- Sidebar collapses to icon-only rail (64px) on desktop
+- Sidebar becomes a `Sheet` drawer on mobile (< 768px)
+- Main content: max-width 1280px, centered, with 24px padding
+- Page header: breadcrumb + page title + primary action button
+
+### Typography Scale
+
+| Element | Size | Weight |
+|---------|------|--------|
+| Page title (h1) | 2rem/32px | 600 |
+| Section heading (h2) | 1.25rem/20px | 600 |
+| Card title (h3) | 0.875rem/14px uppercase tracking-wide | 600 |
+| Body | 0.875rem/14px | 400 |
+| Caption / muted | 0.75rem/12px | 400 |
+| KPI number | 2.5rem/40px | 700 tabular-nums |
+
+### Color Palette
+
+```
+Primary brand:    #3d6b5e  (deep sage green — primary buttons, active nav)
+Primary hover:     #2d5249
+Background:       #f8faf9  (off-white with slight green tint)
+Surface:          #ffffff  (cards, panels)
+Border:           #e2e8e4  (subtle warm gray)
+Text primary:     #1a2e29  (near-black green)
+Text muted:       #6b7d78  (mid gray-green)
+Success:          #166534  (green — paid, in-stock)
+Warning:         #ca8a04  (amber — partial, low-stock)
+Danger:           #b22222  (red — overdue, critical)
+```
+
+### Dashboard KPI Cards
+
+Each card uses `Card` with:
+- Header: `h3` uppercase + optional badge count
+- Body: KPI number large + label + trend indicator (▲/▼ + %)
+- Footer: optional sparkline or secondary metric
+- States: loading (`Skeleton`), error (red border + message), empty ("No data")
+
+### Forms
+
+- All inputs use `Input` component
+- Labels above inputs, error messages below in `text-destructive`
+- Required fields marked with `*` in label
+- Horizontal layout for 2-column forms (label + input side by side on desktop)
+
+### Tables (Invoice, Customer, Order, Inventory lists)
+
+- `Table` with sticky header
+- Sortable columns — click header to sort asc/desc, arrow indicator
+- Row hover: subtle `bg-muted/40`
+- Pagination: previous/next + page number + page size selector
+- Empty state: centered icon + message
+
+### Dark Mode
+
+- Toggle in sidebar footer (sun/moon icon button)
+- Uses Tailwind's `dark:` variant with CSS variables
+- All components already dark-mode ready via shadcn/ui CSS variable pattern
+
+### Accessibility
+
+- All interactive elements keyboard accessible
+- Focus ring using `ring-offset-background` CSS variable
+- ARIA labels on icon-only buttons
+- Color contrast: WCAG AA minimum (4.5:1 for body text)
+- Screen reader announcements for async state changes
+
+### Migration from Custom CSS
+
+- Remove `src/index.css` entirely after Tailwind is running
+- All custom classes (`.hero-card`, `.kpi-card`, `.app-nav`, etc.) replaced with Tailwind utilities or shadcn components
+- Font family: `font-sans` (Inter) — override `Iowan Old Style`
+
+### Responsive Breakpoints
+
+| Breakpoint | Layout |
+|------------|--------|
+| < 768px (mobile) | Sidebar → Sheet drawer, stacked nav |
+| 768–1024px (tablet) | Sidebar rail (icons only), full content |
+| > 1024px (desktop) | Full sidebar + content |
 
 ---
 

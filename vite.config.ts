@@ -1,5 +1,7 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import path from "path";
 
 const apiProxyTarget = process.env.VITE_API_PROXY_TARGET ?? "http://localhost:8000";
 const buildTarget =
@@ -10,7 +12,12 @@ const buildTarget =
       : "esnext";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [tailwindcss(), react()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
   clearScreen: false,
   server: {
     port: 5173,

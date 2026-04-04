@@ -66,14 +66,21 @@ def parse_api_keys(raw: str) -> dict[str, frozenset[str]]:
 	"""Parse MCP_API_KEYS JSON string into key→scopes mapping.
 
 	Expected format: {"key": ["scope1", "scope2"], ...}
+	A plain non-JSON string is treated as a single admin key for local dev.
 	Returns empty dict if raw is empty.
 	"""
+	raw = raw.strip()
 	if not raw:
 		return {}
 	try:
 		data = json.loads(raw)
 	except json.JSONDecodeError as exc:
+		if raw[0] not in "[{":
+			return {raw: frozenset({"admin"})}
 		logger.warning("MCP_API_KEYS is not valid JSON, starting with no keys: %s", exc)
+		return {}
+	if not isinstance(data, dict):
+		logger.warning("MCP_API_KEYS JSON must be an object, starting with no keys")
 		return {}
 	return {k: frozenset(v) for k, v in data.items()}
 

@@ -2,6 +2,8 @@
 
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
+import { PageHeader, SectionCard } from "../../components/layout/PageLayout";
+import { Button } from "../../components/ui/button";
 import { ORDERS_ROUTE, ORDER_CREATE_ROUTE } from "../../lib/routes";
 import { OrderForm } from "../../domain/orders/components/OrderForm";
 import { OrderList } from "../../domain/orders/components/OrderList";
@@ -31,13 +33,20 @@ export function OrdersPage() {
   }
 
   return (
-    <div>
-      <div style={{ marginBottom: 16 }}>
-        <button type="button" onClick={() => navigate(ORDER_CREATE_ROUTE)}>
-          + New Order
-        </button>
-      </div>
-      <OrderList onSelect={(id) => navigate(`/orders/${id}`)} />
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Orders"
+        title="Orders"
+        description="Track order flow, inspect current pipeline, and jump into fulfillment details."
+        actions={(
+          <Button type="button" onClick={() => navigate(ORDER_CREATE_ROUTE)}>
+            New Order
+          </Button>
+        )}
+      />
+      <SectionCard title="Order Pipeline" description="Filter and sort the current order queue.">
+        <OrderList onSelect={(id) => navigate(`/orders/${id}`)} />
+      </SectionCard>
     </div>
   );
 }

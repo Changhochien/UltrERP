@@ -21,12 +21,9 @@ export function InvoiceTotalsCard({
 	totalAmount,
 }: InvoiceTotalsCardProps) {
 	return (
-		<section
-			data-testid="invoice-totals-card"
-			style={{ padding: 12, border: "1px solid #e5e7eb", borderRadius: 8 }}
-		>
-			<h3>Invoice Totals Preview</h3>
-			<dl>
+		<section data-testid="invoice-totals-card" className="rounded-2xl border border-border/80 bg-muted/25 p-5 shadow-sm">
+			<h3 className="text-base font-semibold tracking-tight">Invoice Totals Preview</h3>
+			<dl className="mt-4 gap-y-4">
 				<dt>Lines</dt>
 				<dd>{lineCount}</dd>
 				<dt>Subtotal</dt>

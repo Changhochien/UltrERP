@@ -14,8 +14,12 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requiredFeature, requiredWrite = false }: ProtectedRouteProps) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isAuthLoading } = useAuth();
   const { canAccess, canWrite } = usePermissions();
+
+  if (isAuthLoading) {
+    return null; // Wait for auto-login or initial token check
+  }
 
   if (!isAuthenticated) {
     return <Navigate to={LOGIN_ROUTE} replace />;

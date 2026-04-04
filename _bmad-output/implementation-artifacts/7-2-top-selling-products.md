@@ -192,3 +192,4 @@ Claude Opus 4.6 (via GitHub Copilot)
 - Date filter uses orders.created_at (TIMESTAMPTZ) cast to date — no order_date field exists
 - Product table name is singular ("product") — verified from model's __tablename__
 - Quantity is Numeric(18,3) supporting fractional units — display precision noted
+- 2026-04-04 follow-up: the authenticated dashboard failure for `GET /api/v1/dashboard/top-products` traced back to the shared tenant helper; switching `set_tenant()` to `SELECT set_config('app.tenant_id', :tid, true)` restored the endpoint.

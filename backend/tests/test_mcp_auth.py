@@ -30,6 +30,12 @@ def test_parse_api_keys_empty_string():
 	assert parse_api_keys("") == {}
 
 
+def test_parse_api_keys_plain_string_defaults_to_admin_scope():
+	"""A plain MCP_API_KEYS value is treated as a single admin key for local dev."""
+	raw = "c8e879b0542be9792207b3a0ee042e13dafa66d786bb9bf1e5779f5b7c53baa0"
+	assert parse_api_keys(raw) == {raw: frozenset({"admin"})}
+
+
 def test_parse_api_keys_invalid_json_returns_empty_dict():
 	"""parse_api_keys logs warning and returns empty dict on malformed JSON."""
 	result = parse_api_keys("{bad json}")

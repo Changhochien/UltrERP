@@ -1,6 +1,7 @@
 import { ProductSearch } from "../domain/inventory/components/ProductSearch";
 import { ReorderAlerts } from "../domain/inventory/components/ReorderAlerts";
 import { WarehouseSelector } from "../domain/inventory/components/WarehouseSelector";
+import { PageHeader, SectionCard } from "../components/layout/PageLayout";
 import {
   WarehouseProvider,
   useWarehouseContext,
@@ -10,22 +11,25 @@ function InventoryWorkspace() {
   const { selectedWarehouse, setSelectedWarehouse } = useWarehouseContext();
 
   return (
-    <section className="hero-card" style={{ width: "min(72rem, 100%)" }}>
-      <h1 style={{ fontSize: "2rem", lineHeight: 1.1 }}>Inventory</h1>
-      <p className="caption">Read-heavy inventory workspace with warehouse filtering and reorder visibility.</p>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Inventory"
+        title="Inventory"
+        description="Warehouse-scoped product search, low-stock monitoring, and exception handling for replenishment."
+      />
 
-      <div style={{ margin: "1rem 0 1.5rem" }}>
+      <SectionCard title="Warehouse Scope" description="Change warehouse context to narrow product search and alert results.">
         <WarehouseSelector
           value={selectedWarehouse}
           onChange={setSelectedWarehouse}
         />
-      </div>
+      </SectionCard>
 
-      <div style={{ display: "grid", gap: "2rem" }}>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <ProductSearch />
         <ReorderAlerts />
       </div>
-    </section>
+    </div>
   );
 }
 

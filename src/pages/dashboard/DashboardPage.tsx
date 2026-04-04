@@ -2,6 +2,8 @@
 
 import { useNavigate } from "react-router-dom";
 
+import { PageHeader, SectionCard } from "../../components/layout/PageLayout";
+import { Button } from "../../components/ui/button";
 import {
   ADMIN_ROUTE,
   CUSTOMERS_ROUTE,
@@ -26,70 +28,68 @@ export function DashboardPage() {
   const { data, isLoading, error } = useRevenueSummary();
   const { canAccess, canWrite } = usePermissions();
 
+  const quickActions = [
+    canAccess("inventory") ? { label: "Inventory", description: "Stock, warehouses, and reorder alerts.", to: INVENTORY_ROUTE } : null,
+    canAccess("customers") ? { label: "Customers", description: "Search accounts and review credit posture.", to: CUSTOMERS_ROUTE } : null,
+    canWrite("customers") ? { label: "New customer", description: "Create a customer record and validate duplicates.", to: CUSTOMER_CREATE_ROUTE } : null,
+    canAccess("invoices") ? { label: "Invoices", description: "Track payment status and issuance progress.", to: INVOICES_ROUTE } : null,
+    canWrite("invoices") ? { label: "New invoice", description: "Issue a B2B or B2C invoice.", to: INVOICE_CREATE_ROUTE } : null,
+    canAccess("orders") ? { label: "Orders", description: "Review order status and fulfillment flow.", to: ORDERS_ROUTE } : null,
+    canWrite("orders") ? { label: "New order", description: "Create a sales order with stock validation.", to: ORDER_CREATE_ROUTE } : null,
+    canAccess("payments") ? { label: "Payments", description: "Reconcile inbound transfers and manual matches.", to: PAYMENTS_ROUTE } : null,
+    canAccess("admin") ? { label: "Admin", description: "Inspect user access and audit history.", to: ADMIN_ROUTE } : null,
+  ].filter((item) => item !== null);
+
   return (
-    <>
-      <section className="hero-card dashboard-hero">
-        <div>
-          <h1>{APP_TITLE}</h1>
-          <p>{APP_TAGLINE}</p>
-          <p className="caption">Operational overview with role-filtered navigation and action controls.</p>
-        </div>
-      </section>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Workspace"
+        title={APP_TITLE}
+        description={`${APP_TAGLINE}. Operational overview with role-filtered shortcuts and live business signals.`}
+        actions={(
+          <div className="flex flex-wrap gap-3">
+            {canWrite("orders") ? (
+              <Button type="button" onClick={() => navigate(ORDER_CREATE_ROUTE)}>
+                New order
+              </Button>
+            ) : null}
+            {canWrite("invoices") ? (
+              <Button type="button" variant="outline" onClick={() => navigate(INVOICE_CREATE_ROUTE)}>
+                New invoice
+              </Button>
+            ) : null}
+          </div>
+        )}
+      />
 
-      <section className="dashboard-grid">
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.9fr)_minmax(0,1fr)]">
         <RevenueCard data={data} isLoading={isLoading} error={error} />
-        <TopProductsCard />
-        <LowStockAlertsCard />
         <VisitorStatsCard />
+        <LowStockAlertsCard />
       </section>
 
-      <nav className="dashboard-actions">
-        {canAccess("inventory") && (
-          <button type="button" onClick={() => navigate(INVENTORY_ROUTE)}>
-            Open Inventory
-          </button>
-        )}
-        {canAccess("customers") && (
-          <button type="button" onClick={() => navigate(CUSTOMERS_ROUTE)}>
-            Browse Customers
-          </button>
-        )}
-        {canWrite("customers") && (
-          <button type="button" onClick={() => navigate(CUSTOMER_CREATE_ROUTE)}>
-            Create Customer
-          </button>
-        )}
-        {canAccess("invoices") && (
-          <button type="button" onClick={() => navigate(INVOICES_ROUTE)}>
-            Browse Invoices
-          </button>
-        )}
-        {canWrite("invoices") && (
-          <button type="button" onClick={() => navigate(INVOICE_CREATE_ROUTE)}>
-            Create Invoice
-          </button>
-        )}
-        {canAccess("orders") && (
-          <button type="button" onClick={() => navigate(ORDERS_ROUTE)}>
-            Browse Orders
-          </button>
-        )}
-        {canWrite("orders") && (
-          <button type="button" onClick={() => navigate(ORDER_CREATE_ROUTE)}>
-            Create Order
-          </button>
-        )}
-        {canAccess("payments") && (
-          <button type="button" onClick={() => navigate(PAYMENTS_ROUTE)}>
-            Open Payments
-          </button>
-        )}
-        {canAccess("admin") && (
-          <button type="button" onClick={() => navigate(ADMIN_ROUTE)}>
-            Open Admin
-          </button>
-        )}
-      </nav>
-    </>
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
+        <TopProductsCard />
+        <SectionCard
+          title="Action Center"
+          description="Daily shortcuts aligned to the capabilities available in your current role."
+          contentClassName="space-y-3"
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            {quickActions.map((action) => (
+              <button
+                key={action.to}
+                type="button"
+                onClick={() => navigate(action.to)}
+                className="rounded-2xl border border-border/80 bg-background px-4 py-4 text-left shadow-sm transition-colors hover:bg-accent"
+              >
+                <p className="text-sm font-semibold text-foreground">{action.label}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{action.description}</p>
+              </button>
+            ))}
+          </div>
+        </SectionCard>
+      </section>
+    </div>
   );
 }

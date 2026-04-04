@@ -143,6 +143,7 @@ UltrERP's React frontend (`src/`) built with Vite currently shows all menu items
 | `src/pages/AdminPage.tsx` | Owner-only users and audit dashboard |
 | `src/lib/authStorage.ts` | Shared token storage helpers and same-window auth sync event |
 | `src/lib/api/admin.ts` | Admin users/audit query helpers |
+| `src/tests/auth/useAuth.devAutoLogin.test.tsx` | Regression coverage for StrictMode dev auto-login deduplication |
 
 ### Modified Files
 | File | Change |
@@ -165,6 +166,7 @@ UltrERP's React frontend (`src/`) built with Vite currently shows all menu items
   - Admin-only visibility is enforced both in navigation and direct route access.
   - 2026-04-04 follow-up: same-window 401/logout handling now uses a shared auth-storage event because browser `storage` events only fire in other browsing contexts.
   - 2026-04-04 follow-up: authenticated users are redirected away from `/login`, and focused coverage now asserts role-filtered navigation plus read/write permission behavior.
+  - 2026-04-04 follow-up: dev auto-login now reuses a shared in-flight promise so React StrictMode no longer fires duplicate `/api/v1/auth/login` requests; focused regression coverage lives in `src/tests/auth/useAuth.devAutoLogin.test.tsx`.
 
 ## Dev Notes
 

@@ -162,3 +162,4 @@ Claude Opus 4.6 (via GitHub Copilot)
 - Click-through navigation depends on product detail route existence — flagged as conditional
 - **Alert freshness limitation documented: alerts persist in DB, may become stale if stock replenished without resolving**
 - **Alert `current_stock` captured at creation time:** The `current_stock` field on `ReorderAlert` is a snapshot from when the alert was created. If stock is replenished without resolving the alert, the dashboard shows stale data. Document this as a known limitation and plan an auto-resolve mechanism in a future story (e.g., background job or trigger that resolves alerts when stock exceeds reorder point).
+- 2026-04-04 follow-up: runtime dashboard failures also exposed a PostgreSQL enum mismatch in `backend/common/models/reorder_alert.py`; the model now binds lowercase enum values via `values_callable`, which restored pending low-stock alert queries.

@@ -3,6 +3,7 @@
 from common.models.approval_request import ApprovalRequest
 from common.models.audit_log import AuditLog
 from common.models.inventory_stock import InventoryStock
+from common.models.legacy_import import LegacyImportRun, LegacyImportTableRun
 from common.models.line_customer_mapping import LineCustomerMapping
 from common.models.order import Order
 from common.models.order_line import OrderLine
@@ -14,14 +15,25 @@ from common.models.supplier import Supplier
 from common.models.supplier_order import SupplierOrder, SupplierOrderLine
 from common.models.user import User
 from common.models.warehouse import Warehouse
+from domains.customers.models import Customer
+from domains.invoices.models import EguiSubmission, Invoice, InvoiceLine, InvoiceNumberRange
+from domains.payments.models import Payment
 
 __all__ = [
 	"ApprovalRequest",
 	"AuditLog",
+	"Customer",
+	"EguiSubmission",
 	"InventoryStock",
+	"Invoice",
+	"InvoiceLine",
+	"InvoiceNumberRange",
+	"LegacyImportRun",
+	"LegacyImportTableRun",
 	"LineCustomerMapping",
 	"Order",
 	"OrderLine",
+	"Payment",
 	"Product",
 	"ReasonCode",
 	"ReorderAlert",

@@ -1,16 +1,28 @@
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 
+import { useAuth } from "../../hooks/useAuth";
 import { refreshInvoiceEguiStatus } from "../../lib/api/invoices";
 import {
   DESKTOP_EGUI_POLL_INTERVAL_MS,
   runDesktopEguiNotificationCycle,
+  synchronizeTrackedEguiScope,
 } from "../../lib/desktop/eguiMonitor";
 import { notifyDesktop } from "../../lib/desktop/notifications";
 import { isDesktopShell, isDesktopWindowVisible } from "../../lib/desktop/window";
 
 export function DesktopTrayController() {
+  const { user } = useAuth();
+
+  useLayoutEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    synchronizeTrackedEguiScope(`${user.tenant_id}:${user.sub}`);
+  }, [user?.sub, user?.tenant_id]);
+
   useEffect(() => {
-    if (!isDesktopShell()) {
+    if (!user || !isDesktopShell()) {
       return undefined;
     }
 
@@ -28,6 +40,7 @@ export function DesktopTrayController() {
           isWindowVisible: isDesktopWindowVisible,
           refreshInvoiceStatus: refreshInvoiceEguiStatus,
           notify: notifyDesktop,
+          shouldContinue: () => !cancelled,
           onError: (message, error) => {
             console.warn(message, error);
           },
@@ -46,7 +59,7 @@ export function DesktopTrayController() {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, []);
+  }, [user?.sub, user?.tenant_id]);
 
   return null;
 }

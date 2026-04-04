@@ -1,11 +1,14 @@
 /** Paginated table of customer summaries. */
 
+import { DataTable } from "../layout/DataTable";
+import { Badge } from "../ui/badge";
 import type { CustomerSummary } from "../../domain/customers/types";
 
 interface Props {
   items: CustomerSummary[];
   page: number;
-  totalPages: number;
+  pageSize: number;
+  totalCount: number;
   onPageChange: (page: number) => void;
   onSelect: (id: string) => void;
 }
@@ -13,54 +16,68 @@ interface Props {
 export function CustomerResultsTable({
   items,
   page,
-  totalPages,
+  pageSize,
+  totalCount,
   onPageChange,
   onSelect,
 }: Props) {
-  return (
-    <div className="results-table-wrapper">
-      <table className="results-table">
-        <thead>
-          <tr>
-            <th>Company Name</th>
-            <th>BAN</th>
-            <th>Phone</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.length === 0 ? (
-            <tr>
-              <td colSpan={4} className="empty-row">
-                No customers found.
-              </td>
-            </tr>
-          ) : (
-            items.map((c) => (
-              <tr key={c.id} onClick={() => onSelect(c.id)} className="clickable-row">
-                <td>{c.company_name}</td>
-                <td>{c.normalized_business_number}</td>
-                <td>{c.contact_phone}</td>
-                <td>{c.status}</td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+  const statusVariant = (status: string) => {
+    switch (status) {
+      case "active":
+        return "success" as const;
+      case "suspended":
+        return "warning" as const;
+      default:
+        return "outline" as const;
+    }
+  };
 
-      {totalPages > 1 && (
-        <div className="pagination">
-          <button disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
-            ← Prev
-          </button>
-          <span>
-            Page {page} of {totalPages}
-          </span>
-          <button disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
-            Next →
-          </button>
-        </div>
-      )}
-    </div>
+  return (
+    <DataTable
+      columns={[
+        {
+          id: "company_name",
+          header: "Company Name",
+          sortable: true,
+          getSortValue: (customer) => customer.company_name,
+          cell: (customer) => <span className="font-medium">{customer.company_name}</span>,
+        },
+        {
+          id: "normalized_business_number",
+          header: "BAN",
+          sortable: true,
+          getSortValue: (customer) => customer.normalized_business_number,
+          cell: (customer) => customer.normalized_business_number,
+        },
+        {
+          id: "contact_phone",
+          header: "Phone",
+          sortable: true,
+          getSortValue: (customer) => customer.contact_phone,
+          cell: (customer) => customer.contact_phone,
+        },
+        {
+          id: "status",
+          header: "Status",
+          sortable: true,
+          getSortValue: (customer) => customer.status,
+          cell: (customer) => (
+            <Badge variant={statusVariant(customer.status)} className="normal-case tracking-normal">
+              {customer.status}
+            </Badge>
+          ),
+        },
+      ]}
+      data={items}
+      emptyTitle="No customers found."
+      emptyDescription="Try broadening your search or clearing the status filter."
+      page={page}
+      pageSize={pageSize}
+      totalItems={totalCount}
+      onPageChange={onPageChange}
+      getRowId={(customer) => customer.id}
+      rowLabel={(customer) => `Customer ${customer.company_name}`}
+      onRowClick={(customer) => onSelect(customer.id)}
+    />
   );
 }

@@ -1,6 +1,6 @@
 /** Role-based permission checker. */
 
-import { useAuth } from "./useAuth";
+import { useOptionalAuth } from "./useAuth";
 
 export type AppFeature =
   | "dashboard"
@@ -14,6 +14,15 @@ export type AppFeature =
 type PermissionLevel = "read" | "write";
 
 const ROLE_PERMISSIONS: Record<string, Partial<Record<AppFeature, PermissionLevel>>> = {
+  admin: {
+    dashboard: "write",
+    inventory: "write",
+    customers: "write",
+    invoices: "write",
+    orders: "write",
+    payments: "write",
+    admin: "write",
+  },
   owner: {
     dashboard: "write",
     inventory: "write",
@@ -44,7 +53,8 @@ const ROLE_PERMISSIONS: Record<string, Partial<Record<AppFeature, PermissionLeve
 };
 
 export function usePermissions() {
-  const { user } = useAuth();
+  const auth = useOptionalAuth();
+  const user = auth?.user ?? null;
 
   function canAccess(feature: AppFeature): boolean {
     if (!user) return false;

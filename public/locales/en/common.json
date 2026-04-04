@@ -1,0 +1,20 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "inventory": "Inventory",
+    "customers": "Customers",
+    "invoices": "Invoices",
+    "orders": "Orders",
+    "payments": "Payments",
+    "admin": "Admin"
+  },
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "noData": "No data available"
+  }
+}

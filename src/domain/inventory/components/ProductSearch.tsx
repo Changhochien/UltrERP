@@ -1,88 +1,97 @@
 /** Product search with virtualized results list. */
 
-import type { ReactElement } from "react";
-import { List, type RowComponentProps } from "react-window";
+import { Search } from "lucide-react";
+
+import { DataTable, DataTableToolbar } from "../../../components/layout/DataTable";
+import { SectionCard } from "../../../components/layout/PageLayout";
+import { Badge } from "../../../components/ui/badge";
+import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
 import { useProductSearch } from "../hooks/useProductSearch";
 import { useWarehouseContext } from "../context/WarehouseContext";
-import type { ProductSearchResult } from "../types";
-
-const ROW_HEIGHT = 48;
-const LIST_HEIGHT = 480;
-
-interface CustomRowProps {
-  items: ProductSearchResult[];
-}
-
-function Row({
-  index,
-  style,
-  items,
-}: RowComponentProps<CustomRowProps>): ReactElement {
-  const item = items[index];
-  return (
-    <div style={{ ...style, display: "flex", alignItems: "center", gap: 12 }}>
-      <span style={{ width: 120, fontFamily: "monospace" }}>{item.code}</span>
-      <span style={{ flex: 1 }}>{item.name}</span>
-      <span style={{ width: 80 }}>{item.category ?? "—"}</span>
-      <span style={{ width: 60, textAlign: "right" }}>
-        {item.current_stock}
-      </span>
-    </div>
-  );
-}
 
 export function ProductSearch() {
-  const { results, loading, error, search } = useProductSearch();
+  const { query, results, loading, error, search } = useProductSearch();
   const { selectedWarehouse } = useWarehouseContext();
+  const trimmedQuery = query.trim();
+  const hasSearchQuery = trimmedQuery.length >= 3;
 
   return (
-    <div>
-      <h2>Product Search</h2>
-      <input
-        type="search"
-        placeholder="Search by code or name (min 3 chars)…"
-        onChange={(e) => search(e.target.value, selectedWarehouse?.id)}
-        aria-label="Search products"
-      />
-
-      {loading && <p>Searching…</p>}
-      {error && (
-        <p className="error">
-          {error}{" "}
-          <button type="button" onClick={() => search("", selectedWarehouse?.id)}>
-            Retry
-          </button>
-        </p>
-      )}
-
-      {!loading && !error && results.length === 0 && (
-        <p>No results found.</p>
-      )}
-
-      {results.length > 0 && (
-        <>
-          <div
-            style={{
-              display: "flex",
-              fontWeight: "bold",
-              gap: 12,
-              padding: "4px 0",
-            }}
-          >
-            <span style={{ width: 120 }}>Code</span>
-            <span style={{ flex: 1 }}>Name</span>
-            <span style={{ width: 80 }}>Category</span>
-            <span style={{ width: 60, textAlign: "right" }}>Stock</span>
+    <SectionCard title="Product Search" description="Search by code or name and review current stock by warehouse scope.">
+      <DataTable
+        columns={[
+          {
+            id: "code",
+            header: "Code",
+            sortable: true,
+            getSortValue: (item) => item.code,
+            cell: (item) => <span className="font-mono text-sm">{item.code}</span>,
+          },
+          {
+            id: "name",
+            header: "Name",
+            sortable: true,
+            getSortValue: (item) => item.name,
+            cell: (item) => <span className="font-medium">{item.name}</span>,
+          },
+          {
+            id: "category",
+            header: "Category",
+            sortable: true,
+            getSortValue: (item) => item.category ?? "",
+            cell: (item) => item.category ?? "—",
+          },
+          {
+            id: "current_stock",
+            header: "Stock",
+            sortable: true,
+            getSortValue: (item) => item.current_stock,
+            cell: (item) => item.current_stock,
+          },
+          {
+            id: "status",
+            header: "Status",
+            sortable: true,
+            getSortValue: (item) => item.status,
+            cell: (item) => (
+              <Badge variant={item.status === "active" ? "success" : "outline"} className="normal-case tracking-normal">
+                {item.status}
+              </Badge>
+            ),
+          },
+        ]}
+        data={results}
+        loading={loading}
+        error={error ? (
+          <div className="flex items-center gap-3">
+            <span>{error}</span>
+            <Button type="button" size="sm" variant="outline" onClick={() => search(trimmedQuery, selectedWarehouse?.id)}>
+              Retry
+            </Button>
           </div>
-          <List<CustomRowProps>
-            rowComponent={Row}
-            rowCount={results.length}
-            rowHeight={ROW_HEIGHT}
-            rowProps={{ items: results }}
-            style={{ height: LIST_HEIGHT }}
-          />
-        </>
-      )}
-    </div>
+        ) : undefined}
+        emptyTitle={hasSearchQuery ? "No matching products." : "Start a product search."}
+        emptyDescription={hasSearchQuery ? "Try a broader keyword or switch warehouse scope." : "Search by code or name with at least 3 characters."}
+        toolbar={(
+          <DataTableToolbar>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Warehouse scope: {selectedWarehouse?.name ?? "All warehouses"}</p>
+            </div>
+            <div className="relative w-full max-w-md">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search by code or name (min 3 chars)…"
+                onChange={(event) => search(event.target.value, selectedWarehouse?.id)}
+                aria-label="Search products"
+                className="pl-9"
+              />
+            </div>
+          </DataTableToolbar>
+        )}
+        summary={results.length > 0 ? `${results.length} matching products` : undefined}
+        getRowId={(item) => item.id}
+      />
+    </SectionCard>
   );
 }

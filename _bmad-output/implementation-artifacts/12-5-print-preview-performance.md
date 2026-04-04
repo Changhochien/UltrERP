@@ -1,6 +1,6 @@
 # Story 12.5: Print Preview Performance
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -30,26 +30,34 @@ So that I can verify layout quickly before printing.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Add a real baseline measurement for preview-open time** (AC1)
-  - [ ] Instrument the preview-open path with browser performance marks or equivalent timing hooks
-  - [ ] Measure from user action to preview-ready state, not to `window.print()`
-  - [ ] Record the exact metric definition in code comments or implementation notes so future measurements stay comparable
+- [x] **Task 1: Add a real baseline measurement for preview-open time** (AC1)
+  - [x] Instrument the preview-open path with browser performance marks or equivalent timing hooks
+  - [x] Measure from user action to preview-ready state, not to `window.print()`
+  - [x] Record the exact metric definition in code comments or implementation notes so future measurements stay comparable
 
-- [ ] **Task 2: Optimize the existing preview path instead of rebuilding it** (AC1, AC2, AC3)
-  - [ ] Start from `src/components/invoices/print/InvoicePrintPreviewModal.tsx`
-  - [ ] Keep `src/components/invoices/print/InvoicePrintSheet.tsx` as the rendering source of truth
-  - [ ] Reduce avoidable work on preview open: repeated derived-data assembly, unnecessary remount churn, or layout thrash
-  - [ ] If code-splitting or prefetch is introduced, make sure it still improves the measured open-to-preview time rather than only moving the work elsewhere
+- [x] **Task 2: Optimize the existing preview path instead of rebuilding it** (AC1, AC2, AC3)
+  - [x] Start from `src/components/invoices/print/InvoicePrintPreviewModal.tsx`
+  - [x] Keep `src/components/invoices/print/InvoicePrintSheet.tsx` as the rendering source of truth
+  - [x] Reduce avoidable work on preview open: repeated derived-data assembly, unnecessary remount churn, or layout thrash
+  - [x] If code-splitting or prefetch is introduced, make sure it still improves the measured open-to-preview time rather than only moving the work elsewhere
 
-- [ ] **Task 3: Precompute print payload where it actually helps** (AC1, AC3)
-  - [ ] Reuse or extend `src/lib/print/invoices.ts` for print-readiness and payload-preparation work
-  - [ ] Avoid doing expensive data shaping repeatedly during modal mount if it can be derived earlier from stable invoice data
-  - [ ] Keep the optimization localized to the print flow; do not leak preview-only concerns into unrelated invoice screens
+- [x] **Task 3: Precompute print payload where it actually helps** (AC1, AC3)
+  - [x] Reuse or extend `src/lib/print/invoices.ts` for print-readiness and payload-preparation work
+  - [x] Avoid doing expensive data shaping repeatedly during modal mount if it can be derived earlier from stable invoice data
+  - [x] Keep the optimization localized to the print flow; do not leak preview-only concerns into unrelated invoice screens
 
-- [ ] **Task 4: Add focused validation for large preview fixtures** (AC1, AC3)
-  - [ ] Add a component test or fixture-driven render check for a representative large invoice
-  - [ ] Add a manual performance validation recipe using realistic invoice data and documented target hardware
-  - [ ] Explicitly exclude the native print dialog from the timing contract
+- [x] **Task 4: Add focused validation for large preview fixtures** (AC1, AC3)
+  - [x] Add a component test or fixture-driven render check for a representative large invoice
+  - [x] Add a manual performance validation recipe using realistic invoice data and documented target hardware
+  - [x] Explicitly exclude the native print dialog from the timing contract
+
+### Review Findings
+
+- [x] [Review][Patch] Recover the lazy preview shell loader after transient chunk failures [src/lib/print/invoices.ts:38]
+- [x] [Review][Patch] Handle thrown customer preload failures without trapping the preview button in loading state [src/domain/invoices/components/InvoiceDetail.tsx:53]
+- [x] [Review][Patch] Provide a retryable preview preparation path instead of a sticky session-long outage [src/domain/invoices/components/InvoiceDetail.tsx:127]
+- [x] [Review][Patch] Prevent repeated clicks from corrupting preview timing marks [src/domain/invoices/components/InvoiceDetail.tsx:123]
+- [x] [Review][Patch] Clear stale preview timing measures before recording the next run [src/lib/print/invoices.ts:91]
 
 ## Dev Notes
 
@@ -99,3 +107,22 @@ GitHub Copilot (GPT-5.4)
 - Story 12.5 was framed as a performance-optimization story because the preview already exists in production code.
 - The timing contract explicitly excludes the native print dialog, matching the PRD wording.
 - Renderer drift is prevented by keeping the shared print sheet as the single source of truth.
+- Story 12.5 now opens print preview from invoice detail through a measured click-to-preview-ready path instead of relying on an unused standalone modal.
+- The preview shell is lazy-loaded and prefetched from invoice detail, while customer print payload is prepared ahead of modal mount through `src/lib/print/invoices.ts` and the existing customer detail API.
+- Focused validation passed with `pnpm exec vitest run src/domain/invoices/__tests__/InvoiceDetail.test.tsx src/tests/invoices/InvoicePrintPreviewModal.test.tsx src/tests/invoices/InvoicePrintSheet.test.tsx`, and broader frontend validation passed with `pnpm test`, `pnpm lint`, and `pnpm build`.
+- The manual target-hardware validation recipe now lives in `docs/superpowers/specs/2026-04-04-print-preview-performance.md`; the emitted User Timing measure is `ultrerp:invoice-print-preview-open`.
+- Story 12.5 review follow-up hardened the preview-open lifecycle: chunk-load failures now recover, thrown customer-preload failures no longer strand the button, retry is explicit, repeated clicks cannot overwrite an in-flight timing sample, and stale User Timing measures are cleared before the next run.
+
+### Change Log
+
+- 2026-04-04: Added a real invoice-detail print preview open path with User Timing instrumentation, lazy-loaded preview shell prefetch, precomputed customer print payload, large-fixture preview coverage, and a manual performance validation runbook.
+- 2026-04-04: Addressed Story 12.5 code review findings by hardening preview-shell recovery, retry behavior, and timing-measure lifecycle.
+
+### File List
+
+- docs/superpowers/specs/2026-04-04-print-preview-performance.md
+- src/components/invoices/print/InvoicePrintPreviewModal.tsx
+- src/domain/invoices/__tests__/InvoiceDetail.test.tsx
+- src/domain/invoices/components/InvoiceDetail.tsx
+- src/lib/print/invoices.ts
+- src/tests/invoices/InvoicePrintPreviewModal.test.tsx

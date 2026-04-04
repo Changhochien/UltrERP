@@ -1,10 +1,15 @@
 /** Supplier order list with status filtering. */
 
 import { useState } from "react";
+
+import { DataTable, DataTableToolbar } from "../../../components/layout/DataTable";
+import { SectionCard } from "../../../components/layout/PageLayout";
+import { Badge } from "../../../components/ui/badge";
+import { Button } from "../../../components/ui/button";
 import {
+  statusBadgeVariant,
   useSupplierOrders,
   statusLabel,
-  statusColor,
 } from "../hooks/useSupplierOrders";
 import type { SupplierOrderStatus } from "../types";
 
@@ -34,118 +39,120 @@ export function SupplierOrderList({
   });
 
   return (
-    <section aria-label="Supplier orders">
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 16,
-        }}
-      >
-        <h2>Supplier Orders</h2>
-        <button type="button" onClick={onCreateNew}>
-          + New Order
-        </button>
-      </div>
-
-      {/* Filters */}
-      <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-        <label>
-          Status:{" "}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            aria-label="Filter by order status"
-          >
-            {STATUS_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <button type="button" onClick={() => void reload()}>
-          Refresh
-        </button>
-      </div>
-
-      {error && (
-        <div role="alert" style={{ color: "#dc2626", marginBottom: 12 }}>
-          {error}
-        </div>
+    <SectionCard
+      title="Supplier Orders"
+      description="Track supplier purchase orders, shipment progress, and expected arrival timing."
+      actions={(
+        <Button type="button" onClick={onCreateNew}>
+          New Order
+        </Button>
       )}
-
-      {loading && <p aria-busy="true">Loading orders…</p>}
-
-      {!loading && items.length === 0 && <p>No supplier orders found.</p>}
-
-      {items.length > 0 && (
-        <>
-          <p style={{ marginBottom: 8 }}>
-            Showing {items.length} of {total} orders
-          </p>
-          <table aria-label="Supplier orders list">
-            <thead>
-              <tr>
-                <th>Order #</th>
-                <th>Supplier</th>
-                <th>Status</th>
-                <th>Order Date</th>
-                <th>Expected Arrival</th>
-                <th>Lines</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((order) => (
-                <tr key={order.id}>
-                  <td style={{ fontFamily: "monospace" }}>
-                    {order.order_number}
-                  </td>
-                  <td>{order.supplier_name}</td>
-                  <td>
-                    <span
-                      style={{
-                        padding: "2px 8px",
-                        borderRadius: 4,
-                        fontSize: "0.85em",
-                        color: "#fff",
-                        backgroundColor: statusColor(
-                          order.status as SupplierOrderStatus,
-                        ),
-                      }}
-                    >
-                      {statusLabel(order.status as SupplierOrderStatus)}
-                    </span>
-                  </td>
-                  <td>
-                    {new Date(order.order_date).toLocaleDateString()}
-                  </td>
-                  <td>
-                    {order.expected_arrival_date
-                      ? new Date(
-                          order.expected_arrival_date,
-                        ).toLocaleDateString()
-                      : "—"}
-                  </td>
-                  <td style={{ textAlign: "center" }}>{order.line_count}</td>
-                  <td>
-                    <button
-                      type="button"
-                      onClick={() => onSelect(order.id)}
-                      aria-label={`View order ${order.order_number}`}
-                    >
-                      View
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </>
-      )}
-    </section>
+    >
+      <DataTable
+        columns={[
+          {
+            id: "order_number",
+            header: "Order #",
+            sortable: true,
+            getSortValue: (order) => order.order_number,
+            cell: (order) => <span className="font-mono text-sm">{order.order_number}</span>,
+          },
+          {
+            id: "supplier_name",
+            header: "Supplier",
+            sortable: true,
+            getSortValue: (order) => order.supplier_name,
+            cell: (order) => <span className="font-medium">{order.supplier_name}</span>,
+          },
+          {
+            id: "status",
+            header: "Status",
+            sortable: true,
+            getSortValue: (order) => order.status,
+            cell: (order) => (
+              <Badge variant={statusBadgeVariant(order.status as SupplierOrderStatus)} className="normal-case tracking-normal">
+                {statusLabel(order.status as SupplierOrderStatus)}
+              </Badge>
+            ),
+          },
+          {
+            id: "order_date",
+            header: "Order Date",
+            sortable: true,
+            getSortValue: (order) => order.order_date,
+            cell: (order) => new Date(order.order_date).toLocaleDateString(),
+          },
+          {
+            id: "expected_arrival_date",
+            header: "Expected Arrival",
+            sortable: true,
+            getSortValue: (order) => order.expected_arrival_date ?? "",
+            cell: (order) => order.expected_arrival_date
+              ? new Date(order.expected_arrival_date).toLocaleDateString()
+              : "—",
+          },
+          {
+            id: "line_count",
+            header: "Lines",
+            sortable: true,
+            getSortValue: (order) => order.line_count,
+            cell: (order) => order.line_count,
+          },
+          {
+            id: "actions",
+            header: "Action",
+            cell: (order) => (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onSelect(order.id);
+                }}
+                aria-label={`View order ${order.order_number}`}
+              >
+                View
+              </Button>
+            ),
+          },
+        ]}
+        data={items}
+        loading={loading}
+        error={error}
+        emptyTitle="No supplier orders found."
+        emptyDescription="Create a new supplier order or broaden the status filter."
+        toolbar={(
+          <DataTableToolbar>
+            <div className="text-sm text-muted-foreground">
+              {items.length > 0 ? `Showing ${items.length} of ${total} orders` : "Filter supplier orders by operational status."}
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <label className="flex flex-col items-start gap-2 text-sm font-medium text-foreground sm:flex-row sm:items-center sm:gap-3">
+                <span>Status</span>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  aria-label="Filter by order status"
+                  className="w-full sm:w-48"
+                >
+                  {STATUS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => void reload()}>
+                Refresh
+              </Button>
+            </div>
+          </DataTableToolbar>
+        )}
+        getRowId={(order) => order.id}
+        rowLabel={(order) => `Supplier order ${order.order_number}`}
+        onRowClick={(order) => onSelect(order.id)}
+      />
+    </SectionCard>
   );
 }

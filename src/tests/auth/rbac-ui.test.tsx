@@ -5,6 +5,8 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AppNavigation } from "../../components/AppNavigation";
+import { ThemeProvider } from "../../components/theme/ThemeProvider";
+import { SidebarProvider } from "../../components/ui/sidebar";
 import { AuthProvider, useAuth } from "../../hooks/useAuth";
 import { type AppFeature, usePermissions } from "../../hooks/usePermissions";
 import { ProtectedRoute } from "../../components/ProtectedRoute";
@@ -50,7 +52,9 @@ function AuthDisplay() {
 function renderWithAuth(ui: React.ReactElement, { route = "/" } = {}) {
   return render(
     <MemoryRouter initialEntries={[route]}>
-      <AuthProvider>{ui}</AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>{ui}</AuthProvider>
+      </ThemeProvider>
     </MemoryRouter>,
   );
 }
@@ -140,7 +144,11 @@ describe("usePermissions", () => {
 describe("AppNavigation", () => {
   it("filters menu items by role", () => {
     setTestToken("finance");
-    renderWithAuth(<AppNavigation />);
+    renderWithAuth(
+      <SidebarProvider>
+        <AppNavigation />
+      </SidebarProvider>,
+    );
 
     expect(screen.getByRole("link", { name: "Dashboard" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Customers" })).toBeTruthy();
