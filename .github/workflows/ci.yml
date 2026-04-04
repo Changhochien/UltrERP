@@ -58,6 +58,7 @@ jobs:
           --health-retries 5
     env:
       DATABASE_URL: postgresql+asyncpg://ultr_erp@localhost:5432/ultr_erp
+      JWT_SECRET: ci-test-secret-at-least-32-characters-long
     defaults:
       run:
         working-directory: backend

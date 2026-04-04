@@ -11,12 +11,12 @@ development_status:
   # Epic 1 - Project Foundation
   epic-1:
     status: "completed"
-    validation_note: "Implemented, re-reviewed, and revalidated on 2026-04-01 via pnpm test/lint/build, backend pytest/ruff, Alembic upgrade, runtime health checks, Vite proxy verification, pg_isready, and shell syntax checks. The Epic 1 review cycle also closed the restore-target asymmetry in Story 1.4, restored the shared backend deps scaffold for Story 1.2, made root/backend .env loading explicit for Stories 1.1 and 1.5, documented the full Alembic command surface for Story 1.7, and updated backend CI to provision PostgreSQL 17 and run Alembic before pytest for Story 1.3."
+    validation_note: "Implemented, re-reviewed, and revalidated on 2026-04-01 via pnpm test/lint/build, backend pytest/ruff, Alembic upgrade, runtime health checks, Vite proxy verification, pg_isready, and shell syntax checks. A follow-up Epic 1 review on 2026-04-03 found that fresh-clone backend bootstrap still depended on an undeclared JWT_SECRET, so `.env.example`, README bootstrap instructions, and backend CI were updated to seed/document that requirement explicitly. The Epic 1 review cycle also closed the restore-target asymmetry in Story 1.4, restored the shared backend deps scaffold for Story 1.2, made root/backend .env loading explicit for Stories 1.1 and 1.5, documented the full Alembic command surface for Story 1.7, and updated backend CI to provision PostgreSQL 17 and run Alembic before pytest for Story 1.3."
     stories:
       1-1-developer-environment-setup:
         status: "completed"
         story_id: "1.1"
-        validation: "README/bootstrap flow documented and reconciled to pnpm 10.5.2; root and backend .env loading now match the documented setup flow; validation stack rerun clean"
+        validation: "README/bootstrap flow documented and reconciled to pnpm 10.5.2; root and backend .env loading now match the documented setup flow; follow-up review added explicit `.env.example` copy plus JWT secret bootstrap so fresh clones do not depend on ambient shell state; validation stack rerun clean"
       1-2-project-structure:
         status: "completed"
         story_id: "1.2"
@@ -24,7 +24,7 @@ development_status:
       1-3-ci-cd-pipeline:
         status: "completed"
         story_id: "1.3"
-        validation: "workflow pins pnpm 10.5.2, mirrors validated local commands, provisions PostgreSQL 17 for backend CI, runs Alembic before pytest, and passes YAML diagnostics"
+        validation: "workflow pins pnpm 10.5.2, mirrors validated local commands, provisions PostgreSQL 17 for backend CI, runs Alembic before pytest, seeds JWT_SECRET for backend config/Alembic startup, and passes YAML diagnostics"
       1-4-cloud-backup-strategy:
         status: "completed"
         story_id: "1.4"
@@ -32,7 +32,7 @@ development_status:
       1-5-fastapi-backend-foundation:
         status: "completed"
         story_id: "1.5"
-        validation: "FastAPI app, CORS, and health endpoint validated locally; backend settings now load documented root/backend .env files; backend pytest/ruff pass cleanly"
+        validation: "FastAPI app, CORS, and health endpoint validated locally; backend settings now load documented root/backend .env files, including the required JWT secret bootstrap; backend pytest/ruff pass cleanly for the Epic 1 slice"
       1-6-react-frontend-foundation:
         status: "completed"
         story_id: "1.6"
@@ -48,8 +48,8 @@ development_status:
 
   # Epic 2 - Invoice Lifecycle
   epic-2:
-    status: "in-progress"
-    validation_note: "Revalidated against Epic 2 compliance review - 2026-03-31; Stories 2.2 and 2.6 remain blocked by missing approved stationery reference asset"
+    status: "blocked"
+    validation_note: "Revalidated on 2026-04-03 against the implemented invoice backend and frontend surfaces. Story 2.1's missing finance-clerk create UI and Story 2.5's missing archival workflow integration were implemented and revalidated via focused frontend tests/lint plus backend pytest/ruff. Stories 2.2 and 2.6 remain blocked by the missing approved stationery reference asset."
     recommended_execution_order:
       - "2.1 Create MIG-Ready Invoice Snapshot"
       - "2.4 Validate Invoice Totals and Rounding"
@@ -61,9 +61,9 @@ development_status:
     stories:
       2-1-create-invoice-with-line-items:
         title: "Create MIG-Ready Invoice Snapshot"
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "2.1"
-        validation: "updated for government-issued range allocation, buyer snapshot rules, and MIG 4.1 field requirements"
+        validation: "Backend invoice issuance flow is implemented and the finance-clerk create-invoice UI is now mounted with line editing, totals preview, POST submission, and focused frontend test/lint coverage"
         prerequisites: []
       2-2-print-invoice:
         title: "Preview and Print on Approved Stationery"
@@ -73,21 +73,21 @@ development_status:
         prerequisites: ["2.1", "2.4", "approved-stationery-reference-asset"]
       2-3-void-invoice:
         title: "Void Invoice Before Filing Deadline"
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "2.3"
         validation: "updated to regulatory void-window rule with explicit audit and outbox linkage"
         prerequisites: ["2.1"]
       2-4-invoice-totals-validation:
         title: "Validate Invoice Totals and Rounding"
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "2.4"
         validation: "updated for per-line validation, ROUND_HALF_UP, and persisted pricing-mode handling"
         prerequisites: ["2.1"]
       2-5-store-invoice-artifacts-minio:
         title: "Archive MIG 4.1 XML in MinIO"
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "2.5"
-        validation: "updated with explicit invoice_artifacts schema and environment-aware retention strategy"
+        validation: "MIG 4.1 XML archival is now wired into invoice issuance, persists invoice_artifacts metadata with environment-aware storage policy and retention handling, and passes focused backend pytest plus Ruff validation"
         prerequisites: ["2.1", "2.4", "2.7"]
       2-6-export-invoice-pdf:
         title: "Export PDF from Shared Invoice Renderer"
@@ -97,15 +97,15 @@ development_status:
         prerequisites: ["2.2", "2.4", "approved-stationery-reference-asset"]
       2-7-invoice-immutability:
         title: "Enforce Immutable Invoice Content"
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "2.7"
         validation: "updated with explicit immutable field inventory and mandatory DB enforcement"
         prerequisites: ["2.1", "2.3"]
 
   # Epic 3 - Customer Management
   epic-3:
-    status: "in-progress"
-    validation_note: "Revalidated on 2026-04-01 against PRD, architecture, UI/UX research, repo PoCs, and web-checked Taiwan business-number guidance; added the missing update story, corrected stale checksum wording in supporting docs, and cleared the final rerun with no material Epic 3 blockers."
+    status: "completed"
+    validation_note: "Revalidated on 2026-04-03 against the implemented customer backend/frontend surfaces. The only concrete defect found in the focused Epic 3 rerun was a shared test JWT helper signing API-test tokens with a stale secret, which caused false 401s on all customer API tests; the helper now uses the app-configured JWT secret. Focused validation finished green with 92 backend customer tests and 160 frontend tests passing."
     recommended_execution_order:
       - "3.2 Validate Taiwan Business Number Checksum"
       - "3.3 Create Customer Record"
@@ -121,33 +121,33 @@ development_status:
         prerequisites: []
       3-3-create-customer-record:
         title: "Create Customer Record"
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "3.3"
-        validation: "updated for tenant-aware customer model, contact fields, and credit-limit storage without order-time enforcement"
+        validation: "Customer create backend/API/UI are implemented with Taiwan-localized validation, stable customer IDs, tenant-aware persistence, and passing service, API, and frontend create-flow coverage"
         prerequisites: ["3.2"]
       3-1-search-and-browse-customers:
         title: "Search and Browse Customers"
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "3.1"
-        validation: "updated for browse/detail flow, FR50 pagination-or-virtualization guardrails, and MCP list/get alignment"
+        validation: "Customer list/detail/lookup APIs and browse UI are implemented with pagination, search, detail viewing, and focused read-service, API, and frontend browse coverage"
         prerequisites: ["3.2", "3.3"]
       3-4-flag-duplicate-business-number:
         title: "Flag Duplicate Business Number"
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "3.4"
-        validation: "updated to block duplicate creation, surface existing-record guidance, and enforce a DB uniqueness invariant"
+        validation: "Duplicate business-number protection is implemented in service, API, and UI flows with stable 409 metadata, existing-record guidance, and focused duplicate-handling tests"
         prerequisites: ["3.1", "3.2", "3.3"]
       3-5-update-customer-record:
         title: "Update Customer Record"
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "3.5"
-        validation: "added to cover PRD create/update scope and architecture customers.update contract"
+        validation: "Customer update backend/API/UI are implemented with version-conflict handling, duplicate rechecks, partial update semantics, and focused update service/API/frontend coverage"
         prerequisites: ["3.2", "3.3", "3.4"]
 
   # Epic 4 - Inventory Operations
   epic-4:
-    status: "in-progress"
-    validation_note: "Revalidated on 2026-04-01 against Epic 4 story docs, PRD, architecture, PostgreSQL search guidance, and ERP receiving workflows; story naming now matches the implementation artifacts and the execution order follows the validated dependency path."
+    status: "completed"
+    validation_note: "Revalidated on 2026-04-03. Sprint status had drifted behind the implementation artifacts: Stories 4.1, 4.5, and 4.6 were already marked done in their story files and the focused backend inventory suite finished green with 81 tests passing. Repo-scoped review notes covering models, services, routes, migrations, tests, and frontend inventory files found no remaining fixes needed."
     recommended_execution_order:
       - "4.6 Multiple Warehouse Support"
       - "4.1 Search Products"
@@ -158,15 +158,15 @@ development_status:
     stories:
       4-6-multiple-warehouse-support:
         title: "Multiple Warehouse Support"
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "4.6"
-        validation: "updated for warehouse-scoped inventory, transfer atomicity, and persisted session warehouse context"
+        validation: "Warehouse endpoints, warehouse-scoped inventory reads, transfer support, and persisted warehouse context are implemented and covered by the focused inventory validation slice"
         prerequisites: []
       4-1-search-products:
         title: "Search Products"
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "4.1"
-        validation: "updated for hybrid pg_trgm plus tsvector search, GET API semantics, and react-window 2.x virtualization guidance"
+        validation: "Hybrid product search API and frontend search surfaces are implemented; focused product-search tests pass and the implementation artifact is already marked done"
         prerequisites: ["4.6"]
       4-2-view-stock-level:
         title: "View Stock Level and Reorder Point"
@@ -188,161 +188,305 @@ development_status:
         prerequisites: ["4.2", "4.4"]
       4-5-supplier-orders:
         title: "Track Supplier Orders and Auto-Update Stock"
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "4.5"
-        validation: "updated for partial and idempotent receiving, warehouse-specific receipt lines, and migration-backed supplier order tables"
+        validation: "Supplier order creation, receiving, partial/idempotent receipt handling, warehouse-specific stock updates, and supporting backend flows are implemented with focused supplier-order tests passing"
         prerequisites: ["4.3", "4.4", "4.6"]
 
   # Epic 5 - Order to Cash
   epic-5:
-    status: "backlog"
+    status: "completed"
+    validation_note: "All 5 stories implemented, reviewed (Round 1 + Round 2), and validated on 2026-04-02. 302 backend tests + 78 frontend tests pass. Round 2 code review found 5 issues (1 MEDIUM, 4 LOW) — all patched: hardcoded status strings → enum, raw string in cancel → enum, response schema str types → Literal, hardcoded page_size → parameterized, frontend type safety gap → strict typing. Follow-up audit on 2026-04-03 reran the focused backend order suite (34/34 passing) and a frontend Vitest run remained green, so Epic 5 still stands as completed."
+    recommended_execution_order:
+      - "5.1 Create Order Linked to Customer"
+      - "5.2 Check Stock Availability"
+      - "5.3 Set Payment Terms"
+      - "5.4 Auto-Generate Invoice from Order"
+      - "5.5 Update Order Status"
     stories:
       5-1-create-order-linked-customer:
-        status: "backlog"
+        status: "completed"
         story_id: "5.1"
+        validation: "Order model, service, routes, schemas, frontend components implemented; tenant-aware with audit logging"
       5-2-check-stock-availability:
-        status: "backlog"
+        status: "completed"
         story_id: "5.2"
+        validation: "Stock validation integrated into order creation flow; warehouse-aware checks"
       5-3-set-payment-terms:
-        status: "backlog"
+        status: "completed"
         story_id: "5.3"
+        validation: "Payment terms CRUD, order integration, frontend selector implemented"
       5-4-auto-generate-invoice:
-        status: "backlog"
+        status: "completed"
         story_id: "5.4"
+        validation: "Invoice auto-generation from confirmed orders; order_id FK on invoices; idempotency guard"
       5-5-update-order-status:
-        status: "backlog"
+        status: "completed"
         story_id: "5.5"
+        validation: "Status transitions (draft→confirmed→shipped→delivered→cancelled) with validation guards and audit trail"
 
   # Epic 6 - Payment Handling
   epic-6:
-    status: "backlog"
+    status: "completed"
+    validation_note: "All 3 stories implemented, code reviewed (2 passes each), and validated. 348 backend tests, 110 frontend tests, 0 TS errors. Completed 2026-04-03. Follow-up audit reran the focused backend payments suite (51/51 passing) and a frontend Vitest run remained green, so Epic 6 still stands as completed."
+    recommended_execution_order:
+      - "6.1 Record Payment Against Invoice"
+      - "6.2 Auto-Match Payments to Invoices"
+      - "6.3 Display Outstanding Payment Status"
     stories:
       6-1-record-payment:
-        status: "backlog"
+        status: "completed"
         story_id: "6.1"
+        title: "Record Payment Against Invoice"
+        validation: "Implemented + code reviewed (2 passes). Payment recording with manual + unmatched flows, PaymentHistory component, full validation."
+        prerequisites: []
       6-2-auto-match-payments:
-        status: "backlog"
+        status: "completed"
         story_id: "6.2"
+        title: "Auto-Match Payments to Open Invoices"
+        validation: "Implemented + code reviewed (2 passes). 2-tier reconciliation engine (exact customer+amount → date proximity 90d), batch allocation, ReconciliationScreen."
+        prerequisites: ["6.1"]
       6-3-display-outstanding-status:
-        status: "backlog"
+        status: "completed"
         story_id: "6.3"
+        title: "Display Outstanding Payment Status"
+        validation: "Implemented + code reviewed (2 passes, 20 fixes). Outstanding computed dynamically, batch enrichment, overdue SQL filter, composite payment index, currency-aware display."
+        prerequisites: ["6.1", "6.2"]
 
   # Epic 7 - Business Dashboard
   epic-7:
-    status: "backlog"
+    status: "completed"
+    validation_note: "Revalidated on 2026-04-04. The sprint tracker and story files had drifted behind the implementation: dashboard backend routes/services and dashboard/PostHog frontend surfaces are already present, the focused backend dashboard suite passed 17/17 tests, and the frontend Vitest run covering dashboard cards and PostHog helpers remained green."
     stories:
       7-1-morning-dashboard-revenue:
-        status: "backlog"
+        status: "completed"
         story_id: "7.1"
+        story_file: "7-1-morning-dashboard-revenue-comparison.md"
       7-2-top-selling-products:
-        status: "backlog"
+        status: "completed"
         story_id: "7.2"
+        story_file: "7-2-top-selling-products.md"
       7-3-low-stock-alerts:
-        status: "backlog"
+        status: "completed"
         story_id: "7.3"
+        story_file: "7-3-low-stock-alerts-dashboard.md"
       7-4-posthog-visitor-count:
-        status: "backlog"
+        status: "completed"
         story_id: "7.4"
+        story_file: "7-4-posthog-visitor-count.md"
       7-5-posthog-visitor-tracking:
-        status: "backlog"
+        status: "completed"
         story_id: "7.5"
+        story_file: "7-5-posthog-visitor-tracking.md"
       7-6-posthog-goal-conversions:
-        status: "backlog"
+        status: "completed"
         story_id: "7.6"
+        story_file: "7-6-posthog-goal-conversions.md"
 
   # Epic 8 - AI Agent Interface
   epic-8:
-    status: "backlog"
+    status: "completed"
+    validation_note: "All 6 stories implemented, code reviewed, and validated. 398 backend tests pass, ruff clean. Story 8.5 creates markdown-only domain knowledge files. Deferred items by design: write MCP tools (inventory.adjust, customers.create/update, invoices.create/void/submit) to future epics; OAuth 2.1 to Epic 11; sales-workflow skill to future epic. Follow-up audit on 2026-04-04 reran the focused MCP suite (39/39 passing) after aligning `tests/test_mcp_auth.py` JWT signing with the app-configured secret so the auth tests exercise scope behavior instead of failing on signature mismatch."
+    recommended_execution_order:
+      - "8.6 MCP Server - Session Mode HTTP"
+      - "8.1 MCP Tool - Inventory Check"
+      - "8.2 MCP Tool - Customer Query"
+      - "8.3 MCP Tool - Invoice Query"
+      - "8.4 MCP Role-Scoped Authentication"
+      - "8.5 Taiwan Tax Domain Knowledge Skills"
     stories:
-      8-1-mcp-inventory-check:
-        status: "backlog"
-        story_id: "8.1"
-      8-2-mcp-customer-query:
-        status: "backlog"
-        story_id: "8.2"
-      8-3-mcp-invoice-query:
-        status: "backlog"
-        story_id: "8.3"
-      8-4-mcp-role-scoped-auth:
-        status: "backlog"
-        story_id: "8.4"
-      8-5-taiwan-tax-skills:
-        status: "backlog"
-        story_id: "8.5"
       8-6-mcp-session-mode-http:
-        status: "backlog"
+        status: "completed"
         story_id: "8.6"
+        title: "MCP Server - Session Mode HTTP"
+        validation: "FastMCP 2.14.6 session-mode, mounted at /mcp, lifespan integration, health mcp=true. 6 tests."
+        prerequisites: []
+      8-1-mcp-inventory-check:
+        status: "completed"
+        story_id: "8.1"
+        title: "MCP Tool - Inventory Check"
+        validation: "3 tools (check, search, reorder_alerts) with set_tenant. 6 tests."
+        prerequisites: ["8.6"]
+      8-2-mcp-customer-query:
+        status: "completed"
+        story_id: "8.2"
+        title: "MCP Tool - Customer Query"
+        validation: "3 tools (list, get, lookup_by_ban) with BAN validation. 7 tests."
+        prerequisites: ["8.6"]
+      8-3-mcp-invoice-query:
+        status: "completed"
+        story_id: "8.3"
+        title: "MCP Tool - Invoice Query"
+        validation: "2 tools (list, get) with payment summary enrichment. 5 tests."
+        prerequisites: ["8.6"]
+      8-4-mcp-role-scoped-auth:
+        status: "completed"
+        story_id: "8.4"
+        title: "MCP Role-Scoped Authentication"
+        validation: "API key middleware, TOOL_SCOPES, admin bypass, structured errors. 8 tests."
+        prerequisites: ["8.1", "8.2", "8.3"]
+      8-5-taiwan-tax-skills:
+        status: "completed"
+        story_id: "8.5"
+        title: "Taiwan Tax Domain Knowledge Skills"
+        validation: "11 markdown files in erp-skills/. UBN algorithm and void deadline verified against codebase. No Python code."
+        prerequisites: []
 
   # Epic 9 - LINE Integration
   epic-9:
-    status: "backlog"
+    status: "completed"
+    validation_note: "Revalidated 2026-04-04: 3 stories, 431 tests pass, ruff clean. Fixes applied: (9.1) order_number now passed to push_text_message for AC3-compliant error logging; (9.2) LineCustomerMapping registered in common/models for Alembic discovery + unparseable-event monitoring log; (9.3) spec updated: reply token validity corrected to 20min (was 30s per LINE docs), pricing pending example aligned to implementation."
     stories:
       9-1-line-notification-new-order:
-        status: "backlog"
+        status: "completed"
         story_id: "9.1"
+        title: "LINE Notification on New Order"
+        validation: "Implemented: line-bot-sdk 3.22.0, AsyncMessagingApi client, BackgroundTasks fire-and-forget, 6 tests. Fix: order_number now passed to push_text_message for AC3-compliant error context logging."
+        prerequisites: []
       9-2-line-bot-order-submission:
-        status: "backlog"
+        status: "completed"
         story_id: "9.2"
+        title: "LINE BOT Order Submission"
+        validation: "Implemented: migration mm333oo33p65, LineCustomerMapping model, parser with 4 pattern groups, WebhookParser webhook, order creation flow, 15 tests. Fixes: registered LineCustomerMapping in common/models for Alembic; added unparseable-event monitoring log."
+        prerequisites: ["9-1-line-notification-new-order"]
       9-3-line-order-confirmation:
-        status: "backlog"
+        status: "completed"
         story_id: "9.3"
+        title: "LINE Order Confirmation"
+        validation: "Implemented: confirmation formatters, reply_or_push_message, webhook integration, 11 tests. Spec corrections: reply token validity updated to 20min per LINE API docs; pricing pending example aligned to actual implementation output."
+        prerequisites: ["9-2-line-bot-order-submission"]
 
-  # Epic 10 - AEO
+  # Epic 10 - AEO (AI SEO)
   epic-10:
-    status: "backlog"
+    status: "completed"
+    validation_note: "All 3 stories implemented and reviewed 2026-04-05. 481 tests pass (50 new AEO tests: 15 JSON-LD + 12 sitemap + 23 content). Ruff clean. Code review fixes: (1) sitemap XML encoding='utf-8' for spec compliance, (2) guard additionalProperty on unit=None, (3) FAQ format changed to schema.org FAQPage structure {name, acceptedAnswer: {text}}, (4) added 3 edge-case tests (unit=None, updated_at=None, min word count)."
+    recommended_execution_order:
+      - "10.1 Auto-Generate JSON-LD Structured Data"
+      - "10.2 Auto-Generate XML Sitemap"
+      - "10.3 Product Content for AI Citation"
     stories:
       10-1-json-ld-structured-data:
-        status: "backlog"
+        status: "completed"
         story_id: "10.1"
+        title: "Auto-Generate JSON-LD Structured Data"
+        story_file: "10-1-json-ld-structured-data.md"
+        validation: "Implemented: domains/aeo/jsonld.py (generate_product_jsonld), GET /products/{id}/jsonld endpoint, 14 tests. Schema.org Product with sku, productID, category, description, additionalProperty (unit), offers (availability), dateModified."
+        prerequisites: []
       10-2-xml-sitemap:
-        status: "backlog"
+        status: "completed"
         story_id: "10.2"
+        title: "Auto-Generate XML Sitemap"
+        story_file: "10-2-xml-sitemap.md"
+        validation: "Implemented: domains/aeo/sitemap.py (generate_product_sitemap_xml, invalidate_sitemap_cache), GET /sitemap-products.xml at app root, 11 tests. Tenant filter, RFC 3986 URL encoding, 1h TTL cache, xml_declaration with UTF-8 encoding."
+        prerequisites: ["10-1-json-ld-structured-data"]
       10-3-product-content-ai-citation:
-        status: "backlog"
+        status: "completed"
         story_id: "10.3"
+        title: "Product Content for AI Citation"
+        story_file: "10-3-product-content-ai-citation.md"
+        validation: "Implemented: domains/aeo/content.py (generate_aeo_content, _build_summary, _build_faq), GET /products/{id}/aeo endpoint, 22 tests. Summary 20-100 words, FAQ 2-3 entries, specifications dict, embedded JSON-LD, meta with schema_version."
+        prerequisites: ["10-1-json-ld-structured-data"]
 
   # Epic 11 - User & Access Management
   epic-11:
-    status: "backlog"
+    status: "completed"
+    validation_note: "Revalidated on 2026-04-04 against the implemented Epic 11 backend and frontend surfaces. Story 11.1 now attributes user-admin audit entries to the authenticated owner and has focused owner-only coverage on /admin/users. Story 11.2 now syncs same-tab auth expiry/logout via shared auth-storage events, redirects authenticated users away from /login, and passes 15 focused frontend RBAC tests. Story 11.3 now fail-closes malformed JWTs by requiring exp/sub/tenant_id/role, validating UUID-shaped subject/tenant claims, and rejecting unknown REST roles; focused auth coverage passes with 20 tests. Story 11.4 still preserves API-key precedence while accepting JWT Bearer fallback for MCP. Story 11.5 keeps expired approvals system-expired (`resolved_by=None`) while replaying approved inventory adjustments through the executor. Story 11.6 keeps the audit query API owner-only and preserves trigger-based audit-log immutability enforcement."
+    recommended_execution_order:
+      - "11.6 Audit Log Service & Query API"
+      - "11.1 Create Users with Roles"
+      - "11.3 RBAC in API"
+      - "11.4 RBAC for MCP/CLI"
+      - "11.2 RBAC in UI"
+      - "11.5 Human-in-the-Loop for Sensitive Writes"
     stories:
-      11-1-create-users-with-roles:
-        status: "backlog"
-        story_id: "11.1"
-      11-2-rbac-ui:
-        status: "backlog"
-        story_id: "11.2"
-      11-3-rbac-api:
-        status: "backlog"
-        story_id: "11.3"
-      11-4-rbac-mcp-cli:
-        status: "backlog"
-        story_id: "11.4"
-      11-5-human-in-the-loop:
-        status: "backlog"
-        story_id: "11.5"
       11-6-audit-log:
-        status: "backlog"
+        status: "completed"
         story_id: "11.6"
+        title: "Audit Log Service & Query API"
+        story_file: "11-6-audit-log.md"
+        validation: "Centralized write_audit() helper and owner-only audit query API remain in place; follow-up migration enforces append-only semantics with trigger-based rejection instead of silent rule-based drops."
+        prerequisites: []
+      11-1-create-users-with-roles:
+        status: "completed"
+        story_id: "11.1"
+        title: "Create Users with Roles"
+        story_file: "11-1-create-users-with-roles.md"
+        validation: "User model, bcrypt password hashing, CRUD endpoints at /admin/users, 4 roles (owner/finance/warehouse/sales), duplicate email prevention, and audit logging that attributes create/update actions to the authenticated owner."
+        prerequisites: ["11-6-audit-log"]
+      11-3-rbac-api:
+        status: "completed"
+        story_id: "11.3"
+        title: "RBAC in API"
+        story_file: "11-3-rbac-api.md"
+        validation: "JWT login endpoint, fail-closed claim validation (required exp/sub/tenant_id/role, UUID claim checks, known-role whitelist), role-aware router protection, and forbidden-access audit logging are implemented; focused auth review slice passed with 20 tests."
+        prerequisites: ["11-1-create-users-with-roles"]
+      11-4-rbac-mcp-cli:
+        status: "completed"
+        story_id: "11.4"
+        title: "RBAC for MCP/CLI"
+        story_file: "11-4-rbac-mcp-cli.md"
+        validation: "MCP auth accepts JWT Bearer tokens as a fallback, includes explicit owner/warehouse scope handling, preserves API-key precedence, and passes the focused MCP auth slice."
+        prerequisites: ["11-3-rbac-api"]
+      11-2-rbac-ui:
+        status: "completed"
+        story_id: "11.2"
+        title: "RBAC in UI"
+        story_file: "11-2-rbac-ui.md"
+        validation: "Frontend auth context, shared auth-storage sync for same-tab 401/logout, read/write-aware permissions, role-filtered navigation, direct route protection, and authenticated /login redirect are implemented; focused RBAC UI tests pass with 15 checks."
+        prerequisites: ["11-3-rbac-api"]
+      11-5-human-in-the-loop:
+        status: "completed"
+        story_id: "11.5"
+        title: "Human-in-the-Loop for Sensitive Writes"
+        story_file: "11-5-human-in-the-loop.md"
+        validation: "ApprovalRequest model+migration, approval domain, auto-expiry with system-owned expiry semantics, approve/reject workflow, and real non-human inventory adjustment gating plus executor replay are implemented; focused approval and inventory regression tests passed."
+        prerequisites: ["11-1-create-users-with-roles", "11-3-rbac-api", "11-6-audit-log"]
 
   # Epic 12 - Desktop Shell & Tray
   epic-12:
-    status: "backlog"
+    status: "in-progress"
+    recommended_execution_order:
+      - "12.3 eGUI Status Badge and State Persistence"
+      - "12.2 Keyboard Shortcuts with Overlay"
+      - "12.4 System Tray Mode with Notifications"
+      - "12.1 Virtualized Lists for 5,000+ Rows"
+      - "12.5 Print Preview Performance"
     stories:
       12-1-virtualized-lists:
-        status: "backlog"
+        status: "ready-for-dev"
         story_id: "12.1"
+        title: "Virtualized Lists for 5,000+ Rows"
+        story_file: "12-1-virtualized-lists.md"
+        validation: "Existing react-window ProductSearch, backend customer page_size<=100, and the current eager 200-customer loads in invoice/payment flows validate the scope; implementation still needs explicit ARIA listbox behavior and automated performance measurement because the repo has no Playwright or performance.mark baseline."
+        prerequisites: []
       12-2-keyboard-shortcuts:
-        status: "backlog"
+        status: "done"
         story_id: "12.2"
+        title: "Keyboard Shortcuts with Overlay"
+        story_file: "12-2-keyboard-shortcuts.md"
+        validation: "Implemented a shared shortcut registry plus overlay/controller, route and screen-local sequences with editable-target guards, a browser-safe Tauri global-shortcut bridge, and a new root src-tauri scaffold with explicit shortcut capabilities. Review fixes also landed for desktop registration races, richer editable-host suppression, reverse prefix-conflict rejection, modal focus trapping, and browser-safe overlay rendering. Focused shortcut Vitest coverage remains green."
+        prerequisites: []
       12-3-egui-status-badge:
-        status: "backlog"
+        status: "completed"
         story_id: "12.3"
+        title: "eGUI Status Badge and State Persistence"
+        story_file: "12-3-egui-status-badge.md"
+        validation: "Validated on 2026-04-04 against the implemented repo: EguiSubmission persistence plus migration, concurrency-safe first-read creation, invalid-status-safe mock refresh behavior, invoice detail API enrichment, and the invoice detail eGUI badge, deadline, and refresh UI are all present. Deferred review follow-up also aligned invoice outstanding filters/sorts with the zero-clamped balances shown in UI, rejects mixed-currency customer outstanding aggregation with an explicit 409, and preserves backend error detail in the customer outstanding card; the focused backend payment-status suite and frontend customer-outstanding slice are green."
+        prerequisites: ["2-3-void-invoice", "2-5-store-invoice-artifacts-minio", "2-7-invoice-immutability"]
       12-4-system-tray:
-        status: "backlog"
+        status: "completed"
         story_id: "12.4"
+        title: "System Tray Mode with Notifications"
+        story_file: "12-4-system-tray.md"
+        validation: "Validated on 2026-04-04 against the implemented repo: the root Tauri shell now hides to tray on close, restores the existing window from tray click/menu actions, and exits only through an explicit quit path. Browser-safe desktop window/notification bridges and hidden eGUI transition monitoring reuse the Story 12.3 server-owned state source, suppress duplicate notifications locally, and degrade cleanly when notification permission is denied. Focused validation is green via cargo check, focused Vitest coverage for the new desktop bridge/monitor slices plus InvoiceDetail, and pnpm build; manual macOS/Windows hardware verification is documented in docs/superpowers/specs/2026-04-04-system-tray-mode.md."
+        prerequisites: ["12-2-keyboard-shortcuts", "12-3-egui-status-badge"]
       12-5-print-preview-performance:
-        status: "backlog"
+        status: "ready-for-dev"
         story_id: "12.5"
+        title: "Print Preview Performance"
+        story_file: "12-5-print-preview-performance.md"
+        validation: "The story is correctly framed as an optimization because preview, shared print sheet, and print helpers already exist; current code has no performance instrumentation or E2E harness, so the first implementation step must measure open-to-preview time and then optimize the shared renderer path without forking InvoicePrintSheet."
+        prerequisites: []
 
   # Epic 13 - Shadow-Mode Validation
   epic-13:
@@ -361,4 +505,4 @@ development_status:
         status: "backlog"
         story_id: "13.4"
 
-last_updated: "2026-04-01"
+last_updated: "2026-04-04"

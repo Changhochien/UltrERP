@@ -1,6 +1,6 @@
 # Story 2.5: Archive MIG 4.1 XML in MinIO
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -129,11 +129,16 @@ GPT-5.4
 
 - Story updated to define an explicit `invoice_artifacts` record and environment-aware retention metadata.
 - Live FIA submission is explicitly deferred even though the same invoice data shape must remain compatible.
+- XML archival now runs from the authoritative invoice issuance workflow and stores returned storage-policy metadata from the object-store adapter.
+- Config-backed object-store and archive settings are wired through invoice routes/service, and focused backend pytest plus Ruff validation pass for the archival slice.
 
 ### File List
 
 - `backend/domains/invoices/mig41.py`
 - `backend/domains/invoices/artifacts.py`
+- `backend/domains/invoices/routes.py`
+- `backend/domains/invoices/service.py`
+- `backend/common/config.py`
 - `backend/common/object_store.py`
 - `backend/tests/domains/invoices/test_artifacts.py`
 - `backend/tests/integration/test_minio_invoice_artifacts.py`

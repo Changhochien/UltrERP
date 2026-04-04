@@ -38,13 +38,28 @@ psql -d postgres -c "\\du ultr_erp"
 psql -d postgres -c "\\l ultr_erp"
 ```
 
+### Environment File
+
+Create the local environment file before running backend commands:
+
+```bash
+cp .env.example .env
+```
+
+Replace `JWT_SECRET` in `.env` with a local-only value before using the app outside disposable development setups. One simple option is:
+
+```bash
+openssl rand -hex 32
+```
+
 ## Bootstrap Order
 
 1. Install the prerequisites above.
 2. Confirm the repository structure exists.
-3. Install frontend dependencies with `pnpm install`.
-4. Install backend dependencies with `cd backend && uv sync`.
-5. Run backend and frontend development servers.
+3. Copy `.env.example` to `.env` and set `JWT_SECRET`.
+4. Install frontend dependencies with `pnpm install`.
+5. Install backend dependencies with `cd backend && uv sync`.
+6. Run backend and frontend development servers.
 
 Story 1.2 creates the initial scaffold. Story 1.6 and Story 1.7 add the executable toolchain and migration commands.
 
@@ -90,7 +105,7 @@ uv run alembic -c ../migrations/alembic.ini current
 uv run alembic -c ../migrations/alembic.ini history
 ```
 
-The backend defaults to `postgresql+asyncpg://ultr_erp@localhost:5432/ultr_erp`, which matches the Story 1.1 local role/database bootstrap. Settings are loaded from either the repository-root `.env` or `backend/.env`, plus the current shell environment, so a copied root `.env` from `.env.example` is picked up by the documented backend commands.
+The backend defaults to `postgresql+asyncpg://ultr_erp@localhost:5432/ultr_erp`, which matches the Story 1.1 local role/database bootstrap. Settings are loaded from either the repository-root `.env` or `backend/.env`, plus the current shell environment, so copying `.env.example` to the repository root is part of the required local bootstrap.
 Set `VITE_API_PROXY_TARGET` if the frontend should proxy `/api` requests to a non-default backend address, and set `CORS_ORIGINS` as a JSON array when local origins differ from the default desktop/browser pair.
 
 ## CI Requirements
