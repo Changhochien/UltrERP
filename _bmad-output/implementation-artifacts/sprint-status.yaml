@@ -16,7 +16,7 @@ development_status:
       1-1-developer-environment-setup:
         status: "completed"
         story_id: "1.1"
-        validation: "README/bootstrap flow documented and reconciled to pnpm 10.5.2; root and backend .env loading now match the documented setup flow; follow-up review added explicit `.env.example` copy plus JWT secret bootstrap so fresh clones do not depend on ambient shell state; validation stack rerun clean"
+        validation: "README/bootstrap flow documented and reconciled to pnpm 10.33.0 and PostgreSQL 18; root and backend .env loading now match the documented setup flow; follow-up review added explicit `.env.example` copy plus JWT secret bootstrap so fresh clones do not depend on ambient shell state; validation stack rerun clean"
       1-2-project-structure:
         status: "completed"
         story_id: "1.2"
@@ -24,7 +24,7 @@ development_status:
       1-3-ci-cd-pipeline:
         status: "completed"
         story_id: "1.3"
-        validation: "workflow pins pnpm 10.5.2, mirrors validated local commands, provisions PostgreSQL 17 for backend CI, runs Alembic before pytest, seeds JWT_SECRET for backend config/Alembic startup, and passes YAML diagnostics"
+        validation: "workflow pins pnpm 10.33.0, mirrors validated local commands, provisions PostgreSQL 18 for backend CI, runs Alembic before pytest, seeds JWT_SECRET for backend config/Alembic startup, and passes YAML diagnostics"
       1-4-cloud-backup-strategy:
         status: "completed"
         story_id: "1.4"
@@ -507,7 +507,8 @@ development_status:
 
   # Epic 14 - Traditional Chinese i18n (Duolanguage Support)
   epic-14:
-    status: "in-progress"
+    status: "completed"
+    validation_note: "All 6 stories implemented and revalidated after Epic 14 review fixes. Epic complete: 14.1 infrastructure (done), 14.2 baseline+fixes (done, remaining shell/login/dashboard copy translated, missing nav/routes/dashboard keys filled in, malformed-token auth bounce removed, runtime interpolation aligned, whole-app literal i18n audit closed customer/invoice/order gaps, and browser sweep closed remaining Settings page hardcoded fallback copy), 14.3 zh-Hant translations (366/366 keys, Taiwanese vocabulary), 14.4 LanguageSwitcher (done, visible sidebar footer control), 14.5 browser auto-detection (done, explicit zh-Hant/en normalization), 14.6 Chinese font (review PASS). Validation: app-wide literal key audit 0 missing, locale parity 366/366, pnpm build, pnpm lint, targeted vitest (auth/settings/health) green, live browser shell check clean, and clean-server browser sweep across the main authenticated routes found no visible raw key tokens."
     recommended_execution_order:
       - "14.1 i18n Infrastructure Setup"
       - "14.2 English Translation Baseline"
@@ -517,40 +518,45 @@ development_status:
       - "14.6 Chinese Font Integration"
     stories:
       14-1-i18n-infrastructure-setup:
-        status: "review"
+        status: "completed"
         story_id: "14.1"
         title: "i18n Infrastructure Setup"
         story_file: "14-1-i18n-infrastructure-setup.md"
         prerequisites: []
       14-2-english-translation-baseline:
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "14.2"
         title: "English Translation Baseline"
         story_file: "14-2-english-translation-baseline.md"
+        validation: "Baseline plus review-fix follow-up complete: remaining App/AuthGate/AppNavigation/Dashboard/Login copy moved into locale files, nav.* plus routes.* plus dashboard.quickActions.* coverage completed, frontend token validation now matches the backend UUID contract, app-wide literal-key audit also filled customer.listPage.*, invoice.taxPolicy.*, orders.list.*, and settingsPage.* coverage, locale parity now 366/366, and app-wide literal key audit reports 0 missing entries. pnpm build && pnpm lint green, targeted auth/health/settings tests pass, live shell no longer renders raw keys, and the clean-server browser sweep across the main authenticated routes found no visible raw key tokens."
         prerequisites: ["14-1-i18n-infrastructure-setup"]
       14-3-traditional-chinese-translation:
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "14.3"
         title: "Traditional Chinese Translation"
         story_file: "14-3-traditional-chinese-translation.md"
+        validation: "366/366 keys translated, Taiwanese vocabulary (客戶, 發票, 庫存), 'other' plural only, human-written zh-Hant. Review PASS."
         prerequisites: ["14-2-english-translation-baseline"]
       14-4-language-switcher-component:
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "14.4"
         title: "Language Switcher Component"
         story_file: "14-4-language-switcher-component.md"
+        validation: "LanguageSwitcher pill-style toggle now visible in the AppNavigation footer, i18n.changeLanguage() immediate re-render, localized accessibility copy, localStorage persistence."
         prerequisites: ["14-3-traditional-chinese-translation"]
       14-5-browser-language-auto-detection:
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "14.5"
         title: "Browser Language Auto-Detection"
         story_file: "14-5-browser-language-auto-detection.md"
+        validation: "mapDetectedLanguage now normalizes zh-TW/zh-Hant/zh-HK → zh-Hant, zh-CN/zh-SG/zh-MO → en fallback, en-* → en, and syncs document lang to the resolved locale."
         prerequisites: ["14-1-i18n-infrastructure-setup"]
       14-6-chinese-font-integration:
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "14.6"
         title: "Chinese Font Integration"
         story_file: "14-6-chinese-font-integration.md"
+        validation: "Noto Sans TC via Google Fonts (display=optional), PingFang TC/Microsoft JhengHei fallbacks, --font-sans applied globally. Review PASS."
         prerequisites: ["14-3-traditional-chinese-translation"]
 
   # Epic 15 - Legacy Data Import Pipeline
@@ -563,7 +569,16 @@ development_status:
       - "15.4 Canonical Historical Transaction Import"
       - "15.5 Migration Validation and Replay Safety"
       - "15.6 Agent-Invocable Legacy Import Skill"
+      - "15.7 Unified Extract + Import CLI"
+      - "15.8 Interactive ERP Onboarding Setup Skill"
     stories:
+      15-0-unified-extract-and-import-cli:
+        status: "done"
+        story_id: "15.7"
+        title: "Unified Extract + Import CLI"
+        story_file: "15-7-unified-extract-and-import-cli.md"
+        validation: "Validated on 2026-04-05: 94 tables, 1.1M rows extracted from cao50001.sql matching original extractor output exactly; /legacy-import skill updated with extract as phase 0."
+        prerequisites: []
       15-1-raw-legacy-staging-import:
         status: "review"
         story_id: "15.1"
@@ -572,34 +587,141 @@ development_status:
         validation: "Validated on 2026-04-05 via uv-managed Ruff and pytest (7 focused tests), Alembic upgrade head, live CLI staging of tbscust+tbsstock into raw_legacy, successful rerun of the same batch ID, and control-table verification that replacement semantics kept runs=1 and table_runs=2."
         prerequisites: []
       15-2-canonical-master-data-normalization:
-        status: "backlog"
+        status: "review"
         story_id: "15.2"
         title: "Canonical Master Data Normalization"
         story_file: "15-2-canonical-master-data-normalization.md"
+        validation: "Validated on 2026-04-05 via uv-managed Ruff and pytest (21 focused tests), live CLI staging of tbscust+tbsstock+tbsstkhouse for batch normalize-probe-001, and successful normalize output into raw_legacy with parties=1022, products=6611, warehouses=1, inventory=6588. Validation also closed a shared parser defect so mixed quoted-string/unquoted-numeric legacy rows now import correctly."
         prerequisites: ["15.1"]
       15-3-product-variant-mapping-workflow:
-        status: "backlog"
+        status: "done"
         story_id: "15.3"
         title: "Product Variant Mapping Workflow"
         story_file: "15-3-product-variant-mapping-workflow.md"
+        validation: "Validated on 2026-04-05 via uv-managed Ruff, full legacy-import pytest coverage (41 passed), explicit Alembic upgrades through vv333xx33y54, live CLI stage+normalize+map+export on batch batch-153-live-20260405, and repeated real review import/query checks proving legacy code 000 resolved to 0000 as analyst_review with approval_source=review-import."
         prerequisites: ["15.1", "15.2"]
       15-4-canonical-historical-transaction-import:
-        status: "backlog"
+        status: "done"
         story_id: "15.4"
         title: "Canonical Historical Transaction Import"
         story_file: "15-4-canonical-historical-transaction-import.md"
+        validation: "Validated on 2026-04-05 via uv-managed pytest for the focused canonical slice (7 passed), uv-managed pytest across the full legacy-import slice (48 passed), and targeted Ruff checks on the canonical-import implementation and tests. Post-review hardening now keeps canonical IDs tenant-scoped, preserves full payment-history holding payloads, and commits failed run/step telemetry even when the canonical import transaction aborts."
         prerequisites: ["15.2", "15.3"]
       15-5-migration-validation-and-replay-safety:
-        status: "backlog"
+        status: "done"
         story_id: "15.5"
         title: "Migration Validation and Replay Safety"
         story_file: "15-5-migration-validation-and-replay-safety.md"
+        validation: "Validated on 2026-04-05 via focused Story 15.5 coverage before and after code review (`uv run pytest tests/domains/legacy_import/test_validation.py tests/domains/legacy_import/test_cli.py -q`, 16 passed after follow-up), the full legacy-import backend slice (`uv run pytest tests/domains/legacy_import -q`, 59 passed after follow-up), and migration-plan handoff documentation updates. Code-review hardening now surfaces failed canonical runs as blockers, preserves failed same-scope replay metadata, keeps CLI schema fallback consistent, and cleans up validation artifacts when summary persistence fails. Broader backend `uv run pytest -q` plus `uv run ruff check` were also executed and still fail on unrelated payments, MCP health, and dashboard/invoice/settings test issues outside the legacy-import slice."
         prerequisites: ["15.1", "15.2", "15.3", "15.4"]
       15-6-agent-invocable-legacy-import-skill:
-        status: "backlog"
+        status: "done"
         story_id: "15.6"
         title: "Agent-Invocable Legacy Import Skill"
         story_file: "15-6-agent-invocable-legacy-import-skill.md"
+        validation: "Validated on 2026-04-05 via supported skill packaging under `.agents/skills/legacy-import/`, legacy-import CLI help probes (`uv run python -m domains.legacy_import.cli --help` and `uv run python -m domains.legacy_import.cli validate-import --help`), focused Story 15.6 tests (`uv run pytest tests/domains/legacy_import/test_canonical.py tests/domains/legacy_import/test_cli.py tests/test_legacy_import_skill.py -q`, 16 passed), targeted Ruff on the touched Python slice plus migration, and full backend `uv run pytest -q` (`663 passed`) with `uv run ruff check` clean. Post-review hardening also made the canonical support migration resilient to preexisting runtime-created tables, surfaced canonical attempt numbers in the CLI summary, and documented that blocked `validate-import` runs still require reading the JSON artifact when exit status is `1`."
         prerequisites: ["15.1", "15.5"]
+      15-8-erp-onboarding-setup-skill:
+        status: "todo"
+        story_id: "15.8"
+        title: "Interactive ERP Onboarding Setup Skill"
+        story_file: "15-8-erp-onboarding-setup-skill.md"
+        validation: ""
+        prerequisites: []
 
-last_updated: "2026-04-05"
+  # Epic 16 - Extended Legacy Import: Purchase Transactions and Payments
+  epic-16:
+    status: "in-progress"
+    validation_note: "Tracker reconciled on 2026-04-06 to match the Epic 16 story artifacts now present in the repo. Story files mark 16.4, 16.5, 16.7, 16.8, 16.9, 16.10, and 16.11 as done; 16.1 and 16.6 remain draft; 16.2 and 16.3 remain implemented but not yet promoted beyond review in their story files. The most recent validated additions are the supplier-invoice frontend workspace, the AP payment design note, and the AP payment schema foundation."
+    recommended_execution_order:
+      - "16.1 Raw Purchase Invoice Staging"
+      - "16.2 Normalize Purchase Master Data"
+      - "16.3 Raw Purchase Order Staging"
+      - "16.4 Canonical Purchase Order Import"
+      - "16.5 Payment Transaction Staging"
+      - "16.6 Currency Settings Import"
+      - "16.7 Canonical Purchase Invoice Import"
+      - "16.8 Supplier Invoice Read API"
+      - "16.9 Purchases Frontend Workspace"
+      - "16.10 AP Payment Model Design"
+      - "16.11 Canonical AP Payment Architecture"
+    stories:
+      16-1-raw-purchase-invoice-staging:
+        status: "todo"
+        story_id: "16.1"
+        title: "Raw Purchase Invoice Staging"
+        story_file: "16-1-raw-purchase-invoice-staging.md"
+        validation: ""
+        prerequisites: []
+      16-2-purchase-master-data-normalization:
+        status: "review"
+        story_id: "16.2"
+        title: "Normalize Purchase Master Data"
+        story_file: "16-2-purchase-master-data-normalization.md"
+        validation: "Artifact status is implemented; promote after a dedicated validation pass confirms the normalization slice."
+        prerequisites: ["16.1"]
+      16-3-raw-purchase-order-staging:
+        status: "review"
+        story_id: "16.3"
+        title: "Raw Purchase Order Staging"
+        story_file: "16-3-raw-purchase-order-staging.md"
+        validation: "Artifact status is implemented; promote after a dedicated validation pass confirms the purchase-order staging slice."
+        prerequisites: ["16.1"]
+      16-4-canonical-purchase-order-import:
+        status: "done"
+        story_id: "16.4"
+        title: "Canonical Purchase Order Import"
+        story_file: "16-4-canonical-purchase-order-import.md"
+        validation: "Story artifact is marked done; keep current status until a fresh focused validation pass is recorded in sprint tracking."
+        prerequisites: ["16.2", "16.3"]
+      16-5-payment-staging:
+        status: "done"
+        story_id: "16.5"
+        title: "Payment Transaction Staging"
+        story_file: "16-5-payment-staging.md"
+        validation: "Payment staging for tbsspay and tbsprepay is documented as done, and the repo now preserves those rows with FK warnings plus deterministic same-batch replacement semantics."
+        prerequisites: ["15.1"]
+      16-6-currency-settings-import:
+        status: "todo"
+        story_id: "16.6"
+        title: "Currency Settings Import"
+        story_file: "16-6-currency-settings-import.md"
+        validation: ""
+        prerequisites: []
+      16-7-canonical-purchase-invoice-import:
+        status: "done"
+        story_id: "16.7"
+        title: "Canonical Purchase Invoice Import"
+        story_file: "16-7-canonical-purchase-invoice-import.md"
+        validation: "Validated on 2026-04-05: supplier invoices and supplier invoice lines now land in dedicated AP tables, with focused canonical and validation tests passing."
+        prerequisites: ["16.2", "15.3", "15.4"]
+      16-8-supplier-invoice-read-api:
+        status: "done"
+        story_id: "16.8"
+        title: "Supplier Invoice Read API"
+        story_file: "16-8-supplier-invoice-read-api.md"
+        validation: "Validated on 2026-04-05: focused purchases API tests passed and targeted Ruff checks on the purchases backend slice returned clean."
+        prerequisites: ["16.7"]
+      16-9-purchases-frontend-workspace:
+        status: "done"
+        story_id: "16.9"
+        title: "Purchases Frontend Workspace"
+        story_file: "16-9-purchases-frontend-workspace.md"
+        validation: "Validated on 2026-04-06: `pnpm exec vitest run src/domain/purchases/__tests__/PurchasesPage.test.tsx` passed and targeted ESLint over the purchases frontend slice returned no output."
+        prerequisites: ["16.8"]
+      16-10-ap-payment-model-design:
+        status: "done"
+        story_id: "16.10"
+        title: "AP Payment Model Design"
+        story_file: "16-10-ap-payment-model-design.md"
+        validation: "Validated by documentation alignment on 2026-04-06: the repo now has an explicit AP payment design note and linked legacy docs that keep payment-adjacent import deferred until field verification completes."
+        prerequisites: ["16.5", "16.7"]
+      16-11-canonical-ap-payment-architecture:
+        status: "done"
+        story_id: "16.11"
+        title: "Canonical AP Payment Architecture"
+        story_file: "16-11-canonical-ap-payment-architecture.md"
+        validation: "Validated on 2026-04-06: `uv run pytest tests/common/test_supplier_payment_models.py -q` passed and targeted Ruff checks over the new AP payment models and migration returned clean."
+        prerequisites: ["16.10"]
+
+last_updated: "2026-04-06"

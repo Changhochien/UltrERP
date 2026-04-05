@@ -1,6 +1,6 @@
 # Story 15.4: Canonical Historical Transaction Import
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -36,25 +36,32 @@ So that historical sales, purchase, inventory, and party data are available in t
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Define the canonical target matrix** (AC1, AC2)
-  - [ ] Map normalized legacy entities to existing live-domain tables where those domains already exist
-  - [ ] Explicitly document where purchase-history data lands because the repo does not yet have a first-class purchase domain
-  - [ ] Keep tenant scoping and lineage requirements visible for every target table
+- [x] **Task 1: Define the canonical target matrix** (AC1, AC2)
+  - [x] Map normalized legacy entities to existing live-domain tables where those domains already exist
+  - [x] Explicitly document where purchase-history data lands because the repo does not yet have a first-class purchase domain
+  - [x] Keep tenant scoping and lineage requirements visible for every target table
 
-- [ ] **Task 2: Implement dependency-ordered import services** (AC2, AC3, AC4)
-  - [ ] Expose canonical import as a stable CLI subcommand instead of a route-only or notebook-only workflow
-  - [ ] Import parties, products, warehouses, and inventory before transactional history
-  - [ ] Import historical sales/order/invoice/payment-adjacent data through a dedicated import layer
-  - [ ] Reuse the mapping workflow from Story 15.3 for product resolution
+- [x] **Task 2: Implement dependency-ordered import services** (AC2, AC3, AC4)
+  - [x] Expose canonical import as a stable CLI subcommand instead of a route-only or notebook-only workflow
+  - [x] Import parties, products, warehouses, and inventory before transactional history
+  - [x] Import historical sales/order/invoice/payment-adjacent data through a dedicated import layer
+  - [x] Reuse the mapping workflow from Story 15.3 for product resolution
 
-- [ ] **Task 3: Preserve lineage and replay safety** (AC3, AC4)
-  - [ ] Add lineage columns or sidecar mapping tables needed for deterministic source-to-canonical traceability
-  - [ ] Make reruns idempotent for the same batch scope
-  - [ ] Ensure partial failures are observable and recoverable
+- [x] **Task 3: Preserve lineage and replay safety** (AC3, AC4)
+  - [x] Add lineage columns or sidecar mapping tables needed for deterministic source-to-canonical traceability
+  - [x] Make reruns idempotent for the same batch scope
+  - [x] Ensure partial failures are observable and recoverable
 
-- [ ] **Task 4: Add focused import tests** (AC1, AC2, AC3, AC4)
-  - [ ] Add batch-scoped tests covering dependency order, fallback-product behavior, and replay safety
-  - [ ] Add at least one test for a currently unsupported target domain so it lands in the documented holding area rather than disappearing
+- [x] **Task 4: Add focused import tests** (AC1, AC2, AC3, AC4)
+  - [x] Add batch-scoped tests covering dependency order, fallback-product behavior, and replay safety
+  - [x] Add at least one test for a currently unsupported target domain so it lands in the documented holding area rather than disappearing
+
+### Review Findings
+
+- [x] [Review][Patch] Make canonical live IDs tenant-scoped [backend/domains/legacy_import/canonical.py:97]
+- [x] [Review][Patch] Preserve full payment-history payloads in unsupported holding [backend/domains/legacy_import/canonical.py:1371]
+- [x] [Review][Patch] Persist failed run and failed step telemetry outside the rolled-back import transaction [backend/domains/legacy_import/canonical.py:1678]
+- [x] [Review][Patch] Add deterministic lineage assertions and failure-observability regressions to the canonical import tests [backend/tests/domains/legacy_import/test_canonical.py:307]
 
 ## Dev Notes
 
@@ -103,3 +110,23 @@ GitHub Copilot (GPT-5.4)
 
 - Story is explicit that purchase history needs a documented landing zone because the repo does not yet have a purchase domain.
 - Story keeps lineage and replay safety as first-class constraints rather than afterthoughts.
+- Added `legacy-import canonical-import` plus a dedicated canonical import layer that writes deterministic historical rows into `customers`, `product`, `warehouse`, `inventory_stock`, `orders`, `order_lines`, `invoices`, and `invoice_lines` in dependency order.
+- Preserved unsupported purchase and payment-adjacent history in `raw_legacy.unsupported_history_holding` and added deterministic traceability through `raw_legacy.canonical_record_lineage`, `canonical_import_runs`, and `canonical_import_step_runs`.
+- Post-review hardening made canonical live IDs deterministic per tenant, preserved full payment-history holding payloads, and committed failed run/step telemetry even when the import transaction aborts.
+- Documented the canonical landing matrix in `docs/legacy/canonical-import-target-matrix.md` and added Alembic revision `ww444yy44z65` for the canonical import support tables.
+- Validation completed with `uv run pytest tests/domains/legacy_import/test_canonical.py` (7 passed), `uv run pytest tests/domains/legacy_import` (48 passed), and `uv run ruff check` on the touched canonical-import slice.
+
+### File List
+
+- backend/domains/legacy_import/canonical.py
+- backend/domains/legacy_import/cli.py
+- backend/domains/legacy_import/__init__.py
+- backend/tests/domains/legacy_import/test_canonical.py
+- docs/legacy/canonical-import-target-matrix.md
+- docs/legacy/migration-plan.md
+- migrations/versions/ww444yy44z65_create_canonical_import_support_tables.py
+
+### Change Log
+
+- 2026-04-05: Implemented canonical historical transaction import, documented the canonical target matrix, added canonical lineage and holding support tables, and validated the legacy import slice.
+- 2026-04-05: Completed post-review hardening for tenant-scoped canonical IDs, payment-history holding payload preservation, failed-step observability, and stronger canonical import regressions.

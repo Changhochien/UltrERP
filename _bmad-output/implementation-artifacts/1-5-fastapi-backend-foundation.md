@@ -11,7 +11,7 @@ So that I can verify the API surface works before adding domain logic.
 ## Context
 
 Based on architecture:
-- **Framework:** FastAPI 0.115+
+- **Framework:** FastAPI 0.135+
 - **Server:** uvicorn with reload
 - **Transport:** Session-mode HTTP for MCP (NOT stateless_http)
 - **ORM:** SQLAlchemy 2.0+ with asyncpg
@@ -36,7 +36,7 @@ version = "0.1.0"
 description = "UltrERP FastAPI backend"
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi>=0.115.0",
+    "fastapi>=0.135.0",
     "uvicorn[standard]>=0.30.0",
     "sqlalchemy>=2.0.0",
     "alembic>=1.13.0",
@@ -179,7 +179,7 @@ async def get_db():
 1. **pydantic-settings** - Use for configuration (not BaseModel)
 2. **asyncpg + statement_cache_size=0** - Required for PgBouncer compatibility
 3. **CORS origins** - Include "tauri://localhost" for desktop app
-4. **FastAPI 0.115+** - Required for latest features
+4. **FastAPI 0.135+** - Required for latest features (strict_content_type=False required for 0.132+)
 5. **uvicorn[standard]** - Includes reload functionality
 6. **Versioned API root** - Health and domain routes must mount under `/api/v1`
 

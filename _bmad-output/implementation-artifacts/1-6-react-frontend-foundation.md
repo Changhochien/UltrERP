@@ -12,7 +12,7 @@ So that I can see the UI and verify the frontend infrastructure.
 
 Based on architecture:
 - **Frontend:** React 19 (NOT "latest" - specific version due to Tauri webview dropdown bug)
-- **Build:** Vite 6+
+- **Build:** Vite 8+
 - **TypeScript:** Strict mode
 - **Desktop:** Tauri 2.x
 
@@ -43,14 +43,14 @@ Based on architecture:
   "dependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "@tauri-apps/api": "^2.0.0"
+    "@tauri-apps/api": "^2.10.1"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@vitejs/plugin-react": "^4.6.0",
+    "@vitejs/plugin-react": "^6.0.0",
     "typescript": "^5.0.0",
-    "vite": "^6.0.0",
+    "vite": "^8.0.0",
     "vitest": "^2.0.0",
     "eslint": "^9.0.0",
     "@eslint/js": "^9.0.0",

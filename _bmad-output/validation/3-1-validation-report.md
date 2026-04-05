@@ -151,7 +151,7 @@ The entire backend domain layer is unstarted skeleton code.
 #### M4: TanStack Table and TanStack Virtual not in `package.json`
 
 **Finding:** The story references `@tanstack/react-table` (Task 3) and `@tanstack/react-virtual` (Tech Notes) as the recommended browse stack. However, `package.json` contains only:
-- `@tauri-apps/api: ^2.0.0`
+- `@tauri-apps/api: ^2.10.1`
 - `react: ^19.0.0`
 - `react-dom: ^19.0.0`
 - `react-window: ^2.2.7`

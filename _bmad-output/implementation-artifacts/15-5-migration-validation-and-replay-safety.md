@@ -1,6 +1,6 @@
 # Story 15.5: Migration Validation and Replay Safety
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -37,24 +37,31 @@ So that cutover is blocked by real data problems while repeat imports remain aud
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Define and persist batch validation outputs** (AC1, AC2)
-  - [ ] Store per-batch row counts, orphan totals, unresolved mappings, and import-stage failures
-  - [ ] Write both operator-readable and machine-readable report artifacts and/or database records that can be reviewed after each run
-  - [ ] Classify discrepancies by the approved severity policy
+- [x] **Task 1: Define and persist batch validation outputs** (AC1, AC2)
+  - [x] Store per-batch row counts, orphan totals, unresolved mappings, and import-stage failures
+  - [x] Write both operator-readable and machine-readable report artifacts and/or database records that can be reviewed after each run
+  - [x] Classify discrepancies by the approved severity policy
 
-- [ ] **Task 2: Prove replay safety** (AC3)
-  - [ ] Add idempotency checks for repeated batch IDs and repeated tenant/cutoff windows
-  - [ ] Prove reruns do not create duplicate canonical records or stale success markers
-  - [ ] Persist enough metadata to explain why a rerun succeeded, failed, or was skipped
+- [x] **Task 2: Prove replay safety** (AC3)
+  - [x] Add idempotency checks for repeated batch IDs and repeated tenant/cutoff windows
+  - [x] Prove reruns do not create duplicate canonical records or stale success markers
+  - [x] Persist enough metadata to explain why a rerun succeeded, failed, or was skipped
 
-- [ ] **Task 3: Document the Epic 13 handoff boundary** (AC2, AC4)
-  - [ ] Keep import-run validation distinct from the broader 30-day shadow-mode reconciliation program
-  - [ ] Document which artifacts from this story feed Epic 13 comparisons
-  - [ ] Avoid duplicating long-horizon shadow-mode logic in the import layer
+- [x] **Task 3: Document the Epic 13 handoff boundary** (AC2, AC4)
+  - [x] Keep import-run validation distinct from the broader 30-day shadow-mode reconciliation program
+  - [x] Document which artifacts from this story feed Epic 13 comparisons
+  - [x] Avoid duplicating long-horizon shadow-mode logic in the import layer
 
-- [ ] **Task 4: Add focused tests and fixtures** (AC1, AC2, AC3, AC4)
-  - [ ] Add validation tests for row-count mismatch, unresolved severity-1 blockers, and replayed batch success
-  - [ ] Add a regression proving severity-2 issues remain visible without clearing severity-1 blockers
+- [x] **Task 4: Add focused tests and fixtures** (AC1, AC2, AC3, AC4)
+  - [x] Add validation tests for row-count mismatch, unresolved severity-1 blockers, and replayed batch success
+  - [x] Add a regression proving severity-2 issues remain visible without clearing severity-1 blockers
+
+### Review Findings
+
+- [x] [Review][Patch] Surface top-level canonical run failures as blocking validation stages [backend/domains/legacy_import/validation.py]
+- [x] [Review][Patch] Preserve failed same-scope replay history and bind stage reconciliation to the selected canonical attempt [backend/domains/legacy_import/validation.py]
+- [x] [Review][Patch] Keep legacy-import CLI schema fallback consistent across mapping and validation subcommands [backend/domains/legacy_import/cli.py]
+- [x] [Review][Patch] Remove staged validation artifacts when canonical summary persistence fails [backend/domains/legacy_import/validation.py]
 
 ## Dev Notes
 
@@ -99,3 +106,25 @@ GitHub Copilot (GPT-5.4)
 - Story keeps import validation intentionally separate from Epic 13's broader shadow-mode program.
 - Story treats replay safety as a first-class acceptance criterion, not a later optimization.
 - Story now requires machine-readable validation output so agent workflows can inspect import results safely.
+- Added `backend/domains/legacy_import/validation.py` with batch-scoped reconciliation, severity classification, replay-scope fingerprinting, Epic 13 handoff metadata, and JSON/Markdown artifact emission under `_bmad-output/validation/legacy-import/`.
+- Added the `legacy-import validate-import` CLI path plus package exports so operators and agent workflows can validate a canonical batch without scraping database state manually.
+- Validation summaries now persist back into `raw_legacy.canonical_import_runs.summary`, making replayed-scope outcomes explainable from stored run metadata instead of only from `batch_id` reuse.
+- Documented the Story 15.5 to Epic 13 boundary in `docs/legacy/migration-plan.md` so import-run validation remains batch-scoped and does not absorb shadow-mode reconciliation responsibilities.
+- Code-review follow-up hardened canonical-failure reporting, failed-scope replay metadata, CLI schema fallback behavior, and validation artifact cleanup on persistence failures.
+- Post-review validation passed with `uv run pytest tests/domains/legacy_import/test_validation.py tests/domains/legacy_import/test_cli.py -q` (`16 passed`) and `uv run pytest tests/domains/legacy_import -q` (`59 passed`).
+- Broader backend validation was executed per workflow, but `uv run pytest -q` still fails on unrelated customer-outstanding and MCP health tests, and `uv run ruff check` still reports unrelated lint issues in dashboard/inventory/invoice/settings test files outside the Story 15.5 slice.
+
+### File List
+
+- backend/domains/legacy_import/validation.py
+- backend/domains/legacy_import/cli.py
+- backend/domains/legacy_import/__init__.py
+- backend/tests/domains/legacy_import/test_validation.py
+- backend/tests/domains/legacy_import/test_cli.py
+- docs/legacy/migration-plan.md
+
+### Change Log
+
+- 2026-04-05: Implemented Story 15.5 with batch-scoped migration validation, replay-scope evidence, CLI validation support, persisted validation summaries, and operator/agent-facing JSON plus Markdown artifacts.
+- 2026-04-05: Validated Story 15.5 with focused legacy-import pytest coverage and recorded unrelated broader backend pytest/Ruff failures outside the legacy-import slice.
+- 2026-04-05: Completed Story 15.5 code-review follow-up by surfacing failed canonical runs as blockers, preserving failed same-scope replay metadata, aligning CLI schema fallback behavior, and cleaning up validation artifacts when summary persistence fails.

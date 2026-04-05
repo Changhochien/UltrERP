@@ -156,8 +156,8 @@ So that I can quickly find items during stock inquiries.
 
 | Technology | Version | Purpose |
 |------------|---------|---------|
-| FastAPI | 0.115+ | Backend API |
-| PostgreSQL | 17+ | Full-text search, ILIKE queries |
+| FastAPI | 0.135+ | Backend API |
+| PostgreSQL | 18+ | Full-text search, ILIKE queries |
 | asyncpg | latest | Async database driver |
 | SQLAlchemy | 2.0+ | ORM with async support |
 | React | 19 | Search component, results display |

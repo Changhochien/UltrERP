@@ -183,9 +183,9 @@ User-facing forms should expose only the user-selectable reason codes. System-on
 
 | Tech | Version | Purpose |
 |------|---------|---------|
-| PostgreSQL | 17+ | Transactional adjustments |
+| PostgreSQL | 18+ | Transactional adjustments |
 | SQLAlchemy | 2.0+ | Async transaction management |
-| FastAPI | 0.115+ | Adjustment endpoint |
+| FastAPI | 0.135+ | Adjustment endpoint |
 | React | 19 | Form component |
 | Zod/Pydantic | latest | Input validation |
 

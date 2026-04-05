@@ -275,7 +275,7 @@ async with db.transaction():
 **Action Item:** Add to `backend/pyproject.toml`:
 ```toml
 # Note: Consider upgrading to 3.0.0 if possible
-fastmcp = ">=3.0.0"  # or ">=2.14.5" if upgrading not possible
+fastmcp = ">=3.0.0"
 ```
 
 **Reason:** Required for MCP tool exposure to AI agents (critical architectural pattern)

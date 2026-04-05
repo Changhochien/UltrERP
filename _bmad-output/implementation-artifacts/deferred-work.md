@@ -1,0 +1,3 @@
+## Deferred from: code review of 15-3-product-variant-mapping-workflow.md (2026-04-05)
+
+- Partial selected-table reruns in `backend/domains/legacy_import/staging.py` can drop unrelated staged tables because the current 15.1 semantics treat same-batch reruns as whole-batch replacement. This is a real risk, but changing it needs an explicit decision on the intended partial-rerun contract for Story 15.1 rather than an opportunistic 15.3 patch.

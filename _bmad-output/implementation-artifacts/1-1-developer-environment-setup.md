@@ -11,20 +11,20 @@ So that I can start coding immediately without configuration headaches.
 ## Context
 
 This story establishes the foundational tools needed for the entire project. Based on architecture decisions:
-- **Frontend:** root Vite workspace managed with pnpm 10.5.2 via Corepack
+- **Frontend:** root Vite workspace managed with pnpm 10.33.x via Corepack
 - **Backend:** UV for Python dependencies under `backend/`
-- **Database:** PostgreSQL 17 is the required local day-one dependency
-- **Cache/Object Storage:** Redis 7 and MinIO are architecture components introduced in later integration stories; they are not blockers for Story 1.1
+- **Database:** PostgreSQL 18+ is the required local day-one dependency
+- **Cache/Object Storage:** Redis 7 and MinIO are architecture components introduced in later integration stories; MinIO open-source ended Feb 2026 — use Garage (AGPL) or LocalStack for local S3 emulation
 - **Storage/Backups:** Cloudflare R2 is the remote backup target
 
 ## Acceptance Criteria
 
 **Given** a fresh clone of the repository
 **When** I follow the README setup instructions
-**Then** I have pnpm 10.5.2, UV, and PostgreSQL 17 installed locally
-**And** `pnpm --version` reports 10.x
+**Then** I have pnpm 10.33.x, UV, and PostgreSQL 18 installed locally
+**And** `pnpm --version` reports 10.33.x
 **And** `uv --version` returns success
-**And** PostgreSQL 17 is running and accessible on port 5432
+**And** PostgreSQL 18 is running and accessible on port 5432
 **And** `pg_isready -h localhost -p 5432` returns success
 
 ## Technical Requirements
@@ -32,18 +32,18 @@ This story establishes the foundational tools needed for the entire project. Bas
 ### Prerequisites Installation
 
 ```bash
-# Install pnpm (requires Node 20+)
+# Install pnpm (requires Node 18+)
 corepack enable
-corepack use pnpm@10.5.2
+corepack use pnpm@10.33.0
 
 # Install UV for Python
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install PostgreSQL 17 (macOS)
-brew install postgresql@17
+# Install PostgreSQL 18 (macOS)
+brew install postgresql@18
 
 # Start PostgreSQL
-brew services start postgresql@17
+brew services start postgresql@18
 
 # Create app role and database
 createuser ultr_erp --pwprompt
@@ -132,5 +132,5 @@ ultr-erp/
 
 ## Review Outcome
 
-- pnpm was standardized to 10.5.2 across README, package metadata, and CI to match the validated local/Corepack toolchain.
+- pnpm was standardized to 10.33.0 across README, package metadata, and CI to match the validated local/Corepack toolchain.
 - Setup commands were made idempotent for repeat local bootstrap runs.

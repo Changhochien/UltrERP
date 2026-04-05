@@ -5,7 +5,7 @@ Status: complete
 ## Story
 
 As a system,
-I want FastMCP 2.14.6 to use session-mode HTTP transport,
+I want FastMCP 3.x to use session-mode HTTP transport,
 So that agents can maintain persistent connections.
 
 ## Acceptance Criteria
@@ -13,7 +13,7 @@ So that agents can maintain persistent connections.
 **AC1:** FastMCP dependency added
 **Given** the backend project
 **When** I inspect `backend/pyproject.toml`
-**Then** `fastmcp>=2.14.6,<3.0` is in the `[project] dependencies` list
+**Then** `fastmcp>=3.0.0` is in the `[project] dependencies` list
 **And** `uv sync` / `pip install` succeeds without conflicts
 
 **AC2:** FastMCP server initialised
@@ -55,7 +55,7 @@ So that agents can maintain persistent connections.
 ## Tasks / Subtasks
 
 - [x] **Task 1: Add FastMCP dependency** (AC1)
-  - [x] `"fastmcp>=2.14.6,<3.0"` added to `backend/pyproject.toml`
+  - [x] `"fastmcp>=3.0.0"` added to `backend/pyproject.toml`
 
 - [x] **Task 2: Create MCP server module** (AC2, AC3)
   - [x] `backend/app/mcp_server.py` exists:

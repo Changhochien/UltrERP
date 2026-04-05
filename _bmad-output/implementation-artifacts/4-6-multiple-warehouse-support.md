@@ -232,9 +232,9 @@ async def transfer_stock(
 
 | Tech | Version | Purpose |
 |------|---------|---------|
-| PostgreSQL | 17+ | Multi-warehouse schema |
+| PostgreSQL | 18+ | Multi-warehouse schema |
 | SQLAlchemy | 2.0+ | Async transaction management |
-| FastAPI | 0.115+ | Warehouse & transfer API |
+| FastAPI | 0.135+ | Warehouse & transfer API |
 | React | 19 | Warehouse-aware UI |
 
 ---

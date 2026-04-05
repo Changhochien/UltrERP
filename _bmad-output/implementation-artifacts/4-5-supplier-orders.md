@@ -235,9 +235,9 @@ async def receive_supplier_order(
 
 | Tech | Version | Purpose |
 |------|---------|---------|
-| PostgreSQL | 17+ | Transactional order management |
+| PostgreSQL | 18+ | Transactional order management |
 | SQLAlchemy | 2.0+ | ORM models for orders |
-| FastAPI | 0.115+ | Order API endpoints |
+| FastAPI | 0.135+ | Order API endpoints |
 | React | 19 | Order management UI |
 
 ---

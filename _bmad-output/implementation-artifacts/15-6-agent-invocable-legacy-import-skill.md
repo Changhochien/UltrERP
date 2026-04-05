@@ -1,6 +1,6 @@
 # Story 15.6: Agent-Invocable Legacy Import Skill
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -38,25 +38,25 @@ So that the workflow is reusable, guided, and safe across VS Code, Copilot CLI, 
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Choose the repository skill location and packaging model** (AC2)
-  - [ ] Prefer a supported project-skill directory such as `.github/skills/legacy-import/` or `.agents/skills/legacy-import/`
-  - [ ] If the team wants to keep content under `erp-skills/`, document the required `chat.skillsLocations` configuration explicitly instead of assuming discovery works automatically
-  - [ ] Define the skill name, description, and invocation mode so the agent can discover it reliably
+- [x] **Task 1: Choose the repository skill location and packaging model** (AC2)
+  - [x] Prefer a supported project-skill directory such as `.github/skills/legacy-import/` or `.agents/skills/legacy-import/`
+  - [x] If the team wants to keep content under `erp-skills/`, document the required `chat.skillsLocations` configuration explicitly instead of assuming discovery works automatically
+  - [x] Define the skill name, description, and invocation mode so the agent can discover it reliably
 
-- [ ] **Task 2: Author the `SKILL.md` workflow wrapper** (AC1, AC2, AC4)
-  - [ ] Document when to use the skill and which CLI subcommands map to each migration phase
-  - [ ] Link any supporting examples, argument templates, or helper scripts with relative paths from the skill directory
-  - [ ] Keep import business logic in Python/CLI code and use the skill as orchestration guidance only
+- [x] **Task 2: Author the `SKILL.md` workflow wrapper** (AC1, AC2, AC4)
+  - [x] Document when to use the skill and which CLI subcommands map to each migration phase
+  - [x] Link any supporting examples, argument templates, or helper scripts with relative paths from the skill directory
+  - [x] Keep import business logic in Python/CLI code and use the skill as orchestration guidance only
 
-- [ ] **Task 3: Define safe tool-permission policy** (AC3)
-  - [ ] Decide whether the skill omits `allowed-tools` entirely or scopes it narrowly to reviewed shell usage
-  - [ ] Require explicit operator confirmation for destructive scopes such as canonical import over a large tenant/cutoff range
-  - [ ] Document why broad shell pre-approval is unsafe for this workflow
+- [x] **Task 3: Define safe tool-permission policy** (AC3)
+  - [x] Decide whether the skill omits `allowed-tools` entirely or scopes it narrowly to reviewed shell usage
+  - [x] Require explicit operator confirmation for destructive scopes such as canonical import over a large tenant/cutoff range
+  - [x] Document why broad shell pre-approval is unsafe for this workflow
 
-- [ ] **Task 4: Validate the skill end to end** (AC1, AC2, AC3, AC4)
-  - [ ] Prove the skill can be discovered by the target agent environment
-  - [ ] Prove the skill can call the CLI help and validation commands using the documented invocation path
-  - [ ] Add a manual or automated check that the skill surfaces machine-readable validation output rather than depending on prose parsing only
+- [x] **Task 4: Validate the skill end to end** (AC1, AC2, AC3, AC4)
+  - [x] Prove the skill can be discovered by the target agent environment
+  - [x] Prove the skill can call the CLI help and validation commands using the documented invocation path
+  - [x] Add a manual or automated check that the skill surfaces machine-readable validation output rather than depending on prose parsing only
 
 ## Dev Notes
 
@@ -101,3 +101,37 @@ GitHub Copilot (GPT-5.4)
 
 - Story separates durable CLI logic from the agent-facing skill wrapper.
 - Story calls out the supported project-skill locations and the non-standard `erp-skills/` discovery caveat.
+- Added a supported project skill at `.agents/skills/legacy-import/` with `name: legacy-import`, a specific load description, and relative references to `command-map.md` plus `safety-and-validation.md`.
+- Kept tool permissions conservative by omitting `allowed-tools`, documenting explicit confirmation requirements for write and high-impact phases, and explaining why broad shell pre-approval is unsafe.
+- Documented the stable CLI path as `cd backend && uv run python -m domains.legacy_import.cli ...`, including phase-to-command mapping, JSON-artifact handling for `validate-import`, and runtime guidance for missing control tables or missing canonical runs.
+- Added automated proof in `backend/tests/test_legacy_import_skill.py` and strengthened `backend/tests/domains/legacy_import/test_cli.py` so the Story 15.6 slice now executable-checks skill packaging, relative resource links, conservative permission policy, and CLI artifact-path reporting.
+- Live CLI probing confirmed the documented help path works and exposed two real runtime preconditions that are now captured in the skill docs: Alembic must be run from `backend/` with `-c ../migrations/alembic.ini`, and `validate-import` only succeeds for batches that already have a completed canonical-import run.
+- Fixed `migrations/versions/ww444yy44z65_create_canonical_import_support_tables.py` so fresh environments no longer fail on PostgreSQL's 63-character identifier limit when creating canonical-import support tables.
+- Code-review follow-up hardened the migration/runtime contract for canonical support tables, added canonical-attempt observability to the CLI summary, expanded the skill description to cover export/import review phases, and brought `validate-import` under the explicit confirmation policy because it writes artifacts and summary state.
+- Validation passed with focused legacy-import review coverage (`uv run pytest tests/domains/legacy_import/test_canonical.py tests/domains/legacy_import/test_cli.py tests/test_legacy_import_skill.py -q`, `16 passed`), targeted Ruff on the touched Python and migration slice, full backend `uv run pytest -q` (`663 passed`), full backend `uv run ruff check` (`All checks passed`), and live CLI help probes for `legacy-import` plus `validate-import`.
+
+### Review Findings
+
+- [x] [Review][Patch] Made `ww444yy44z65` resilient to preexisting runtime-created canonical support tables by creating missing indexes and foreign keys only when absent instead of assuming migrations always create the tables first.
+- [x] [Review][Patch] Added canonical import `attempt_number` to `CanonicalImportResult` and the CLI summary so operators can distinguish retries before running `validate-import --attempt-number`.
+- [x] [Review][Patch] Expanded the skill discovery description and confirmation policy so export/import review phases load the skill correctly and `validate-import` is treated as a state-writing command.
+- [x] [Review][Patch] Clarified blocked-validation behavior and live preconditions in the skill guidance so agents still read JSON artifacts when `validate-import` exits with status `1`.
+
+### File List
+
+- .agents/skills/legacy-import/SKILL.md
+- .agents/skills/legacy-import/command-map.md
+- .agents/skills/legacy-import/safety-and-validation.md
+- backend/domains/legacy_import/canonical.py
+- backend/domains/legacy_import/cli.py
+- backend/tests/domains/legacy_import/test_canonical.py
+- backend/tests/domains/legacy_import/test_cli.py
+- backend/tests/test_legacy_import_skill.py
+- migrations/versions/ww444yy44z65_create_canonical_import_support_tables.py
+
+### Change Log
+
+- 2026-04-05: Implemented Story 15.6 by packaging the legacy-import workflow as a supported `.agents` project skill with relative command-map and safety resources.
+- 2026-04-05: Added executable validation for skill packaging and machine-readable CLI artifact reporting, and updated the skill guidance with the real Alembic and canonical-run preconditions surfaced during live probing.
+- 2026-04-05: Shortened canonical-import support migration FK names so fresh PostgreSQL environments can apply `ww444yy44z65` successfully.
+- 2026-04-05: Completed Story 15.6 code-review follow-up by hardening the canonical support migration against preexisting runtime-created tables, surfacing canonical attempt numbers in the CLI summary, and tightening skill policy around `validate-import` writes and blocked exit handling.

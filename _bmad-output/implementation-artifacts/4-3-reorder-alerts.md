@@ -220,9 +220,9 @@ Alert selection feeds into Story 4.5 (Supplier Orders) for bulk order creation f
 
 | Tech | Version | Purpose |
 |------|---------|---------|
-| PostgreSQL | 17+ | reorder_alert table & transactional UPSERT flow |
+| PostgreSQL | 18+ | reorder_alert table & transactional UPSERT flow |
 | Redis | 7+ | Cache alert list (1-min TTL) |
-| FastAPI | 0.115+ | Alert API endpoints |
+| FastAPI | 0.135+ | Alert API endpoints |
 | React | 19 | Alert table component |
 
 ---

@@ -114,6 +114,12 @@ GitHub Copilot (GPT-5.4)
 - Added Alembic-managed control tables for import runs plus table-level staging status.
 - Implemented a COPY-based raw staging path with manifest-aware discovery and deterministic same-batch replacement.
 - Validated the live CLI against `tbscust` and `tbsstock`, then reran the same batch and confirmed control-table replacement semantics (`runs=1`, `table_runs=2`).
+- Review follow-up hardened `--tenant-id` parsing so invalid UUID input now exits with an argparse usage error instead of a Python traceback.
+- Review follow-up deduplicated repeated `--table` selections before discovery and run metadata persistence so operator retries cannot stage the same table twice in one batch.
+- Review follow-up narrowed the Alembic downgrade to drop only the story-owned control tables and only remove `raw_legacy` if the schema is empty, avoiding `DROP SCHEMA ... CASCADE` collateral damage.
+- Review redesign moved staging COPY onto the active `AsyncSession` transaction via the underlying asyncpg driver connection, so raw-table DDL, bulk load, and control-table metadata now share one rollback boundary.
+- Review redesign versions same-batch reruns with `attempt_number`, preserving the prior committed snapshot on rollback while still recording failed attempts for operators.
+- Focused backend validation after the redesign: `.venv/bin/pytest tests/domains/legacy_import/test_cli.py tests/domains/legacy_import/test_staging.py` -> 17 passed, plus a live same-transaction COPY probe through the session-owned asyncpg driver connection.
 
 ### File List
 
@@ -131,3 +137,5 @@ GitHub Copilot (GPT-5.4)
 ### Change Log
 
 - 2026-04-05: Implemented Story 15.1 raw legacy staging foundation with CLI entry point, control tables, COPY-based staging, focused tests, and live rerun validation.
+- 2026-04-05: Completed BMAD review follow-up for Story 15.1 by hardening CLI UUID validation, deduplicating repeated table selections, tightening downgrade safety, and documenting remaining redesign-level risks.
+- 2026-04-05: Completed the long-term redesign for Story 15.1 by moving COPY staging into the `AsyncSession` transaction, versioning rerun attempts, and preserving prior committed state on failed replacements.

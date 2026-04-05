@@ -1,6 +1,6 @@
 # Story 14.2: English Translation Baseline
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -79,33 +79,33 @@ Epic 14: Traditional Chinese i18n (Duolanguage Support)
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Audit existing UI strings across all components (AC: 3)
-  - [ ] Subtask 1.1: Run codebase grep for hardcoded strings in JSX
-  - [ ] Subtask 1.2: List all components with visible text
-  - [ ] Subtask 1.3: Categorize strings by type (nav, buttons, labels, messages, errors, validation)
+- [x] Task 1: Audit existing UI strings across all components (AC: 3)
+  - [x] Subtask 1.1: Run codebase grep for hardcoded strings in JSX
+  - [x] Subtask 1.2: List all components with visible text
+  - [x] Subtask 1.3: Categorize strings by type (nav, buttons, labels, messages, errors, validation)
 
-- [ ] Task 2: Create comprehensive English translation file (AC: 1, 2, 4)
-  - [ ] Subtask 2.1: Create `/public/locales/en/common.json`
-  - [ ] Subtask 2.2: Add all navigation strings under `nav` key
-  - [ ] Subtask 2.3: Add all button strings under `buttons` key
-  - [ ] Subtask 2.4: Add all label strings under `labels` key
-  - [ ] Subtask 2.5: Add all message strings under `messages` key
-  - [ ] Subtask 2.6: Add all error strings under `errors` key
-  - [ ] Subtask 2.7: Add all validation strings under `validation` key
-  - [ ] Subtask 2.8: Include interpolation placeholders where needed (e.g., {count}, {field})
+- [x] Task 2: Create comprehensive English translation file (AC: 1, 2, 4)
+  - [x] Subtask 2.1: Create `/public/locales/en/common.json`
+  - [x] Subtask 2.2: Add all navigation strings under `nav` key
+  - [x] Subtask 2.3: Add all button strings under `buttons` key
+  - [x] Subtask 2.4: Add all label strings under `labels` key
+  - [x] Subtask 2.5: Add all message strings under `messages` key
+  - [x] Subtask 2.6: Add all error strings under `errors` key
+  - [x] Subtask 2.7: Add all validation strings under `validation` key
+  - [x] Subtask 2.8: Include interpolation placeholders where needed (e.g., {count}, {field})
 
-- [ ] Task 3: Refactor components to use useTranslation hook (AC: 3)
-  - [ ] Subtask 3.1: Refactor AppNavigation component
-  - [ ] Subtask 3.2: Refactor all page components (Dashboard, Customers, Invoices, Inventory)
-  - [ ] Subtask 3.3: Refactor form components (CustomerForm, InvoiceLineEditor)
-  - [ ] Subtask 3.4: Refactor dialog components (CustomerDetailDialog)
-  - [ ] Subtask 3.5: Refactor card components (RevenueCard, TopProductsCard, etc.)
-  - [ ] Subtask 3.6: Replace all hardcoded strings with t('key.path') calls
+- [x] Task 3: Refactor components to use useTranslation hook (AC: 3)
+  - [x] Subtask 3.1: Refactor AppNavigation component
+  - [x] Subtask 3.2: Refactor all page components (Dashboard, Customers, Invoices, Inventory)
+  - [x] Subtask 3.3: Refactor form components (CustomerForm, InvoiceLineEditor)
+  - [x] Subtask 3.4: Refactor dialog components (CustomerDetailDialog)
+  - [x] Subtask 3.5: Refactor card components (RevenueCard, TopProductsCard, etc.)
+  - [x] Subtask 3.6: Replace all hardcoded strings with t('key.path') calls
 
-- [ ] Task 4: Verify no hardcoded strings remain (AC: 3)
-  - [ ] Subtask 4.1: Grep for non-translated visible text patterns
-  - [ ] Subtask 4.2: Verify all visible strings use t() function
-  - [ ] Subtask 4.3: Test all UI flows to ensure translations appear
+- [x] Task 4: Verify no hardcoded strings remain (AC: 3)
+  - [x] Subtask 4.1: Grep for non-translated visible text patterns
+  - [x] Subtask 4.2: Verify all visible strings use t() function
+  - [x] Subtask 4.3: Test all UI flows to ensure translations appear
 
 ## Dev Notes
 
@@ -156,3 +156,33 @@ function MyComponent() {
 - This is the source of truth for translation keys
 - Chinese translation will mirror this structure
 - Maintain consistency in key naming across files
+
+## Dev Agent Record
+
+### Completion Notes
+- Closed the remaining shell-auth copy gaps by translating the AuthGate loading state, LoginPage labels/messages, AppNavigation tagline, dashboard header description, dashboard quick-action labels/descriptions, and switcher accessibility strings.
+- Expanded the shared locale bundles with `auth.*`, `languageSwitcher.*`, the missing navigation `nav.*` keys, the missing route-context `routes.*` keys, `app.tagline`, the full `dashboard.quickActions.*` matrix, the app-wide follow-up keys for customer status filters, invoice tax policies, order status filters, and the browser-sweep-discovered `settingsPage.*` strings, bringing the current parity count to `366` English keys and `366` zh-Hant keys.
+- Removed the stale `APP_TAGLINE` export dependency so the app shell now reads from locale files instead of hardcoded render strings.
+- Tightened frontend JWT payload validation to the same UUID contract as the backend so malformed stored tokens are rejected before protected navigation can bounce the user to login on the next API-backed page.
+- Aligned runtime i18n interpolation and HTTP locale loading to the repo's single-brace placeholder format, which restored live translation loading in the browser shell.
+- Verified a clean browser route sweep on a separate Vite instance with `VITE_DEV_AUTO_LOGIN=false`, which confirmed no visible raw key tokens across the main authenticated routes in either language and surfaced the remaining hardcoded Settings page eyebrow/empty-state fallback copy.
+
+### Validation
+- `pnpm build`
+- `pnpm lint`
+- `pnpm exec vitest run src/pages/settings/SettingsPage.test.tsx src/tests/test_health.test.tsx`
+
+### File List
+- `src/App.tsx`
+- `src/components/AppNavigation.tsx`
+- `src/components/LanguageSwitcher.tsx`
+- `src/pages/LoginPage.tsx`
+- `src/pages/dashboard/DashboardPage.tsx`
+- `public/locales/en/common.json`
+- `public/locales/zh-Hant/common.json`
+
+### Change Log
+- 2026-04-05: Review-fix follow-up — translated the remaining shell/login/dashboard copy, added missing locale keys, and revalidated build/lint/targeted tests.
+- 2026-04-05: Homepage follow-up — added the missing `dashboard.quickActions.*` translations after raw translation keys were reported on the dashboard homepage.
+- 2026-04-05: Navigation/auth follow-up — added the missing `nav.settings` and related navigation keys, then aligned frontend token validation with the backend UUID contract.
+- 2026-04-05: Shell locale follow-up — added the missing route-context locale keys and aligned runtime interpolation/loadPath so the live browser shell stopped rendering raw translation keys.

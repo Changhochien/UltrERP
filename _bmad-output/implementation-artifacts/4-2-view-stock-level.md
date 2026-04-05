@@ -141,8 +141,8 @@ warehouse_rows = [
 
 | Tech | Version | Purpose |
 |------|---------|---------|
-| FastAPI | 0.115+ | Async endpoint for product detail |
-| PostgreSQL | 17+ | inventory_stock table queries |
+| FastAPI | 0.135+ | Async endpoint for product detail |
+| PostgreSQL | 18+ | inventory_stock table queries |
 | Redis | 7+ | Cache warehouse stock levels |
 | React | 19 | Product detail UI |
 | Chart library | optional (recharts or simple timeline list) | Adjustment history visualization |

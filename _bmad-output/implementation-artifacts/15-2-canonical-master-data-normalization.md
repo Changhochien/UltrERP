@@ -1,6 +1,6 @@
 # Story 15.2: Canonical Master Data Normalization
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -38,26 +38,26 @@ So that downstream loads use consistent customer, supplier, product, and warehou
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Productionize the verified date rules** (AC1)
-  - [ ] Lift ROC-date and sentinel-date handling out of the PoC into production utilities inside `backend/domains/legacy_import/`
-  - [ ] Expose normalization as a reviewed CLI phase rather than an ad hoc script-only step
-  - [ ] Add explicit handling for 10-digit ROC invoice/date encodings, AD dates, and `1900-01-01`
-  - [ ] Fail loudly on formats outside the documented legacy cases
+- [x] **Task 1: Productionize the verified date rules** (AC1)
+  - [x] Lift ROC-date and sentinel-date handling out of the PoC into production utilities inside `backend/domains/legacy_import/`
+  - [x] Expose normalization as a reviewed CLI phase rather than an ad hoc script-only step
+  - [x] Add explicit handling for 10-digit ROC invoice/date encodings, AD dates, and `1900-01-01`
+  - [x] Fail loudly on formats outside the documented legacy cases
 
-- [ ] **Task 2: Normalize shared party data** (AC2, AC4)
-  - [ ] Define canonical-prep records for parties sourced from `tbscust`
-  - [ ] Preserve legacy code, role usage, and batch lineage in the prep layer
-  - [ ] Ensure downstream imports can distinguish customer-facing and supplier-facing usage without duplicating source records blindly
+- [x] **Task 2: Normalize shared party data** (AC2, AC4)
+  - [x] Define canonical-prep records for parties sourced from `tbscust`
+  - [x] Preserve legacy code, role usage, and batch lineage in the prep layer
+  - [x] Ensure downstream imports can distinguish customer-facing and supplier-facing usage without duplicating source records blindly
 
-- [ ] **Task 3: Normalize product, warehouse, and inventory masters** (AC3, AC4)
-  - [ ] Prepare normalized product records from `tbsstock`
-  - [ ] Prepare normalized warehouse/inventory records from `tbsstkhouse` and related staging tables
-  - [ ] Generate deterministic key maps that downstream transaction import can reuse
+- [x] **Task 3: Normalize product, warehouse, and inventory masters** (AC3, AC4)
+  - [x] Prepare normalized product records from `tbsstock`
+  - [x] Prepare normalized warehouse/inventory records from `tbsstkhouse` and related staging tables
+  - [x] Generate deterministic key maps that downstream transaction import can reuse
 
-- [ ] **Task 4: Add focused regression coverage** (AC1, AC2, AC3, AC4)
-  - [ ] Add tests for ROC date edge cases and sentinel handling
-  - [ ] Add tests for combined customer/supplier records in `tbscust`
-  - [ ] Add tests proving normalized outputs keep batch lineage and deterministic identifiers
+- [x] **Task 4: Add focused regression coverage** (AC1, AC2, AC3, AC4)
+  - [x] Add tests for ROC date edge cases and sentinel handling
+  - [x] Add tests for combined customer/supplier records in `tbscust`
+  - [x] Add tests proving normalized outputs keep batch lineage and deterministic identifiers
 
 ## Dev Notes
 
@@ -104,3 +104,27 @@ GitHub Copilot (GPT-5.4)
 
 - Story isolates normalization from live writes so later migration steps can reuse deterministic prep outputs.
 - Story explicitly protects the shared customer/supplier nature of `tbscust`.
+- Added a `normalize` CLI phase that writes batch-scoped `normalized_parties`, `normalized_products`, `normalized_warehouses`, and `normalized_inventory_prep` tables inside `raw_legacy`.
+- Implemented deterministic UUID generation plus production normalization helpers for ROC dates, AD dates, `1900-01-01` sentinels, decimals, and shared party roles.
+- Normalization currently uses one synthetic default warehouse so downstream transaction-import stories can consume consistent inventory prep rows before richer warehouse mapping lands.
+- Live validation staged `tbscust`, `tbsstock`, and `tbsstkhouse`, then normalized batch `normalize-probe-001` into `1022` parties, `6611` products, `1` warehouse, and `6588` inventory-prep rows.
+- Live validation exposed a false-negative in the shared staging parser for rows that mix SQL-style escaped quotes with unquoted numeric literals; the parser now accepts the real export format and has regression coverage.
+- BMAD review follow-up moved normalization clear-plus-copy work behind one asyncpg transaction and validates staged source rows before deleting normalized outputs, so bad or partial reruns no longer erase the last good normalized batch for that tenant.
+- BMAD review follow-up scoped normalized prep table primary keys and cleanup to `tenant_id + batch_id`, matching the CLI contract and preventing cross-tenant batch collisions.
+- BMAD review follow-up added focused regression coverage for customer-role normalization, tenant-scoped normalized-table DDL, transactional rerun behavior, no-clear-on-missing-stage behavior, and comma-bearing legacy staging rows.
+- Review evidence on warehouse granularity: the current `tbsstkhouse` extract has `6588` rows, `6588` unique product codes, `0` repeated product rows, and an empty third field on every sampled/exported row, so richer warehouse derivation remains blocked on a trustworthy warehouse-identity source rather than on the normalization logic alone.
+- Focused backend validation after the review fixes: `.venv/bin/pytest tests/domains/legacy_import` -> `26 passed`.
+
+### File List
+
+- backend/domains/legacy_import/__init__.py
+- backend/domains/legacy_import/cli.py
+- backend/domains/legacy_import/normalization.py
+- backend/domains/legacy_import/staging.py
+- backend/tests/domains/legacy_import/test_normalization.py
+- backend/tests/domains/legacy_import/test_staging.py
+
+### Change Log
+
+- 2026-04-05: Implemented Story 15.2 master-data normalization with CLI support, batch-scoped normalized prep tables, focused tests, and live stage-plus-normalize validation against `tbscust`, `tbsstock`, and `tbsstkhouse`.
+- 2026-04-05: Completed BMAD review follow-up for Story 15.2 by making normalization transactional and tenant-scoped, extending normalization/staging regression coverage, and documenting the current warehouse-source limitation in `tbsstkhouse`.
