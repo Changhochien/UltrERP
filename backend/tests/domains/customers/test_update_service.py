@@ -109,9 +109,7 @@ class TestUpdateCreditLimitValidation:
             _update_payload(credit_limit=Decimal("-1.00"))
 
     def test_exceeds_numeric_precision(self) -> None:
-        errors = _validate_update_fields(
-            _update_payload(credit_limit=Decimal("99999999999.99"))
-        )
+        errors = _validate_update_fields(_update_payload(credit_limit=Decimal("99999999999.99")))
         assert len(errors) == 1
         assert errors[0]["field"] == "credit_limit"
 

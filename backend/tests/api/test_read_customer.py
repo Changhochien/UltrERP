@@ -102,6 +102,7 @@ class FakeReadSession:
 def _make_override(results: list[_FakeResult]):
     async def _override() -> AsyncGenerator[FakeReadSession, None]:
         yield FakeReadSession(results)
+
     return _override
 
 
@@ -132,13 +133,17 @@ def _base_url() -> str:
 class TestListEndpoint:
     @pytest.mark.asyncio
     async def test_empty_list(self) -> None:
-        previous_override = _install_db_override([
-            _FakeResult(value=_TENANT_RESULT),  # set_tenant
-            _FakeResult(value=0),
-            _FakeResult(items=[]),
-        ])
+        previous_override = _install_db_override(
+            [
+                _FakeResult(value=_TENANT_RESULT),  # set_tenant
+                _FakeResult(value=0),
+                _FakeResult(items=[]),
+            ]
+        )
         try:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()) as c:
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()
+            ) as c:
                 r = await c.get("/api/v1/customers")
             assert r.status_code == 200
             body = r.json()
@@ -152,13 +157,17 @@ class TestListEndpoint:
     @pytest.mark.asyncio
     async def test_returns_items(self) -> None:
         c1 = _make_customer(company_name="Alpha Co")
-        previous_override = _install_db_override([
-            _FakeResult(value=_TENANT_RESULT),  # set_tenant
-            _FakeResult(value=1),
-            _FakeResult(items=[c1]),
-        ])
+        previous_override = _install_db_override(
+            [
+                _FakeResult(value=_TENANT_RESULT),  # set_tenant
+                _FakeResult(value=1),
+                _FakeResult(items=[c1]),
+            ]
+        )
         try:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()) as c:
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()
+            ) as c:
                 r = await c.get("/api/v1/customers")
             assert r.status_code == 200
             body = r.json()
@@ -170,13 +179,17 @@ class TestListEndpoint:
 
     @pytest.mark.asyncio
     async def test_pagination_params(self) -> None:
-        previous_override = _install_db_override([
-            _FakeResult(value=_TENANT_RESULT),  # set_tenant
-            _FakeResult(value=50),
-            _FakeResult(items=[_make_customer()]),
-        ])
+        previous_override = _install_db_override(
+            [
+                _FakeResult(value=_TENANT_RESULT),  # set_tenant
+                _FakeResult(value=50),
+                _FakeResult(items=[_make_customer()]),
+            ]
+        )
         try:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()) as c:
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()
+            ) as c:
                 r = await c.get("/api/v1/customers", params={"page": 2, "page_size": 10})
             assert r.status_code == 200
             body = r.json()
@@ -189,13 +202,17 @@ class TestListEndpoint:
     @pytest.mark.asyncio
     async def test_search_filter(self) -> None:
         c1 = _make_customer(company_name="Matched")
-        previous_override = _install_db_override([
-            _FakeResult(value=_TENANT_RESULT),  # set_tenant
-            _FakeResult(value=1),
-            _FakeResult(items=[c1]),
-        ])
+        previous_override = _install_db_override(
+            [
+                _FakeResult(value=_TENANT_RESULT),  # set_tenant
+                _FakeResult(value=1),
+                _FakeResult(items=[c1]),
+            ]
+        )
         try:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()) as c:
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()
+            ) as c:
                 r = await c.get("/api/v1/customers", params={"q": "Match"})
             assert r.status_code == 200
             assert r.json()["total_count"] == 1
@@ -210,12 +227,16 @@ class TestGetByIdEndpoint:
     @pytest.mark.asyncio
     async def test_found(self) -> None:
         c = _make_customer()
-        previous_override = _install_db_override([
-            _FakeResult(value=_TENANT_RESULT),  # set_tenant
-            _FakeResult(value=c),
-        ])
+        previous_override = _install_db_override(
+            [
+                _FakeResult(value=_TENANT_RESULT),  # set_tenant
+                _FakeResult(value=c),
+            ]
+        )
         try:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()) as cl:
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()
+            ) as cl:
                 r = await cl.get(f"/api/v1/customers/{c.id}")
             assert r.status_code == 200
             assert r.json()["id"] == str(c.id)
@@ -224,12 +245,16 @@ class TestGetByIdEndpoint:
 
     @pytest.mark.asyncio
     async def test_not_found(self) -> None:
-        previous_override = _install_db_override([
-            _FakeResult(value=_TENANT_RESULT),  # set_tenant
-            _FakeResult(value=None),
-        ])
+        previous_override = _install_db_override(
+            [
+                _FakeResult(value=_TENANT_RESULT),  # set_tenant
+                _FakeResult(value=None),
+            ]
+        )
         try:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()) as c:
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()
+            ) as c:
                 r = await c.get(f"/api/v1/customers/{uuid.uuid4()}")
             assert r.status_code == 404
         finally:
@@ -239,7 +264,9 @@ class TestGetByIdEndpoint:
     async def test_invalid_uuid(self) -> None:
         previous_override = _install_db_override([])
         try:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()) as c:
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()
+            ) as c:
                 r = await c.get("/api/v1/customers/not-a-uuid")
             assert r.status_code == 422
         finally:
@@ -253,12 +280,16 @@ class TestLookupEndpoint:
     @pytest.mark.asyncio
     async def test_found(self) -> None:
         c = _make_customer(normalized_business_number="04595252")
-        previous_override = _install_db_override([
-            _FakeResult(value=_TENANT_RESULT),  # set_tenant
-            _FakeResult(value=c),
-        ])
+        previous_override = _install_db_override(
+            [
+                _FakeResult(value=_TENANT_RESULT),  # set_tenant
+                _FakeResult(value=c),
+            ]
+        )
         try:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()) as cl:
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()
+            ) as cl:
                 r = await cl.get("/api/v1/customers/lookup", params={"business_number": "04595252"})
             assert r.status_code == 200
             assert r.json()["normalized_business_number"] == "04595252"
@@ -267,12 +298,16 @@ class TestLookupEndpoint:
 
     @pytest.mark.asyncio
     async def test_not_found(self) -> None:
-        previous_override = _install_db_override([
-            _FakeResult(value=_TENANT_RESULT),  # set_tenant
-            _FakeResult(value=None),
-        ])
+        previous_override = _install_db_override(
+            [
+                _FakeResult(value=_TENANT_RESULT),  # set_tenant
+                _FakeResult(value=None),
+            ]
+        )
         try:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()) as c:
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()
+            ) as c:
                 r = await c.get("/api/v1/customers/lookup", params={"business_number": "99999999"})
             assert r.status_code == 404
         finally:
@@ -282,7 +317,9 @@ class TestLookupEndpoint:
     async def test_missing_param(self) -> None:
         previous_override = _install_db_override([])
         try:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()) as c:
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url=_base_url(), headers=auth_header()
+            ) as c:
                 r = await c.get("/api/v1/customers/lookup")
             assert r.status_code == 422
         finally:

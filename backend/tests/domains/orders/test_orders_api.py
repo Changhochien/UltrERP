@@ -5,140 +5,149 @@ from __future__ import annotations
 import uuid
 
 from ._helpers import (
-	FakeAsyncSession,
-	FakeCustomer,
-	FakeOrder,
-	FakeOrderLine,
-	FakeResult,
-	setup_session as _setup,
-	teardown_session as _teardown,
-	http_get as _get,
-	http_post as _post,
+    FakeAsyncSession,
+    FakeCustomer,
+    FakeOrder,
+    FakeOrderLine,
 )
-
+from ._helpers import (
+    http_get as _get,
+)
+from ._helpers import (
+    http_post as _post,
+)
+from ._helpers import (
+    setup_session as _setup,
+)
+from ._helpers import (
+    teardown_session as _teardown,
+)
 
 # ── File-specific fakes ──────────────────────────────────────
 
 
 class FakeProduct:
-	def __init__(self, *, product_id: uuid.UUID | None = None):
-		self.id = product_id or uuid.uuid4()
+    def __init__(self, *, product_id: uuid.UUID | None = None):
+        self.id = product_id or uuid.uuid4()
 
 
 # ── Payment terms tests ──────────────────────────────────────
 
+
 async def test_list_payment_terms() -> None:
-	session = FakeAsyncSession()
-	prev = _setup(session)
-	try:
-		resp = await _get("/api/v1/orders/payment-terms")
-		assert resp.status_code == 200
-		body = resp.json()
-		assert body["total"] == 3
-		codes = [item["code"] for item in body["items"]]
-		assert "NET_30" in codes
-		assert "NET_60" in codes
-		assert "COD" in codes
-	finally:
-		_teardown(prev)
+    session = FakeAsyncSession()
+    prev = _setup(session)
+    try:
+        resp = await _get("/api/v1/orders/payment-terms")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total"] == 3
+        codes = [item["code"] for item in body["items"]]
+        assert "NET_30" in codes
+        assert "NET_60" in codes
+        assert "COD" in codes
+    finally:
+        _teardown(prev)
 
 
 # ── Order list tests ─────────────────────────────────────────
 
-async def test_list_orders_empty() -> None:
-	session = FakeAsyncSession()
-	session.queue_scalar(None)  # set_tenant
-	session.queue_count(0)  # count query
-	session.queue_scalars([])  # items query
 
-	prev = _setup(session)
-	try:
-		resp = await _get("/api/v1/orders")
-		assert resp.status_code == 200
-		body = resp.json()
-		assert body["total"] == 0
-		assert body["items"] == []
-	finally:
-		_teardown(prev)
+async def test_list_orders_empty() -> None:
+    session = FakeAsyncSession()
+    session.queue_scalar(None)  # set_tenant
+    session.queue_count(0)  # count query
+    session.queue_scalars([])  # items query
+
+    prev = _setup(session)
+    try:
+        resp = await _get("/api/v1/orders")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total"] == 0
+        assert body["items"] == []
+    finally:
+        _teardown(prev)
 
 
 async def test_list_orders_with_items() -> None:
-	o1 = FakeOrder(status="pending")
-	o2 = FakeOrder(status="confirmed")
+    o1 = FakeOrder(status="pending")
+    o2 = FakeOrder(status="confirmed")
 
-	session = FakeAsyncSession()
-	session.queue_scalar(None)  # set_tenant
-	session.queue_count(2)
-	session.queue_scalars([o1, o2])
+    session = FakeAsyncSession()
+    session.queue_scalar(None)  # set_tenant
+    session.queue_count(2)
+    session.queue_scalars([o1, o2])
 
-	prev = _setup(session)
-	try:
-		resp = await _get("/api/v1/orders")
-		assert resp.status_code == 200
-		body = resp.json()
-		assert body["total"] == 2
-		assert len(body["items"]) == 2
-	finally:
-		_teardown(prev)
+    prev = _setup(session)
+    try:
+        resp = await _get("/api/v1/orders")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total"] == 2
+        assert len(body["items"]) == 2
+    finally:
+        _teardown(prev)
 
 
 async def test_list_orders_with_status_filter() -> None:
-	o1 = FakeOrder(status="pending")
+    o1 = FakeOrder(status="pending")
 
-	session = FakeAsyncSession()
-	session.queue_scalar(None)  # set_tenant
-	session.queue_count(1)
-	session.queue_scalars([o1])
+    session = FakeAsyncSession()
+    session.queue_scalar(None)  # set_tenant
+    session.queue_count(1)
+    session.queue_scalars([o1])
 
-	prev = _setup(session)
-	try:
-		resp = await _get("/api/v1/orders?status=pending")
-		assert resp.status_code == 200
-		body = resp.json()
-		assert body["total"] == 1
-	finally:
-		_teardown(prev)
+    prev = _setup(session)
+    try:
+        resp = await _get("/api/v1/orders?status=pending")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total"] == 1
+    finally:
+        _teardown(prev)
 
 
 # ── Order detail tests ───────────────────────────────────────
 
+
 async def test_get_order_found() -> None:
-	customer = FakeCustomer()
-	line = FakeOrderLine(product_id=uuid.uuid4())
-	order = FakeOrder(
-		customer_id=customer.id,
-		lines=[line],
-		customer=customer,
-	)
+    customer = FakeCustomer()
+    line = FakeOrderLine(product_id=uuid.uuid4())
+    order = FakeOrder(
+        customer_id=customer.id,
+        lines=[line],
+        customer=customer,
+    )
 
-	session = FakeAsyncSession()
-	session.queue_scalar(None)  # set_tenant
-	session.queue_scalar(order)  # get_order query
+    session = FakeAsyncSession()
+    session.queue_scalar(None)  # set_tenant
+    session.queue_scalar(order)  # get_order query
 
-	prev = _setup(session)
-	try:
-		resp = await _get(f"/api/v1/orders/{order.id}")
-		assert resp.status_code == 200
-		body = resp.json()
-		assert body["order_number"] == order.order_number
-		assert body["status"] == "pending"
-		assert len(body["lines"]) == 1
-		assert body["lines"][0]["description"] == "Test product"
-	finally:
-		_teardown(prev)
+    prev = _setup(session)
+    try:
+        resp = await _get(f"/api/v1/orders/{order.id}")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["order_number"] == order.order_number
+        assert body["status"] == "pending"
+        assert len(body["lines"]) == 1
+        assert body["lines"][0]["description"] == "Test product"
+    finally:
+        _teardown(prev)
 
 
 async def test_get_order_not_found() -> None:
-	session = FakeAsyncSession()
-	session.queue_scalar(None)  # set_tenant
-	session.queue_scalar(None)  # not found
+    session = FakeAsyncSession()
+    session.queue_scalar(None)  # set_tenant
+    session.queue_scalar(None)  # not found
 
-	prev = _setup(session)
-	try:
-		resp = await _get(f"/api/v1/orders/{uuid.uuid4()}")
-		assert resp.status_code == 404
-	finally:
-		_teardown(prev)
+    prev = _setup(session)
+    try:
+        resp = await _get(f"/api/v1/orders/{uuid.uuid4()}")
+        assert resp.status_code == 404
+    finally:
+        _teardown(prev)
 
 
 # ── Order creation tests ─────────────────────────────────────
@@ -147,179 +156,179 @@ _PRODUCT_ID = str(uuid.uuid4())
 
 
 def _valid_order_payload(customer_id: str | None = None) -> dict:
-	return {
-		"customer_id": customer_id or str(uuid.uuid4()),
-		"payment_terms_code": "NET_30",
-		"notes": "Test order",
-		"lines": [
-			{
-				"product_id": _PRODUCT_ID,
-				"description": "Widget A",
-				"quantity": 10,
-				"unit_price": 100.00,
-				"tax_policy_code": "standard",
-			},
-		],
-	}
+    return {
+        "customer_id": customer_id or str(uuid.uuid4()),
+        "payment_terms_code": "NET_30",
+        "notes": "Test order",
+        "lines": [
+            {
+                "product_id": _PRODUCT_ID,
+                "description": "Widget A",
+                "quantity": 10,
+                "unit_price": 100.00,
+                "tax_policy_code": "standard",
+            },
+        ],
+    }
 
 
 async def test_create_order_validation_empty_lines() -> None:
-	session = FakeAsyncSession()
-	prev = _setup(session)
-	try:
-		payload = _valid_order_payload()
-		payload["lines"] = []
-		resp = await _post("/api/v1/orders", json=payload)
-		assert resp.status_code == 422
-	finally:
-		_teardown(prev)
+    session = FakeAsyncSession()
+    prev = _setup(session)
+    try:
+        payload = _valid_order_payload()
+        payload["lines"] = []
+        resp = await _post("/api/v1/orders", json=payload)
+        assert resp.status_code == 422
+    finally:
+        _teardown(prev)
 
 
 async def test_create_order_validation_missing_customer() -> None:
-	session = FakeAsyncSession()
-	prev = _setup(session)
-	try:
-		payload = _valid_order_payload()
-		del payload["customer_id"]
-		resp = await _post("/api/v1/orders", json=payload)
-		assert resp.status_code == 422
-	finally:
-		_teardown(prev)
+    session = FakeAsyncSession()
+    prev = _setup(session)
+    try:
+        payload = _valid_order_payload()
+        del payload["customer_id"]
+        resp = await _post("/api/v1/orders", json=payload)
+        assert resp.status_code == 422
+    finally:
+        _teardown(prev)
 
 
 async def test_create_order_customer_not_found() -> None:
-	session = FakeAsyncSession()
-	# set_tenant execute
-	session.queue_scalar(None)
-	# customer lookup — not found
-	session.queue_scalar(None)
+    session = FakeAsyncSession()
+    # set_tenant execute
+    session.queue_scalar(None)
+    # customer lookup — not found
+    session.queue_scalar(None)
 
-	prev = _setup(session)
-	try:
-		resp = await _post("/api/v1/orders", json=_valid_order_payload())
-		assert resp.status_code == 422
-		body = resp.json()
-		assert any("customer" in str(e).lower() for e in body["detail"])
-	finally:
-		_teardown(prev)
+    prev = _setup(session)
+    try:
+        resp = await _post("/api/v1/orders", json=_valid_order_payload())
+        assert resp.status_code == 422
+        body = resp.json()
+        assert any("customer" in str(e).lower() for e in body["detail"])
+    finally:
+        _teardown(prev)
 
 
 async def test_create_order_success() -> None:
-	customer = FakeCustomer()
-	product = FakeProduct(product_id=uuid.UUID(_PRODUCT_ID))
+    customer = FakeCustomer()
+    product = FakeProduct(product_id=uuid.UUID(_PRODUCT_ID))
 
-	# For the reload after creation (get_order)
-	line = FakeOrderLine(product_id=product.id)
-	order = FakeOrder(
-		customer_id=customer.id,
-		lines=[line],
-		customer=customer,
-	)
+    # For the reload after creation (get_order)
+    line = FakeOrderLine(product_id=product.id)
+    order = FakeOrder(
+        customer_id=customer.id,
+        lines=[line],
+        customer=customer,
+    )
 
-	session = FakeAsyncSession()
-	# Inside create_order (within session.begin):
-	session.queue_scalar(None)  # set_tenant
-	session.queue_scalar(customer)  # customer lookup
-	session.queue_scalars([product.id])  # product IDs check
-	session.queue_count(100)  # stock availability for line
-	# After flush/commit, reload via get_order:
-	session.queue_scalar(None)  # set_tenant (get_order)
-	session.queue_scalar(order)  # get_order with selectinload
+    session = FakeAsyncSession()
+    # Inside create_order (within session.begin):
+    session.queue_scalar(None)  # set_tenant
+    session.queue_scalar(customer)  # customer lookup
+    session.queue_scalars([product.id])  # product IDs check
+    session.queue_count(100)  # stock availability for line
+    # After flush/commit, reload via get_order:
+    session.queue_scalar(None)  # set_tenant (get_order)
+    session.queue_scalar(order)  # get_order with selectinload
 
-	prev = _setup(session)
-	try:
-		payload = _valid_order_payload(customer_id=str(customer.id))
-		payload["lines"][0]["product_id"] = str(product.id)
-		resp = await _post("/api/v1/orders", json=payload)
-		assert resp.status_code == 201
-		body = resp.json()
-		assert body["status"] == "pending"
-		assert body["payment_terms_code"] == "NET_30"
-		assert body["payment_terms_days"] == 30
-		assert len(body["lines"]) == 1
-	finally:
-		_teardown(prev)
+    prev = _setup(session)
+    try:
+        payload = _valid_order_payload(customer_id=str(customer.id))
+        payload["lines"][0]["product_id"] = str(product.id)
+        resp = await _post("/api/v1/orders", json=payload)
+        assert resp.status_code == 201
+        body = resp.json()
+        assert body["status"] == "pending"
+        assert body["payment_terms_code"] == "NET_30"
+        assert body["payment_terms_days"] == 30
+        assert len(body["lines"]) == 1
+    finally:
+        _teardown(prev)
 
 
 async def test_create_order_with_cod_terms() -> None:
-	customer = FakeCustomer()
-	product = FakeProduct(product_id=uuid.UUID(_PRODUCT_ID))
+    customer = FakeCustomer()
+    product = FakeProduct(product_id=uuid.UUID(_PRODUCT_ID))
 
-	line = FakeOrderLine(product_id=product.id)
-	order = FakeOrder(
-		customer_id=customer.id,
-		lines=[line],
-		customer=customer,
-	)
-	order.payment_terms_code = "COD"
-	order.payment_terms_days = 0
+    line = FakeOrderLine(product_id=product.id)
+    order = FakeOrder(
+        customer_id=customer.id,
+        lines=[line],
+        customer=customer,
+    )
+    order.payment_terms_code = "COD"
+    order.payment_terms_days = 0
 
-	session = FakeAsyncSession()
-	session.queue_scalar(None)  # set_tenant
-	session.queue_scalar(customer)  # customer lookup
-	session.queue_scalars([product.id])  # product check
-	session.queue_count(100)  # stock availability for line
-	session.queue_scalar(None)  # set_tenant (get_order)
-	session.queue_scalar(order)  # get_order
+    session = FakeAsyncSession()
+    session.queue_scalar(None)  # set_tenant
+    session.queue_scalar(customer)  # customer lookup
+    session.queue_scalars([product.id])  # product check
+    session.queue_count(100)  # stock availability for line
+    session.queue_scalar(None)  # set_tenant (get_order)
+    session.queue_scalar(order)  # get_order
 
-	prev = _setup(session)
-	try:
-		payload = _valid_order_payload(customer_id=str(customer.id))
-		payload["payment_terms_code"] = "COD"
-		payload["lines"][0]["product_id"] = str(product.id)
-		resp = await _post("/api/v1/orders", json=payload)
-		assert resp.status_code == 201
-		body = resp.json()
-		assert body["payment_terms_code"] == "COD"
-		assert body["payment_terms_days"] == 0
-	finally:
-		_teardown(prev)
+    prev = _setup(session)
+    try:
+        payload = _valid_order_payload(customer_id=str(customer.id))
+        payload["payment_terms_code"] = "COD"
+        payload["lines"][0]["product_id"] = str(product.id)
+        resp = await _post("/api/v1/orders", json=payload)
+        assert resp.status_code == 201
+        body = resp.json()
+        assert body["payment_terms_code"] == "COD"
+        assert body["payment_terms_days"] == 0
+    finally:
+        _teardown(prev)
 
 
 async def test_create_order_invalid_payment_terms() -> None:
-	"""Invalid payment_terms_code returns 422."""
-	session = FakeAsyncSession()
-	prev = _setup(session)
-	try:
-		payload = _valid_order_payload()
-		payload["payment_terms_code"] = "NET_999"
-		resp = await _post("/api/v1/orders", json=payload)
-		assert resp.status_code == 422
-	finally:
-		_teardown(prev)
+    """Invalid payment_terms_code returns 422."""
+    session = FakeAsyncSession()
+    prev = _setup(session)
+    try:
+        payload = _valid_order_payload()
+        payload["payment_terms_code"] = "NET_999"
+        resp = await _post("/api/v1/orders", json=payload)
+        assert resp.status_code == 422
+    finally:
+        _teardown(prev)
 
 
 async def test_create_order_defaults_to_net30() -> None:
-	"""Omitting payment_terms_code defaults to NET_30."""
-	customer = FakeCustomer()
-	product = FakeProduct(product_id=uuid.UUID(_PRODUCT_ID))
+    """Omitting payment_terms_code defaults to NET_30."""
+    customer = FakeCustomer()
+    product = FakeProduct(product_id=uuid.UUID(_PRODUCT_ID))
 
-	line = FakeOrderLine(product_id=product.id)
-	order = FakeOrder(
-		customer_id=customer.id,
-		lines=[line],
-		customer=customer,
-	)
-	order.payment_terms_code = "NET_30"
-	order.payment_terms_days = 30
+    line = FakeOrderLine(product_id=product.id)
+    order = FakeOrder(
+        customer_id=customer.id,
+        lines=[line],
+        customer=customer,
+    )
+    order.payment_terms_code = "NET_30"
+    order.payment_terms_days = 30
 
-	session = FakeAsyncSession()
-	session.queue_scalar(None)  # set_tenant
-	session.queue_scalar(customer)  # customer lookup
-	session.queue_scalars([product.id])  # product check
-	session.queue_count(100)  # stock availability for line
-	session.queue_scalar(None)  # set_tenant (get_order)
-	session.queue_scalar(order)  # get_order
+    session = FakeAsyncSession()
+    session.queue_scalar(None)  # set_tenant
+    session.queue_scalar(customer)  # customer lookup
+    session.queue_scalars([product.id])  # product check
+    session.queue_count(100)  # stock availability for line
+    session.queue_scalar(None)  # set_tenant (get_order)
+    session.queue_scalar(order)  # get_order
 
-	prev = _setup(session)
-	try:
-		payload = _valid_order_payload(customer_id=str(customer.id))
-		payload["lines"][0]["product_id"] = str(product.id)
-		del payload["payment_terms_code"]
-		resp = await _post("/api/v1/orders", json=payload)
-		assert resp.status_code == 201
-		body = resp.json()
-		assert body["payment_terms_code"] == "NET_30"
-		assert body["payment_terms_days"] == 30
-	finally:
-		_teardown(prev)
+    prev = _setup(session)
+    try:
+        payload = _valid_order_payload(customer_id=str(customer.id))
+        payload["lines"][0]["product_id"] = str(product.id)
+        del payload["payment_terms_code"]
+        resp = await _post("/api/v1/orders", json=payload)
+        assert resp.status_code == 201
+        body = resp.json()
+        assert body["payment_terms_code"] == "NET_30"
+        assert body["payment_terms_days"] == 30
+    finally:
+        _teardown(prev)

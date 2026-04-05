@@ -80,11 +80,13 @@ class TestListCustomers:
     @pytest.mark.asyncio
     async def test_returns_items_and_count(self) -> None:
         c1 = _make_customer(company_name="Alpha")
-        session = _mock_session([
-            _FakeResult(value=_TENANT_OK),  # set_tenant
-            _FakeResult(value=1),       # count query
-            _FakeResult(items=[c1]),     # items query
-        ])
+        session = _mock_session(
+            [
+                _FakeResult(value=_TENANT_OK),  # set_tenant
+                _FakeResult(value=1),  # count query
+                _FakeResult(items=[c1]),  # items query
+            ]
+        )
         params = CustomerListParams()
         items, total = await list_customers(session, params)
         assert total == 1
@@ -93,11 +95,13 @@ class TestListCustomers:
 
     @pytest.mark.asyncio
     async def test_empty_result(self) -> None:
-        session = _mock_session([
-            _FakeResult(value=_TENANT_OK),  # set_tenant
-            _FakeResult(value=0),
-            _FakeResult(items=[]),
-        ])
+        session = _mock_session(
+            [
+                _FakeResult(value=_TENANT_OK),  # set_tenant
+                _FakeResult(value=0),
+                _FakeResult(items=[]),
+            ]
+        )
         params = CustomerListParams()
         items, total = await list_customers(session, params)
         assert total == 0
@@ -105,11 +109,13 @@ class TestListCustomers:
 
     @pytest.mark.asyncio
     async def test_with_search_query(self) -> None:
-        session = _mock_session([
-            _FakeResult(value=_TENANT_OK),  # set_tenant
-            _FakeResult(value=1),
-            _FakeResult(items=[_make_customer()]),
-        ])
+        session = _mock_session(
+            [
+                _FakeResult(value=_TENANT_OK),  # set_tenant
+                _FakeResult(value=1),
+                _FakeResult(items=[_make_customer()]),
+            ]
+        )
         params = CustomerListParams(q="Test")
         items, total = await list_customers(session, params)
         assert total == 1
@@ -118,22 +124,26 @@ class TestListCustomers:
 
     @pytest.mark.asyncio
     async def test_with_numeric_search_query(self) -> None:
-        session = _mock_session([
-            _FakeResult(value=_TENANT_OK),  # set_tenant
-            _FakeResult(value=1),
-            _FakeResult(items=[_make_customer()]),
-        ])
+        session = _mock_session(
+            [
+                _FakeResult(value=_TENANT_OK),  # set_tenant
+                _FakeResult(value=1),
+                _FakeResult(items=[_make_customer()]),
+            ]
+        )
         params = CustomerListParams(q="0459")
         items, total = await list_customers(session, params)
         assert total == 1
 
     @pytest.mark.asyncio
     async def test_with_status_filter(self) -> None:
-        session = _mock_session([
-            _FakeResult(value=_TENANT_OK),  # set_tenant
-            _FakeResult(value=2),
-            _FakeResult(items=[_make_customer(), _make_customer()]),
-        ])
+        session = _mock_session(
+            [
+                _FakeResult(value=_TENANT_OK),  # set_tenant
+                _FakeResult(value=2),
+                _FakeResult(items=[_make_customer(), _make_customer()]),
+            ]
+        )
         params = CustomerListParams(status="active")
         items, total = await list_customers(session, params)
         assert total == 2
@@ -141,11 +151,13 @@ class TestListCustomers:
 
     @pytest.mark.asyncio
     async def test_pagination(self) -> None:
-        session = _mock_session([
-            _FakeResult(value=_TENANT_OK),  # set_tenant
-            _FakeResult(value=50),
-            _FakeResult(items=[_make_customer()]),
-        ])
+        session = _mock_session(
+            [
+                _FakeResult(value=_TENANT_OK),  # set_tenant
+                _FakeResult(value=50),
+                _FakeResult(items=[_make_customer()]),
+            ]
+        )
         params = CustomerListParams(page=3, page_size=10)
         items, total = await list_customers(session, params)
         assert total == 50

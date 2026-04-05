@@ -134,9 +134,7 @@ async def test_update_customer_success() -> None:
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://testserver", headers=auth_header()
         ) as client:
-            resp = await client.patch(
-                _url(), json={"company_name": "新名稱", "version": 1}
-            )
+            resp = await client.patch(_url(), json={"company_name": "新名稱", "version": 1})
         assert resp.status_code == 200
         body = resp.json()
         assert body["company_name"] == "新名稱"
@@ -152,9 +150,7 @@ async def test_update_customer_not_found() -> None:
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://testserver", headers=auth_header()
         ) as client:
-            resp = await client.patch(
-                _url(), json={"company_name": "新名稱", "version": 1}
-            )
+            resp = await client.patch(_url(), json={"company_name": "新名稱", "version": 1})
         assert resp.status_code == 404
     finally:
         _teardown(prev)
@@ -168,9 +164,7 @@ async def test_update_customer_version_conflict() -> None:
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://testserver", headers=auth_header()
         ) as client:
-            resp = await client.patch(
-                _url(), json={"company_name": "新名稱", "version": 1}
-            )
+            resp = await client.patch(_url(), json={"company_name": "新名稱", "version": 1})
         assert resp.status_code == 409
         body = resp.json()
         assert body["error"] == "version_conflict"
@@ -193,9 +187,7 @@ async def test_update_customer_duplicate_ban() -> None:
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://testserver", headers=auth_header()
         ) as client:
-            resp = await client.patch(
-                _url(), json={"business_number": "22099131", "version": 1}
-            )
+            resp = await client.patch(_url(), json={"business_number": "22099131", "version": 1})
         assert resp.status_code == 409
         body = resp.json()
         assert body["error"] == "duplicate_business_number"
@@ -212,9 +204,7 @@ async def test_update_customer_validation_error() -> None:
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://testserver", headers=auth_header()
         ) as client:
-            resp = await client.patch(
-                _url(), json={"contact_phone": "bad", "version": 1}
-            )
+            resp = await client.patch(_url(), json={"contact_phone": "bad", "version": 1})
         assert resp.status_code == 422
         body = resp.json()
         assert any(e["field"] == "contact_phone" for e in body["detail"])
@@ -230,9 +220,7 @@ async def test_update_customer_invalid_email() -> None:
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://testserver", headers=auth_header()
         ) as client:
-            resp = await client.patch(
-                _url(), json={"contact_email": "not-email", "version": 1}
-            )
+            resp = await client.patch(_url(), json={"contact_email": "not-email", "version": 1})
         assert resp.status_code == 422
         body = resp.json()
         assert any(e["field"] == "contact_email" for e in body["detail"])
@@ -248,9 +236,7 @@ async def test_update_credit_limit_only() -> None:
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://testserver", headers=auth_header()
         ) as client:
-            resp = await client.patch(
-                _url(), json={"credit_limit": "50000.00", "version": 1}
-            )
+            resp = await client.patch(_url(), json={"credit_limit": "50000.00", "version": 1})
         assert resp.status_code == 200
         body = resp.json()
         assert body["credit_limit"] == "50000.00"
@@ -266,9 +252,7 @@ async def test_update_missing_version_rejected() -> None:
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://testserver", headers=auth_header()
         ) as client:
-            resp = await client.patch(
-                _url(), json={"company_name": "No version"}
-            )
+            resp = await client.patch(_url(), json={"company_name": "No version"})
         assert resp.status_code == 422
     finally:
         _teardown(prev)

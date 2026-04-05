@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
-import asyncio
 from datetime import date
-from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
+from httpx import ASGITransport
+from httpx import AsyncClient as HttpxAsyncClient
 
+from app.main import create_app
 from domains.dashboard.posthog_client import VisitorStats, get_visitor_stats
-
+from tests.domains.orders._helpers import auth_header
 
 # ---------------------------------------------------------------------------
 # PostHog client unit tests
@@ -82,19 +83,15 @@ async def test_posthog_client_raises_on_http_error():
 # Route-level tests via HTTPX TestClient
 # ---------------------------------------------------------------------------
 
-from httpx import ASGITransport, AsyncClient as HttpxAsyncClient
-
-from app.main import create_app
-
-from tests.domains.orders._helpers import auth_header
-
 
 @pytest.mark.asyncio
 async def test_visitor_stats_not_configured():
     """When PostHog keys are not set, returns is_configured=False."""
     app = create_app()
     transport = ASGITransport(app=app)
-    async with HttpxAsyncClient(transport=transport, base_url="http://test", headers=auth_header()) as client:
+    async with HttpxAsyncClient(
+        transport=transport, base_url="http://test", headers=auth_header()
+    ) as client:
         with patch("domains.dashboard.routes.settings") as mock_settings:
             mock_settings.posthog_api_key = None
             mock_settings.posthog_project_id = None
@@ -111,10 +108,15 @@ async def test_visitor_stats_api_error():
     """When PostHog API fails, returns error message."""
     app = create_app()
     transport = ASGITransport(app=app)
-    async with HttpxAsyncClient(transport=transport, base_url="http://test", headers=auth_header()) as client:
+    async with HttpxAsyncClient(
+        transport=transport, base_url="http://test", headers=auth_header()
+    ) as client:
         with (
             patch("domains.dashboard.routes.settings") as mock_settings,
-            patch("domains.dashboard.posthog_client.get_visitor_stats", side_effect=Exception("timeout")),
+            patch(
+                "domains.dashboard.posthog_client.get_visitor_stats",
+                side_effect=Exception("timeout"),
+            ),
         ):
             mock_settings.posthog_api_key = "phx_test"
             mock_settings.posthog_project_id = "123"
@@ -135,7 +137,9 @@ async def test_visitor_stats_success():
     transport = ASGITransport(app=app)
     stats = VisitorStats(visitor_count=200, inquiry_count=10)
 
-    async with HttpxAsyncClient(transport=transport, base_url="http://test", headers=auth_header()) as client:
+    async with HttpxAsyncClient(
+        transport=transport, base_url="http://test", headers=auth_header()
+    ) as client:
         with (
             patch("domains.dashboard.routes.settings") as mock_settings,
             patch("domains.dashboard.posthog_client.get_visitor_stats", return_value=stats),
@@ -161,7 +165,9 @@ async def test_visitor_stats_zero_visitors():
     transport = ASGITransport(app=app)
     stats = VisitorStats(visitor_count=0, inquiry_count=0)
 
-    async with HttpxAsyncClient(transport=transport, base_url="http://test", headers=auth_header()) as client:
+    async with HttpxAsyncClient(
+        transport=transport, base_url="http://test", headers=auth_header()
+    ) as client:
         with (
             patch("domains.dashboard.routes.settings") as mock_settings,
             patch("domains.dashboard.posthog_client.get_visitor_stats", return_value=stats),

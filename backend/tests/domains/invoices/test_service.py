@@ -373,6 +373,7 @@ class TestCreateInvoice:
 
 # ── Void deadline computation ──────────────────────────────────
 
+
 class TestComputeVoidDeadline:
     def test_jan_feb_period_deadline(self) -> None:
         assert compute_void_deadline(date(2025, 1, 15)) == date(2025, 3, 15)
@@ -444,7 +445,9 @@ class TestVoidInvoice:
 
         # Void on April 1 — well within the May 15 deadline
         result = await void_invoice(
-            session, invoice.id, reason="Billing error",
+            session,
+            invoice.id,
+            reason="Billing error",
             now=datetime(2025, 4, 1, tzinfo=UTC),
         )
 
@@ -452,10 +455,7 @@ class TestVoidInvoice:
         assert result.voided_at is not None
         assert result.void_reason == "Billing error"
         # Audit log should have been added
-        assert any(
-            getattr(obj, "action", None) == "invoice.voided"
-            for obj in session.added
-        )
+        assert any(getattr(obj, "action", None) == "invoice.voided" for obj in session.added)
 
     @pytest.mark.asyncio
     async def test_void_rejected_after_window(self) -> None:
@@ -467,7 +467,9 @@ class TestVoidInvoice:
         # Void on June 1 — past the May 15 deadline
         with pytest.raises(ValueError, match="Void window expired"):
             await void_invoice(
-                session, invoice.id, reason="Too late",
+                session,
+                invoice.id,
+                reason="Too late",
                 now=datetime(2025, 6, 1, tzinfo=UTC),
             )
 
@@ -480,7 +482,9 @@ class TestVoidInvoice:
 
         with pytest.raises(ValueError, match="Cannot void invoice"):
             await void_invoice(
-                session, invoice.id, reason="Double void",
+                session,
+                invoice.id,
+                reason="Double void",
                 now=datetime(2025, 4, 1, tzinfo=UTC),
             )
 
@@ -491,12 +495,15 @@ class TestVoidInvoice:
 
         with pytest.raises(ValueError, match="Invoice not found"):
             await void_invoice(
-                session, uuid.uuid4(), reason="Missing",
+                session,
+                uuid.uuid4(),
+                reason="Missing",
                 now=datetime(2025, 4, 1, tzinfo=UTC),
             )
 
 
 # ── Totals validation ──────────────────────────────────────────
+
 
 class TestValidateInvoiceTotals:
     def test_valid_totals_returns_empty(self) -> None:
@@ -541,12 +548,18 @@ class TestValidateInvoiceTotals:
 
 # ── Immutability constants ─────────────────────────────────────
 
+
 class TestImmutabilityConstants:
     def test_immutable_fields_cover_financial_content(self) -> None:
         required = {
-            "invoice_number", "invoice_date", "customer_id",
-            "buyer_type", "buyer_identifier_snapshot",
-            "subtotal_amount", "tax_amount", "total_amount",
+            "invoice_number",
+            "invoice_date",
+            "customer_id",
+            "buyer_type",
+            "buyer_identifier_snapshot",
+            "subtotal_amount",
+            "tax_amount",
+            "total_amount",
         }
         assert required.issubset(IMMUTABLE_FIELDS)
 
@@ -555,6 +568,7 @@ class TestImmutabilityConstants:
 
 
 # ── Get invoice ────────────────────────────────────────────────
+
 
 class TestGetInvoice:
     @pytest.mark.asyncio

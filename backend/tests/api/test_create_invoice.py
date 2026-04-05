@@ -207,7 +207,9 @@ async def test_create_invoice_success() -> None:
 
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://testserver", headers=auth_header()) as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver", headers=auth_header()
+        ) as client:
             response = await client.post(
                 "/api/v1/invoices",
                 json=_valid_payload(customer.id),
@@ -234,7 +236,9 @@ async def test_create_invoice_b2c_uses_required_sentinel() -> None:
 
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://testserver", headers=auth_header()) as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver", headers=auth_header()
+        ) as client:
             response = await client.post(
                 "/api/v1/invoices",
                 json=_valid_payload(
@@ -257,7 +261,9 @@ async def test_create_invoice_unknown_customer_returns_structured_422() -> None:
 
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://testserver", headers=auth_header()) as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver", headers=auth_header()
+        ) as client:
             response = await client.post(
                 "/api/v1/invoices",
                 json=_valid_payload(uuid.uuid4()),
@@ -280,7 +286,9 @@ async def test_create_invoice_exhausted_range_returns_structured_422() -> None:
 
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://testserver", headers=auth_header()) as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver", headers=auth_header()
+        ) as client:
             response = await client.post(
                 "/api/v1/invoices",
                 json=_valid_payload(customer.id),
@@ -307,7 +315,9 @@ async def test_get_invoice_returns_404_when_missing() -> None:
     try:
         transport = ASGITransport(app=app)
         invoice_id = uuid.uuid4()
-        async with AsyncClient(transport=transport, base_url="http://testserver", headers=auth_header()) as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver", headers=auth_header()
+        ) as client:
             response = await client.get(f"/api/v1/invoices/{invoice_id}")
 
         assert response.status_code == 404
@@ -319,13 +329,15 @@ async def test_get_invoice_returns_404_when_missing() -> None:
 async def test_get_invoice_returns_serialized_invoice() -> None:
     invoice = _invoice()
     session = FakeAsyncSession()
-    session.queue_result(invoice)          # get_invoice
-    session.queue_result(Decimal("0"))     # SUM(payments) in payment summary
+    session.queue_result(invoice)  # get_invoice
+    session.queue_result(Decimal("0"))  # SUM(payments) in payment summary
     previous_override = _setup(session)
 
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://testserver", headers=auth_header()) as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver", headers=auth_header()
+        ) as client:
             response = await client.get(f"/api/v1/invoices/{invoice.id}")
 
         assert response.status_code == 200
@@ -346,7 +358,9 @@ async def test_void_invoice_success() -> None:
 
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://testserver", headers=auth_header()) as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver", headers=auth_header()
+        ) as client:
             response = await client.post(
                 f"/api/v1/invoices/{invoice.id}/void",
                 json={"reason": "Customer requested cancellation"},
@@ -369,7 +383,9 @@ async def test_void_invoice_rejects_already_voided_invoice() -> None:
 
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://testserver", headers=auth_header()) as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver", headers=auth_header()
+        ) as client:
             response = await client.post(
                 f"/api/v1/invoices/{invoice.id}/void",
                 json={"reason": "Try again"},
@@ -377,9 +393,7 @@ async def test_void_invoice_rejects_already_voided_invoice() -> None:
 
         assert response.status_code == 422
         assert response.json() == {
-            "detail": [
-                {"field": "invoice", "message": "Cannot void invoice in status 'voided'"}
-            ]
+            "detail": [{"field": "invoice", "message": "Cannot void invoice in status 'voided'"}]
         }
     finally:
         _teardown(previous_override)
@@ -393,7 +407,9 @@ async def test_void_invoice_returns_404_when_missing() -> None:
     try:
         transport = ASGITransport(app=app)
         invoice_id = uuid.uuid4()
-        async with AsyncClient(transport=transport, base_url="http://testserver", headers=auth_header()) as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver", headers=auth_header()
+        ) as client:
             response = await client.post(
                 f"/api/v1/invoices/{invoice_id}/void",
                 json={"reason": "Missing invoice"},
@@ -407,7 +423,9 @@ async def test_void_invoice_returns_404_when_missing() -> None:
 
 async def test_put_invoice_returns_405_with_immutable_message() -> None:
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://testserver", headers=auth_header()) as client:
+    async with AsyncClient(
+        transport=transport, base_url="http://testserver", headers=auth_header()
+    ) as client:
         response = await client.put(f"/api/v1/invoices/{uuid.uuid4()}")
 
     assert response.status_code == 405
@@ -416,7 +434,9 @@ async def test_put_invoice_returns_405_with_immutable_message() -> None:
 
 async def test_patch_invoice_returns_405_with_immutable_message() -> None:
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://testserver", headers=auth_header()) as client:
+    async with AsyncClient(
+        transport=transport, base_url="http://testserver", headers=auth_header()
+    ) as client:
         response = await client.patch(f"/api/v1/invoices/{uuid.uuid4()}")
 
     assert response.status_code == 405

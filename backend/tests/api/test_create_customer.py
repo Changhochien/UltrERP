@@ -104,7 +104,9 @@ async def test_create_customer_success() -> None:
     previous_override = _setup()
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://testserver", headers=auth_header()) as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver", headers=auth_header()
+        ) as client:
             resp = await client.post("/api/v1/customers", json=_valid_body())
         assert resp.status_code == 201
         body = resp.json()
@@ -121,7 +123,9 @@ async def test_create_customer_invalid_business_number() -> None:
     previous_override = _setup()
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://testserver", headers=auth_header()) as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver", headers=auth_header()
+        ) as client:
             payload = _valid_body()
             payload["business_number"] = "04595258"
             resp = await client.post("/api/v1/customers", json=payload)
@@ -136,7 +140,9 @@ async def test_create_customer_invalid_phone() -> None:
     previous_override = _setup()
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://testserver", headers=auth_header()) as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver", headers=auth_header()
+        ) as client:
             payload = _valid_body()
             payload["contact_phone"] = "not-a-phone"
             resp = await client.post("/api/v1/customers", json=payload)
@@ -151,7 +157,9 @@ async def test_create_customer_invalid_email() -> None:
     previous_override = _setup()
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://testserver", headers=auth_header()) as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver", headers=auth_header()
+        ) as client:
             payload = _valid_body()
             payload["contact_email"] = "not-an-email"
             resp = await client.post("/api/v1/customers", json=payload)
@@ -166,7 +174,9 @@ async def test_create_customer_negative_credit_limit() -> None:
     previous_override = _setup()
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://testserver", headers=auth_header()) as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver", headers=auth_header()
+        ) as client:
             payload = _valid_body()
             payload["credit_limit"] = "-1.00"
             resp = await client.post("/api/v1/customers", json=payload)
@@ -180,7 +190,9 @@ async def test_create_customer_missing_required_fields() -> None:
     previous_override = _setup()
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://testserver", headers=auth_header()) as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver", headers=auth_header()
+        ) as client:
             resp = await client.post("/api/v1/customers", json={})
         assert resp.status_code == 422
     finally:
@@ -191,7 +203,9 @@ async def test_create_customer_returns_structured_errors() -> None:
     previous_override = _setup()
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://testserver", headers=auth_header()) as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver", headers=auth_header()
+        ) as client:
             payload = _valid_body()
             payload["business_number"] = "bad"
             payload["contact_phone"] = "bad"
@@ -227,7 +241,9 @@ async def test_create_customer_duplicate_returns_409() -> None:
     app.dependency_overrides[get_db] = _override_get_db_with_existing
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://testserver", headers=auth_header()) as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver", headers=auth_header()
+        ) as client:
             resp = await client.post("/api/v1/customers", json=_valid_body())
         assert resp.status_code == 409
         body = resp.json()
@@ -248,7 +264,9 @@ async def test_duplicate_409_payload_shape_is_stable() -> None:
     app.dependency_overrides[get_db] = _override_get_db_with_existing
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://testserver", headers=auth_header()) as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver", headers=auth_header()
+        ) as client:
             resp = await client.post("/api/v1/customers", json=_valid_body())
         assert resp.status_code == 409
         body = resp.json()

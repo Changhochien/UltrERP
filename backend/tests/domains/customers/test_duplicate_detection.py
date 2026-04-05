@@ -17,7 +17,6 @@ from common.errors import DuplicateBusinessNumberError, ValidationError
 from domains.customers.schemas import CustomerCreate
 from domains.customers.service import create_customer
 
-
 _TENANT_OK = "SET LOCAL app.tenant_id"
 
 
