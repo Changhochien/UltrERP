@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from domains.legacy_import import cli
+from domains.legacy_import.currency import CurrencyImportResult
 from domains.legacy_import.mapping import (
     ProductMappingBatchResult,
     ProductMappingReviewExportResult,
@@ -145,6 +146,29 @@ def test_import_product_review_cli_invokes_import(monkeypatch, capsys, tmp_path:
 
     assert result == 0
     assert "Imported 2 review decisions" in output
+
+
+def test_currency_import_cli_invokes_import(monkeypatch, capsys, tmp_path: Path) -> None:
+    async def fake_run_currency_import(**kwargs):
+        assert kwargs["batch_id"] == "currency-settings"
+        assert kwargs["export_dir"] == tmp_path
+        return CurrencyImportResult(
+            batch_id="currency-settings",
+            source_file=tmp_path / "tbscurrency.csv",
+            attempt_number=1,
+            currency_count=6,
+            upserted_setting_count=13,
+            default_currency_code="TWD",
+        )
+
+    monkeypatch.setattr(cli, "run_currency_import", fake_run_currency_import)
+
+    result = cli.main(["currency-import", "--export-dir", str(tmp_path)])
+    output = capsys.readouterr().out
+
+    assert result == 0
+    assert "Imported 6 currencies" in output
+    assert "default=TWD" in output
 
 
 def test_validate_import_cli_invokes_validation(monkeypatch, capsys, tmp_path: Path) -> None:

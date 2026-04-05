@@ -13,6 +13,7 @@ from pathlib import Path
 
 from common.tenant import DEFAULT_TENANT_ID
 from domains.legacy_import.canonical import CanonicalImportResult, run_canonical_import
+from domains.legacy_import.currency import CurrencyImportResult, run_currency_import
 from domains.legacy_import.extractor_cleaner import MojibakeCleaner
 from domains.legacy_import.extractor_detector import EncodingDetector
 from domains.legacy_import.extractor_parser import SQLDumpParser, TableData
@@ -140,6 +141,29 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_TENANT_ID,
         help="Tenant UUID for review import",
     )
+    currency_parser = subparsers.add_parser(
+        "currency-import",
+        help="Import tbscurrency reference data into app_settings",
+    )
+    currency_parser.add_argument(
+        "--export-dir",
+        type=Path,
+        help=(
+            "Directory containing tbscurrency.csv "
+            "(defaults to the configured legacy import directory)"
+        ),
+    )
+    currency_parser.add_argument(
+        "--batch-id",
+        default="currency-settings",
+        help="Batch identifier recorded in legacy import control tables",
+    )
+    currency_parser.add_argument(
+        "--tenant-id",
+        type=_parse_tenant_uuid,
+        default=DEFAULT_TENANT_ID,
+        help="Tenant UUID for control-table tracking",
+    )
     canonical_parser = subparsers.add_parser(
         "canonical-import",
         help="Import normalized legacy data into supported canonical tables",
@@ -251,6 +275,16 @@ async def _run_import_product_review(args: argparse.Namespace) -> int:
         schema_name=args.schema,
     )
     _print_product_mapping_review_import_summary(result)
+    return 0
+
+
+async def _run_currency_import(args: argparse.Namespace) -> int:
+    result = await run_currency_import(
+        batch_id=args.batch_id,
+        export_dir=args.export_dir,
+        tenant_id=args.tenant_id,
+    )
+    _print_currency_import_summary(result)
     return 0
 
 
@@ -409,6 +443,14 @@ def _print_product_mapping_review_import_summary(
     )
 
 
+def _print_currency_import_summary(result: CurrencyImportResult) -> None:
+    print(
+        f"Imported {result.currency_count} currencies from {result.source_file.name} "
+        f"into app_settings (batch {result.batch_id}, attempt={result.attempt_number}, "
+        f"default={result.default_currency_code}, settings={result.upserted_setting_count})"
+    )
+
+
 def _print_canonical_import_summary(result: CanonicalImportResult) -> None:
     print(
         f"Canonical imported batch {result.batch_id} in {result.schema_name}: "
@@ -448,6 +490,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return asyncio.run(_run_export_product_review(args))
     if args.command == "import-product-review":
         return asyncio.run(_run_import_product_review(args))
+    if args.command == "currency-import":
+        return asyncio.run(_run_currency_import(args))
     if args.command == "canonical-import":
         return asyncio.run(_run_canonical_import(args))
     if args.command == "validate-import":
