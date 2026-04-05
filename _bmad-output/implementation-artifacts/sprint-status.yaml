@@ -682,11 +682,11 @@ development_status:
         validation: "Payment staging for tbsspay and tbsprepay is documented as done, and the repo now preserves those rows with FK warnings plus deterministic same-batch replacement semantics."
         prerequisites: ["15.1"]
       16-6-currency-settings-import:
-        status: "todo"
+        status: "done"
         story_id: "16.6"
         title: "Currency Settings Import"
         story_file: "16-6-currency-settings-import.md"
-        validation: ""
+        validation: "Validated on 2026-04-05: Story 16.6 now ships a dedicated currency-import CLI, PostgreSQL upsert semantics into app_settings, control-table run tracking, and focused pytest/Ruff coverage. The importer normalizes NTD to TWD, derives decimal precision from the legacy amount-dot columns, and falls back to trusted symbols or the currency code when tbscurrency does not expose a literal symbol field."
         prerequisites: []
       16-7-canonical-purchase-invoice-import:
         status: "done"

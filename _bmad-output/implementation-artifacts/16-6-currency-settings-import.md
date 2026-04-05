@@ -1,6 +1,6 @@
 # Story 16.6: Currency Settings Import
 
-Status: draft
+Status: done
 
 ## Story
 
@@ -30,37 +30,37 @@ So that the canonical app_settings reflects the currencies used in historical tr
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Survey tbscurrency shape**
-  - [ ] Confirm column names, row count, and sample values from the extracted CSV or staging view
-  - [ ] Identify which row represents the default currency
+- [x] **Task 1: Survey tbscurrency shape**
+  - [x] Confirm column names, row count, and sample values from the extracted CSV and raw SQL DDL
+  - [x] Identify the default currency from `scurlocal = '1'`
 
-- [ ] **Task 2: Add currency-import CLI subcommand**
-  - [ ] Add `currency-import` subcommand to `domains.legacy_import.cli`
-  - [ ] Command: `uv run python -m domains.legacy_import.cli currency-import --export-dir <path>`
-  - [ ] Read CSV directly (no raw_legacy staging needed — small, static reference table)
-  - [ ] Upsert into app_settings per AC1/AC2/AC3/AC4
+- [x] **Task 2: Add currency-import CLI subcommand**
+  - [x] Add `currency-import` subcommand to `domains.legacy_import.cli`
+  - [x] Command: `uv run python -m domains.legacy_import.cli currency-import --export-dir <path>`
+  - [x] Read CSV directly (no raw_legacy staging needed — small, static reference table)
+  - [x] Upsert into app_settings per AC1/AC2/AC3/AC4
 
-- [ ] **Task 3: Idempotent upsert logic**
-  - [ ] Query existing `currency.*` keys from app_settings before writing
-  - [ ] Use ON CONFLICT (key) DO UPDATE for PostgreSQL upsert
-  - [ ] Track import in `legacy_import_table_runs` with batch_id semantics
+- [x] **Task 3: Idempotent upsert logic**
+  - [x] Replace same-key values via PostgreSQL `ON CONFLICT (key) DO UPDATE`
+  - [x] Preserve unrelated `currency.*` keys because only touched keys are upserted
+  - [x] Track the import in `legacy_import_runs` and `legacy_import_table_runs`
 
 ## Dev Notes
 
 ### Table Structure (tbscurrency)
 
-The tbscurrency table holds currency configuration. Expected columns:
+The raw SQL DDL in the legacy dump shows these relevant columns:
 
-| Column | Type | Description |
-|--------|------|-------------|
-| currency_id | int | Primary key |
-| currency_code | varchar | ISO code e.g. USD, TWD |
-| currency_name | varchar | Full name e.g. US Dollar |
-| symbol | varchar | e.g. $, NT$ |
-| decimal_places | int | Number of decimal places (typically 2) |
-| is_default | bool | True for the system default currency |
+| Column | Description | Used for import |
+|--------|-------------|-----------------|
+| `scurno` | legacy currency identifier | no |
+| `scurengname` | currency code (`NTD`, `USD`, `HKD`, etc.) | yes |
+| `scurlocal` | default/local currency flag | yes |
+| `ioutamtdot`, `iinamtdot`, `iapayamtdot`, `iapaytotaldot`, `iapaytaxdot` | legacy precision fields | yes, importer takes the maximum |
 
 Typical row count: **6 rows**.
+
+The source data does **not** expose a dedicated symbol column. The importer therefore uses a trusted fallback map for well-known codes (`TWD`, `USD`, `JPY`, `HKD`, `EUR`) and otherwise falls back to the currency code itself.
 
 ### app_settings Key Pattern
 
@@ -74,44 +74,17 @@ currency.{code}.decimal_places → e.g. "2"
 Default currency marker:
 
 ```
-currency.default              → e.g. "USD"
+currency.default              → e.g. "TWD"
 ```
 
 Values are stored as plain strings in `app_settings.value`.
 
-### Idempotent Upsert
+### Implementation Notes
 
-```python
-# Pseudocode — run inside transaction
-for row in currency_rows:
-    key_symbol = f"currency.{row.currency_code}.symbol"
-    key_decimal = f"currency.{row.currency_code}.decimal_places"
-
-    # Upsert symbol
-    stmt = insert(AppSetting).values(key=key_symbol, value=row.symbol)
-    stmt = stmt.on_conflict_do_update(
-        index_elements=["key"],
-        set_={"value": row.symbol}
-    )
-    await db.execute(stmt)
-
-    # Upsert decimal_places
-    stmt = insert(AppSetting).values(key=key_decimal, value=str(row.decimal_places))
-    stmt = stmt.on_conflict_do_update(
-        index_elements=["key"],
-        set_={"value": str(row.decimal_places)}
-    )
-    await db.execute(stmt)
-
-# Upsert default marker
-if row.is_default:
-    stmt = insert(AppSetting).values(key="currency.default", value=row.currency_code)
-    stmt = stmt.on_conflict_do_update(
-        index_elements=["key"],
-        set_={"value": row.currency_code}
-    )
-    await db.execute(stmt)
-```
+- `backend/domains/legacy_import/currency.py` loads `tbscurrency.csv` directly through the existing legacy-row parser.
+- `NTD` is normalized to `TWD` so the resulting app settings align with the canonical currency handling already used elsewhere in Epic 16.
+- Decimal places are derived from the maximum legacy precision across the amount-dot columns so currencies like `HKD` retain their higher configured precision.
+- Upserts touch only the target keys for the current currency code plus `currency.default`, which keeps unrelated `currency.*` settings intact.
 
 ### Why No raw_legacy Staging
 
@@ -139,16 +112,16 @@ Note: The `stage` step for tbscurrency is optional since this command reads the 
 
 ### Validation
 
-- Confirm 6 rows in tbscurrency after import
-- Confirm `currency.default` key exists and matches the row with `is_default = True`
-- Rerun the command and confirm row count stays at 6 (no duplicates)
-- Check app_settings for `currency.*` keys after rerun — values should be updated, not appended
+- `cd backend && uv run pytest tests/domains/legacy_import/test_currency.py tests/domains/legacy_import/test_cli.py -q`
+- `cd backend && uv run ruff check domains/legacy_import/currency.py domains/legacy_import/cli.py tests/domains/legacy_import/test_currency.py tests/domains/legacy_import/test_cli.py`
+- Result: `10 passed`, Ruff clean
 
 ## File List
 
 - `backend/domains/legacy_import/cli.py` — add `currency-import` subcommand
 - `backend/domains/legacy_import/currency.py` — currency import logic
 - `backend/tests/domains/legacy_import/test_currency.py` — idempotency and correctness tests
+- `backend/tests/domains/legacy_import/test_cli.py` — CLI wiring coverage
 
 ## References
 
