@@ -10,6 +10,7 @@ import {
   ORDER_CREATE_ROUTE,
   ORDERS_ROUTE,
   PAYMENTS_ROUTE,
+  PURCHASES_ROUTE,
   type AppRoute,
 } from "./routes";
 
@@ -138,6 +139,16 @@ const SHORTCUT_SEEDS: readonly ShortcutSeed[] = [
     appBindings: ["g p"],
     target: { type: "route", to: PAYMENTS_ROUTE },
     requiredFeature: "payments",
+  },
+  {
+    id: "go-purchases",
+    label: "Go to purchases",
+    description: "Jump to imported supplier invoices.",
+    category: "Navigation",
+    scope: "global",
+    appBindings: ["g u"],
+    target: { type: "route", to: PURCHASES_ROUTE },
+    requiredFeature: "purchases",
   },
   {
     id: "go-admin",

@@ -6,23 +6,23 @@ AI-native ERP for Taiwan SMBs, delivered as a hybrid desktop and API platform.
 
 ### Prerequisites
 
-- Node.js 20+
-- pnpm 10.x
+- Node.js 24+ (or use `.nvmrc`)
+- pnpm 10.33.x
 - Python 3.12+
 - uv
-- PostgreSQL 17
+- PostgreSQL 18+
 
 ### macOS Setup
 
 ```bash
 brew install node
 corepack enable
-corepack use pnpm@10.5.2
+corepack use pnpm@10.33.0
 
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-brew install postgresql@17
-brew services start postgresql@17
+brew install postgresql@18
+brew services start postgresql@18
 
 createuser ultr_erp --pwprompt 2>/dev/null || true
 createdb ultr_erp --owner ultr_erp 2>/dev/null || true
