@@ -148,12 +148,12 @@ This document defines the architecture for an AI-native ERP system targeting Tai
 | **Desktop Shell**       | Tauri             | 2.x        | 8MB vs 120MB Electron; Cursor, Affine, AppFlowy in production |
 | **Frontend**            | Vite + React      | Latest     | Standard React ecosystem; 50-80KB bundle |
 | **CLI Framework**       | Typer             | Latest     | Auto-generates CLI from type hints |
-| **Backend Framework**    | FastAPI           | 0.115+     | Massive ecosystem; SQLAlchemy/Pydantic native |
-| **MCP Server**          | FastMCP 2.0       | 2.0        | Official SDK incorporates FastMCP v1; 1000+ RPS |
-| **Database**            | PostgreSQL        | 17+        | Industry standard; pgvector (optional, cloud-only) |
+| **Backend Framework**    | FastAPI           | 0.135+     | Massive ecosystem; SQLAlchemy/Pydantic native |
+| **MCP Server**          | FastMCP 3.0       | 3.0        | PrefectHQ; official MCP Python SDK; 1000+ RPS |
+| **Database**            | PostgreSQL        | 18+        | Industry standard; pgvector (optional, cloud-only) |
 | **ORM**                | SQLAlchemy        | 2.0+       | Full async support; SQLModel on top |
 | **Cache**              | Redis             | 7+         | Sessions, cache, task broker |
-| **Object Storage**      | MinIO             | Latest     | S3-compatible; self-hosted |
+| **Object Storage**      | Garage / SeaweedFS | Latest     | S3-compatible; MinIO OSS ended Feb 2026; Garage (AGPL, lightweight) or SeaweedFS (Apache 2.0, scale) |
 | **AI Inference**        | Claude API        | Latest     | Cloud subscription; Claude Code native |
 
 ### 3.2 Development Tools
@@ -161,7 +161,7 @@ This document defines the architecture for an AI-native ERP system targeting Tai
 | Category               | Tool                   | Evidence |
 | ---------------------- | ---------------------- | -------- |
 | **CLI**                | Typer                  | By FastAPI authors; auto help generation |
-| **MCP**                | FastMCP 2.0            | PrefectHQ; incorporated into official SDK |
+| **MCP**                | FastMCP 3.0            | PrefectHQ; incorporated into official SDK |
 | **API Docs**           | OpenAPI/Swagger        | FastAPI native |
 | **Migrations**         | Alembic                | Standard for SQLAlchemy |
 | **Testing**            | pytest + httpx          | FastAPI best practice |

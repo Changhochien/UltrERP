@@ -6,11 +6,27 @@ import enum
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, Index, Integer, Numeric, String, Text, Uuid, func
+from sqlalchemy import (
+	Date,
+	DateTime,
+	Enum,
+	ForeignKey,
+	Index,
+	Integer,
+	Numeric,
+	String,
+	Text,
+	Uuid,
+	func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from common.database import Base
+
+if TYPE_CHECKING:
+	from common.models.supplier_payment import SupplierPaymentAllocation
 
 
 class SupplierInvoiceStatus(str, enum.Enum):
@@ -71,6 +87,10 @@ class SupplierInvoice(Base):
 		back_populates="supplier_invoice",
 		cascade="all, delete-orphan",
 		order_by="SupplierInvoiceLine.line_number",
+	)
+	payment_allocations: Mapped[list[SupplierPaymentAllocation]] = relationship(
+		back_populates="supplier_invoice",
+		order_by="SupplierPaymentAllocation.allocation_date",
 	)
 
 

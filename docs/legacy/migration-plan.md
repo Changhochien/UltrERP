@@ -110,6 +110,13 @@ Shadow-mode exists to prove correctness before cutover, not to approximate succe
 - Severity 1: invoice total mismatch, tax mismatch, payment allocation mismatch, or other correctness blockers. These block cutover.
 - Severity 2: non-blocking data quality or attribution issues such as unresolved variant mapping still routed to `UNKNOWN`.
 
+### Story 15.5 Validation Handoff
+
+- Story 15.5 owns batch-scoped import validation only: stage row reconciliation, unresolved mapping visibility, import-stage failures, replay metadata, and artifact emission.
+- The `legacy-import validate-import` CLI emits machine-readable JSON and operator-readable Markdown under `_bmad-output/validation/legacy-import/`, uses schema-and-tenant-scoped artifact names, and accepts an optional `--attempt-number` for validating a specific retry.
+- Those artifacts are the handoff contract into Epic 13. They provide batch counts, failure stages, `UNKNOWN` routing totals, replay scope keys, and lineage-backed inputs for later shadow-mode comparisons.
+- Epic 13 still owns versioned comparison rules, longer-running discrepancy trending, and the broader 30-day shadow-mode correctness program.
+
 ## Rollback And Contingency
 
 - If the import produces unresolved Severity 1 discrepancies, stop cutover and continue shadow-mode.
@@ -121,3 +128,7 @@ Shadow-mode exists to prove correctness before cutover, not to approximate succe
 - The relationship map in `RELATIONSHIPS.md` remains the best quick reference for table linkage.
 - The orphan-code correction in `03-findings.md` is the current source of truth for sales-detail migration logic.
 - The old `FK_VALIDATION.md` should be read with caution until its sales-detail section is updated or explicitly marked historical.
+- The canonical landing zones for Story 15.4 are documented in `docs/legacy/canonical-import-target-matrix.md`.
+- Purchase invoice history now lands in the new `supplier_invoices` and `supplier_invoice_lines` AP target; payment-adjacent legacy rows still remain in holding until payment-side AP semantics are defined.
+- The AP target, read-only verification workspace, and current invoice-side deferrals are documented in `docs/legacy/purchase-invoice-canonical-target.md`.
+- The deferred supplier payment and prepayment target design is documented in `docs/legacy/ap-payment-model.md`.

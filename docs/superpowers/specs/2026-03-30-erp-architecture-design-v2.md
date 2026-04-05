@@ -33,7 +33,7 @@ This document defines the architecture for an AI-native ERP system targeting Tai
 
 ### 2.1 Core Principle: Shared Capability Layer, MCP as Canonical Agent Surface
 
-All business logic lives in one shared domain layer inside the FastAPI + FastMCP process. AI agents consume that layer through FastMCP 2.14.6 tools. Human GUI and CLI clients use typed application APIs backed by the same services. MCP is the canonical agent surface, not the only client surface.
+All business logic lives in one shared domain layer inside the FastAPI + FastMCP process. AI agents consume that layer through FastMCP 3.0+ tools. Human GUI and CLI clients use typed application APIs backed by the same services. MCP is the canonical agent surface, not the only client surface.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -47,7 +47,7 @@ All business logic lives in one shared domain layer inside the FastAPI + FastMCP
 │          │                                     │                      │
 │          ▼                                     ▼                      │
 │  ┌─────────────────────────────────────────────────────────────────┐│
-│  │  FastAPI + FastMCP 2.14.6 (single process)                    ││
+│  │  FastAPI + FastMCP 3.0+ (single process)                      ││
 │  │  ┌────────────────────────┐  ┌────────────────────────────┐   ││
 │  │  │  REST API /api/v1/*  │  │  MCP endpoint /mcp        │   ││
 │  │  │  (for GUI/CLI)       │  │  (for AI agents)          │   ││
@@ -94,7 +94,7 @@ The same codebase runs in two modes — switchable via `ERP_MODE` config:
 ┌──────────────────────────────────────────────────────────────────┐
 │  Central Server (NAS / VPS)                                       │
 │  ┌──────────────────────────────┐                                │
-│  │  FastAPI + FastMCP 2.14.6   │                                │
+│  │  FastAPI + FastMCP 3.0+    │                                │
 │  │  /api/v1/*  +  /mcp        │                                │
 │  └──────────┬───────────────────┘                                │
 │              │                                                      │
@@ -142,7 +142,7 @@ class Settings(BaseSettings):
 |-------|-----------|--------|---------|
 | Desktop Shell | Tauri | 2.x | 8MB vs 120MB Electron; Cursor uses it |
 | Frontend | Vite + React | **19** | Webview dropdown bug fix |
-| Backend Framework | FastAPI | 0.115+ | Massive ecosystem |
+| Backend Framework | FastAPI | 0.135+ | Massive ecosystem |
 | MCP Server | **FastMCP 2.14.6** | 2.14.6 | 3.x incompatible with SDK 1.23+ |
 | MCP Transport | Session-mode HTTP | SSE/WS | `stateless_http=True` hangs |
 | Database | PostgreSQL | 17+ | Industry standard |
