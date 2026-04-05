@@ -1,20 +1,472 @@
 {
   "nav": {
+    "createCustomer": "Create Customer",
+    "createInvoice": "Create Invoice",
     "dashboard": "Dashboard",
+    "language": "Language",
+    "overview": "Overview",
     "inventory": "Inventory",
     "customers": "Customers",
     "invoices": "Invoices",
+    "newOrder": "New Order",
+    "operations": "Operations",
     "orders": "Orders",
     "payments": "Payments",
+    "revenue": "Revenue",
+    "settings": "Settings",
     "admin": "Admin"
   },
   "common": {
-    "loading": "Loading...",
-    "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
-    "edit": "Edit",
-    "search": "Search",
-    "noData": "No data available"
+    "guest": "Guest",
+    "loading": "Loading...",
+    "noTenant": "No tenant",
+    "reset": "Reset",
+    "save": "Save",
+    "yes": "Yes"
+  },
+  "messages": {
+    "loading": "Loading…"
+  },
+  "navMenu": {
+    "language": "Language",
+    "logOut": "Log out",
+    "theme": "Theme",
+    "workspace": "Workspace"
+  },
+  "routes": {
+    "admin": {
+      "description": "Manage users, audit logs, and privileged controls.",
+      "label": "Admin"
+    },
+    "createCustomer": {
+      "description": "Add a new customer to your workspace.",
+      "label": "Create Customer"
+    },
+    "createInvoice": {
+      "description": "Create a new sales invoice for your customer.",
+      "label": "Create Invoice"
+    },
+    "createOrder": {
+      "description": "Create a new sales order.",
+      "label": "Create Order"
+    },
+    "customers": {
+      "description": "Browse and search your customer accounts.",
+      "label": "Customers"
+    },
+    "dashboard": {
+      "description": "Monitor revenue, traffic, and operational signals.",
+      "label": "Dashboard"
+    },
+    "inventory": {
+      "description": "Manage stock levels and warehouse activity.",
+      "label": "Inventory"
+    },
+    "invoices": {
+      "description": "Browse invoice status and payment progress.",
+      "label": "Invoices"
+    },
+    "login": {
+      "description": "Sign in to manage your ERP workspace.",
+      "label": "Login"
+    },
+    "orderDetail": {
+      "description": "View and update the selected order.",
+      "label": "Order Detail",
+      "section": "Orders"
+    },
+    "orders": {
+      "description": "Track order flow and fulfillment status.",
+      "label": "Orders"
+    },
+    "payments": {
+      "description": "Review receipts, matches, and outstanding balances.",
+      "label": "Payments"
+    },
+    "settings": {
+      "description": "Manage workspace settings and preferences.",
+      "label": "Settings"
+    },
+    "workspace": {
+      "description": "Navigate your ERP workspace.",
+      "label": "Workspace",
+      "section": "Workspace"
+    }
+  },
+  "app": {
+    "openShortcuts": "Open shortcuts",
+    "keyboardShortcuts": "Keyboard shortcuts",
+    "newCustomer": "New customer",
+    "goToCustomers": "Go to customers",
+    "newInvoice": "New invoice",
+    "goToInvoices": "Go to invoices",
+    "newOrder": "New order",
+    "goToOrders": "Go to orders",
+    "goToDashboard": "Go to dashboard",
+    "goToInventory": "Go to inventory",
+    "goToPayments": "Go to payments",
+    "goToAdmin": "Go to admin",
+    "close": "Close",
+    "tagline": "AI-native ERP for Taiwan SMBs"
+  },
+  "auth": {
+    "email": "Email",
+    "error": "Login failed",
+    "loggingIn": "Logging in…",
+    "login": "Log in",
+    "password": "Password",
+    "shellDescription": "Use your workspace credentials to enter the ERP shell.",
+    "signingIn": "Signing you into the ERP shell…",
+    "subtitle": "Sign in to manage customers, invoices, orders, payments, and inventory from a unified operational workspace.",
+    "title": "Modern ERP operations, built for Taiwan SMB workflows.",
+    "welcome": "UltrERP Login"
+  },
+  "languageSwitcher": {
+    "currentSelection": "Language. Current selection: {language}",
+    "english": "English",
+    "traditionalChinese": "Chinese (Traditional)",
+    "useLanguage": "Use {language} language"
+  },
+  "settingsPage": {
+    "eyebrow": "Configuration",
+    "emptyCategory": "No settings in this category.",
+    "noCategories": "No settings categories available.",
+    "saveError": "Failed to save setting.",
+    "resetError": "Failed to reset setting."
+  },
+  "customer": {
+    "createPage": {
+      "createAnother": "Create another",
+      "createdRecord": "Customer Created",
+      "createdRecordDescription": "The customer record has been created successfully.",
+      "description": "Fill in the details to add a new customer to your workspace.",
+      "descriptionCreated": "The new customer has been added to your workspace.",
+      "eyebrow": "Customers",
+      "formDescription": "Enter the customer's business information and contact details.",
+      "formTitle": "Customer Information",
+      "title": "Create Customer",
+      "titleCreated": "Customer Created"
+    },
+    "detail": {
+      "ban": "Business Number",
+      "billingAddress": "Billing Address",
+      "companyName": "Company Name",
+      "contactName": "Contact Name",
+      "creditLimit": "Credit Limit",
+      "description": "Customer details",
+      "edit": "Edit",
+      "email": "Email",
+      "loading": "Loading…",
+      "notFound": "Customer not found.",
+      "phone": "Phone",
+      "status": "Status",
+      "title": "Customer Detail"
+    },
+    "form": {
+      "billingAddress": "Billing Address",
+      "businessNumber": "Business Number",
+      "companyName": "Company Name",
+      "contactEmail": "Contact Email",
+      "contactName": "Contact Name",
+      "contactPhone": "Contact Phone",
+      "createTitle": "Create Customer",
+      "creating": "Creating…",
+      "creditLimit": "Credit Limit",
+      "creditLimitNonNegative": "Credit limit must be non-negative.",
+      "invalidBusinessNumber": "Invalid business number.",
+      "title": "Create Customer"
+    },
+    "listPage": {
+      "activeFilters": "{count} active filters applied",
+      "active": "Active",
+      "allStatuses": "All statuses",
+      "clearFilters": "Clear filters",
+      "createCustomer": "Create Customer",
+      "customerRegistry": "Customer Registry",
+      "customerRegistryDescription": "Browse, search, and manage customer accounts.",
+      "description": "Browse and search your customer accounts.",
+      "eyebrow": "Customers",
+      "inactive": "Inactive",
+      "loading": "Loading…",
+      "search": "Search: {query}",
+      "status": "Status",
+      "statusFilter": "Status: {status}",
+      "suspended": "Suspended",
+      "title": "Customers",
+      "updating": "Updating…"
+    }
+  },
+  "dashboard": {
+    "actionCenter": {
+      "description": "Recent activity and notifications.",
+      "title": "Action Center"
+    },
+    "pageDescription": "Operational overview with role-filtered shortcuts and live business signals.",
+    "lowStock": {
+      "allOk": "All stock levels OK",
+      "description": "Products below reorder point",
+      "stock": "Stock: {current} / Reorder: {point}",
+      "title": "Low Stock Alerts"
+    },
+    "quickActions": {
+      "admin": "Admin",
+      "adminDescription": "Manage roles, policies, and workspace controls.",
+      "customers": "Customers",
+      "customersDescription": "Search accounts and manage customer records.",
+      "inventory": "Inventory",
+      "inventoryDescription": "Review stock levels and replenishment needs.",
+      "invoices": "Invoices",
+      "invoicesDescription": "Track invoice status and payment progress.",
+      "newInvoice": "New Invoice",
+      "newInvoiceDescription": "Draft and issue a new sales invoice.",
+      "newCustomer": "New Customer",
+      "newCustomerDescription": "Create a new customer profile for your workspace.",
+      "newOrder": "New Order",
+      "newOrderDescription": "Create a new sales order from the dashboard.",
+      "orders": "Orders",
+      "ordersDescription": "Monitor order flow and fulfillment status.",
+      "payments": "Payments",
+      "paymentsDescription": "Review receipts and outstanding balances."
+    },
+    "revenue": {
+      "description": "Daily revenue overview",
+      "noChangeData": "No change",
+      "revenueChange": "{change}",
+      "title": "Revenue",
+      "yesterday": "Yesterday ({date}): {amount}"
+    },
+    "topProducts": {
+      "description": "Top selling products",
+      "noData": "No sales data for this period",
+      "product": "Product",
+      "qtySold": "Qty Sold",
+      "rank": "#",
+      "revenue": "Revenue",
+      "thisWeek": "This Week",
+      "title": "Top Products",
+      "today": "Today"
+    },
+    "visitorStats": {
+      "analyticsNotConfigured": "Analytics not configured",
+      "analyticsUnavailable": "Analytics unavailable",
+      "conversion": "Conversion",
+      "inquiries": "Inquiries",
+      "title": "Visitor Stats",
+      "uniqueVisitors": "Unique Visitors",
+      "yesterday": "Yesterday ({date})"
+    }
+  },
+  "invoice": {
+    "createPage": {
+      "addLine": "Add line",
+      "b2b": "B2B",
+      "b2bPlaceholder": "Enter business identifier",
+      "b2c": "B2C",
+      "b2cPlaceholder": "Enter phone number",
+      "b2cWarning": "B2C invoices require a valid phone number as the buyer identifier.",
+      "buyerIdentifier": "Buyer Identifier",
+      "buyerType": "Buyer Type",
+      "createAnotherInvoice": "Create another invoice",
+      "createInvoice": "Create Invoice",
+      "createdRecord": "Invoice Created",
+      "createdRecordDescription": "The invoice has been created and is ready to be issued.",
+      "creating": "Creating…",
+      "customer": "Customer",
+      "description": "Create a new sales invoice for your customer.",
+      "descriptionCreated": "Your invoice has been successfully created.",
+      "draftDescription": "Save as a draft to continue editing later.",
+      "draftTitle": "Draft",
+      "eyebrow": "Invoices",
+      "invoiceDate": "Invoice Date",
+      "invoiceLines": "Invoice Lines",
+      "noActiveCustomers": "No active customers available.",
+      "title": "Create Invoice",
+      "titleCreated": "Invoice Created"
+    },
+    "lineEditor": {
+      "description": "Description",
+      "lineNumber": "Line {index}",
+      "lineTotal": "Line Total",
+      "productCode": "Product Code",
+      "quantity": "Quantity",
+      "rate": "Rate: {rate}%",
+      "removeLine": "Remove line",
+      "subtotal": "Subtotal: {currency} {amount}",
+      "tax": "Tax: {currency} {amount}",
+      "taxPolicy": "Tax Policy",
+      "taxType": "Type: {type}",
+      "unitPrice": "Unit Price"
+    },
+    "taxPolicy": {
+      "exempt": "Exempt",
+      "special": "Special",
+      "standard": "Standard",
+      "zero": "Zero-rated"
+    },
+    "listPage": {
+      "backToList": "Back to list",
+      "createInvoice": "Create Invoice",
+      "description": "Browse invoice status and payment progress.",
+      "eyebrow": "Invoices",
+      "invoiceDetail": "Invoice Detail",
+      "invoiceDetailDescription": "View and manage invoice details and payment status.",
+      "invoiceWorkspace": "Invoice Workspace",
+      "invoiceWorkspaceDescription": "Browse and manage all invoices.",
+      "title": "Invoices"
+    },
+    "totals": {
+      "grandTotal": "Grand Total",
+      "lines": "Lines",
+      "subtotal": "Subtotal",
+      "tax": "Tax",
+      "title": "Totals"
+    },
+    "print": {
+      "documentNumber": "Document Number",
+      "customerName": "Customer Name",
+      "taxId": "Tax ID",
+      "invoiceAddress": "Invoice Address",
+      "shippingAddress": "Shipping Address",
+      "contactPhone": "Contact Phone",
+      "faxNumber": "Fax Number",
+      "contactPerson": "Contact Person",
+      "col": {
+        "productCode": "Product Code",
+        "description": "Description",
+        "quantity": "Quantity",
+        "unit": "Unit",
+        "unitPrice": "Unit Price",
+        "netPrice": "Net Price",
+        "amount": "Amount"
+      },
+      "discount": "Discount",
+      "unpaid": "Unpaid",
+      "subtotal": "Subtotal",
+      "tax": "Tax",
+      "total": "Total",
+      "notes": "Notes",
+      "customerSignature": "Customer Signature",
+      "unit": "units",
+      "print": "Print",
+      "close": "Close",
+      "exporting": "Exporting...",
+      "exportPdf": "Export PDF"
+    }
+  },
+  "inventory": {
+    "page": {
+      "description": "Manage your product catalog and stock levels.",
+      "eyebrow": "Inventory",
+      "title": "Inventory",
+      "warehouseScope": "Warehouse Scope",
+      "warehouseScopeDescription": "Filter stock view by warehouse."
+    },
+    "productDetail": {
+      "adjustmentHistory": {
+        "actor": "Actor",
+        "change": "Change",
+        "date": "Date",
+        "description": "Audit trail of inventory adjustments.",
+        "noHistory": "No adjustment history",
+        "noHistoryDescription": "No inventory adjustments have been recorded for this product.",
+        "notes": "Notes",
+        "reason": "Reason",
+        "title": "Adjustment History"
+      },
+      "belowReorderPoint": "Below reorder point",
+      "category": "Category: {category}",
+      "code": "Code: {code}",
+      "error": "Error: {message}",
+      "loading": "Loading…",
+      "productDescription": "Product description",
+      "retry": "Retry",
+      "stockByWarehouse": {
+        "allWarehouses": "All Warehouses",
+        "description": "Current stock levels by warehouse.",
+        "filterLabel": "Filter by warehouse",
+        "lastAdjusted": "Last Adjusted",
+        "noMatch": "No matching records.",
+        "noRecords": "No records",
+        "quantity": "Quantity",
+        "reorderPoint": "Reorder Point",
+        "status": "Status",
+        "title": "Stock by Warehouse",
+        "warehouse": "Warehouse",
+        "warehouseLabel": "Warehouse"
+      },
+      "totalStock": "Total Stock: {stock}"
+    }
+  },
+  "orders": {
+    "detail": {
+      "backToList": "Back to list",
+      "cancelOrder": "Cancel Order",
+      "cancelOrderMessage": "Are you sure you want to cancel this order? This action cannot be undone.",
+      "confirmOrder": "Confirm Order",
+      "confirmOrderMessage": "This will auto-generate an invoice for this order.",
+      "confirmStatusChange": "Confirm Status Change",
+      "confirmed": "Confirmed",
+      "created": "Created",
+      "customer": "Customer",
+      "invoice": "Invoice",
+      "lineItems": "Line Items",
+      "lineItemsDescription": "Products and services in this order.",
+      "markFulfilled": "Mark Fulfilled",
+      "markFulfilledMessage": "Mark this order as fulfilled?",
+      "markShipped": "Mark Shipped",
+      "markShippedMessage": "Mark this order as shipped?",
+      "noLineItems": "No line items",
+      "noLineItemsDescription": "This order has no line items.",
+      "notFound": "Order not found.",
+      "notes": "Notes",
+      "orderSummary": "Order Summary",
+      "orderSummaryDescription": "Key details and totals for this order.",
+      "orderTitle": "Order",
+      "paymentTerms": "Payment Terms",
+      "subtotal": "Subtotal",
+      "tax": "Tax",
+      "total": "Total",
+      "updating": "Updating…"
+    },
+    "form": {
+      "addLine": "Add line",
+      "createOrder": "Create Order",
+      "creating": "Creating…",
+      "customerId": "Customer ID",
+      "description": "Description",
+      "lineStock": "Line {index} stock",
+      "loading": "Loading…",
+      "newOrderDescription": "Create a new sales order for your customer.",
+      "newOrderTitle": "New Order",
+      "notes": "Notes",
+      "paymentTerms": "Payment Terms",
+      "productId": "Product ID",
+      "quantity": "Quantity",
+      "stock": "Stock",
+      "taxPolicy": "Tax Policy",
+      "taxPolicyExempt": "Exempt",
+      "taxPolicyStandard": "Standard Rate",
+      "taxPolicyZero": "Zero Rate",
+      "unitPrice": "Unit Price"
+    },
+    "list": {
+      "adjustFilter": "Adjust the search or filter criteria and try again.",
+      "allStatuses": "All statuses",
+      "cancelled": "Cancelled",
+      "confirmed": "Confirmed",
+      "created": "Created",
+      "description": "Browse and manage your sales orders.",
+      "fulfilled": "Fulfilled",
+      "noOrders": "No orders found.",
+      "orderNumber": "Order #",
+      "pending": "Pending",
+      "shipped": "Shipped",
+      "status": "Status",
+      "statusLabel": "Status:",
+      "title": "Orders",
+      "total": "Total"
+    }
   }
 }

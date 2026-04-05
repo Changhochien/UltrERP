@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "../../ui/button";
 import { Dialog, DialogContent, DialogTitle } from "../../ui/dialog";
 import type {
@@ -30,6 +31,7 @@ export default function InvoicePrintPreviewModal({
 	onClose,
 	onPreviewReady,
 }: InvoicePrintPreviewModalProps) {
+	const { t } = useTranslation();
 	const handlePrint = useCallback(() => {
 		window.print();
 	}, []);
@@ -64,10 +66,10 @@ export default function InvoicePrintPreviewModal({
 				<div className="print-preview-shell">
 					<div className="print-preview-controls border-b border-border bg-background/95 backdrop-blur">
 						<Button type="button" onClick={handlePrint}>
-							列印 (Print)
+							{t('invoice.print.print')}
 						</Button>
 						<Button type="button" variant="secondary" onClick={onClose}>
-							關閉 (Close)
+							{t('invoice.print.close')}
 						</Button>
 					</div>
 

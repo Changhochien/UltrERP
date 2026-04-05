@@ -5,6 +5,7 @@
  */
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { InvoiceResponse } from "../../domain/invoices/types";
 import { validatePrintReady } from "../../lib/print/invoices";
 import { exportInvoicePdf } from "../../lib/pdf/invoices";
@@ -16,6 +17,7 @@ interface InvoiceExportButtonProps {
 export default function InvoiceExportButton({
 	invoice,
 }: InvoiceExportButtonProps) {
+	const { t } = useTranslation();
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -44,7 +46,7 @@ export default function InvoiceExportButton({
 				disabled={busy || validationError !== null}
 				title={validationError ?? "Export to PDF"}
 			>
-				{busy ? "匯出中…" : "Export PDF"}
+				{busy ? t('invoice.print.exporting') : t('invoice.print.exportPdf')}
 			</button>
 			{error && <span className="invoice-export-error">{error}</span>}
 		</div>

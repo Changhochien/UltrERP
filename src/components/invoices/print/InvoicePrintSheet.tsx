@@ -5,6 +5,7 @@
  * All data comes from persisted invoice snapshots, never from editable form state.
  */
 
+import { useTranslation } from "react-i18next";
 import type {
 	InvoiceResponse,
 	PrintCustomerInfo,
@@ -37,6 +38,7 @@ export default function InvoicePrintSheet({
 	customer,
 	seller,
 }: InvoicePrintSheetProps) {
+	const { t } = useTranslation("common");
 	return (
 		<div className="invoice-print-sheet">
 			{/* ── Header ── */}
@@ -61,7 +63,7 @@ export default function InvoicePrintSheet({
 			<div className="ips-doc-row">
 				<span className="ips-date">{formatDate(invoice.invoice_date)}</span>
 				<span className="ips-doc-number">
-					<span className="ips-field-label">單據號碼：</span>
+					<span className="ips-field-label">{t('invoice.print.documentNumber')}</span>
 					{invoice.invoice_number}
 				</span>
 			</div>
@@ -70,37 +72,37 @@ export default function InvoicePrintSheet({
 			<div className="ips-customer">
 				<div className="ips-customer-left">
 					<div>
-						<span className="ips-field-label">客戶名稱：</span>
+						<span className="ips-field-label">{t('invoice.print.customerName')}</span>
 						{customer.company_name}
 					</div>
 					<div>
-						<span className="ips-field-label">統一編號：</span>
+						<span className="ips-field-label">{t('invoice.print.taxId')}</span>
 						{invoice.buyer_identifier_snapshot}
 					</div>
 					<div>
-						<span className="ips-field-label">發票地址：</span>
+						<span className="ips-field-label">{t('invoice.print.invoiceAddress')}</span>
 						{customer.billing_address}
 					</div>
 					{customer.shipping_address && (
 						<div>
-							<span className="ips-field-label">送貨地址：</span>
+							<span className="ips-field-label">{t('invoice.print.shippingAddress')}</span>
 							{customer.shipping_address}
 						</div>
 					)}
 				</div>
 				<div className="ips-customer-right">
 					<div>
-						<span className="ips-field-label">聯絡電話：</span>
+						<span className="ips-field-label">{t('invoice.print.contactPhone')}</span>
 						{customer.contact_phone}
 					</div>
 					{customer.contact_fax && (
 						<div>
-							<span className="ips-field-label">傳真號碼：</span>
+							<span className="ips-field-label">{t('invoice.print.faxNumber')}</span>
 							{customer.contact_fax}
 						</div>
 					)}
 					<div>
-						<span className="ips-field-label">聯絡人員：</span>
+						<span className="ips-field-label">{t('invoice.print.contactPerson')}</span>
 						{customer.contact_name}
 					</div>
 				</div>
@@ -110,13 +112,13 @@ export default function InvoicePrintSheet({
 			<table className="ips-grid">
 				<thead>
 					<tr>
-						<th className="ips-col-code">產品編號</th>
-						<th className="ips-col-desc">品名規格</th>
-						<th className="ips-col-qty">數量</th>
-						<th className="ips-col-unit">單位</th>
-						<th className="ips-col-price">單價</th>
-						<th className="ips-col-net">實價</th>
-						<th className="ips-col-amount">金額</th>
+						<th className="ips-col-code">{t('invoice.print.col.productCode')}</th>
+						<th className="ips-col-desc">{t('invoice.print.col.description')}</th>
+						<th className="ips-col-qty">{t('invoice.print.col.quantity')}</th>
+						<th className="ips-col-unit">{t('invoice.print.col.unit')}</th>
+						<th className="ips-col-price">{t('invoice.print.col.unitPrice')}</th>
+						<th className="ips-col-net">{t('invoice.print.col.netPrice')}</th>
+						<th className="ips-col-amount">{t('invoice.print.col.amount')}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -127,7 +129,7 @@ export default function InvoicePrintSheet({
 							</td>
 							<td className="ips-col-desc">{line.description}</td>
 							<td className="ips-col-qty">{line.quantity}</td>
-							<td className="ips-col-unit">個</td>
+							<td className="ips-col-unit">{t('invoice.print.unit')}</td>
 							<td className="ips-col-price">
 								{formatAmount(line.unit_price)}
 							</td>
@@ -146,25 +148,25 @@ export default function InvoicePrintSheet({
 			<div className="ips-footer">
 				<div className="ips-footer-left">
 					<div className="ips-footer-row">
-						<span className="ips-field-label">折讓</span>
+						<span className="ips-field-label">{t('invoice.print.discount')}</span>
 						<span />
 					</div>
 					<div className="ips-footer-row">
-						<span className="ips-field-label">未收款</span>
+						<span className="ips-field-label">{t('invoice.print.unpaid')}</span>
 						<span />
 					</div>
 				</div>
 				<div className="ips-footer-right">
 					<div className="ips-footer-row">
-						<span className="ips-field-label">{"合\u3000\u3000計"}</span>
+						<span className="ips-field-label">{t('invoice.print.subtotal')}</span>
 						<span>{formatAmount(invoice.subtotal_amount)}</span>
 					</div>
 					<div className="ips-footer-row">
-						<span className="ips-field-label">營業稅</span>
+						<span className="ips-field-label">{t('invoice.print.tax')}</span>
 						<span>{formatAmount(invoice.tax_amount)}</span>
 					</div>
 					<div className="ips-footer-row">
-						<span className="ips-field-label">{"總\u3000\u3000計"}</span>
+						<span className="ips-field-label">{t('invoice.print.total')}</span>
 						<span className="ips-total-amount">
 							{formatAmount(invoice.total_amount)}
 						</span>
@@ -174,10 +176,10 @@ export default function InvoicePrintSheet({
 
 			<div className="ips-footer-notes">
 				<div className="ips-footer-notes-left">
-					<span className="ips-field-label">備註</span>
+					<span className="ips-field-label">{t('invoice.print.notes')}</span>
 				</div>
 				<div className="ips-footer-notes-right">
-					<span className="ips-field-label">客戶簽收</span>
+					<span className="ips-field-label">{t('invoice.print.customerSignature')}</span>
 				</div>
 			</div>
 

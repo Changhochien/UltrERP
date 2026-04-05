@@ -1,20 +1,472 @@
 {
   "nav": {
+    "createCustomer": "建立客戶",
+    "createInvoice": "開立發票",
     "dashboard": "儀表板",
+    "language": "語言",
+    "overview": "總覽",
     "inventory": "庫存",
     "customers": "客戶",
     "invoices": "發票",
+    "newOrder": "新訂單",
+    "operations": "作業",
     "orders": "訂單",
     "payments": "付款",
+    "revenue": "營收",
+    "settings": "設定",
     "admin": "管理"
   },
   "common": {
-    "loading": "載入中...",
-    "save": "儲存",
     "cancel": "取消",
     "delete": "刪除",
-    "edit": "編輯",
-    "search": "搜尋",
-    "noData": "尚無資料"
+    "guest": "訪客",
+    "loading": "載入中...",
+    "noTenant": "無組織",
+    "reset": "重設",
+    "save": "儲存",
+    "yes": "是"
+  },
+  "messages": {
+    "loading": "載入中…"
+  },
+  "navMenu": {
+    "language": "語言",
+    "logOut": "登出",
+    "theme": "主題",
+    "workspace": "工作區"
+  },
+  "routes": {
+    "admin": {
+      "description": "管理使用者、稽核紀錄與高權限控制項。",
+      "label": "管理"
+    },
+    "createCustomer": {
+      "description": "將新客戶加入您的工作區。",
+      "label": "建立客戶"
+    },
+    "createInvoice": {
+      "description": "為您的客戶建立新的銷售發票。",
+      "label": "開立發票"
+    },
+    "createOrder": {
+      "description": "建立新的銷售訂單。",
+      "label": "建立訂單"
+    },
+    "customers": {
+      "description": "瀏覽並搜尋您的客戶帳戶。",
+      "label": "客戶"
+    },
+    "dashboard": {
+      "description": "掌握營收、流量與營運訊號。",
+      "label": "儀表板"
+    },
+    "inventory": {
+      "description": "管理庫存水位與倉儲作業。",
+      "label": "庫存"
+    },
+    "invoices": {
+      "description": "瀏覽發票狀態與付款進度。",
+      "label": "發票"
+    },
+    "login": {
+      "description": "登入以管理您的 ERP 工作區。",
+      "label": "登入"
+    },
+    "orderDetail": {
+      "description": "檢視並更新所選訂單。",
+      "label": "訂單詳情",
+      "section": "訂單"
+    },
+    "orders": {
+      "description": "追蹤訂單流程與履約狀態。",
+      "label": "訂單"
+    },
+    "payments": {
+      "description": "檢視收款、對帳與未結清餘額。",
+      "label": "付款"
+    },
+    "settings": {
+      "description": "管理工作區設定與偏好選項。",
+      "label": "設定"
+    },
+    "workspace": {
+      "description": "瀏覽您的 ERP 工作區。",
+      "label": "工作區",
+      "section": "工作區"
+    }
+  },
+  "app": {
+    "openShortcuts": "開啟快捷鍵",
+    "keyboardShortcuts": "鍵盤快捷鍵",
+    "newCustomer": "新客戶",
+    "goToCustomers": "前往客戶",
+    "newInvoice": "新發票",
+    "goToInvoices": "前往發票",
+    "newOrder": "新訂單",
+    "goToOrders": "前往訂單",
+    "goToDashboard": "前往儀表板",
+    "goToInventory": "前往庫存",
+    "goToPayments": "前往付款",
+    "goToAdmin": "前往管理",
+    "close": "關閉",
+    "tagline": "專為台灣中小企業打造的 AI 原生 ERP"
+  },
+  "auth": {
+    "email": "電子郵件",
+    "error": "登入失敗",
+    "loggingIn": "登入中…",
+    "login": "登入",
+    "password": "密碼",
+    "shellDescription": "使用您的工作區帳號登入 ERP 工作台。",
+    "signingIn": "正在為您登入 ERP 工作台…",
+    "subtitle": "登入後即可在同一個作業工作區管理客戶、發票、訂單、付款與庫存。",
+    "title": "為台灣中小企業流程打造的現代化 ERP 作業體驗。",
+    "welcome": "登入 UltrERP"
+  },
+  "languageSwitcher": {
+    "currentSelection": "語言。目前選擇：{language}",
+    "english": "English",
+    "traditionalChinese": "繁體中文",
+    "useLanguage": "使用 {language} 語言"
+  },
+  "settingsPage": {
+    "eyebrow": "設定",
+    "emptyCategory": "此分類中沒有任何設定。",
+    "noCategories": "目前沒有可用的設定分類。",
+    "saveError": "儲存設定失敗。",
+    "resetError": "重設設定失敗。"
+  },
+  "customer": {
+    "createPage": {
+      "createAnother": "繼續新增",
+      "createdRecord": "客戶已建立",
+      "createdRecordDescription": "客戶記錄已成功建立。",
+      "description": "填入詳細資料以新增客戶至您的工作區。",
+      "descriptionCreated": "新客戶已新增至您的工作區。",
+      "eyebrow": "客戶",
+      "formDescription": "輸入客戶的營業資訊與聯絡方式。",
+      "formTitle": "客戶資訊",
+      "title": "建立客戶",
+      "titleCreated": "客戶已建立"
+    },
+    "detail": {
+      "ban": "統一編號",
+      "billingAddress": "帳單地址",
+      "companyName": "公司名稱",
+      "contactName": "聯絡人",
+      "creditLimit": "信用額度",
+      "description": "客戶詳情",
+      "edit": "編輯",
+      "email": "電子郵件",
+      "loading": "載入中…",
+      "notFound": "找不到客戶。",
+      "phone": "電話",
+      "status": "狀態",
+      "title": "客戶詳情"
+    },
+    "form": {
+      "billingAddress": "帳單地址",
+      "businessNumber": "統一編號",
+      "companyName": "公司名稱",
+      "contactEmail": "聯絡人電子郵件",
+      "contactName": "聯絡人姓名",
+      "contactPhone": "聯絡人電話",
+      "createTitle": "建立客戶",
+      "creating": "建立中…",
+      "creditLimit": "信用額度",
+      "creditLimitNonNegative": "信用額度不得為負數。",
+      "invalidBusinessNumber": "統一編號無效。",
+      "title": "建立客戶"
+    },
+    "listPage": {
+      "activeFilters": "已套用 {count} 個篩選條件",
+      "active": "啟用",
+      "allStatuses": "所有狀態",
+      "clearFilters": "清除篩選",
+      "createCustomer": "建立客戶",
+      "customerRegistry": "客戶資料庫",
+      "customerRegistryDescription": "瀏覽、搜尋及管理客戶帳戶。",
+      "description": "瀏覽及搜尋您的客戶帳戶。",
+      "eyebrow": "客戶",
+      "inactive": "停用",
+      "loading": "載入中…",
+      "search": "搜尋：{query}",
+      "status": "狀態",
+      "statusFilter": "狀態：{status}",
+      "suspended": "停權",
+      "title": "客戶",
+      "updating": "更新中…"
+    }
+  },
+  "dashboard": {
+    "actionCenter": {
+      "description": "近期的活動與通知。",
+      "title": "動作中心"
+    },
+    "pageDescription": "依角色提供快捷操作與即時商務訊號的營運總覽。",
+    "lowStock": {
+      "allOk": "所有庫存水準正常",
+      "description": "低於補貨點的產品",
+      "stock": "庫存：{current} / 補貨點：{point}",
+      "title": "低庫存警示"
+    },
+    "quickActions": {
+      "admin": "管理",
+      "adminDescription": "管理角色、政策與工作區控制項。",
+      "customers": "客戶",
+      "customersDescription": "搜尋帳戶並管理客戶資料。",
+      "inventory": "庫存",
+      "inventoryDescription": "檢視庫存水位與補貨需求。",
+      "invoices": "發票",
+      "invoicesDescription": "追蹤發票狀態與付款進度。",
+      "newInvoice": "新發票",
+      "newInvoiceDescription": "從儀表板建立新的銷售發票。",
+      "newCustomer": "新客戶",
+      "newCustomerDescription": "為工作區建立新的客戶資料。",
+      "newOrder": "新訂單",
+      "newOrderDescription": "從儀表板建立新的銷售訂單。",
+      "orders": "訂單",
+      "ordersDescription": "掌握訂單流程與履約狀態。",
+      "payments": "付款",
+      "paymentsDescription": "檢視收款與未結清餘額。"
+    },
+    "revenue": {
+      "description": "每日營收概覽",
+      "noChangeData": "無變動",
+      "revenueChange": "{change}",
+      "title": "營收",
+      "yesterday": "昨日（{date}）：{amount}"
+    },
+    "topProducts": {
+      "description": "熱銷產品",
+      "noData": "此期間無銷售資料",
+      "product": "產品",
+      "qtySold": "銷售數量",
+      "rank": "#",
+      "revenue": "營收",
+      "thisWeek": "本週",
+      "title": "暢銷產品",
+      "today": "今日"
+    },
+    "visitorStats": {
+      "analyticsNotConfigured": "分析功能尚未設定",
+      "analyticsUnavailable": "分析功能無法使用",
+      "conversion": "轉換率",
+      "inquiries": "詢價",
+      "title": "訪客統計",
+      "uniqueVisitors": "獨立訪客",
+      "yesterday": "昨日（{date}）"
+    }
+  },
+  "invoice": {
+    "createPage": {
+      "addLine": "新增明細",
+      "b2b": "B2B",
+      "b2bPlaceholder": "請輸入統一編號",
+      "b2c": "B2C",
+      "b2cPlaceholder": "請輸入電話號碼",
+      "b2cWarning": "B2C 發票需要有效的電話號碼作為買受人識別碼。",
+      "buyerIdentifier": "買受人識別碼",
+      "buyerType": "買受人型態",
+      "createAnotherInvoice": "再開立一張發票",
+      "createInvoice": "開立發票",
+      "createdRecord": "發票已開立",
+      "createdRecordDescription": "發票已成功開立，隨時可以執行。",
+      "creating": "開立中…",
+      "customer": "客戶",
+      "description": "為您的客戶開立新的銷售發票。",
+      "descriptionCreated": "您的發票已成功開立。",
+      "draftDescription": "儲存為草稿以便稍後繼續編輯。",
+      "draftTitle": "草稿",
+      "eyebrow": "發票",
+      "invoiceDate": "發票日期",
+      "invoiceLines": "發票明細",
+      "noActiveCustomers": "目前沒有可用的有效客戶。",
+      "title": "開立發票",
+      "titleCreated": "發票已開立"
+    },
+    "lineEditor": {
+      "description": "品名規格",
+      "lineNumber": "第 {index} 筆",
+      "lineTotal": "小計",
+      "productCode": "產品編號",
+      "quantity": "數量",
+      "rate": "稅率：{rate}%",
+      "removeLine": "移除此筆",
+      "subtotal": "未稅金額：{currency} {amount}",
+      "tax": "稅額：{currency} {amount}",
+      "taxPolicy": "課稅別",
+      "taxType": "類型：{type}",
+      "unitPrice": "單價"
+    },
+    "taxPolicy": {
+      "exempt": "免稅",
+      "special": "特種稅率",
+      "standard": "應稅",
+      "zero": "零稅率"
+    },
+    "listPage": {
+      "backToList": "返回列表",
+      "createInvoice": "開立發票",
+      "description": "瀏覽發票狀態與付款進度。",
+      "eyebrow": "發票",
+      "invoiceDetail": "發票詳情",
+      "invoiceDetailDescription": "檢視及管理發票詳情與付款狀態。",
+      "invoiceWorkspace": "發票工作區",
+      "invoiceWorkspaceDescription": "瀏覽並管理所有發票。",
+      "title": "發票"
+    },
+    "totals": {
+      "grandTotal": "總計",
+      "lines": "明細",
+      "subtotal": "未稅合計",
+      "tax": "稅額",
+      "title": "合計"
+    },
+    "print": {
+      "documentNumber": "單據號碼",
+      "customerName": "客戶名稱",
+      "taxId": "統一編號",
+      "invoiceAddress": "發票地址",
+      "shippingAddress": "送貨地址",
+      "contactPhone": "聯絡電話",
+      "faxNumber": "傳真號碼",
+      "contactPerson": "聯絡人員",
+      "col": {
+        "productCode": "產品編號",
+        "description": "品名規格",
+        "quantity": "數量",
+        "unit": "單位",
+        "unitPrice": "單價",
+        "netPrice": "實價",
+        "amount": "金額"
+      },
+      "discount": "折讓",
+      "unpaid": "未收款",
+      "subtotal": "未稅合計",
+      "tax": "營業稅",
+      "total": "總計",
+      "notes": "備註",
+      "customerSignature": "客戶簽收",
+      "unit": "個",
+      "print": "列印",
+      "close": "關閉",
+      "exporting": "匯出中…",
+      "exportPdf": "Export PDF"
+    }
+  },
+  "inventory": {
+    "page": {
+      "description": "管理您的產品目錄與庫存水準。",
+      "eyebrow": "庫存",
+      "title": "庫存",
+      "warehouseScope": "倉庫範圍",
+      "warehouseScopeDescription": "依倉庫篩選庫存檢視。"
+    },
+    "productDetail": {
+      "adjustmentHistory": {
+        "actor": "操作者",
+        "change": "變動",
+        "date": "日期",
+        "description": "庫存異動的審計追蹤。",
+        "noHistory": "尚無異動紀錄",
+        "noHistoryDescription": "此產品尚無任何庫存異動紀錄。",
+        "notes": "備註",
+        "reason": "原因",
+        "title": "異動紀錄"
+      },
+      "belowReorderPoint": "低於補貨點",
+      "category": "類別：{category}",
+      "code": "編號：{code}",
+      "error": "錯誤：{message}",
+      "loading": "載入中…",
+      "productDescription": "產品說明",
+      "retry": "重試",
+      "stockByWarehouse": {
+        "allWarehouses": "所有倉庫",
+        "description": "各倉庫目前的庫存水準。",
+        "filterLabel": "依倉庫篩選",
+        "lastAdjusted": "最近異動",
+        "noMatch": "無符合的記錄。",
+        "noRecords": "尚無記錄",
+        "quantity": "數量",
+        "reorderPoint": "補貨點",
+        "status": "狀態",
+        "title": "各倉庫庫存",
+        "warehouse": "倉庫",
+        "warehouseLabel": "倉庫"
+      },
+      "totalStock": "總庫存：{stock}"
+    }
+  },
+  "orders": {
+    "detail": {
+      "backToList": "返回列表",
+      "cancelOrder": "取消訂單",
+      "cancelOrderMessage": "確定要取消此訂單嗎？此動作無法撤銷。",
+      "confirmOrder": "確認訂單",
+      "confirmOrderMessage": "此動作將為此訂單自動產生發票。",
+      "confirmStatusChange": "確認狀態變更",
+      "confirmed": "已確認",
+      "created": "建立時間",
+      "customer": "客戶",
+      "invoice": "發票",
+      "lineItems": "訂單明細",
+      "lineItemsDescription": "此訂單中的產品與服務。",
+      "markFulfilled": "標記為已完成",
+      "markFulfilledMessage": "將此訂單標記為已完成？",
+      "markShipped": "標記為已出貨",
+      "markShippedMessage": "將此訂單標記為已出貨？",
+      "noLineItems": "尚無明細",
+      "noLineItemsDescription": "此訂單尚無任何明細。",
+      "notFound": "找不到訂單。",
+      "notes": "備註",
+      "orderSummary": "訂單摘要",
+      "orderSummaryDescription": "此訂單的關鍵詳情與合計。",
+      "orderTitle": "訂單",
+      "paymentTerms": "付款條件",
+      "subtotal": "未稅金額",
+      "tax": "稅額",
+      "total": "總計",
+      "updating": "更新中…"
+    },
+    "form": {
+      "addLine": "新增明細",
+      "createOrder": "建立訂單",
+      "creating": "建立中…",
+      "customerId": "客戶 ID",
+      "description": "品名規格",
+      "lineStock": "第 {index} 筆記錄的庫存",
+      "loading": "載入中…",
+      "newOrderDescription": "為您的客戶建立新的銷售訂單。",
+      "newOrderTitle": "新訂單",
+      "notes": "備註",
+      "paymentTerms": "付款條件",
+      "productId": "產品 ID",
+      "quantity": "數量",
+      "stock": "庫存",
+      "taxPolicy": "課稅別",
+      "taxPolicyExempt": "免稅",
+      "taxPolicyStandard": "標準稅率",
+      "taxPolicyZero": "零稅率",
+      "unitPrice": "單價"
+    },
+    "list": {
+      "adjustFilter": "請調整搜尋或篩選條件後再試一次。",
+      "allStatuses": "所有狀態",
+      "cancelled": "已取消",
+      "confirmed": "已確認",
+      "created": "建立時間",
+      "description": "瀏覽並管理您的銷售訂單。",
+      "fulfilled": "已完成",
+      "noOrders": "查無訂單。",
+      "orderNumber": "訂單編號",
+      "pending": "待處理",
+      "shipped": "已出貨",
+      "status": "狀態",
+      "statusLabel": "狀態：",
+      "title": "訂單",
+      "total": "合計"
+    }
   }
 }
