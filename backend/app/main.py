@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.mcp_setup import get_mcp_app
 from common.config import settings
-from common.database import get_db
+from common.database import AsyncSessionLocal, get_db
 from domains.aeo.sitemap import generate_product_sitemap_xml, invalidate_sitemap_cache
 from domains.approval.routes import router as approval_router
 from domains.audit.routes import router as audit_router
@@ -19,6 +19,8 @@ from domains.invoices.routes import router as invoices_router
 from domains.line.webhook import router as line_router
 from domains.orders.routes import router as orders_router
 from domains.payments.routes import router as payments_router
+from domains.purchases.routes import router as purchases_router
+from domains.settings.routes import router as settings_router
 from domains.users.routes import router as users_router
 
 
@@ -29,9 +31,17 @@ def create_app() -> FastAPI:
 	async def lifespan(app: FastAPI):
 		mcp_lifespan = mcp_app.router.lifespan_context
 		async with mcp_lifespan(mcp_app):
+			from domains.settings.seed import seed_settings_if_empty
+			async with AsyncSessionLocal() as db:
+				await seed_settings_if_empty(db)
 			yield
 
-	app = FastAPI(title="UltrERP API", version="0.1.0", lifespan=lifespan)
+	app = FastAPI(
+		title="UltrERP API",
+		version="0.1.0",
+		lifespan=lifespan,
+		strict_content_type=False,
+	)
 	api_v1 = APIRouter(prefix="/api/v1")
 
 	app.add_middleware(
@@ -54,6 +64,8 @@ def create_app() -> FastAPI:
 	api_v1.include_router(line_router, prefix="/line", tags=["LINE"])
 	api_v1.include_router(orders_router, prefix="/orders", tags=["orders"])
 	api_v1.include_router(payments_router, prefix="/payments", tags=["payments"])
+	api_v1.include_router(purchases_router, prefix="/purchases", tags=["purchases"])
+	api_v1.include_router(settings_router, prefix="/settings", tags=["settings"])
 	app.include_router(api_v1)
 
 	app.mount("/mcp", mcp_app)

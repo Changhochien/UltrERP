@@ -46,23 +46,29 @@ def _validate_invoice_lines(lines: list[InvoiceCreateLine]) -> list[dict[str, st
     errors: list[dict[str, str]] = []
 
     if not 1 <= len(lines) <= 9999:
-        errors.append({
-            "field": "lines",
-            "message": "Invoice line count must be between 1 and 9999.",
-        })
+        errors.append(
+            {
+                "field": "lines",
+                "message": "Invoice line count must be between 1 and 9999.",
+            }
+        )
         return errors
 
     for index, line in enumerate(lines, start=1):
         if line.quantity <= 0:
-            errors.append({
-                "field": f"lines[{index - 1}].quantity",
-                "message": "Quantity must be positive.",
-            })
+            errors.append(
+                {
+                    "field": f"lines[{index - 1}].quantity",
+                    "message": "Quantity must be positive.",
+                }
+            )
         if line.unit_price < 0:
-            errors.append({
-                "field": f"lines[{index - 1}].unit_price",
-                "message": "Unit price must not be negative.",
-            })
+            errors.append(
+                {
+                    "field": f"lines[{index - 1}].unit_price",
+                    "message": "Unit price must not be negative.",
+                }
+            )
 
     return errors
 
@@ -128,26 +134,28 @@ async def _create_invoice_core(
     """
     customer = await _get_customer(session, tenant_id, data.customer_id)
     if customer is None:
-        raise ValidationError([
-            {"field": "customer_id", "message": "Customer does not exist."}
-        ])
+        raise ValidationError([{"field": "customer_id", "message": "Customer does not exist."}])
 
     number_range = await _get_active_number_range(session, tenant_id)
     if number_range is None:
-        raise ValidationError([
-            {
-                "field": "invoice_number",
-                "message": "No active invoice number range is configured.",
-            }
-        ])
+        raise ValidationError(
+            [
+                {
+                    "field": "invoice_number",
+                    "message": "No active invoice number range is configured.",
+                }
+            ]
+        )
 
     if number_range.next_number > number_range.end_number:
-        raise ValidationError([
-            {
-                "field": "invoice_number",
-                "message": "No invoice numbers remain in the active range.",
-            }
-        ])
+        raise ValidationError(
+            [
+                {
+                    "field": "invoice_number",
+                    "message": "No invoice numbers remain in the active range.",
+                }
+            ]
+        )
 
     calculated_lines = [
         calculate_line_amounts(
@@ -253,6 +261,7 @@ async def create_invoice(
 
 
 # ── Void window ────────────────────────────────────────────────
+
 
 def compute_void_deadline(invoice_date: date) -> date:
     """Compute the Taiwan eGUI void deadline for a given invoice date.
@@ -447,7 +456,9 @@ async def refresh_invoice_egui_submission(
                 submission.retry_count += 1
                 submission.last_error_message = "Mock FIA refresh requested a retry."
             elif next_status == EguiSubmissionStatus.ACKED:
-                submission.fia_reference = submission.fia_reference or f"MOCK-{invoice.invoice_number}"
+                submission.fia_reference = (
+                    submission.fia_reference or f"MOCK-{invoice.invoice_number}"
+                )
                 submission.last_error_message = None
             elif next_status not in {EguiSubmissionStatus.FAILED, EguiSubmissionStatus.DEAD_LETTER}:
                 submission.last_error_message = None
@@ -457,6 +468,7 @@ async def refresh_invoice_egui_submission(
 
 
 # ── Void invoice ───────────────────────────────────────────────
+
 
 async def void_invoice(
     session: AsyncSession,
@@ -501,15 +513,11 @@ async def void_invoice(
             )
         )
         if paid_check.scalar() > 0:
-            raise ValueError(
-                "Cannot void invoice with existing payments. Reverse payments first."
-            )
+            raise ValueError("Cannot void invoice with existing payments. Reverse payments first.")
 
         deadline = compute_void_deadline(invoice.invoice_date)
         if today > deadline:
-            raise ValueError(
-                f"Void window expired. Deadline was {deadline.isoformat()}."
-            )
+            raise ValueError(f"Void window expired. Deadline was {deadline.isoformat()}.")
 
         before_state = {
             "status": invoice.status,
@@ -549,6 +557,7 @@ async def void_invoice(
 
 # ── Query helpers ──────────────────────────────────────────────
 
+
 async def get_invoice(
     session: AsyncSession,
     invoice_id: uuid.UUID,
@@ -573,11 +582,7 @@ def _compute_due_date(
     invoice_date: date,
     payment_terms_days: int | None,
 ) -> date:
-    days = (
-        payment_terms_days
-        if payment_terms_days is not None
-        else _DEFAULT_PAYMENT_TERMS_DAYS
-    )
+    days = payment_terms_days if payment_terms_days is not None else _DEFAULT_PAYMENT_TERMS_DAYS
     return invoice_date + timedelta(days=days)
 
 
@@ -643,7 +648,11 @@ async def compute_invoice_payment_summary(
     due_date = _compute_due_date(invoice.invoice_date, payment_terms_days)
     outstanding = max(Decimal("0"), invoice.total_amount - amount_paid)
     status = _compute_payment_status(
-        invoice.status, invoice.total_amount, amount_paid, due_date, today,
+        invoice.status,
+        invoice.total_amount,
+        amount_paid,
+        due_date,
+        today,
     )
     days_overdue = max(0, (today - due_date).days) if outstanding > 0 and today > due_date else 0
 
@@ -679,9 +688,7 @@ async def enrich_invoices_with_payment_status(
         )
         .group_by(Payment.invoice_id)
     )
-    paid_map: dict[uuid.UUID, Decimal] = {
-        row[0]: row[1] for row in pay_result.all()
-    }
+    paid_map: dict[uuid.UUID, Decimal] = {row[0]: row[1] for row in pay_result.all()}
 
     # Batch load order payment_terms_days for invoices with order_id
     order_ids = [inv.order_id for inv in invoices if inv.order_id is not None]
@@ -702,34 +709,39 @@ async def enrich_invoices_with_payment_status(
         due_date = _compute_due_date(inv.invoice_date, payment_terms)
         outstanding = max(Decimal("0"), inv.total_amount - amount_paid)
         status = _compute_payment_status(
-            inv.status, inv.total_amount, amount_paid, due_date, today,
+            inv.status,
+            inv.total_amount,
+            amount_paid,
+            due_date,
+            today,
         )
         days_overdue = (
-            max(0, (today - due_date).days)
-            if outstanding > 0 and today > due_date
-            else 0
+            max(0, (today - due_date).days) if outstanding > 0 and today > due_date else 0
         )
 
-        enriched.append({
-            "id": inv.id,
-            "invoice_number": inv.invoice_number,
-            "invoice_date": inv.invoice_date,
-            "customer_id": inv.customer_id,
-            "currency_code": inv.currency_code,
-            "total_amount": inv.total_amount,
-            "status": inv.status,
-            "created_at": inv.created_at,
-            "amount_paid": amount_paid,
-            "outstanding_balance": outstanding,
-            "payment_status": status,
-            "due_date": due_date,
-            "days_overdue": days_overdue,
-        })
+        enriched.append(
+            {
+                "id": inv.id,
+                "invoice_number": inv.invoice_number,
+                "invoice_date": inv.invoice_date,
+                "customer_id": inv.customer_id,
+                "currency_code": inv.currency_code,
+                "total_amount": inv.total_amount,
+                "status": inv.status,
+                "created_at": inv.created_at,
+                "amount_paid": amount_paid,
+                "outstanding_balance": outstanding,
+                "payment_status": status,
+                "due_date": due_date,
+                "days_overdue": days_overdue,
+            }
+        )
 
     return enriched
 
 
 # ── Invoice list ───────────────────────────────────────────────
+
 
 async def list_invoices(
     session: AsyncSession,
@@ -810,33 +822,24 @@ async def list_invoices(
 
         # Count
         from sqlalchemy import func as sqlfunc
+
         count_q = select(sqlfunc.count()).select_from(base.subquery())
         total = (await session.execute(count_q)).scalar()
 
         # Sort
         if sort_by == "outstanding_balance":
-            order_col = (
-                outstanding_expr.desc()
-                if sort_order == "desc"
-                else outstanding_expr.asc()
-            )
+            order_col = outstanding_expr.desc() if sort_order == "desc" else outstanding_expr.asc()
         elif sort_by == "invoice_date":
             order_col = (
-                Invoice.invoice_date.desc()
-                if sort_order == "desc"
-                else Invoice.invoice_date.asc()
+                Invoice.invoice_date.desc() if sort_order == "desc" else Invoice.invoice_date.asc()
             )
         else:
             order_col = (
-                Invoice.created_at.desc()
-                if sort_order == "desc"
-                else Invoice.created_at.asc()
+                Invoice.created_at.desc() if sort_order == "desc" else Invoice.created_at.asc()
             )
 
         result = await session.execute(
-            base.order_by(order_col)
-            .offset((page - 1) * page_size)
-            .limit(page_size)
+            base.order_by(order_col).offset((page - 1) * page_size).limit(page_size)
         )
         invoices = list(result.scalars().all())
 
@@ -846,6 +849,7 @@ async def list_invoices(
 
 
 # ── Customer outstanding summary ──────────────────────────────
+
 
 async def get_customer_outstanding(
     session: AsyncSession,
@@ -876,51 +880,141 @@ async def get_customer_outstanding(
             if cust_check.scalar_one_or_none() is None:
                 return None
 
-        result = await session.execute(
-            select(Invoice).where(
-                Invoice.tenant_id == tid,
-                Invoice.customer_id == customer_id,
-                Invoice.status != "voided",
+        # Chunked iteration: process invoices in batches to avoid loading
+        # all rows into memory at once. Only invoice scalars (not full
+        # objects with relationships) are materialised per chunk.
+        chunk_size = 1000
+        offset = 0
+
+        outstanding_currencies: set[str] = set()
+        invoice_currencies: set[str] = set()
+        total_outstanding = Decimal("0")
+        overdue_amount = Decimal("0")
+        overdue_count = 0
+        invoice_count = 0
+
+        non_voided_filter = Invoice.tenant_id == tid
+        customer_filter = Invoice.customer_id == customer_id
+        status_filter = Invoice.status != "voided"
+
+        while True:
+            chunk_result = await session.execute(
+                select(
+                    Invoice.id,
+                    Invoice.total_amount,
+                    Invoice.status,
+                    Invoice.invoice_date,
+                    Invoice.order_id,
+                    Invoice.currency_code,
+                )
+                .where(non_voided_filter, customer_filter, status_filter)
+                .order_by(Invoice.id)
+                .offset(offset)
+                .limit(chunk_size)
             )
-        )
-        invoices = list(result.scalars().all())
+            chunk = chunk_result.all()
+            if not chunk:
+                break
 
-        enriched = await enrich_invoices_with_payment_status(session, invoices, tid, today)
+            normalized_chunk: list[
+                tuple[
+                    uuid.UUID,
+                    Decimal,
+                    str,
+                    date,
+                    uuid.UUID | None,
+                    str | None,
+                ]
+            ] = []
+            for row in chunk:
+                if hasattr(row, "id"):
+                    normalized_chunk.append(
+                        (
+                            row.id,
+                            row.total_amount,
+                            row.status,
+                            row.invoice_date,
+                            row.order_id,
+                            row.currency_code,
+                        )
+                    )
+                    continue
+                normalized_chunk.append((row[0], row[1], row[2], row[3], row[4], row[5]))
 
-    outstanding_items = [e for e in enriched if e["outstanding_balance"] > 0]
-    outstanding_currencies = {
-        str(item["currency_code"]).upper()
-        for item in outstanding_items
-        if item.get("currency_code")
-    }
+            invoice_ids = [row[0] for row in normalized_chunk]
+
+            # Batch-matched payments for this chunk only
+            pay_result = await session.execute(
+                select(Payment.invoice_id, func.sum(Payment.amount))
+                .where(
+                    Payment.invoice_id.in_(invoice_ids),
+                    Payment.tenant_id == tid,
+                    Payment.match_status == "matched",
+                )
+                .group_by(Payment.invoice_id)
+            )
+            paid_map: dict[uuid.UUID, Decimal] = {row[0]: row[1] for row in pay_result.all()}
+
+            # Batch payment_terms_days for orders in this chunk
+            order_ids = [row[4] for row in normalized_chunk if row[4] is not None]
+            terms_map: dict[uuid.UUID, int] = {}
+            if order_ids:
+                terms_result = await session.execute(
+                    select(Order.id, Order.payment_terms_days).where(
+                        Order.id.in_(order_ids),
+                        Order.tenant_id == tid,
+                    )
+                )
+                terms_map = {row[0]: row[1] for row in terms_result.all()}
+
+            for (
+                inv_id,
+                total_amount,
+                status,
+                invoice_date,
+                order_id,
+                currency_code,
+            ) in normalized_chunk:
+                amount_paid = paid_map.get(inv_id, Decimal("0"))
+                payment_terms = terms_map.get(order_id) if order_id else None
+                due_date = _compute_due_date(invoice_date, payment_terms)
+                outstanding = max(Decimal("0"), total_amount - amount_paid)
+                pstatus = _compute_payment_status(
+                    status,
+                    total_amount,
+                    amount_paid,
+                    due_date,
+                    today,
+                )
+
+                currency = str(currency_code).upper() if currency_code else None
+                if currency:
+                    invoice_currencies.add(currency)
+
+                if outstanding > 0:
+                    outstanding_currencies.add(currency)
+                    total_outstanding += outstanding
+                    if pstatus == "overdue":
+                        overdue_count += 1
+                        overdue_amount += outstanding
+
+                invoice_count += 1
+
+            offset += chunk_size
+
     if len(outstanding_currencies) > 1:
         raise ValueError(
             "Customer outstanding summary is unavailable for mixed-currency receivables."
         )
 
-    invoice_currencies = {
-        str(item["currency_code"]).upper()
-        for item in enriched
-        if item.get("currency_code")
-    }
     currency_code = next(iter(outstanding_currencies), None)
     if currency_code is None and len(invoice_currencies) == 1:
         currency_code = next(iter(invoice_currencies))
 
-    total_outstanding = sum(
-        (item["outstanding_balance"] for item in outstanding_items),
-        Decimal("0"),
-    )
-    overdue_items = [e for e in enriched if e["payment_status"] == "overdue"]
-    overdue_amount = sum(
-        (e["outstanding_balance"] for e in overdue_items),
-        Decimal("0"),
-    )
-
     return {
         "total_outstanding": total_outstanding,
-        "overdue_count": len(overdue_items),
+        "overdue_count": overdue_count,
         "overdue_amount": overdue_amount,
-        "invoice_count": len(enriched),
+        "invoice_count": invoice_count,
         "currency_code": currency_code or "TWD",
     }

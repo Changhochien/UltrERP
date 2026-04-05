@@ -93,7 +93,9 @@ async def get_by_id(
     response_model=CustomerResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def create(data: CustomerCreate, session: DbSession, _user: WriteUser) -> CustomerResponse | JSONResponse:
+async def create(
+    data: CustomerCreate, session: DbSession, _user: WriteUser
+) -> CustomerResponse | JSONResponse:
     try:
         customer = await create_customer(session, data)
         return CustomerResponse.model_validate(customer)

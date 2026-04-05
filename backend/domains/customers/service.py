@@ -44,17 +44,21 @@ def _validate_customer_fields(data: CustomerCreate) -> list[dict[str, str]]:
 
     # Phone
     if not _TAIWAN_PHONE_RE.match(data.contact_phone):
-        errors.append({
-            "field": "contact_phone",
-            "message": "Phone must be a valid Taiwan phone number.",
-        })
+        errors.append(
+            {
+                "field": "contact_phone",
+                "message": "Phone must be a valid Taiwan phone number.",
+            }
+        )
 
     # Email
     if not _EMAIL_RE.match(data.contact_email):
-        errors.append({
-            "field": "contact_email",
-            "message": "Email must be a valid email address.",
-        })
+        errors.append(
+            {
+                "field": "contact_email",
+                "message": "Email must be a valid email address.",
+            }
+        )
 
     # Credit limit bounds
     try:
@@ -64,10 +68,12 @@ def _validate_customer_fields(data: CustomerCreate) -> list[dict[str, str]]:
     if limit < 0:
         errors.append({"field": "credit_limit", "message": "Credit limit must not be negative."})
     elif limit > _CREDIT_LIMIT_MAX:
-        errors.append({
-            "field": "credit_limit",
-            "message": f"Credit limit exceeds maximum ({_CREDIT_LIMIT_MAX}).",
-        })
+        errors.append(
+            {
+                "field": "credit_limit",
+                "message": f"Credit limit exceeds maximum ({_CREDIT_LIMIT_MAX}).",
+            }
+        )
 
     return errors
 
@@ -169,14 +175,10 @@ async def list_customers(
             # Search both BAN (partial) and company name (partial)
             base = base.where(
                 Customer.normalized_business_number.contains(normalized_q)
-                | Customer.company_name.ilike(
-                    like_pattern, escape="\\"
-                )
+                | Customer.company_name.ilike(like_pattern, escape="\\")
             )
         else:
-            base = base.where(
-                Customer.company_name.ilike(like_pattern, escape="\\")
-            )
+            base = base.where(Customer.company_name.ilike(like_pattern, escape="\\"))
 
     if params.status:
         base = base.where(Customer.status == params.status)
@@ -246,17 +248,21 @@ def _validate_update_fields(data: CustomerUpdate) -> list[dict[str, str]]:
 
     if "contact_phone" in fields and data.contact_phone is not None:
         if not _TAIWAN_PHONE_RE.match(data.contact_phone):
-            errors.append({
-                "field": "contact_phone",
-                "message": "Phone must be a valid Taiwan phone number.",
-            })
+            errors.append(
+                {
+                    "field": "contact_phone",
+                    "message": "Phone must be a valid Taiwan phone number.",
+                }
+            )
 
     if "contact_email" in fields and data.contact_email is not None:
         if not _EMAIL_RE.match(data.contact_email):
-            errors.append({
-                "field": "contact_email",
-                "message": "Email must be a valid email address.",
-            })
+            errors.append(
+                {
+                    "field": "contact_email",
+                    "message": "Email must be a valid email address.",
+                }
+            )
 
     if "credit_limit" in fields and data.credit_limit is not None:
         try:
@@ -264,15 +270,19 @@ def _validate_update_fields(data: CustomerUpdate) -> list[dict[str, str]]:
         except InvalidOperation:
             limit = data.credit_limit
         if limit < 0:
-            errors.append({
-                "field": "credit_limit",
-                "message": "Credit limit must not be negative.",
-            })
+            errors.append(
+                {
+                    "field": "credit_limit",
+                    "message": "Credit limit must not be negative.",
+                }
+            )
         elif limit > _CREDIT_LIMIT_MAX:
-            errors.append({
-                "field": "credit_limit",
-                "message": f"Credit limit exceeds maximum ({_CREDIT_LIMIT_MAX}).",
-            })
+            errors.append(
+                {
+                    "field": "credit_limit",
+                    "message": f"Credit limit exceeds maximum ({_CREDIT_LIMIT_MAX}).",
+                }
+            )
 
     return errors
 

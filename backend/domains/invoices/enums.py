@@ -33,11 +33,19 @@ ALLOWED_TRANSITIONS: dict[InvoiceStatus, frozenset[InvoiceStatus]] = {
 
 
 ALLOWED_EGUI_SUBMISSION_TRANSITIONS: dict[EguiSubmissionStatus, frozenset[EguiSubmissionStatus]] = {
-    EguiSubmissionStatus.PENDING: frozenset({EguiSubmissionStatus.QUEUED, EguiSubmissionStatus.FAILED}),
-    EguiSubmissionStatus.QUEUED: frozenset({EguiSubmissionStatus.SENT, EguiSubmissionStatus.FAILED}),
+    EguiSubmissionStatus.PENDING: frozenset(
+        {EguiSubmissionStatus.QUEUED, EguiSubmissionStatus.FAILED}
+    ),
+    EguiSubmissionStatus.QUEUED: frozenset(
+        {EguiSubmissionStatus.SENT, EguiSubmissionStatus.FAILED}
+    ),
     EguiSubmissionStatus.SENT: frozenset({EguiSubmissionStatus.ACKED, EguiSubmissionStatus.FAILED}),
     EguiSubmissionStatus.ACKED: frozenset(),
-    EguiSubmissionStatus.FAILED: frozenset({EguiSubmissionStatus.RETRYING, EguiSubmissionStatus.DEAD_LETTER}),
-    EguiSubmissionStatus.RETRYING: frozenset({EguiSubmissionStatus.SENT, EguiSubmissionStatus.DEAD_LETTER}),
+    EguiSubmissionStatus.FAILED: frozenset(
+        {EguiSubmissionStatus.RETRYING, EguiSubmissionStatus.DEAD_LETTER}
+    ),
+    EguiSubmissionStatus.RETRYING: frozenset(
+        {EguiSubmissionStatus.SENT, EguiSubmissionStatus.DEAD_LETTER}
+    ),
     EguiSubmissionStatus.DEAD_LETTER: frozenset(),
 }

@@ -16,7 +16,7 @@ from domains.audit.service import write_audit
 
 _bearer_scheme = HTTPBearer(auto_error=False)
 logger = logging.getLogger(__name__)
-_API_ROLES = frozenset({"owner", "finance", "warehouse", "sales"})
+_API_ROLES = frozenset({"owner", "admin", "finance", "warehouse", "sales"})
 
 
 async def get_current_user(

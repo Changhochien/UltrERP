@@ -15,9 +15,7 @@ from common.database import Base
 class Customer(Base):
     __tablename__ = "customers"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
 
     company_name: Mapped[str] = mapped_column(String(200), nullable=False)

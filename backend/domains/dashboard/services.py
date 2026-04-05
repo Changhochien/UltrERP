@@ -88,7 +88,9 @@ async def get_top_products(
 
         # Range-based filter for index friendliness on ix_orders_tenant_created
         start_ts = datetime(start_date.year, start_date.month, start_date.day, tzinfo=UTC)
-        end_ts = datetime(end_date.year, end_date.month, end_date.day, tzinfo=UTC) + timedelta(days=1)
+        end_ts = datetime(end_date.year, end_date.month, end_date.day, tzinfo=UTC) + timedelta(
+            days=1
+        )
 
         qty_sold = func.sum(OrderLine.quantity).label("quantity_sold")
         revenue = func.sum(OrderLine.total_amount).label("revenue")

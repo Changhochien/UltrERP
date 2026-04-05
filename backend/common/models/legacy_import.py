@@ -26,6 +26,7 @@ class LegacyImportRun(Base):
 	target_schema: Mapped[str] = mapped_column(
 		String(63), nullable=False, default="raw_legacy",
 	)
+	attempt_number: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
 	requested_tables: Mapped[list[str] | None] = mapped_column(JSON)
 	status: Mapped[str] = mapped_column(String(20), nullable=False, default="running")
 	error_message: Mapped[str | None] = mapped_column(Text)
@@ -38,7 +39,12 @@ class LegacyImportRun(Base):
 	)
 
 	__table_args__ = (
-		UniqueConstraint("tenant_id", "batch_id", name="uq_legacy_import_runs_tenant_batch"),
+		UniqueConstraint(
+			"tenant_id",
+			"batch_id",
+			"attempt_number",
+			name="uq_legacy_import_runs_tenant_batch_attempt",
+		),
 	)
 
 

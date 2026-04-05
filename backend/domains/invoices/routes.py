@@ -16,7 +16,7 @@ from common.errors import ValidationError, error_response
 from common.object_store import S3ObjectStore
 from domains.invoices.pdf import DEFAULT_SELLER, generate_invoice_pdf, pdf_filename
 from domains.invoices.schemas import (
-	EguiSubmissionResponse,
+    EguiSubmissionResponse,
     InvoiceCreate,
     InvoiceListItem,
     InvoiceListResponse,
@@ -27,10 +27,10 @@ from domains.invoices.service import (
     compute_invoice_payment_summary,
     create_invoice,
     get_invoice,
-	get_invoice_egui_submission,
+    get_invoice_egui_submission,
     list_invoices,
-	refresh_invoice_egui_submission,
-	serialize_invoice_egui_submission,
+    refresh_invoice_egui_submission,
+    serialize_invoice_egui_submission,
     void_invoice,
 )
 from domains.invoices.validators import IMMUTABLE_ERROR
@@ -60,12 +60,10 @@ def _build_invoice_artifact_store() -> S3ObjectStore | None:
 @router.get("", response_model=InvoiceListResponse)
 async def list_all(
     session: DbSession,
-	payment_status: Literal["paid", "unpaid", "partial", "overdue"] | None = Query(
-		default=None
-	),
-	sort_by: Literal["created_at", "invoice_date", "outstanding_balance"] = Query(
-		default="created_at"
-	),
+    payment_status: Literal["paid", "unpaid", "partial", "overdue"] | None = Query(default=None),
+    sort_by: Literal["created_at", "invoice_date", "outstanding_balance"] = Query(
+        default="created_at"
+    ),
     sort_order: str = Query(default="desc", pattern="^(asc|desc)$"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
@@ -87,202 +85,204 @@ async def list_all(
 
 
 @router.post(
-	"",
-	response_model=InvoiceResponse,
-	status_code=status.HTTP_201_CREATED,
+    "",
+    response_model=InvoiceResponse,
+    status_code=status.HTTP_201_CREATED,
 )
 async def create(data: InvoiceCreate, session: DbSession) -> InvoiceResponse | JSONResponse:
-	try:
-		settings = get_settings()
-		invoice = await create_invoice(
-			session,
-			data,
-			artifact_store=_build_invoice_artifact_store(),
-			artifact_retention_class=settings.invoice_artifact_retention_class,
-			artifact_storage_policy=settings.invoice_artifact_storage_policy,
-			seller_ban=settings.invoice_seller_ban,
-			seller_name=settings.invoice_seller_name,
-		)
-		return InvoiceResponse.model_validate(invoice)
-	except ValidationError as exc:
-		return JSONResponse(
-			status_code=422,
-			content=error_response(exc.errors),
-		)
+    try:
+        settings = get_settings()
+        invoice = await create_invoice(
+            session,
+            data,
+            artifact_store=_build_invoice_artifact_store(),
+            artifact_retention_class=settings.invoice_artifact_retention_class,
+            artifact_storage_policy=settings.invoice_artifact_storage_policy,
+            seller_ban=settings.invoice_seller_ban,
+            seller_name=settings.invoice_seller_name,
+        )
+        return InvoiceResponse.model_validate(invoice)
+    except ValidationError as exc:
+        return JSONResponse(
+            status_code=422,
+            content=error_response(exc.errors),
+        )
 
 
 @router.get(
-	"/{invoice_id}",
-	response_model=InvoiceResponse,
+    "/{invoice_id}",
+    response_model=InvoiceResponse,
 )
 async def get(invoice_id: uuid.UUID, session: DbSession) -> InvoiceResponse | JSONResponse:
-	from common.tenant import DEFAULT_TENANT_ID, set_tenant
+    from common.tenant import DEFAULT_TENANT_ID, set_tenant
 
-	settings = get_settings()
-	async with session.begin():
-		await set_tenant(session, DEFAULT_TENANT_ID)
-		invoice = await get_invoice(session, invoice_id)
-		if invoice is None:
-			return JSONResponse(
-				status_code=404,
-				content={"detail": "Invoice not found"},
-			)
-		summary = await compute_invoice_payment_summary(session, invoice, DEFAULT_TENANT_ID)
-		egui_submission = await get_invoice_egui_submission(
-			session,
-			invoice,
-			DEFAULT_TENANT_ID,
-			enabled=settings.egui_tracking_enabled,
-			mode=settings.egui_submission_mode,
-		)
+    settings = get_settings()
+    async with session.begin():
+        await set_tenant(session, DEFAULT_TENANT_ID)
+        invoice = await get_invoice(session, invoice_id)
+        if invoice is None:
+            return JSONResponse(
+                status_code=404,
+                content={"detail": "Invoice not found"},
+            )
+        summary = await compute_invoice_payment_summary(session, invoice, DEFAULT_TENANT_ID)
+        egui_submission = await get_invoice_egui_submission(
+            session,
+            invoice,
+            DEFAULT_TENANT_ID,
+            enabled=settings.egui_tracking_enabled,
+            mode=settings.egui_submission_mode,
+        )
 
-	resp = InvoiceResponse.model_validate(invoice)
-	updates: dict[str, object] = {**summary}
-	if egui_submission is not None:
-		updates["egui_submission"] = EguiSubmissionResponse.model_validate(
-			serialize_invoice_egui_submission(egui_submission, invoice)
-		)
-	resp = resp.model_copy(update=updates)
-	return resp
+    resp = InvoiceResponse.model_validate(invoice)
+    updates: dict[str, object] = {**summary}
+    if egui_submission is not None:
+        updates["egui_submission"] = EguiSubmissionResponse.model_validate(
+            serialize_invoice_egui_submission(egui_submission, invoice)
+        )
+    resp = resp.model_copy(update=updates)
+    return resp
 
 
 @router.post(
-	"/{invoice_id}/egui/refresh",
-	response_model=EguiSubmissionResponse,
+    "/{invoice_id}/egui/refresh",
+    response_model=EguiSubmissionResponse,
 )
-async def refresh_egui(invoice_id: uuid.UUID, session: DbSession) -> EguiSubmissionResponse | JSONResponse:
-	from common.tenant import DEFAULT_TENANT_ID, set_tenant
+async def refresh_egui(
+    invoice_id: uuid.UUID, session: DbSession
+) -> EguiSubmissionResponse | JSONResponse:
+    from common.tenant import DEFAULT_TENANT_ID, set_tenant
 
-	settings = get_settings()
-	if not settings.egui_tracking_enabled:
-		return JSONResponse(
-			status_code=404,
-			content={"detail": "eGUI tracking is not enabled"},
-		)
-	if settings.egui_submission_mode != "mock":
-		return JSONResponse(
-			status_code=503,
-			content={"detail": "Live eGUI refresh is not implemented"},
-		)
+    settings = get_settings()
+    if not settings.egui_tracking_enabled:
+        return JSONResponse(
+            status_code=404,
+            content={"detail": "eGUI tracking is not enabled"},
+        )
+    if settings.egui_submission_mode != "mock":
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "Live eGUI refresh is not implemented"},
+        )
 
-	async with session.begin():
-		await set_tenant(session, DEFAULT_TENANT_ID)
-		invoice = await get_invoice(session, invoice_id)
-		if invoice is None:
-			return JSONResponse(
-				status_code=404,
-				content={"detail": "Invoice not found"},
-			)
-		egui_submission = await refresh_invoice_egui_submission(
-			session,
-			invoice,
-			DEFAULT_TENANT_ID,
-			enabled=settings.egui_tracking_enabled,
-			mode=settings.egui_submission_mode,
-		)
+    async with session.begin():
+        await set_tenant(session, DEFAULT_TENANT_ID)
+        invoice = await get_invoice(session, invoice_id)
+        if invoice is None:
+            return JSONResponse(
+                status_code=404,
+                content={"detail": "Invoice not found"},
+            )
+        egui_submission = await refresh_invoice_egui_submission(
+            session,
+            invoice,
+            DEFAULT_TENANT_ID,
+            enabled=settings.egui_tracking_enabled,
+            mode=settings.egui_submission_mode,
+        )
 
-	if egui_submission is None:
-		return JSONResponse(
-			status_code=404,
-			content={"detail": "eGUI tracking is not enabled"},
-		)
+    if egui_submission is None:
+        return JSONResponse(
+            status_code=404,
+            content={"detail": "eGUI tracking is not enabled"},
+        )
 
-	return EguiSubmissionResponse.model_validate(
-		serialize_invoice_egui_submission(egui_submission, invoice)
-	)
+    return EguiSubmissionResponse.model_validate(
+        serialize_invoice_egui_submission(egui_submission, invoice)
+    )
 
 
 @router.post(
-	"/{invoice_id}/void",
-	response_model=InvoiceResponse,
+    "/{invoice_id}/void",
+    response_model=InvoiceResponse,
 )
 async def void(
-	invoice_id: uuid.UUID,
-	data: VoidInvoiceRequest,
-	session: DbSession,
+    invoice_id: uuid.UUID,
+    data: VoidInvoiceRequest,
+    session: DbSession,
 ) -> InvoiceResponse | JSONResponse:
-	try:
-		invoice = await void_invoice(session, invoice_id, reason=data.reason)
-		return InvoiceResponse.model_validate(invoice)
-	except ValueError as exc:
-		msg = str(exc)
-		if msg == "Invoice not found":
-			return JSONResponse(
-				status_code=404,
-				content={"detail": msg},
-			)
-		return JSONResponse(
-			status_code=422,
-			content=error_response([{"field": "invoice", "message": msg}]),
-		)
+    try:
+        invoice = await void_invoice(session, invoice_id, reason=data.reason)
+        return InvoiceResponse.model_validate(invoice)
+    except ValueError as exc:
+        msg = str(exc)
+        if msg == "Invoice not found":
+            return JSONResponse(
+                status_code=404,
+                content={"detail": msg},
+            )
+        return JSONResponse(
+            status_code=422,
+            content=error_response([{"field": "invoice", "message": msg}]),
+        )
 
 
 @router.get("/{invoice_id}/pdf", response_model=None)
 async def export_pdf(
-	invoice_id: uuid.UUID,
-	session: DbSession,
+    invoice_id: uuid.UUID,
+    session: DbSession,
 ) -> Response | JSONResponse:
-	from common.tenant import DEFAULT_TENANT_ID, set_tenant
+    from common.tenant import DEFAULT_TENANT_ID, set_tenant
 
-	async with session.begin():
-		await set_tenant(session, DEFAULT_TENANT_ID)
-		invoice = await get_invoice(session, invoice_id)
-	if invoice is None:
-		return JSONResponse(
-			status_code=404,
-			content={"detail": "Invoice not found"},
-		)
-	try:
-		pdf_bytes = generate_invoice_pdf(invoice, DEFAULT_SELLER)
-	except ValueError as exc:
-		return JSONResponse(
-			status_code=422,
-			content=error_response([{"field": "invoice", "message": str(exc)}]),
-		)
-	except RuntimeError as exc:
-		return JSONResponse(
-			status_code=503,
-			content={"detail": str(exc)},
-		)
-	filename = pdf_filename(invoice)
-	return Response(
-		content=pdf_bytes,
-		media_type="application/pdf",
-		headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-	)
+    async with session.begin():
+        await set_tenant(session, DEFAULT_TENANT_ID)
+        invoice = await get_invoice(session, invoice_id)
+    if invoice is None:
+        return JSONResponse(
+            status_code=404,
+            content={"detail": "Invoice not found"},
+        )
+    try:
+        pdf_bytes = generate_invoice_pdf(invoice, DEFAULT_SELLER)
+    except ValueError as exc:
+        return JSONResponse(
+            status_code=422,
+            content=error_response([{"field": "invoice", "message": str(exc)}]),
+        )
+    except RuntimeError as exc:
+        return JSONResponse(
+            status_code=503,
+            content={"detail": str(exc)},
+        )
+    filename = pdf_filename(invoice)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.put(
-	"/{invoice_id}",
-	status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+    "/{invoice_id}",
+    status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
 )
 async def update_rejected(invoice_id: uuid.UUID) -> JSONResponse:
-	"""Reject any PUT update — invoices are immutable after creation."""
-	return JSONResponse(
-		status_code=405,
-		content={"detail": IMMUTABLE_ERROR},
-	)
+    """Reject any PUT update — invoices are immutable after creation."""
+    return JSONResponse(
+        status_code=405,
+        content={"detail": IMMUTABLE_ERROR},
+    )
 
 
 @router.patch(
-	"/{invoice_id}",
-	status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+    "/{invoice_id}",
+    status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
 )
 async def patch_rejected(invoice_id: uuid.UUID) -> JSONResponse:
-	"""Reject any PATCH update — invoices are immutable after creation."""
-	return JSONResponse(
-		status_code=405,
-		content={"detail": IMMUTABLE_ERROR},
-	)
+    """Reject any PATCH update — invoices are immutable after creation."""
+    return JSONResponse(
+        status_code=405,
+        content={"detail": IMMUTABLE_ERROR},
+    )
 
 
 @router.delete(
-	"/{invoice_id}",
-	status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+    "/{invoice_id}",
+    status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
 )
 async def delete_rejected(invoice_id: uuid.UUID) -> JSONResponse:
-	"""Reject any DELETE — invoices are immutable; use void instead."""
-	return JSONResponse(
-		status_code=405,
-		content={"detail": IMMUTABLE_ERROR},
-	)
+    """Reject any DELETE — invoices are immutable; use void instead."""
+    return JSONResponse(
+        status_code=405,
+        content={"detail": IMMUTABLE_ERROR},
+    )

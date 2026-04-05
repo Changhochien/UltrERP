@@ -7,10 +7,9 @@ submits policy identifiers and receives persisted totals back from the API.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from enum import StrEnum
 from types import MappingProxyType
-
 
 _TWOPLACES = Decimal("0.01")
 
@@ -40,30 +39,32 @@ class InvoiceLineAmounts:
     zero_tax_rate_reason: str | None = None
 
 
-_POLICIES: dict[TaxPolicyCode, TaxPolicy] = MappingProxyType({
-    TaxPolicyCode.STANDARD: TaxPolicy(
-        code=TaxPolicyCode.STANDARD,
-        tax_type=1,
-        tax_rate=Decimal("0.05"),
-    ),
-    TaxPolicyCode.ZERO: TaxPolicy(
-        code=TaxPolicyCode.ZERO,
-        tax_type=2,
-        tax_rate=Decimal("0.00"),
-        zero_tax_rate_reason="export",
-    ),
-    TaxPolicyCode.EXEMPT: TaxPolicy(
-        code=TaxPolicyCode.EXEMPT,
-        tax_type=3,
-        tax_rate=Decimal("0.00"),
-        zero_tax_rate_reason=None,
-    ),
-    TaxPolicyCode.SPECIAL: TaxPolicy(
-        code=TaxPolicyCode.SPECIAL,
-        tax_type=4,
-        tax_rate=Decimal("0.10"),
-    ),
-})
+_POLICIES: dict[TaxPolicyCode, TaxPolicy] = MappingProxyType(
+    {
+        TaxPolicyCode.STANDARD: TaxPolicy(
+            code=TaxPolicyCode.STANDARD,
+            tax_type=1,
+            tax_rate=Decimal("0.05"),
+        ),
+        TaxPolicyCode.ZERO: TaxPolicy(
+            code=TaxPolicyCode.ZERO,
+            tax_type=2,
+            tax_rate=Decimal("0.00"),
+            zero_tax_rate_reason="export",
+        ),
+        TaxPolicyCode.EXEMPT: TaxPolicy(
+            code=TaxPolicyCode.EXEMPT,
+            tax_type=3,
+            tax_rate=Decimal("0.00"),
+            zero_tax_rate_reason=None,
+        ),
+        TaxPolicyCode.SPECIAL: TaxPolicy(
+            code=TaxPolicyCode.SPECIAL,
+            tax_type=4,
+            tax_rate=Decimal("0.10"),
+        ),
+    }
+)
 
 
 def _quantize(amount: Decimal) -> Decimal:

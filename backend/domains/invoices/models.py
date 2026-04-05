@@ -3,18 +3,28 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime, date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, Uuid
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    Uuid,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from common.database import Base
 
 if TYPE_CHECKING:
     from domains.customers.models import Customer
-    from common.models.order import Order
 
 
 class InvoiceNumberRange(Base):

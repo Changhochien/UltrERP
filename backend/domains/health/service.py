@@ -3,5 +3,5 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def health_status(session: AsyncSession) -> dict[str, str]:
-	await session.execute(text("SELECT 1"))
-	return {"status": "ok"}
+    await session.execute(text("SELECT 1"))
+    return {"status": "ok"}

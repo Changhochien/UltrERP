@@ -81,111 +81,286 @@ class Settings(BaseSettings):
 	database_url: str = Field(
 		default="postgresql+asyncpg://ultr_erp@localhost:5432/ultr_erp",
 		validation_alias=AliasChoices("DATABASE_URL", "database_url"),
+		json_schema_extra={
+			"description": "Async database connection URL",
+			"category": "general",
+			"is_sensitive": False,
+			"value_type": "str",
+		},
 	)
 	redis_url: str | None = Field(
 		default=None,
 		validation_alias=AliasChoices("REDIS_URL", "redis_url"),
+		json_schema_extra={
+			"description": "Redis connection URL for caching and sessions",
+			"category": "general",
+			"is_sensitive": False,
+			"value_type": "str",
+			"nullable": True,
+		},
 	)
-	app_env: str = Field(default="development", validation_alias=AliasChoices("APP_ENV", "app_env"))
+	app_env: Literal["development", "staging", "production"] = Field(
+		default="development",
+		validation_alias=AliasChoices("APP_ENV", "app_env"),
+		json_schema_extra={
+			"description": "Application environment",
+			"category": "general",
+			"is_sensitive": False,
+			"value_type": "literal",
+			"allowed_values": ["development", "staging", "production"],
+		},
+	)
 	log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(
 		default="INFO",
 		validation_alias=AliasChoices("LOG_LEVEL", "log_level"),
+		json_schema_extra={
+			"description": "Logging output level",
+			"category": "general",
+			"is_sensitive": False,
+			"value_type": "literal",
+			"allowed_values": ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+		},
 	)
 	cors_origins: Annotated[tuple[str, ...], NoDecode] = Field(
 		default=("http://localhost:5173", "tauri://localhost"),
 		validation_alias=AliasChoices("CORS_ORIGINS", "cors_origins"),
+		json_schema_extra={
+			"description": "Allowed CORS origins (JSON array or comma-separated)",
+			"category": "general",
+			"is_sensitive": False,
+			"value_type": "tuple",
+		},
 	)
 	posthog_api_key: str | None = Field(
 		default=None,
 		validation_alias=AliasChoices("POSTHOG_API_KEY", "posthog_api_key"),
+		json_schema_extra={
+			"description": "PostHog API key for analytics",
+			"category": "posthog",
+			"is_sensitive": False,
+			"value_type": "str",
+			"nullable": True,
+		},
 	)
 	posthog_project_id: str | None = Field(
 		default=None,
 		validation_alias=AliasChoices("POSTHOG_PROJECT_ID", "posthog_project_id"),
+		json_schema_extra={
+			"description": "PostHog project ID",
+			"category": "posthog",
+			"is_sensitive": False,
+			"value_type": "str",
+			"nullable": True,
+		},
 	)
 	posthog_host: str = Field(
 		default="https://us.posthog.com",
 		validation_alias=AliasChoices("POSTHOG_HOST", "posthog_host"),
+		json_schema_extra={
+			"description": "PostHog server host URL",
+			"category": "posthog",
+			"is_sensitive": False,
+			"value_type": "str",
+		},
 	)
 	mcp_api_keys: str = Field(
 		default="",
 		validation_alias=AliasChoices("MCP_API_KEYS", "mcp_api_keys"),
+		json_schema_extra={
+			"description": "Comma-separated MCP API key(s)",
+			"category": "mcp",
+			"is_sensitive": True,
+			"value_type": "str",
+		},
 	)
 	line_channel_access_token: str | None = Field(
 		default=None,
 		validation_alias=AliasChoices("LINE_CHANNEL_ACCESS_TOKEN", "line_channel_access_token"),
+		json_schema_extra={
+			"description": "LINE Messaging API channel access token",
+			"category": "auth",
+			"is_sensitive": True,
+			"value_type": "str",
+			"nullable": True,
+		},
 	)
 	line_channel_secret: str | None = Field(
 		default=None,
 		validation_alias=AliasChoices("LINE_CHANNEL_SECRET", "line_channel_secret"),
+		json_schema_extra={
+			"description": "LINE Messaging API channel secret",
+			"category": "auth",
+			"is_sensitive": True,
+			"value_type": "str",
+			"nullable": True,
+		},
 	)
 	line_staff_group_id: str | None = Field(
 		default=None,
 		validation_alias=AliasChoices("LINE_STAFF_GROUP_ID", "line_staff_group_id"),
+		json_schema_extra={
+			"description": "LINE Staff Group ID for approval notifications",
+			"category": "auth",
+			"is_sensitive": False,
+			"value_type": "str",
+			"nullable": True,
+		},
 	)
 	public_base_url: str = Field(
 		default="http://localhost:8000",
 		validation_alias=AliasChoices("PUBLIC_BASE_URL", "public_base_url"),
+		json_schema_extra={
+			"description": "Public base URL for the application",
+			"category": "general",
+			"is_sensitive": False,
+			"value_type": "str",
+		},
 	)
 	object_store_endpoint_url: str | None = Field(
 		default=None,
 		validation_alias=AliasChoices("OBJECT_STORE_ENDPOINT_URL", "object_store_endpoint_url"),
+		json_schema_extra={
+			"description": "S3-compatible object store endpoint URL",
+			"category": "object_store",
+			"is_sensitive": False,
+			"value_type": "str",
+			"nullable": True,
+		},
 	)
 	object_store_access_key: str | None = Field(
 		default=None,
 		validation_alias=AliasChoices("OBJECT_STORE_ACCESS_KEY", "object_store_access_key"),
+		json_schema_extra={
+			"description": "S3 access key ID",
+			"category": "object_store",
+			"is_sensitive": True,
+			"value_type": "str",
+			"nullable": True,
+		},
 	)
 	object_store_secret_key: str | None = Field(
 		default=None,
 		validation_alias=AliasChoices("OBJECT_STORE_SECRET_KEY", "object_store_secret_key"),
+		json_schema_extra={
+			"description": "S3 secret access key",
+			"category": "object_store",
+			"is_sensitive": True,
+			"value_type": "str",
+			"nullable": True,
+		},
 	)
 	object_store_region: str = Field(
 		default="us-east-1",
 		validation_alias=AliasChoices("OBJECT_STORE_REGION", "object_store_region"),
+		json_schema_extra={
+			"description": "S3 object store region",
+			"category": "object_store",
+			"is_sensitive": False,
+			"value_type": "str",
+		},
 	)
-	invoice_artifact_storage_policy: str = Field(
+	invoice_artifact_storage_policy: Literal["standard", "express", "cold"] = Field(
 		default="standard",
 		validation_alias=AliasChoices(
 			"INVOICE_ARTIFACT_STORAGE_POLICY",
 			"invoice_artifact_storage_policy",
 		),
+		json_schema_extra={
+			"description": "Storage policy for invoice artifacts",
+			"category": "invoice",
+			"is_sensitive": False,
+			"value_type": "literal",
+			"allowed_values": ["standard", "express", "cold"],
+		},
 	)
-	invoice_artifact_retention_class: str = Field(
+	invoice_artifact_retention_class: Literal[
+		"legal-1y", "legal-3y", "legal-5y", "legal-7y", "legal-10y"
+	] = Field(
 		default="legal-10y",
 		validation_alias=AliasChoices(
 			"INVOICE_ARTIFACT_RETENTION_CLASS",
 			"invoice_artifact_retention_class",
 		),
+		json_schema_extra={
+			"description": "Retention class for invoice artifacts",
+			"category": "invoice",
+			"is_sensitive": False,
+			"value_type": "literal",
+			"allowed_values": ["legal-1y", "legal-3y", "legal-5y", "legal-7y", "legal-10y"],
+		},
 	)
 	invoice_seller_ban: str = Field(
 		default="00000000",
 		validation_alias=AliasChoices("INVOICE_SELLER_BAN", "invoice_seller_ban"),
+		json_schema_extra={
+			"description": "Invoice seller Business Identification Number",
+			"category": "invoice",
+			"is_sensitive": False,
+			"value_type": "str",
+		},
 	)
 	invoice_seller_name: str = Field(
 		default="UltrERP",
 		validation_alias=AliasChoices("INVOICE_SELLER_NAME", "invoice_seller_name"),
+		json_schema_extra={
+			"description": "Invoice seller name",
+			"category": "invoice",
+			"is_sensitive": False,
+			"value_type": "str",
+		},
 	)
 	egui_tracking_enabled: bool = Field(
 		default=False,
 		validation_alias=AliasChoices("EGUI_TRACKING_ENABLED", "egui_tracking_enabled"),
+		json_schema_extra={
+			"description": "Enable eGui approval request tracking",
+			"category": "egui",
+			"is_sensitive": False,
+			"value_type": "bool",
+		},
 	)
 	egui_submission_mode: Literal["mock", "live"] = Field(
 		default="mock",
 		validation_alias=AliasChoices("EGUI_SUBMISSION_MODE", "egui_submission_mode"),
+		json_schema_extra={
+			"description": "eGui submission mode",
+			"category": "egui",
+			"is_sensitive": False,
+			"value_type": "literal",
+			"allowed_values": ["mock", "live"],
+		},
 	)
 	sitemap_cache_ttl: int = Field(
 		default=3600,
 		validation_alias=AliasChoices("SITEMAP_CACHE_TTL", "sitemap_cache_ttl"),
+		json_schema_extra={
+			"description": "XML sitemap cache TTL in seconds",
+			"category": "general",
+			"is_sensitive": False,
+			"value_type": "int",
+		},
 	)
 	jwt_secret: str = Field(
 		...,
 		validation_alias=AliasChoices("JWT_SECRET", "jwt_secret"),
 		min_length=32,
+		json_schema_extra={
+			"description": "JWT secret key (min 32 characters)",
+			"category": "auth",
+			"is_sensitive": True,
+			"value_type": "str",
+		},
 	)
 	jwt_access_token_minutes: int = Field(
 		default=480,
 		ge=1,
 		validation_alias=AliasChoices("JWT_ACCESS_TOKEN_MINUTES", "jwt_access_token_minutes"),
+		json_schema_extra={
+			"description": "JWT access token expiry in minutes",
+			"category": "auth",
+			"is_sensitive": False,
+			"value_type": "int",
+		},
 	)
 	approval_threshold_inventory_adjust: int = Field(
 		default=100,
@@ -194,6 +369,12 @@ class Settings(BaseSettings):
 			"APPROVAL_THRESHOLD_INVENTORY_ADJUST",
 			"approval_threshold_inventory_adjust",
 		),
+		json_schema_extra={
+			"description": "Inventory adjustment threshold requiring approval",
+			"category": "approval",
+			"is_sensitive": False,
+			"value_type": "int",
+		},
 	)
 	approval_expiry_hours: int = Field(
 		default=24,
@@ -202,14 +383,32 @@ class Settings(BaseSettings):
 			"APPROVAL_EXPIRY_HOURS",
 			"approval_expiry_hours",
 		),
+		json_schema_extra={
+			"description": "Approval request expiry time in hours",
+			"category": "approval",
+			"is_sensitive": False,
+			"value_type": "int",
+		},
 	)
 	legacy_import_data_dir: str = Field(
 		default=str(PROJECT_ROOT / "legacy-migration-pipeline" / "extracted_data"),
 		validation_alias=AliasChoices("LEGACY_IMPORT_DATA_DIR", "legacy_import_data_dir"),
+		json_schema_extra={
+			"description": "Directory containing legacy import data files",
+			"category": "legacy_import",
+			"is_sensitive": False,
+			"value_type": "str",
+		},
 	)
 	legacy_import_schema: str = Field(
 		default="raw_legacy",
 		validation_alias=AliasChoices("LEGACY_IMPORT_SCHEMA", "legacy_import_schema"),
+		json_schema_extra={
+			"description": "Database schema for legacy import staging tables",
+			"category": "legacy_import",
+			"is_sensitive": False,
+			"value_type": "str",
+		},
 	)
 	legacy_import_required_tables: Annotated[tuple[str, ...], NoDecode] = Field(
 		default=("tbscust", "tbsstock", "tbsslipx", "tbsslipdtx", "tbsstkhouse"),
@@ -217,6 +416,12 @@ class Settings(BaseSettings):
 			"LEGACY_IMPORT_REQUIRED_TABLES",
 			"legacy_import_required_tables",
 		),
+		json_schema_extra={
+			"description": "Required legacy database table names",
+			"category": "legacy_import",
+			"is_sensitive": False,
+			"value_type": "tuple",
+		},
 	)
 
 	@field_validator("cors_origins", mode="before")

@@ -10,31 +10,31 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class UserCreateRequest(BaseModel):
-	email: EmailStr
-	password: str = Field(min_length=8)
-	display_name: str
-	role: Literal["owner", "finance", "warehouse", "sales"]
+    email: EmailStr
+    password: str = Field(min_length=8)
+    display_name: str
+    role: Literal["owner", "finance", "warehouse", "sales"]
 
 
 class UserUpdateRequest(BaseModel):
-	display_name: str | None = None
-	role: Literal["owner", "finance", "warehouse", "sales"] | None = None
-	status: Literal["active", "disabled"] | None = None
-	password: str | None = Field(default=None, min_length=8)
+    display_name: str | None = None
+    role: Literal["owner", "finance", "warehouse", "sales"] | None = None
+    status: Literal["active", "disabled"] | None = None
+    password: str | None = Field(default=None, min_length=8)
 
 
 class UserResponse(BaseModel):
-	model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True)
 
-	id: UUID
-	email: str
-	display_name: str
-	role: str
-	status: str
-	created_at: datetime
-	updated_at: datetime | None = None
+    id: UUID
+    email: str
+    display_name: str
+    role: str
+    status: str
+    created_at: datetime
+    updated_at: datetime | None = None
 
 
 class UserListResponse(BaseModel):
-	items: list[UserResponse]
-	total: int
+    items: list[UserResponse]
+    total: int

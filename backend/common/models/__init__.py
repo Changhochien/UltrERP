@@ -12,15 +12,19 @@ from common.models.reorder_alert import ReorderAlert
 from common.models.stock_adjustment import ReasonCode, StockAdjustment
 from common.models.stock_transfer import StockTransferHistory
 from common.models.supplier import Supplier
+from common.models.supplier_invoice import SupplierInvoice, SupplierInvoiceLine
 from common.models.supplier_order import SupplierOrder, SupplierOrderLine
+from common.models.supplier_payment import SupplierPayment, SupplierPaymentAllocation
 from common.models.user import User
 from common.models.warehouse import Warehouse
 from domains.customers.models import Customer
 from domains.invoices.models import EguiSubmission, Invoice, InvoiceLine, InvoiceNumberRange
 from domains.payments.models import Payment
+from domains.settings.models import AppSetting
 
 __all__ = [
 	"ApprovalRequest",
+	"AppSetting",
 	"AuditLog",
 	"Customer",
 	"EguiSubmission",
@@ -40,6 +44,10 @@ __all__ = [
 	"StockAdjustment",
 	"StockTransferHistory",
 	"Supplier",
+	"SupplierInvoice",
+	"SupplierInvoiceLine",
+	"SupplierPayment",
+	"SupplierPaymentAllocation",
 	"SupplierOrder",
 	"SupplierOrderLine",
 	"User",
