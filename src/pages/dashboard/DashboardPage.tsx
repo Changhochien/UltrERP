@@ -1,6 +1,7 @@
 /** Morning Dashboard page. */
 
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { PageHeader, SectionCard } from "../../components/layout/PageLayout";
 import { Button } from "../../components/ui/button";
@@ -20,62 +21,78 @@ import { RevenueCard } from "../../domain/dashboard/components/RevenueCard";
 import { TopProductsCard } from "../../domain/dashboard/components/TopProductsCard";
 import { LowStockAlertsCard } from "../../domain/dashboard/components/LowStockAlertsCard";
 import { VisitorStatsCard } from "../../domain/dashboard/components/VisitorStatsCard";
-import { APP_TITLE, APP_TAGLINE } from "../../App";
+import { APP_TITLE } from "../../App";
 import { usePermissions } from "../../hooks/usePermissions";
 
+interface QAAction {
+  key: string;
+  route: string;
+  perm: "inventory" | "customers" | "invoices" | "orders" | "payments" | "admin";
+  write?: true;
+}
+
+const QA_KEYS: QAAction[] = [
+  { key: "inventory", route: INVENTORY_ROUTE, perm: "inventory" },
+  { key: "customers", route: CUSTOMERS_ROUTE, perm: "customers" },
+  { key: "newCustomer", route: CUSTOMER_CREATE_ROUTE, perm: "customers", write: true },
+  { key: "invoices", route: INVOICES_ROUTE, perm: "invoices" },
+  { key: "newInvoice", route: INVOICE_CREATE_ROUTE, perm: "invoices", write: true },
+  { key: "orders", route: ORDERS_ROUTE, perm: "orders" },
+  { key: "newOrder", route: ORDER_CREATE_ROUTE, perm: "orders", write: true },
+  { key: "payments", route: PAYMENTS_ROUTE, perm: "payments" },
+  { key: "admin", route: ADMIN_ROUTE, perm: "admin" },
+];
+
 export function DashboardPage() {
+  const { t } = useTranslation("common");
   const navigate = useNavigate();
   const { data, isLoading, error } = useRevenueSummary();
   const { canAccess, canWrite } = usePermissions();
 
-  const quickActions = [
-    canAccess("inventory") ? { label: "Inventory", description: "Stock, warehouses, and reorder alerts.", to: INVENTORY_ROUTE } : null,
-    canAccess("customers") ? { label: "Customers", description: "Search accounts and review credit posture.", to: CUSTOMERS_ROUTE } : null,
-    canWrite("customers") ? { label: "New customer", description: "Create a customer record and validate duplicates.", to: CUSTOMER_CREATE_ROUTE } : null,
-    canAccess("invoices") ? { label: "Invoices", description: "Track payment status and issuance progress.", to: INVOICES_ROUTE } : null,
-    canWrite("invoices") ? { label: "New invoice", description: "Issue a B2B or B2C invoice.", to: INVOICE_CREATE_ROUTE } : null,
-    canAccess("orders") ? { label: "Orders", description: "Review order status and fulfillment flow.", to: ORDERS_ROUTE } : null,
-    canWrite("orders") ? { label: "New order", description: "Create a sales order with stock validation.", to: ORDER_CREATE_ROUTE } : null,
-    canAccess("payments") ? { label: "Payments", description: "Reconcile inbound transfers and manual matches.", to: PAYMENTS_ROUTE } : null,
-    canAccess("admin") ? { label: "Admin", description: "Inspect user access and audit history.", to: ADMIN_ROUTE } : null,
-  ].filter((item) => item !== null);
+  const quickActions = QA_KEYS
+    .filter((qa) => (qa.write ? canWrite(qa.perm) : canAccess(qa.perm)))
+    .map((qa) => ({
+      label: t(`dashboard.quickActions.${qa.key}`),
+      description: t(`dashboard.quickActions.${qa.key}Description`),
+      to: qa.route,
+    }));
 
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Workspace"
+        eyebrow={t("routes.workspace.label")}
         title={APP_TITLE}
-        description={`${APP_TAGLINE}. Operational overview with role-filtered shortcuts and live business signals.`}
+        description={`${t("app.tagline")}. ${t("dashboard.pageDescription")}`}
         actions={(
           <div className="flex flex-wrap gap-3">
             {canWrite("orders") ? (
               <Button type="button" onClick={() => navigate(ORDER_CREATE_ROUTE)}>
-                New order
+                {t("dashboard.quickActions.newOrder")}
               </Button>
             ) : null}
             {canWrite("invoices") ? (
               <Button type="button" variant="outline" onClick={() => navigate(INVOICE_CREATE_ROUTE)}>
-                New invoice
+                {t("dashboard.quickActions.newInvoice")}
               </Button>
             ) : null}
           </div>
         )}
       />
 
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.9fr)_minmax(0,1fr)]">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.9fr)_minmax(0,1fr)]">
         <RevenueCard data={data} isLoading={isLoading} error={error} />
         <VisitorStatsCard />
         <LowStockAlertsCard />
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
         <TopProductsCard />
         <SectionCard
-          title="Action Center"
-          description="Daily shortcuts aligned to the capabilities available in your current role."
+          title={t("dashboard.actionCenter.title")}
+          description={t("dashboard.actionCenter.description")}
           contentClassName="space-y-3"
         >
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3">
             {quickActions.map((action) => (
               <button
                 key={action.to}

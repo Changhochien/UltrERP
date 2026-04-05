@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 interface InvoiceTotalsCardProps {
 	currencyCode: string;
 	lineCount: number;
@@ -20,17 +22,18 @@ export function InvoiceTotalsCard({
 	taxAmount,
 	totalAmount,
 }: InvoiceTotalsCardProps) {
+	const { t } = useTranslation("common");
 	return (
 		<section data-testid="invoice-totals-card" className="rounded-2xl border border-border/80 bg-muted/25 p-5 shadow-sm">
-			<h3 className="text-base font-semibold tracking-tight">Invoice Totals Preview</h3>
-			<dl className="mt-4 gap-y-4">
-				<dt>Lines</dt>
+			<h3 className="text-base font-semibold tracking-tight">{t("invoice.totals.title")}</h3>
+			<dl className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)]">
+				<dt>{t("invoice.totals.lines")}</dt>
 				<dd>{lineCount}</dd>
-				<dt>Subtotal</dt>
+				<dt>{t("invoice.totals.subtotal")}</dt>
 				<dd>{currencyCode} {formatAmount(subtotalAmount)}</dd>
-				<dt>Tax</dt>
+				<dt>{t("invoice.totals.tax")}</dt>
 				<dd>{currencyCode} {formatAmount(taxAmount)}</dd>
-				<dt>Grand Total</dt>
+				<dt>{t("invoice.totals.grandTotal")}</dt>
 				<dd>{currencyCode} {formatAmount(totalAmount)}</dd>
 			</dl>
 		</section>

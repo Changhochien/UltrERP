@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { DataTable, DataTableToolbar } from "../../../components/layout/DataTable";
 import { SectionCard } from "../../../components/layout/PageLayout";
@@ -11,32 +12,32 @@ interface ProductDetailProps {
 }
 
 function ReorderBadge({ below }: { below: boolean }) {
+  const { t } = useTranslation("common");
   if (!below) return null;
   return (
     <Badge
       role="status"
-      aria-label="Below reorder point"
+      aria-label={t("inventory.productDetail.belowReorderPoint")}
       variant="destructive"
       className="normal-case tracking-normal"
     >
-      Below reorder point
+      {t("inventory.productDetail.belowReorderPoint")}
     </Badge>
   );
 }
 
 export function ProductDetail({ productId }: ProductDetailProps) {
+  const { t } = useTranslation("common");
   const { product, loading, error, reload } = useProductDetail(productId);
-  const [selectedWarehouse, setSelectedWarehouse] = useState<string | null>(
-    null,
-  );
+  const [selectedWarehouse, setSelectedWarehouse] = useState<string | null>(null);
 
-  if (loading) return <div aria-busy="true">Loading product details…</div>;
+  if (loading) return <div aria-busy="true">{t("inventory.productDetail.loading")}</div>;
   if (error)
     return (
       <div role="alert" className="space-y-3">
-        <p className="text-sm text-destructive">Error: {error}</p>
+        <p className="text-sm text-destructive">{t("inventory.productDetail.error", { message: error })}</p>
         <Button type="button" variant="outline" onClick={() => void reload()}>
-          Retry
+          {t("inventory.productDetail.retry")}
         </Button>
       </div>
     );
@@ -48,33 +49,36 @@ export function ProductDetail({ productId }: ProductDetailProps) {
 
   return (
     <article aria-label={`Product detail: ${product.name}`} className="space-y-5">
-      <SectionCard title={product.name} description={product.category ? `Category: ${product.category}` : "Product stock detail and warehouse history."}>
+      <SectionCard
+        title={product.name}
+        description={product.category ? t("inventory.productDetail.category", { category: product.category }) : t("inventory.productDetail.productDescription")}
+      >
         <div className="flex flex-wrap items-center gap-3">
           <Badge variant={product.status === "active" ? "success" : "outline"} className="normal-case tracking-normal">
             {product.status}
           </Badge>
           <Badge variant="outline" className="normal-case tracking-normal">
-            Code: {product.code}
+            {t("inventory.productDetail.code", { code: product.code })}
           </Badge>
           <Badge variant="outline" className="normal-case tracking-normal">
-            Total stock: {product.total_stock}
+            {t("inventory.productDetail.totalStock", { stock: product.total_stock })}
           </Badge>
         </div>
       </SectionCard>
 
-      <SectionCard title="Stock by Warehouse" description="Current quantity, reorder posture, and most recent adjustment by warehouse.">
+      <SectionCard title={t("inventory.productDetail.stockByWarehouse.title")} description={t("inventory.productDetail.stockByWarehouse.description")}>
         <DataTable
           columns={[
             {
               id: "warehouse_name",
-              header: "Warehouse",
+              header: t("inventory.productDetail.stockByWarehouse.warehouse"),
               sortable: true,
               getSortValue: (warehouse) => warehouse.warehouse_name,
               cell: (warehouse) => warehouse.warehouse_name,
             },
             {
               id: "current_stock",
-              header: "Quantity",
+              header: t("inventory.productDetail.stockByWarehouse.quantity"),
               sortable: true,
               getSortValue: (warehouse) => warehouse.current_stock,
               className: "text-right",
@@ -83,7 +87,7 @@ export function ProductDetail({ productId }: ProductDetailProps) {
             },
             {
               id: "reorder_point",
-              header: "Reorder Point",
+              header: t("inventory.productDetail.stockByWarehouse.reorderPoint"),
               sortable: true,
               getSortValue: (warehouse) => warehouse.reorder_point,
               className: "text-right",
@@ -92,12 +96,12 @@ export function ProductDetail({ productId }: ProductDetailProps) {
             },
             {
               id: "status",
-              header: "Status",
+              header: t("inventory.productDetail.stockByWarehouse.status"),
               cell: (warehouse) => <ReorderBadge below={warehouse.is_below_reorder} />,
             },
             {
               id: "last_adjusted",
-              header: "Last Adjusted",
+              header: t("inventory.productDetail.stockByWarehouse.lastAdjusted"),
               sortable: true,
               getSortValue: (warehouse) => warehouse.last_adjusted ?? "",
               cell: (warehouse) => warehouse.last_adjusted
@@ -106,20 +110,20 @@ export function ProductDetail({ productId }: ProductDetailProps) {
             },
           ]}
           data={filteredWarehouses}
-          emptyTitle="No stock records."
-          emptyDescription="No warehouse stock records match the selected filter."
+          emptyTitle={t("inventory.productDetail.stockByWarehouse.noRecords")}
+          emptyDescription={t("inventory.productDetail.stockByWarehouse.noMatch")}
           toolbar={product.warehouses.length > 1 ? (
             <DataTableToolbar>
-              <div className="text-sm text-muted-foreground">Filter warehouse-level stock records.</div>
+              <div className="text-sm text-muted-foreground">{t("inventory.productDetail.stockByWarehouse.filterLabel")}</div>
               <label className="flex flex-col items-start gap-2 text-sm font-medium text-foreground sm:flex-row sm:items-center sm:gap-3">
-                <span>Warehouse</span>
+                <span>{t("inventory.productDetail.stockByWarehouse.warehouseLabel")}</span>
                 <select
                   id="wh-toggle"
                   value={selectedWarehouse ?? ""}
                   onChange={(e) => setSelectedWarehouse(e.target.value || null)}
                   className="w-full sm:w-48"
                 >
-                  <option value="">All warehouses</option>
+                  <option value="">{t("inventory.productDetail.stockByWarehouse.allWarehouses")}</option>
                   {product.warehouses.map((warehouse) => (
                     <option key={warehouse.warehouse_id} value={warehouse.warehouse_id}>
                       {warehouse.warehouse_name}
@@ -133,19 +137,19 @@ export function ProductDetail({ productId }: ProductDetailProps) {
         />
       </SectionCard>
 
-      <SectionCard title="Adjustment History" description="Chronological record of manual and system stock changes.">
+      <SectionCard title={t("inventory.productDetail.adjustmentHistory.title")} description={t("inventory.productDetail.adjustmentHistory.description")}>
         <DataTable
           columns={[
             {
               id: "created_at",
-              header: "Date",
+              header: t("inventory.productDetail.adjustmentHistory.date"),
               sortable: true,
               getSortValue: (item) => item.created_at,
               cell: (item) => new Date(item.created_at).toLocaleString(),
             },
             {
               id: "quantity_change",
-              header: "Change",
+              header: t("inventory.productDetail.adjustmentHistory.change"),
               sortable: true,
               getSortValue: (item) => item.quantity_change,
               className: "text-right",
@@ -157,13 +161,13 @@ export function ProductDetail({ productId }: ProductDetailProps) {
                 </span>
               ),
             },
-            { id: "reason_code", header: "Reason", sortable: true, getSortValue: (item) => item.reason_code, cell: (item) => item.reason_code },
-            { id: "actor_id", header: "Actor", sortable: true, getSortValue: (item) => item.actor_id, cell: (item) => item.actor_id },
-            { id: "notes", header: "Notes", cell: (item) => item.notes ?? "—" },
+            { id: "reason_code", header: t("inventory.productDetail.adjustmentHistory.reason"), sortable: true, getSortValue: (item) => item.reason_code, cell: (item) => item.reason_code },
+            { id: "actor_id", header: t("inventory.productDetail.adjustmentHistory.actor"), sortable: true, getSortValue: (item) => item.actor_id, cell: (item) => item.actor_id },
+            { id: "notes", header: t("inventory.productDetail.adjustmentHistory.notes"), cell: (item) => item.notes ?? "—" },
           ]}
           data={product.adjustment_history}
-          emptyTitle="No adjustment history available."
-          emptyDescription="Recorded stock changes for this product will appear here."
+          emptyTitle={t("inventory.productDetail.adjustmentHistory.noHistory")}
+          emptyDescription={t("inventory.productDetail.adjustmentHistory.noHistoryDescription")}
           getRowId={(item) => item.id}
         />
       </SectionCard>

@@ -1,6 +1,7 @@
 /** Form to create a new sales order with dynamic line items. */
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { SurfaceMessage } from "../../../components/layout/PageLayout";
 import { Button } from "../../../components/ui/button";
@@ -21,6 +22,7 @@ function emptyLine(): OrderLineCreate {
 }
 
 export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
+  const { t } = useTranslation("common");
   const { items: paymentTerms, loading: termsLoading, error: termsError } = usePaymentTerms();
   const { create, submitting, error } = useCreateOrder();
   const { stockData, stockLoading, checkProductStock } = useStockCheck();
@@ -31,7 +33,6 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
   const [lines, setLines] = useState<OrderLineCreate[]>([emptyLine()]);
   const submittingRef = useRef(false);
 
-  // Derive stable product-ID key so stock checks only fire on product_id changes
   const productIdKey = lines.map((l) => l.product_id).join(",");
 
   useEffect(() => {
@@ -42,7 +43,7 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
     }
   }, [productIdKey, checkProductStock]);
 
-  if (termsLoading) return <p aria-busy="true">Loading…</p>;
+  if (termsLoading) return <p aria-busy="true">{t("orders.form.loading")}</p>;
   if (termsError) return <div role="alert" className="text-sm text-destructive">{termsError}</div>;
 
   const updateLine = (idx: number, patch: Partial<OrderLineCreate>) => {
@@ -85,16 +86,16 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
   return (
     <section aria-label="Create order" className="space-y-5">
       <div className="space-y-1">
-        <h2 className="text-xl font-semibold tracking-tight">New Order</h2>
-        <p className="text-sm text-muted-foreground">Create a sales order with live stock visibility per line item.</p>
+        <h2 className="text-xl font-semibold tracking-tight">{t("orders.form.newOrderTitle")}</h2>
+        <p className="text-sm text-muted-foreground">{t("orders.form.newOrderDescription")}</p>
       </div>
 
       {error ? <SurfaceMessage tone="danger">{error}</SurfaceMessage> : null}
 
       <form onSubmit={(e) => void handleSubmit(e)} aria-label="Order form" className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <label className="space-y-2">
-            <span>Customer ID:</span>
+            <span>{t("orders.form.customerId")}</span>
             <Input
               id="ord-customer"
               type="text"
@@ -106,7 +107,7 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
           </label>
 
           <label className="space-y-2">
-            <span>Payment terms:</span>
+            <span>{t("orders.form.paymentTerms")}</span>
             <select id="ord-terms" value={paymentTermsCode} onChange={(e) => setPaymentTermsCode(e.target.value)}>
               {paymentTerms.map((t) => (
                 <option key={t.code} value={t.code}>{t.label}</option>
@@ -115,7 +116,7 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
           </label>
 
           <label className="space-y-2">
-            <span>Notes:</span>
+            <span>{t("orders.form.notes")}</span>
             <Input
               id="ord-notes"
               type="text"
@@ -126,16 +127,16 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
           </label>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-border/80 bg-card/90 shadow-sm">
-          <Table aria-label="Order line items">
+        <div className="overflow-x-auto rounded-2xl border border-border/80 bg-card/90 shadow-sm">
+          <Table aria-label="Order line items" className="min-w-[640px]">
             <TableHeader>
               <TableRow>
-                <TableHead>Product ID</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Quantity</TableHead>
-                <TableHead>Unit Price</TableHead>
-                <TableHead>Tax Policy</TableHead>
-                <TableHead>Stock</TableHead>
+                <TableHead>{t("orders.form.productId")}</TableHead>
+                <TableHead>{t("orders.form.description")}</TableHead>
+                <TableHead>{t("orders.form.quantity")}</TableHead>
+                <TableHead>{t("orders.form.unitPrice")}</TableHead>
+                <TableHead>{t("orders.form.taxPolicy")}</TableHead>
+                <TableHead>{t("orders.form.stock")}</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -189,12 +190,12 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
                   <TableCell>
                     <select
                       value={line.tax_policy_code}
-                      onChange={(e) => updateLine(idx, { tax_policy_code: e.target.value })}
+                      onChange={(e) => updateLine(idx, { tax_policy_code: e.target.value as OrderLineCreate["tax_policy_code"] })}
                       aria-label={`Line ${idx + 1} tax policy`}
                     >
-                      <option value="standard">Standard (5%)</option>
-                      <option value="zero">Zero rated</option>
-                      <option value="exempt">Exempt</option>
+                      <option value="standard">{t("orders.form.taxPolicyStandard")}</option>
+                      <option value="zero">{t("orders.form.taxPolicyZero")}</option>
+                      <option value="exempt">{t("orders.form.taxPolicyExempt")}</option>
                       <option value="special">Special</option>
                     </select>
                   </TableCell>
@@ -208,7 +209,7 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
                       const avail = info.total_available;
                       const insufficient = line.quantity > avail;
                       return (
-                        <span aria-label={`Line ${idx + 1} stock`} className={insufficient ? "font-semibold text-destructive" : "font-semibold text-success-token"}>
+                        <span aria-label={t("orders.form.lineStock", { index: idx + 1 })} className={insufficient ? "font-semibold text-destructive" : "font-semibold text-success-token"}>
                           {avail} avail
                           {insufficient ? (
                             <span className="block text-xs font-normal text-destructive">Insufficient stock: {avail} units available</span>
@@ -220,7 +221,7 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
                   <TableCell>
                     {lines.length > 1 ? (
                       <Button type="button" variant="ghost" size="sm" onClick={() => removeLine(idx)} aria-label={`Remove line ${idx + 1}`}>
-                        Remove
+                        {t("common.delete")}
                       </Button>
                     ) : null}
                   </TableCell>
@@ -231,7 +232,7 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
         </div>
 
         <Button type="button" variant="outline" onClick={() => setLines((prev) => [...prev, emptyLine()])}>
-          Add Line
+          {t("orders.form.addLine")}
         </Button>
 
         {hasInvalidLines ? (
@@ -242,10 +243,10 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
 
         <div className="flex gap-3">
           <Button type="submit" disabled={!canSubmit || submitting}>
-            {submitting ? "Creating…" : "Create Order"}
+            {submitting ? t("orders.form.creating") : t("orders.form.createOrder")}
           </Button>
           <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
+            {t("common.cancel")}
           </Button>
         </div>
       </form>

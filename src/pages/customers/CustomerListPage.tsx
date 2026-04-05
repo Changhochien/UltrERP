@@ -1,6 +1,7 @@
 /** Browse / search customers page. */
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { PageHeader, SectionCard } from "../../components/layout/PageLayout";
 import { Button } from "../../components/ui/button";
@@ -15,12 +16,13 @@ import { usePermissions } from "../../hooks/usePermissions";
 import { CUSTOMER_CREATE_ROUTE } from "../../lib/routes";
 
 const CUSTOMER_STATUS_OPTIONS = [
-  { value: "active", label: "Active" },
-  { value: "inactive", label: "Inactive" },
-  { value: "suspended", label: "Suspended" },
+  { value: "active", labelKey: "customer.listPage.active" },
+  { value: "inactive", labelKey: "customer.listPage.inactive" },
+  { value: "suspended", labelKey: "customer.listPage.suspended" },
 ] as const;
 
 export function CustomerListPage() {
+  const { t } = useTranslation("common");
   const { canWrite } = usePermissions();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -91,27 +93,30 @@ export function CustomerListPage() {
 
   const activeFilterCount = Number(Boolean(query)) + Number(Boolean(statusFilter));
   const hasActiveFilters = activeFilterCount > 0;
-  const activeStatusLabel = CUSTOMER_STATUS_OPTIONS.find((option) => option.value === statusFilter)?.label;
+  const activeStatusLabel = CUSTOMER_STATUS_OPTIONS.find((option) => option.value === statusFilter)?.labelKey;
 
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Directory"
-        title="Customers"
-        description="Search account records, review current status, and drill into individual customer details."
+        eyebrow={t("customer.listPage.eyebrow")}
+        title={t("customer.listPage.title")}
+        description={t("customer.listPage.description")}
         actions={canWrite("customers") ? (
           <Button type="button" onClick={handleCreateCustomer}>
-            Create Customer
+            {t("customer.listPage.createCustomer")}
           </Button>
         ) : null}
       />
 
-      <SectionCard title="Customer Registry" description="Live customer list with debounced search and status filtering.">
+      <SectionCard
+        title={t("customer.listPage.customerRegistry")}
+        description={t("customer.listPage.customerRegistryDescription")}
+      >
         <div className="space-y-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <CustomerSearchBar onSearch={handleSearch} resetSignal={filterResetKey} />
             <label className="flex flex-col items-start gap-2 text-sm font-medium text-foreground sm:flex-row sm:items-center sm:gap-3">
-              <span>Status</span>
+              <span>{t("customer.listPage.status")}</span>
               <select
                 value={statusFilter}
                 onChange={(e) => {
@@ -121,9 +126,9 @@ export function CustomerListPage() {
                 aria-label="Filter by status"
                 className="w-full sm:w-44"
               >
-                <option value="">All statuses</option>
+                <option value="">{t("customer.listPage.allStatuses")}</option>
                 {CUSTOMER_STATUS_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
+                  <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
                 ))}
               </select>
             </label>
@@ -134,16 +139,16 @@ export function CustomerListPage() {
               <div className="flex flex-wrap items-center gap-2">
                 {hasActiveFilters ? (
                   <span className="text-sm text-muted-foreground">
-                    {activeFilterCount} active filter{activeFilterCount === 1 ? "" : "s"} applied
+                    {t("customer.listPage.activeFilters", { count: activeFilterCount })}
                   </span>
                 ) : null}
-                {query ? <Badge variant="outline">Search: {query}</Badge> : null}
-                {activeStatusLabel ? <Badge variant="outline">Status: {activeStatusLabel}</Badge> : null}
-                {loading && data ? <span className="text-sm text-muted-foreground">Updating results…</span> : null}
+                {query ? <Badge variant="outline">{t("customer.listPage.search", { query })}</Badge> : null}
+                {activeStatusLabel ? <Badge variant="outline">{t("customer.listPage.statusFilter", { status: t(activeStatusLabel) })}</Badge> : null}
+                {loading && data ? <span className="text-sm text-muted-foreground">{t("customer.listPage.updating")}</span> : null}
               </div>
               {hasActiveFilters ? (
                 <Button type="button" variant="ghost" size="sm" onClick={handleClearFilters}>
-                  Clear filters
+                  {t("customer.listPage.clearFilters")}
                 </Button>
               ) : null}
             </div>
@@ -160,7 +165,7 @@ export function CustomerListPage() {
             />
           ) : null}
 
-          {loading && !data ? <p>Loading…</p> : null}
+          {loading && !data ? <p>{t("customer.listPage.loading")}</p> : null}
           {error && !loading ? <p className="text-sm text-muted-foreground">{error}</p> : null}
         </div>
       </SectionCard>

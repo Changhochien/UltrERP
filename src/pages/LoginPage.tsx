@@ -1,6 +1,7 @@
 /** Login page – email + password form. */
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Navigate, useNavigate } from "react-router-dom";
 
 import { ThemeToggle } from "../components/theme/ThemeToggle";
@@ -11,6 +12,7 @@ import { useAuth } from "../hooks/useAuth";
 import { HOME_ROUTE } from "../lib/routes";
 
 export default function LoginPage() {
+  const { t } = useTranslation("common");
   const { isAuthenticated, login } = useAuth();
   const navigate = useNavigate();
 
@@ -32,7 +34,7 @@ export default function LoginPage() {
     if (result.ok) {
       navigate(HOME_ROUTE, { replace: true });
     } else {
-      setError(result.error ?? "Login failed");
+      setError(result.error ?? t("auth.error"));
     }
   }
 
@@ -44,9 +46,9 @@ export default function LoginPage() {
             UltrERP
           </div>
           <div className="space-y-3">
-            <h1 className="max-w-xl text-4xl font-semibold tracking-tight sm:text-5xl">Modern ERP operations, built for Taiwan SMB workflows.</h1>
+            <h1 className="max-w-xl text-4xl font-semibold tracking-tight sm:text-5xl">{t("auth.title")}</h1>
             <p className="max-w-xl text-base leading-7 text-muted-foreground">
-              Sign in to manage customers, invoices, orders, payments, and inventory from a unified operational workspace.
+              {t("auth.subtitle")}
             </p>
           </div>
         </section>
@@ -54,8 +56,8 @@ export default function LoginPage() {
         <Card>
           <CardHeader className="flex flex-row items-start justify-between gap-4">
             <div className="space-y-1">
-              <CardTitle>UltrERP Login</CardTitle>
-              <CardDescription>Use your workspace credentials to enter the ERP shell.</CardDescription>
+              <CardTitle>{t("auth.welcome")}</CardTitle>
+              <CardDescription>{t("auth.shellDescription")}</CardDescription>
             </div>
             <ThemeToggle />
           </CardHeader>
@@ -67,7 +69,7 @@ export default function LoginPage() {
                 </p>
               ) : null}
               <div className="space-y-2">
-                <label htmlFor="login-email">Email</label>
+                <label htmlFor="login-email">{t("auth.email")}</label>
                 <Input
                   id="login-email"
                   type="email"
@@ -79,7 +81,7 @@ export default function LoginPage() {
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="login-password">Password</label>
+                <label htmlFor="login-password">{t("auth.password")}</label>
                 <Input
                   id="login-password"
                   type="password"
@@ -90,7 +92,7 @@ export default function LoginPage() {
                 />
               </div>
               <Button type="submit" disabled={submitting} className="w-full">
-                {submitting ? "Logging in…" : "Log in"}
+                {submitting ? t("auth.loggingIn") : t("auth.login")}
               </Button>
             </form>
           </CardContent>

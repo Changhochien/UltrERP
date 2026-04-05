@@ -1,6 +1,7 @@
 /** Paginated order list with status filter. */
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { DataTable, DataTableToolbar } from "../../../components/layout/DataTable";
 import { Badge } from "../../../components/ui/badge";
@@ -10,16 +11,17 @@ interface OrderListProps {
   onSelect: (orderId: string) => void;
 }
 
-const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: "", label: "All statuses" },
-  { value: "pending", label: "Pending" },
-  { value: "confirmed", label: "Confirmed" },
-  { value: "shipped", label: "Shipped" },
-  { value: "fulfilled", label: "Fulfilled" },
-  { value: "cancelled", label: "Cancelled" },
+const STATUS_OPTIONS: Array<{ value: string; labelKey: string }> = [
+  { value: "", labelKey: "orders.list.allStatuses" },
+  { value: "pending", labelKey: "orders.list.pending" },
+  { value: "confirmed", labelKey: "orders.list.confirmed" },
+  { value: "shipped", labelKey: "orders.list.shipped" },
+  { value: "fulfilled", labelKey: "orders.list.fulfilled" },
+  { value: "cancelled", labelKey: "orders.list.cancelled" },
 ];
 
 export function OrderList({ onSelect }: OrderListProps) {
+  const { t } = useTranslation("common");
   const [statusFilter, setStatusFilter] = useState("");
   const { items, total, page, pageSize, loading, error, reload } = useOrders({
     status: statusFilter || undefined,
@@ -31,14 +33,14 @@ export function OrderList({ onSelect }: OrderListProps) {
         columns={[
           {
             id: "order_number",
-            header: "Order #",
+            header: t("orders.list.orderNumber"),
             sortable: true,
             getSortValue: (item) => item.order_number,
             cell: (item) => <span className="font-medium">{item.order_number}</span>,
           },
           {
             id: "status",
-            header: "Status",
+            header: t("orders.list.status"),
             sortable: true,
             getSortValue: (item) => item.status,
             cell: (item) => (
@@ -49,14 +51,14 @@ export function OrderList({ onSelect }: OrderListProps) {
           },
           {
             id: "total_amount",
-            header: "Total",
+            header: t("orders.list.total"),
             sortable: true,
             getSortValue: (item) => Number(item.total_amount),
             cell: (item) => `$${item.total_amount}`,
           },
           {
             id: "created_at",
-            header: "Created",
+            header: t("orders.list.created"),
             sortable: true,
             getSortValue: (item) => new Date(item.created_at).getTime(),
             cell: (item) => new Date(item.created_at).toLocaleDateString(),
@@ -65,16 +67,16 @@ export function OrderList({ onSelect }: OrderListProps) {
         data={items}
         loading={loading}
         error={error}
-        emptyTitle="No orders found."
-        emptyDescription="Adjust the status filter or create a new order."
+        emptyTitle={t("orders.list.noOrders")}
+        emptyDescription={t("orders.list.adjustFilter")}
         toolbar={(
           <DataTableToolbar>
             <div className="space-y-1">
-              <h2 className="text-lg font-semibold tracking-tight">Orders</h2>
-              <p className="text-sm text-muted-foreground">Current order pipeline and fulfillment status.</p>
+              <h2 className="text-lg font-semibold tracking-tight">{t("orders.list.title")}</h2>
+              <p className="text-sm text-muted-foreground">{t("orders.list.description")}</p>
             </div>
             <label className="flex flex-col items-start gap-2 text-sm font-medium text-foreground sm:flex-row sm:items-center sm:gap-3">
-              <span>Status:</span>
+              <span>{t("orders.list.statusLabel")}</span>
               <select
                 id="ol-status"
                 aria-label="Status:"
@@ -84,7 +86,7 @@ export function OrderList({ onSelect }: OrderListProps) {
               >
                 {STATUS_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
-                    {opt.label}
+                    {t(opt.labelKey)}
                   </option>
                 ))}
               </select>

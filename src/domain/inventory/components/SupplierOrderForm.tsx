@@ -87,7 +87,7 @@ export function SupplierOrderForm({
 
       <form onSubmit={(e) => void handleSubmit(e)} aria-label="Order form" className="space-y-6">
         <SectionCard title="Order Header" description="Supplier and expected arrival details for the purchase order.">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <label className="space-y-2">
               <span>Supplier</span>
               <select
@@ -129,8 +129,8 @@ export function SupplierOrderForm({
         </SectionCard>
 
         <SectionCard title="Order Lines" description="Warehouse-scoped line items for the supplier order.">
-          <div className="overflow-hidden rounded-2xl border border-border/80 bg-card/90 shadow-sm">
-            <Table aria-label="Order line items">
+          <div className="overflow-x-auto rounded-2xl border border-border/80 bg-card/90 shadow-sm">
+            <Table aria-label="Order line items" className="min-w-[640px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Product ID</TableHead>

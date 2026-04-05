@@ -12,7 +12,7 @@ import { type AppFeature, usePermissions } from "../../hooks/usePermissions";
 import { ProtectedRoute } from "../../components/ProtectedRoute";
 import { apiFetch } from "../../lib/apiFetch";
 import LoginPage from "../../pages/LoginPage";
-import { setTestToken, clearTestToken } from "../helpers/auth";
+import { setMalformedTestToken, setTestToken, clearTestToken } from "../helpers/auth";
 
 afterEach(() => {
   window.location.hash = "";
@@ -25,7 +25,7 @@ afterEach(() => {
 
 function PermissionsDisplay() {
   const { canAccess, canWrite } = usePermissions();
-  const features: AppFeature[] = ["dashboard", "inventory", "customers", "invoices", "orders", "payments", "admin"];
+  const features: AppFeature[] = ["dashboard", "inventory", "customers", "invoices", "orders", "payments", "admin", "settings"];
   return (
     <ul>
       {features.map((f) => (
@@ -75,6 +75,13 @@ describe("useAuth", () => {
     expect(screen.getByTestId("role").textContent).toBe("finance");
   });
 
+  it("rejects malformed stored tokens before the app shell renders protected pages", () => {
+    setMalformedTestToken("owner");
+    renderWithAuth(<AuthDisplay />);
+    expect(screen.getByTestId("authed").textContent).toBe("no");
+    expect(screen.getByTestId("role").textContent).toBe("none");
+  });
+
   it("clears token on logout", () => {
     setTestToken("owner");
     renderWithAuth(<AuthDisplay />);
@@ -105,6 +112,7 @@ describe("usePermissions", () => {
     expect(screen.getByTestId("customers-access").textContent).toContain("yes");
     expect(screen.getByTestId("invoices-access").textContent).toContain("yes");
     expect(screen.getByTestId("payments-access").textContent).toContain("yes");
+    expect(screen.getByTestId("settings-access").textContent).toContain("yes");
     expect(screen.getByTestId("inventory-access").textContent).toContain("no");
     expect(screen.getByTestId("orders-access").textContent).toContain("no");
     expect(screen.getByTestId("admin-access").textContent).toContain("no");
@@ -121,6 +129,7 @@ describe("usePermissions", () => {
     expect(screen.getByTestId("customers-access").textContent).toContain("no");
     expect(screen.getByTestId("invoices-access").textContent).toContain("no");
     expect(screen.getByTestId("payments-access").textContent).toContain("no");
+    expect(screen.getByTestId("settings-access").textContent).toContain("no");
     expect(screen.getByTestId("inventory-write").textContent).toContain("yes");
     expect(screen.getByTestId("orders-write").textContent).toContain("no");
   });
@@ -135,6 +144,7 @@ describe("usePermissions", () => {
     expect(screen.getByTestId("orders-access").textContent).toContain("yes");
     expect(screen.getByTestId("payments-access").textContent).toContain("no");
     expect(screen.getByTestId("admin-access").textContent).toContain("no");
+    expect(screen.getByTestId("settings-access").textContent).toContain("no");
     expect(screen.getByTestId("inventory-write").textContent).toContain("no");
     expect(screen.getByTestId("customers-write").textContent).toContain("yes");
     expect(screen.getByTestId("invoices-write").textContent).toContain("no");
@@ -154,6 +164,7 @@ describe("AppNavigation", () => {
     expect(screen.getByRole("link", { name: "Customers" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Invoices" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Payments" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Settings" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Inventory" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Orders" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Admin" })).toBeNull();
@@ -227,6 +238,30 @@ describe("ProtectedRoute", () => {
     );
     expect(screen.getByText("Dashboard")).toBeTruthy();
     expect(screen.queryByText("Customers")).toBeNull();
+  });
+
+  it("renders settings content for authorized finance users", () => {
+    setTestToken("finance");
+    render(
+      <MemoryRouter initialEntries={["/settings"]}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<div>Login Page</div>} />
+            <Route path="/" element={<div>Dashboard</div>} />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute requiredFeature="settings">
+                  <div>Settings Content</div>
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>,
+    );
+    expect(screen.getByText("Settings Content")).toBeTruthy();
+    expect(screen.queryByText("Login Page")).toBeNull();
   });
 });
 

@@ -1,6 +1,7 @@
 export const HOME_ROUTE = "/";
 export const LOGIN_ROUTE = "/login";
 export const INVENTORY_ROUTE = "/inventory";
+export const PURCHASES_ROUTE = "/purchases";
 export const CUSTOMERS_ROUTE = "/customers";
 export const CUSTOMER_CREATE_ROUTE = "/customers/new";
 export const INVOICES_ROUTE = "/invoices";
@@ -10,11 +11,13 @@ export const ORDER_CREATE_ROUTE = "/orders/new";
 export const ORDER_DETAIL_ROUTE = "/orders/:orderId";
 export const PAYMENTS_ROUTE = "/payments";
 export const ADMIN_ROUTE = "/admin";
+export const SETTINGS_ROUTE = "/settings";
 
 export type AppRoute =
   | typeof HOME_ROUTE
   | typeof LOGIN_ROUTE
   | typeof INVENTORY_ROUTE
+  | typeof PURCHASES_ROUTE
   | typeof CUSTOMERS_ROUTE
   | typeof CUSTOMER_CREATE_ROUTE
   | typeof INVOICES_ROUTE
@@ -23,4 +26,5 @@ export type AppRoute =
   | typeof ORDER_CREATE_ROUTE
   | typeof ORDER_DETAIL_ROUTE
   | typeof PAYMENTS_ROUTE
-  | typeof ADMIN_ROUTE;
+  | typeof ADMIN_ROUTE
+  | typeof SETTINGS_ROUTE;

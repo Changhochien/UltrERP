@@ -1,6 +1,7 @@
 /** Modal dialog showing full customer details. */
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export function CustomerDetailDialog({ customerId, onClose, onEdit }: Props) {
+  const { t } = useTranslation("common");
   const [customer, setCustomer] = useState<CustomerResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -47,13 +49,13 @@ export function CustomerDetailDialog({ customerId, onClose, onEdit }: Props) {
     }}>
       <DialogContent className="w-[min(96vw,42rem)]">
         <DialogHeader>
-          <DialogTitle>Customer Detail</DialogTitle>
-          <DialogDescription>View the current billing and contact profile for this customer.</DialogDescription>
+          <DialogTitle>{t("customer.detail.title")}</DialogTitle>
+          <DialogDescription>{t("customer.detail.description")}</DialogDescription>
         </DialogHeader>
         {loading ? (
-          <p>Loading…</p>
+          <p>{t("customer.detail.loading")}</p>
         ) : !customer ? (
-          <p>Customer not found.</p>
+          <p>{t("customer.detail.notFound")}</p>
         ) : (
           <div className="space-y-5">
             <div className="flex flex-wrap items-center gap-2">
@@ -65,26 +67,26 @@ export function CustomerDetailDialog({ customerId, onClose, onEdit }: Props) {
               </Badge>
             </div>
             <dl className="gap-y-4">
-              <dt>Company Name</dt>
+              <dt>{t("customer.detail.companyName")}</dt>
               <dd>{customer.company_name}</dd>
-              <dt>BAN</dt>
+              <dt>{t("customer.detail.ban")}</dt>
               <dd>{customer.normalized_business_number}</dd>
-              <dt>Billing Address</dt>
+              <dt>{t("customer.detail.billingAddress")}</dt>
               <dd>{customer.billing_address}</dd>
-              <dt>Contact Name</dt>
+              <dt>{t("customer.detail.contactName")}</dt>
               <dd>{customer.contact_name}</dd>
-              <dt>Phone</dt>
+              <dt>{t("customer.detail.phone")}</dt>
               <dd>{customer.contact_phone}</dd>
-              <dt>Email</dt>
+              <dt>{t("customer.detail.email")}</dt>
               <dd>{customer.contact_email}</dd>
-              <dt>Credit Limit</dt>
+              <dt>{t("customer.detail.creditLimit")}</dt>
               <dd>{customer.credit_limit}</dd>
-              <dt>Status</dt>
+              <dt>{t("customer.detail.status")}</dt>
               <dd>{customer.status}</dd>
             </dl>
             {onEdit ? (
               <Button type="button" onClick={onEdit}>
-                Edit
+                {t("customer.detail.edit")}
               </Button>
             ) : null}
           </div>

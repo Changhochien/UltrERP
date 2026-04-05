@@ -5,11 +5,13 @@ import { useOptionalAuth } from "./useAuth";
 export type AppFeature =
   | "dashboard"
   | "inventory"
+  | "purchases"
   | "customers"
   | "invoices"
   | "orders"
   | "payments"
-  | "admin";
+  | "admin"
+  | "settings";
 
 type PermissionLevel = "read" | "write";
 
@@ -17,30 +19,37 @@ const ROLE_PERMISSIONS: Record<string, Partial<Record<AppFeature, PermissionLeve
   admin: {
     dashboard: "write",
     inventory: "write",
+    purchases: "write",
     customers: "write",
     invoices: "write",
     orders: "write",
     payments: "write",
     admin: "write",
+    settings: "write",
   },
   owner: {
     dashboard: "write",
     inventory: "write",
+    purchases: "write",
     customers: "write",
     invoices: "write",
     orders: "write",
     payments: "write",
     admin: "write",
+    settings: "write",
   },
   finance: {
     dashboard: "read",
+    purchases: "read",
     customers: "read",
     invoices: "write",
     payments: "write",
+    settings: "write",
   },
   warehouse: {
     dashboard: "read",
     inventory: "write",
+    purchases: "read",
     orders: "read",
   },
   sales: {

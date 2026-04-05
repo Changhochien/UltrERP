@@ -1,6 +1,7 @@
 import './i18n';
 
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import { AppNavigation } from "./components/AppNavigation";
@@ -29,6 +30,8 @@ import {
   ORDER_CREATE_ROUTE,
   ORDER_DETAIL_ROUTE,
   PAYMENTS_ROUTE,
+  PURCHASES_ROUTE,
+  SETTINGS_ROUTE,
 } from "./lib/routes";
 import { AdminPage } from "./pages/AdminPage";
 import CreateCustomerPage from "./pages/customers/CreateCustomerPage";
@@ -39,21 +42,23 @@ import CreateInvoicePage from "./pages/invoices/CreateInvoicePage";
 import { InvoicesPage } from "./pages/InvoicesPage";
 import { OrdersPage } from "./pages/orders/OrdersPage";
 import { PaymentsPage } from "./pages/PaymentsPage";
+import { PurchasesPage } from "./pages/PurchasesPage";
 import LoginPage from "./pages/LoginPage";
+import SettingsPage from "./pages/settings/SettingsPage";
 
 export const APP_TITLE = "UltrERP";
-export const APP_TAGLINE = "AI-native ERP for Taiwan SMBs";
 
 function AuthGate({ children }: { children: ReactNode }) {
+  const { t } = useTranslation("common");
   const { isAuthLoading } = useAuth();
 
   if (isAuthLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center px-6 py-16">
         <div className="w-full max-w-md rounded-[2rem] border border-border/80 bg-card/95 p-8 text-center shadow-[0_24px_80px_-40px_rgba(15,23,42,0.5)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-primary/80">Workspace</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-primary/80">{t("navMenu.workspace")}</p>
           <div className="mt-4 text-3xl font-semibold tracking-tight">{APP_TITLE}</div>
-          <div className="mt-2 text-sm text-muted-foreground">Signing you into the ERP shell…</div>
+          <div className="mt-2 text-sm text-muted-foreground">{t("auth.signingIn")}</div>
         </div>
       </div>
     );
@@ -65,6 +70,7 @@ function AuthGate({ children }: { children: ReactNode }) {
 function ShellHeader() {
   const location = useLocation();
   const context = getRouteContext(location.pathname);
+  const { t } = useTranslation("common");
 
   return (
     <header className="sticky top-0 z-20 border-b border-border/80 bg-background/95 shadow-sm">
@@ -73,11 +79,11 @@ function ShellHeader() {
           <div className="flex min-w-0 items-center gap-3">
             <SidebarTrigger />
             <Separator orientation="vertical" className="hidden h-6 sm:block" />
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-                {context.section}
+                {t(context.sectionKey)}
               </p>
-              <p className="truncate text-sm font-semibold sm:text-base">{context.label}</p>
+              <p className="truncate text-sm font-semibold sm:text-base">{t(context.labelKey)}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -87,7 +93,7 @@ function ShellHeader() {
             <ThemeToggle />
           </div>
         </div>
-        <p className="max-w-3xl text-sm text-muted-foreground">{context.description}</p>
+        <p className="max-w-3xl text-sm text-muted-foreground">{t(context.descriptionKey)}</p>
       </div>
     </header>
   );
@@ -255,11 +261,31 @@ export default function App() {
             }
           />
           <Route
+            path={PURCHASES_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="purchases">
+                <RoutedPage>
+                  <PurchasesPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
             path={ADMIN_ROUTE}
             element={
               <ProtectedAppRoute requiredFeature="admin">
                 <RoutedPage>
                   <AdminPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={SETTINGS_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="settings">
+                <RoutedPage>
+                  <SettingsPage />
                 </RoutedPage>
               </ProtectedAppRoute>
             }

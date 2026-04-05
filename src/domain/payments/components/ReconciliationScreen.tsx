@@ -67,7 +67,7 @@ export default function ReconciliationScreen() {
 			) : null}
 
 			{result ? (
-				<div className="grid gap-4 xl:grid-cols-3">
+				<div className="grid gap-4 2xl:grid-cols-2">
 					{autoMatched.length > 0 ? (
 						<SectionCard title="Auto-Matched" description="Payments confidently linked without operator review.">
 							<DataTable

@@ -167,8 +167,8 @@ export function DataTable<TData>({
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-2xl border border-border/80 bg-card/90 shadow-sm">
-        <Table>
+      <div className="overflow-x-auto rounded-2xl border border-border/80 bg-card/90 shadow-sm">
+        <Table className="min-w-[480px]">
           <TableHeader>
             <TableRow className="bg-muted/35 hover:bg-muted/35">
               {columns.map((column) => {

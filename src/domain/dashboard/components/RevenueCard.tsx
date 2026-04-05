@@ -1,5 +1,7 @@
 /** Revenue comparison card — today vs yesterday. */
 
+import { useTranslation } from "react-i18next";
+
 import { MetricCard, SectionCard, SurfaceMessage } from "../../../components/layout/PageLayout";
 import { Badge } from "../../../components/ui/badge";
 import { Skeleton } from "../../../components/ui/skeleton";
@@ -17,9 +19,11 @@ interface RevenueCardProps {
 }
 
 export function RevenueCard({ data, isLoading, error }: RevenueCardProps) {
+  const { t } = useTranslation("common");
+
   if (isLoading) {
     return (
-      <SectionCard title="Revenue Comparison" description="Today versus yesterday" className="h-full" contentClassName="space-y-4">
+      <SectionCard title={t("dashboard.revenue.title")} description={t("dashboard.revenue.description")} className="h-full" contentClassName="space-y-4">
         <div data-testid="revenue-card-loading" className="space-y-3">
           <Skeleton className="h-10 w-32" />
           <Skeleton className="h-20 w-full" />
@@ -30,7 +34,7 @@ export function RevenueCard({ data, isLoading, error }: RevenueCardProps) {
 
   if (error) {
     return (
-      <SectionCard title="Revenue Comparison" description="Today versus yesterday" className="h-full" contentClassName="space-y-4">
+      <SectionCard title={t("dashboard.revenue.title")} description={t("dashboard.revenue.description")} className="h-full" contentClassName="space-y-4">
         <div data-testid="revenue-card-error">
           <SurfaceMessage tone="danger">{error}</SurfaceMessage>
         </div>
@@ -67,9 +71,9 @@ export function RevenueCard({ data, isLoading, error }: RevenueCardProps) {
   return (
     <div data-testid="revenue-card">
       <MetricCard
-        title="Revenue Comparison"
+        title={t("dashboard.revenue.title")}
         value={formatTWD(data.today_revenue)}
-        description={`Yesterday (${data.yesterday_date}) ${formatTWD(data.yesterday_revenue)}`}
+        description={t("dashboard.revenue.yesterday", { date: data.yesterday_date, amount: formatTWD(data.yesterday_revenue) })}
         points={[yesterdayRevenue * 0.88, yesterdayRevenue, (yesterdayRevenue + todayRevenue) / 2, todayRevenue]}
         badge={(
           <Badge
@@ -78,8 +82,8 @@ export function RevenueCard({ data, isLoading, error }: RevenueCardProps) {
             className={cn("normal-case tracking-normal", changeClass)}
             aria-label={
               changePercent === null
-                ? "No change data available"
-                : `Revenue change: ${changeDisplay}`
+                ? t("dashboard.revenue.noChangeData")
+                : t("dashboard.revenue.revenueChange", { change: changeDisplay })
             }
           >
             {changeDisplay}

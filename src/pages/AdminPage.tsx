@@ -67,7 +67,7 @@ export function AdminPage() {
       {error ? <SurfaceMessage tone="danger">{error}</SurfaceMessage> : null}
 
       {loading ? (
-        <div className="grid gap-4 xl:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-2">
           <SectionCard title="Users" description="Workspace access roster.">
             <div className="space-y-3">
               <Skeleton className="h-10 w-full" />
@@ -84,7 +84,7 @@ export function AdminPage() {
           </SectionCard>
         </div>
       ) : (
-        <div className="grid gap-4 xl:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-2">
           <SectionCard title="Users" description="Workspace roster with role and status visibility.">
             <DataTable
               columns={[

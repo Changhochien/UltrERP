@@ -154,13 +154,41 @@ export function useCustomerOutstanding(customerId: string) {
   const [summary, setSummary] = useState<CustomerOutstandingSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
+  const activeRequestIdRef = useRef(0);
 
   useEffect(() => {
+    mountedRef.current = true;
+    const requestId = ++activeRequestIdRef.current;
+    const controller = new AbortController();
+
     setLoading(true);
-    fetchCustomerOutstanding(customerId)
-      .then(setSummary)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load outstanding"))
-      .finally(() => setLoading(false));
+    fetchCustomerOutstanding(customerId, controller.signal)
+      .then((res) => {
+        if (!mountedRef.current || activeRequestIdRef.current !== requestId) {
+          return;
+        }
+        setSummary(res);
+      })
+      .catch((err) => {
+        if (!mountedRef.current || activeRequestIdRef.current !== requestId) {
+          return;
+        }
+        if (err instanceof Error && err.name === "AbortError") {
+          return;
+        }
+        setError(err instanceof Error ? err.message : "Failed to load outstanding");
+      })
+      .finally(() => {
+        if (mountedRef.current && activeRequestIdRef.current === requestId) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      mountedRef.current = false;
+      controller.abort();
+    };
   }, [customerId]);
 
   return { summary, loading, error };

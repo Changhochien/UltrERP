@@ -1,5 +1,7 @@
 /** Low-stock alerts dashboard card. */
 
+import { useTranslation } from "react-i18next";
+
 import { Badge } from "../../../components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
 import { Skeleton } from "../../../components/ui/skeleton";
@@ -7,6 +9,7 @@ import { cn } from "../../../lib/utils";
 import { useLowStockAlerts } from "../hooks/useDashboard";
 
 export function LowStockAlertsCard() {
+  const { t } = useTranslation("common");
   const { data, isLoading, error } = useLowStockAlerts();
 
   const alerts = data?.items ?? [];
@@ -15,8 +18,8 @@ export function LowStockAlertsCard() {
     <Card data-testid="low-stock-card" className="h-full">
       <CardHeader className="flex flex-row items-start justify-between gap-4">
         <div className="space-y-1">
-          <CardTitle>Low-Stock Alerts</CardTitle>
-          <p className="text-sm text-muted-foreground">Items at or below reorder coverage thresholds.</p>
+          <CardTitle>{t("dashboard.lowStock.title")}</CardTitle>
+          <p className="text-sm text-muted-foreground">{t("dashboard.lowStock.description")}</p>
         </div>
         {!isLoading && !error && alerts.length > 0 ? (
           <Badge variant="warning" data-testid="alert-badge">{alerts.length}</Badge>
@@ -34,8 +37,8 @@ export function LowStockAlertsCard() {
         {error && <p className="text-sm text-destructive">{error}</p>}
 
         {!isLoading && !error && alerts.length === 0 && (
-          <p className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-6 text-sm text-emerald-700 dark:text-emerald-300" data-testid="low-stock-ok">
-            All stock levels OK ✓
+          <p className="rounded-xl border px-4 py-6 text-sm alert-success" data-testid="low-stock-ok">
+            {t("dashboard.lowStock.allOk")}
           </p>
         )}
 
@@ -50,7 +53,7 @@ export function LowStockAlertsCard() {
                     "rounded-2xl border px-4 py-3",
                     critical
                       ? "alert-item--critical border-destructive/20 bg-destructive/8"
-                      : "alert-item--warning border-amber-500/20 bg-amber-500/10",
+                      : "alert-item--warning border alert-warning",
                   )}
                   aria-label={`${alert.product_name}. Stock: ${alert.current_stock}, Reorder point: ${alert.reorder_point}`}
                 >
@@ -62,7 +65,7 @@ export function LowStockAlertsCard() {
                     <Badge variant={critical ? "destructive" : "warning"}>{alert.status}</Badge>
                   </div>
                   <p className="mt-3 text-sm text-muted-foreground">
-                    Stock: {alert.current_stock} · Reorder: {alert.reorder_point}
+                    {t("dashboard.lowStock.stock", { current: alert.current_stock, point: alert.reorder_point })}
                   </p>
                 </li>
               );

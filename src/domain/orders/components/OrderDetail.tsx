@@ -1,6 +1,7 @@
 /** Read-only order detail view with line items and status actions. */
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { DataTable } from "../../../components/layout/DataTable";
 import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayout";
@@ -11,21 +12,21 @@ import { updateOrderStatus } from "../../../lib/api/orders";
 import type { OrderStatus } from "../types";
 
 interface StatusAction {
-  label: string;
+  labelKey: string;
   targetStatus: OrderStatus;
-  confirmMessage: string;
+  confirmMessageKey: string;
 }
 
 const STATUS_ACTIONS: Record<string, StatusAction[]> = {
   pending: [
-    { label: "Confirm Order", targetStatus: "confirmed" as OrderStatus, confirmMessage: "Confirming this order will auto-generate an invoice. Continue?" },
-    { label: "Cancel Order", targetStatus: "cancelled" as OrderStatus, confirmMessage: "Are you sure you want to cancel this order?" },
+    { labelKey: "orders.detail.confirmOrder", targetStatus: "confirmed" as OrderStatus, confirmMessageKey: "orders.detail.confirmOrderMessage" },
+    { labelKey: "orders.detail.cancelOrder", targetStatus: "cancelled" as OrderStatus, confirmMessageKey: "orders.detail.cancelOrderMessage" },
   ],
   confirmed: [
-    { label: "Mark Shipped", targetStatus: "shipped" as OrderStatus, confirmMessage: "Mark this order as shipped?" },
+    { labelKey: "orders.detail.markShipped", targetStatus: "shipped" as OrderStatus, confirmMessageKey: "orders.detail.markShippedMessage" },
   ],
   shipped: [
-    { label: "Mark Fulfilled", targetStatus: "fulfilled" as OrderStatus, confirmMessage: "Mark this order as fulfilled?" },
+    { labelKey: "orders.detail.markFulfilled", targetStatus: "fulfilled" as OrderStatus, confirmMessageKey: "orders.detail.markFulfilledMessage" },
   ],
 };
 
@@ -35,6 +36,7 @@ interface OrderDetailProps {
 }
 
 export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
+  const { t } = useTranslation("common");
   const { order, loading, error, reload } = useOrderDetail(orderId);
   const [updating, setUpdating] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
@@ -53,21 +55,21 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
     }
   };
 
-  if (loading) return <p aria-busy="true">Loading…</p>;
+  if (loading) return <p aria-busy="true">{t("messages.loading")}</p>;
   if (error) return <div role="alert" className="text-sm text-destructive">{error}</div>;
-  if (!order) return <p>Order not found.</p>;
+  if (!order) return <p>{t("orders.detail.notFound")}</p>;
 
   const actions = STATUS_ACTIONS[order.status] ?? [];
 
   return (
     <section aria-label="Order detail" className="space-y-5">
       <Button type="button" variant="outline" onClick={onBack}>
-        Back to list
+        {t("orders.detail.backToList")}
       </Button>
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
-          <h2 className="text-xl font-semibold tracking-tight">Order {order.order_number}</h2>
+          <h2 className="text-xl font-semibold tracking-tight">{t("orders.detail.orderTitle")} {order.order_number}</h2>
           <Badge variant={statusBadgeVariant(order.status as OrderStatus)} className="normal-case tracking-normal">
             {statusLabel(order.status as OrderStatus)}
           </Badge>
@@ -76,7 +78,7 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
           <div className="flex flex-wrap gap-2">
             {actions.map((action) => (
               <Button key={action.targetStatus} type="button" onClick={() => setActiveAction(action)}>
-                {action.label}
+                {t(action.labelKey)}
               </Button>
             ))}
           </div>
@@ -84,69 +86,69 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
       </div>
 
       {activeAction ? (
-        <SectionCard title="Confirm status change" description={activeAction.confirmMessage}>
+        <SectionCard title={t("orders.detail.confirmStatusChange")} description={t(activeAction.confirmMessageKey)}>
           <div role="dialog" aria-label="Confirm status change" className="space-y-4">
             {updateError ? <SurfaceMessage tone="danger">{updateError}</SurfaceMessage> : null}
             <div className="flex gap-3">
               <Button type="button" onClick={() => handleStatusChange(activeAction.targetStatus)} disabled={updating}>
-                {updating ? "Updating…" : `Yes, ${activeAction.label}`}
+                {updating ? t("orders.detail.updating") : `${t("common.yes")}, ${t(activeAction.labelKey)}`}
               </Button>
               <Button type="button" variant="outline" onClick={() => { setActiveAction(null); setUpdateError(null); }}>
-                Cancel
+                {t("common.cancel")}
               </Button>
             </div>
           </div>
         </SectionCard>
       ) : null}
 
-      <SectionCard title="Order Summary" description="Customer, pricing, and operational timestamps.">
+      <SectionCard title={t("orders.detail.orderSummary")} description={t("orders.detail.orderSummaryDescription")}>
         <dl className="gap-y-4">
-          <dt>Customer</dt>
+          <dt>{t("orders.detail.customer")}</dt>
           <dd>{order.customer_name ?? order.customer_id}</dd>
-          <dt>Payment Terms</dt>
+          <dt>{t("orders.detail.paymentTerms")}</dt>
           <dd>{order.payment_terms_code} ({order.payment_terms_days} days)</dd>
-          <dt>Subtotal</dt>
+          <dt>{t("orders.detail.subtotal")}</dt>
           <dd>${order.subtotal_amount}</dd>
-          <dt>Tax</dt>
+          <dt>{t("orders.detail.tax")}</dt>
           <dd>${order.tax_amount}</dd>
-          <dt>Total</dt>
+          <dt>{t("orders.detail.total")}</dt>
           <dd><strong>${order.total_amount}</strong></dd>
           {order.invoice_id ? (
             <>
-              <dt>Invoice</dt>
+              <dt>{t("orders.detail.invoice")}</dt>
               <dd>{order.invoice_id}</dd>
             </>
           ) : null}
           {order.notes ? (
             <>
-              <dt>Notes</dt>
+              <dt>{t("orders.detail.notes")}</dt>
               <dd>{order.notes}</dd>
             </>
           ) : null}
-          <dt>Created</dt>
+          <dt>{t("orders.detail.created")}</dt>
           <dd>{new Date(order.created_at).toLocaleString()}</dd>
           {order.confirmed_at ? (
             <>
-              <dt>Confirmed</dt>
+              <dt>{t("orders.detail.confirmed")}</dt>
               <dd>{new Date(order.confirmed_at).toLocaleString()}</dd>
             </>
           ) : null}
         </dl>
       </SectionCard>
 
-      <SectionCard title="Line Items" description="Commercial and stock detail for each order line.">
+      <SectionCard title={t("orders.detail.lineItems")} description={t("orders.detail.lineItemsDescription")}>
         <DataTable
           columns={[
             { id: "line_number", header: "#", sortable: true, getSortValue: (line) => line.line_number, cell: (line) => line.line_number },
-            { id: "description", header: "Description", sortable: true, getSortValue: (line) => line.description, cell: (line) => line.description },
-            { id: "quantity", header: "Qty", sortable: true, getSortValue: (line) => Number(line.quantity), cell: (line) => line.quantity },
-            { id: "unit_price", header: "Unit Price", sortable: true, getSortValue: (line) => Number(line.unit_price), cell: (line) => `$${line.unit_price}` },
-            { id: "tax_amount", header: "Tax", sortable: true, getSortValue: (line) => Number(line.tax_amount), cell: (line) => `$${line.tax_amount}` },
-            { id: "subtotal_amount", header: "Subtotal", sortable: true, getSortValue: (line) => Number(line.subtotal_amount), cell: (line) => `$${line.subtotal_amount}` },
-            { id: "total_amount", header: "Total", sortable: true, getSortValue: (line) => Number(line.total_amount), cell: (line) => `$${line.total_amount}` },
+            { id: "description", header: t("orders.form.description"), sortable: true, getSortValue: (line) => line.description, cell: (line) => line.description },
+            { id: "quantity", header: t("orders.form.quantity"), sortable: true, getSortValue: (line) => Number(line.quantity), cell: (line) => line.quantity },
+            { id: "unit_price", header: t("orders.form.unitPrice"), sortable: true, getSortValue: (line) => Number(line.unit_price), cell: (line) => `$${line.unit_price}` },
+            { id: "tax_amount", header: t("orders.detail.tax"), sortable: true, getSortValue: (line) => Number(line.tax_amount), cell: (line) => `$${line.tax_amount}` },
+            { id: "subtotal_amount", header: t("orders.detail.subtotal"), sortable: true, getSortValue: (line) => Number(line.subtotal_amount), cell: (line) => `$${line.subtotal_amount}` },
+            { id: "total_amount", header: t("orders.detail.total"), sortable: true, getSortValue: (line) => Number(line.total_amount), cell: (line) => `$${line.total_amount}` },
             {
               id: "stock",
-              header: "Stock",
+              header: t("orders.form.stock"),
               cell: (line) => (
                 <div className="text-sm">
                   {line.available_stock_snapshot != null ? <span>{line.available_stock_snapshot}</span> : null}
@@ -156,8 +158,8 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
             },
           ]}
           data={order.lines}
-          emptyTitle="No line items."
-          emptyDescription="Order line items will appear here once the order is populated."
+          emptyTitle={t("orders.detail.noLineItems")}
+          emptyDescription={t("orders.detail.noLineItemsDescription")}
           getRowId={(line) => line.id}
         />
       </SectionCard>

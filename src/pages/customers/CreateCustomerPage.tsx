@@ -1,6 +1,7 @@
 /** Create Customer page. */
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { PageHeader, SectionCard } from "../../components/layout/PageLayout";
 import { Button } from "../../components/ui/button";
@@ -16,6 +17,7 @@ export interface CreateCustomerPageProps {
 }
 
 export default function CreateCustomerPage({ onNavigate }: CreateCustomerPageProps) {
+  const { t } = useTranslation("common");
   const [submitting, setSubmitting] = useState(false);
   const [serverErrors, setServerErrors] = useState<Array<{ field: string; message: string }>>([]);
   const [created, setCreated] = useState<CustomerResponse | null>(null);
@@ -44,18 +46,21 @@ export default function CreateCustomerPage({ onNavigate }: CreateCustomerPagePro
     return (
       <div className="space-y-6">
         <PageHeader
-          eyebrow="Customers"
-          title="Customer Created"
-          description="The new customer record has been saved and is ready for follow-up actions."
+          eyebrow={t("customer.createPage.eyebrow")}
+          title={t("customer.createPage.titleCreated")}
+          description={t("customer.createPage.descriptionCreated")}
         />
-        <SectionCard title="Created Record" description="Customer master data was created successfully.">
+        <SectionCard
+          title={t("customer.createPage.createdRecord")}
+          description={t("customer.createPage.createdRecordDescription")}
+        >
           <div className="space-y-4 text-sm">
             <p>
               <strong>{created.company_name}</strong> ({created.normalized_business_number}) has been
               created with ID <code>{created.id}</code>.
             </p>
             <Button type="button" onClick={() => setCreated(null)}>
-              Create Another
+              {t("customer.createPage.createAnother")}
             </Button>
           </div>
         </SectionCard>
@@ -66,11 +71,14 @@ export default function CreateCustomerPage({ onNavigate }: CreateCustomerPagePro
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Customers"
-        title="Create Customer"
-        description="Add a new customer record, validate Taiwan business number inputs, and catch duplicates before save."
+        eyebrow={t("customer.createPage.eyebrow")}
+        title={t("customer.createPage.title")}
+        description={t("customer.createPage.description")}
       />
-      <SectionCard title="Customer Form" description="Core customer master data for billing and collections.">
+      <SectionCard
+        title={t("customer.createPage.formTitle")}
+        description={t("customer.createPage.formDescription")}
+      >
         {duplicate ? (
           <DuplicateCustomerWarning
             duplicate={duplicate}

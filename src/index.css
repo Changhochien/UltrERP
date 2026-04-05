@@ -124,7 +124,7 @@
 }
 
 @theme inline {
-  --font-sans: 'Geist Variable', sans-serif;
+  --font-sans: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', 'Geist Variable', sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -272,9 +272,6 @@
   dd {
     @apply text-sm text-foreground;
   }
-  html {
-    @apply font-sans;
-  }
 }
 
 @layer utilities {
@@ -312,6 +309,37 @@
     color: var(--destructive);
   }
 
+  /* Alert variants — use design tokens so they adapt to dark mode automatically */
+  .alert-success {
+    border-color: var(--success-border);
+    background-color: var(--success-surface);
+    color: var(--success-foreground);
+  }
+
+  .alert-warning {
+    border-color: var(--warning-border);
+    background-color: var(--warning-surface);
+    color: var(--warning-foreground);
+  }
+
+  .alert-info {
+    border-color: var(--info-border);
+    background-color: var(--info-surface);
+    color: var(--info-foreground);
+  }
+
+  .alert-neutral {
+    border-color: var(--neutral-border);
+    background-color: var(--neutral-surface);
+    color: var(--neutral-foreground);
+  }
+
+  .alert-destructive {
+    border-color: var(--destructive-border);
+    background-color: var(--destructive-surface);
+    color: var(--destructive);
+  }
+
   .text-success-token {
     color: var(--success-foreground);
   }
@@ -326,5 +354,178 @@
 
   .text-neutral-token {
     color: var(--neutral-foreground);
+  }
+
+  /* Dialog overlay/content — used by EditCustomerDialog */
+  .dialog-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+  }
+
+  .dialog-content {
+    position: relative;
+    z-index: 51;
+    max-height: calc(100vh - 4rem);
+    overflow-y: auto;
+    border-radius: 1.5rem;
+    background: var(--background);
+    padding: 1.5rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    width: min(90vw, 36rem);
+  }
+
+  .dialog-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    border-radius: 9999px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted-foreground);
+  }
+
+  .dialog-close:hover {
+    background: var(--accent);
+    color: var(--accent-foreground);
+  }
+
+  /* Shortcut overlay — used by ShortcutOverlay */
+  .shortcut-overlay-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(6px);
+  }
+
+  .shortcut-overlay-panel {
+    position: relative;
+    z-index: 51;
+    max-height: calc(100vh - 4rem);
+    max-width: min(90vw, 42rem);
+    width: 100%;
+    overflow-y: auto;
+    border-radius: 1.5rem;
+    background: var(--background);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+    padding: 1.5rem;
+  }
+
+  .shortcut-overlay-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    gap: 1rem;
+  }
+
+  .shortcut-overlay-head .eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.28em;
+    color: var(--primary);
+    margin-bottom: 0.25rem;
+  }
+
+  .shortcut-overlay-head h1 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .shortcut-overlay-section {
+    margin-bottom: 1.5rem;
+  }
+
+  .shortcut-overlay-section-header {
+    margin-bottom: 0.75rem;
+  }
+
+  .shortcut-overlay-section-header h2 {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--muted-foreground);
+  }
+
+  .shortcut-overlay-empty {
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+    padding: 0.5rem 0;
+  }
+
+  .shortcut-overlay-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .shortcut-overlay-item {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.625rem 0.875rem;
+    border-radius: 0.75rem;
+    transition: background-color 0.15s;
+  }
+
+  .shortcut-overlay-item:hover {
+    background-color: var(--accent);
+  }
+
+  .shortcut-overlay-item strong {
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: block;
+    margin-bottom: 0.125rem;
+  }
+
+  .shortcut-overlay-item p {
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+    margin: 0;
+  }
+
+  .shortcut-overlay-bindings {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .shortcut-overlay-binding {
+    font-size: 11px;
+    font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, monospace;
+    background: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 0.375rem;
+    padding: 0.125rem 0.5rem;
+    color: var(--foreground);
+  }
+
+  .shortcut-overlay-binding-desktop {
+    background: var(--secondary);
+    color: var(--muted-foreground);
   }
 }

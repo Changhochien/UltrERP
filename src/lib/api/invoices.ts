@@ -126,9 +126,11 @@ export async function refreshInvoiceEguiStatus(
 
 export async function fetchCustomerOutstanding(
   customerId: string,
+  signal?: AbortSignal,
 ): Promise<CustomerOutstandingSummary> {
   const resp = await apiFetch(
     `/api/v1/customers/${encodeURIComponent(customerId)}/outstanding`,
+    { signal },
   );
   if (!resp.ok) {
     throw new Error(

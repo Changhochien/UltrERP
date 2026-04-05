@@ -1,10 +1,14 @@
-/** Reusable customer create/edit form component. */
+/** Reusable customer create/edit form component — react-hook-form + zod + shadcn field. */
 
-import { useState } from "react";
+import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
-import { SurfaceMessage } from "../layout/PageLayout";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import { Field, FieldLabel, FieldError } from "../ui/field";
 import type { CustomerCreatePayload } from "../../domain/customers/types";
 import { validateTaiwanBusinessNumber } from "../../lib/validation/taiwanBusinessNumber";
 
@@ -17,188 +21,208 @@ export interface CustomerFormProps {
   submittingLabel?: string;
 }
 
-const INITIAL: CustomerCreatePayload = {
-  company_name: "",
-  business_number: "",
-  billing_address: "",
-  contact_name: "",
-  contact_phone: "",
-  contact_email: "",
-  credit_limit: "0.00",
-};
+// Zod schema — mirrors CustomerCreatePayload with all validation rules
+// NOTE: all fields typed as string to match HTML input values; number conversion happens on submit
+const customerSchema = z.object({
+  company_name: z.string().min(1, "customer.form.companyNameRequired").max(200),
+  business_number: z.string().min(1, "customer.form.businessNumberRequired").max(20),
+  billing_address: z.string().max(500),
+  contact_name: z.string().min(1, "customer.form.contactNameRequired").max(100),
+  contact_phone: z.string().min(1, "customer.form.contactPhoneRequired").max(30),
+  contact_email: z
+    .string()
+    .min(1, "customer.form.contactEmailRequired")
+    .email("customer.form.invalidEmail")
+    .max(254),
+  credit_limit: z.string(),
+});
+
+type CustomerFormValues = z.infer<typeof customerSchema>;
 
 export default function CustomerForm({
   onSubmit,
   submitting,
   serverErrors,
   initialValues,
-  submitLabel = "Create Customer",
-  submittingLabel = "Creating…",
+  submitLabel,
+  submittingLabel,
 }: CustomerFormProps) {
-  const [form, setForm] = useState<CustomerCreatePayload>({ ...INITIAL, ...initialValues });
-  const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
-  const formErrors = serverErrors?.filter((error) => !error.field) ?? [];
+  const { t } = useTranslation("common");
+  const _submitLabel = submitLabel ?? t("customer.form.createTitle");
+  const _submittingLabel = submittingLabel ?? t("customer.form.creating");
 
-  function handleChange(field: keyof CustomerCreatePayload, value: string) {
-    setForm((prev) => ({ ...prev, [field]: value }));
-    // Clear field-level error on edit
-    setClientErrors((prev) => {
-      const copy = { ...prev };
-      delete copy[field];
-      return copy;
-    });
-  }
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors },
+  } = useForm<CustomerFormValues>({
+    resolver: zodResolver(customerSchema),
+    defaultValues: {
+      company_name: initialValues?.company_name ?? "",
+      business_number: initialValues?.business_number ?? "",
+      billing_address: initialValues?.billing_address ?? "",
+      contact_name: initialValues?.contact_name ?? "",
+      contact_phone: initialValues?.contact_phone ?? "",
+      contact_email: initialValues?.contact_email ?? "",
+      credit_limit: initialValues?.credit_limit ?? "0.00",
+    },
+    mode: "onBlur",
+  });
 
-  function validate(): Record<string, string> {
-    const errs: Record<string, string> = {};
-
-    if (!form.company_name.trim()) errs.company_name = "Company name is required.";
-
-    const banResult = validateTaiwanBusinessNumber(form.business_number);
-    if (!banResult.valid) errs.business_number = banResult.error ?? "Invalid business number.";
-
-    if (!form.contact_name.trim()) errs.contact_name = "Contact name is required.";
-    if (!form.contact_phone.trim()) errs.contact_phone = "Phone is required.";
-    if (!form.contact_email.trim()) errs.contact_email = "Email is required.";
-
-    const limit = Number(form.credit_limit);
-    if (Number.isNaN(limit) || limit < 0) errs.credit_limit = "Credit limit must be non-negative.";
-
-    return errs;
-  }
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const errs = validate();
-    if (Object.keys(errs).length > 0) {
-      setClientErrors(errs);
-      return;
+  // Map server errors onto the correct form fields
+  useEffect(() => {
+    if (!serverErrors?.length) return;
+    for (const err of serverErrors) {
+      if (err.field) {
+        setError(err.field as keyof CustomerFormValues, { message: err.message });
+      }
     }
-    onSubmit(form);
-  }
+  }, [serverErrors, setError]);
 
-  function fieldError(field: string): string | undefined {
-    return clientErrors[field] ?? serverErrors?.find((e) => e.field === field)?.message;
-  }
+  const generalErrors = serverErrors?.filter((e) => !e.field) ?? [];
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-4" noValidate>
-      {formErrors.length > 0 ? (
-        <SurfaceMessage tone="danger" role="alert">
-          {formErrors.map((error) => (
-            <p key={error.message}>{error.message}</p>
-          ))}
-        </SurfaceMessage>
-      ) : null}
+    <form
+      onSubmit={handleSubmit((values) => {
+        // Validate credit_limit as a non-negative number
+        const limitNum = Number(values.credit_limit);
+        if (Number.isNaN(limitNum) || limitNum < 0) {
+          setError("credit_limit", { message: t("customer.form.creditLimitNonNegative") });
+          return;
+        }
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <label className="space-y-2">
-          <span>Company Name *</span>
+        // Taiwan business number has a special checksum algorithm — run after zod
+        const ban = validateTaiwanBusinessNumber(values.business_number ?? "");
+        if (!ban.valid) {
+          setError("business_number", {
+            message: ban.error ?? t("customer.form.invalidBusinessNumber"),
+          });
+          return;
+        }
+        onSubmit({
+          company_name: (values.company_name ?? "").trim(),
+          business_number: (values.business_number ?? "").trim(),
+          billing_address: (values.billing_address ?? "").trim(),
+          contact_name: (values.contact_name ?? "").trim(),
+          contact_phone: (values.contact_phone ?? "").trim(),
+          contact_email: (values.contact_email ?? "").trim().toLowerCase(),
+          credit_limit: String(limitNum.toFixed(2)),
+        });
+      })}
+      className="flex flex-col gap-5"
+      noValidate
+    >
+      {generalErrors.length > 0 && (
+        <div
+          className="rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          role="alert"
+        >
+          {generalErrors.map((e) => (
+            <p key={e.message}>{e.message}</p>
+          ))}
+        </div>
+      )}
+
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field>
+          <FieldLabel htmlFor="company_name">{t("customer.form.companyName")} *</FieldLabel>
           <Input
             id="company_name"
-            value={form.company_name}
-            onChange={(e) => handleChange("company_name", e.target.value)}
+            {...register("company_name")}
             maxLength={200}
-            required
+            aria-invalid={!!errors.company_name}
           />
-          {fieldError("company_name") ? (
-            <span className="text-sm text-destructive" role="alert">{fieldError("company_name")}</span>
-          ) : null}
-        </label>
+          <FieldError
+            errors={errors.company_name ? [{ message: t(errors.company_name.message!) }] : []}
+          />
+        </Field>
 
-        <label className="space-y-2">
-          <span>Business Number (統一編號) *</span>
+        <Field>
+          <FieldLabel htmlFor="business_number">{t("customer.form.businessNumber")} *</FieldLabel>
           <Input
             id="business_number"
-            value={form.business_number}
-            onChange={(e) => handleChange("business_number", e.target.value)}
+            {...register("business_number")}
             maxLength={20}
-            required
+            aria-invalid={!!errors.business_number}
           />
-          {fieldError("business_number") ? (
-            <span className="text-sm text-destructive" role="alert">{fieldError("business_number")}</span>
-          ) : null}
-        </label>
+          <FieldError
+            errors={errors.business_number ? [{ message: t(errors.business_number.message!) }] : []}
+          />
+        </Field>
       </div>
 
-      <label className="space-y-2">
-        <span>Billing Address</span>
+      <Field>
+        <FieldLabel htmlFor="billing_address">{t("customer.form.billingAddress")}</FieldLabel>
         <Input
           id="billing_address"
-          value={form.billing_address}
-          onChange={(e) => handleChange("billing_address", e.target.value)}
+          {...register("billing_address")}
           maxLength={500}
         />
-      </label>
+      </Field>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <label className="space-y-2">
-          <span>Contact Name *</span>
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field>
+          <FieldLabel htmlFor="contact_name">{t("customer.form.contactName")} *</FieldLabel>
           <Input
             id="contact_name"
-            value={form.contact_name}
-            onChange={(e) => handleChange("contact_name", e.target.value)}
+            {...register("contact_name")}
             maxLength={100}
-            required
+            aria-invalid={!!errors.contact_name}
           />
-          {fieldError("contact_name") ? (
-            <span className="text-sm text-destructive" role="alert">{fieldError("contact_name")}</span>
-          ) : null}
-        </label>
+          <FieldError
+            errors={errors.contact_name ? [{ message: t(errors.contact_name.message!) }] : []}
+          />
+        </Field>
 
-        <label className="space-y-2">
-          <span>Contact Phone *</span>
+        <Field>
+          <FieldLabel htmlFor="contact_phone">{t("customer.form.contactPhone")} *</FieldLabel>
           <Input
             id="contact_phone"
-            value={form.contact_phone}
-            onChange={(e) => handleChange("contact_phone", e.target.value)}
+            {...register("contact_phone")}
             maxLength={30}
-            required
+            aria-invalid={!!errors.contact_phone}
           />
-          {fieldError("contact_phone") ? (
-            <span className="text-sm text-destructive" role="alert">{fieldError("contact_phone")}</span>
-          ) : null}
-        </label>
+          <FieldError
+            errors={errors.contact_phone ? [{ message: t(errors.contact_phone.message!) }] : []}
+          />
+        </Field>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <label className="space-y-2">
-          <span>Contact Email *</span>
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field>
+          <FieldLabel htmlFor="contact_email">{t("customer.form.contactEmail")} *</FieldLabel>
           <Input
             id="contact_email"
             type="email"
-            value={form.contact_email}
-            onChange={(e) => handleChange("contact_email", e.target.value)}
+            {...register("contact_email")}
             maxLength={254}
-            required
+            aria-invalid={!!errors.contact_email}
           />
-          {fieldError("contact_email") ? (
-            <span className="text-sm text-destructive" role="alert">{fieldError("contact_email")}</span>
-          ) : null}
-        </label>
+          <FieldError
+            errors={errors.contact_email ? [{ message: t(errors.contact_email.message!) }] : []}
+          />
+        </Field>
 
-        <label className="space-y-2">
-          <span>Credit Limit</span>
+        <Field>
+          <FieldLabel htmlFor="credit_limit">{t("customer.form.creditLimit")}</FieldLabel>
           <Input
             id="credit_limit"
             type="number"
             step="0.01"
             min="0"
-            value={form.credit_limit}
-            onChange={(e) => handleChange("credit_limit", e.target.value)}
-            required
+            {...register("credit_limit")}
+            aria-invalid={!!errors.credit_limit}
           />
-          {fieldError("credit_limit") ? (
-            <span className="text-sm text-destructive" role="alert">{fieldError("credit_limit")}</span>
-          ) : null}
-        </label>
+          <FieldError
+            errors={errors.credit_limit ? [{ message: t(errors.credit_limit.message!) }] : []}
+          />
+        </Field>
       </div>
 
-      <div>
-        <Button type="submit" disabled={submitting}>
-          {submitting ? submittingLabel : submitLabel}
-        </Button>
-      </div>
+      <Button type="submit" disabled={submitting}>
+        {submitting ? _submittingLabel : _submitLabel}
+      </Button>
     </form>
   );
 }
