@@ -1,8 +1,8 @@
-"""initial
+"""baseline
 
-Revision ID: aa111dd11c43
+Revision ID: c4def0aec005
 Revises: 
-Create Date: 2026-04-01 00:20:35.134294
+Create Date: 2026-04-05 22:47:16.777771
 """
 from collections.abc import Sequence
 
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'aa111dd11c43'
+revision: str = 'c4def0aec005'
 down_revision: str | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
