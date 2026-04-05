@@ -1,135 +1,604 @@
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 import pytest
 
+from domains.legacy_import import staging
 from domains.legacy_import.staging import (
-	DiscoveredLegacyTable,
-	discover_legacy_tables,
-	parse_legacy_row,
-	parse_manifest_rows,
-	stage_table,
+    DiscoveredLegacyTable,
+    discover_legacy_tables,
+    parse_legacy_row,
+    parse_manifest_rows,
+    stage_table,
 )
 
 
 class FakeRawStageConnection:
-	def __init__(self) -> None:
-		self.executed: list[str] = []
-		self.copy_calls: list[dict[str, object]] = []
+    def __init__(
+        self,
+        *,
+        fetch_rows_by_query: dict[str, list[dict[str, object]]] | None = None,
+        fetchvals_by_query: dict[str, object] | None = None,
+    ) -> None:
+        self.executed: list[str] = []
+        self.copy_calls: list[dict[str, object]] = []
+        self.fetch_rows_by_query = fetch_rows_by_query or {}
+        self.fetchvals_by_query = fetchvals_by_query or {}
+        self.closed = False
 
-	async def execute(self, query: str) -> str:
-		self.executed.append(query)
-		return "OK"
+    async def execute(self, query: str) -> str:
+        self.executed.append(query)
+        return "OK"
 
-	async def copy_records_to_table(
-		self,
-		table_name: str,
-		*,
-		schema_name: str | None = None,
-		columns: list[str] | tuple[str, ...] | None = None,
-		records: object,
-	) -> str:
-		rows = list(records)
-		self.copy_calls.append(
-			{
-				"table_name": table_name,
-				"schema_name": schema_name,
-				"columns": tuple(columns or ()),
-				"rows": rows,
-			}
-		)
-		return f"COPY {len(rows)}"
+    async def copy_records_to_table(
+        self,
+        table_name: str,
+        *,
+        schema_name: str | None = None,
+        columns: list[str] | tuple[str, ...] | None = None,
+        records: object,
+        timeout: float | None = None,
+    ) -> str:
+        rows = list(records)
+        self.copy_calls.append(
+            {
+                "table_name": table_name,
+                "schema_name": schema_name,
+                "columns": tuple(columns or ()),
+                "rows": rows,
+                "timeout": timeout,
+            }
+        )
+        return f"COPY {len(rows)}"
+
+    async def fetch(self, query: str, *args: object):
+        for needle, rows in self.fetch_rows_by_query.items():
+            if needle in query:
+                return rows
+        return []
+
+    async def fetchval(self, query: str, *args: object):
+        for needle, value in self.fetchvals_by_query.items():
+            if needle in query:
+                return value
+        return None
+
+    async def close(self) -> None:
+        self.closed = True
+
+
+class FakeSession:
+    def __init__(self) -> None:
+        self.added: list[object] = []
+        self.committed = False
+        self.rolled_back = False
+
+    def add(self, obj: object) -> None:
+        self.added.append(obj)
+
+    def begin(self):
+        return FakeSessionTransaction(self)
+
+    async def flush(self) -> None:
+        return None
+
+    async def commit(self) -> None:
+        self.committed = True
+
+
+class FakeSessionTransaction:
+    def __init__(self, session: FakeSession) -> None:
+        self.session = session
+
+    async def __aenter__(self) -> FakeSession:
+        return self.session
+
+    async def __aexit__(self, exc_type, exc, tb) -> bool:
+        if exc_type is None:
+            self.session.committed = True
+        else:
+            self.session.rolled_back = True
+        return False
+
+
+class FakeSessionContext:
+    def __init__(self, session: FakeSession) -> None:
+        self.session = session
+
+    async def __aenter__(self) -> FakeSession:
+        return self.session
+
+    async def __aexit__(self, exc_type, exc, tb) -> bool:
+        return False
 
 
 def test_parse_legacy_row_handles_wrapped_export_format() -> None:
-	row = parse_legacy_row('"\'1149\', \'2\', \'昌弘五金實業有限公司\'"')
+    row = parse_legacy_row("\"'1149', '2', '昌弘五金實業有限公司'\"")
 
-	assert row == ["1149", "2", "昌弘五金實業有限公司"]
+    assert row == ["1149", "2", "昌弘五金實業有限公司"]
+
+
+def test_parse_legacy_row_allows_commas_inside_quoted_fields() -> None:
+    row = parse_legacy_row("\"'1', 'ACME, LTD', 8.00000000\"")
+
+    assert row == ["1", "ACME, LTD", "8.00000000"]
+
+
+def test_parse_legacy_row_accepts_sql_escaped_quotes_and_numeric_literals() -> None:
+    row = parse_legacy_row("\"'1149', '莫''S', 0.00000000, 1, -2.5, 6.02E+23\"")
+
+    assert row == ["1149", "莫'S", "0.00000000", "1", "-2.5", "6.02E+23"]
+
+
+def test_parse_legacy_row_rejects_malformed_rows() -> None:
+    with pytest.raises(ValueError, match="Malformed legacy row"):
+        parse_legacy_row("\"'1', 'A', 'unterminated\"")
+
+    with pytest.raises(ValueError, match="Malformed legacy row"):
+        parse_legacy_row("\"'1', 'A', bad\"")
+
+
+@pytest.mark.asyncio
+async def test_open_raw_connection_disables_command_timeout(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+    sentinel = object()
+
+    async def fake_connect(*, dsn: str, command_timeout):
+        captured["dsn"] = dsn
+        captured["command_timeout"] = command_timeout
+        return sentinel
+
+    monkeypatch.setattr(staging, "_asyncpg_dsn", lambda _: "postgresql://example")
+    monkeypatch.setattr(staging.asyncpg, "connect", fake_connect)
+
+    result = await staging._open_raw_connection()
+
+    assert result is sentinel
+    assert captured == {
+        "dsn": "postgresql://example",
+        "command_timeout": None,
+    }
 
 
 def test_parse_manifest_rows_extracts_counts(tmp_path: Path) -> None:
-	manifest = tmp_path / "MANIFEST.md"
-	manifest.write_text(
-		"| Table Name | Rows | Description |\n"
-		"|------------|------|-------------|\n"
-		"| tbscust | 1,022 | Customer master |\n"
-		"| tbsstock | 6,611 | Product master |\n",
-		encoding="utf-8",
-	)
+    manifest = tmp_path / "MANIFEST.md"
+    manifest.write_text(
+        "| Table Name | Rows | Description |\n"
+        "|------------|------|-------------|\n"
+        "| tbscust | 1,022 | Customer master |\n"
+        "| tbsstock | 6,611 | Product master |\n",
+        encoding="utf-8",
+    )
 
-	counts = parse_manifest_rows(manifest)
+    counts = parse_manifest_rows(manifest)
 
-	assert counts == {"tbscust": 1022, "tbsstock": 6611}
+    assert counts == {"tbscust": 1022, "tbsstock": 6611}
 
 
 def test_discover_legacy_tables_requires_core_tables(tmp_path: Path) -> None:
-	(tmp_path / "tbscust.csv").write_text('"\'1\', \'A\'"\n', encoding="utf-8")
+    (tmp_path / "MANIFEST.md").write_text(
+        "| Table Name | Rows | Description |\n"
+        "|------------|------|-------------|\n"
+        "| tbscust | 1 | Customer master |\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "tbscust.csv").write_text("\"'1', 'A'\"\n", encoding="utf-8")
 
-	with pytest.raises(FileNotFoundError, match="Missing required legacy tables"):
-		discover_legacy_tables(tmp_path, ["tbscust", "tbsstock"])
+    with pytest.raises(FileNotFoundError, match="Missing required legacy tables"):
+        discover_legacy_tables(tmp_path, ["tbscust", "tbsstock"])
 
 
 def test_discover_legacy_tables_uses_manifest_counts(tmp_path: Path) -> None:
-	(tmp_path / "MANIFEST.md").write_text(
-		"| Table Name | Rows | Description |\n"
-		"|------------|------|-------------|\n"
-		"| tbscust | 2 | Customer master |\n"
-		"| tbsstock | 1 | Product master |\n",
-		encoding="utf-8",
-	)
-	(tmp_path / "tbscust.csv").write_text('"\'1\', \'A\'"\n"\'2\', \'B\'"\n', encoding="utf-8")
-	(tmp_path / "tbsstock.csv").write_text('"\'P001\', \'Widget\'"\n', encoding="utf-8")
+    (tmp_path / "MANIFEST.md").write_text(
+        "| Table Name | Rows | Description |\n"
+        "|------------|------|-------------|\n"
+        "| tbscust | 2 | Customer master |\n"
+        "| tbsstock | 1 | Product master |\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "tbscust.csv").write_text("\"'1', 'A'\"\n\"'2', 'B'\"\n", encoding="utf-8")
+    (tmp_path / "tbsstock.csv").write_text("\"'P001', 'Widget'\"\n", encoding="utf-8")
 
-	tables = discover_legacy_tables(tmp_path, ["tbscust", "tbsstock"])
+    tables = discover_legacy_tables(tmp_path, ["tbscust", "tbsstock"])
 
-	assert [table.table_name for table in tables] == ["tbscust", "tbsstock"]
-	assert tables[0].expected_row_count == 2
-	assert tables[1].expected_row_count == 1
+    assert [table.table_name for table in tables] == ["tbscust", "tbsstock"]
+    assert tables[0].expected_row_count == 2
+    assert tables[1].expected_row_count == 1
+
+
+def test_discover_legacy_tables_deduplicates_selected_tables(tmp_path: Path) -> None:
+    (tmp_path / "MANIFEST.md").write_text(
+        "| Table Name | Rows | Description |\n"
+        "|------------|------|-------------|\n"
+        "| tbscust | 1 | Customer master |\n"
+        "| tbsstock | 1 | Product master |\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "tbscust.csv").write_text("\"'1', 'A'\"\n", encoding="utf-8")
+    (tmp_path / "tbsstock.csv").write_text("\"'P001', 'Widget'\"\n", encoding="utf-8")
+
+    tables = discover_legacy_tables(
+        tmp_path,
+        ["tbscust", "tbsstock"],
+        selected_tables=["tbscust", "tbscust", "tbsstock"],
+    )
+
+    assert [table.table_name for table in tables] == ["tbscust", "tbsstock"]
+
+
+def test_discover_legacy_tables_fails_when_manifest_file_is_missing(tmp_path: Path) -> None:
+    (tmp_path / "tbscust.csv").write_text("\"'1', 'A'\"\n", encoding="utf-8")
+
+    with pytest.raises(FileNotFoundError, match="Legacy manifest not found or empty"):
+        discover_legacy_tables(tmp_path, ["tbscust"])
+
+
+def test_discover_legacy_tables_fails_when_manifest_listed_file_is_missing(tmp_path: Path) -> None:
+    (tmp_path / "MANIFEST.md").write_text(
+        "| Table Name | Rows | Description |\n"
+        "|------------|------|-------------|\n"
+        "| tbscust | 1 | Customer master |\n"
+        "| tbsstock | 1 | Product master |\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "tbscust.csv").write_text("\"'1', 'A'\"\n", encoding="utf-8")
+
+    with pytest.raises(FileNotFoundError, match="Missing expected legacy CSV files"):
+        discover_legacy_tables(tmp_path, ["tbscust", "tbsstock"])
+
+
+def test_discover_legacy_tables_ignores_unlisted_csv_files(tmp_path: Path) -> None:
+    (tmp_path / "MANIFEST.md").write_text(
+        "| Table Name | Rows | Description |\n"
+        "|------------|------|-------------|\n"
+        "| tbscust | 1 | Customer master |\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "tbscust.csv").write_text("\"'1', 'A'\"\n", encoding="utf-8")
+    (tmp_path / "stray.csv").write_text("\"'ignore'\"\n", encoding="utf-8")
+
+    tables = discover_legacy_tables(tmp_path, ["tbscust"])
+
+    assert [table.table_name for table in tables] == ["tbscust"]
 
 
 @pytest.mark.asyncio
 async def test_stage_table_uses_copy_records_and_lineage(tmp_path: Path) -> None:
-	data_file = tmp_path / "tbscust.csv"
-	data_file.write_text(
-		'"\'1\', \'A\', \'Alpha\'"\n"\'2\', \'B\', \'Beta\'"\n',
-		encoding="utf-8",
-	)
-	table = DiscoveredLegacyTable("tbscust", data_file, expected_row_count=2)
-	connection = FakeRawStageConnection()
+    data_file = tmp_path / "tbscust.csv"
+    data_file.write_text(
+        "\"'1', 'A', 'Alpha'\"\n\"'2', 'B', 'Beta'\"\n",
+        encoding="utf-8",
+    )
+    table = DiscoveredLegacyTable("tbscust", data_file, expected_row_count=2)
+    connection = FakeRawStageConnection()
 
-	result = await stage_table(
-		connection,
-		table=table,
-		schema_name="raw_legacy",
-		batch_id="batch-001",
-	)
+    result = await stage_table(
+        connection,
+        table=table,
+        schema_name="raw_legacy",
+        batch_id="batch-001",
+    )
 
-	assert result.row_count == 2
-	assert result.column_count == 3
-	assert any(
-		"DROP TABLE IF EXISTS \"raw_legacy\".\"tbscust\"" in query
-		for query in connection.executed
-	)
-	assert len(connection.copy_calls) == 1
-	copy_call = connection.copy_calls[0]
-	assert copy_call["table_name"] == "tbscust"
-	assert copy_call["schema_name"] == "raw_legacy"
-	first_row = copy_call["rows"][0]
-	assert first_row[0:3] == ("1", "A", "Alpha")
-	assert first_row[-4:] == (1, "batch-001", "loaded", "1")
+    assert result.row_count == 2
+    assert result.column_count == 3
+    assert any(
+        'DROP TABLE IF EXISTS "raw_legacy"."tbscust"' in query for query in connection.executed
+    )
+    assert len(connection.copy_calls) == 1
+    copy_call = connection.copy_calls[0]
+    assert copy_call["table_name"] == "tbscust"
+    assert copy_call["schema_name"] == "raw_legacy"
+    assert copy_call["timeout"] is None
+    first_row = copy_call["rows"][0]
+    assert first_row[0:3] == ("1", "A", "Alpha")
+    expected_identity = hashlib.sha256(b"tbscust\0" + b"1\x1fA\x1fAlpha\x1f").hexdigest()
+    assert first_row[-4:-1] == (1, "batch-001", "loaded")
+    assert first_row[-1] == expected_identity
+    assert not any("INSERT INTO" in query for query in connection.executed)
+
+
+@pytest.mark.asyncio
+async def test_stage_table_batches_large_copy_operations(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    data_file = tmp_path / "tbscust.csv"
+    data_file.write_text(
+        "\"'1', 'A'\"\n\"'2', 'B'\"\n",
+        encoding="utf-8",
+    )
+    table = DiscoveredLegacyTable("tbscust", data_file, expected_row_count=2)
+    connection = FakeRawStageConnection()
+
+    monkeypatch.setattr(staging, "_STAGE_COPY_BATCH_SIZE", 1)
+
+    await stage_table(
+        connection,
+        table=table,
+        schema_name="raw_legacy",
+        batch_id="batch-001",
+    )
+
+    assert len(connection.copy_calls) == 2
+    assert all(copy_call["timeout"] is None for copy_call in connection.copy_calls)
 
 
 @pytest.mark.asyncio
 async def test_stage_table_fails_on_manifest_row_count_mismatch(tmp_path: Path) -> None:
-	data_file = tmp_path / "tbscust.csv"
-	data_file.write_text('"\'1\', \'A\'"\n', encoding="utf-8")
-	table = DiscoveredLegacyTable("tbscust", data_file, expected_row_count=2)
+    data_file = tmp_path / "tbscust.csv"
+    data_file.write_text("\"'1', 'A'\"\n", encoding="utf-8")
+    table = DiscoveredLegacyTable("tbscust", data_file, expected_row_count=2)
 
-	with pytest.raises(ValueError, match="Manifest row count mismatch"):
-		await stage_table(
-			FakeRawStageConnection(),
-			table=table,
-			schema_name="raw_legacy",
-			batch_id="batch-001",
-		)
+    with pytest.raises(ValueError, match="Manifest row count mismatch"):
+        await stage_table(
+            FakeRawStageConnection(),
+            table=table,
+            schema_name="raw_legacy",
+            batch_id="batch-001",
+        )
+
+
+@pytest.mark.asyncio
+async def test_run_stage_import_drops_stale_tables_from_previous_batch(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    data_file = tmp_path / "tbscust.csv"
+    data_file.write_text("\"'1', 'A'\"\n", encoding="utf-8")
+    connection = FakeRawStageConnection()
+    session = FakeSession()
+
+    monkeypatch.setattr(staging, "AsyncSessionLocal", lambda: FakeSessionContext(session))
+    monkeypatch.setattr(
+        staging,
+        "discover_legacy_tables",
+        lambda *args, **kwargs: [DiscoveredLegacyTable("tbscust", data_file, expected_row_count=1)],
+    )
+
+    async def fake_load_existing_batch_table_names(*args, **kwargs) -> tuple[str, ...]:
+        return ("tbsstock",)
+
+    async def fake_next_batch_attempt_number(*args, **kwargs) -> int:
+        return 1
+
+    async def fake_raw_stage_connection_from_session(*args, **kwargs) -> FakeRawStageConnection:
+        return connection
+
+    async def fake_stage_table(*args, **kwargs) -> staging.StageTableResult:
+        return staging.StageTableResult(
+            table_name="tbscust",
+            row_count=1,
+            column_count=2,
+            source_file="tbscust.csv",
+        )
+
+    monkeypatch.setattr(
+        staging,
+        "_load_existing_batch_table_names",
+        fake_load_existing_batch_table_names,
+    )
+    monkeypatch.setattr(staging, "_next_batch_attempt_number", fake_next_batch_attempt_number)
+    monkeypatch.setattr(
+        staging,
+        "_raw_stage_connection_from_session",
+        fake_raw_stage_connection_from_session,
+    )
+    monkeypatch.setattr(staging, "stage_table", fake_stage_table)
+
+    result = await staging.run_stage_import(
+        batch_id="batch-001",
+        source_dir=tmp_path,
+        selected_tables=("tbscust",),
+    )
+
+    assert any(
+        'DROP TABLE IF EXISTS "raw_legacy"."tbsstock" CASCADE' == query
+        for query in connection.executed
+    )
+    assert result.tables == (
+        staging.StageTableResult(
+            table_name="tbscust",
+            row_count=1,
+            column_count=2,
+            source_file="tbscust.csv",
+        ),
+    )
+    assert session.added[0].attempt_number == 1
+    assert session.committed is True
+
+
+@pytest.mark.asyncio
+async def test_run_stage_import_records_failed_attempt_after_rollback(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    data_file = tmp_path / "tbscust.csv"
+    data_file.write_text("\"'1', 'A'\"\n", encoding="utf-8")
+    connection = FakeRawStageConnection()
+    main_session = FakeSession()
+    failure_session = FakeSession()
+    sessions = iter([main_session, failure_session])
+
+    monkeypatch.setattr(
+        staging,
+        "AsyncSessionLocal",
+        lambda: FakeSessionContext(next(sessions)),
+    )
+    monkeypatch.setattr(
+        staging,
+        "discover_legacy_tables",
+        lambda *args, **kwargs: [
+            DiscoveredLegacyTable("tbscust", data_file, expected_row_count=1),
+            DiscoveredLegacyTable("tbsstock", data_file, expected_row_count=1),
+        ],
+    )
+
+    async def fake_load_existing_batch_table_names(*args, **kwargs) -> tuple[str, ...]:
+        return ()
+
+    async def fake_next_batch_attempt_number(*args, **kwargs) -> int:
+        return 3
+
+    async def fake_raw_stage_connection_from_session(*args, **kwargs) -> FakeRawStageConnection:
+        return connection
+
+    async def fake_stage_table(
+        connection: FakeRawStageConnection,
+        *,
+        table: DiscoveredLegacyTable,
+        schema_name: str,
+        batch_id: str,
+    ) -> staging.StageTableResult:
+        if table.table_name == "tbsstock":
+            raise ValueError("Malformed legacy row in tbsstock.csv at line 1")
+        return staging.StageTableResult(
+            table_name=table.table_name,
+            row_count=1,
+            column_count=2,
+            source_file=table.csv_path.name,
+        )
+
+    monkeypatch.setattr(
+        staging,
+        "_load_existing_batch_table_names",
+        fake_load_existing_batch_table_names,
+    )
+    monkeypatch.setattr(staging, "_next_batch_attempt_number", fake_next_batch_attempt_number)
+    monkeypatch.setattr(
+        staging,
+        "_raw_stage_connection_from_session",
+        fake_raw_stage_connection_from_session,
+    )
+    monkeypatch.setattr(staging, "stage_table", fake_stage_table)
+
+    with pytest.raises(ValueError, match="Malformed legacy row"):
+        await staging.run_stage_import(batch_id="batch-001", source_dir=tmp_path)
+
+    assert main_session.rolled_back is True
+    assert failure_session.committed is True
+    failed_run = next(
+        obj for obj in failure_session.added if getattr(obj, "status", None) == "failed"
+    )
+    assert failed_run.attempt_number == 3
+    assert failed_run.error_message == "Malformed legacy row in tbsstock.csv at line 1"
+
+
+@pytest.mark.asyncio
+async def test_run_stage_import_records_deduped_requested_tables(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    data_file = tmp_path / "tbscust.csv"
+    data_file.write_text("\"'1', 'A'\"\n", encoding="utf-8")
+    connection = FakeRawStageConnection()
+    session = FakeSession()
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(staging, "AsyncSessionLocal", lambda: FakeSessionContext(session))
+
+    def fake_discover_legacy_tables(*args, **kwargs):
+        captured["selected_tables"] = kwargs.get("selected_tables", args[2])
+        return [DiscoveredLegacyTable("tbscust", data_file, expected_row_count=1)]
+
+    async def fake_load_existing_batch_table_names(*args, **kwargs) -> tuple[str, ...]:
+        return ()
+
+    async def fake_next_batch_attempt_number(*args, **kwargs) -> int:
+        return 1
+
+    async def fake_raw_stage_connection_from_session(*args, **kwargs) -> FakeRawStageConnection:
+        return connection
+
+    async def fake_stage_table(*args, **kwargs) -> staging.StageTableResult:
+        return staging.StageTableResult(
+            table_name="tbscust",
+            row_count=1,
+            column_count=2,
+            source_file="tbscust.csv",
+        )
+
+    monkeypatch.setattr(staging, "discover_legacy_tables", fake_discover_legacy_tables)
+    monkeypatch.setattr(
+        staging,
+        "_load_existing_batch_table_names",
+        fake_load_existing_batch_table_names,
+    )
+    monkeypatch.setattr(staging, "_next_batch_attempt_number", fake_next_batch_attempt_number)
+    monkeypatch.setattr(
+        staging,
+        "_raw_stage_connection_from_session",
+        fake_raw_stage_connection_from_session,
+    )
+    monkeypatch.setattr(staging, "stage_table", fake_stage_table)
+
+    result = await staging.run_stage_import(
+        batch_id="batch-001",
+        source_dir=tmp_path,
+        selected_tables=("tbscust", "tbscust"),
+    )
+
+    assert captured["selected_tables"] == ("tbscust",)
+    assert session.added[0].requested_tables == ["tbscust"]
+    assert result.tables == (
+        staging.StageTableResult(
+            table_name="tbscust",
+            row_count=1,
+            column_count=2,
+            source_file="tbscust.csv",
+        ),
+    )
+    assert session.added[0].attempt_number == 1
+
+
+@pytest.mark.asyncio
+async def test_stage_table_fails_on_purchase_supplier_fk_violation(tmp_path: Path) -> None:
+    data_file = tmp_path / "tbsslipj.csv"
+    data_file.write_text(
+        '"\'1\', \'PO-001\', \'2024-08-01\', \'X\', \'X\', \'X\', \'BADSUP\'"\n',
+        encoding="utf-8",
+    )
+    table = DiscoveredLegacyTable("tbsslipj", data_file, expected_row_count=1)
+    connection = FakeRawStageConnection(
+        fetchvals_by_query={"to_regclass": "raw_legacy.tbscust"},
+        fetch_rows_by_query={
+            'FROM "raw_legacy"."tbsslipj"': [{"missing_value": "BADSUP"}],
+        },
+    )
+
+    with pytest.raises(ValueError, match="fk_violation: supplier_code"):
+        await stage_table(
+            connection,
+            table=table,
+            schema_name="raw_legacy",
+            batch_id="batch-016",
+        )
+
+
+@pytest.mark.asyncio
+async def test_stage_table_records_payment_fk_warnings_without_aborting(tmp_path: Path) -> None:
+    data_file = tmp_path / "tbsspay.csv"
+    data_file.write_text(
+        '"\'1\', \'PAY-001\', \'0\', \'2016-04-28\', \'YYYMMDD999\', \'MISSING\', \'Unknown\'"\n',
+        encoding="utf-8",
+    )
+    table = DiscoveredLegacyTable("tbsspay", data_file, expected_row_count=1)
+    connection = FakeRawStageConnection(
+        fetchvals_by_query={"to_regclass": "raw_legacy.tbscust"},
+        fetch_rows_by_query={
+            'FROM "raw_legacy"."tbsspay"': [{"missing_value": "MISSING"}],
+        },
+    )
+
+    result = await stage_table(
+        connection,
+        table=table,
+        schema_name="raw_legacy",
+        batch_id="batch-016",
+    )
+
+    assert result.table_name == "tbsspay"
+    assert result.row_count == 1
+    assert result.column_count == 7
+    assert result.validation_message == "fk_warning: customer_code -> tbscust [MISSING]"
