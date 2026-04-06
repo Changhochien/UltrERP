@@ -19,33 +19,15 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    supplier_payment_kind_enum = sa.Enum(
-        "prepayment",
-        "special_payment",
-        "adjustment",
-        name="supplier_payment_kind_enum",
-        create_constraint=True,
+    op.execute(
+        "CREATE TYPE supplier_payment_kind_enum AS ENUM ('prepayment', 'special_payment', 'adjustment')"
     )
-    supplier_payment_kind_enum.create(op.get_bind(), checkfirst=True)
-
-    supplier_payment_status_enum = sa.Enum(
-        "unapplied",
-        "partially_applied",
-        "applied",
-        "voided",
-        name="supplier_payment_status_enum",
-        create_constraint=True,
+    op.execute(
+        "CREATE TYPE supplier_payment_status_enum AS ENUM ('unapplied', 'partially_applied', 'applied', 'voided')"
     )
-    supplier_payment_status_enum.create(op.get_bind(), checkfirst=True)
-
-    supplier_payment_allocation_kind_enum = sa.Enum(
-        "invoice_settlement",
-        "prepayment_application",
-        "reversal",
-        name="supplier_payment_allocation_kind_enum",
-        create_constraint=True,
+    op.execute(
+        "CREATE TYPE supplier_payment_allocation_kind_enum AS ENUM ('invoice_settlement', 'prepayment_application', 'reversal')"
     )
-    supplier_payment_allocation_kind_enum.create(op.get_bind(), checkfirst=True)
 
     op.create_table(
         "supplier_payments",
@@ -176,30 +158,6 @@ def downgrade() -> None:
     op.drop_index("ix_supplier_payments_tenant_id", table_name="supplier_payments")
     op.drop_table("supplier_payments")
 
-    supplier_payment_allocation_kind_enum = sa.Enum(
-        "invoice_settlement",
-        "prepayment_application",
-        "reversal",
-        name="supplier_payment_allocation_kind_enum",
-        create_constraint=True,
-    )
-    supplier_payment_allocation_kind_enum.drop(op.get_bind(), checkfirst=True)
-
-    supplier_payment_status_enum = sa.Enum(
-        "unapplied",
-        "partially_applied",
-        "applied",
-        "voided",
-        name="supplier_payment_status_enum",
-        create_constraint=True,
-    )
-    supplier_payment_status_enum.drop(op.get_bind(), checkfirst=True)
-
-    supplier_payment_kind_enum = sa.Enum(
-        "prepayment",
-        "special_payment",
-        "adjustment",
-        name="supplier_payment_kind_enum",
-        create_constraint=True,
-    )
-    supplier_payment_kind_enum.drop(op.get_bind(), checkfirst=True)
+    op.execute("DROP TYPE IF EXISTS supplier_payment_allocation_kind_enum")
+    op.execute("DROP TYPE IF EXISTS supplier_payment_status_enum")
+    op.execute("DROP TYPE IF EXISTS supplier_payment_kind_enum")

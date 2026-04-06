@@ -20,14 +20,9 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    supplier_invoice_status_enum = sa.Enum(
-        "open",
-        "paid",
-        "voided",
-        name="supplier_invoice_status_enum",
-        create_constraint=True,
+    op.execute(
+        "CREATE TYPE supplier_invoice_status_enum AS ENUM ('open', 'paid', 'voided')"
     )
-    supplier_invoice_status_enum.create(op.get_bind(), checkfirst=True)
 
     op.create_table(
         "supplier_invoices",
@@ -144,11 +139,4 @@ def downgrade() -> None:
     op.drop_index("ix_supplier_invoices_tenant_id", table_name="supplier_invoices")
     op.drop_table("supplier_invoices")
 
-    supplier_invoice_status_enum = sa.Enum(
-        "open",
-        "paid",
-        "voided",
-        name="supplier_invoice_status_enum",
-        create_constraint=True,
-    )
-    supplier_invoice_status_enum.drop(op.get_bind(), checkfirst=True)
+    op.execute("DROP TYPE IF EXISTS supplier_invoice_status_enum")
