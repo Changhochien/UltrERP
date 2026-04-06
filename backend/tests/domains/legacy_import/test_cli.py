@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from domains.legacy_import import cli
+from domains.legacy_import.ap_payment_import import SupplierPaymentImportResult
 from domains.legacy_import.currency import CurrencyImportResult
 from domains.legacy_import.mapping import (
     ProductMappingBatchResult,
@@ -169,6 +170,31 @@ def test_currency_import_cli_invokes_import(monkeypatch, capsys, tmp_path: Path)
     assert result == 0
     assert "Imported 6 currencies" in output
     assert "default=TWD" in output
+
+
+def test_ap_payment_import_cli_invokes_import(monkeypatch, capsys) -> None:
+    async def fake_run_ap_payment_import(**kwargs):
+        assert kwargs["batch_id"] == "batch-201"
+        assert kwargs["schema_name"] is None
+        return SupplierPaymentImportResult(
+            batch_id="batch-201",
+            schema_name="raw_legacy",
+            attempt_number=2,
+            payment_count=1,
+            allocation_count=0,
+            holding_count=5,
+            lineage_count=1,
+        )
+
+    monkeypatch.setattr(cli, "run_ap_payment_import", fake_run_ap_payment_import)
+
+    result = cli.main(["ap-payment-import", "--batch-id", "batch-201"])
+    output = capsys.readouterr().out
+
+    assert result == 0
+    assert "AP payment imported batch batch-201" in output
+    assert "payments=1" in output
+    assert "holding=5" in output
 
 
 def test_validate_import_cli_invokes_validation(monkeypatch, capsys, tmp_path: Path) -> None:

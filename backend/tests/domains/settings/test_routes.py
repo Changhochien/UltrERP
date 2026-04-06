@@ -82,7 +82,7 @@ async def test_get_settings_returns_all_settings() -> None:
 
     prev = setup_session(session)
     try:
-        resp = await http_get("/api/v1/settings/", headers=auth_header("admin"))
+        resp = await http_get("/api/v1/settings", headers=auth_header("admin"))
         assert resp.status_code == 200
         sections: list[dict] = resp.json()
         # Should contain multiple categories
@@ -96,12 +96,25 @@ async def test_get_settings_returns_all_settings() -> None:
         teardown_session(prev)
 
 
+async def test_get_settings_with_trailing_slash_returns_all_settings() -> None:
+    """GET /api/v1/settings/ as admin returns 200 without requiring a redirect."""
+    session = FakeAsyncSession()
+    session.queue_scalars([])
+
+    prev = setup_session(session)
+    try:
+        resp = await http_get("/api/v1/settings/", headers=auth_header("admin"))
+        assert resp.status_code == 200
+    finally:
+        teardown_session(prev)
+
+
 async def test_settings_page_redirects_for_sales() -> None:
     """GET /api/v1/settings as sales returns 403."""
     session = FakeAsyncSession()
     prev = setup_session(session)
     try:
-        resp = await http_get("/api/v1/settings/", headers=auth_header("sales"))
+        resp = await http_get("/api/v1/settings", headers=auth_header("sales"))
         assert resp.status_code == 403
     finally:
         teardown_session(prev)

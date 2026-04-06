@@ -92,6 +92,10 @@ class FakeCanonicalConnection:
             ]
         return []
 
+    async def fetchrow(self, query: str, *args: object):
+        rows = await self.fetch(query, *args)
+        return rows[0] if rows else None
+
     async def fetchval(self, query: str, *args: object):
         if "MAX(attempt_number)" in query:
             return 0
@@ -132,6 +136,16 @@ def _args_for_queries(
     return [args for query, args in execute_calls if needle in query]
 
 
+class RawPurchaseHeaderConnection:
+    def __init__(self, rows: list[dict[str, object]]) -> None:
+        self.rows = rows
+        self.queries: list[str] = []
+
+    async def fetch(self, query: str, *args: object):
+        self.queries.append(query)
+        return self.rows
+
+
 @pytest.mark.asyncio
 async def test_ensure_canonical_support_tables_create_run_lineage_and_holding_tables() -> None:
     connection = FakeCanonicalConnection({})
@@ -143,6 +157,51 @@ async def test_ensure_canonical_support_tables_create_run_lineage_and_holding_ta
     assert 'CREATE TABLE IF NOT EXISTS "raw_legacy".canonical_import_step_runs' in ddl
     assert 'CREATE TABLE IF NOT EXISTS "raw_legacy".canonical_record_lineage' in ddl
     assert 'CREATE TABLE IF NOT EXISTS "raw_legacy".unsupported_history_holding' in ddl
+
+
+@pytest.mark.asyncio
+async def test_fetch_purchase_headers_prefers_invoice_number_and_invoice_date() -> None:
+    connection = RawPurchaseHeaderConnection(
+        [
+            {
+                "doc_number": "1130827001",
+                "invoice_number": "GG46104158",
+                "invoice_date": "2024-08-26",
+                "supplier_code": "T067",
+                "supplier_name": "Supplier A",
+                "address": "Taoyuan",
+                "currency_code": "0001",
+                "subtotal": "90.00",
+                "tax_amount": "5.00",
+                "notes": "SQ04",
+                "total_amount": "95.00",
+                "source_row_number": 17,
+            }
+        ]
+    )
+
+    rows = await canonical._fetch_purchase_headers(connection, "raw_legacy", "batch-ap")
+
+    assert connection.queries
+    assert "AS invoice_number" in connection.queries[0]
+    assert "col_42" in connection.queries[0]
+    assert "col_62" in connection.queries[0]
+    assert rows == [
+        {
+            "doc_number": "1130827001",
+            "invoice_number": "GG46104158",
+            "invoice_date": "2024-08-26",
+            "supplier_code": "T067",
+            "supplier_name": "Supplier A",
+            "address": "Taoyuan",
+            "currency_code": "0001",
+            "subtotal": "90.00",
+            "tax_amount": "5.00",
+            "notes": "SQ04",
+            "total_amount": "95.00",
+            "source_row_number": 17,
+        }
+    ]
 
 
 @pytest.mark.asyncio
@@ -607,10 +666,12 @@ async def test_run_canonical_import_imports_purchase_history_into_supplier_invoi
             "purchase_headers": [
                 {
                     "doc_number": "1130827001",
+                    "invoice_number": "GG46104158",
                     "invoice_date": "2024-08-27",
                     "supplier_code": "T067",
                     "supplier_name": "Supplier A",
                     "address": "Taoyuan",
+                    "notes": "SQ04",
                     "subtotal": "90.00",
                     "tax_amount": "5.00",
                     "total_amount": "95.00",
@@ -645,6 +706,11 @@ async def test_run_canonical_import_imports_purchase_history_into_supplier_invoi
     assert result.holding_count == 0
     assert any("INSERT INTO supplier" in query for query, _ in connection.execute_calls)
     assert any("INSERT INTO supplier_invoices" in query for query, _ in connection.execute_calls)
+    supplier_invoice_args = next(
+        args for query, args in connection.execute_calls if "INSERT INTO supplier_invoices" in query
+    )
+    assert supplier_invoice_args[3] == "GG46104158"
+    assert supplier_invoice_args[9] == "SQ04"
     assert any(
         "INSERT INTO supplier_invoice_lines" in query for query, _ in connection.execute_calls
     )

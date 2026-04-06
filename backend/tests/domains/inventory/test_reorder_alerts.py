@@ -115,9 +115,9 @@ def _teardown(previous: Any) -> None:
         app.dependency_overrides[get_db] = previous
 
 
-async def _get(path: str) -> Any:
+async def _get(path: str, *, role: str = "owner") -> Any:
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test", headers=auth_header()) as c:
+    async with AsyncClient(transport=transport, base_url="http://test", headers=auth_header(role)) as c:
         return await c.get(path)
 
 
@@ -192,6 +192,24 @@ async def test_list_alerts_returns_items() -> None:
         assert item["status"] == "pending"
     finally:
         _teardown(prev)
+
+
+async def test_list_alerts_allows_admin_role() -> None:
+    session = FakeAsyncSession()
+    session.queue_result(FakeResult(scalar_val=0))
+    session.queue_result(FakeResult(rows=[]))
+
+    prev = _setup(session)
+    try:
+        resp = await _get("/api/v1/inventory/alerts/reorder", role="admin")
+        assert resp.status_code == 200
+    finally:
+        _teardown(prev)
+
+
+async def test_list_alerts_rejects_finance_role() -> None:
+    resp = await _get("/api/v1/inventory/alerts/reorder", role="finance")
+    assert resp.status_code == 403
 
 
 async def test_list_alerts_with_status_filter() -> None:

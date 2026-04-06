@@ -577,6 +577,30 @@ async def test_stage_table_fails_on_purchase_supplier_fk_violation(tmp_path: Pat
 
 
 @pytest.mark.asyncio
+async def test_stage_table_fails_on_purchase_line_header_fk_violation(tmp_path: Path) -> None:
+    data_file = tmp_path / "tbsslipdtj.csv"
+    data_file.write_text(
+        '"\'1\', \'PO-001\', \'1\', \'X\', \'X\', \'P001\'"\n',
+        encoding="utf-8",
+    )
+    table = DiscoveredLegacyTable("tbsslipdtj", data_file, expected_row_count=1)
+    connection = FakeRawStageConnection(
+        fetchvals_by_query={"to_regclass": "raw_legacy.tbsslipj"},
+        fetch_rows_by_query={
+            'FROM "raw_legacy"."tbsslipdtj"': [{"missing_value": "PO-001"}],
+        },
+    )
+
+    with pytest.raises(ValueError, match="fk_violation: doc_number"):
+        await stage_table(
+            connection,
+            table=table,
+            schema_name="raw_legacy",
+            batch_id="batch-016",
+        )
+
+
+@pytest.mark.asyncio
 async def test_stage_table_records_payment_fk_warnings_without_aborting(tmp_path: Path) -> None:
     data_file = tmp_path / "tbsspay.csv"
     data_file.write_text(

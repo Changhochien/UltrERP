@@ -57,6 +57,16 @@ class FakeValidationConnection:
         self.closed = True
 
 
+class CutoffQueryConnection:
+    def __init__(self, rows: list[dict[str, object]]) -> None:
+        self.rows = rows
+        self.queries: list[str] = []
+
+    async def fetch(self, query: str, *args: object):
+        self.queries.append(query)
+        return self.rows
+
+
 @pytest.mark.asyncio
 async def test_validate_import_batch_blocks_on_severity1_and_keeps_severity2_visible(
     monkeypatch,
@@ -542,6 +552,23 @@ async def test_fetch_cutoff_date_normalizes_legacy_numeric_dates() -> None:
     result = await validation._fetch_cutoff_date(connection, "raw_legacy", "batch-155")
 
     assert result == "2024-08-26"
+
+
+@pytest.mark.asyncio
+async def test_fetch_cutoff_date_uses_purchase_invoice_date_fallback_query() -> None:
+    connection = CutoffQueryConnection(
+        [
+            {"invoice_date_raw": "2024-09-25"},
+            {"invoice_date_raw": "2024-09-26"},
+        ]
+    )
+
+    result = await validation._fetch_cutoff_date(connection, "raw_legacy", "batch-155")
+
+    assert connection.queries
+    assert "col_62" in connection.queries[0]
+    assert "1900-01-01" in connection.queries[0]
+    assert result == "2024-09-26"
 
 
 @pytest.mark.asyncio
