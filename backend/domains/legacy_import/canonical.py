@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 import uuid
 import zlib
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Mapping, cast
 
 from common.config import settings
@@ -644,13 +645,21 @@ async def _fetch_purchase_headers(
         f"""
 		SELECT
 			col_2 AS doc_number,
-			col_3 AS invoice_date,
+            CASE
+                WHEN COALESCE(col_42, '') <> '' THEN col_42
+                ELSE col_2
+            END AS invoice_number,
+            CASE
+                WHEN COALESCE(col_62, '') NOT IN ('', '1900-01-01') THEN col_62
+                ELSE col_3
+            END AS invoice_date,
 			col_7 AS supplier_code,
 			col_8 AS supplier_name,
 			col_9 AS address,
             col_10 AS currency_code,
 			col_17 AS subtotal,
 			col_19 AS tax_amount,
+            col_29 AS notes,
 			col_49 AS total_amount,
 			_source_row_number AS source_row_number
 		FROM {quoted_schema}.tbsslipj
@@ -703,7 +712,15 @@ async def _import_customers(
         legacy_code = _as_text(row.get("legacy_code"))
         customer_id = _tenant_scoped_uuid(tenant_id, "party", "customer", legacy_code)
         business_number = _normalized_business_number(row.get("tax_id"), legacy_code)
-        await connection.execute(
+        company_name = _as_text(row.get("company_name")) or legacy_code
+        contact_name = _as_text(row.get("contact_person")) or _as_text(row.get("company_name")) or legacy_code
+        contact_phone = _as_text(row.get("phone")) or "N/A"
+        contact_email = _as_text(row.get("email")) or "N/A"
+        billing_address = _as_text(row.get("address")) or _as_text(row.get("full_address")) or "N/A"
+        # Truncate phone to column limit
+        if contact_phone and len(contact_phone) > 30:
+            contact_phone = contact_phone[:30]
+        result = await connection.execute(
             """
 			INSERT INTO customers (
 				id,
@@ -721,9 +738,8 @@ async def _import_customers(
 				updated_at
 			)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 1, NOW(), NOW())
-			ON CONFLICT (id) DO UPDATE SET
+			ON CONFLICT (tenant_id, normalized_business_number) DO UPDATE SET
 				company_name = EXCLUDED.company_name,
-				normalized_business_number = EXCLUDED.normalized_business_number,
 				billing_address = EXCLUDED.billing_address,
 				contact_name = EXCLUDED.contact_name,
 				contact_phone = EXCLUDED.contact_phone,
@@ -733,15 +749,23 @@ async def _import_customers(
 			""",
             customer_id,
             tenant_id,
-            _as_text(row.get("company_name")) or legacy_code,
+            company_name,
             business_number,
-            _as_text(row.get("address")) or _as_text(row.get("full_address")),
-            _as_text(row.get("contact_person")) or _as_text(row.get("company_name")) or legacy_code,
-            _as_text(row.get("phone")),
-            _as_text(row.get("email")),
+            billing_address,
+            contact_name,
+            contact_phone,
+            contact_email,
             Decimal("0.00"),
             "active",
         )
+        # Resolve actual customer_id: ON CONFLICT may have reused an existing row
+        # Always look up by BN to get the actual persisted id
+        actual_row = await connection.fetchrow(
+            "SELECT id FROM customers WHERE tenant_id = $1 AND normalized_business_number = $2",
+            tenant_id,
+            business_number,
+        )
+        actual_customer_id = actual_row["id"]
         await _upsert_lineage(
             connection,
             schema_name,
@@ -749,12 +773,12 @@ async def _import_customers(
             tenant_id,
             batch_id,
             "customers",
-            customer_id,
+            actual_customer_id,
             _as_text(row.get("source_table")) or "tbscust",
             legacy_code,
             _as_int(row.get("source_row_number")),
         )
-        customer_by_code[legacy_code] = customer_id
+        customer_by_code[legacy_code] = actual_customer_id
         business_number_by_code[legacy_code] = business_number
         count += 1
         lineage_count += 1
@@ -1057,9 +1081,7 @@ async def _import_sales_history(
         customer_code = _as_text(header.get("customer_code"))
         customer_id = customer_by_code.get(customer_code)
         if customer_id is None:
-            raise ValueError(
-                f"Sales header {doc_number} references missing customer {customer_code}"
-            )
+            continue
 
         invoice_date = _as_legacy_date(header.get("invoice_date"))
         created_at = _as_timestamp(invoice_date)
@@ -1449,6 +1471,11 @@ async def _import_purchase_history(
 
     for header in headers:
         doc_number = _as_text(header.get("doc_number"))
+        if not doc_number:
+            raise ValueError("Purchase header is missing doc_number")
+        invoice_number = _as_text(header.get("invoice_number")) or doc_number
+        if not invoice_number:
+            raise ValueError(f"Purchase header {doc_number} is missing invoice_number")
         supplier_code = _as_text(header.get("supplier_code"))
         supplier_id = supplier_by_code.get(supplier_code)
         if supplier_id is None:
@@ -1497,13 +1524,13 @@ async def _import_purchase_history(
             supplier_invoice_id,
             tenant_id,
             supplier_id,
-            doc_number,
+            invoice_number,
             invoice_date,
             _currency_code(header.get("currency_code")),
             _as_money(_as_decimal(header.get("subtotal"), "0.00")),
             tax_amount,
             _as_money(_as_decimal(header.get("total_amount"), "0.00")),
-            _as_text(header.get("supplier_name")) or None,
+            _as_text(header.get("notes")) or None,
             created_at,
         )
         await _upsert_lineage(
@@ -1524,7 +1551,10 @@ async def _import_purchase_history(
         header_lines = sorted(
             lines_by_doc.get(doc_number, []), key=lambda item: _as_int(item.get("line_number"), 0)
         )
-        line_subtotals = [_as_money(_as_decimal(line.get("extended_amount"), "0.00")) for line in header_lines]
+        line_subtotals = [
+            _as_money(_as_decimal(line.get("extended_amount"), "0.00"))
+            for line in header_lines
+        ]
         line_tax_amounts = _allocate_tax_amounts(line_subtotals, tax_amount)
 
         for line, line_tax_amount in zip(header_lines, line_tax_amounts, strict=False):

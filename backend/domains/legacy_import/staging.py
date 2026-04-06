@@ -462,7 +462,11 @@ async def _validate_staged_table(
         return None
 
     if table_name == "tbsslipdtj":
-        if not await _stage_table_exists(connection, schema_name=schema_name, table_name="tbsslipj"):
+        if not await _stage_table_exists(
+            connection,
+            schema_name=schema_name,
+            table_name="tbsslipj",
+        ):
             return "fk_validation_skipped: tbsslipj not staged"
 
         rows = await connection.fetch(

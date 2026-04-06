@@ -65,7 +65,6 @@ class SQLDumpParser:
         Parse VALUES clause into rows.
         Yields each row as a list of values.
         """
-        rows = []
         depth = 0
         current_row = []
         current_value = ""
@@ -75,7 +74,6 @@ class SQLDumpParser:
 
         while i < len(values_str):
             char = values_str[i]
-            prev_char = values_str[i - 1] if i > 0 else ""
 
             # String handling - check for escaped quotes
             if char in ("'", '"'):

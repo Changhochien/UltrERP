@@ -564,7 +564,10 @@ async def _fetch_cutoff_date(connection, schema_name: str, batch_id: str) -> str
 		FROM {quoted_schema}.tbsslipx
 		WHERE _batch_id = $1
 		UNION ALL
-		SELECT col_3 AS invoice_date_raw
+        SELECT CASE
+            WHEN COALESCE(col_62, '') NOT IN ('', '1900-01-01') THEN col_62
+            ELSE col_3
+        END AS invoice_date_raw
 		FROM {quoted_schema}.tbsslipj
 		WHERE _batch_id = $1
 		""",
