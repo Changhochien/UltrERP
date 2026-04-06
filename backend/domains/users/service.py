@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -119,7 +119,7 @@ async def update_user(
 
 async def get_user_by_email(session: AsyncSession, email: str) -> User | None:
     stmt = select(User).where(
-        User.email == email,
+        func.lower(User.email) == email.lower(),
         User.tenant_id == DEFAULT_TENANT_ID,
     )
     result = await session.execute(stmt)

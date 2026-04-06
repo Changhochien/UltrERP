@@ -19,7 +19,8 @@ DbSession = Annotated[AsyncSession, Depends(get_db)]
 CurrentUser = Annotated[dict, Depends(require_role("owner", "admin", "finance"))]
 
 
-@router.get("/", response_model=list[SettingSection])
+@router.get("", response_model=list[SettingSection])
+@router.get("/", response_model=list[SettingSection], include_in_schema=False)
 async def list_settings(db: DbSession) -> list[SettingSection]:
     """List all settings grouped by category."""
     return await get_all_settings(db)

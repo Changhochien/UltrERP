@@ -41,7 +41,7 @@ async function responseErrorMessage(
 }
 
 export async function getSettings(): Promise<SettingsCategory[]> {
-  const resp = await apiFetch("/api/v1/settings");
+  const resp = await apiFetch("/api/v1/settings/");
   if (!resp.ok) {
     throw new Error(await responseErrorMessage(resp, "Failed to load settings"));
   }
