@@ -10,17 +10,17 @@ So that historical purchase order data is available in UltrERP alongside sales o
 
 ## Acceptance Criteria
 
-**AC1:** Purchase order headers land in the canonical orders table  
+**AC1:** Supplier invoice headers land in the canonical supplier_invoices table  
 **Given** normalized purchase master data from Story 16.2 is available  
 **When** the canonical import step runs for a batch that includes purchase orders  
-**Then** each tbsslipj header row is upserted into `orders` using doc_number as order_number  
+**Then** each tbsslipj header row is upserted into `supplier_invoices` using doc_number as invoice_number  
 **And** supplier_code is resolved through the tbscust→canonical customer mapping  
-**And** every canonical order retains lineage back to `tbsslipj` and source doc_number  
+**And** every supplier invoice retains lineage back to `tbsslipj` and source doc_number  
 
-**AC2:** Purchase order lines land in order_lines  
-**Given** a canonical purchase order header has been written  
+**AC2:** Supplier invoice lines land in supplier_invoice_lines  
+**Given** a canonical supplier invoice header has been written  
 **When** the canonical import step processes purchase order lines  
-**Then** each tbsslipdtj row is upserted into `order_lines` linked to the canonical order  
+**Then** each tbsslipdtj row is upserted into `supplier_invoice_lines` linked to the canonical supplier_invoice  
 **And** product_code is resolved through the tbsslipdtj→product mapping from Story 16.3  
 **And** lineage is written to `canonical_record_lineage` with source_table=`tbsslipdtj`  
 
@@ -65,22 +65,22 @@ So that historical purchase order data is available in UltrERP alongside sales o
 
 ### Repo Reality
 
-- The `orders` table does not have an `order_type` column; sales and purchase orders both land in the same table.
-- The canonical import layer distinguishes purchase vs. sales through source_table lineage and the originating staging table (tbsslipj vs. tbsslipx).
-- `run_canonical_import` already calls `_fetch_purchase_headers` and `_fetch_purchase_lines` when tbsslipj/tbsslipdtj exist in the staging schema.
+- tbsslipj and tbsslipdtj (purchase/journal) records land in `supplier_invoices` and `supplier_invoice_lines`, not the `orders`/`order_lines` table used for sales history.
+- This matches the approach established in Story 16.7 for the canonical supplier invoice import path.
+- `run_canonical_import` calls `_fetch_purchase_headers` and `_fetch_purchase_lines` via `_import_purchase_history` when tbsslipj/tbsslipdtj exist in the staging schema.
 - Story 16.2 provides the tbscust→canonical customer mapping needed to resolve supplier_code.
 
 ### Critical Warnings
 
-- Do **not** assume the orders table has an `order_type` column — it does not.
-- Do **not** skip lineage tracking for purchase orders just because they share the same table as sales orders.
-- Do **not** import purchase orders before master data and product mappings are ready.
+- Do **not** import purchase history before master data and product mappings are ready.
+- Do **not** confuse the purchase history path with the sales history path — they write to different canonical tables.
+- Do **not** skip lineage tracking; supplier_invoice lineage records link back to tbsslipj (headers) and tbsslipdtj (lines).
 
 ### Implementation Direction
 
-- Purchase order canonical import is already wired in `run_canonical_import`; it activates when the staging schema contains tbsslipj and tbsslipdtj tables.
-- The existing ON CONFLICT (id) DO UPDATE pattern on `orders` and `order_lines` handles replay safety automatically.
-- Add a dedicated `purchase_history` step to `CanonicalImportResult` and step_runs for observability.
+- Supplier invoice canonical import is wired in `run_canonical_import` as the `purchase_history` step; it activates when the staging schema contains tbsslipj and tbsslipdtj tables.
+- The existing ON CONFLICT (id) DO UPDATE pattern on `supplier_invoices` and `supplier_invoice_lines` handles replay safety automatically.
+- `CanonicalImportResult` exposes `supplier_invoice_count` and `supplier_invoice_line_count`; step_runs record the `purchase_history` step for observability.
 
 ### Validation Follow-up
 

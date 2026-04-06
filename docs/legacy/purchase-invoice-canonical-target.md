@@ -14,7 +14,10 @@ This note documents the first-class AP landing zone introduced for legacy purcha
 ## Design Rules
 
 - Supplier invoices use deterministic tenant-scoped UUIDs derived from the legacy purchase document number.
+- Canonical `supplier_invoices.invoice_number` prefers legacy `sinvno` when present and otherwise falls back to the purchase document number; `invoice_date` similarly prefers `dtinvdate` over the slip date when the legacy row provides a distinct invoice date.
+- Canonical `supplier_invoices.notes` preserves legacy `srem` instead of duplicating supplier metadata into the notes field.
 - Supplier invoice lines use deterministic tenant-scoped UUIDs derived from legacy document number plus line number.
+- `tbsslipj` and `tbsslipdtj` keep sales-shaped legacy field names such as `scustno`, but the staged FK gate resolves `tbsslipj.col_7` against supplier-role rows and the header also carries AP invoice fields like `sinvno`, `dtinvdate`, and `fmustpayamt`; this is why the canonical target is `supplier_invoices` rather than `supplier_orders`.
 - Purchase lines reuse `raw_legacy.product_code_mapping`; unresolved codes still fall back to `UNKNOWN` so reruns stay lossless.
 - Header tax is allocated across imported purchase lines so line totals reconcile to the imported supplier invoice header.
 - Canonical lineage records are written for `supplier`, `supplier_invoices`, and `supplier_invoice_lines` the same way they are for sales-side history.

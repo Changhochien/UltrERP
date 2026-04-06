@@ -1,6 +1,6 @@
 # Story 16.1: Raw Purchase Invoice Staging
 
-Status: draft
+Status: done
 
 ## Story
 
@@ -254,6 +254,13 @@ The following checks are enforced during staging:
 - Confirm that tbsslipdtj rows with non-stock product codes (e.g., '0013') are staged without error — these are expected and will be resolved in Story 16.2 normalization via the product mapping table.
 
 ## Dev Agent Record
+
+## Validation
+
+- `cd backend && uv run pytest tests/domains/legacy_import/test_staging.py -q`
+- `cd backend && uv run pytest tests/domains/legacy_import/test_currency.py tests/domains/legacy_import/test_cli.py tests/domains/legacy_import/test_canonical.py tests/domains/legacy_import/test_staging.py tests/domains/legacy_import/test_validation.py tests/domains/purchases/test_supplier_invoices_api.py -q`
+- `cd backend && uv run ruff check domains/legacy_import domains/purchases tests/domains/legacy_import tests/domains/purchases/test_supplier_invoices_api.py common/models/supplier_invoice.py common/models/supplier_payment.py`
+- Result: purchase invoice staging is covered by focused FK tests for both `tbsslipj` and `tbsslipdtj`, generic same-batch replacement behavior remains green, and the Epic 16 backend slice validates cleanly.
 
 ### Agent Model Used
 

@@ -1844,3 +1844,33 @@ So that the deferred supplier-payment import has a stable backend target before 
 **When** this architecture ships
 **Then** no guessed canonical import is added for `tbsspay` or `tbsprepay`
 **And** the new schema is validated with focused backend tests and lint checks only
+
+### Story 16.12: Supplier Payment Import CLI
+
+As a migration operator,
+I want a dedicated CLI step to import staged supplier payment history into the canonical AP payment tables,
+So that `tbsprepay` and `tbsspay` can be migrated deliberately without coupling payment import to `canonical-import`.
+
+**Acceptance Criteria:**
+
+**Given** staged `tbsprepay` and `tbsspay` rows exist for a batch and the AP payment schema from Story 16.11 is present
+**When** I run the new AP payment import CLI command
+**Then** the legacy-import CLI exposes an explicit payment import step for that batch
+**And** the command remains separate from `canonical-import`
+**And** the run is tracked with batch/attempt semantics
+
+**Given** verified payment mapping rules from Story 16.10 are available
+**When** the AP payment import command runs
+**Then** supplier-side cash events are written into `supplier_payments`
+**And** verified invoice allocations are written into `supplier_payment_allocations`
+**And** deterministic IDs and lineage records make the import replay-safe
+
+**Given** some legacy payment rows still cannot be linked safely to a supplier invoice or have unresolved semantics
+**When** the command processes those rows
+**Then** they stay on the holding path or fail with explicit diagnostics instead of guessed imports
+**And** unrelated verified rows in the batch still import safely when the design allows partial progress
+
+**Given** the story is implemented
+**When** focused backend validation runs
+**Then** pytest covers the CLI command and canonical AP payment import behavior
+**And** Ruff passes on the touched legacy-import and AP payment files

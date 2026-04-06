@@ -10,6 +10,14 @@ It does not implement canonical import yet. Its purpose is to replace the vague 
 - The schema foundation is intentionally ahead of import logic: `tbsprepay` and `tbsspay` still stay in holding until the verification checklist below is satisfied.
 - This means the repo now has a stable AP target without pretending the legacy allocation semantics are already proven.
 
+## Verification Update: 2026-04-06
+
+- The current legacy dump does not support a broad AP payment migration from `tbsspay`.
+- `tbsspay` uses `scustno`/`scustname`, and the current staged rows resolve to customer-role parties in `tbscust`.
+- Real sample rows such as `1050603001` line up with `tbsslipx` sales-history identifiers and customer-side totals, not supplier-side settlement history.
+- `tbsprepay` still cannot be treated as canonical AP cash history in this dump: it has no verified payment document number, no verified payment date, and its candidate amount fields are zero across the current export.
+- Because of that evidence, the explicit `ap-payment-import` step now applies strict AP gating: only supplier-role, non-zero, date-valid payment rows can land in `supplier_payments`; everything else stays on the protected holding path with explicit diagnostics.
+
 ## Why The Existing `payments` Table Is Not The Right Target
 
 - The current `payments` model is AR-oriented: it requires `customer_id` and centers reconciliation around customer invoices.
@@ -93,6 +101,8 @@ The move out of holding should happen in two stages:
 2. Create allocation rows only after invoice-link fields are proven on real sample data.
 
 That boundary keeps the migration lossless without faking allocation certainty.
+
+The explicit `ap-payment-import` command now implements that boundary directly: it can import the narrow subset of rows that pass those checks, but the current verified dump still routes every unresolved `tbsprepay` row and every customer-role `tbsspay` row back to holding.
 
 ## Verification Checklist Before Implementation
 

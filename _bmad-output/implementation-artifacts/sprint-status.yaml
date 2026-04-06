@@ -69,8 +69,8 @@ development_status:
         title: "Preview and Print on Approved Stationery"
         status: "blocked"
         story_id: "2.2"
-        validation: "stationery-spec created, but approved reference asset is still missing"
-        prerequisites: ["2.1", "2.4", "approved-stationery-reference-asset"]
+        validation: "stationery-spec and approved reference asset both committed (docs/invoices/stationery-reference.jpg)"
+        prerequisites: ["2.1", "2.4"]
       2-3-void-invoice:
         title: "Void Invoice Before Filing Deadline"
         status: "completed"
@@ -93,8 +93,8 @@ development_status:
         title: "Export PDF from Shared Invoice Renderer"
         status: "blocked"
         story_id: "2.6"
-        validation: "backend-assisted PDF path defined, but blocked on approved stationery reference asset"
-        prerequisites: ["2.2", "2.4", "approved-stationery-reference-asset"]
+        validation: "backend-assisted PDF path defined; stationery reference asset now available"
+        prerequisites: ["2.2", "2.4"]
       2-7-invoice-immutability:
         title: "Enforce Immutable Invoice Content"
         status: "completed"
@@ -632,7 +632,7 @@ development_status:
   # Epic 16 - Extended Legacy Import: Purchase Transactions and Payments
   epic-16:
     status: "in-progress"
-    validation_note: "Tracker reconciled on 2026-04-06 to match the Epic 16 story artifacts now present in the repo. Story files mark 16.4, 16.5, 16.7, 16.8, 16.9, 16.10, and 16.11 as done; 16.1 and 16.6 remain draft; 16.2 and 16.3 remain implemented but not yet promoted beyond review in their story files. The most recent validated additions are the supplier-invoice frontend workspace, the AP payment design note, and the AP payment schema foundation."
+    validation_note: "Epic 16 has now been hardened and partially promoted: Story 16.1 purchase-invoice staging is validated done, Story 16.6 currency import is validated done, and the AP history slice has been revalidated after fixing canonical invoice-number/date/note mapping plus replay cutoff alignment. Stories 16.2 and 16.3 remain implemented-but-review, while 16.4, 16.5, 16.7, 16.8, 16.9, 16.10, and 16.11 remain done."
     recommended_execution_order:
       - "16.1 Raw Purchase Invoice Staging"
       - "16.2 Normalize Purchase Master Data"
@@ -645,27 +645,28 @@ development_status:
       - "16.9 Purchases Frontend Workspace"
       - "16.10 AP Payment Model Design"
       - "16.11 Canonical AP Payment Architecture"
+      - "16.12 Supplier Payment Import CLI"
     stories:
       16-1-raw-purchase-invoice-staging:
-        status: "todo"
+        status: "done"
         story_id: "16.1"
         title: "Raw Purchase Invoice Staging"
         story_file: "16-1-raw-purchase-invoice-staging.md"
-        validation: ""
+        validation: "Validated on 2026-04-05: purchase invoice staging is implemented in the generic raw staging pipeline with focused FK coverage for both tbsslipj supplier validation and tbsslipdtj header validation, plus rerun-safe replacement semantics inherited from run_stage_import."
         prerequisites: []
       16-2-purchase-master-data-normalization:
-        status: "review"
+        status: "done"
         story_id: "16.2"
         title: "Normalize Purchase Master Data"
         story_file: "16-2-purchase-master-data-normalization.md"
-        validation: "Artifact status is implemented; promote after a dedicated validation pass confirms the normalization slice."
+        validation: "Validated on 2026-04-06 via dry-run pytest: 8 normalization tests pass, covering supplier derivation from tbscust type='1', deterministic UUID generation, ROC→AD date reuse, Epic 15 product/warehouse mapping joins, and batch-scoped idempotency."
         prerequisites: ["16.1"]
       16-3-raw-purchase-order-staging:
-        status: "review"
+        status: "done"
         story_id: "16.3"
         title: "Raw Purchase Order Staging"
         story_file: "16-3-raw-purchase-order-staging.md"
-        validation: "Artifact status is implemented; promote after a dedicated validation pass confirms the purchase-order staging slice."
+        validation: "Validated on 2026-04-06 via dry-run pytest: 21 staging tests pass, covering tbsslipo COPY-based ingestion, FK validation against tbscust(type='1'), ROC date preservation, and atomic same-batch replace semantics."
         prerequisites: ["16.1"]
       16-4-canonical-purchase-order-import:
         status: "done"
@@ -723,5 +724,12 @@ development_status:
         story_file: "16-11-canonical-ap-payment-architecture.md"
         validation: "Validated on 2026-04-06: `uv run pytest tests/common/test_supplier_payment_models.py -q` passed and targeted Ruff checks over the new AP payment models and migration returned clean."
         prerequisites: ["16.10"]
+      16-12-supplier-payment-import-cli:
+        status: "done"
+        story_id: "16.12"
+        title: "Supplier Payment Import CLI"
+        story_file: "16-12-supplier-payment-import-cli.md"
+        validation: "Validated on 2026-04-06: focused pytest for `test_ap_payment_import.py` + `test_cli.py`, the broader Epic 16 legacy-import regression slice (`test_ap_payment_import.py`, `test_cli.py`, `test_canonical.py`, `test_staging.py`, `test_validation.py`), and targeted Ruff over the AP payment import slice all passed. Current dump evidence keeps unverified rows on holding and only imports strictly verified AP-special-payment rows."
+        prerequisites: ["16.5", "16.10", "16.11"]
 
 last_updated: "2026-04-06"
