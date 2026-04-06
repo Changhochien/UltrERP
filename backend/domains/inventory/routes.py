@@ -69,8 +69,8 @@ from domains.inventory.services import (
 router = APIRouter()
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
-ReadUser = Annotated[dict, Depends(require_role("warehouse", "sales"))]
-WriteUser = Annotated[dict, Depends(require_role("warehouse"))]
+ReadUser = Annotated[dict, Depends(require_role("admin", "warehouse", "sales"))]
+WriteUser = Annotated[dict, Depends(require_role("admin", "warehouse"))]
 
 # Hardcoded tenant for MVP — replaced by auth middleware later
 TENANT_ID = DEFAULT_TENANT_ID

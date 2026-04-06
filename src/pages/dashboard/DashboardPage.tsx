@@ -82,7 +82,7 @@ export function DashboardPage() {
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.9fr)_minmax(0,1fr)]">
         <RevenueCard data={data} isLoading={isLoading} error={error} />
         <VisitorStatsCard />
-        <LowStockAlertsCard />
+        {canAccess("inventory") ? <LowStockAlertsCard /> : null}
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">

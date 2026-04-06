@@ -35,7 +35,7 @@ from domains.invoices.service import (
 )
 from domains.invoices.validators import IMMUTABLE_ERROR
 
-router = APIRouter(dependencies=[Depends(require_role("finance", "sales"))])
+router = APIRouter(dependencies=[Depends(require_role("admin", "finance", "sales"))])
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 

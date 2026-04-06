@@ -33,7 +33,7 @@ from domains.payments.services import (
     run_reconciliation,
 )
 
-router = APIRouter(dependencies=[Depends(require_role("finance"))])
+router = APIRouter(dependencies=[Depends(require_role("admin", "finance"))])
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 

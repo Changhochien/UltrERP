@@ -18,7 +18,7 @@ from domains.purchases.schemas import (
 )
 from domains.purchases.service import get_supplier_invoice, list_supplier_invoices
 
-router = APIRouter(dependencies=[Depends(require_role("finance", "warehouse"))])
+router = APIRouter(dependencies=[Depends(require_role("admin", "finance", "warehouse"))])
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 

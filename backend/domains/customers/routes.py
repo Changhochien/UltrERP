@@ -39,8 +39,8 @@ from domains.customers.service import (
 router = APIRouter()
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
-ReadUser = Annotated[dict, Depends(require_role("finance", "sales"))]
-WriteUser = Annotated[dict, Depends(require_role("sales"))]
+ReadUser = Annotated[dict, Depends(require_role("admin", "finance", "sales"))]
+WriteUser = Annotated[dict, Depends(require_role("admin", "sales"))]
 
 
 @router.get("", response_model=CustomerListResponse)

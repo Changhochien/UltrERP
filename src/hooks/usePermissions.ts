@@ -24,7 +24,6 @@ const ROLE_PERMISSIONS: Record<string, Partial<Record<AppFeature, PermissionLeve
     invoices: "write",
     orders: "write",
     payments: "write",
-    admin: "write",
     settings: "write",
   },
   owner: {

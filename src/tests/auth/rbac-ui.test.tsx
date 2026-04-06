@@ -105,6 +105,21 @@ describe("usePermissions", () => {
     expect(screen.getByTestId("inventory-write").textContent).toContain("yes");
   });
 
+  it("admin can access business surfaces but not the owner-only admin dashboard", () => {
+    setTestToken("admin");
+    renderWithAuth(<PermissionsDisplay />);
+    expect(screen.getByTestId("dashboard-access").textContent).toContain("yes");
+    expect(screen.getByTestId("inventory-access").textContent).toContain("yes");
+    expect(screen.getByTestId("customers-access").textContent).toContain("yes");
+    expect(screen.getByTestId("invoices-access").textContent).toContain("yes");
+    expect(screen.getByTestId("orders-access").textContent).toContain("yes");
+    expect(screen.getByTestId("payments-access").textContent).toContain("yes");
+    expect(screen.getByTestId("settings-access").textContent).toContain("yes");
+    expect(screen.getByTestId("admin-access").textContent).toContain("no");
+    expect(screen.getByTestId("customers-write").textContent).toContain("yes");
+    expect(screen.getByTestId("inventory-write").textContent).toContain("yes");
+  });
+
   it("finance cannot access inventory, orders, admin", () => {
     setTestToken("finance");
     renderWithAuth(<PermissionsDisplay />);
@@ -262,6 +277,29 @@ describe("ProtectedRoute", () => {
     );
     expect(screen.getByText("Settings Content")).toBeTruthy();
     expect(screen.queryByText("Login Page")).toBeNull();
+  });
+
+  it("redirects admin users away from the owner-only admin route", () => {
+    setTestToken("admin");
+    render(
+      <MemoryRouter initialEntries={["/admin"]}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<div>Dashboard</div>} />
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute requiredFeature="admin">
+                  <div>Admin Content</div>
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>,
+    );
+    expect(screen.getByText("Dashboard")).toBeTruthy();
+    expect(screen.queryByText("Admin Content")).toBeNull();
   });
 });
 

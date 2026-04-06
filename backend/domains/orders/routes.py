@@ -37,8 +37,8 @@ from domains.orders.services import (
 router = APIRouter()
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
-ReadUser = Annotated[dict, Depends(require_role("warehouse", "sales"))]
-WriteUser = Annotated[dict, Depends(require_role("sales"))]
+ReadUser = Annotated[dict, Depends(require_role("admin", "warehouse", "sales"))]
+WriteUser = Annotated[dict, Depends(require_role("admin", "sales"))]
 
 TENANT_ID = DEFAULT_TENANT_ID
 ACTOR_ID = "system"
