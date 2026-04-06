@@ -12,6 +12,10 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from common.tenant import DEFAULT_TENANT_ID
+from domains.legacy_import.ap_payment_import import (
+    SupplierPaymentImportResult,
+    run_ap_payment_import,
+)
 from domains.legacy_import.canonical import CanonicalImportResult, run_canonical_import
 from domains.legacy_import.currency import CurrencyImportResult, run_currency_import
 from domains.legacy_import.extractor_cleaner import MojibakeCleaner
@@ -164,6 +168,22 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_TENANT_ID,
         help="Tenant UUID for control-table tracking",
     )
+    ap_payment_parser = subparsers.add_parser(
+        "ap-payment-import",
+        help="Import verified AP payment rows into supplier_payments",
+    )
+    ap_payment_parser.add_argument(
+        "--batch-id",
+        required=True,
+        help="Batch identifier to import",
+    )
+    ap_payment_parser.add_argument("--schema", help="Override target raw schema name")
+    ap_payment_parser.add_argument(
+        "--tenant-id",
+        type=_parse_tenant_uuid,
+        default=DEFAULT_TENANT_ID,
+        help="Tenant UUID for AP payment import records",
+    )
     canonical_parser = subparsers.add_parser(
         "canonical-import",
         help="Import normalized legacy data into supported canonical tables",
@@ -288,6 +308,16 @@ async def _run_currency_import(args: argparse.Namespace) -> int:
     return 0
 
 
+async def _run_ap_payment_import(args: argparse.Namespace) -> int:
+    result = await run_ap_payment_import(
+        batch_id=args.batch_id,
+        tenant_id=args.tenant_id,
+        schema_name=args.schema,
+    )
+    _print_ap_payment_import_summary(result)
+    return 0
+
+
 async def _run_canonical_import(args: argparse.Namespace) -> int:
     result = await run_canonical_import(
         batch_id=args.batch_id,
@@ -335,6 +365,7 @@ def _run_extract(args: argparse.Namespace) -> int:
 
     table_count = 0
     total_rows = 0
+    manifest_entries: list[tuple[str, int]] = []
 
     print(f"Processing {input_path}...", file=sys.stderr)
 
@@ -348,13 +379,19 @@ def _run_extract(args: argparse.Namespace) -> int:
 
         table_count += 1
         total_rows += len(table.rows)
+        manifest_entries.append((table.table_name, len(table.rows)))
         print(f"  {table.table_name}: {len(table.rows)} rows", file=sys.stderr)
 
-    print(
-        f"\nExtracted {table_count} tables, {total_rows} total rows to {output_dir}",
-        file=sys.stderr,
-    )
-    return 0
+    # Write MANIFEST.md (required by stage command)
+    manifest_path = output_dir / "MANIFEST.md"
+    manifest_lines = [
+        f"# Data Manifest - {output_dir.name}",
+        "",
+        "| Table Name | Rows |",
+        "|------------|------|",
+    ]
+    manifest_lines.extend(f"| {name} | {count} |" for name, count in sorted(manifest_entries))
+    manifest_path.write_text("\n".join(manifest_lines) + "\n", encoding="utf-8")
 
 
 def _process_extracted_table(table: TableData, cleaner: MojibakeCleaner) -> TableData:
@@ -405,6 +442,8 @@ def _print_stage_summary(result: StageBatchResult) -> None:
             f"- {table.table_name}: {table.row_count} rows, "
             f"{table.column_count} columns, source={table.source_file}"
         )
+        if table.validation_message:
+            message += f"  WARNING: {table.validation_message}"
         print(message)
 
 
@@ -451,6 +490,15 @@ def _print_currency_import_summary(result: CurrencyImportResult) -> None:
     )
 
 
+def _print_ap_payment_import_summary(result: SupplierPaymentImportResult) -> None:
+    print(
+        f"AP payment imported batch {result.batch_id} in {result.schema_name}: "
+        f"attempt={result.attempt_number}, payments={result.payment_count}, "
+        f"allocations={result.allocation_count}, holding={result.holding_count}, "
+        f"lineage={result.lineage_count}"
+    )
+
+
 def _print_canonical_import_summary(result: CanonicalImportResult) -> None:
     print(
         f"Canonical imported batch {result.batch_id} in {result.schema_name}: "
@@ -492,6 +540,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return asyncio.run(_run_import_product_review(args))
     if args.command == "currency-import":
         return asyncio.run(_run_currency_import(args))
+    if args.command == "ap-payment-import":
+        return asyncio.run(_run_ap_payment_import(args))
     if args.command == "canonical-import":
         return asyncio.run(_run_canonical_import(args))
     if args.command == "validate-import":
