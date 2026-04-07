@@ -143,19 +143,27 @@ def test_parse_legacy_row_rejects_malformed_rows() -> None:
 @pytest.mark.asyncio
 async def test_open_raw_connection_disables_command_timeout(monkeypatch) -> None:
     captured: dict[str, object] = {}
-    sentinel = object()
+    sentinel_conn = object()
 
-    async def fake_connect(*, dsn: str, command_timeout):
+    class FakePool:
+        async def acquire(self):
+            return sentinel_conn
+
+    async def fake_create_pool(*, dsn: str, command_timeout, **kwargs):
         captured["dsn"] = dsn
         captured["command_timeout"] = command_timeout
-        return sentinel
+        return FakePool()
 
     monkeypatch.setattr(staging, "_asyncpg_dsn", lambda _: "postgresql://example")
-    monkeypatch.setattr(staging.asyncpg, "connect", fake_connect)
+    monkeypatch.setattr(staging.asyncpg, "create_pool", fake_create_pool)
+
+    # Clear the cached pool so our patched function gets called
+    staging._RAW_CONNECTION_POOL = None
 
     result = await staging._open_raw_connection()
 
-    assert result is sentinel
+    # Verify the result wraps our sentinel connection
+    assert result._connection is sentinel_conn
     assert captured == {
         "dsn": "postgresql://example",
         "command_timeout": None,
@@ -341,10 +349,11 @@ async def test_stage_table_fails_on_manifest_row_count_mismatch(tmp_path: Path) 
 
 
 @pytest.mark.asyncio
-async def test_run_stage_import_drops_stale_tables_from_previous_batch(
+async def test_run_stage_import_only_drops_overlapping_tables_on_partial_rerun(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
+    """On partial re-run (subset of tables), only drop tables in the intersection."""
     data_file = tmp_path / "tbscust.csv"
     data_file.write_text("\"'1', 'A'\"\n", encoding="utf-8")
     connection = FakeRawStageConnection()
@@ -358,7 +367,8 @@ async def test_run_stage_import_drops_stale_tables_from_previous_batch(
     )
 
     async def fake_load_existing_batch_table_names(*args, **kwargs) -> tuple[str, ...]:
-        return ("tbsstock",)
+        # Previous run had both tbscust and tbsstock
+        return ("tbscust", "tbsstock")
 
     async def fake_next_batch_attempt_number(*args, **kwargs) -> int:
         return 1
@@ -393,8 +403,14 @@ async def test_run_stage_import_drops_stale_tables_from_previous_batch(
         selected_tables=("tbscust",),
     )
 
+    # tbscust was in both → should be dropped
     assert any(
-        'DROP TABLE IF EXISTS "raw_legacy"."tbsstock" CASCADE' == query
+        'DROP TABLE IF EXISTS "raw_legacy"."tbscust" CASCADE' == query
+        for query in connection.executed
+    )
+    # tbsstock was NOT in current request → must NOT be dropped (preserved for partial rerun)
+    assert not any(
+        'DROP TABLE IF EXISTS "raw_legacy"."tbsstock" CASCADE' in query
         for query in connection.executed
     )
     assert result.tables == (

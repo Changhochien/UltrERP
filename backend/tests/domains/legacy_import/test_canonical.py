@@ -45,6 +45,9 @@ class FakeCanonicalConnection:
         self.transaction_committed = False
         self.transaction_rolled_back = False
         self.closed = False
+        # Track inserted rows so fetchrow can find them after INSERT
+        self._fake_customers: dict[tuple[object, object], dict] = {}
+        self._fake_suppliers: dict[tuple[object, object], dict] = {}
 
     def transaction(self) -> FakeCanonicalTransaction:
         return FakeCanonicalTransaction(self)
@@ -93,6 +96,13 @@ class FakeCanonicalConnection:
         return []
 
     async def fetchrow(self, query: str, *args: object):
+        # Intercept the post-INSERT lookup for customers/suppliers
+        if "FROM customers WHERE tenant_id" in query and "normalized_business_number" in query:
+            tenant_id, business_number = args[0], args[1]
+            return self._fake_customers.get((tenant_id, business_number))
+        if "FROM suppliers WHERE tenant_id" in query and "normalized_business_number" in query:
+            tenant_id, business_number = args[0], args[1]
+            return self._fake_suppliers.get((tenant_id, business_number))
         rows = await self.fetch(query, *args)
         return rows[0] if rows else None
 
@@ -116,6 +126,13 @@ class FakeCanonicalConnection:
             self.transaction_buffers[-1].append(call)
         else:
             self.committed_execute_calls.append(call)
+        # Track INSERTed customers and suppliers so fetchrow can find them
+        if "INSERT INTO customers" in query:
+            c_id, ten, co, bn = args[0], args[1], args[2], args[3]
+            self._fake_customers[(ten, bn)] = {"id": c_id, "company_name": co}
+        elif "INSERT INTO suppliers" in query:
+            s_id, ten, co, bn = args[0], args[1], args[2], args[3]
+            self._fake_suppliers[(ten, bn)] = {"id": s_id, "company_name": co}
         return "OK"
 
     async def close(self) -> None:
@@ -441,6 +458,120 @@ async def test_run_canonical_import_orders_dependencies_and_holding(
         and args[5] == "1130827001:1"
         for args in lineage_args
     )
+
+
+@pytest.mark.asyncio
+async def test_run_canonical_import_preadjusted_pricing_uses_original_list_price(
+    monkeypatch,
+) -> None:
+    """When foldprice was pre-adjusted to the discounted price, sexp1/sexp2 hold the
+    original list price and discount ratio. The import must use sexp1 as the true
+    list price so discount_amount = sexp1 - unit_price > 0."""
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000420")
+    connection = FakeCanonicalConnection(
+        {
+            "normalized_parties": [
+                {
+                    "legacy_code": "C001",
+                    "role": "customer",
+                    "company_name": "Discount Test Co",
+                    "tax_id": "12345675",
+                    "full_address": "Taipei",
+                    "address": "Taipei",
+                    "phone": "02-1234",
+                    "email": "",
+                    "contact_person": "Bob",
+                    "deterministic_id": deterministic_legacy_uuid("party", "customer", "C001"),
+                }
+            ],
+            "normalized_products": [
+                {
+                    "legacy_code": "PC096",
+                    "name": "三角皮帶 C-96",
+                    "category": "BELT",
+                    "unit": "條",
+                    "status": "A",
+                    "deterministic_id": deterministic_legacy_uuid("product", "PC096"),
+                }
+            ],
+            "normalized_warehouses": [
+                {
+                    "code": "LEGACY_DEFAULT",
+                    "name": "Legacy Default Warehouse",
+                    "location": None,
+                    "address": None,
+                    "deterministic_id": deterministic_legacy_uuid("warehouse", "LEGACY_DEFAULT"),
+                }
+            ],
+            "normalized_inventory_prep": [],
+            "product_code_mapping": [],
+            "sales_headers": [
+                {
+                    "doc_number": "1140610009",
+                    "invoice_date": "2025-06-10",
+                    "customer_code": "C001",
+                    "customer_name": "Discount Test Co",
+                    "address": "Taipei",
+                    "currency_code": "TWD",
+                    "exchange_rate": "1.0",
+                    "subtotal": "100.00",
+                    "tax_type": "1",
+                    "tax_amount": "5.00",
+                    "total_amount": "105.00",
+                    "remark": "",
+                    "created_by": "SYSTEM",
+                    "tax_rate": "0.0500",
+                }
+            ],
+            # Line 1: foldprice pre-adjusted to 254.0 (= unit_price after discount).
+            # sexp1=506.9, sexp2=0.5011 indicate the original list was 506.9 with ~50% disc.
+            # Expected: list_unit_price=506.9, unit_price=254.0, discount_amount=252.90
+            "sales_lines": [
+                {
+                    "doc_number": "1140610009",
+                    "line_number": 1,
+                    "product_code": "PC096",
+                    "product_name": "三角皮帶 C-96",
+                    "unit": "條",
+                    "qty": "6",
+                    "list_unit_price": "254.00000000",
+                    "unit_price": "254.00000000",
+                    "extended_amount": "1524.00000000",
+                    "original_list_price": "506.9",
+                    "original_discount_ratio": "0.5011",
+                    "tax_amount": "126.72",
+                    "line_tax_amount": "126.72",
+                }
+            ],
+            "purchase_headers": [],
+            "purchase_lines": [],
+        }
+    )
+
+    async def fake_open_raw_connection() -> FakeCanonicalConnection:
+        return connection
+
+    monkeypatch.setattr(canonical, "_open_raw_connection", fake_open_raw_connection)
+
+    result = await canonical.run_canonical_import(
+        batch_id="batch-discount-fix",
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+    )
+
+    assert result.order_count == 1
+    assert result.order_line_count == 1
+
+    order_line_args = next(
+        args
+        for query, args in connection.execute_calls
+        if "INSERT INTO order_lines" in query
+    )
+    # Position 6 = actual_list_price, 7 = unit_price, 8 = discount_amount
+    from decimal import Decimal
+    assert order_line_args[6] == Decimal("506.9")
+    assert order_line_args[7] == Decimal("254.0")
+    assert order_line_args[8] == Decimal("252.90")
 
 
 @pytest.mark.asyncio
@@ -793,30 +924,33 @@ async def test_run_canonical_import_persists_failed_run_and_step_records(
 
     monkeypatch.setattr(canonical, "_open_raw_connection", fake_open_raw_connection)
 
-    with pytest.raises(ValueError, match="missing customer"):
-        await canonical.run_canonical_import(
-            batch_id="batch-failure-observability",
-            tenant_id=uuid.UUID("00000000-0000-0000-0000-000000000413"),
-            schema_name="raw_legacy",
-        )
-
-    failed_run_args = next(
-        args
-        for query, args in connection.committed_execute_calls
-        if 'INSERT INTO "raw_legacy".canonical_import_runs' in query and args[5] == "failed"
+    # Missing customer is now skipped silently instead of raising
+    result = await canonical.run_canonical_import(
+        batch_id="batch-failure-observability",
+        tenant_id=uuid.UUID("00000000-0000-0000-0000-000000000413"),
+        schema_name="raw_legacy",
     )
-    failure_summary = json.loads(cast(str, failed_run_args[6]))
-    assert failure_summary["customer_count"] == 1
-    assert failure_summary["warehouse_count"] == 1
+    assert result.batch_id == "batch-failure-observability"
+    assert result.customer_count == 1
 
-    failed_step_args = next(
-        args
-        for query, args in connection.committed_execute_calls
-        if 'INSERT INTO "raw_legacy".canonical_import_step_runs' in query
-        and args[1] == "sales_history"
-        and args[3] == "failed"
+    # Verify customer and warehouse were still imported
+    customer_args = next(
+        args for query, args in connection.execute_calls if "INSERT INTO customers" in query
     )
-    assert "missing customer" in str(failed_step_args[4] or "").lower()
+    assert customer_args[2] == "Failure Probe Co"
+
+    # Verify no sales order was inserted (customer_code "MISSING" not found)
+    assert not any(
+        "INSERT INTO sales_orders" in query for query, _ in connection.execute_calls
+    )
+
+    # Verify no holding record was created for the skipped order (skip-only, no hold)
+    holding_calls = [
+        (query, args)
+        for query, args in connection.execute_calls
+        if 'INSERT INTO "raw_legacy".unsupported_history_holding' in query
+    ]
+    assert len(holding_calls) == 0
 
 
 def test_canonical_import_cli_invokes_service(monkeypatch, capsys) -> None:
