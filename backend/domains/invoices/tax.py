@@ -80,9 +80,14 @@ def calculate_line_amounts(
     quantity: Decimal,
     unit_price: Decimal,
     policy_code: TaxPolicyCode,
+    discount_amount: Decimal | None = None,
 ) -> InvoiceLineAmounts:
     policy = get_tax_policy(policy_code)
-    subtotal = _quantize(quantity * unit_price)
+    list_subtotal = _quantize(quantity * unit_price)
+    if discount_amount is not None:
+        subtotal = _quantize(list_subtotal - discount_amount)
+    else:
+        subtotal = list_subtotal
     tax_amount = _quantize(subtotal * policy.tax_rate)
     total_amount = _quantize(subtotal + tax_amount)
 
@@ -96,10 +101,20 @@ def calculate_line_amounts(
     )
 
 
-def aggregate_invoice_totals(lines: list[InvoiceLineAmounts]) -> dict[str, Decimal]:
+def aggregate_invoice_totals(
+    lines: list[InvoiceLineAmounts],
+    discount_amount: Decimal | None = None,
+    discount_percent: Decimal | None = None,
+) -> dict[str, Decimal]:
     subtotal_amount = _quantize(sum((line.subtotal for line in lines), start=Decimal("0.00")))
+    if discount_amount is not None:
+        subtotal_after_discount = _quantize(subtotal_amount - discount_amount)
+    elif discount_percent is not None:
+        subtotal_after_discount = _quantize(subtotal_amount * (Decimal("1") - discount_percent))
+    else:
+        subtotal_after_discount = subtotal_amount
     tax_amount = _quantize(sum((line.tax_amount for line in lines), start=Decimal("0.00")))
-    total_amount = _quantize(sum((line.total_amount for line in lines), start=Decimal("0.00")))
+    total_amount = _quantize(subtotal_after_discount + tax_amount)
 
     return {
         "subtotal_amount": subtotal_amount,

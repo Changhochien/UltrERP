@@ -42,6 +42,8 @@ class Order(Base):
 	payment_terms_code: Mapped[str] = mapped_column(String(20), nullable=False, default="NET_30")
 	payment_terms_days: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
 	subtotal_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2))
+	discount_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), default=Decimal("0.00"))
+	discount_percent: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), default=Decimal("0.0000"))
 	tax_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2))
 	total_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2))
 	invoice_id: Mapped[uuid.UUID | None] = mapped_column(

@@ -44,13 +44,17 @@ class OrderCreateLine(BaseModel):
     product_id: uuid.UUID
     description: str = Field(..., min_length=1, max_length=500)
     quantity: Decimal = Field(..., gt=0, max_digits=18, decimal_places=3)
+    list_unit_price: Decimal = Field(default=Decimal("0.00"), ge=0, max_digits=20, decimal_places=2)
     unit_price: Decimal = Field(..., ge=0, max_digits=20, decimal_places=2)
+    discount_amount: Decimal = Field(default=Decimal("0.00"), ge=0, max_digits=20, decimal_places=2)
     tax_policy_code: str = Field(..., min_length=1, max_length=20)
 
 
 class OrderCreate(BaseModel):
     customer_id: uuid.UUID
     payment_terms_code: PaymentTermsCode = PaymentTermsCode.NET_30
+    discount_amount: Decimal = Field(default=Decimal("0.00"), ge=0, max_digits=20, decimal_places=2)
+    discount_percent: Decimal = Field(default=Decimal("0.0000"), ge=0, le=1, max_digits=5, decimal_places=4)
     notes: str | None = Field(default=None, max_length=2000)
     lines: list[OrderCreateLine] = Field(..., min_length=1, max_length=200)
 
@@ -62,7 +66,9 @@ class OrderLineResponse(BaseModel):
     product_id: uuid.UUID
     line_number: int
     quantity: Decimal
+    list_unit_price: Decimal
     unit_price: Decimal
+    discount_amount: Decimal
     tax_policy_code: str
     tax_type: int
     tax_rate: Decimal
@@ -86,6 +92,8 @@ class OrderResponse(BaseModel):
     payment_terms_code: str
     payment_terms_days: int
     subtotal_amount: Decimal | None
+    discount_amount: Decimal | None
+    discount_percent: Decimal | None
     tax_amount: Decimal | None
     total_amount: Decimal | None
     invoice_id: uuid.UUID | None

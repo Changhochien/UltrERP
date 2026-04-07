@@ -136,6 +136,17 @@ async def _create_invoice_core(
     if customer is None:
         raise ValidationError([{"field": "customer_id", "message": "Customer does not exist."}])
 
+    # Validate order_id if provided
+    if data.order_id is not None:
+        order_check = await session.execute(
+            select(Order).where(
+                Order.id == data.order_id,
+                Order.tenant_id == tenant_id,
+            )
+        )
+        if order_check.scalar_one_or_none() is None:
+            raise ValidationError([{"field": "order_id", "message": "Order does not exist."}])
+
     number_range = await _get_active_number_range(session, tenant_id)
     if number_range is None:
         raise ValidationError(
@@ -180,6 +191,7 @@ async def _create_invoice_core(
         total_amount=totals["total_amount"],
         status="issued",
         version=1,
+        order_id=data.order_id,
     )
 
     invoice.lines = [
@@ -567,7 +579,10 @@ async def get_invoice(
     tid = tenant_id or DEFAULT_TENANT_ID
     result = await session.execute(
         select(Invoice)
-        .options(selectinload(Invoice.lines))
+        .options(
+            selectinload(Invoice.lines),
+            selectinload(Invoice.egui_submission),
+        )
         .where(Invoice.id == invoice_id, Invoice.tenant_id == tid)
     )
     return result.scalar_one_or_none()
@@ -725,6 +740,7 @@ async def enrich_invoices_with_payment_status(
                 "invoice_number": inv.invoice_number,
                 "invoice_date": inv.invoice_date,
                 "customer_id": inv.customer_id,
+                "order_id": inv.order_id,
                 "currency_code": inv.currency_code,
                 "total_amount": inv.total_amount,
                 "status": inv.status,
@@ -884,7 +900,7 @@ async def get_customer_outstanding(
         # all rows into memory at once. Only invoice scalars (not full
         # objects with relationships) are materialised per chunk.
         chunk_size = 1000
-        offset = 0
+        last_seen_id: uuid.UUID | None = None
 
         outstanding_currencies: set[str] = set()
         invoice_currencies: set[str] = set()
@@ -898,7 +914,7 @@ async def get_customer_outstanding(
         status_filter = Invoice.status != "voided"
 
         while True:
-            chunk_result = await session.execute(
+            chunk_stmt = (
                 select(
                     Invoice.id,
                     Invoice.total_amount,
@@ -909,8 +925,13 @@ async def get_customer_outstanding(
                 )
                 .where(non_voided_filter, customer_filter, status_filter)
                 .order_by(Invoice.id)
-                .offset(offset)
                 .limit(chunk_size)
+            )
+            if last_seen_id is not None:
+                chunk_stmt = chunk_stmt.where(Invoice.id > last_seen_id)
+
+            chunk_result = await session.execute(
+                chunk_stmt
             )
             chunk = chunk_result.all()
             if not chunk:
@@ -1000,7 +1021,7 @@ async def get_customer_outstanding(
 
                 invoice_count += 1
 
-            offset += chunk_size
+            last_seen_id = normalized_chunk[-1][0]
 
     if len(outstanding_currencies) > 1:
         raise ValueError(

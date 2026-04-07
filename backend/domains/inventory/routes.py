@@ -311,26 +311,27 @@ async def create_adjustment_endpoint(
 async def search_products_endpoint(
     session: DbSession,
     _user: ReadUser,
-    q: str = Query(..., min_length=3, max_length=100),
-    limit: int = Query(20, ge=1, le=100),
+    q: str = Query("", max_length=100),
+    limit: int = Query(20, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     warehouse_id: uuid.UUID | None = Query(None),
+    sort_by: str = Query("code", pattern="^(code|name|category|status|current_stock)$"),
+    sort_dir: str = Query("asc", pattern="^(asc|desc)$"),
 ) -> ProductSearchResponse:
     stripped = q.strip()
-    if len(stripped) < 3:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Search query must be at least 3 characters",
-        )
-    results = await search_products(
+    results, total = await search_products(
         session,
         TENANT_ID,
         stripped,
         warehouse_id=warehouse_id,
         limit=limit,
+        offset=offset,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
     )
     return ProductSearchResponse(
         items=[ProductSearchResult(**r) for r in results],
-        total=len(results),
+        total=total,
     )
 
 
@@ -473,9 +474,10 @@ async def acknowledge_alert_endpoint(
         actor_id=ACTOR_ID,
     )
     if result is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Alert not found or already resolved",
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"status": "already_resolved", "detail": "Alert not found or already resolved"},
         )
     await session.commit()
     return AcknowledgeAlertResponse(**result)

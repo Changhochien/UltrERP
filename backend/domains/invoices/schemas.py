@@ -27,6 +27,7 @@ class InvoiceCreate(BaseModel):
     buyer_identifier: str | None = Field(default=None, max_length=20)
     invoice_date: date | None = None
     currency_code: str = Field(default="TWD", min_length=3, max_length=3)
+    order_id: uuid.UUID | None = None
     lines: list[InvoiceCreateLine]
 
 
@@ -81,6 +82,7 @@ class InvoiceResponse(BaseModel):
     invoice_number: str
     invoice_date: date
     customer_id: uuid.UUID
+    order_id: uuid.UUID | None = None
     buyer_type: str
     buyer_identifier_snapshot: str
     currency_code: str
@@ -110,6 +112,7 @@ class InvoiceListItem(BaseModel):
     invoice_number: str
     invoice_date: date
     customer_id: uuid.UUID
+    order_id: uuid.UUID | None = None
     currency_code: str
     total_amount: Decimal
     status: str

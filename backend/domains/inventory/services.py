@@ -5,10 +5,11 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, date, datetime
 
-from sqlalchemy import case, func, literal, select
+from sqlalchemy import asc, case, desc, distinct, func, literal, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from common.events import StockChangedEvent, emit
 from common.models.audit_log import AuditLog
 from common.models.inventory_stock import InventoryStock
 from common.models.product import Product
@@ -221,23 +222,25 @@ async def transfer_stock(
     )
     session.add(audit)
 
-    # 7. Check reorder alerts for both warehouses
-    await _check_reorder_alert(
-        session,
+    # 7. Emit stock changed events for both warehouses
+    await emit(StockChangedEvent(
         tenant_id=tenant_id,
         product_id=product_id,
         warehouse_id=from_warehouse_id,
-        current_quantity=source_stock.quantity,
+        before_quantity=before_source,
+        after_quantity=source_stock.quantity,
         reorder_point=source_stock.reorder_point,
-    )
-    await _check_reorder_alert(
-        session,
+        actor_id=actor_id,
+    ), session)
+    await emit(StockChangedEvent(
         tenant_id=tenant_id,
         product_id=product_id,
         warehouse_id=to_warehouse_id,
-        current_quantity=target_stock.quantity,
+        before_quantity=before_target,
+        after_quantity=target_stock.quantity,
         reorder_point=target_stock.reorder_point,
-    )
+        actor_id=actor_id,
+    ), session)
 
     await session.flush()
     return transfer
@@ -282,11 +285,16 @@ async def _check_reorder_alert(
             session.add(alert)
         else:
             alert.current_stock = current_quantity
+            # Only collapse RESOLVED → PENDING; preserve ACKNOWLEDGED
             if alert.status == AlertStatus.RESOLVED:
                 alert.status = AlertStatus.PENDING
-    elif alert is not None and alert.status != AlertStatus.RESOLVED:
+            # ACKNOWLEDGED stays acknowledged — do not demote
+    elif alert is not None and alert.status == AlertStatus.PENDING:
+        # Only PENDING alerts auto-resolve when stock is restored.
+        # ACKNOWLEDGED alerts require explicit resolution or a real supplier delivery.
         alert.status = AlertStatus.RESOLVED
         alert.current_stock = current_quantity
+    # If alert is ACKNOWLEDGED and stock is above threshold: do nothing (keep acknowledged)
 
 
 # ── Reorder alert queries ─────────────────────────────────────
@@ -501,15 +509,16 @@ async def create_stock_adjustment(
     )
     session.add(audit)
 
-    # 6. Check reorder alerts
-    await _check_reorder_alert(
-        session,
+    # 6. Emit stock changed event
+    await emit(StockChangedEvent(
         tenant_id=tenant_id,
         product_id=product_id,
         warehouse_id=warehouse_id,
-        current_quantity=stock.quantity,
+        before_quantity=before_qty,
+        after_quantity=stock.quantity,
         reorder_point=stock.reorder_point,
-    )
+        actor_id=actor_id,
+    ), session)
 
     await session.flush()
 
@@ -649,27 +658,39 @@ async def search_products(
     *,
     warehouse_id: uuid.UUID | None = None,
     limit: int = 20,
-) -> list[dict]:
+    offset: int = 0,
+    sort_by: str = "code",
+    sort_dir: str = "asc",
+) -> tuple[list[dict], int]:
     """Hybrid search: exact/prefix code → trigram → tsvector ranking."""
     q = query.strip()
+    search_query = func.plainto_tsquery("simple", q) if q else None
 
     # Escape LIKE wildcards to prevent pattern injection
     q_like = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
+    exact_code_match = func.lower(Product.code) == func.lower(q)
+    prefix_code_match = Product.code.ilike(q_like + "%", escape="\\")
+    name_prefix_match = Product.name.ilike(q_like + "%", escape="\\")
+    name_contains_match = Product.name.ilike("%" + q_like + "%", escape="\\")
+    text_search_match = (
+        Product.search_vector.op("@@")(search_query) if search_query is not None else None
+    )
+
     # Relevance scoring via CASE + trigram + tsvector
     exact_code = case(
-        (func.lower(Product.code) == func.lower(q), literal(10.0)),
+        (exact_code_match, literal(10.0)),
         else_=literal(0.0),
     )
     prefix_code = case(
-        (Product.code.ilike(q_like + "%"), literal(5.0)),
+        (prefix_code_match, literal(5.0)),
         else_=literal(0.0),
     )
     trgm_score = func.similarity(Product.name, q)
     ts_rank_score = func.coalesce(
         func.ts_rank(
             Product.search_vector,
-            func.plainto_tsquery("simple", q),
+            search_query,
         ),
         literal(0.0),
     )
@@ -701,25 +722,120 @@ async def search_products(
             relevance.label("relevance"),
         )
         .outerjoin(stock_sq, Product.id == stock_sq.c.product_id)
-        .where(Product.tenant_id == tenant_id)
-        .where(
-            (func.lower(Product.code) == func.lower(q))
-            | (Product.code.ilike(q_like + "%"))
-            | (func.similarity(Product.name, q) > 0.1)
-            | (func.similarity(Product.code, q) > 0.1)
-            | (
-                Product.search_vector.op("@@")(
-                    func.plainto_tsquery("simple", q),
-                )
-            )
-        )
-        .order_by(relevance.desc(), Product.code)
-        .limit(limit)
     )
 
-    result = await session.execute(stmt)
-    rows = result.all()
-    return [
+    def build_broader_conditions():
+        return (
+            fast_match
+            | name_contains_match
+            | text_search_match
+            | (relevance >= literal(0.35))
+        )
+
+    def apply_pagination(s, limit_val, offset_val):
+        return s.limit(limit_val).offset(offset_val)
+
+    def apply_order_by(s):
+        """Apply user sort; fall back to code for tie-breaking."""
+        dir_fn = desc if sort_dir == "desc" else asc
+        if sort_by == "name":
+            return s.order_by(dir_fn(Product.name), asc(Product.code))
+        elif sort_by == "current_stock":
+            return s.order_by(dir_fn(text("current_stock")), asc(Product.code))
+        elif sort_by == "category":
+            return s.order_by(dir_fn(Product.category), asc(Product.code))
+        elif sort_by == "status":
+            return s.order_by(dir_fn(Product.status), asc(Product.code))
+        else:
+            return s.order_by(dir_fn(Product.code))
+
+    if q:
+        # Phase 1: fast B-tree-indexed matches only.
+        fast_match = (
+            exact_code_match
+            | prefix_code_match
+            | name_prefix_match
+        )
+        fast_stmt = apply_pagination(
+            select(
+                Product.id,
+                Product.code,
+                Product.name,
+                Product.category,
+                Product.status,
+                func.coalesce(stock_sq.c.total_stock, 0).label("current_stock"),
+                relevance.label("relevance"),
+            )
+            .outerjoin(stock_sq, Product.id == stock_sq.c.product_id)
+            .where(Product.tenant_id == tenant_id)
+            .where(fast_match)
+            .order_by(relevance.desc(), Product.code),
+            limit,
+            offset,
+        )
+        fast_result = await session.execute(apply_order_by(fast_stmt))
+        fast_rows = fast_result.all()
+
+        # Phase 2: only compute trigram/tsvector if fast results are insufficient.
+        if len(fast_rows) < limit:
+            broader_stmt = apply_pagination(
+                select(
+                    Product.id,
+                    Product.code,
+                    Product.name,
+                    Product.category,
+                    Product.status,
+                    func.coalesce(stock_sq.c.total_stock, 0).label("current_stock"),
+                    relevance.label("relevance"),
+                )
+                .outerjoin(stock_sq, Product.id == stock_sq.c.product_id)
+                .where(Product.tenant_id == tenant_id)
+                .where(build_broader_conditions()),
+                limit,
+                offset,
+            )
+            broader_result = await session.execute(apply_order_by(broader_stmt))
+            seen_ids = {row.id for row in fast_rows}
+            rows = fast_rows + [
+                row for row in broader_result.all() if row.id not in seen_ids
+            ]
+        else:
+            rows = fast_rows
+
+        # Total count: count distinct products matching the broader conditions
+        count_stmt = select(func.count(distinct(Product.id))).select_from(
+            Product
+        ).outerjoin(stock_sq, Product.id == stock_sq.c.product_id).where(
+            Product.tenant_id == tenant_id
+        ).where(build_broader_conditions())
+        total_result = await session.execute(count_stmt)
+        total = total_result.scalar() or 0
+    else:
+        base_conditions = [Product.tenant_id == tenant_id]
+        count_sq = select(
+            InventoryStock.product_id,
+        ).where(InventoryStock.tenant_id == tenant_id)
+        if warehouse_id is not None:
+            count_sq = count_sq.where(InventoryStock.warehouse_id == warehouse_id)
+        count_sq = count_sq.subquery()
+        count_stmt = (
+            select(func.count(distinct(Product.id)))
+            .select_from(Product)
+            .outerjoin(count_sq, Product.id == count_sq.c.product_id)
+            .where(*base_conditions)
+        )
+        total_result = await session.execute(count_stmt)
+        total = total_result.scalar() or 0
+
+        rows_stmt = apply_pagination(
+            apply_order_by(stmt.where(Product.tenant_id == tenant_id)),
+            limit,
+            offset,
+        )
+        result = await session.execute(rows_stmt)
+        rows = result.all()
+
+    serialized = [
         {
             "id": row.id,
             "code": row.code,
@@ -727,10 +843,11 @@ async def search_products(
             "category": row.category,
             "status": row.status,
             "current_stock": row.current_stock,
-            "relevance": float(row.relevance),
+            "relevance": float(row.relevance) if row.relevance is not None else 0.0,
         }
         for row in rows
     ]
+    return serialized, total
 
 
 # ── Supplier queries ──────────────────────────────────────────
@@ -1081,15 +1198,16 @@ async def receive_supplier_order(
         )
         session.add(adj)
 
-        # 3. Resolve reorder alert if stock now sufficient
-        await _check_reorder_alert(
-            session,
+        # 3. Emit stock changed event
+        await emit(StockChangedEvent(
             tenant_id=tenant_id,
             product_id=line.product_id,
             warehouse_id=line.warehouse_id,
-            current_quantity=stock.quantity,
+            before_quantity=before_qty,
+            after_quantity=stock.quantity,
             reorder_point=stock.reorder_point,
-        )
+            actor_id=actor_id,
+        ), session)
 
         # 4. Update line
         line.quantity_received += receive_qty

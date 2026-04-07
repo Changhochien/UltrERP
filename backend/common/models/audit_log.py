@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, String, Text, func
+from sqlalchemy import DateTime, Index, String, Text, func
 from sqlalchemy.dialects.postgresql import JSON, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -14,6 +14,15 @@ from common.database import Base
 
 class AuditLog(Base):
 	__tablename__ = "audit_log"
+	__table_args__ = (
+		Index(
+			"ix_audit_log_tenant_entity_created_at",
+			"tenant_id",
+			"entity_type",
+			"entity_id",
+			"created_at",
+		),
+	)
 
 	id: Mapped[uuid.UUID] = mapped_column(
 		UUID(as_uuid=True), primary_key=True, default=uuid.uuid4,

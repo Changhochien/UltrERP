@@ -31,6 +31,10 @@ class ReorderAlert(Base):
 			"tenant_id", "product_id", "warehouse_id",
 			unique=True,
 		),
+		Index(
+			"ix_reorder_alert_tenant_status_warehouse",
+			"tenant_id", "status", "warehouse_id",
+		),
 	)
 
 	id: Mapped[uuid.UUID] = mapped_column(

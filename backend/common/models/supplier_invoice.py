@@ -65,6 +65,7 @@ class SupplierInvoice(Base):
 		Enum(
 			SupplierInvoiceStatus,
 			name="supplier_invoice_status_enum",
+			values_callable=lambda enum_type: [member.value for member in enum_type],
 			create_constraint=True,
 		),
 		default=SupplierInvoiceStatus.OPEN,

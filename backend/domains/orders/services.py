@@ -385,8 +385,7 @@ async def confirm_order(
         session.add(invoice_audit)
         await session.flush()
 
-    # Reload with relationships
-    return await get_order(session, order.id, tid)
+    return order
 
 
 async def update_order_status(
@@ -413,7 +412,10 @@ async def update_order_status(
         await set_tenant(session, tid)
 
         result = await session.execute(
-            select(Order).where(Order.id == order_id, Order.tenant_id == tid).with_for_update()
+            select(Order)
+            .where(Order.id == order_id, Order.tenant_id == tid)
+            .options(selectinload(Order.lines), selectinload(Order.customer))
+            .with_for_update()
         )
         order = result.scalar_one_or_none()
         if order is None:
@@ -446,7 +448,7 @@ async def update_order_status(
         session.add(audit)
         await session.flush()
 
-    return await get_order(session, order.id, tid)
+    return order
 
 
 async def list_orders(

@@ -32,6 +32,8 @@ class ReasonCode(str, enum.Enum):
 	SUPPLIER_DELIVERY = "supplier_delivery"
 	TRANSFER_OUT = "transfer_out"
 	TRANSFER_IN = "transfer_in"
+	SALES_RESERVATION = "sales_reservation"
+	SALES_RELEASE = "sales_release"
 
 	@classmethod
 	def user_selectable(cls) -> list[ReasonCode]:
@@ -39,7 +41,13 @@ class ReasonCode(str, enum.Enum):
 
 	@classmethod
 	def system_only(cls) -> list[ReasonCode]:
-		return [cls.SUPPLIER_DELIVERY, cls.TRANSFER_OUT, cls.TRANSFER_IN]
+		return [
+			cls.SUPPLIER_DELIVERY,
+			cls.TRANSFER_OUT,
+			cls.TRANSFER_IN,
+			cls.SALES_RESERVATION,
+			cls.SALES_RELEASE,
+		]
 
 
 class StockAdjustment(Base):

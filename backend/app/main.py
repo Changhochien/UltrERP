@@ -16,6 +16,7 @@ from domains.dashboard.routes import router as dashboard_router
 from domains.health.routes import router as health_router
 from domains.inventory.routes import router as inventory_router
 from domains.invoices.routes import router as invoices_router
+from domains.legacy_import.staging import close_raw_connection_pool
 from domains.line.webhook import router as line_router
 from domains.orders.routes import router as orders_router
 from domains.payments.routes import router as payments_router
@@ -29,12 +30,23 @@ def create_app() -> FastAPI:
 
 	@asynccontextmanager
 	async def lifespan(app: FastAPI):
+		# Startup tasks — outside MCP lifespan so failures don't leak MCP context.
+		from domains.settings.seed import seed_settings_if_empty
+
+		# Import this to register domain event handlers (e.g. @on(StockChangedEvent))
+		import domains.inventory.handlers  # noqa: F401
+
+		async with AsyncSessionLocal() as db:
+			await seed_settings_if_empty(db)
+
+		# Only enter MCP lifespan after all startup tasks succeed.
 		mcp_lifespan = mcp_app.router.lifespan_context
 		async with mcp_lifespan(mcp_app):
-			from domains.settings.seed import seed_settings_if_empty
-			async with AsyncSessionLocal() as db:
-				await seed_settings_if_empty(db)
-			yield
+			try:
+				yield
+			finally:
+				invalidate_sitemap_cache()
+				await close_raw_connection_pool()
 
 	app = FastAPI(
 		title="UltrERP API",
