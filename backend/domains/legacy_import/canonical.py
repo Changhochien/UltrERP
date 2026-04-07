@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import json
 import re
-import sys
 import uuid
 import zlib
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
-from typing import Mapping, cast
+from typing import Any, AsyncIterable, AsyncIterator, Mapping, cast
 
 from common.config import settings
 from common.tenant import DEFAULT_TENANT_ID
@@ -61,10 +60,10 @@ def _as_int(value: object | None, default: int = 0) -> int:
     return int(text)
 
 
-def _as_decimal(value: object | None, default: str = "0") -> Decimal:
+def _as_decimal(value: object | None, default: str | None = "0") -> Decimal | None:
     text = _as_text(value)
     if not text:
-        return Decimal(default)
+        return Decimal(default) if default is not None else None
     try:
         return Decimal(text)
     except InvalidOperation as exc:
@@ -456,11 +455,32 @@ async def _table_exists(connection, schema_name: str, table_name: str) -> bool:
     return bool(value)
 
 
-async def _fetch_normalized_parties(
+async def _iter_query_rows(
+    connection,
+    query: str,
+    *args: object,
+) -> AsyncIterator[dict[str, object]]:
+    # Prefer server-side cursor when available — streams rows without loading
+    # all into memory. Falls back to fetch() for non-transactional connections.
+    cursor = getattr(connection, "cursor", None)
+    if callable(cursor):
+        async with connection.transaction():
+            cursor_iter = cast(Any, cursor)(query, *args)
+            async for row in cursor_iter:
+                yield _coerce_row(row)
+        return
+
+    rows = await connection.fetch(query, *args)
+    for row in rows:
+        yield _coerce_row(row)
+
+
+async def _iter_normalized_parties(
     connection, schema_name: str, batch_id: str, tenant_id: uuid.UUID
-) -> list[dict[str, object]]:
+) -> AsyncIterator[dict[str, object]]:
     quoted_schema = _quoted_identifier(schema_name)
-    rows = await connection.fetch(
+    async for row in _iter_query_rows(
+        connection,
         f"""
 		SELECT
 			deterministic_id,
@@ -482,15 +502,16 @@ async def _fetch_normalized_parties(
 		""",
         batch_id,
         tenant_id,
-    )
-    return [_coerce_row(row) for row in rows]
+    ):
+        yield row
 
 
-async def _fetch_normalized_products(
+async def _iter_normalized_products(
     connection, schema_name: str, batch_id: str, tenant_id: uuid.UUID
-) -> list[dict[str, object]]:
+) -> AsyncIterator[dict[str, object]]:
     quoted_schema = _quoted_identifier(schema_name)
-    rows = await connection.fetch(
+    async for row in _iter_query_rows(
+        connection,
         f"""
 		SELECT
 			deterministic_id,
@@ -507,15 +528,16 @@ async def _fetch_normalized_products(
 		""",
         batch_id,
         tenant_id,
-    )
-    return [_coerce_row(row) for row in rows]
+    ):
+        yield row
 
 
-async def _fetch_normalized_warehouses(
+async def _iter_normalized_warehouses(
     connection, schema_name: str, batch_id: str, tenant_id: uuid.UUID
-) -> list[dict[str, object]]:
+) -> AsyncIterator[dict[str, object]]:
     quoted_schema = _quoted_identifier(schema_name)
-    rows = await connection.fetch(
+    async for row in _iter_query_rows(
+        connection,
         f"""
 		SELECT
 			deterministic_id,
@@ -531,15 +553,16 @@ async def _fetch_normalized_warehouses(
 		""",
         batch_id,
         tenant_id,
-    )
-    return [_coerce_row(row) for row in rows]
+    ):
+        yield row
 
 
-async def _fetch_normalized_inventory(
+async def _iter_normalized_inventory(
     connection, schema_name: str, batch_id: str, tenant_id: uuid.UUID
-) -> list[dict[str, object]]:
+) -> AsyncIterator[dict[str, object]]:
     quoted_schema = _quoted_identifier(schema_name)
-    rows = await connection.fetch(
+    async for row in _iter_query_rows(
+        connection,
         f"""
 		SELECT
 			product_deterministic_id,
@@ -556,15 +579,17 @@ async def _fetch_normalized_inventory(
 		""",
         batch_id,
         tenant_id,
-    )
-    return [_coerce_row(row) for row in rows]
+    ):
+        yield row
 
 
-async def _fetch_product_mappings(
-    connection, schema_name: str, tenant_id: uuid.UUID
-) -> dict[str, str]:
+async def _iter_product_mappings(
+    connection, schema_name: str, tenant_id: uuid.UUID,
+) -> AsyncIterator[tuple[str, str]]:
+    """Yield (legacy_code, target_code) pairs — streaming, memory-efficient."""
     quoted_schema = _quoted_identifier(schema_name)
-    rows = await connection.fetch(
+    async for row in _iter_query_rows(
+        connection,
         f"""
 		SELECT legacy_code, target_code
 		FROM {quoted_schema}.product_code_mapping
@@ -572,12 +597,21 @@ async def _fetch_product_mappings(
 		ORDER BY legacy_code
 		""",
         tenant_id,
-    )
-    return {
-        _as_text(row_dict["legacy_code"]): _as_text(row_dict["target_code"])
-        for row_dict in (_coerce_row(row) for row in rows)
-        if _as_text(row_dict.get("legacy_code"))
-    }
+    ):
+        legacy = _as_text(row.get("legacy_code"))
+        target = _as_text(row.get("target_code"))
+        if legacy:
+            yield legacy, target
+
+
+async def _fetch_product_mappings(
+    connection, schema_name: str, tenant_id: uuid.UUID
+) -> dict[str, str]:
+    """Build product code mapping dict by streaming rows (memory-efficient)."""
+    result: dict[str, str] = {}
+    async for legacy, target in _iter_product_mappings(connection, schema_name, tenant_id):
+        result[legacy] = target
+    return result
 
 
 async def _fetch_sales_headers(
@@ -618,19 +652,29 @@ async def _fetch_sales_lines(
     rows = await connection.fetch(
         f"""
 		SELECT
-			col_2 AS doc_number,
-			col_3 AS line_number,
-			col_7 AS product_code,
-			col_8 AS product_name,
-			col_18 AS unit,
-			col_19 AS qty,
-			col_20 AS unit_price,
-			col_21 AS extended_amount,
-			col_23 AS tax_amount,
-			_source_row_number AS source_row_number
-		FROM {quoted_schema}.tbsslipdtx
-		WHERE _batch_id = $1
-		ORDER BY col_2, col_3
+			dtx.col_2 AS doc_number,
+			dtx.col_3 AS line_number,
+			dtx.col_7 AS product_code,
+			dtx.col_8 AS product_name,
+			dtx.col_18 AS unit,
+			dtx.col_19 AS list_unit_price,
+			dtx.col_21 AS unit_price,
+			dtx.col_22 AS line_tax_amount,
+			dtx.col_23 AS qty,
+			dtx.col_29 AS extended_amount,
+			dtx.col_44 AS original_list_price,
+			dtx.col_45 AS original_discount_ratio,
+			dtx._source_row_number AS source_row_number,
+			COALESCE(SUM(inv.quantity_on_hand), 0) AS available_stock_snapshot
+		FROM {quoted_schema}.tbsslipdtx dtx
+		LEFT JOIN {quoted_schema}.normalized_inventory_prep inv
+			ON inv.product_legacy_code = dtx.col_7
+			AND inv.batch_id = dtx._batch_id
+		WHERE dtx._batch_id = $1
+		GROUP BY dtx.col_2, dtx.col_3, dtx.col_7, dtx.col_8, dtx.col_18,
+			dtx.col_19, dtx.col_21, dtx.col_22, dtx.col_23, dtx.col_29,
+			dtx.col_44, dtx.col_45, dtx._source_row_number
+		ORDER BY dtx.col_2, dtx.col_3
 		""",
         batch_id,
     )
@@ -681,9 +725,11 @@ async def _fetch_purchase_lines(
 			col_2 AS doc_number,
 			col_3 AS line_number,
 			col_6 AS product_code,
-			col_19 AS qty,
-			col_20 AS unit_price,
-			col_21 AS extended_amount,
+			col_19 AS unit_price,
+			col_20 AS discount_multiplier,
+			col_21 AS foldprice,
+			col_22 AS qty,
+			(col_19::numeric * col_20::numeric * col_22::numeric) AS extended_amount,
 			_source_row_number AS source_row_number
 		FROM {quoted_schema}.tbsslipdtj
 		WHERE _batch_id = $1
@@ -700,27 +746,31 @@ async def _import_customers(
     run_id: uuid.UUID,
     tenant_id: uuid.UUID,
     batch_id: str,
-    party_rows: list[dict[str, object]],
+    party_rows: AsyncIterable[dict[str, object]],
 ) -> tuple[int, int, dict[str, uuid.UUID], dict[str, str]]:
     count = 0
     lineage_count = 0
     customer_by_code: dict[str, uuid.UUID] = {}
     business_number_by_code: dict[str, str] = {}
-    for row in party_rows:
+    async for row in party_rows:
         if _as_text(row.get("role")) != "customer":
             continue
         legacy_code = _as_text(row.get("legacy_code"))
         customer_id = _tenant_scoped_uuid(tenant_id, "party", "customer", legacy_code)
         business_number = _normalized_business_number(row.get("tax_id"), legacy_code)
         company_name = _as_text(row.get("company_name")) or legacy_code
-        contact_name = _as_text(row.get("contact_person")) or _as_text(row.get("company_name")) or legacy_code
+        contact_name = (
+            _as_text(row.get("contact_person"))
+            or _as_text(row.get("company_name"))
+            or legacy_code
+        )
         contact_phone = _as_text(row.get("phone")) or "N/A"
         contact_email = _as_text(row.get("email")) or "N/A"
         billing_address = _as_text(row.get("address")) or _as_text(row.get("full_address")) or "N/A"
         # Truncate phone to column limit
         if contact_phone and len(contact_phone) > 30:
             contact_phone = contact_phone[:30]
-        result = await connection.execute(
+        await connection.execute(
             """
 			INSERT INTO customers (
 				id,
@@ -765,6 +815,11 @@ async def _import_customers(
             tenant_id,
             business_number,
         )
+        if actual_row is None:
+            raise ValueError(
+                f"No customer found for BN {business_number} after INSERT — "
+                "check ON CONFLICT constraint or tenant_id mismatch"
+            )
         actual_customer_id = actual_row["id"]
         await _upsert_lineage(
             connection,
@@ -791,12 +846,12 @@ async def _import_suppliers(
     run_id: uuid.UUID,
     tenant_id: uuid.UUID,
     batch_id: str,
-    party_rows: list[dict[str, object]],
+    party_rows: AsyncIterable[dict[str, object]],
 ) -> tuple[int, int, dict[str, uuid.UUID]]:
     count = 0
     lineage_count = 0
     supplier_by_code: dict[str, uuid.UUID] = {}
-    for row in party_rows:
+    async for row in party_rows:
         if _as_text(row.get("role")) != "supplier":
             continue
         legacy_code = _as_text(row.get("legacy_code"))
@@ -854,13 +909,18 @@ async def _import_products(
     run_id: uuid.UUID,
     tenant_id: uuid.UUID,
     batch_id: str,
-    product_rows: list[dict[str, object]],
+    product_rows: AsyncIterable[dict[str, object]],
 ) -> tuple[int, int, dict[str, uuid.UUID]]:
     count = 0
     lineage_count = 0
     product_by_code: dict[str, uuid.UUID] = {}
-    for row in product_rows:
+    unknown_product_present = False
+
+    async def _upsert_product_row(row: dict[str, object]) -> None:
+        nonlocal count, lineage_count, unknown_product_present
         legacy_code = _as_text(row.get("legacy_code"))
+        if legacy_code == UNKNOWN_PRODUCT_CODE:
+            unknown_product_present = True
         product_id = _tenant_scoped_uuid(tenant_id, "product", legacy_code)
         status = (
             "inactive"
@@ -882,10 +942,23 @@ async def _import_products(
 				description,
 				unit,
 				status,
+				search_vector,
 				created_at,
 				updated_at
 			)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+			VALUES (
+				$1::uuid, $2::uuid, $3::varchar, $4::varchar, $5::varchar, $6::text,
+				$7::varchar, $8::varchar,
+                to_tsvector(
+                    'simple',
+                    coalesce($3::text, '')
+                    || ' '
+                    || coalesce($4::text, '')
+                    || ' '
+                    || coalesce($5::text, '')
+                ),
+				NOW(), NOW()
+			)
 			ON CONFLICT (id) DO UPDATE SET
 				code = EXCLUDED.code,
 				name = EXCLUDED.name,
@@ -893,6 +966,7 @@ async def _import_products(
 				description = EXCLUDED.description,
 				unit = EXCLUDED.unit,
 				status = EXCLUDED.status,
+				search_vector = EXCLUDED.search_vector,
 				updated_at = NOW()
 			""",
             product_id,
@@ -900,7 +974,7 @@ async def _import_products(
             legacy_code,
             _as_text(row.get("name")) or legacy_code,
             _as_text(row.get("category")) or None,
-            None,
+            _as_text(row.get("description")) if row.get("description") else None,
             _as_text(row.get("unit")) or "pcs",
             status,
         )
@@ -919,6 +993,23 @@ async def _import_products(
         product_by_code[legacy_code] = product_id
         count += 1
         lineage_count += 1
+
+    async for row in product_rows:
+        await _upsert_product_row(row)
+
+    if not unknown_product_present:
+        await _upsert_product_row(
+            {
+                "legacy_code": UNKNOWN_PRODUCT_CODE,
+                "name": "Unknown Product",
+                "category": None,
+                "unit": "unknown",
+                "status": "placeholder",
+                "source_table": "product_code_mapping",
+                "source_row_number": 0,
+            }
+        )
+
     return count, lineage_count, product_by_code
 
 
@@ -928,12 +1019,12 @@ async def _import_warehouses(
     run_id: uuid.UUID,
     tenant_id: uuid.UUID,
     batch_id: str,
-    warehouse_rows: list[dict[str, object]],
+    warehouse_rows: AsyncIterable[dict[str, object]],
 ) -> tuple[int, int, dict[str, uuid.UUID]]:
     count = 0
     lineage_count = 0
     warehouse_by_code: dict[str, uuid.UUID] = {}
-    for row in warehouse_rows:
+    async for row in warehouse_rows:
         code = _as_text(row.get("code"))
         warehouse_id = _tenant_scoped_uuid(tenant_id, "warehouse", code)
         await connection.execute(
@@ -990,13 +1081,13 @@ async def _import_inventory(
     run_id: uuid.UUID,
     tenant_id: uuid.UUID,
     batch_id: str,
-    inventory_rows: list[dict[str, object]],
+    inventory_rows: AsyncIterable[dict[str, object]],
     product_by_code: dict[str, uuid.UUID],
     warehouse_by_code: dict[str, uuid.UUID],
 ) -> tuple[int, int]:
     count = 0
     lineage_count = 0
-    for row in inventory_rows:
+    async for row in inventory_rows:
         product_code = _as_text(row.get("product_legacy_code"))
         warehouse_code = _as_text(row.get("warehouse_code"))
         product_id = product_by_code.get(product_code)
@@ -1253,12 +1344,47 @@ async def _import_sales_history(
                 )
 
             line_number = _as_int(line.get("line_number"), 1)
-            quantity = _as_decimal(line.get("qty"), "0")
+            # col_21 = discounted/actual unit price; col_19 = foldprice (may be pre-adjusted)
+            list_unit_price = _as_decimal(line.get("list_unit_price"), "0.00")
             unit_price = _as_decimal(line.get("unit_price"), "0.00")
-            subtotal = _as_decimal(line.get("extended_amount"), "0.00")
-            line_tax_amount = _as_decimal(line.get("tax_amount"), "0.00")
+            extended_amount = _as_decimal(line.get("extended_amount"), "0.00")
+            # col_23 = actual quantity
+            quantity = _as_decimal(line.get("qty"), "0")
+            # Check for pre-adjusted foldprice: sexp1/col_44 holds original list when
+            # foldprice was already set to the post-discount price (fnewprice * fdisper)
+            original_list_price = _as_decimal(line.get("original_list_price"), None)
+            original_discount_ratio = _as_decimal(line.get("original_discount_ratio"), None)
+            if (
+                original_list_price is not None
+                and original_discount_ratio is not None
+                and original_list_price > list_unit_price
+                and Decimal("0") < original_discount_ratio < Decimal("1")
+            ):
+                # foldprice was pre-adjusted; use sexp1 as the true original list price
+                actual_list_price = original_list_price
+            else:
+                actual_list_price = list_unit_price
+            # Discount per unit: original list - unit (always >= 0)
+            discount_amount = max(
+                Decimal("0.00"),
+                (actual_list_price - unit_price).quantize(Decimal("0.01")),
+            )
+            subtotal = extended_amount  # already the discounted subtotal
+            # col_22 = line tax amount, col_23 = qty, col_29 = subtotal
+            # Derive effective tax rate: rate = line_tax / subtotal
+            line_tax_amount = _as_decimal(line.get("line_tax_amount"), "0.00")
             line_total = subtotal + line_tax_amount
-            tax_policy_code, tax_type, tax_rate = _tax_policy_code(line_tax_amount)
+            # Clamp BEFORE quantizing to avoid rounding overflow; max(0, ...) handles bad data
+            MAX_TAX_RATE = Decimal("99.9999")
+            MIN_TAX_RATE = Decimal("0.0000")
+            raw_rate = (
+                (line_tax_amount / extended_amount * Decimal("100"))
+                if extended_amount
+                else Decimal("0")
+            )
+            tax_rate = max(MIN_TAX_RATE, min(raw_rate, MAX_TAX_RATE)).quantize(Decimal("0.0001"))
+            tax_policy_code = "standard" if line_tax_amount > 0 else "exempt"
+            tax_type = 1 if line_tax_amount > 0 else 3
             order_line_id = _tenant_scoped_uuid(
                 tenant_id,
                 "order-line",
@@ -1269,6 +1395,7 @@ async def _import_sales_history(
                 tenant_id, "invoice-line", doc_number, str(line_number)
             )
 
+
             await connection.execute(
                 """
 				INSERT INTO order_lines (
@@ -1278,7 +1405,9 @@ async def _import_sales_history(
 					product_id,
 					line_number,
 					quantity,
+					list_unit_price,
 					unit_price,
+					discount_amount,
 					tax_policy_code,
 					tax_type,
 					tax_rate,
@@ -1305,22 +1434,27 @@ async def _import_sales_history(
                     $12,
                     $13,
                     $14,
-                    NULL,
-                    NULL,
+                    $15,
+                    $16,
+                    $17,
+                    $18,
                     NOW()
                 )
 				ON CONFLICT (id) DO UPDATE SET
 					product_id = EXCLUDED.product_id,
 					line_number = EXCLUDED.line_number,
 					quantity = EXCLUDED.quantity,
+					list_unit_price = EXCLUDED.list_unit_price,
 					unit_price = EXCLUDED.unit_price,
+					discount_amount = EXCLUDED.discount_amount,
 					tax_policy_code = EXCLUDED.tax_policy_code,
 					tax_type = EXCLUDED.tax_type,
 					tax_rate = EXCLUDED.tax_rate,
 					tax_amount = EXCLUDED.tax_amount,
 					subtotal_amount = EXCLUDED.subtotal_amount,
 					total_amount = EXCLUDED.total_amount,
-					description = EXCLUDED.description
+					description = EXCLUDED.description,
+					available_stock_snapshot = EXCLUDED.available_stock_snapshot
 				""",
                 order_line_id,
                 tenant_id,
@@ -1328,7 +1462,9 @@ async def _import_sales_history(
                 product_id,
                 line_number,
                 quantity,
+                actual_list_price,
                 unit_price,
+                discount_amount,
                 tax_policy_code,
                 tax_type,
                 tax_rate,
@@ -1336,6 +1472,8 @@ async def _import_sales_history(
                 subtotal,
                 line_total,
                 _as_text(line.get("product_name")) or legacy_product_code,
+                _as_decimal(line.get("available_stock_snapshot"), "0"),
+                None,  # backorder_note: legacy import does not calculate backorder status
             )
             await _upsert_lineage(
                 connection,
@@ -1416,6 +1554,48 @@ async def _import_sales_history(
             )
             invoice_line_count += 1
             lineage_count += 1
+
+        # Recalculate order and invoice totals from the inserted lines
+        # to correct discrepancies between tbsslipx header totals and actual line sums
+        line_totals = await connection.fetch(
+            """
+            SELECT
+                SUM(subtotal_amount) AS subtotal,
+                SUM(tax_amount) AS tax,
+                SUM(total_amount) AS total
+            FROM order_lines
+            WHERE tenant_id = $1 AND order_id = $2
+            """,
+            tenant_id,
+            order_id,
+        )
+        if line_totals and line_totals[0]:
+            row = line_totals[0]
+            recalc_subtotal = row["subtotal"] or Decimal("0.00")
+            recalc_tax = row["tax"] or Decimal("0.00")
+            recalc_total = row["total"] or Decimal("0.00")
+            await connection.execute(
+                """
+                UPDATE orders
+                SET subtotal_amount = $1, tax_amount = $2, total_amount = $3, updated_at = NOW()
+                WHERE id = $4
+                """,
+                recalc_subtotal,
+                recalc_tax,
+                recalc_total,
+                order_id,
+            )
+            await connection.execute(
+                """
+                UPDATE invoices
+                SET subtotal_amount = $1, tax_amount = $2, total_amount = $3, updated_at = NOW()
+                WHERE id = $4
+                """,
+                recalc_subtotal,
+                recalc_tax,
+                recalc_total,
+                invoice_id,
+            )
 
     return order_count, order_line_count, invoice_count, invoice_line_count, lineage_count
 
@@ -1662,7 +1842,8 @@ async def _hold_payment_adjacent_history(
     for table_name in ("tbsprepay", "tbsspay"):
         if not await _table_exists(connection, schema_name, table_name):
             continue
-        rows = await connection.fetch(
+        async for raw_row in _iter_query_rows(
+            connection,
             f"""
 			SELECT *
 			FROM {quoted_schema}.{table_name}
@@ -1670,8 +1851,7 @@ async def _hold_payment_adjacent_history(
 			ORDER BY _source_row_number
 			""",
             batch_id,
-        )
-        for raw_row in (_coerce_row(row) for row in rows):
+        ):
             source_identifier = (
                 _as_text(raw_row.get("col_2"))
                 or f"{table_name}:{_as_int(raw_row.get('_source_row_number'))}"
@@ -1729,44 +1909,7 @@ async def run_canonical_import(
             connection, resolved_schema, batch_id, tenant_id
         )
 
-        party_rows = await _fetch_normalized_parties(
-            connection, resolved_schema, batch_id, tenant_id
-        )
-        product_rows = await _fetch_normalized_products(
-            connection, resolved_schema, batch_id, tenant_id
-        )
-        if UNKNOWN_PRODUCT_CODE not in {_as_text(row.get("legacy_code")) for row in product_rows}:
-            product_rows.append(
-                {
-                    "deterministic_id": deterministic_legacy_uuid("product", UNKNOWN_PRODUCT_CODE),
-                    "legacy_code": UNKNOWN_PRODUCT_CODE,
-                    "name": "Unknown Product",
-                    "category": None,
-                    "unit": "unknown",
-                    "status": "placeholder",
-                    "source_table": "product_code_mapping",
-                    "source_row_number": 0,
-                }
-            )
-        warehouse_rows = await _fetch_normalized_warehouses(
-            connection, resolved_schema, batch_id, tenant_id
-        )
-        inventory_rows = await _fetch_normalized_inventory(
-            connection, resolved_schema, batch_id, tenant_id
-        )
         product_mappings = await _fetch_product_mappings(connection, resolved_schema, tenant_id)
-        sales_headers = await _fetch_sales_headers(connection, resolved_schema, batch_id)
-        sales_lines = await _fetch_sales_lines(connection, resolved_schema, batch_id)
-        purchase_headers = (
-            await _fetch_purchase_headers(connection, resolved_schema, batch_id)
-            if await _table_exists(connection, resolved_schema, "tbsslipj")
-            else []
-        )
-        purchase_lines = (
-            await _fetch_purchase_lines(connection, resolved_schema, batch_id)
-            if await _table_exists(connection, resolved_schema, "tbsslipdtj")
-            else []
-        )
 
         async with connection.transaction():
             await _upsert_run_row(
@@ -1793,7 +1936,7 @@ async def run_canonical_import(
                 run_id,
                 tenant_id,
                 batch_id,
-                party_rows,
+                _iter_normalized_parties(connection, resolved_schema, batch_id, tenant_id),
             )
             counts["lineage_count"] += customer_lineage_count
             step_outcomes.append(("customers", counts["customer_count"], "completed", None))
@@ -1817,7 +1960,7 @@ async def run_canonical_import(
                 run_id,
                 tenant_id,
                 batch_id,
-                party_rows,
+                _iter_normalized_parties(connection, resolved_schema, batch_id, tenant_id),
             )
             counts["lineage_count"] += supplier_lineage_count
             step_outcomes.append(("suppliers", counts["supplier_count"], "completed", None))
@@ -1841,7 +1984,7 @@ async def run_canonical_import(
                 run_id,
                 tenant_id,
                 batch_id,
-                product_rows,
+                _iter_normalized_products(connection, resolved_schema, batch_id, tenant_id),
             )
             counts["lineage_count"] += product_lineage_count
             step_outcomes.append(("products", counts["product_count"], "completed", None))
@@ -1865,7 +2008,7 @@ async def run_canonical_import(
                 run_id,
                 tenant_id,
                 batch_id,
-                warehouse_rows,
+                _iter_normalized_warehouses(connection, resolved_schema, batch_id, tenant_id),
             )
             counts["lineage_count"] += warehouse_lineage_count
             step_outcomes.append(("warehouses", counts["warehouse_count"], "completed", None))
@@ -1885,7 +2028,7 @@ async def run_canonical_import(
                 run_id,
                 tenant_id,
                 batch_id,
-                inventory_rows,
+                _iter_normalized_inventory(connection, resolved_schema, batch_id, tenant_id),
                 product_by_code,
                 warehouse_by_code,
             )
@@ -1913,8 +2056,8 @@ async def run_canonical_import(
                 run_id,
                 tenant_id,
                 batch_id,
-                sales_headers,
-                sales_lines,
+                await _fetch_sales_headers(connection, resolved_schema, batch_id),
+                await _fetch_sales_lines(connection, resolved_schema, batch_id),
                 customer_by_code,
                 business_number_by_code,
                 product_by_code,
@@ -1949,8 +2092,16 @@ async def run_canonical_import(
                 run_id,
                 tenant_id,
                 batch_id,
-                purchase_headers,
-                purchase_lines,
+                (
+                    await _fetch_purchase_headers(connection, resolved_schema, batch_id)
+                    if await _table_exists(connection, resolved_schema, "tbsslipj")
+                    else []
+                ),
+                (
+                    await _fetch_purchase_lines(connection, resolved_schema, batch_id)
+                    if await _table_exists(connection, resolved_schema, "tbsslipdtj")
+                    else []
+                ),
                 supplier_by_code,
                 product_by_code,
                 product_mappings,

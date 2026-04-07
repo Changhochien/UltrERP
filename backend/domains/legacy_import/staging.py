@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import csv
 import hashlib
 import re
@@ -9,7 +10,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 import asyncpg
 from sqlalchemy import func, select
@@ -25,6 +26,8 @@ _IDENTIFIER_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _MANIFEST_ROW_RE = re.compile(r"^\|\s*([a-z0-9_]+)\s*\|\s*([0-9,]+)\s*\|")
 _NUMERIC_LITERAL_RE = re.compile(r"^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][-+]?\d+)?$")
 _STAGE_COPY_BATCH_SIZE = 25_000
+_RAW_CONNECTION_POOL: asyncpg.Pool | None = None
+_RAW_CONNECTION_POOL_LOCK = asyncio.Lock()
 
 
 @dataclass(slots=True, frozen=True)
@@ -63,9 +66,11 @@ class AttemptTableAudit:
 
 
 class RawStageConnection(Protocol):
-    async def execute(self, query: str) -> str: ...
+    async def execute(self, query: str, *args: object) -> str: ...
 
     async def fetch(self, query: str, *args: object): ...
+
+    async def fetchrow(self, query: str, *args: object): ...
 
     async def fetchval(self, query: str, *args: object): ...
 
@@ -78,6 +83,58 @@ class RawStageConnection(Protocol):
         records: object,
         timeout: float | None = None,
     ) -> str: ...
+
+    def transaction(self) -> Any: ...
+
+    async def close(self) -> None: ...
+
+
+class _PooledRawConnection:
+    def __init__(self, pool: asyncpg.Pool, connection: asyncpg.Connection) -> None:
+        self._pool = pool
+        self._connection = connection
+        self._released = False
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._connection, name)
+
+    async def execute(self, query: str, *args: object) -> str:
+        return await self._connection.execute(query, *args)
+
+    async def fetch(self, query: str, *args: object):
+        return await self._connection.fetch(query, *args)
+
+    async def fetchrow(self, query: str, *args: object):
+        return await self._connection.fetchrow(query, *args)
+
+    async def fetchval(self, query: str, *args: object):
+        return await self._connection.fetchval(query, *args)
+
+    async def copy_records_to_table(
+        self,
+        table_name: str,
+        *,
+        schema_name: str | None = None,
+        columns: list[str] | tuple[str, ...] | None = None,
+        records: object,
+        timeout: float | None = None,
+    ) -> str:
+        return await self._connection.copy_records_to_table(
+            table_name,
+            schema_name=schema_name,
+            columns=columns,
+            records=records,
+            timeout=timeout,
+        )
+
+    def transaction(self) -> Any:
+        return self._connection.transaction()
+
+    async def close(self) -> None:
+        if self._released:
+            return
+        self._released = True
+        await self._pool.release(self._connection)
 
 
 def _split_legacy_tokens(line: str) -> list[str]:
@@ -613,11 +670,41 @@ def _asyncpg_dsn(database_url: str) -> str:
     return url.set(drivername=drivername).render_as_string(hide_password=False)
 
 
-async def _open_raw_connection() -> asyncpg.Connection:
-    return await asyncpg.connect(
-        dsn=_asyncpg_dsn(settings.database_url),
-        command_timeout=None,
-    )
+async def _get_raw_connection_pool() -> asyncpg.Pool:
+    global _RAW_CONNECTION_POOL  # noqa: PLW0603
+    if _RAW_CONNECTION_POOL is not None:
+        return _RAW_CONNECTION_POOL
+
+    async with _RAW_CONNECTION_POOL_LOCK:
+        if _RAW_CONNECTION_POOL is None:
+            _RAW_CONNECTION_POOL = await asyncpg.create_pool(
+                dsn=_asyncpg_dsn(settings.database_url),
+                min_size=1,
+                max_size=20,
+                max_inactive_connection_lifetime=1800,
+                statement_cache_size=0,
+                command_timeout=None,
+            )
+    return _RAW_CONNECTION_POOL
+
+
+async def close_raw_connection_pool() -> None:
+    global _RAW_CONNECTION_POOL  # noqa: PLW0603
+    if _RAW_CONNECTION_POOL is None:
+        return
+
+    async with _RAW_CONNECTION_POOL_LOCK:
+        if _RAW_CONNECTION_POOL is None:
+            return
+        pool = _RAW_CONNECTION_POOL
+        _RAW_CONNECTION_POOL = None
+        await pool.close()
+
+
+async def _open_raw_connection() -> RawStageConnection:
+    pool = await _get_raw_connection_pool()
+    connection = await pool.acquire()
+    return _PooledRawConnection(pool, connection)
 
 
 async def _raw_stage_connection_from_session(session: AsyncSession) -> RawStageConnection:
@@ -744,12 +831,17 @@ async def run_stage_import(
                 )
                 connection = await _raw_stage_connection_from_session(session)
 
-                if previous_table_names:
-                    await _cleanup_stage_tables(
-                        connection,
-                        schema_name=resolved_schema,
-                        table_names=previous_table_names,
-                    )
+                # Only drop tables that are in BOTH the previous run AND the current request.
+                # This prevents accidentally deleting staged data for tables not re-requested
+                # in a partial re-run of the same batch.
+                if previous_table_names and selected_scope:
+                    tables_to_cleanup = [t for t in previous_table_names if t in selected_scope]
+                    if tables_to_cleanup:
+                        await _cleanup_stage_tables(
+                            connection,
+                            schema_name=resolved_schema,
+                            table_names=tables_to_cleanup,
+                        )
 
                 run = LegacyImportRun(
                     tenant_id=tenant_id,
