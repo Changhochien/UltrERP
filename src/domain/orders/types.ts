@@ -8,13 +8,17 @@ export interface OrderLineCreate {
   product_id: string;
   description: string;
   quantity: number;
+  list_unit_price?: number;
   unit_price: number;
+  discount_amount?: number;
   tax_policy_code: string;
 }
 
 export interface OrderCreatePayload {
   customer_id: string;
   payment_terms_code?: PaymentTermsCode;
+  discount_amount?: number;
+  discount_percent?: number;
   notes?: string;
   lines: OrderLineCreate[];
 }
@@ -25,7 +29,9 @@ export interface OrderLineResponse {
   line_number: number;
   description: string;
   quantity: string;
+  list_unit_price: string;
   unit_price: string;
+  discount_amount: string;
   tax_policy_code: string;
   tax_type: number;
   tax_rate: string;
@@ -45,6 +51,8 @@ export interface OrderResponse {
   payment_terms_code: string;
   payment_terms_days: number;
   subtotal_amount: string;
+  discount_amount: string | null;
+  discount_percent: string | null;
   tax_amount: string;
   total_amount: string;
   invoice_id: string | null;

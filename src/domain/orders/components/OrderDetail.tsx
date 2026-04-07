@@ -1,6 +1,7 @@
 /** Read-only order detail view with line items and status actions. */
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { DataTable } from "../../../components/layout/DataTable";
@@ -37,6 +38,7 @@ interface OrderDetailProps {
 
 export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
   const { t } = useTranslation("common");
+  const navigate = useNavigate();
   const { order, loading, error, reload } = useOrderDetail(orderId);
   const [updating, setUpdating] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
@@ -109,6 +111,15 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
           <dd>{order.payment_terms_code} ({order.payment_terms_days} days)</dd>
           <dt>{t("orders.detail.subtotal")}</dt>
           <dd>${order.subtotal_amount}</dd>
+          {Number(order.discount_amount ?? 0) > 0 || Number(order.discount_percent ?? 0) > 0 ? (
+            <>
+              <dt>{t("orders.detail.discount")}</dt>
+              <dd>
+                {Number(order.discount_percent ?? 0) > 0 ? `${(Number(order.discount_percent) * 100).toFixed(2)}%` : null}
+                {Number(order.discount_amount ?? 0) > 0 ? ` ($${order.discount_amount})` : null}
+              </dd>
+            </>
+          ) : null}
           <dt>{t("orders.detail.tax")}</dt>
           <dd>${order.tax_amount}</dd>
           <dt>{t("orders.detail.total")}</dt>
@@ -116,7 +127,15 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
           {order.invoice_id ? (
             <>
               <dt>{t("orders.detail.invoice")}</dt>
-              <dd>{order.invoice_id}</dd>
+              <dd>
+                <button
+                  type="button"
+                  className="appearance-none border-0 bg-transparent p-0 text-foreground underline-offset-4 hover:text-foreground/80 hover:underline focus-visible:underline"
+                  onClick={() => navigate(`/invoices/${order.invoice_id}`)}
+                >
+                  {order.invoice_id}
+                </button>
+              </dd>
             </>
           ) : null}
           {order.notes ? (
@@ -143,6 +162,8 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
             { id: "description", header: t("orders.form.description"), sortable: true, getSortValue: (line) => line.description, cell: (line) => line.description },
             { id: "quantity", header: t("orders.form.quantity"), sortable: true, getSortValue: (line) => Number(line.quantity), cell: (line) => line.quantity },
             { id: "unit_price", header: t("orders.form.unitPrice"), sortable: true, getSortValue: (line) => Number(line.unit_price), cell: (line) => `$${line.unit_price}` },
+            { id: "list_unit_price", header: t("orders.detail.listPrice"), sortable: true, getSortValue: (line) => Number(line.list_unit_price || 0), cell: (line) => { const lp = Number(line.list_unit_price || 0); const up = Number(line.unit_price || 0); return lp > 0 && lp !== up ? `$${line.list_unit_price}` : "—"; } },
+            { id: "discount_amount", header: t("orders.detail.discount"), sortable: true, getSortValue: (line) => Number(line.discount_amount || 0), cell: (line) => { const da = Number(line.discount_amount || 0); const lp = Number(line.list_unit_price || 1); return da > 0 ? `${((da / lp) * 100).toFixed(1)}%` : "—"; } },
             { id: "tax_amount", header: t("orders.detail.tax"), sortable: true, getSortValue: (line) => Number(line.tax_amount), cell: (line) => `$${line.tax_amount}` },
             { id: "subtotal_amount", header: t("orders.detail.subtotal"), sortable: true, getSortValue: (line) => Number(line.subtotal_amount), cell: (line) => `$${line.subtotal_amount}` },
             { id: "total_amount", header: t("orders.detail.total"), sortable: true, getSortValue: (line) => Number(line.total_amount), cell: (line) => `$${line.total_amount}` },

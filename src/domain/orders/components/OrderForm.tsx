@@ -18,7 +18,7 @@ interface OrderFormProps {
 }
 
 function emptyLine(): OrderLineCreate {
-  return { product_id: "", description: "", quantity: 1, unit_price: 0, tax_policy_code: "standard" };
+  return { product_id: "", description: "", quantity: 1, list_unit_price: 0, unit_price: 0, discount_amount: 0, tax_policy_code: "standard" };
 }
 
 export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
@@ -29,6 +29,8 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
 
   const [customerId, setCustomerId] = useState("");
   const [paymentTermsCode, setPaymentTermsCode] = useState("NET_30");
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [discountPercent, setDiscountPercent] = useState(0);
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<OrderLineCreate[]>([emptyLine()]);
   const submittingRef = useRef(false);
@@ -70,6 +72,8 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
       const payload: OrderCreatePayload = {
         customer_id: customerId,
         payment_terms_code: paymentTermsCode as OrderCreatePayload["payment_terms_code"],
+        discount_amount: discountAmount || undefined,
+        discount_percent: discountPercent || undefined,
         notes: notes || undefined,
         lines: validLines,
       };
@@ -125,6 +129,33 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
               placeholder="Optional notes"
             />
           </label>
+
+          <label className="space-y-2">
+            <span>{t("orders.form.discountAmount")}</span>
+            <Input
+              id="ord-discount-amt"
+              type="number"
+              min={0}
+              step="0.01"
+              value={discountAmount}
+              onChange={(e) => setDiscountAmount(Number(e.target.value))}
+              placeholder="0.00"
+            />
+          </label>
+
+          <label className="space-y-2">
+            <span>{t("orders.form.discountPercent")} (%)</span>
+            <Input
+              id="ord-discount-pct"
+              type="number"
+              min={0}
+              max={100}
+              step="0.01"
+              value={discountPercent}
+              onChange={(e) => setDiscountPercent(Number(e.target.value))}
+              placeholder="0.00"
+            />
+          </label>
         </div>
 
         <div className="overflow-x-auto rounded-2xl border border-border/80 bg-card/90 shadow-sm">
@@ -135,6 +166,7 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
                 <TableHead>{t("orders.form.description")}</TableHead>
                 <TableHead>{t("orders.form.quantity")}</TableHead>
                 <TableHead>{t("orders.form.unitPrice")}</TableHead>
+                <TableHead>{t("orders.form.discount")}</TableHead>
                 <TableHead>{t("orders.form.taxPolicy")}</TableHead>
                 <TableHead>{t("orders.form.stock")}</TableHead>
                 <TableHead />
@@ -185,6 +217,17 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
                       onChange={(e) => updateLine(idx, { unit_price: Number(e.target.value) })}
                       aria-label={`Line ${idx + 1} unit price`}
                       className="w-28"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={line.discount_amount ?? 0}
+                      onChange={(e) => updateLine(idx, { discount_amount: Number(e.target.value) })}
+                      aria-label={`Line ${idx + 1} discount`}
+                      className="w-24"
                     />
                   </TableCell>
                   <TableCell>
