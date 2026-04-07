@@ -18,6 +18,7 @@ export interface InvoiceCreatePayload {
 	buyer_identifier?: string | null;
 	invoice_date?: string;
 	currency_code: string;
+	order_id?: string | null;
 	lines: InvoiceCreateLinePayload[];
 }
 
@@ -102,6 +103,7 @@ export interface InvoiceResponse {
 	invoice_number: string;
 	invoice_date: string;
 	customer_id: string;
+	order_id?: string | null;
 	buyer_type: string;
 	buyer_identifier_snapshot: string;
 	currency_code: string;
@@ -129,6 +131,7 @@ export interface InvoiceListItem {
 	invoice_number: string;
 	invoice_date: string;
 	customer_id: string;
+	order_id?: string | null;
 	currency_code: string;
 	total_amount: string;
 	status: string;

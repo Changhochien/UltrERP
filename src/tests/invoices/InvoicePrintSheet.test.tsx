@@ -1,5 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
+import i18n from "i18next";
 import { afterEach, describe, expect, it } from "vitest";
+import zhHantTranslations from "../../../public/locales/zh-Hant/common.json";
 
 import InvoicePrintSheet from "../../components/invoices/print/InvoicePrintSheet";
 import type {
@@ -9,8 +11,12 @@ import type {
 } from "../../domain/invoices/types";
 import { validatePrintReady } from "../../lib/print/invoices";
 
-afterEach(() => {
+	afterEach(async () => {
 	cleanup();
+	if (!i18n.hasResourceBundle("zh-Hant", "common")) {
+		i18n.addResourceBundle("zh-Hant", "common", zhHantTranslations, true, true);
+	}
+	await i18n.changeLanguage("en");
 });
 
 const seller: SellerInfo = {
@@ -112,6 +118,24 @@ describe("InvoicePrintSheet", () => {
 		expect(screen.getByText("彰化市線東路一段臨670號")).toBeTruthy();
 	});
 
+	it("omits blank seller contact fields", () => {
+		render(
+			<InvoicePrintSheet
+				invoice={makeInvoice()}
+				customer={customer}
+				seller={{
+					name: "TestCo",
+					address: "",
+					phone: "",
+					fax: "",
+				}}
+			/>,
+		);
+
+		expect(screen.getByText("TestCo")).toBeTruthy();
+		expect(screen.queryByText(/TEL:/)).toBeNull();
+	});
+
 	it("renders line item product code and description", () => {
 		render(
 			<InvoicePrintSheet
@@ -122,6 +146,24 @@ describe("InvoicePrintSheet", () => {
 		);
 		expect(screen.getByText("W-001")).toBeTruthy();
 		expect(screen.getByText("Widget A")).toBeTruthy();
+	});
+
+	it("uses the pre-tax subtotal in the line amount column", async () => {
+		await i18n.changeLanguage("en");
+
+		render(
+			<InvoicePrintSheet
+				invoice={makeInvoice()}
+				customer={customer}
+				seller={seller}
+			/>,
+		);
+
+		const amountCell = document.querySelector(
+			".ips-grid tbody tr td.ips-col-amount",
+		)?.textContent;
+
+		expect(amountCell).toBe("1,000");
 	});
 
 	it("renders totals in footer", () => {
@@ -183,7 +225,9 @@ describe("InvoicePrintSheet", () => {
 		expect(screen.getByText("B-002")).toBeTruthy();
 	});
 
-	it("renders column headers in Chinese", () => {
+	it("renders English form labels in the English locale", async () => {
+		await i18n.changeLanguage("en");
+
 		render(
 			<InvoicePrintSheet
 				invoice={makeInvoice()}
@@ -191,11 +235,34 @@ describe("InvoicePrintSheet", () => {
 				seller={seller}
 			/>,
 		);
-		expect(screen.getByText("產品編號")).toBeTruthy();
-		expect(screen.getByText("品名規格")).toBeTruthy();
-		expect(screen.getByText("數量")).toBeTruthy();
-		expect(screen.getByText("單位")).toBeTruthy();
-		expect(screen.getByText("單價")).toBeTruthy();
+
+		expect(screen.getByText("Document Number")).toBeTruthy();
+		expect(screen.getByText("Customer Name", { exact: false })).toBeTruthy();
+		expect(screen.getByRole("columnheader", { name: "Product Code" })).toBeTruthy();
+		expect(screen.queryByText("單據號碼")).toBeNull();
+	});
+
+	it("renders Traditional Chinese form labels in the zh-Hant locale", async () => {
+		if (!i18n.hasResourceBundle("zh-Hant", "common")) {
+			i18n.addResourceBundle("zh-Hant", "common", zhHantTranslations, true, true);
+		}
+		await i18n.changeLanguage("zh-Hant");
+
+		render(
+			<InvoicePrintSheet
+				invoice={makeInvoice()}
+				customer={customer}
+				seller={seller}
+			/>,
+		);
+		expect(screen.getByRole("columnheader", { name: "產品編號" })).toBeTruthy();
+		expect(screen.getByRole("columnheader", { name: "品名規格" })).toBeTruthy();
+		expect(screen.getByRole("columnheader", { name: "數量" })).toBeTruthy();
+		expect(screen.getByRole("columnheader", { name: "單位" })).toBeTruthy();
+		expect(screen.getByRole("columnheader", { name: "單價" })).toBeTruthy();
+		expect(screen.getByText("單據號碼")).toBeTruthy();
+		expect(screen.getByText("客戶名稱", { exact: false })).toBeTruthy();
+		expect(screen.queryByText("Document Number")).toBeNull();
 	});
 });
 

@@ -1,6 +1,7 @@
 /** Invoice detail with payment summary section. */
 
 import { startTransition, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { SectionCard } from "../../../components/layout/PageLayout";
 import { Badge } from "../../../components/ui/badge";
@@ -34,6 +35,7 @@ interface InvoiceDetailProps {
 }
 
 export function InvoiceDetail({ invoiceId, onBack }: InvoiceDetailProps) {
+  const navigate = useNavigate();
   const {
     invoice,
     loading,
@@ -259,6 +261,24 @@ export function InvoiceDetail({ invoiceId, onBack }: InvoiceDetailProps) {
           <dd>{invoice.currency_code} {invoice.total_amount}</dd>
         </dl>
       </SectionCard>
+
+      {invoice.order_id ? (
+        <SectionCard title="Linked Order" description="The sales order this invoice was issued against.">
+          <div className="flex items-center justify-between">
+            <dl className="gap-y-4">
+              <dt>Order ID</dt>
+              <dd className="font-mono text-sm">{invoice.order_id}</dd>
+            </dl>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate(`/orders/${invoice.order_id}`)}
+            >
+              View Order
+            </Button>
+          </div>
+        </SectionCard>
+      ) : null}
 
       {egui ? (
         <SectionCard title="eGUI Status" description="Submission window, sync timestamps, and retry information for eGUI tracking.">

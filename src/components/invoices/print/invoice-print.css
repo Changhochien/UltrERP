@@ -25,9 +25,8 @@
 	}
 
 	.invoice-print-sheet {
-		position: absolute;
-		top: 0;
-		left: 0;
+		position: static;
+		margin: 0;
 	}
 
 	/* Hide screen-only elements */
@@ -53,6 +52,10 @@
 		max-width: none;
 		overflow: visible;
 	}
+
+	.ips-copy-label {
+		display: none;
+	}
 }
 
 /* ── Sheet container ──────────────────────────────────────────────────── */
@@ -74,6 +77,7 @@
 	width: 100vw;
 	max-width: none;
 	transform: none;
+	translate: none;
 	overflow-y: auto;
 	border: 0;
 	padding: 0;
@@ -308,4 +312,39 @@
 	writing-mode: vertical-rl;
 	font-size: 8pt;
 	letter-spacing: 2pt;
+}
+
+@media print {
+	.invoice-print-sheet {
+		position: static;
+		margin: 0;
+	}
+
+	.print-preview-dialog {
+		position: static;
+		inset: auto;
+		margin: 0;
+		height: auto;
+		width: auto;
+		overflow: visible;
+	}
+
+	.print-preview-shell {
+		min-height: auto;
+		display: block;
+	}
+
+	.print-preview-surface {
+		margin: 0;
+		background: transparent;
+		padding: 0;
+		border-radius: 0;
+		box-shadow: none;
+		max-width: none;
+		overflow: visible;
+	}
+
+	.ips-copy-label {
+		display: none;
+	}
 }

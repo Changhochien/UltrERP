@@ -33,12 +33,26 @@ function formatAmount(value: string): string {
 	return n.toLocaleString("zh-TW", { minimumFractionDigits: 0 });
 }
 
+function formatSellerContactLine(seller: SellerInfo): string | null {
+	const parts = [
+		seller.phone ? `TEL:${seller.phone}` : null,
+		seller.fax ? `FAX:${seller.fax}` : null,
+	].filter(Boolean);
+
+	if (parts.length === 0) {
+		return null;
+	}
+
+	return parts.join("   ");
+}
+
 export default function InvoicePrintSheet({
 	invoice,
 	customer,
 	seller,
 }: InvoicePrintSheetProps) {
 	const { t } = useTranslation("common");
+	const sellerContactLine = formatSellerContactLine(seller);
 	return (
 		<div className="invoice-print-sheet">
 			{/* ── Header ── */}
@@ -54,8 +68,8 @@ export default function InvoicePrintSheet({
 					<span className="ips-company-name">{seller.name}</span>
 				</div>
 				<div className="ips-header-right">
-					<div>{seller.address}</div>
-					<div>TEL:{seller.phone} FAX:{seller.fax}</div>
+					{seller.address ? <div>{seller.address}</div> : null}
+					{sellerContactLine ? <div>{sellerContactLine}</div> : null}
 				</div>
 			</div>
 
@@ -63,7 +77,7 @@ export default function InvoicePrintSheet({
 			<div className="ips-doc-row">
 				<span className="ips-date">{formatDate(invoice.invoice_date)}</span>
 				<span className="ips-doc-number">
-					<span className="ips-field-label">{t('invoice.print.documentNumber')}</span>
+					<span className="ips-field-label">{t("invoice.print.documentNumber")}</span>
 					{invoice.invoice_number}
 				</span>
 			</div>
@@ -72,37 +86,37 @@ export default function InvoicePrintSheet({
 			<div className="ips-customer">
 				<div className="ips-customer-left">
 					<div>
-						<span className="ips-field-label">{t('invoice.print.customerName')}</span>
+						<span className="ips-field-label">{t("invoice.print.customerName")}</span>
 						{customer.company_name}
 					</div>
 					<div>
-						<span className="ips-field-label">{t('invoice.print.taxId')}</span>
+						<span className="ips-field-label">{t("invoice.print.taxId")}</span>
 						{invoice.buyer_identifier_snapshot}
 					</div>
 					<div>
-						<span className="ips-field-label">{t('invoice.print.invoiceAddress')}</span>
+						<span className="ips-field-label">{t("invoice.print.invoiceAddress")}</span>
 						{customer.billing_address}
 					</div>
 					{customer.shipping_address && (
 						<div>
-							<span className="ips-field-label">{t('invoice.print.shippingAddress')}</span>
+							<span className="ips-field-label">{t("invoice.print.shippingAddress")}</span>
 							{customer.shipping_address}
 						</div>
 					)}
 				</div>
 				<div className="ips-customer-right">
 					<div>
-						<span className="ips-field-label">{t('invoice.print.contactPhone')}</span>
+						<span className="ips-field-label">{t("invoice.print.contactPhone")}</span>
 						{customer.contact_phone}
 					</div>
 					{customer.contact_fax && (
 						<div>
-							<span className="ips-field-label">{t('invoice.print.faxNumber')}</span>
+							<span className="ips-field-label">{t("invoice.print.faxNumber")}</span>
 							{customer.contact_fax}
 						</div>
 					)}
 					<div>
-						<span className="ips-field-label">{t('invoice.print.contactPerson')}</span>
+						<span className="ips-field-label">{t("invoice.print.contactPerson")}</span>
 						{customer.contact_name}
 					</div>
 				</div>
@@ -112,13 +126,13 @@ export default function InvoicePrintSheet({
 			<table className="ips-grid">
 				<thead>
 					<tr>
-						<th className="ips-col-code">{t('invoice.print.col.productCode')}</th>
-						<th className="ips-col-desc">{t('invoice.print.col.description')}</th>
-						<th className="ips-col-qty">{t('invoice.print.col.quantity')}</th>
-						<th className="ips-col-unit">{t('invoice.print.col.unit')}</th>
-						<th className="ips-col-price">{t('invoice.print.col.unitPrice')}</th>
-						<th className="ips-col-net">{t('invoice.print.col.netPrice')}</th>
-						<th className="ips-col-amount">{t('invoice.print.col.amount')}</th>
+						<th className="ips-col-code">{t("invoice.print.col.productCode")}</th>
+						<th className="ips-col-desc">{t("invoice.print.col.description")}</th>
+						<th className="ips-col-qty">{t("invoice.print.col.quantity")}</th>
+						<th className="ips-col-unit">{t("invoice.print.col.unit")}</th>
+						<th className="ips-col-price">{t("invoice.print.col.unitPrice")}</th>
+						<th className="ips-col-net">{t("invoice.print.col.netPrice")}</th>
+						<th className="ips-col-amount">{t("invoice.print.col.amount")}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -129,7 +143,7 @@ export default function InvoicePrintSheet({
 							</td>
 							<td className="ips-col-desc">{line.description}</td>
 							<td className="ips-col-qty">{line.quantity}</td>
-							<td className="ips-col-unit">{t('invoice.print.unit')}</td>
+							<td className="ips-col-unit">{t("invoice.print.unit")}</td>
 							<td className="ips-col-price">
 								{formatAmount(line.unit_price)}
 							</td>
@@ -137,7 +151,7 @@ export default function InvoicePrintSheet({
 								{formatAmount(line.subtotal_amount)}
 							</td>
 							<td className="ips-col-amount">
-								{formatAmount(line.total_amount)}
+								{formatAmount(line.subtotal_amount)}
 							</td>
 						</tr>
 					))}
@@ -148,25 +162,25 @@ export default function InvoicePrintSheet({
 			<div className="ips-footer">
 				<div className="ips-footer-left">
 					<div className="ips-footer-row">
-						<span className="ips-field-label">{t('invoice.print.discount')}</span>
+						<span className="ips-field-label">{t("invoice.print.discount")}</span>
 						<span />
 					</div>
 					<div className="ips-footer-row">
-						<span className="ips-field-label">{t('invoice.print.unpaid')}</span>
+						<span className="ips-field-label">{t("invoice.print.unpaid")}</span>
 						<span />
 					</div>
 				</div>
 				<div className="ips-footer-right">
 					<div className="ips-footer-row">
-						<span className="ips-field-label">{t('invoice.print.subtotal')}</span>
+						<span className="ips-field-label">{t("invoice.print.subtotal")}</span>
 						<span>{formatAmount(invoice.subtotal_amount)}</span>
 					</div>
 					<div className="ips-footer-row">
-						<span className="ips-field-label">{t('invoice.print.tax')}</span>
+						<span className="ips-field-label">{t("invoice.print.tax")}</span>
 						<span>{formatAmount(invoice.tax_amount)}</span>
 					</div>
 					<div className="ips-footer-row">
-						<span className="ips-field-label">{t('invoice.print.total')}</span>
+						<span className="ips-field-label">{t("invoice.print.total")}</span>
 						<span className="ips-total-amount">
 							{formatAmount(invoice.total_amount)}
 						</span>
@@ -176,10 +190,10 @@ export default function InvoicePrintSheet({
 
 			<div className="ips-footer-notes">
 				<div className="ips-footer-notes-left">
-					<span className="ips-field-label">{t('invoice.print.notes')}</span>
+					<span className="ips-field-label">{t("invoice.print.notes")}</span>
 				</div>
 				<div className="ips-footer-notes-right">
-					<span className="ips-field-label">{t('invoice.print.customerSignature')}</span>
+					<span className="ips-field-label">{t("invoice.print.customerSignature")}</span>
 				</div>
 			</div>
 
