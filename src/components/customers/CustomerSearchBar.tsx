@@ -20,10 +20,21 @@ export function CustomerSearchBar({ onSearch, debounceMs = 300, resetSignal = 0 
   }, [resetSignal]);
 
   useEffect(() => {
+    let cancelled = false;
+
     if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => onSearch(value), debounceMs);
+    timerRef.current = setTimeout(() => {
+      if (!cancelled) {
+        onSearch(value);
+      }
+    }, debounceMs);
+
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      cancelled = true;
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
     };
   }, [value, debounceMs, onSearch]);
 

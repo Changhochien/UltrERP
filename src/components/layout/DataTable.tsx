@@ -28,6 +28,7 @@ interface DataTableProps<TData> {
   data: TData[];
   toolbar?: ReactNode;
   summary?: ReactNode;
+  tableClassName?: string;
   loading?: boolean;
   error?: ReactNode;
   emptyTitle?: string;
@@ -77,6 +78,7 @@ export function DataTable<TData>({
   data,
   toolbar,
   summary,
+  tableClassName,
   loading = false,
   error,
   emptyTitle = "No records found",
@@ -156,7 +158,7 @@ export function DataTable<TData>({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       {toolbar}
 
       {summary ? <div className="text-sm text-muted-foreground">{summary}</div> : null}
@@ -167,8 +169,8 @@ export function DataTable<TData>({
         </div>
       ) : null}
 
-      <div className="overflow-x-auto rounded-2xl border border-border/80 bg-card/90 shadow-sm">
-        <Table className="min-w-[480px]">
+      <div className="min-w-0 overflow-x-auto rounded-2xl border border-border/80 bg-card/90 shadow-sm">
+        <Table className={cn("min-w-0", tableClassName)}>
           <TableHeader>
             <TableRow className="bg-muted/35 hover:bg-muted/35">
               {columns.map((column) => {

@@ -153,4 +153,21 @@ describe("OrderDetail — status actions", () => {
     expect(screen.getByText(/cancel this order/)).toBeTruthy();
     expect(screen.getByText("Yes, Cancel Order")).toBeTruthy();
   });
+
+  it("renders the invoice link with transparent chrome and theme foreground text", async () => {
+    mockOrderFetch({ invoice_id: "6b33136e-61fb-5213-8ff0-dd70d555dec3" });
+    render(
+      <MemoryRouter>
+        <OrderDetail orderId={ORDER_ID} onBack={noop} />
+      </MemoryRouter>,
+    );
+
+    const invoiceLink = await screen.findByRole("button", {
+      name: "6b33136e-61fb-5213-8ff0-dd70d555dec3",
+    });
+
+    expect(invoiceLink.className).toContain("bg-transparent");
+    expect(invoiceLink.className).toContain("text-foreground");
+    expect(invoiceLink.className).not.toContain("text-info-token");
+  });
 });

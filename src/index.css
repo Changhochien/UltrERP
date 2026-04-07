@@ -1,4 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -118,7 +117,7 @@
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary: oklch(0.52 0.08 240);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-ring: oklch(0.556 0 0);
 }
@@ -181,15 +180,11 @@
   body {
     @apply antialiased bg-background text-foreground;
     font-family: var(--font-sans);
-    background-image:
-      radial-gradient(circle at top, rgba(37, 99, 235, 0.06), transparent 24rem),
-      linear-gradient(180deg, rgba(250, 250, 250, 0.98), rgba(244, 244, 245, 1));
+    background-image: linear-gradient(180deg, rgba(250, 250, 250, 0.98), rgba(244, 244, 245, 1));
   }
 
   .dark body {
-    background-image:
-      radial-gradient(circle at top, rgba(96, 165, 250, 0.08), transparent 22rem),
-      linear-gradient(180deg, rgba(39, 39, 42, 1), rgba(24, 24, 27, 1));
+    background-image: linear-gradient(180deg, rgba(39, 39, 42, 1), rgba(24, 24, 27, 1));
   }
 
   a {
