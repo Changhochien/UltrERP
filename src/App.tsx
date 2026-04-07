@@ -25,6 +25,7 @@ import {
   INVENTORY_ROUTE,
   INVOICES_ROUTE,
   INVOICE_CREATE_ROUTE,
+  INVOICE_DETAIL_ROUTE,
   LOGIN_ROUTE,
   ORDERS_ROUTE,
   ORDER_CREATE_ROUTE,
@@ -204,6 +205,16 @@ export default function App() {
           />
           <Route
             path={INVOICES_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="invoices">
+                <RoutedPage>
+                  <InvoicesPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={INVOICE_DETAIL_ROUTE}
             element={
               <ProtectedAppRoute requiredFeature="invoices">
                 <RoutedPage>

@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { PageHeader, SectionCard } from "../components/layout/PageLayout";
@@ -7,13 +6,19 @@ import { Button } from "../components/ui/button";
 import { InvoiceDetail } from "../domain/invoices/components/InvoiceDetail";
 import { InvoiceList } from "../domain/invoices/components/InvoiceList";
 import { usePermissions } from "../hooks/usePermissions";
-import { INVOICE_CREATE_ROUTE } from "../lib/routes";
+import { INVOICE_CREATE_ROUTE, INVOICES_ROUTE } from "../lib/routes";
 
 export function InvoicesPage() {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
+  const { invoiceId } = useParams<{ invoiceId: string }>();
   const { canWrite } = usePermissions();
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+
+  if (invoiceId) {
+    return (
+      <InvoiceDetail invoiceId={invoiceId} onBack={() => navigate(INVOICES_ROUTE)} />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -23,11 +28,6 @@ export function InvoicesPage() {
         description={t("invoice.listPage.description")}
         actions={(
           <div className="flex flex-wrap gap-3">
-            {selectedInvoiceId ? (
-              <Button type="button" variant="outline" onClick={() => setSelectedInvoiceId(null)}>
-                {t("invoice.listPage.backToList")}
-              </Button>
-            ) : null}
             {canWrite("invoices") ? (
               <Button type="button" onClick={() => navigate(INVOICE_CREATE_ROUTE)}>
                 {t("invoice.listPage.createInvoice")}
@@ -38,14 +38,10 @@ export function InvoicesPage() {
       />
 
       <SectionCard
-        title={selectedInvoiceId ? t("invoice.listPage.invoiceDetail") : t("invoice.listPage.invoiceWorkspace")}
-        description={selectedInvoiceId ? t("invoice.listPage.invoiceDetailDescription") : t("invoice.listPage.invoiceWorkspaceDescription")}
+        title={t("invoice.listPage.invoiceWorkspace")}
+        description={t("invoice.listPage.invoiceWorkspaceDescription")}
       >
-        {selectedInvoiceId ? (
-          <InvoiceDetail invoiceId={selectedInvoiceId} onBack={() => setSelectedInvoiceId(null)} />
-        ) : (
-          <InvoiceList onSelect={setSelectedInvoiceId} />
-        )}
+        <InvoiceList onSelect={(id) => navigate(`/invoices/${id}`)} />
       </SectionCard>
     </div>
   );

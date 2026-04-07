@@ -36,14 +36,20 @@ export function AppNavigation() {
   const { t } = useTranslation("common");
   const { user, logout } = useAuth();
   const { canAccess } = usePermissions();
-  const { open, isMobile } = useSidebar();
+  const { open, openMobile, isMobile, setOpenMobile } = useSidebar();
 
   const visibleGroups = NAVIGATION_GROUPS.map((group) => ({
     ...group,
     items: group.items.filter((item) => canAccess(item.feature)),
   })).filter((group) => group.items.length > 0);
 
-  const showLabel = open || isMobile;
+  const showLabel = isMobile ? openMobile : open;
+
+  const handleNavigation = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
 
   return (
     <Sidebar>
@@ -77,6 +83,7 @@ export function AppNavigation() {
                           <NavLink
                             to={item.to}
                             end={item.to === "/"}
+                            onClick={handleNavigation}
                             className={({ isActive }) =>
                               [
                                 "group flex items-center gap-3 rounded-2xl border px-3 py-2.5 text-sm font-medium transition-colors transition-shadow",
@@ -109,12 +116,14 @@ export function AppNavigation() {
 
       <SidebarFooter>
         <div className="space-y-3">
-          <div className="rounded-2xl border border-sidebar-border/70 bg-sidebar-accent/45 px-3 py-3">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-sidebar-foreground/60">
-              {t("nav.language")}
-            </p>
-            <LanguageSwitcher />
-          </div>
+          {showLabel ? (
+            <div className="rounded-2xl border border-sidebar-border/70 bg-sidebar-accent/45 px-3 py-3">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-sidebar-foreground/60">
+                {t("nav.language")}
+              </p>
+              <LanguageSwitcher />
+            </div>
+          ) : null}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
