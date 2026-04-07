@@ -30,7 +30,10 @@ export function useSuppliers() {
     (async () => {
       try {
         const res = await fetchSuppliers();
-        if (!cancelled) setSuppliers(res.items);
+        if (!cancelled) {
+          if (res.ok) setSuppliers(res.data.items);
+          else setError(res.error);
+        }
       } catch (err) {
         if (!cancelled)
           setError(err instanceof Error ? err.message : "Failed to load");
@@ -65,10 +68,18 @@ export function useSupplierOrders(options?: {
         status: options?.status,
         supplierId: options?.supplierId,
       });
-      setItems(res.items);
-      setTotal(res.total);
+      if (res.ok) {
+        setItems(res.data.items);
+        setTotal(res.data.total);
+      } else {
+        setError(res.error);
+        setItems([]);
+        setTotal(0);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load");
+      setItems([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -93,8 +104,12 @@ export function useSupplierOrderDetail(orderId: string | null) {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchSupplierOrder(orderId);
-      setOrder(data);
+      const res = await fetchSupplierOrder(orderId);
+      if (res.ok) {
+        setOrder(res.data);
+      } else {
+        setError(res.error);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Not found");
     } finally {
@@ -123,11 +138,12 @@ export function useCreateSupplierOrder() {
       setError(null);
       try {
         const res = await createSupplierOrder(payload);
-        if (!res.ok) {
-          setError(res.error);
-          return null;
-        }
-        return res.data;
+        if (res.ok) return res.data;
+        setError(res.error);
+        return null;
+      } catch {
+        setError("Network error");
+        return null;
       } finally {
         setSubmitting(false);
       }
@@ -153,11 +169,12 @@ export function useUpdateOrderStatus() {
       setError(null);
       try {
         const res = await updateSupplierOrderStatus(orderId, payload);
-        if (!res.ok) {
-          setError(res.error);
-          return null;
-        }
-        return res.data;
+        if (res.ok) return res.data;
+        setError(res.error);
+        return null;
+      } catch {
+        setError("Network error");
+        return null;
       } finally {
         setSubmitting(false);
       }
@@ -177,17 +194,18 @@ export function useReceiveOrder() {
   const receive = useCallback(
     async (
       orderId: string,
-      payload: ReceiveOrderRequest,
+      payload?: ReceiveOrderRequest,
     ): Promise<SupplierOrder | null> => {
       setSubmitting(true);
       setError(null);
       try {
         const res = await receiveSupplierOrder(orderId, payload);
-        if (!res.ok) {
-          setError(res.error);
-          return null;
-        }
-        return res.data;
+        if (res.ok) return res.data;
+        setError(res.error);
+        return null;
+      } catch {
+        setError("Network error");
+        return null;
       } finally {
         setSubmitting(false);
       }

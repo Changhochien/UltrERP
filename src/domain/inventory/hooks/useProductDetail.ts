@@ -13,8 +13,12 @@ export function useProductDetail(productId: string | null) {
     setError(null);
     setProduct(null);
     try {
-      const data = await fetchProductDetail(productId);
-      setProduct(data);
+      const res = await fetchProductDetail(productId);
+      if (res.ok) {
+        setProduct(res.data);
+      } else {
+        setError(res.error);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {

@@ -1,89 +1,9 @@
 import * as React from "react";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
-import { useIsMobile } from "../../hooks/useIsMobile";
+import { useSidebar, SidebarProvider } from "../../hooks/useSidebar";
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "./sheet";
-import { TooltipProvider } from "./tooltip";
-
-const SIDEBAR_STORAGE_KEY = "ultrerp.sidebar.open";
-
-interface SidebarContextValue {
-  open: boolean;
-  setOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  openMobile: boolean;
-  setOpenMobile: React.Dispatch<React.SetStateAction<boolean>>;
-  isMobile: boolean;
-  toggleSidebar: () => void;
-}
-
-const SidebarContext = React.createContext<SidebarContextValue | null>(null);
-
-function useSidebar() {
-  const context = React.useContext(SidebarContext);
-
-  if (!context) {
-    throw new Error("useSidebar must be used within a SidebarProvider.");
-  }
-
-  return context;
-}
-
-function SidebarProvider({ defaultOpen = true, children }: { defaultOpen?: boolean; children: React.ReactNode }) {
-  const isMobile = useIsMobile();
-  const [openMobile, setOpenMobile] = React.useState(false);
-  const [open, setOpen] = React.useState(() => {
-    if (typeof window === "undefined") {
-      return defaultOpen;
-    }
-
-    const stored = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
-    return stored == null ? defaultOpen : stored === "true";
-  });
-
-  React.useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(open));
-  }, [open]);
-
-  const toggleSidebar = React.useCallback(() => {
-    if (isMobile) {
-      setOpenMobile((current) => !current);
-      return;
-    }
-
-    setOpen((current) => !current);
-  }, [isMobile]);
-
-  React.useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "b") {
-        event.preventDefault();
-        toggleSidebar();
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [toggleSidebar]);
-
-  const value = React.useMemo(
-    () => ({ open, setOpen, openMobile, setOpenMobile, isMobile, toggleSidebar }),
-    [isMobile, open, openMobile, toggleSidebar],
-  );
-
-  return (
-    <SidebarContext.Provider value={value}>
-      <TooltipProvider delayDuration={0}>
-        <div className="min-h-screen bg-background text-foreground">{children}</div>
-      </TooltipProvider>
-    </SidebarContext.Provider>
-  );
-}
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
@@ -94,15 +14,27 @@ function Sidebar({ className, children, ...props }: SidebarProps) {
 
   if (isMobile) {
     return (
-      <Sheet open={openMobile} onOpenChange={setOpenMobile}>
-        <SheetContent side="left" className="w-[18rem] border-r border-border bg-sidebar p-0 text-sidebar-foreground">
-          <SheetHeader className="sr-only">
-            <SheetTitle>Navigation</SheetTitle>
-            <SheetDescription>Primary ERP navigation</SheetDescription>
-          </SheetHeader>
-          <div className="flex h-full flex-col">{children}</div>
-        </SheetContent>
-      </Sheet>
+      <>
+        {openMobile ? (
+          <button
+            type="button"
+            aria-label="Close navigation"
+            className="fixed inset-0 z-20 bg-[color:var(--overlay-scrim)] backdrop-blur-sm"
+            onClick={() => setOpenMobile(false)}
+          />
+        ) : null}
+        <aside
+          data-state={openMobile ? "expanded" : "collapsed"}
+          className={cn(
+            "fixed inset-y-0 left-0 z-30 flex h-screen border-r border-sidebar-border/70 bg-sidebar text-sidebar-foreground shadow-[0_0_0_1px_rgba(148,163,184,0.08)] transition-[width] duration-200 ease-out",
+            openMobile ? "w-72" : "w-20",
+            className,
+          )}
+          {...props}
+        >
+          <div className="flex h-full w-full flex-col overflow-hidden">{children}</div>
+        </aside>
+      </>
     );
   }
 
@@ -110,7 +42,7 @@ function Sidebar({ className, children, ...props }: SidebarProps) {
     <aside
       data-state={open ? "expanded" : "collapsed"}
       className={cn(
-        "fixed inset-y-0 left-0 z-30 hidden h-screen border-r border-sidebar-border/70 bg-sidebar text-sidebar-foreground shadow-[0_0_0_1px_rgba(148,163,184,0.08)] transition-[width] duration-200 ease-out md:flex",
+        "fixed inset-y-0 left-0 z-30 hidden h-screen border-r border-sidebar-border/70 bg-sidebar text-sidebar-foreground shadow-[0_0_0_1px_rgba(148,163,184,0.08)] transition-[width] duration-200 ease-out sm:flex",
         open ? "w-72" : "w-20",
         className,
       )}
@@ -143,14 +75,15 @@ SidebarGroup.displayName = "SidebarGroup";
 
 const SidebarGroupLabel = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
   ({ className, ...props }, ref) => {
-    const { open, isMobile } = useSidebar();
+    const { open, openMobile, isMobile } = useSidebar();
+    const showLabel = isMobile ? openMobile : open;
 
     return (
       <p
         ref={ref}
         className={cn(
           "mb-2 px-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-sidebar-foreground/45",
-          !open && !isMobile && "sr-only",
+          !showLabel && "sr-only",
           className,
         )}
         {...props}
@@ -177,14 +110,15 @@ SidebarMenuItem.displayName = "SidebarMenuItem";
 
 const SidebarInset = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
-    const { open } = useSidebar();
+    const { isMobile, open } = useSidebar();
 
     return (
       <div
         ref={ref}
         className={cn(
-          "min-h-screen transition-[padding-left] duration-200 ease-out md:pl-20",
-          open && "md:pl-72",
+          "min-h-screen transition-[padding-left] duration-200 ease-out",
+          isMobile ? "pl-20" : "sm:pl-20",
+          open && "sm:pl-72",
           className,
         )}
         {...props}
@@ -195,11 +129,19 @@ const SidebarInset = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLD
 SidebarInset.displayName = "SidebarInset";
 
 function SidebarTrigger({ className, ...props }: React.ComponentProps<typeof Button>) {
-  const { open, toggleSidebar } = useSidebar();
-  const Icon = open ? PanelLeftClose : PanelLeftOpen;
+  const { isMobile, open, openMobile, toggleSidebar } = useSidebar();
+  const isExpanded = isMobile ? openMobile : open;
+  const Icon = isExpanded ? PanelLeftClose : PanelLeftOpen;
 
   return (
-    <Button variant="outline" size="icon" className={cn("rounded-xl", className)} onClick={toggleSidebar} {...props}>
+    <Button
+      variant="outline"
+      size="icon"
+      className={cn("rounded-xl", className)}
+      onClick={toggleSidebar}
+      aria-expanded={isExpanded}
+      {...props}
+    >
       <Icon className="size-4" />
       <span className="sr-only">Toggle navigation</span>
     </Button>

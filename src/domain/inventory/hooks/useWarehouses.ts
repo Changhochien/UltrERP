@@ -13,10 +13,16 @@ export function useWarehouses(activeOnly = true) {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchWarehouses(activeOnly);
-      setWarehouses(data.items);
+      const res = await fetchWarehouses(activeOnly);
+      if (res.ok) {
+        setWarehouses(res.data.items);
+      } else {
+        setError(res.error);
+        setWarehouses([]);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load warehouses");
+      setWarehouses([]);
     } finally {
       setLoading(false);
     }

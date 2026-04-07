@@ -56,6 +56,7 @@ export function ReorderAlerts() {
   return (
     <SectionCard title="Reorder Alerts" description="Prioritized low-stock exceptions for the current warehouse scope.">
       <DataTable
+        tableClassName="min-w-[760px]"
         columns={[
           { id: "product_name", header: "Product", sortable: true, getSortValue: (item) => item.product_name, cell: (item) => <span className="font-medium">{item.product_name}</span> },
           { id: "warehouse_name", header: "Warehouse", sortable: true, getSortValue: (item) => item.warehouse_name, cell: (item) => item.warehouse_name },
@@ -86,11 +87,14 @@ export function ReorderAlerts() {
           {
             id: "actions",
             header: "Action",
+            className: "whitespace-nowrap",
+            headerClassName: "whitespace-nowrap",
             cell: (item) => item.status === "pending" ? (
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
+                className="whitespace-nowrap"
                 onClick={() => void handleAcknowledge(item.id)}
                 disabled={submitting}
                 aria-label={`Acknowledge alert for ${item.product_name}`}
@@ -108,10 +112,10 @@ export function ReorderAlerts() {
         toolbar={(
           <DataTableToolbar>
             <div className="text-sm text-muted-foreground">{alerts.length > 0 ? `Showing ${alerts.length} of ${total} alerts` : "Filter by status and warehouse."}</div>
-            <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-center">
               <label className="flex flex-col items-start gap-2 text-sm font-medium text-foreground sm:flex-row sm:items-center sm:gap-3">
                 <span>Status</span>
-                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filter by status" className="w-full sm:w-44">
+                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filter by status" className="w-full min-w-0 sm:w-44">
                   {STATUS_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>{option.label}</option>
                   ))}
@@ -119,7 +123,7 @@ export function ReorderAlerts() {
               </label>
               <label className="flex flex-col items-start gap-2 text-sm font-medium text-foreground sm:flex-row sm:items-center sm:gap-3">
                 <span>Warehouse</span>
-                <select value={warehouseFilter} onChange={(event) => setWarehouseFilter(event.target.value)} aria-label="Filter by warehouse" className="w-full sm:w-52" disabled={whLoading}>
+                <select value={warehouseFilter} onChange={(event) => setWarehouseFilter(event.target.value)} aria-label="Filter by warehouse" className="w-full min-w-0 sm:w-52" disabled={whLoading}>
                   <option value="">All warehouses</option>
                   {warehouses.map((warehouse) => (
                     <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>

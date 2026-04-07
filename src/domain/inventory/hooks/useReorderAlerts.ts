@@ -18,14 +18,22 @@ export function useReorderAlerts(filters?: {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchReorderAlerts({
+      const res = await fetchReorderAlerts({
         status: filters?.status,
         warehouseId: filters?.warehouseId,
       });
-      setAlerts(data.items);
-      setTotal(data.total);
+      if (res.ok) {
+        setAlerts(res.data.items);
+        setTotal(res.data.total);
+      } else {
+        setError(res.error);
+        setAlerts([]);
+        setTotal(0);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load alerts");
+      setAlerts([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -47,11 +55,16 @@ export function useAcknowledgeAlert() {
     setError(null);
     try {
       const result = await acknowledgeAlert(alertId);
-      if (!result.ok) {
-        setError(result.error);
+      if (result.ok) {
+        return true;
+      }
+      if (result.alreadyResolved) {
+        // Not an error — the alert is already resolved or gone.
+        // Caller should reload the list.
         return false;
       }
-      return true;
+      setError(result.error);
+      return false;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to acknowledge");
       return false;

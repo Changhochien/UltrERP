@@ -10,9 +10,11 @@ export function useReasonCodes() {
 
   useEffect(() => {
     fetchReasonCodes()
-      .then((data) =>
-        setCodes(data.items.filter((c) => c.user_selectable)),
-      )
+      .then((res) => {
+        if (res.ok) {
+          setCodes(res.data.items.filter((c: ReasonCodeItem) => c.user_selectable));
+        }
+      })
       .catch(() => setCodes([]))
       .finally(() => setLoading(false));
   }, []);
@@ -38,17 +40,12 @@ export function useStockAdjustment() {
       setResult(null);
 
       try {
-        const resp = await submitAdjustment(payload);
-        if (resp.ok) {
-          setResult(resp.data);
-          return resp.data;
+        const res = await submitAdjustment(payload);
+        if (res.ok) {
+          setResult(res.data);
+          return res.data;
         }
-        const detail = resp.error.detail;
-        const msg =
-          typeof detail === "string"
-            ? detail
-            : detail.message;
-        setError(msg);
+        setError(res.error);
         return null;
       } catch {
         setError("Network error — please try again.");

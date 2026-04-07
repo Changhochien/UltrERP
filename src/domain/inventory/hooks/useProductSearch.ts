@@ -1,31 +1,34 @@
-/** Hook for debounced product search. */
+/** Hook for paginated product search with server-side sorting. */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ProductSearchResult } from "../types";
 import { searchProducts } from "../../../lib/api/inventory";
+import type { DataTableSortState } from "../../../components/layout/DataTable";
+
+const PAGE_SIZE = 20;
 
 export function useProductSearch(debounceMs = 300) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ProductSearchResult[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [sortState, setSortState] = useState<DataTableSortState | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const search = useCallback(
-    (q: string, warehouseId?: string) => {
+    (q: string, warehouseId?: string, pageNum = 1, sort?: DataTableSortState | null) => {
       setQuery(q);
       setError(null);
+      setPage(pageNum);
+      if (sort) setSortState(sort);
 
       if (timerRef.current) clearTimeout(timerRef.current);
       if (abortRef.current) abortRef.current.abort();
 
       const trimmed = q.trim();
-      if (trimmed.length < 3) {
-        setResults([]);
-        setLoading(false);
-        return;
-      }
 
       setLoading(true);
       timerRef.current = setTimeout(async () => {
@@ -33,17 +36,23 @@ export function useProductSearch(debounceMs = 300) {
         abortRef.current = controller;
         try {
           const resp = await searchProducts(trimmed, {
-            limit: 100,
+            limit: PAGE_SIZE,
+            offset: (pageNum - 1) * PAGE_SIZE,
             warehouseId,
+            sortBy: sort?.columnId ?? "code",
+            sortDir: sort?.direction ?? "asc",
             signal: controller.signal,
           });
           if (!controller.signal.aborted) {
             setResults(resp.items);
+            setTotal(resp.total);
+            setPage(pageNum);
           }
         } catch {
           if (!controller.signal.aborted) {
             setError("Search failed — please try again.");
             setResults([]);
+            setTotal(0);
           }
         } finally {
           if (!controller.signal.aborted) {
@@ -55,6 +64,26 @@ export function useProductSearch(debounceMs = 300) {
     [debounceMs],
   );
 
+  const nextPage = useCallback(() => {
+    if (page * PAGE_SIZE < total) {
+      search(query, undefined, page + 1, sortState ?? undefined);
+    }
+  }, [page, total, query, search, sortState]);
+
+  const prevPage = useCallback(() => {
+    if (page > 1) {
+      search(query, undefined, page - 1, sortState ?? undefined);
+    }
+  }, [page, query, search, sortState]);
+
+  const setSort = useCallback(
+    (sort: DataTableSortState | null) => {
+      setSortState(sort);
+      search(query, undefined, 1, sort);
+    },
+    [query, search],
+  );
+
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -62,5 +91,18 @@ export function useProductSearch(debounceMs = 300) {
     };
   }, []);
 
-  return { query, results, loading, error, search };
+  return {
+    query,
+    results,
+    total,
+    page,
+    pageSize: PAGE_SIZE,
+    loading,
+    error,
+    search,
+    nextPage,
+    prevPage,
+    sortState,
+    setSort,
+  };
 }

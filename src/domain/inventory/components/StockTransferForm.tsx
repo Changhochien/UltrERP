@@ -4,11 +4,15 @@ import { useState } from "react";
 import { useWarehouses } from "../hooks/useWarehouses";
 import { createTransfer } from "../../../lib/api/inventory";
 
-export function StockTransferForm() {
+interface StockTransferFormProps {
+  defaultProductId?: string;
+}
+
+export function StockTransferForm({ defaultProductId = "" }: StockTransferFormProps) {
   const { warehouses, loading } = useWarehouses();
   const [fromId, setFromId] = useState("");
   const [toId, setToId] = useState("");
-  const [productId, setProductId] = useState("");
+  const [productId, setProductId] = useState(defaultProductId);
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -42,7 +46,7 @@ export function StockTransferForm() {
         setQuantity(1);
         setNotes("");
       } else {
-        setError(resp.error.detail);
+        setError(resp.error);
       }
     } catch {
       setError("Network error — please try again.");

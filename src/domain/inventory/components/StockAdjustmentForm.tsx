@@ -13,20 +13,27 @@ import {
 } from "../../../components/ui/dialog";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
+import { useProductDetail } from "../hooks/useProductDetail";
 import { useWarehouses } from "../hooks/useWarehouses";
 import {
   useReasonCodes,
   useStockAdjustment,
 } from "../hooks/useStockAdjustment";
 
-export function StockAdjustmentForm() {
+interface StockAdjustmentFormProps {
+  defaultProductId?: string;
+  defaultWarehouseId?: string;
+}
+
+export function StockAdjustmentForm({ defaultProductId = "", defaultWarehouseId = "" }: StockAdjustmentFormProps) {
   const { warehouses, loading: whLoading } = useWarehouses();
   const { codes, loading: codesLoading } = useReasonCodes();
   const { submit, submitting, result, error, clearError } =
     useStockAdjustment();
 
-  const [productId, setProductId] = useState("");
-  const [warehouseId, setWarehouseId] = useState("");
+  const { product } = useProductDetail(defaultProductId || null);
+  const [productId, setProductId] = useState(defaultProductId);
+  const [warehouseId, setWarehouseId] = useState(defaultWarehouseId);
   const [quantityChange, setQuantityChange] = useState(0);
   const [reasonCode, setReasonCode] = useState("");
   const [notes, setNotes] = useState("");
@@ -79,7 +86,7 @@ export function StockAdjustmentForm() {
         >
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-2">
-              <span>Product ID</span>
+              <span>Product</span>
               <Input
                 id="adj-product"
                 type="text"
@@ -88,6 +95,11 @@ export function StockAdjustmentForm() {
                 onChange={(e) => setProductId(e.target.value)}
                 placeholder="Enter product UUID"
               />
+              {product && (
+                <span className="text-sm font-medium text-foreground">
+                  {product.name}
+                </span>
+              )}
             </label>
 
             <label className="space-y-2">
