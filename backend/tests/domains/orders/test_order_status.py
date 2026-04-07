@@ -6,6 +6,7 @@ import uuid
 
 from ._helpers import (
     FakeAsyncSession,
+    FakeInventoryStock,
     FakeOrder,
 )
 from ._helpers import (
@@ -25,9 +26,9 @@ from ._helpers import (
 
 
 def _queue_status_update(session: FakeAsyncSession, order: FakeOrder):
-    """Queue results for a non-confirmed status transition.
+    """Queue results for ship/fulfill transitions (no stock changes).
 
-    Flow:
+    Flow (ship/fulfill):
       1. set_tenant → scalar(None)
       2. order lookup (with_for_update) → scalar(order)
       3. flush (audit)
@@ -38,6 +39,29 @@ def _queue_status_update(session: FakeAsyncSession, order: FakeOrder):
     session.queue_scalar(order)  # order lookup
     session.queue_scalar(None)  # set_tenant (get_order)
     session.queue_scalar(order)  # get_order reload
+
+
+def _queue_cancel_pending(session: FakeAsyncSession, order: FakeOrder):
+    """Queue results for pending → cancelled transition (with stock restoration).
+
+    Flow:
+      1. set_tenant → scalar(None)
+      2. order lookup (with_for_update + selectinload) → scalar(order)
+      3. warehouse_id lookup: set_tenant → scalar(None), then warehouse query → scalar(uuid)
+      4. order_lines lookup → scalars(order.lines)
+      5. stock FOR UPDATE (per line) → scalar(FakeInventoryStock)
+      6. flush (stock adjustment)
+      7. flush (audit log)
+    """
+    session.queue_scalar(None)  # 1. set_tenant (update_order_status)
+    session.queue_scalar(order)  # 2. order lookup (with selectinload)
+    session.queue_scalar(None)  # 3. set_tenant (_get_default_warehouse_id)
+    session.queue_scalar(order.tenant_id)  # 4. warehouse_id lookup
+    session.queue_result(order.lines)  # 5. order_lines lookup
+    for _line in order.lines:
+        session.queue_scalar(FakeInventoryStock(quantity=100))  # 6. stock rows
+    session.queue_scalar(None)  # 7. flush (stock)
+    session.queue_scalar(None)  # 8. flush (audit)
 
 
 # ── Valid transitions ─────────────────────────────────────────
@@ -83,7 +107,7 @@ async def test_cancel_pending_order() -> None:
     """pending → cancelled succeeds."""
     order = FakeOrder(status="pending")
     session = FakeAsyncSession()
-    _queue_status_update(session, order)
+    _queue_cancel_pending(session, order)
 
     prev = _setup(session)
     try:
@@ -91,7 +115,7 @@ async def test_cancel_pending_order() -> None:
             f"/api/v1/orders/{order.id}/status",
             json={"new_status": "cancelled"},
         )
-        assert resp.status_code == 200
+        assert resp.status_code == 200, f"got {resp.status_code}: {resp.json()}"
         assert order.status == "cancelled"
     finally:
         _teardown(prev)
@@ -266,7 +290,7 @@ async def test_delete_cancels_pending_order() -> None:
     """DELETE /orders/{id} cancels a pending order."""
     order = FakeOrder(status="pending")
     session = FakeAsyncSession()
-    _queue_status_update(session, order)
+    _queue_cancel_pending(session, order)
 
     prev = _setup(session)
     try:

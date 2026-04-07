@@ -92,7 +92,9 @@ class FakeOrderLine:
         self.product_id = product_id or uuid.uuid4()
         self.line_number = line_number
         self.quantity = Decimal("10.000")
+        self.list_unit_price = Decimal("100.00")
         self.unit_price = Decimal("100.00")
+        self.discount_amount = Decimal("0.00")
         self.tax_policy_code = "standard"
         self.tax_type = 1
         self.tax_rate = Decimal("0.0500")
@@ -124,6 +126,8 @@ class FakeOrder:
         self.payment_terms_code = "NET_30"
         self.payment_terms_days = 30
         self.subtotal_amount = Decimal("1000.00")
+        self.discount_amount = Decimal("0.00")
+        self.discount_percent = Decimal("0.00")
         self.tax_amount = Decimal("50.00")
         self.total_amount = Decimal("1050.00")
         self.invoice_id = invoice_id
@@ -156,6 +160,24 @@ class FakeWarehouseRow:
         self.warehouse_id = warehouse_id
         self.warehouse_name = warehouse_name
         self.quantity = quantity
+
+
+class FakeInventoryStock:
+    """Fake inventory stock row for stock adjustment queries."""
+
+    def __init__(
+        self,
+        *,
+        tenant_id: uuid.UUID = uuid.UUID("00000000-0000-0000-0000-000000000001"),
+        product_id: uuid.UUID | None = None,
+        warehouse_id: uuid.UUID | None = None,
+        quantity: int = 100,
+    ):
+        self.tenant_id = tenant_id
+        self.product_id = product_id or uuid.uuid4()
+        self.warehouse_id = warehouse_id or uuid.uuid4()
+        self.quantity = quantity
+        self.reorder_point = 10
 
 
 # ── Fake session infrastructure ───────────────────────────────
@@ -256,6 +278,10 @@ class FakeAsyncSession:
     def queue_rows(self, rows: Sequence[object]) -> None:
         """Queue result that returns rows via .all()."""
         self._execute_results.append(FakeResult(items=list(rows)))
+
+    def queue_result(self, items: Sequence[object]) -> None:
+        """Queue result that returns items via .scalars().all()."""
+        self._execute_results.append(FakeResult(items=list(items)))
 
 
 # ── Setup / teardown ─────────────────────────────────────────

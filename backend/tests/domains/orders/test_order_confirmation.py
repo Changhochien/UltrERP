@@ -7,6 +7,7 @@ import uuid
 from ._helpers import (
     FakeAsyncSession,
     FakeCustomer,
+    FakeInventoryStock,
     FakeInvoiceNumberRange,
     FakeOrder,
     FakeOrderLine,
@@ -34,23 +35,30 @@ def _queue_confirm_success(session: FakeAsyncSession, order: FakeOrder, customer
       4. customer lookup in confirm_order → scalar(customer)
       5. _create_invoice_core: customer lookup → scalar(customer)
       6. _create_invoice_core: number_range lookup → scalar(number_range)
-      7. flush (invoice + lines), flush (audits)
-      8. get_order reload: set_tenant → scalar(None)
-      9. get_order reload: selectinload → scalar(confirmed_order)
+      7. warehouse_id lookup (inside _get_default_warehouse_id) → scalar(uuid)
+      8. stock FOR UPDATE (per line) → scalar(FakeInventoryStock)
+      9. flush (invoice + lines), flush (audits)
+     10. get_order reload: set_tenant → scalar(None)
+     11. get_order reload: selectinload → scalar(confirmed_order)
     """
-    session.queue_scalar(None)  # set_tenant
-    session.queue_scalar(order)  # order lookup
+    session.queue_scalar(None)  # 1. set_tenant
+    session.queue_scalar(order)  # 2. order lookup
     # Product code lookup — return fake rows with id and code attributes
     product_rows = [
         type("Row", (), {"id": line.product_id, "code": f"PROD-{i}"})()
         for i, line in enumerate(order.lines)
     ]
-    session.queue_rows(product_rows)  # product code lookup
-    session.queue_scalar(customer)  # customer lookup (confirm_order)
-    session.queue_scalar(customer)  # customer lookup (_create_invoice_core)
-    session.queue_scalar(FakeInvoiceNumberRange())  # number_range
-    session.queue_scalar(None)  # set_tenant (get_order)
-    session.queue_scalar(order)  # get_order reload
+    session.queue_rows(product_rows)  # 3. product code lookup
+    session.queue_scalar(customer)  # 4. customer lookup (confirm_order)
+    session.queue_scalar(customer)  # 5. customer lookup (_create_invoice_core)
+    session.queue_scalar(FakeInvoiceNumberRange())  # 6. number_range
+    session.queue_scalar(order.tenant_id)  # 7. warehouse_id lookup
+    # Stock rows for each line (FOR UPDATE lock)
+    for _line in order.lines:
+        session.queue_scalar(FakeInventoryStock(quantity=100))  # 8. stock rows
+    session.queue_scalar(None)  # 9. flush scalar
+    session.queue_scalar(None)  # 10. set_tenant (get_order)
+    session.queue_scalar(order)  # 11. get_order reload
 
 
 async def test_confirm_order_success() -> None:
@@ -68,6 +76,7 @@ async def test_confirm_order_success() -> None:
             f"/api/v1/orders/{order.id}/status",
             json={"new_status": "confirmed"},
         )
+        print(f"DEBUG resp.status={resp.status_code} body={resp.json()}")
         assert resp.status_code == 200
         body = resp.json()
         assert body["status"] == "confirmed"

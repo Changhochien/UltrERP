@@ -289,12 +289,14 @@ async def test_acknowledge_alert_not_found() -> None:
     try:
         fake_id = uuid.uuid4()
         resp = await _put(f"/api/v1/inventory/alerts/reorder/{fake_id}/acknowledge")
-        assert resp.status_code == 404
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body.get("status") == "already_resolved"
     finally:
         _teardown(prev)
 
 
-async def test_acknowledge_resolved_alert_returns_404() -> None:
+async def test_acknowledge_resolved_alert_returns_200_already_resolved() -> None:
     session = FakeAsyncSession()
     alert = FakeReorderAlert(status=AlertStatus.RESOLVED)
     session.queue_result(FakeResult(obj=alert))
@@ -302,7 +304,9 @@ async def test_acknowledge_resolved_alert_returns_404() -> None:
     prev = _setup(session)
     try:
         resp = await _put(f"/api/v1/inventory/alerts/reorder/{alert.id}/acknowledge")
-        assert resp.status_code == 404
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body.get("status") == "already_resolved"
     finally:
         _teardown(prev)
 

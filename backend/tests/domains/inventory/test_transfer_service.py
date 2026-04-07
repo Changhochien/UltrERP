@@ -7,6 +7,9 @@ import uuid
 import pytest
 from sqlalchemy.exc import IntegrityError
 
+# Import this to register domain event handlers (populates _registered_handlers).
+import domains.inventory.handlers  # noqa: F401
+
 from domains.inventory.services import (
     InsufficientStockError,
     TransferValidationError,
@@ -99,6 +102,13 @@ class FakeSession:
 
     def queue_flush_error(self, exc: Exception) -> None:
         self._flush_errors.append(exc)
+
+    async def emit(self, event: object, _session: object) -> None:
+        """Fake emit — runs the real event dispatcher so handlers execute during tests."""
+        from common.events import _registered_handlers
+        for name, handler in _registered_handlers:
+            if name == type(event).__name__:
+                await handler(event, self)
 
 
 # ── transfer_stock validation tests ───────────────────────────

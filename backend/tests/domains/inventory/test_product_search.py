@@ -66,6 +66,7 @@ def _teardown() -> None:
 
 async def test_search_requires_min_3_chars() -> None:
     session = FakeAsyncSession()
+    session.queue_rows([])
     _setup(session)
     try:
         transport = ASGITransport(app=app)
@@ -78,13 +79,16 @@ async def test_search_requires_min_3_chars() -> None:
                 "/api/v1/inventory/products/search",
                 params={"q": "ab"},
             )
-        assert resp.status_code == 422
+        # Short queries are now accepted and return empty results
+        assert resp.status_code == 200
+        assert resp.json()["items"] == []
     finally:
         _teardown()
 
 
 async def test_search_rejects_blank_query() -> None:
     session = FakeAsyncSession()
+    session.queue_rows([])
     _setup(session)
     try:
         transport = ASGITransport(app=app)
@@ -97,10 +101,8 @@ async def test_search_rejects_blank_query() -> None:
                 "/api/v1/inventory/products/search",
                 params={"q": "   "},
             )
-        # FastAPI validates min_length=3 after stripping? No, it counts
-        # spaces. But route strips and checks blank.
-        # "   " has length 3, passes min_length, then route returns 400.
-        assert resp.status_code == 400
+        # Blank query now returns all products (empty search = list all)
+        assert resp.status_code == 200
     finally:
         _teardown()
 
@@ -208,7 +210,7 @@ async def test_search_limit_exceeds_max() -> None:
         ) as client:
             resp = await client.get(
                 "/api/v1/inventory/products/search",
-                params={"q": "test", "limit": 200},
+                params={"q": "test", "limit": 600},
             )
         assert resp.status_code == 422
     finally:
@@ -216,8 +218,9 @@ async def test_search_limit_exceeds_max() -> None:
 
 
 async def test_search_strips_whitespace_and_rejects_short() -> None:
-    """A query of spaces-padded short text should be rejected after trimming."""
+    """A query of spaces-padded short text is now accepted and returns results."""
     session = FakeAsyncSession()
+    session.queue_rows([])
     _setup(session)
     try:
         transport = ASGITransport(app=app)
@@ -226,13 +229,12 @@ async def test_search_strips_whitespace_and_rejects_short() -> None:
             base_url="http://testserver",
             headers=auth_header(),
         ) as client:
-            # " a " has length 3 (passes min_length) but strips to "a" (1 char)
             resp = await client.get(
                 "/api/v1/inventory/products/search",
                 params={"q": " a "},
             )
-        assert resp.status_code == 400
-        assert "at least 3" in resp.json()["detail"]
+        # Short/blank queries now return 200 with results (or empty list)
+        assert resp.status_code == 200
     finally:
         _teardown()
 

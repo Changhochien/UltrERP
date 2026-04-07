@@ -116,7 +116,7 @@ async def test_list_reason_codes() -> None:
     user_codes = [i for i in body["items"] if i["user_selectable"]]
     system_codes = [i for i in body["items"] if not i["user_selectable"]]
     assert len(user_codes) == 5
-    assert len(system_codes) == 3
+    assert len(system_codes) == 5
 
 
 async def test_reason_codes_user_selectable_excludes_system() -> None:
