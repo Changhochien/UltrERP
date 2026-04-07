@@ -495,6 +495,8 @@
       "orderTitle": "訂單",
       "paymentTerms": "付款條件",
       "subtotal": "未稅金額",
+      "discount": "折扣",
+      "listPrice": "牌價",
       "tax": "稅額",
       "total": "總計",
       "updating": "更新中…"
@@ -505,6 +507,9 @@
       "creating": "建立中…",
       "customerId": "客戶 ID",
       "description": "品名規格",
+      "discount": "折扣",
+      "discountAmount": "折扣金額",
+      "discountPercent": "折扣%",
       "lineStock": "第 {index} 筆記錄的庫存",
       "loading": "載入中…",
       "newOrderDescription": "為您的客戶建立新的銷售訂單。",
