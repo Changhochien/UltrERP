@@ -119,14 +119,9 @@ export function ProductDetailPage({ productId: propProductId }: { productId?: st
     reorderPoint,
     safetyStock,
     avgDailyUsage,
-    leadTimeDays,
     loading: chartLoading,
     error: chartError,
   } = useStockHistory(stockId ?? "");
-
-  const { items: monthlyDemandItems } = useProductMonthlyDemand(productId ?? "");
-  const { items: salesHistoryItems, loading: salesLoading } = useProductSalesHistory(productId ?? "");
-  const { customer: topCustomer, loading: topCustomerLoading } = useProductTopCustomer(productId ?? "");
 
   return (
     <div className="space-y-6">
@@ -271,31 +266,24 @@ export function ProductDetailPage({ productId: propProductId }: { productId?: st
         </TabsContent>
 
         <TabsContent value="analytics">
-          <div className="space-y-6">
-            <AnalyticsSummaryCard
-              avgDailyUsage={avgDailyUsage}
-              leadTimeDays={leadTimeDays}
-              reorderPoint={reorderPoint}
-              safetyStock={safetyStock}
-              loading={chartLoading}
-            />
-            <SectionCard title="Monthly Demand">
-              <MonthlyDemandChart data={monthlyDemandItems} />
-            </SectionCard>
-            <SectionCard title="Sales History">
-              <SalesHistoryTable items={salesHistoryItems} loading={salesLoading} />
-            </SectionCard>
-            <TopCustomerCard customer={topCustomer} loading={topCustomerLoading} />
-          </div>
+          <SectionCard title="Analytics">
+            <p style={{ color: "var(--inv-muted)", fontSize: 13 }}>Analytics content coming soon.</p>
+          </SectionCard>
         </TabsContent>
 
         <TabsContent value="settings">
-          <SettingsTab productId={productId ?? ""} />
+          <SectionCard title="Settings">
+            <p style={{ color: "var(--inv-muted)", fontSize: 13 }}>Settings content coming soon.</p>
+          </SectionCard>
         </TabsContent>
 
         <TabsContent value="audit">
           <SectionCard title="Audit Log">
-            <p style={{ color: "var(--inv-muted)", fontSize: 13 }}>Audit log content coming soon.</p>
+            <AuditLogTable
+              items={auditItems}
+              loading={auditLoading}
+              error={auditError}
+            />
           </SectionCard>
         </TabsContent>
       </Tabs>
