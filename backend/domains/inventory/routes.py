@@ -3,41 +3,61 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from fastapi.responses import JSONResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.auth import require_role
 from common.database import get_db
+from common.models.inventory_stock import InventoryStock
 from common.models.product import Product
 from common.models.stock_adjustment import ReasonCode
-from common.tenant import DEFAULT_TENANT_ID
+from common.tenant import get_tenant_id
 from domains.aeo.content import generate_aeo_content
 from domains.aeo.jsonld import generate_product_jsonld
 from domains.approval.checks import needs_approval
 from domains.approval.schemas import ApprovalRequiredResponse
 from domains.approval.service import create_approval
+from domains.inventory.reorder_point import (
+    apply_reorder_points,
+    compute_reorder_points_preview,
+)
 from domains.inventory.schemas import (
     USER_SELECTABLE_REASON_CODES,
     AcknowledgeAlertResponse,
+    AuditLogListResponse,
     InventoryStockResponse,
+    MonthlyDemandResponse,
     ProductDetailResponse,
     ProductSearchResponse,
     ProductSearchResult,
+    ProductSupplierResponse,
     ReasonCodeItem,
     ReasonCodeListResponse,
     ReceiveOrderRequest,
     ReorderAlertItem,
     ReorderAlertListResponse,
+    ReorderPointApplyRequest,
+    ReorderPointApplyResponse,
+    ReorderPointComputeRequest,
+    ReorderPointComputeResponse,
+    ReorderPointPreviewRow,
+    SalesHistoryItem,
+    SalesHistoryResponse,
     StockAdjustmentRequest,
     StockAdjustmentResponse,
+    StockHistoryResponse,
+    StockSettingsUpdateRequest,
     SupplierListResponse,
     SupplierOrderCreate,
     SupplierOrderListResponse,
     SupplierOrderResponse,
     SupplierResponse,
+    TopCustomerResponse,
     TransferRequest,
     TransferResponse,
     UpdateOrderStatusRequest,
@@ -53,8 +73,14 @@ from domains.inventory.services import (
     create_supplier_order,
     create_warehouse,
     get_inventory_stocks,
+    get_monthly_demand,
+    get_product_audit_log,
     get_product_detail,
+    get_product_supplier,
+    get_sales_history,
+    get_stock_history,
     get_supplier_order,
+    get_top_customer,
     get_warehouse,
     list_reorder_alerts,
     list_supplier_orders,
@@ -63,17 +89,17 @@ from domains.inventory.services import (
     receive_supplier_order,
     search_products,
     transfer_stock,
+    update_stock_settings,
     update_supplier_order_status,
 )
 
 router = APIRouter()
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
+CurrentTenant = Annotated[uuid.UUID, Depends(get_tenant_id)]
 ReadUser = Annotated[dict, Depends(require_role("admin", "warehouse", "sales"))]
 WriteUser = Annotated[dict, Depends(require_role("admin", "warehouse"))]
 
-# Hardcoded tenant for MVP — replaced by auth middleware later
-TENANT_ID = DEFAULT_TENANT_ID
 ACTOR_ID = "system"
 
 
@@ -87,11 +113,12 @@ ACTOR_ID = "system"
 async def list_warehouses_endpoint(
     session: DbSession,
     _user: ReadUser,
+    tenant_id: CurrentTenant,
     active_only: bool = Query(True),
 ) -> WarehouseList:
     warehouses = await list_warehouses(
         session,
-        TENANT_ID,
+        tenant_id,
         active_only=active_only,
     )
     return WarehouseList(
@@ -108,8 +135,9 @@ async def get_warehouse_endpoint(
     warehouse_id: uuid.UUID,
     session: DbSession,
     _user: ReadUser,
+    tenant_id: CurrentTenant,
 ) -> WarehouseResponse:
-    warehouse = await get_warehouse(session, TENANT_ID, warehouse_id)
+    warehouse = await get_warehouse(session, tenant_id, warehouse_id)
     if warehouse is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -127,10 +155,11 @@ async def create_warehouse_endpoint(
     data: WarehouseCreate,
     session: DbSession,
     _user: WriteUser,
+    tenant_id: CurrentTenant,
 ) -> WarehouseResponse:
     warehouse = await create_warehouse(
         session,
-        TENANT_ID,
+        tenant_id,
         name=data.name,
         code=data.code,
         location=data.location,
@@ -153,11 +182,12 @@ async def create_transfer_endpoint(
     data: TransferRequest,
     session: DbSession,
     _user: WriteUser,
+    tenant_id: CurrentTenant,
 ) -> TransferResponse:
     try:
         transfer = await transfer_stock(
             session,
-            TENANT_ID,
+            tenant_id,
             from_warehouse_id=data.from_warehouse_id,
             to_warehouse_id=data.to_warehouse_id,
             product_id=data.product_id,
@@ -172,15 +202,109 @@ async def create_transfer_endpoint(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),
         ) from exc
-    except InsufficientStockError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail={
-                "message": "Insufficient stock",
-                "available": exc.available,
-                "requested": exc.requested,
-            },
-        ) from exc
+
+
+# ── Reorder point endpoints ────────────────────────────────────
+
+
+@router.post(
+    "/reorder-points/compute",
+    response_model=ReorderPointComputeResponse,
+)
+async def compute_reorder_points_endpoint(
+    data: ReorderPointComputeRequest,
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+) -> ReorderPointComputeResponse:
+    """Preview reorder point computation — dry run, no changes saved."""
+    candidates, skipped = await compute_reorder_points_preview(
+        session,
+        tenant_id,
+        safety_factor=data.safety_factor,
+        demand_lookback_days=data.lookback_days,
+        lead_time_lookback_days=data.lookback_days_lead_time,
+        warehouse_id=data.warehouse_id,
+    )
+
+    def _make_row(d: dict) -> ReorderPointPreviewRow:
+        return ReorderPointPreviewRow(
+            stock_id=d.get("stock_id", 0),
+            product_id=d["product_id"],
+            product_name=d.get("product_name", ""),
+            warehouse_id=d["warehouse_id"],
+            warehouse_name=d.get("warehouse_name", ""),
+            current_quantity=d.get("current_quantity", 0.0),
+            current_reorder_point=d.get("current_reorder_point", 0.0),
+            computed_reorder_point=None if d.get("skipped_reason") else float(d["reorder_point"]),
+            avg_daily_usage=d.get("avg_daily_usage"),
+            lead_time_days=d.get("lead_time_days"),
+            safety_stock=d.get("safety_stock"),
+            demand_basis=",".join(d.get("demand_reason") or []),
+            movement_count=d.get("movement_count"),
+            lead_time_source=d.get("lead_time_source"),
+            quality_note=d.get("quality_note"),
+            skip_reason=d.get("skipped_reason"),
+            is_selected=False,
+            suggested_order_qty=d.get("suggested_order_qty"),
+        )
+
+    return ReorderPointComputeResponse(
+        candidate_rows=[_make_row(c) for c in candidates],
+        skipped_rows=[_make_row(s) for s in skipped],
+        parameters={
+            "safety_factor": data.safety_factor,
+            "lookback_days": data.lookback_days,
+            "lookback_days_lead_time": data.lookback_days_lead_time,
+            "warehouse_id": str(data.warehouse_id) if data.warehouse_id else None,
+        },
+    )
+
+
+@router.put(
+    "/reorder-points/apply",
+    response_model=ReorderPointApplyResponse,
+)
+async def apply_reorder_points_endpoint(
+    data: ReorderPointApplyRequest,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> ReorderPointApplyResponse:
+    """Apply reorder points to explicitly selected preview rows."""
+    # Re-compute with same params to get the candidate rows
+    candidates, _skipped = await compute_reorder_points_preview(
+        session,
+        tenant_id,
+        safety_factor=data.safety_factor,
+        demand_lookback_days=data.lookback_days,
+        lead_time_lookback_days=data.lookback_days_lead_time,
+        warehouse_id=data.warehouse_id,
+    )
+
+    # Filter candidates by UUID stock_id (from the re-computed preview).
+    selected_stock_ids_set = {sid for sid in data.selected_stock_ids}
+    selected_rows = [c for c in candidates if c.get("stock_id") in selected_stock_ids_set]
+
+    result = await apply_reorder_points(
+        session,
+        tenant_id,
+        selected_rows=selected_rows,
+        safety_factor=data.safety_factor,
+        demand_lookback_days=data.lookback_days,
+        lead_time_lookback_days=data.lookback_days_lead_time,
+    )
+    await session.commit()
+    return ReorderPointApplyResponse(
+        updated_count=result["updated_count"],
+        skipped_count=result["skipped_count"],
+        run_parameters={
+            "safety_factor": data.safety_factor,
+            "lookback_days": data.lookback_days,
+            "lookback_days_lead_time": data.lookback_days_lead_time,
+            "warehouse_id": str(data.warehouse_id) if data.warehouse_id else None,
+        },
+    )
 
 
 # ── Reason codes endpoint ─────────────────────────────────────
@@ -190,7 +314,10 @@ async def create_transfer_endpoint(
     "/reason-codes",
     response_model=ReasonCodeListResponse,
 )
-async def list_reason_codes(_user: ReadUser) -> ReasonCodeListResponse:
+async def list_reason_codes(
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+) -> ReasonCodeListResponse:
     items = [
         ReasonCodeItem(
             value=rc.value,
@@ -215,6 +342,7 @@ async def create_adjustment_endpoint(
     data: StockAdjustmentRequest,
     session: DbSession,
     user: WriteUser,
+    tenant_id: CurrentTenant,
     actor_type: str = Header(default="user", alias="X-Actor-Type"),
     actor_id_header: str | None = Header(default=None, alias="X-Actor-Id"),
 ) -> StockAdjustmentResponse:
@@ -275,7 +403,7 @@ async def create_adjustment_endpoint(
     try:
         result = await create_stock_adjustment(
             session,
-            TENANT_ID,
+            tenant_id,
             product_id=data.product_id,
             warehouse_id=data.warehouse_id,
             quantity_change=data.quantity_change,
@@ -311,6 +439,7 @@ async def create_adjustment_endpoint(
 async def search_products_endpoint(
     session: DbSession,
     _user: ReadUser,
+    tenant_id: CurrentTenant,
     q: str = Query("", max_length=100),
     limit: int = Query(20, ge=1, le=500),
     offset: int = Query(0, ge=0),
@@ -321,7 +450,7 @@ async def search_products_endpoint(
     stripped = q.strip()
     results, total = await search_products(
         session,
-        TENANT_ID,
+        tenant_id,
         stripped,
         warehouse_id=warehouse_id,
         limit=limit,
@@ -346,12 +475,13 @@ async def get_product_detail_endpoint(
     product_id: uuid.UUID,
     session: DbSession,
     _user: ReadUser,
+    tenant_id: CurrentTenant,
     history_limit: int = Query(100, ge=1, le=500),
     history_offset: int = Query(0, ge=0),
 ) -> ProductDetailResponse:
     detail = await get_product_detail(
         session,
-        TENANT_ID,
+        tenant_id,
         product_id,
         history_limit=history_limit,
         history_offset=history_offset,
@@ -374,6 +504,7 @@ async def get_product_detail_endpoint(
 async def get_product_jsonld(
     product_id: uuid.UUID,
     session: DbSession,
+    _user: ReadUser,
 ) -> JSONResponse:
     """Return schema.org Product JSON-LD structured data."""
     product = await session.get(Product, product_id)
@@ -396,6 +527,7 @@ async def get_product_jsonld(
 async def get_product_aeo(
     product_id: uuid.UUID,
     session: DbSession,
+    _user: ReadUser,
 ) -> dict:
     """Return AEO-optimized content bundle for a product."""
     product = await session.get(Product, product_id)
@@ -418,15 +550,100 @@ async def get_product_stocks(
     product_id: uuid.UUID,
     session: DbSession,
     _user: ReadUser,
+    tenant_id: CurrentTenant,
     warehouse_id: uuid.UUID | None = Query(None),
 ) -> list[InventoryStockResponse]:
     stocks = await get_inventory_stocks(
         session,
-        TENANT_ID,
+        tenant_id,
         product_id,
         warehouse_id=warehouse_id,
     )
     return [InventoryStockResponse.model_validate(s) for s in stocks]
+
+
+# ── Stock history endpoints ───────────────────────────────────
+
+
+@router.get(
+    "/stock-history/{stock_id}",
+    response_model=StockHistoryResponse,
+)
+async def get_stock_history_by_stock_id(
+    stock_id: uuid.UUID,
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+    start_date: datetime | None = Query(None),
+    end_date: datetime | None = Query(None),
+    granularity: str = Query("event", pattern="^(event|daily)$"),
+) -> StockHistoryResponse:
+    """Return stock history for a specific inventory stock record.
+
+    Resolves stock_id → product_id + warehouse_id then fetches history.
+    """
+    stock_stmt = select(InventoryStock).where(
+        InventoryStock.id == stock_id,
+        InventoryStock.tenant_id == tenant_id,
+    )
+    stock_result = await session.execute(stock_stmt)
+    stock = stock_result.scalar_one_or_none()
+
+    if stock is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Stock record not found",
+        )
+
+    result = await get_stock_history(
+        session,
+        tenant_id,
+        stock.product_id,
+        stock.warehouse_id,
+        start_date=start_date,
+        end_date=end_date,
+        granularity=granularity,
+    )
+    return StockHistoryResponse(**result)
+
+
+@router.get(
+    "/stock-history/product/{product_id}",
+    response_model=dict,
+)
+async def get_stock_history_by_product(
+    product_id: uuid.UUID,
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+    start_date: datetime | None = Query(None),
+    end_date: datetime | None = Query(None),
+    granularity: str = Query("event", pattern="^(event|daily)$"),
+) -> dict:
+    """Return stock history for all warehouses of a product.
+
+    Returns a map of warehouse_id → StockHistoryResponse.
+    """
+    stocks = await get_inventory_stocks(
+        session,
+        tenant_id,
+        product_id,
+    )
+
+    result = {}
+    for stock in stocks:
+        wh_result = await get_stock_history(
+            session,
+            tenant_id,
+            product_id,
+            stock.warehouse_id,
+            start_date=start_date,
+            end_date=end_date,
+            granularity=granularity,
+        )
+        result[str(stock.warehouse_id)] = wh_result
+
+    return result
 
 
 # ── Reorder alert endpoints ───────────────────────────────────
@@ -439,16 +656,19 @@ async def get_product_stocks(
 async def list_reorder_alerts_endpoint(
     session: DbSession,
     _user: ReadUser,
+    tenant_id: CurrentTenant,
     status: str | None = Query(None, pattern="^(pending|acknowledged|resolved)$"),
     warehouse_id: uuid.UUID | None = Query(None),
+    sort_by: str = Query("severity", pattern="^(severity|created_at|current_stock)$"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ) -> ReorderAlertListResponse:
     items, total = await list_reorder_alerts(
         session,
-        TENANT_ID,
+        tenant_id,
         status_filter=status,
         warehouse_id=warehouse_id,
+        sort_by=sort_by,
         limit=limit,
         offset=offset,
     )
@@ -466,10 +686,11 @@ async def acknowledge_alert_endpoint(
     alert_id: uuid.UUID,
     session: DbSession,
     _user: WriteUser,
+    tenant_id: CurrentTenant,
 ) -> AcknowledgeAlertResponse:
     result = await acknowledge_alert(
         session,
-        TENANT_ID,
+        tenant_id,
         alert_id,
         actor_id=ACTOR_ID,
     )
@@ -493,11 +714,12 @@ async def acknowledge_alert_endpoint(
 async def list_suppliers_endpoint(
     session: DbSession,
     _user: ReadUser,
+    tenant_id: CurrentTenant,
     active_only: bool = Query(True),
 ) -> SupplierListResponse:
     suppliers = await list_suppliers(
         session,
-        TENANT_ID,
+        tenant_id,
         active_only=active_only,
     )
     return SupplierListResponse(
@@ -518,10 +740,11 @@ async def create_supplier_order_endpoint(
     data: SupplierOrderCreate,
     session: DbSession,
     _user: WriteUser,
+    tenant_id: CurrentTenant,
 ) -> SupplierOrderResponse:
     result = await create_supplier_order(
         session,
-        TENANT_ID,
+        tenant_id,
         supplier_id=data.supplier_id,
         order_date=data.order_date,
         expected_arrival_date=data.expected_arrival_date,
@@ -539,6 +762,7 @@ async def create_supplier_order_endpoint(
 async def list_supplier_orders_endpoint(
     session: DbSession,
     _user: ReadUser,
+    tenant_id: CurrentTenant,
     status_filter: str | None = Query(
         None,
         alias="status",
@@ -550,7 +774,7 @@ async def list_supplier_orders_endpoint(
 ) -> SupplierOrderListResponse:
     items, total = await list_supplier_orders(
         session,
-        TENANT_ID,
+        tenant_id,
         status_filter=status_filter,
         supplier_id=supplier_id,
         limit=limit,
@@ -570,8 +794,9 @@ async def get_supplier_order_endpoint(
     order_id: uuid.UUID,
     session: DbSession,
     _user: ReadUser,
+    tenant_id: CurrentTenant,
 ) -> SupplierOrderResponse:
-    order = await get_supplier_order(session, TENANT_ID, order_id)
+    order = await get_supplier_order(session, tenant_id, order_id)
     if order is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -589,11 +814,12 @@ async def update_supplier_order_status_endpoint(
     data: UpdateOrderStatusRequest,
     session: DbSession,
     _user: WriteUser,
+    tenant_id: CurrentTenant,
 ) -> SupplierOrderResponse:
     try:
         result = await update_supplier_order_status(
             session,
-            TENANT_ID,
+            tenant_id,
             order_id,
             new_status=data.status,
             actor_id=ACTOR_ID,
@@ -613,6 +839,120 @@ async def update_supplier_order_status_endpoint(
         ) from exc
 
 
+# ── Stock settings PATCH endpoint ─────────────────────────────────
+
+
+@router.patch(
+    "/stocks/{stock_id}",
+    response_model=InventoryStockResponse,
+)
+async def update_stock_settings_endpoint(
+    stock_id: uuid.UUID,
+    data: StockSettingsUpdateRequest,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> InventoryStockResponse:
+    stock = await update_stock_settings(
+        session,
+        tenant_id,
+        stock_id,
+        reorder_point=data.reorder_point,
+        safety_factor=data.safety_factor,
+        lead_time_days=data.lead_time_days,
+    )
+    if stock is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Stock record not found",
+        )
+    await session.commit()
+    return InventoryStockResponse.model_validate(stock)
+
+
+# ── Monthly demand endpoint ──────────────────────────────────────
+
+
+@router.get(
+    "/products/{product_id}/monthly-demand",
+    response_model=MonthlyDemandResponse,
+)
+async def get_monthly_demand_endpoint(
+    product_id: uuid.UUID,
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+) -> MonthlyDemandResponse:
+    result = await get_monthly_demand(session, tenant_id, product_id)
+    return MonthlyDemandResponse(**result)
+
+
+# ── Sales history endpoint ───────────────────────────────────────
+
+
+@router.get(
+    "/products/{product_id}/sales-history",
+    response_model=SalesHistoryResponse,
+)
+async def get_sales_history_endpoint(
+    product_id: uuid.UUID,
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+) -> SalesHistoryResponse:
+    result = await get_sales_history(
+        session,
+        tenant_id,
+        product_id,
+        limit=limit,
+        offset=offset,
+    )
+    return SalesHistoryResponse(
+        items=[SalesHistoryItem(**item) for item in result["items"]],
+        total=result["total"],
+    )
+
+
+# ── Top customer endpoint ────────────────────────────────────────
+
+
+@router.get(
+    "/products/{product_id}/top-customer",
+    response_model=TopCustomerResponse | None,
+)
+async def get_top_customer_endpoint(
+    product_id: uuid.UUID,
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+) -> TopCustomerResponse | None:
+    result = await get_top_customer(session, tenant_id, product_id)
+    if result is None:
+        return None
+    return TopCustomerResponse(**result)
+
+
+# ── Product supplier endpoint ────────────────────────────────────
+
+
+@router.get(
+    "/products/{product_id}/supplier",
+    response_model=ProductSupplierResponse | None,
+)
+async def get_product_supplier_endpoint(
+    product_id: uuid.UUID,
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+) -> ProductSupplierResponse | None:
+    result = await get_product_supplier(session, tenant_id, product_id)
+    if result is None:
+        return None
+    return ProductSupplierResponse(**result)
+
+
 @router.put(
     "/supplier-orders/{order_id}/receive",
     response_model=SupplierOrderResponse,
@@ -622,11 +962,12 @@ async def receive_supplier_order_endpoint(
     data: ReceiveOrderRequest,
     session: DbSession,
     _user: WriteUser,
+    tenant_id: CurrentTenant,
 ) -> SupplierOrderResponse:
     try:
         result = await receive_supplier_order(
             session,
-            TENANT_ID,
+            tenant_id,
             order_id,
             received_quantities=data.received_quantities,
             received_date=data.received_date,
@@ -644,3 +985,28 @@ async def receive_supplier_order_endpoint(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),
         ) from exc
+
+
+# ── Product audit log endpoint ────────────────────────────────
+
+
+@router.get(
+    "/products/{product_id}/audit-log",
+    response_model=AuditLogListResponse,
+)
+async def get_product_audit_log_endpoint(
+    product_id: uuid.UUID,
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+) -> AuditLogListResponse:
+    result = await get_product_audit_log(
+        session,
+        tenant_id,
+        product_id,
+        limit=limit,
+        offset=offset,
+    )
+    return AuditLogListResponse(**result)

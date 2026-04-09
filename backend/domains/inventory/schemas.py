@@ -7,6 +7,8 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from common.time import today
+
 # --- Warehouse schemas ---
 
 
@@ -73,7 +75,62 @@ class InventoryStockResponse(BaseModel):
     warehouse_id: uuid.UUID
     quantity: int
     reorder_point: int
+    safety_factor: float
+    lead_time_days: int
     updated_at: datetime
+
+
+class StockSettingsUpdateRequest(BaseModel):
+    reorder_point: int | None = Field(None, ge=0)
+    safety_factor: float | None = Field(None, ge=0.0)
+    lead_time_days: int | None = Field(None, ge=0)
+
+
+# --- Monthly demand schemas ---
+
+
+class MonthlyDemandItem(BaseModel):
+    month: str  # YYYY-MM
+    total_qty: int
+
+
+class MonthlyDemandResponse(BaseModel):
+    items: list[MonthlyDemandItem]
+    total: int
+
+
+# --- Sales history schemas ---
+
+
+class SalesHistoryItem(BaseModel):
+    date: datetime
+    quantity_change: int
+    reason_code: str
+    actor_id: str
+
+
+class SalesHistoryResponse(BaseModel):
+    items: list[SalesHistoryItem]
+    total: int
+
+
+# --- Top customer schemas ---
+
+
+class TopCustomerResponse(BaseModel):
+    customer_id: uuid.UUID
+    customer_name: str
+    total_qty: int
+
+
+# --- Product supplier schemas ---
+
+
+class ProductSupplierResponse(BaseModel):
+    supplier_id: uuid.UUID
+    name: str
+    unit_cost: float | None = None
+    default_lead_time_days: int | None = None
 
 
 # --- Product search schemas ---
@@ -98,6 +155,7 @@ class ProductSearchResponse(BaseModel):
 
 
 class WarehouseStockInfo(BaseModel):
+    stock_id: uuid.UUID
     warehouse_id: uuid.UUID
     warehouse_name: str
     current_stock: int
@@ -170,6 +228,23 @@ class ReasonCodeListResponse(BaseModel):
 # --- Reorder alert schemas ---
 
 
+class StockHistoryPoint(BaseModel):
+    date: datetime
+    quantity_change: int
+    reason_code: str
+    running_stock: int
+    notes: str | None
+
+
+class StockHistoryResponse(BaseModel):
+    points: list[StockHistoryPoint]
+    current_stock: int
+    reorder_point: int
+    avg_daily_usage: float | None
+    lead_time_days: int | None
+    safety_stock: float | None
+
+
 class ReorderAlertItem(BaseModel):
     id: uuid.UUID
     product_id: uuid.UUID
@@ -179,6 +254,7 @@ class ReorderAlertItem(BaseModel):
     current_stock: int
     reorder_point: int
     status: str
+    severity: str | None = None
     created_at: datetime
     acknowledged_at: datetime | None
     acknowledged_by: str | None
@@ -241,7 +317,7 @@ class SupplierOrderLineResponse(BaseModel):
 
 class SupplierOrderCreate(BaseModel):
     supplier_id: uuid.UUID
-    order_date: date = Field(default_factory=date.today)
+    order_date: date = Field(default_factory=today)
     expected_arrival_date: date | None = None
     lines: list[SupplierOrderLineRequest] = Field(..., min_length=1)
 
@@ -293,3 +369,72 @@ class UpdateOrderStatusRequest(BaseModel):
 class ReceiveOrderRequest(BaseModel):
     received_quantities: dict[str, int] = Field(default_factory=dict)
     received_date: date | None = None
+
+
+# ── Reorder point schemas ───────────────────────────────────────
+
+
+class ReorderPointPreviewRow(BaseModel):
+    stock_id: uuid.UUID
+    product_id: uuid.UUID
+    product_name: str
+    warehouse_id: uuid.UUID
+    warehouse_name: str
+    current_quantity: float
+    current_reorder_point: float
+    computed_reorder_point: float | None = None  # None if skipped
+    avg_daily_usage: float | None = None
+    lead_time_days: float | None = None
+    safety_stock: float | None = None
+    demand_basis: str | None = None  # e.g. "SALES_RESERVATION"
+    movement_count: int | None = None
+    lead_time_source: str | None = None  # "actual" | "supplier_default" | "fallback_7d"
+    quality_note: str | None = None  # Human-readable explanation
+    skip_reason: str | None = None  # "insufficient_history" | "source_unresolved" | None
+    is_selected: bool = False
+    suggested_order_qty: int | None = None  # computed at preview time, not persisted
+
+
+class ReorderPointComputeRequest(BaseModel):
+    safety_factor: float = 0.5  # 0.0 to 1.0
+    lookback_days: int = Field(default=90, ge=1, le=365)  # demand history lookback (1–365 days)
+    lookback_days_lead_time: int = 180
+    warehouse_id: uuid.UUID | None = None
+    # category_id intentionally omitted — Product.category is a str; wire up separately when needed
+
+
+class ReorderPointComputeResponse(BaseModel):
+    candidate_rows: list[ReorderPointPreviewRow]
+    skipped_rows: list[ReorderPointPreviewRow]
+    parameters: dict  # The input params used
+
+
+class ReorderPointApplyRequest(BaseModel):
+    selected_stock_ids: list[uuid.UUID]
+    safety_factor: float
+    lookback_days: int
+    lookback_days_lead_time: int = 180
+    warehouse_id: uuid.UUID | None = None
+
+
+class ReorderPointApplyResponse(BaseModel):
+    updated_count: int
+    skipped_count: int
+    run_parameters: dict
+
+
+# ── Audit log schemas ─────────────────────────────────────────
+
+
+class AuditLogItem(BaseModel):
+    id: uuid.UUID
+    created_at: datetime
+    actor_id: str
+    field: str
+    old_value: str | None
+    new_value: str | None
+
+
+class AuditLogListResponse(BaseModel):
+    items: list[AuditLogItem]
+    total: int

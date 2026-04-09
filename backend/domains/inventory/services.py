@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, date, datetime
+from datetime import UTC
 
 from sqlalchemy import asc, case, desc, distinct, func, literal, select, text
 from sqlalchemy.exc import IntegrityError
@@ -19,6 +19,7 @@ from common.models.stock_transfer import StockTransferHistory
 from common.models.supplier import Supplier
 from common.models.supplier_order import SupplierOrder, SupplierOrderLine, SupplierOrderStatus
 from common.models.warehouse import Warehouse
+from common.time import today, utc_now
 
 
 class InsufficientStockError(Exception):
@@ -249,6 +250,15 @@ async def transfer_stock(
 # ── Reorder alert helper ───────────────────────────────────────
 
 
+def _compute_severity(current_stock: int, reorder_point: int) -> str:
+    """Compute alert severity based on stock level."""
+    if current_stock == 0:
+        return "CRITICAL"
+    if reorder_point > 0 and current_stock < reorder_point * 0.5:
+        return "WARNING"
+    return "INFO"
+
+
 async def _check_reorder_alert(
     session: AsyncSession,
     *,
@@ -273,6 +283,7 @@ async def _check_reorder_alert(
     # NOTE: Alerts trigger at <= (proactive), while is_below_reorder
     # display flag uses strict < ("at reorder point" is not "below").
     if current_quantity <= reorder_point:
+        severity = _compute_severity(current_quantity, reorder_point)
         if alert is None:
             alert = ReorderAlert(
                 tenant_id=tenant_id,
@@ -281,10 +292,12 @@ async def _check_reorder_alert(
                 current_stock=current_quantity,
                 reorder_point=reorder_point,
                 status=AlertStatus.PENDING,
+                severity=severity,
             )
             session.add(alert)
         else:
             alert.current_stock = current_quantity
+            alert.severity = severity
             # Only collapse RESOLVED → PENDING; preserve ACKNOWLEDGED
             if alert.status == AlertStatus.RESOLVED:
                 alert.status = AlertStatus.PENDING
@@ -306,6 +319,7 @@ async def list_reorder_alerts(
     *,
     status_filter: str | None = None,
     warehouse_id: uuid.UUID | None = None,
+    sort_by: str = "severity",
     limit: int = 50,
     offset: int = 0,
 ) -> tuple[list[dict], int]:
@@ -323,6 +337,28 @@ async def list_reorder_alerts(
     count_result = await session.execute(count_stmt)
     total = count_result.scalar() or 0
 
+    # Days-until-stockout expression: current_stock / GREATEST(avg_daily_usage_estimate, 0.001)
+    # avg_daily_usage_estimate = reorder_point / 14 (2-week lead time at 0.5 safety factor proxy)
+    days_until_stockout = ReorderAlert.current_stock / func.greatest(
+        ReorderAlert.reorder_point / 14.0, 0.001,
+    )
+
+    # Severity tier ordering: CRITICAL=1, WARNING=2, INFO=3
+    severity_order = case(
+        (ReorderAlert.severity == "CRITICAL", 1),
+        (ReorderAlert.severity == "WARNING", 2),
+        else_=3,
+    )
+
+    # Apply sort
+    if sort_by == "created_at":
+        order_col = ReorderAlert.created_at.desc()
+    elif sort_by == "current_stock":
+        order_col = ReorderAlert.current_stock.asc()
+    else:
+        # Default: severity tier, then days_until_stockout ascending (most urgent first)
+        order_col = [severity_order.asc(), days_until_stockout.asc()]
+
     # Fetch with joins
     stmt = (
         select(
@@ -334,6 +370,7 @@ async def list_reorder_alerts(
             ReorderAlert.current_stock,
             ReorderAlert.reorder_point,
             ReorderAlert.status,
+            ReorderAlert.severity,
             ReorderAlert.created_at,
             ReorderAlert.acknowledged_at,
             ReorderAlert.acknowledged_by,
@@ -341,7 +378,7 @@ async def list_reorder_alerts(
         .join(Product, ReorderAlert.product_id == Product.id)
         .join(Warehouse, ReorderAlert.warehouse_id == Warehouse.id)
         .where(*base_where)
-        .order_by(ReorderAlert.created_at.desc())
+        .order_by(*order_col if isinstance(order_col, list) else (order_col,))
         .offset(offset)
         .limit(limit)
     )
@@ -358,6 +395,7 @@ async def list_reorder_alerts(
             "current_stock": row.current_stock,
             "reorder_point": row.reorder_point,
             "status": row.status.value if hasattr(row.status, "value") else row.status,
+            "severity": row.severity,
             "created_at": row.created_at,
             "acknowledged_at": row.acknowledged_at,
             "acknowledged_by": row.acknowledged_by,
@@ -388,7 +426,7 @@ async def acknowledge_alert(
     if alert.status == AlertStatus.RESOLVED:
         return None
 
-    now = datetime.now(tz=UTC)
+    now = utc_now()
     alert.status = AlertStatus.ACKNOWLEDGED
     alert.acknowledged_at = now
     alert.acknowledged_by = actor_id
@@ -480,7 +518,7 @@ async def create_stock_adjustment(
 
     # 4. Record adjustment
     adj_id = uuid.uuid4()
-    adj_created = datetime.now(tz=UTC)
+    adj_created = utc_now()
     adjustment = StockAdjustment(
         id=adj_id,
         tenant_id=tenant_id,
@@ -574,6 +612,7 @@ async def get_product_detail(
 
     stock_stmt = (
         select(
+            InventoryStock.id.label("stock_id"),
             InventoryStock.warehouse_id,
             Warehouse.name.label("warehouse_name"),
             InventoryStock.quantity,
@@ -601,6 +640,7 @@ async def get_product_detail(
         total_stock += row.quantity
         warehouses.append(
             {
+                "stock_id": row.stock_id,
                 "warehouse_id": row.warehouse_id,
                 "warehouse_name": row.warehouse_name,
                 "current_stock": row.quantity,
@@ -898,7 +938,7 @@ async def create_supplier_order(
 ) -> dict:
     """Create a new supplier order with line items."""
     # Generate order number
-    order_number = f"PO-{datetime.now(tz=UTC).strftime('%Y%m%d')}-{uuid.uuid4().hex[:8].upper()}"
+    order_number = f"PO-{utc_now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:8].upper()}"
 
     order = SupplierOrder(
         tenant_id=tenant_id,
@@ -1102,7 +1142,7 @@ async def receive_supplier_order(
         received_quantities = {}
 
     if received_date is None:
-        received_date = date.today()
+        received_date = today()
 
     # Lock and fetch order with lines
     order_stmt = (
@@ -1302,3 +1342,508 @@ async def update_supplier_order_status(
     await session.flush()
 
     return await _serialize_order(session, tenant_id, order_id)
+
+
+# ── Stock history ───────────────────────────────────────────────
+
+
+async def get_stock_history(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+    warehouse_id: uuid.UUID,
+    *,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+    granularity: str = "event",
+    _max_range_days: int = 730,
+) -> dict:
+    """Return stock history for a product+warehouse.
+
+    - ``granularity='event'``: one row per adjustment event
+    - ``granularity='daily'``: one row per day, aggregated
+
+    ``running_stock`` at each point is computed by back-calculating the
+    initial stock from the current quantity and applying adjustments forward.
+    """
+    from collections import Counter
+    from common.time import utc_now
+
+    # Cap start_date to at most _max_range_days ago to avoid loading huge histories
+    effective_start = start_date
+    if effective_start is None:
+        effective_start = utc_now() - __import__("datetime").timedelta(days=_max_range_days)
+
+    # 1. Get current stock quantity and reorder point
+    stock_stmt = select(InventoryStock).where(
+        InventoryStock.tenant_id == tenant_id,
+        InventoryStock.product_id == product_id,
+        InventoryStock.warehouse_id == warehouse_id,
+    )
+    stock_result = await session.execute(stock_stmt)
+    stock = stock_result.scalar_one_or_none()
+
+    current_stock = stock.quantity if stock else 0
+    reorder_point = stock.reorder_point if stock else 0
+
+    # 2. Fetch adjustments ordered ASC
+    adj_where = [
+        StockAdjustment.tenant_id == tenant_id,
+        StockAdjustment.product_id == product_id,
+        StockAdjustment.warehouse_id == warehouse_id,
+    ]
+    if effective_start:
+        adj_where.append(StockAdjustment.created_at >= effective_start)
+    if end_date:
+        adj_where.append(StockAdjustment.created_at <= end_date)
+
+    adj_stmt = (
+        select(StockAdjustment)
+        .where(*adj_where)
+        .order_by(StockAdjustment.created_at.asc())
+    )
+    adj_result = await session.execute(adj_stmt)
+    adjustments = list(adj_result.scalars().all())
+
+    total_adjustment = sum(adj.quantity_change for adj in adjustments)
+    initial_stock = current_stock - total_adjustment
+
+    # 3. Build running stock
+    running = initial_stock
+    points: list[dict] = []
+
+    if granularity == "daily":
+        # Group by date, sum quantity_change, pick dominant reason_code
+        by_date: dict[str, dict] = {}
+        for adj in adjustments:
+            day_key = adj.created_at.date().isoformat()
+            if day_key not in by_date:
+                by_date[day_key] = {"quantity_change": 0, "reason_codes": Counter(), "notes": None}
+            by_date[day_key]["quantity_change"] += adj.quantity_change
+            by_date[day_key]["reason_codes"][adj.reason_code.value] += 1
+            if by_date[day_key]["notes"] is None and adj.notes:
+                by_date[day_key]["notes"] = adj.notes
+
+        for day_key, info in sorted(by_date.items()):
+            running += info["quantity_change"]
+            dominant_rc = info["reason_codes"].most_common(1)[0][0] if info["reason_codes"] else "unknown"
+            points.append({
+                "date": datetime.fromisoformat(day_key),
+                "quantity_change": info["quantity_change"],
+                "reason_code": dominant_rc,
+                "running_stock": running,
+                "notes": info["notes"],
+            })
+    else:
+        # event-level granularity
+        for adj in adjustments:
+            running += adj.quantity_change
+            points.append({
+                "date": adj.created_at,
+                "quantity_change": adj.quantity_change,
+                "reason_code": adj.reason_code.value,
+                "running_stock": running,
+                "notes": adj.notes,
+            })
+
+    # 4. Fetch metadata from reorder point helpers (avg_daily_usage, lead_time, safety_stock)
+    try:
+        from domains.inventory.reorder_point import (
+            get_average_daily_usage,
+            get_lead_time_days,
+        )
+
+        avg_daily, _mov_count = await get_average_daily_usage(
+            session, tenant_id, product_id, warehouse_id, lookback_days=90,
+        )
+        lead_time_days, _lt_source = await get_lead_time_days(
+            session, tenant_id, product_id, warehouse_id, lookback_days=180,
+        )
+        safety_stock = round(avg_daily * 0.5 * lead_time_days, 2) if avg_daily and lead_time_days else None
+    except Exception:
+        avg_daily = None
+        lead_time_days = None
+        safety_stock = None
+
+    return {
+        "points": points,
+        "current_stock": current_stock,
+        "reorder_point": reorder_point,
+        "avg_daily_usage": round(avg_daily, 4) if avg_daily else None,
+        "lead_time_days": lead_time_days,
+        "safety_stock": safety_stock,
+    }
+
+
+# ── Stock settings update ───────────────────────────────────────
+
+
+async def update_stock_settings(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    stock_id: uuid.UUID,
+    *,
+    reorder_point: int | None = None,
+    safety_factor: float | None = None,
+    lead_time_days: int | None = None,
+) -> InventoryStock | None:
+    """Update reorder_point, safety_factor, and/or lead_time_days for a stock record."""
+    stmt = select(InventoryStock).where(
+        InventoryStock.id == stock_id,
+        InventoryStock.tenant_id == tenant_id,
+    )
+    result = await session.execute(stmt)
+    stock = result.scalar_one_or_none()
+    if stock is None:
+        return None
+
+    if reorder_point is not None:
+        stock.reorder_point = reorder_point
+    if safety_factor is not None:
+        stock.safety_factor = safety_factor
+    if lead_time_days is not None:
+        stock.lead_time_days = lead_time_days
+
+    await session.flush()
+    return stock
+
+
+# ── Monthly demand ──────────────────────────────────────────────
+
+
+async def get_monthly_demand(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+) -> dict:
+    """Return 12-month rolling monthly totals for sales_reservation reason code."""
+    twelve_months_ago = utc_now().replace(day=1) - __import__("datetime").timedelta(days=365)
+
+    stmt = (
+        select(
+            func.date_trunc("month", StockAdjustment.created_at).label("month"),
+            func.sum(StockAdjustment.quantity_change).label("total_qty"),
+        )
+        .where(
+            StockAdjustment.tenant_id == tenant_id,
+            StockAdjustment.product_id == product_id,
+            StockAdjustment.reason_code == ReasonCode.SALES_RESERVATION,
+            StockAdjustment.created_at >= twelve_months_ago,
+        )
+        .group_by(func.date_trunc("month", StockAdjustment.created_at))
+        .order_by(func.date_trunc("month", StockAdjustment.created_at))
+    )
+    result = await session.execute(stmt)
+    rows = result.all()
+
+    items = [
+        {
+            "month": row.month.strftime("%Y-%m"),
+            "total_qty": int(row.total_qty or 0),
+        }
+        for row in rows
+    ]
+    total = sum(item["total_qty"] for item in items)
+    return {"items": items, "total": total}
+
+
+# ── Sales history ────────────────────────────────────────────────
+
+
+async def get_sales_history(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+    *,
+    limit: int = 50,
+    offset: int = 0,
+) -> dict:
+    """Return paginated sales history (all reason codes) for a product."""
+    from common.models.order_line import OrderLine
+    from common.models.order import Order
+    from domains.customers.models import Customer
+
+    count_stmt = select(func.count(StockAdjustment.id)).where(
+        StockAdjustment.tenant_id == tenant_id,
+        StockAdjustment.product_id == product_id,
+    )
+    count_result = await session.execute(count_stmt)
+    total = count_result.scalar() or 0
+
+    stmt = (
+        select(StockAdjustment)
+        .where(
+            StockAdjustment.tenant_id == tenant_id,
+            StockAdjustment.product_id == product_id,
+        )
+        .order_by(StockAdjustment.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+    result = await session.execute(stmt)
+    adjustments = result.scalars().all()
+
+    items = [
+        {
+            "date": adj.created_at,
+            "quantity_change": adj.quantity_change,
+            "reason_code": adj.reason_code.value,
+            "actor_id": adj.actor_id,
+        }
+        for adj in adjustments
+    ]
+    return {"items": items, "total": total}
+
+
+# ── Top customer ─────────────────────────────────────────────────
+
+
+async def get_top_customer(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+) -> dict | None:
+    """Return the customer who has ordered the most of this product (by quantity)."""
+    from common.models.order_line import OrderLine
+    from common.models.order import Order
+    from domains.customers.models import Customer
+
+    stmt = (
+        select(
+            Customer.id.label("customer_id"),
+            Customer.company_name.label("customer_name"),
+            func.sum(OrderLine.quantity).label("total_qty"),
+        )
+        .join(Order, Order.id == OrderLine.order_id)
+        .join(Customer, Customer.id == Order.customer_id)
+        .where(
+            Order.tenant_id == tenant_id,
+            OrderLine.product_id == product_id,
+        )
+        .group_by(Customer.id, Customer.company_name)
+        .order_by(func.sum(OrderLine.quantity).desc())
+        .limit(1)
+    )
+    result = await session.execute(stmt)
+    row = result.first()
+
+    if row is None:
+        return None
+    return {
+        "customer_id": row.customer_id,
+        "customer_name": row.customer_name,
+        "total_qty": int(row.total_qty or 0),
+    }
+
+
+# ── Product supplier ──────────────────────────────────────────────
+
+
+async def get_product_supplier(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+) -> dict | None:
+    """Return the most-recent supplier for a product, with unit cost and lead time.
+
+    Resolves via supplier_order_line → supplier_order: picks the supplier
+    with the most recently received order lines for this product.
+    Returns null if no supplier orders exist.
+    """
+    # Use a subquery to find the supplier_id with the most recent received order
+    latest_order_line_sq = (
+        select(
+            SupplierOrderLine.product_id,
+            SupplierOrder.supplier_id,
+            func.max(SupplierOrder.received_date).label("latest_received"),
+        )
+        .join(SupplierOrder, SupplierOrder.id == SupplierOrderLine.order_id)
+        .where(
+            SupplierOrder.tenant_id == tenant_id,
+            SupplierOrderLine.product_id == product_id,
+            SupplierOrder.received_date.isnot(None),
+        )
+        .group_by(SupplierOrderLine.product_id, SupplierOrder.supplier_id)
+        .subquery()
+    )
+
+    best_supplier_sq = (
+        select(
+            latest_order_line_sq.c.supplier_id,
+            latest_order_line_sq.c.latest_received,
+        )
+        .order_by(latest_order_line_sq.c.latest_received.desc())
+        .limit(1)
+        .subquery()
+    )
+
+    stmt = (
+        select(Supplier)
+        .join(best_supplier_sq, Supplier.id == best_supplier_sq.c.supplier_id)
+        .where(Supplier.tenant_id == tenant_id)
+    )
+    result = await session.execute(stmt)
+    supplier = result.scalar_one_or_none()
+
+    if supplier is None:
+        return None
+
+    # Get unit_cost from the most recent received order line
+    unit_cost_stmt = (
+        select(SupplierOrderLine.unit_price)
+        .join(SupplierOrder, SupplierOrder.id == SupplierOrderLine.order_id)
+        .where(
+            SupplierOrder.tenant_id == tenant_id,
+            SupplierOrderLine.product_id == product_id,
+            SupplierOrder.supplier_id == supplier.id,
+            SupplierOrder.received_date.isnot(None),
+        )
+        .order_by(SupplierOrder.received_date.desc())
+        .limit(1)
+    )
+    unit_cost_result = await session.execute(unit_cost_stmt)
+    unit_cost_row = unit_cost_result.first()
+    unit_cost = float(unit_cost_row.unit_price) if unit_cost_row else None
+
+    return {
+        "supplier_id": supplier.id,
+        "name": supplier.name,
+        "unit_cost": unit_cost,
+        "default_lead_time_days": supplier.default_lead_time_days,
+    }
+
+
+# ── Product audit log ─────────────────────────────────────────
+
+
+async def get_product_audit_log(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+    limit: int = 50,
+    offset: int = 0,
+) -> dict:
+    """Fetch audit log entries for a product.
+
+    Returns entries for both inventory_stock field changes
+    (reorder_point, safety_factor, lead_time_days) and product status changes.
+    Each field that changed becomes a separate entry.
+    """
+    # Subquery: all inventory_stock ids for this product
+    stock_ids_sq = (
+        select(InventoryStock.id)
+        .where(
+            InventoryStock.tenant_id == tenant_id,
+            InventoryStock.product_id == product_id,
+        )
+        .subquery()
+    )
+
+    # Query audit_log for inventory_stock field changes
+    # or product status changes, unioned and ordered by created_at DESC
+    stock_logs = (
+        select(
+            AuditLog.id,
+            AuditLog.created_at,
+            AuditLog.actor_id,
+            AuditLog.before_state,
+            AuditLog.after_state,
+            AuditLog.entity_type,
+        )
+        .where(
+            AuditLog.tenant_id == tenant_id,
+            AuditLog.entity_type == "inventory_stock",
+            AuditLog.entity_id.in_(select(stock_ids_sq)),
+        )
+    )
+
+    product_logs = (
+        select(
+            AuditLog.id,
+            AuditLog.created_at,
+            AuditLog.actor_id,
+            AuditLog.before_state,
+            AuditLog.after_state,
+            AuditLog.entity_type,
+        )
+        .where(
+            AuditLog.tenant_id == tenant_id,
+            AuditLog.entity_type == "product",
+            AuditLog.entity_id == str(product_id),
+        )
+    )
+
+    # Count total before pagination
+    all_union = stock_logs.union(product_logs).subquery()
+    count_stmt = select(func.count()).select_from(all_union)
+    count_result = await session.execute(count_stmt)
+    total = count_result.scalar() or 0
+
+    # Fetch with LIMIT/OFFSET ordered by created_at DESC
+    fetch_stmt = (
+        select(
+            AuditLog.id,
+            AuditLog.created_at,
+            AuditLog.actor_id,
+            AuditLog.before_state,
+            AuditLog.after_state,
+            AuditLog.entity_type,
+        )
+        .where(
+            AuditLog.tenant_id == tenant_id,
+            AuditLog.entity_type.in_(["inventory_stock", "product"]),
+            (
+                AuditLog.entity_type == "inventory_stock"
+                & AuditLog.entity_id.in_(select(stock_ids_sq))
+            )
+            | (AuditLog.entity_type == "product" & AuditLog.entity_id == str(product_id)),
+        )
+        .order_by(AuditLog.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+    result = await session.execute(fetch_stmt)
+    rows = result.all()
+
+    items = []
+    for row in rows:
+        before = row.before_state or {}
+        after = row.after_state or {}
+
+        if row.entity_type == "inventory_stock":
+            # before_state/after_state contain {reorder_point, safety_factor, lead_time_days, ...}
+            # Create one entry per changed field
+            for field in ("reorder_point", "safety_factor", "lead_time_days"):
+                old_val = before.get(field)
+                new_val = after.get(field)
+                if old_val is not None or new_val is not None:
+                    items.append(
+                        {
+                            "id": row.id,
+                            "created_at": row.created_at,
+                            "actor_id": row.actor_id,
+                            "field": field,
+                            "old_value": str(old_val) if old_val is not None else None,
+                            "new_value": str(new_val) if new_val is not None else None,
+                        }
+                    )
+        elif row.entity_type == "product":
+            # before_state/after_state contain {status, ...}
+            old_status = before.get("status")
+            new_status = after.get("status")
+            if old_status is not None or new_status is not None:
+                items.append(
+                    {
+                        "id": row.id,
+                        "created_at": row.created_at,
+                        "actor_id": row.actor_id,
+                        "field": "status",
+                        "old_value": str(old_status) if old_status is not None else None,
+                        "new_value": str(new_status) if new_status is not None else None,
+                    }
+                )
+
+    # Sort combined items by created_at DESC
+    items.sort(key=lambda x: x["created_at"], reverse=True)
+
+    return {"items": items, "total": total}
