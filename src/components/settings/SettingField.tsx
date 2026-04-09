@@ -21,6 +21,7 @@ interface SettingFieldProps {
   onReset: (key: string) => Promise<void>;
   saving?: boolean;
   resetting?: boolean;
+  error?: string | null;
 }
 
 export function SettingField({
@@ -29,6 +30,7 @@ export function SettingField({
   onReset,
   saving = false,
   resetting = false,
+  error,
 }: SettingFieldProps) {
   const { t } = useTranslation("common");
   const [localValue, setLocalValue] = useState(item.is_null ? "" : item.value);
@@ -194,11 +196,15 @@ export function SettingField({
               size="sm"
               onClick={handleReset}
               disabled={resetting || item.is_null}
+              title={item.is_null ? undefined : `Reset to default: ${item.value}`}
             >
               {resetting ? t("common.loading") : t("common.reset")}
             </Button>
           </div>
         </div>
+        {error ? (
+          <p className="text-xs text-destructive mt-1">{error}</p>
+        ) : null}
       </div>
     </div>
   );

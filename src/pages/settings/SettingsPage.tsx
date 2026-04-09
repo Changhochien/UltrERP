@@ -63,12 +63,16 @@ function CategoryContent({
   onReset,
   savingKey,
   resettingKey,
+  errorKey,
+  saveError,
 }: {
   category: SettingsCategory;
   onSave: (key: string, value: string) => Promise<void>;
   onReset: (key: string) => Promise<void>;
   savingKey: string | null;
   resettingKey: string | null;
+  errorKey: string | null;
+  saveError: string | null;
 }) {
   const { t } = useTranslation("common");
 
@@ -83,19 +87,21 @@ function CategoryContent({
   }
 
   return (
-    <div className="space-y-4">
-      {category.items.map((item) => (
-        <SectionCard key={item.key}>
+    <SectionCard>
+      <div className="space-y-4">
+        {category.items.map((item) => (
           <SettingField
+            key={item.key}
             item={item}
             onSave={onSave}
             onReset={onReset}
             saving={savingKey === item.key}
             resetting={resettingKey === item.key}
+            error={errorKey === item.key ? saveError : null}
           />
-        </SectionCard>
-      ))}
-    </div>
+        ))}
+      </div>
+    </SectionCard>
   );
 }
 
@@ -109,18 +115,22 @@ export function SettingsPage() {
   const [resetError, setResetError] = useState<string | null>(null);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [resettingKey, setResettingKey] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<string | null>(null);
 
   // Set first category as active once loaded
   const currentCategory = activeCategory ?? (categories[0]?.category ?? null);
 
   async function handleSave(key: string, value: string) {
     setSaveError(null);
+    setErrorKey(null);
     setSavingKey(key);
     try {
       await updateSetting(key, value);
       await refresh();
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : t("settingsPage.saveError", "Failed to save setting."));
+      const msg = err instanceof Error ? err.message : t("settingsPage.saveError", "Failed to save setting.");
+      setSaveError(msg);
+      setErrorKey(key);
     } finally {
       setSavingKey(null);
     }
@@ -218,6 +228,8 @@ export function SettingsPage() {
               onReset={handleReset}
               savingKey={savingKey}
               resettingKey={resettingKey}
+              errorKey={errorKey}
+              saveError={saveError}
             />
           </TabsContent>
         ))}
