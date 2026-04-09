@@ -20,14 +20,14 @@ export interface AuditLogEntry {
 }
 
 export async function fetchUsers(): Promise<AdminUser[]> {
-  const resp = await apiFetch("/api/v1/admin/users");
+  const resp = await apiFetch("/api/v1/admin/users/");
   if (!resp.ok) throw new Error("Failed to load users");
   const body = await resp.json();
   return body.items ?? [];
 }
 
 export async function fetchAuditLogs(): Promise<AuditLogEntry[]> {
-  const resp = await apiFetch("/api/v1/admin/audit-logs?page=1&page_size=20");
+  const resp = await apiFetch("/api/v1/admin/audit-logs/?page=1&page_size=20");
   if (!resp.ok) throw new Error("Failed to load audit logs");
   const body = await resp.json();
   return body.items ?? [];
