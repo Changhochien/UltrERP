@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowRightLeft, ArrowLeft, ShoppingCart, SlidersHorizontal } from "lucide-react";
 
@@ -10,6 +11,10 @@ import { useStockHistory } from "@/domain/inventory/hooks/useStockHistory";
 import { useWarehouseContext } from "@/domain/inventory/context/WarehouseContext";
 import { AdjustmentTimeline } from "@/domain/inventory/components/AdjustmentTimeline";
 import { StockTrendChart } from "@/domain/inventory/components/StockTrendChart";
+import { AnalyticsTab } from "@/domain/inventory/components/AnalyticsTab";
+import { SettingsTab } from "@/domain/inventory/components/SettingsTab";
+import { AuditLogTable } from "@/domain/inventory/components/AuditLogTable";
+import { useProductAuditLog } from "@/domain/inventory/hooks/useProductAuditLog";
 import { INVENTORY_ROUTE } from "@/lib/routes";
 import { parseBackendDate } from "@/lib/time";
 import type { WarehouseStockInfo } from "@/domain/inventory/types";
@@ -64,7 +69,6 @@ function StockHealthBar({ warehouses }: { warehouses: WarehouseStockInfo[] }) {
     .reduce((sum, w) => sum + w.current_stock, 0);
 
   const pct = (n: number) => `${Math.round((n / totalStock) * 100)}%`;
-
   return (
     <div>
       <div className="stock-health-bar">
@@ -102,6 +106,52 @@ function StockHealthBar({ warehouses }: { warehouses: WarehouseStockInfo[] }) {
   );
 }
 
+function AuditLogTabContent({ productId }: { productId: string }) {
+  const PAGE_SIZE = 50;
+  const [offset, setOffset] = useState(0);
+  const { items, total, loading, error } = useProductAuditLog(productId, {
+    limit: PAGE_SIZE,
+    offset,
+  });
+
+  const start = offset + 1;
+  const end = Math.min(offset + PAGE_SIZE, total);
+
+  return (
+    <SectionCard title="Audit Log">
+      {error && (
+        <div className="mb-3 text-sm text-destructive">{error}</div>
+      )}
+      <AuditLogTable items={items} loading={loading} error={error} />
+      {total > 0 && (
+        <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+          <span>
+            {start}–{end} of {total}
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={offset === 0}
+              onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={end >= total}
+              onClick={() => setOffset(offset + PAGE_SIZE)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
 export function ProductDetailPage({ productId: propProductId }: { productId?: string }) {
   const navigate = useNavigate();
   const params = useParams<{ productId: string }>();
@@ -113,7 +163,6 @@ export function ProductDetailPage({ productId: propProductId }: { productId?: st
   const stockId = selectedWarehouse?.id
     ? product?.warehouses.find((w) => w.warehouse_id === selectedWarehouse.id)?.stock_id
     : product?.warehouses[0]?.stock_id;
-
   const {
     history,
     reorderPoint,
@@ -266,25 +315,19 @@ export function ProductDetailPage({ productId: propProductId }: { productId?: st
         </TabsContent>
 
         <TabsContent value="analytics">
-          <SectionCard title="Analytics">
-            <p style={{ color: "var(--inv-muted)", fontSize: 13 }}>Analytics content coming soon.</p>
-          </SectionCard>
+          {product && (
+            <AnalyticsTab productId={productId ?? ""} warehouses={product.warehouses} />
+          )}
         </TabsContent>
 
         <TabsContent value="settings">
-          <SectionCard title="Settings">
-            <p style={{ color: "var(--inv-muted)", fontSize: 13 }}>Settings content coming soon.</p>
-          </SectionCard>
+          {product && (
+            <SettingsTab productId={productId ?? ""} warehouses={product.warehouses} />
+          )}
         </TabsContent>
 
         <TabsContent value="audit">
-          <SectionCard title="Audit Log">
-            <AuditLogTable
-              items={auditItems}
-              loading={auditLoading}
-              error={auditError}
-            />
-          </SectionCard>
+          <AuditLogTabContent productId={productId ?? ""} />
         </TabsContent>
       </Tabs>
     </div>
