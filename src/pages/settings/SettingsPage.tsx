@@ -215,7 +215,7 @@ export function SettingsPage() {
           {categories.map((cat) => (
             <TabsTrigger key={cat.category} value={cat.category} className="gap-1.5 shrink-0">
               {getCategoryIcon(cat.category)}
-              <span className="truncate max-w-24">{toTitleCase(cat.category)}</span>
+              <span className="whitespace-nowrap">{toTitleCase(cat.category)}</span>
             </TabsTrigger>
           ))}
         </TabsList>
