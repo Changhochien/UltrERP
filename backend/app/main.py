@@ -31,13 +31,14 @@ def create_app() -> FastAPI:
 	@asynccontextmanager
 	async def lifespan(app: FastAPI):
 		# Startup tasks — outside MCP lifespan so failures don't leak MCP context.
-		from domains.settings.seed import seed_settings_if_empty
-
 		# Import this to register domain event handlers (e.g. @on(StockChangedEvent))
 		import domains.inventory.handlers  # noqa: F401
+		from domains.settings.seed import seed_settings_if_empty
+		from domains.users.seed import seed_dev_users_if_empty
 
 		async with AsyncSessionLocal() as db:
 			await seed_settings_if_empty(db)
+			await seed_dev_users_if_empty(db)
 
 		# Only enter MCP lifespan after all startup tasks succeed.
 		mcp_lifespan = mcp_app.router.lifespan_context
@@ -53,8 +54,9 @@ def create_app() -> FastAPI:
 		version="0.1.0",
 		lifespan=lifespan,
 		strict_content_type=False,
+		redirect_slashes=False,
 	)
-	api_v1 = APIRouter(prefix="/api/v1")
+	api_v1 = APIRouter(prefix="/api/v1", redirect_slashes=False)
 
 	app.add_middleware(
 		CORSMiddleware,
