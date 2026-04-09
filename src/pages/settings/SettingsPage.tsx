@@ -22,6 +22,10 @@ import {
 } from "../../hooks/useSettings";
 import type { SettingsCategory } from "../../lib/api/settings";
 
+function toTitleCase(str: string): string {
+  return str.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function getCategoryIcon(category: string): ReactNode {
   const iconMap: Record<string, ReactNode> = {
     general: <Globe className="size-4" />,
@@ -98,6 +102,8 @@ function CategoryContent({
 export function SettingsPage() {
   const { t } = useTranslation("common");
   const { categories, loading, error, refresh } = useSettings();
+  const { updateSetting } = useUpdateSetting();
+  const { resetSetting } = useResetSetting();
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [resetError, setResetError] = useState<string | null>(null);
@@ -111,8 +117,7 @@ export function SettingsPage() {
     setSaveError(null);
     setSavingKey(key);
     try {
-      const { updateSetting: update } = useUpdateSetting();
-      await update(key, value);
+      await updateSetting(key, value);
       await refresh();
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : t("settingsPage.saveError", "Failed to save setting."));
@@ -125,8 +130,7 @@ export function SettingsPage() {
     setResetError(null);
     setResettingKey(key);
     try {
-      const { resetSetting: reset } = useResetSetting();
-      await reset(key);
+      await resetSetting(key);
       await refresh();
     } catch (err) {
       setResetError(err instanceof Error ? err.message : t("settingsPage.resetError", "Failed to reset setting."));
@@ -201,7 +205,7 @@ export function SettingsPage() {
           {categories.map((cat) => (
             <TabsTrigger key={cat.category} value={cat.category} className="gap-1.5 shrink-0">
               {getCategoryIcon(cat.category)}
-              <span className="truncate max-w-24">{cat.category}</span>
+              <span className="truncate max-w-24">{toTitleCase(cat.category)}</span>
             </TabsTrigger>
           ))}
         </TabsList>

@@ -61,6 +61,7 @@ export function SettingField({
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             onClick={() => setShowPassword((v) => !v)}
             tabIndex={-1}
+            aria-label={showPassword ? "Hide password" : "Show password"}
           >
             {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
           </button>
@@ -134,7 +135,7 @@ export function SettingField({
             onChange={(e) => setLocalValue(e.target.value)}
             disabled={saving}
             rows={3}
-            placeholder="JSON array, e.g. ['https://example.com']"
+            placeholder={'JSON array, e.g. ["https://example.com"]'}
             className="resize-y"
           />
         );
@@ -164,7 +165,7 @@ export function SettingField({
     >
       {/* Left: label + description — flex-1 takes all remaining space, pushing controls right */}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground">{item.key}</p>
+        <p className="text-sm font-medium text-foreground">{item.key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</p>
         {item.description ? (
           <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
             {item.description}
