@@ -1,7 +1,7 @@
 {
   "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"/Volumes/2T_SSD_App/Projects/UltrERP/backend/.venv/bin/python -c \\\"\\nimport asyncio\\nfrom sqlalchemy import select, text\\nfrom common.database import engine, async_session_maker\\nfrom comm...",
-  "error": "Exit code 1\nTraceback (most recent call last):\n  File \"<string>\", line 4, in <module>\nImportError: cannot import name 'async_session_maker' from 'common.database' (/Volumes/2T_SSD_App/Projects/UltrERP/backend/common/database.py). Did you mean: 'async_sessionmaker'?",
-  "timestamp": "2026-04-09T07:11:37.855Z",
-  "retry_count": 2
+  "tool_input_preview": "{\"command\":\"uv run ruff check app/main.py\"}",
+  "error": "Exit code 1\nI001 [*] Import block is un-sorted or un-formatted\n  --> app/main.py:1:1\n   |\n 1 | / from contextlib import asynccontextmanager\n 2 | | import logging\n 3 | |\n 4 | | from fastapi import APIRouter, Depends, FastAPI, Response\n 5 | | from fastapi.middleware.cors import CORSMiddleware\n 6 | | from sqlalchemy.ext.asyncio import AsyncSession\n 7 | |\n 8 | | from app.mcp_setup import get_mcp_app\n 9 | | from common.config import settings\n10 | | from common.database import AsyncSessionLocal, get_d...",
+  "timestamp": "2026-04-09T16:27:42.516Z",
+  "retry_count": 1
 }
