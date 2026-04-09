@@ -116,6 +116,7 @@ export function SettingsPage() {
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [resettingKey, setResettingKey] = useState<string | null>(null);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [lastReset, setLastReset] = useState<{ key: string; value: string } | null>(null);
 
   // Set first category as active once loaded
   const currentCategory = activeCategory ?? (categories[0]?.category ?? null);
@@ -161,13 +162,36 @@ export function SettingsPage() {
   async function handleReset(key: string) {
     setResetError(null);
     setResettingKey(key);
+    // Capture current value so user can undo
+    const item = categories.flatMap((c) => c.items).find((i) => i.key === key);
+    if (item && !item.is_null) {
+      setLastReset({ key, value: item.value });
+    }
     try {
       await resetSetting(key);
       await refresh();
+      // Clear undo state after 5s
+      setTimeout(() => setLastReset(null), 5000);
     } catch (err) {
       setResetError(err instanceof Error ? err.message : t("settingsPage.resetError", "Failed to reset setting."));
+      setLastReset(null);
     } finally {
       setResettingKey(null);
+    }
+  }
+
+  async function handleUndoReset() {
+    if (!lastReset) return;
+    setSaveError(null);
+    setSavingKey(lastReset.key);
+    try {
+      await updateSetting(lastReset.key, lastReset.value);
+      await refresh();
+      setLastReset(null);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : t("settingsPage.saveError", "Failed to restore setting."));
+    } finally {
+      setSavingKey(null);
     }
   }
 
@@ -226,6 +250,19 @@ export function SettingsPage() {
       {(saveError || resetError) ? (
         <SurfaceMessage tone="danger">
           {saveError || resetError}
+        </SurfaceMessage>
+      ) : null}
+
+      {lastReset ? (
+        <SurfaceMessage tone="default">
+          {t("settingsPage.resetDone", "Setting reset.")}{" "}
+          <button
+            type="button"
+            className="underline underline-offset-2 font-medium"
+            onClick={handleUndoReset}
+          >
+            {t("settingsPage.undo", "Undo")}
+          </button>
         </SurfaceMessage>
       ) : null}
 
