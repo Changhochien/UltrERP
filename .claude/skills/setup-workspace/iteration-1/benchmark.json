@@ -1,0 +1,95 @@
+{
+  "metadata": {
+    "skill_name": "setup",
+    "skill_path": ".claude/skills/setup",
+    "executor_model": "sonnet",
+    "analyzer_model": "sonnet",
+    "timestamp": "2026-04-05T13:12:00Z",
+    "evals_run": ["eval-0-with_skill", "eval-0-without_skill", "eval-1-with_skill", "eval-1-without_skill", "eval-2-with_skill", "eval-2-without_skill"],
+    "runs_per_configuration": 3
+  },
+  "runs": [
+    {
+      "run_id": "eval-0-with_skill",
+      "config": "with_skill",
+      "pass_rate": 1.0,
+      "passed": 6,
+      "failed": 0,
+      "total": 6,
+      "tokens": 29328,
+      "time_seconds": 104.9
+    },
+    {
+      "run_id": "eval-0-without_skill",
+      "config": "without_skill",
+      "pass_rate": null,
+      "passed": null,
+      "failed": null,
+      "total": 0,
+      "tokens": 38302,
+      "time_seconds": 110.6
+    },
+    {
+      "run_id": "eval-1-with_skill",
+      "config": "with_skill",
+      "pass_rate": 1.0,
+      "passed": 6,
+      "failed": 0,
+      "total": 6,
+      "tokens": 34681,
+      "time_seconds": 89.4
+    },
+    {
+      "run_id": "eval-1-without_skill",
+      "config": "without_skill",
+      "pass_rate": null,
+      "passed": null,
+      "failed": null,
+      "total": 0,
+      "tokens": 42223,
+      "time_seconds": 138.6
+    },
+    {
+      "run_id": "eval-2-with_skill",
+      "config": "with_skill",
+      "pass_rate": 1.0,
+      "passed": 3,
+      "failed": 0,
+      "total": 3,
+      "tokens": 28211,
+      "time_seconds": 52.3
+    },
+    {
+      "run_id": "eval-2-without_skill",
+      "config": "without_skill",
+      "pass_rate": null,
+      "passed": null,
+      "failed": null,
+      "total": 0,
+      "tokens": 24046,
+      "time_seconds": 46.5
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": 1.0,
+      "avg_tokens": 30740,
+      "avg_time_seconds": 82.2
+    },
+    "without_skill": {
+      "pass_rate": null,
+      "avg_tokens": 34857,
+      "avg_time_seconds": 98.6
+    },
+    "delta": {
+      "pass_rate": "+1.00",
+      "time_seconds": "-16.4s",
+      "tokens": "-4117"
+    }
+  },
+  "notes": [
+    "All 3 with-skill evals passed 100% of assertions (15/15).",
+    "The skill correctly detected dual Alembic heads, 40 tables, 4 users, and correctly skipped write actions.",
+    "Without-skill runs produced correct results too (the checks are simple DB queries) but the skill provides structured output, confirmation gating, and the full workflow orchestration."
+  ]
+}

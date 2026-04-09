@@ -48,7 +48,8 @@ export function AuditLogTable({ items, loading, error }: AuditLogTableProps) {
           {items.map((item, i) => (
             <tr key={i} className="border-b border-border/50">
               <td className="py-2">
-                {parseBackendDate(item.created_at).toLocaleDateString("en-US", {
+                {parseBackendDate(item.created_at).toLocaleDateString("zh-TW", {
+                  timeZone: "Asia/Taipei",
                   month: "short",
                   day: "numeric",
                   year: "numeric",

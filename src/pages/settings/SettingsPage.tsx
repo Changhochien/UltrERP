@@ -1,5 +1,15 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { ReactNode } from "react";
+import {
+  Settings,
+  ShieldCheck,
+  Bell,
+  Key,
+  Globe,
+  Database,
+  Palette,
+} from "lucide-react";
 
 import { PageHeader, SectionCard, SurfaceMessage } from "../../components/layout/PageLayout";
 import { Skeleton } from "../../components/ui/skeleton";
@@ -12,14 +22,32 @@ import {
 } from "../../hooks/useSettings";
 import type { SettingsCategory } from "../../lib/api/settings";
 
+function getCategoryIcon(category: string): ReactNode {
+  const iconMap: Record<string, ReactNode> = {
+    general: <Globe className="size-4" />,
+    notification: <Bell className="size-4" />,
+    notifications: <Bell className="size-4" />,
+    security: <ShieldCheck className="size-4" />,
+    appearance: <Palette className="size-4" />,
+    data: <Database className="size-4" />,
+    api: <Key className="size-4" />,
+    privacy: <Key className="size-4" />,
+  };
+  return iconMap[category.toLowerCase()] ?? <Settings className="size-4" />;
+}
+
 function SettingsLoadingSkeleton() {
   return (
     <div className="space-y-6">
-      <Skeleton className="h-40 w-full" />
+      <div className="flex gap-2">
+        <Skeleton className="h-9 w-24 rounded-lg" />
+        <Skeleton className="h-9 w-24 rounded-lg" />
+        <Skeleton className="h-9 w-24 rounded-lg" />
+      </div>
       <div className="space-y-4">
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-24 w-full" />
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-28 w-full rounded-2xl" />
+        ))}
       </div>
     </div>
   );
@@ -42,14 +70,16 @@ function CategoryContent({
 
   if (category.items.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground py-8 text-center">
-        {t("settingsPage.emptyCategory", "No settings in this category.")}
-      </p>
+      <SectionCard>
+        <p className="py-6 text-center text-sm text-muted-foreground">
+          {t("settingsPage.emptyCategory", "No settings in this category.")}
+        </p>
+      </SectionCard>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {category.items.map((item) => (
         <SectionCard key={item.key}>
           <SettingField
@@ -167,16 +197,17 @@ export function SettingsPage() {
         value={currentCategory ?? undefined}
         onValueChange={setActiveCategory}
       >
-        <TabsList className="w-full flex-wrap h-auto gap-1">
+        <TabsList className="inline-flex items-center rounded-xl bg-muted/60 p-1 gap-1 overflow-x-auto">
           {categories.map((cat) => (
-            <TabsTrigger key={cat.category} value={cat.category}>
-              {cat.category}
+            <TabsTrigger key={cat.category} value={cat.category} className="gap-1.5 shrink-0">
+              {getCategoryIcon(cat.category)}
+              <span className="truncate max-w-24">{cat.category}</span>
             </TabsTrigger>
           ))}
         </TabsList>
 
         {categories.map((cat) => (
-          <TabsContent key={cat.category} value={cat.category} className="mt-6 space-y-4">
+          <TabsContent key={cat.category} value={cat.category} className="mt-6">
             <CategoryContent
               category={cat}
               onSave={handleSave}

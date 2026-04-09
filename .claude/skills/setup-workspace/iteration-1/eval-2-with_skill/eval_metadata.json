@@ -1,0 +1,22 @@
+{
+  "eval_id": 2,
+  "eval_name": "check-alembic-revision",
+  "prompt": "Run /setup check-alembic to see what migration revision is currently applied.",
+  "assertions": [
+    {
+      "text": "Skill runs check-alembic command from command-map.md",
+      "passed": null,
+      "evidence": null
+    },
+    {
+      "text": "Skill reports the Alembic revision without modifying database",
+      "passed": null,
+      "evidence": null
+    },
+    {
+      "text": "Skill does NOT run alembic upgrade — read-only operation only",
+      "passed": null,
+      "evidence": null
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+# UltrERP First-Time Setup Check — Detection Results
+
+## Skill Invoked: /setup
+Command: check-health (all detection sub-commands, no writes)
+
+---
+
+## 1. Database Connectivity
+Command: `cd backend && uv run python -c "import asyncio; ..."` (SELECT 1)
+Result: **DB: OK** — PostgreSQL instance is reachable.
+
+---
+
+## 2. Alembic Migration Status
+Command: `cd backend && uv run alembic -c ../migrations/alembic.ini current`
+Command: `cd backend && uv run alembic -c ../migrations/alembic.ini heads`
+
+Result:
+- Current revision: `ww444yy44z65` and `ss000aa00a01` (two heads detected — branching/merge needed)
+- **WARNING: Multiple Alembic heads found on the active branch.** Before running migrations, the operator should resolve the branching with `alembic upgrade heads` (after confirmation) or investigate the branch structure.
+
+---
+
+## 3. Table Existence Check
+Command: `cd backend && uv run python -c "..."` (query information_schema.tables)
+Result: **40 tables present** across 17 schemas:
+
+| Schema | Tables |
+|---|---|
+| alembic | alembic_version |
+| app | app_settings, customers, invoices, orders, payments, product, supplier, users, warehouse, tbscust, tbsslipdtx, tbsstkhouse, tbsstock |
+| approval | approval_requests |
+| audit | audit_log |
+| canonical | canonical_import_runs, canonical_import_step_runs, canonical_record_lineage |
+| egui | egui_submissions |
+| inventory | inventory_stock |
+| invoice | invoice_artifacts, invoice_lines, invoice_number_ranges |
+| legacy | legacy_import_runs, legacy_import_table_runs |
+| line | line_customer_mappings |
+| normalized | normalized_inventory_prep, normalized_parties, normalized_products, normalized_warehouses |
+| order | order_lines |
+| product | product_code_mapping, product_code_mapping_candidates |
+| reorder | reorder_alert |
+| stock | stock_adjustment, stock_transfer_history |
+| supplier | supplier_order, supplier_order_line |
+| unsupported | unsupported_history_holding |
+
+---
+
+## 4. App Settings Seed Status
+Command: `SELECT COUNT(*) FROM app_settings`
+Result: **25 rows** — App settings are **SEEDED**.
+
+---
+
+## 5. User Accounts
+Command: `SELECT id, email, role, status FROM users`
+Result: **4 users present**, all admin/owner role:
+
+| Email | Role | Status |
+|---|---|---|
+| admin@ultr.local | admin | active |
+| admin@ultr.localhost | admin | active |
+| admin@ultr.example | admin | active |
+| admin@ultr.dev | owner | active |
+
+---
+
+## 6. Legacy Import Batches
+Command: `SELECT COUNT(*) FROM legacy_import_control`
+Result: **Table does not exist** — `legacy_import_control` relation not found. No legacy import batches recorded.
+
+---
+
+## Summary
+
+| Component | Status |
+|---|---|
+| Database connectivity | OK |
+| Alembic revision | Two heads: `ww444yy44z65`, `ss000aa00a01` |
+| Tables | 40 present |
+| App settings | Seeded (25 rows) |
+| Users | 4 admin/owner accounts present |
+| Legacy import batches | Table not present (none imported yet) |
+
+## Items Requiring Attention
+
+1. **Alembic branching**: Two heads detected. Before running `run-migrations`, confirm with operator whether to use `alembic upgrade heads` or resolve the branch structure first.
+
+## Items Already Complete (No Action Needed)
+- DB connectivity: OK
+- Tables: All 40 tables exist
+- App settings: Seeded
+- Users: 4 admin users exist (including owner)
+- Legacy import: Not yet needed; `legacy_import_control` table will be created on first import run
+
+## Write Actions Available (Require Confirmation)
+- `run-migrations` — apply any pending migrations (WARNING: two heads exist, needs operator decision)
+- `seed-settings` — already done
+- `create-admin` — already done (4 users exist)
+- `full-setup` — not needed; system is already bootstrapped

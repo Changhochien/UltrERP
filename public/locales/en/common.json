@@ -167,7 +167,42 @@
       "notFound": "Customer not found.",
       "phone": "Phone",
       "status": "Status",
-      "title": "Customer Detail"
+      "title": "Customer Detail",
+      "tabs": {
+        "overview": "Overview",
+        "invoices": "Invoices",
+        "orders": "Orders",
+        "outstanding": "Outstanding",
+        "statement": "Statement"
+      },
+      "statement": {
+        "title": "Account Statement",
+        "summary": {
+          "totalOutstanding": "Total Outstanding",
+          "oldestUnpaid": "Oldest Unpaid",
+          "avgDaysToPay": "Avg. Days to Pay"
+        },
+        "table": {
+          "date": "Date",
+          "type": "Type",
+          "reference": "Reference",
+          "description": "Description",
+          "debit": "Debit",
+          "credit": "Credit",
+          "balance": "Balance"
+        },
+        "filter": {
+          "from": "From",
+          "to": "To"
+        },
+        "actions": {
+          "print": "Print",
+          "exportCSV": "Export CSV"
+        },
+        "empty": "No transactions found.",
+        "invoiceType": "Invoice",
+        "paymentType": "Payment"
+      }
     },
     "form": {
       "billingAddress": "Billing Address",

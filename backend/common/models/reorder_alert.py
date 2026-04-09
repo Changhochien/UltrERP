@@ -49,6 +49,7 @@ class ReorderAlert(Base):
 	)
 	current_stock: Mapped[int] = mapped_column(Integer, nullable=False)
 	reorder_point: Mapped[int] = mapped_column(Integer, nullable=False)
+	severity: Mapped[str] = mapped_column(String(20), nullable=False, default="INFO")
 	status: Mapped[AlertStatus] = mapped_column(
 		Enum(
 			AlertStatus,

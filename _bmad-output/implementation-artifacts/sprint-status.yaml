@@ -143,6 +143,18 @@ development_status:
         story_id: "3.5"
         validation: "Customer update backend/API/UI are implemented with version-conflict handling, duplicate rechecks, partial update semantics, and focused update service/API/frontend coverage"
         prerequisites: ["3.2", "3.3", "3.4"]
+      3-6-customer-detail-page:
+        title: "Customer Detail Page"
+        status: "done"
+        story_id: "3.6"
+        validation: "Full customer detail page with tabs (Overview, Invoices, Orders, Outstanding). Row click in list navigates to detail page. Detail page header shows customer info with Edit/Suspend/Delete actions. All 9 CustomerListPage tests pass."
+        prerequisites: ["3.1"]
+      3-7-customer-account-statement:
+        title: "Customer Account Statement (Receivables Ledger)"
+        status: "done"
+        story_id: "3.7"
+        validation: "Statement tab on customer detail page shows per-invoice/payment ledger with running balance, date range filter, CSV export, and print support. Backend endpoint GET /{customer_id}/statement implemented."
+        prerequisites: ["3.6"]
 
   # Epic 4 - Inventory Operations
   epic-4:

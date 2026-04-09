@@ -4,7 +4,6 @@ import { Eye, EyeOff } from "lucide-react";
 
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { Switch } from "../ui/switch";
 import {
@@ -47,7 +46,6 @@ export function SettingField({
   }
 
   function renderInput() {
-    // Sensitive fields render as password with visibility toggle
     if (item.is_sensitive) {
       return (
         <div className="relative">
@@ -70,7 +68,6 @@ export function SettingField({
       );
     }
 
-    // Nullable null state
     if (item.nullable && item.is_null) {
       return (
         <Input
@@ -90,16 +87,11 @@ export function SettingField({
           displayValue === "1" ||
           displayValue === "yes";
         return (
-          <div className="flex items-center gap-3">
-            <Switch
-              checked={isTrue}
-              onCheckedChange={(checked) => setLocalValue(checked ? "true" : "false")}
-              disabled={saving}
-            />
-            <span className="text-sm text-muted-foreground">
-              {isTrue ? "true" : "false"}
-            </span>
-          </div>
+          <Switch
+            checked={isTrue}
+            onCheckedChange={(checked) => setLocalValue(checked ? "true" : "false")}
+            disabled={saving}
+          />
         );
       }
 
@@ -110,6 +102,7 @@ export function SettingField({
             value={displayValue}
             onChange={(e) => setLocalValue(e.target.value)}
             disabled={saving}
+            className="w-28"
           />
         );
 
@@ -140,8 +133,9 @@ export function SettingField({
             value={displayValue}
             onChange={(e) => setLocalValue(e.target.value)}
             disabled={saving}
-            rows={4}
+            rows={3}
             placeholder="JSON array, e.g. ['https://example.com']"
+            className="resize-y"
           />
         );
 
@@ -158,38 +152,53 @@ export function SettingField({
     }
   }
 
+  const isMultiLine = item.value_type === "tuple" || item.value_type === "json";
+
   return (
-    <div className="space-y-2">
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1 flex-1">
-          <Label>{item.key}</Label>
-          {item.description ? (
-            <p className="text-xs text-muted-foreground">{item.description}</p>
-          ) : null}
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {hasChanged ? (
+    <div
+      className={
+        isMultiLine
+          ? "flex flex-col gap-3 sm:flex-row sm:items-start"
+          : "flex flex-col sm:flex-row sm:items-center"
+      }
+    >
+      {/* Left: label + description — flex-1 takes all remaining space, pushing controls right */}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-foreground">{item.key}</p>
+        {item.description ? (
+          <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
+            {item.description}
+          </p>
+        ) : null}
+      </div>
+
+      {/* Right: input + buttons — fixed 360px on all rows so right edges align across the form */}
+      <div className="w-full sm:w-[360px] shrink-0 flex flex-col gap-3">
+        <div className="flex items-center gap-3">
+          {renderInput()}
+          <div className="flex items-center gap-2 shrink-0">
+            {hasChanged ? (
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSave}
+                disabled={saving}
+              >
+                {saving ? t("common.loading") : t("common.save")}
+              </Button>
+            ) : null}
             <Button
               type="button"
+              variant="outline"
               size="sm"
-              onClick={handleSave}
-              disabled={saving}
+              onClick={handleReset}
+              disabled={resetting || item.is_null}
             >
-              {saving ? t("common.loading") : t("common.save")}
+              {resetting ? t("common.loading") : t("common.reset")}
             </Button>
-          ) : null}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleReset}
-            disabled={resetting || item.is_null}
-          >
-            {resetting ? t("common.loading") : t("common.reset") ?? "Reset"}
-          </Button>
+          </div>
         </div>
       </div>
-      {renderInput()}
     </div>
   );
 }

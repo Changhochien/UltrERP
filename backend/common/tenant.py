@@ -21,3 +21,8 @@ async def set_tenant(session: AsyncSession, tenant_id: uuid.UUID) -> None:
         text("SELECT set_config('app.tenant_id', :tid, true)"),
         {"tid": str(tenant_id)},
     )
+
+
+async def get_tenant_id() -> uuid.UUID:
+    """Return the current tenant ID (placeholder — returns default)."""
+    return DEFAULT_TENANT_ID

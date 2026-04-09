@@ -1,4 +1,5 @@
 import { Package, RefreshCw } from "lucide-react";
+import { parseBackendDate } from "@/lib/time";
 import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +19,8 @@ const STATUS_OPTIONS = [
 ] as const;
 
 function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-US", {
+  return parseBackendDate(dateStr).toLocaleDateString("zh-TW", {
+    timeZone: "Asia/Taipei",
     month: "short",
     day: "numeric",
   });

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import uuid
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
@@ -25,12 +26,14 @@ from domains.customers.schemas import (
     CustomerListResponse,
     CustomerOutstandingSummary,
     CustomerResponse,
+    CustomerStatementResponse,
     CustomerSummary,
     CustomerUpdate,
 )
 from domains.customers.service import (
     create_customer,
     get_customer,
+    get_customer_statement,
     list_customers,
     lookup_customer_by_ban,
     update_customer,
@@ -159,3 +162,21 @@ async def outstanding(
     if summary is None:
         return JSONResponse(status_code=404, content={"detail": "Customer not found."})
     return CustomerOutstandingSummary(**summary)
+
+
+@router.get("/{customer_id}/statement", response_model=CustomerStatementResponse)
+async def get_statement(
+    customer_id: uuid.UUID,
+    session: DbSession,
+    _user: ReadUser,
+    from_date: date | None = Query(default=None),
+    to_date: date | None = Query(default=None),
+) -> CustomerStatementResponse | JSONResponse:
+    try:
+        statement = await get_customer_statement(
+            session, customer_id, None, from_date, to_date
+        )
+    except ValueError as exc:
+        return JSONResponse(status_code=409, content={"detail": str(exc)})
+    return statement
+

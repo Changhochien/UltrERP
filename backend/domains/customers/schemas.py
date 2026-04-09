@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -97,3 +98,33 @@ class CustomerOutstandingSummary(BaseModel):
     overdue_amount: Decimal
     invoice_count: int
     currency_code: str = "TWD"
+
+
+class CustomerStatementParams(BaseModel):
+    """Query parameters for GET /api/v1/customers/{customer_id}/statement."""
+
+    from_date: date | None = None
+    to_date: date | None = None
+
+
+class StatementLine(BaseModel):
+    """A single line item in a customer account statement."""
+
+    date: date
+    type: Literal["invoice", "payment"]
+    reference: str
+    description: str
+    debit: Decimal
+    credit: Decimal
+    balance: Decimal
+
+
+class CustomerStatementResponse(BaseModel):
+    """Account statement response for a customer."""
+
+    customer_id: uuid.UUID
+    company_name: str
+    currency_code: str = "TWD"
+    opening_balance: Decimal
+    current_balance: Decimal
+    lines: list[StatementLine]

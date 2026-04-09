@@ -32,15 +32,9 @@ export function SettingsTab({ productId }: SettingsTabProps) {
     ? product?.warehouses.find((w) => w.warehouse_id === selectedWarehouse.id)?.stock_id
     : product?.warehouses[0]?.stock_id;
 
-  const {
-    avgDailyUsage,
-    leadTimeDays,
-    reorderPoint: computedRop,
-    safetyStock,
-    loading: historyLoading,
-  } = useStockHistory(stockId ?? "");
+  const { avgDailyUsage, leadTimeDays } = useStockHistory(stockId ?? "");
 
-  const { update, loading: saving } = useUpdateStockSettings();
+  const { update, submitting: saving } = useUpdateStockSettings();
 
   // Per-warehouse settings state
   const [warehouseSettings, setWarehouseSettings] = useState<Record<string, WarehouseSettings>>({});
@@ -98,7 +92,7 @@ export function SettingsTab({ productId }: SettingsTabProps) {
       reorder_point: ws.reorderPoint,
       lead_time_days: ws.leadTimeDays,
     });
-    if (result.ok) {
+    if (result) {
       setSavedMessage(`Saved settings for ${wh.warehouse_name}`);
       setTimeout(() => setSavedMessage(null), 3000);
     }

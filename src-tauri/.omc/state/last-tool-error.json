@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"cargo tauri migrate 2>&1\",\"description\":\"Run Tauri migrate for config updates\"}",
+  "error": "Exit code 101\nerror: no such command: `tauri`\n\nhelp: a command with a similar name exists: `miri`\n\nhelp: view all installed commands with `cargo --list`\nhelp: find a package to install `tauri` with `cargo search cargo-tauri`",
+  "timestamp": "2026-04-05T15:02:50.153Z",
+  "retry_count": 1
+}

@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"/Volumes/2T_SSD_App/Projects/UltrERP/backend/.venv/bin/python -c \\\"\\nimport asyncio\\nfrom sqlalchemy import select, text\\nfrom common.database import engine, async_session_maker\\nfrom comm...",
+  "error": "Exit code 1\nTraceback (most recent call last):\n  File \"<string>\", line 4, in <module>\nImportError: cannot import name 'async_session_maker' from 'common.database' (/Volumes/2T_SSD_App/Projects/UltrERP/backend/common/database.py). Did you mean: 'async_sessionmaker'?",
+  "timestamp": "2026-04-09T07:11:37.855Z",
+  "retry_count": 2
+}

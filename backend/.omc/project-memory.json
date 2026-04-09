@@ -1,0 +1,295 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1775640764720,
+  "projectRoot": "/Volumes/2T_SSD_App/Projects/UltrERP/backend",
+  "techStack": {
+    "languages": [
+      {
+        "name": "Python",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "pyproject.toml"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "fastapi",
+        "version": null,
+        "category": "backend"
+      },
+      {
+        "name": "pytest",
+        "version": null,
+        "category": "testing"
+      }
+    ],
+    "packageManager": null,
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": "pytest",
+    "lintCommand": "ruff check",
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": "snake_case",
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "app",
+      "scripts",
+      "tests"
+    ],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "app": {
+      "path": "app",
+      "purpose": "Application code",
+      "fileCount": 5,
+      "lastAccessed": 1775640764707,
+      "keyFiles": [
+        "__init__.py",
+        "main.py",
+        "mcp_auth.py",
+        "mcp_server.py",
+        "mcp_setup.py"
+      ]
+    },
+    "common": {
+      "path": "common",
+      "purpose": null,
+      "fileCount": 9,
+      "lastAccessed": 1775640764707,
+      "keyFiles": [
+        "__init__.py",
+        "auth.py",
+        "config.py",
+        "database.py",
+        "errors.py"
+      ]
+    },
+    "domains": {
+      "path": "domains",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1775640764708,
+      "keyFiles": [
+        "__init__.py"
+      ]
+    },
+    "scripts": {
+      "path": "scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 1,
+      "lastAccessed": 1775640764708,
+      "keyFiles": [
+        "backfill_sales_reservations.py"
+      ]
+    },
+    "tests": {
+      "path": "tests",
+      "purpose": "Test files",
+      "fileCount": 23,
+      "lastAccessed": 1775640764709,
+      "keyFiles": [
+        "__init__.py",
+        "conftest.py",
+        "test_aeo_content.py",
+        "test_aeo_jsonld.py",
+        "test_aeo_sitemap.py"
+      ]
+    },
+    "common/models": {
+      "path": "common/models",
+      "purpose": "Data models",
+      "fileCount": 18,
+      "lastAccessed": 1775640764709,
+      "keyFiles": [
+        "__init__.py",
+        "approval_request.py",
+        "audit_log.py"
+      ]
+    },
+    "tests/api": {
+      "path": "tests/api",
+      "purpose": "API routes",
+      "fileCount": 5,
+      "lastAccessed": 1775640764710,
+      "keyFiles": [
+        "__init__.py",
+        "test_create_customer.py",
+        "test_create_invoice.py"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "scripts/backfill_sales_reservations.py",
+      "accessCount": 22,
+      "lastAccessed": 1775665753019,
+      "type": "file"
+    },
+    {
+      "path": "common/time.py",
+      "accessCount": 9,
+      "lastAccessed": 1775702709459,
+      "type": "file"
+    },
+    {
+      "path": "domains/inventory/services.py",
+      "accessCount": 9,
+      "lastAccessed": 1775718636425,
+      "type": "directory"
+    },
+    {
+      "path": "",
+      "accessCount": 8,
+      "lastAccessed": 1775713818296,
+      "type": "directory"
+    },
+    {
+      "path": "domains/dashboard/services.py",
+      "accessCount": 5,
+      "lastAccessed": 1775659431062,
+      "type": "directory"
+    },
+    {
+      "path": "domains/inventory/routes.py",
+      "accessCount": 4,
+      "lastAccessed": 1775718613566,
+      "type": "file"
+    },
+    {
+      "path": "domains/dashboard/routes.py",
+      "accessCount": 3,
+      "lastAccessed": 1775659388678,
+      "type": "directory"
+    },
+    {
+      "path": "domains",
+      "accessCount": 2,
+      "lastAccessed": 1775660499991,
+      "type": "directory"
+    },
+    {
+      "path": "domains/inventory",
+      "accessCount": 2,
+      "lastAccessed": 1775674150012,
+      "type": "directory"
+    },
+    {
+      "path": "clear_and_backfill.py",
+      "accessCount": 2,
+      "lastAccessed": 1775702425959,
+      "type": "file"
+    },
+    {
+      "path": "domains/legacy_import/staging.py",
+      "accessCount": 1,
+      "lastAccessed": 1775640812786,
+      "type": "file"
+    },
+    {
+      "path": "domains/auth",
+      "accessCount": 1,
+      "lastAccessed": 1775641915054,
+      "type": "directory"
+    },
+    {
+      "path": "domains/auth/routes.py",
+      "accessCount": 1,
+      "lastAccessed": 1775641921912,
+      "type": "directory"
+    },
+    {
+      "path": "test_join.py",
+      "accessCount": 1,
+      "lastAccessed": 1775665708542,
+      "type": "file"
+    },
+    {
+      "path": "verify_backfill.py",
+      "accessCount": 1,
+      "lastAccessed": 1775665803235,
+      "type": "file"
+    },
+    {
+      "path": "common/models/reorder_alert.py",
+      "accessCount": 1,
+      "lastAccessed": 1775666271670,
+      "type": "file"
+    },
+    {
+      "path": "domains/dashboard",
+      "accessCount": 1,
+      "lastAccessed": 1775666297782,
+      "type": "directory"
+    },
+    {
+      "path": "check_state.py",
+      "accessCount": 1,
+      "lastAccessed": 1775666406605,
+      "type": "file"
+    },
+    {
+      "path": "domains/inventory/reorder_point.py",
+      "accessCount": 1,
+      "lastAccessed": 1775674183040,
+      "type": "file"
+    },
+    {
+      "path": "check_rop.py",
+      "accessCount": 1,
+      "lastAccessed": 1775674203936,
+      "type": "file"
+    },
+    {
+      "path": "check_rop2.py",
+      "accessCount": 1,
+      "lastAccessed": 1775674237409,
+      "type": "file"
+    },
+    {
+      "path": "verify_autodetect.py",
+      "accessCount": 1,
+      "lastAccessed": 1775702623395,
+      "type": "file"
+    },
+    {
+      "path": "compute_rop_sql.py",
+      "accessCount": 1,
+      "lastAccessed": 1775704125202,
+      "type": "file"
+    },
+    {
+      "path": "tests/domains/inventory/test_reorder_alerts.py",
+      "accessCount": 1,
+      "lastAccessed": 1775714110893,
+      "type": "file"
+    },
+    {
+      "path": "domains/inventory/schemas.py",
+      "accessCount": 1,
+      "lastAccessed": 1775718600373,
+      "type": "file"
+    },
+    {
+      "path": "common/database.py",
+      "accessCount": 1,
+      "lastAccessed": 1775718703032,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

@@ -50,5 +50,6 @@ export interface CustomerUpdatePayload {
   contact_phone?: string;
   contact_email?: string;
   credit_limit?: string;
+  status?: string;
   version: number;
 }

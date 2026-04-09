@@ -1,0 +1,139 @@
+UltrERP First-Time Setup Check
+================================
+Date: 2026-04-05
+
+Prerequisites checked:
+  - PostgreSQL running on localhost:5432
+  - .env configured (DATABASE_URL=postgresql+asyncpg://ultr_erp@localhost:5432/ultr_erp)
+  - Backend Python venv at backend/.venv
+
+---
+
+1. DB CONNECTIVITY
+------------------
+  Status: OK
+
+  psql test (ultr_erp user → ultr_erp db):
+    localhost:5432 - accepting connections
+    SELECT 1 → returned 1 row
+
+  SQLAlchemy async engine:
+    postgresql+asyncpg://ultr_erp@localhost:5432/ultr_erp
+    Pool pre-ping enabled, statement cache disabled, command timeout 30s
+
+---
+
+2. ALEMBIC HEAD
+--------------
+  STATUS: ANOMALY DETECTED — 2 rows in alembic_version table
+
+  Latest migration file on disk:
+    ww444yy44z65_create_canonical_import_support_tables.py
+
+  alembic_version table contents (2 rows):
+    ss000aa00a01  (create_app_settings_table)
+    ww444yy44z65  (create_canonical_import_support_tables)
+
+  Expected state: exactly 1 row, matching the most recent migration.
+
+  Diagnosis: The alembic_version table has TWO entries. In a normal
+  linear migration history there should be only one entry. This can happen
+  when:
+    - A migration was run on a branch (e.g., `alembic upgrade head` was
+      run on a feature branch, then a different branch was merged/checked
+      out and its migrations were also applied), or
+    - A stale branch's migration was manually inserted.
+
+  Files on disk total: 22 migration revisions (.py files in migrations/versions/)
+
+  ACTION REQUIRED: Run `alembic history` and `alembic current` to
+  determine whether both entries are legitimate. If not, clean up with:
+    DELETE FROM alembic_version WHERE version_num = '<extra_revision>';
+
+---
+
+3. TABLE EXISTENCE
+------------------
+  Status: OK — 26 tables present
+
+  Tables present (all expected domains covered):
+    alembic_version
+    app_settings
+    approval_requests
+    audit_log
+    customers
+    egui_submissions
+    inventory_stock
+    invoice_artifacts
+    invoice_lines
+    invoice_number_ranges
+    invoices
+    legacy_import_runs
+    legacy_import_table_runs
+    line_customer_mappings
+    order_lines
+    orders
+    payments
+    product
+    reorder_alert
+    stock_adjustment
+    stock_transfer_history
+    supplier
+    supplier_order
+    supplier_order_line
+    users
+    warehouse
+
+  All key domains are present: users, customers, inventory, invoices,
+  orders, payments, approval_requests, audit_log, legacy_import_*,
+  egui_submissions, app_settings.
+
+---
+
+4. USER COUNT
+-------------
+  Status: 4 users found
+
+  Users:
+    id=7d764b3a-a588-4cd9-95d7-37defcf507a9  email=admin@ultr.local     role=admin  status=active  name=Admin
+    id=46287023-e879-4e28-86f4-710b78fdd2a5  email=admin@ultr.localhost  role=admin  status=active  name=Admin
+    id=b9615970-ede3-4ec7-a02c-3d1c2b1b5504  email=admin@ultr.example    role=admin  status=active  name=Admin
+    id=f2e3aa2a-6f31-42af-be7e-b9bff33e5c4a  email=admin@ultr.dev       role=owner  status=active  name=Admin
+
+  There are 3 "admin" accounts and 1 "owner" account. The canonical
+  first-time setup account is admin@ultr.dev / admin123 (owner role).
+  The other three (ultr.local, ultr.localhost, ultr.example) appear to
+  be leftover from previous local development sessions.
+
+---
+
+SUMMARY
+-------
+  - DB connectivity:         OK
+  - PostgreSQL reachable:   OK (localhost:5432)
+  - Schema tables exist:    OK (26/26)
+  - Alembic version state:  ANOMALY (2 rows in alembic_version — needs review)
+  - User count:             OK (4 users, admin@ultr.dev / admin123 available)
+
+NEXT STEPS FOR OPERATOR
+-----------------------
+  1. Investigate the dual alembic_version entries:
+       cd backend && source .venv/bin/activate
+       alembic history
+       alembic current
+     If the extra entry is spurious, delete it.
+
+  2. If this is a truly fresh clone with no prior local setup:
+     - The 3 extra admin accounts can be deleted.
+     - Or ignored if they belong to prior local sessions.
+
+  3. To start the API server:
+       cd backend && source .venv/bin/activate
+       uvicorn app.main:app --reload --port 8000
+
+  4. To seed a new user (if needed):
+       python seed_user.py
+
+  5. Frontend (if running the Tauri/desktop app or Vite dev server):
+       pnpm install && pnpm dev
+     (see package.json for the actual dev command)

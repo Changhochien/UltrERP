@@ -1,0 +1,46 @@
+============================================================
+HEALTH CHECK REPORT - UltrERP System
+============================================================
+
+1. DATABASE CONNECTIVITY
+----------------------------------------
+   Status: OK
+   Host: localhost
+   Port: 5432
+   Database: ultr_erp
+
+2. ALEMBIC MIGRATION HEAD
+----------------------------------------
+   Alembic version table: EXISTS
+   Current head: ss000aa00a01
+
+3. TABLE EXISTENCE CHECK
+----------------------------------------
+   users: EXISTS
+   customers: EXISTS
+   inventory_stock: EXISTS
+   legacy_import_runs: EXISTS
+   legacy_import_table_runs: EXISTS
+
+4. USER COUNT
+----------------------------------------
+   Total users: 4
+
+5. LEGACY-IMPORT BATCH COUNT
+----------------------------------------
+   Total batch runs: 7
+     - failed: 3
+     - completed: 4
+
+============================================================
+SUMMARY
+============================================================
+  db_connectivity: OK
+  alembic_head: ss000aa00a01
+  table_users: EXISTS
+  table_customers: EXISTS
+  table_inventory_stock: EXISTS
+  table_legacy_import_runs: EXISTS
+  table_legacy_import_table_runs: EXISTS
+  user_count: 4
+  legacy_import_total_batches: 7

@@ -1,0 +1,77 @@
+{
+  "expectations": [
+    {
+      "text": "Skill runs check-db and reports database connectivity status",
+      "passed": true,
+      "evidence": "Section '1. Database Connectivity' shows: Result: DB: OK — PostgreSQL instance is reachable."
+    },
+    {
+      "text": "Skill runs check-alembic and reports current Alembic revision",
+      "passed": true,
+      "evidence": "Section '2. Alembic Migration Status' shows commands 'alembic current' and 'alembic heads' were run, reporting two heads: ww444yy44z65 and ss000aa00a01."
+    },
+    {
+      "text": "Skill runs check-tables and reports which tables exist",
+      "passed": true,
+      "evidence": "Section '3. Table Existence Check' shows: Result: 40 tables present across 17 schemas, with a detailed table listing all schemas and their tables."
+    },
+    {
+      "text": "Skill runs check-users and reports user count",
+      "passed": true,
+      "evidence": "Section '5. User Accounts' shows: Result: 4 users present, with a table listing all 4 users (admin@ultr.local, admin@ultr.localhost, admin@ultr.example, admin@ultr.dev)."
+    },
+    {
+      "text": "Skill presents a checklist of missing vs. present components",
+      "passed": true,
+      "evidence": "Summary table at lines 77-84 lists component status (Database connectivity OK, Alembic revision present with warning, Tables present, App settings Seeded, Users present, Legacy import not yet needed). Also sections 'Items Requiring Attention' vs 'Items Already Complete' distinguish missing vs present."
+    },
+    {
+      "text": "Skill does NOT run any write actions (migrations, seed, create-admin) without operator confirmation",
+      "passed": true,
+      "evidence": "Header shows: Command: check-health (all detection sub-commands, no writes). Write Actions Available section explicitly lists actions NOT executed: 'run-migrations — apply any pending migrations (WARNING: two heads exist, needs operator decision)', 'seed-settings — already done', 'create-admin — already done', 'full-setup — not needed'."
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1.0
+  },
+  "execution_metrics": {
+    "output_chars": 3707
+  },
+  "timing": {
+    "executor_duration_seconds": 104.9,
+    "grader_duration_seconds": null,
+    "total_duration_seconds": 104.9
+  },
+  "claims": [
+    {
+      "claim": "40 tables present across 17 schemas",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Listed in Table Existence Check section with schema breakdown"
+    },
+    {
+      "claim": "4 users present, all admin/owner role",
+      "type": "factual",
+      "verified": true,
+      "evidence": "User accounts table in output shows 4 users with admin/owner roles"
+    },
+    {
+      "claim": "Alembic has two heads (branching)",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Current Revision section reports two heads: ww444yy44z65 and ss000aa00a01"
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [],
+    "overall": "No suggestions, evals look solid. All six assertions are verified with substantive evidence."
+  }
+}

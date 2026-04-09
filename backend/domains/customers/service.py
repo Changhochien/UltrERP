@@ -358,3 +358,178 @@ async def update_customer(
 
     await session.refresh(customer)
     return customer
+
+
+async def get_customer_statement(
+    session: AsyncSession,
+    customer_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    from_date: date | None,
+    to_date: date | None,
+) -> CustomerStatementResponse:
+    """Build a customer account statement with invoice and payment lines.
+
+    Raises ValueError if the customer does not exist.
+    """
+    tid = tenant_id if tenant_id is not None else DEFAULT_TENANT_ID
+
+    async with session.begin():
+        await set_tenant(session, tid)
+
+        # ── 1. Verify customer ──────────────────────────────────────────
+        cust_result = await session.execute(
+            select(Customer).where(
+                Customer.id == customer_id,
+                Customer.tenant_id == tid,
+            )
+        )
+        customer = cust_result.scalar_one_or_none()
+        if customer is None:
+            raise ValueError("Customer not found.")
+
+        # ── 2. Build invoice filter ─────────────────────────────────────
+        inv_conditions = [
+            Invoice.customer_id == customer_id,
+            Invoice.tenant_id == tid,
+            Invoice.status != "voided",
+        ]
+        if from_date is not None:
+            inv_conditions.append(Invoice.invoice_date >= from_date)
+        if to_date is not None:
+            inv_conditions.append(Invoice.invoice_date <= to_date)
+
+        # ── 3. Fetch all matching invoices ───────────────────────────────
+        inv_stmt = select(Invoice).where(*inv_conditions).order_by(Invoice.invoice_date.asc())
+        inv_result = await session.execute(inv_stmt)
+        invoices = list(inv_result.scalars().all())
+
+        if not invoices:
+            return CustomerStatementResponse(
+                customer_id=customer_id,
+                company_name=customer.company_name,
+                currency_code="TWD",
+                opening_balance=Decimal("0.00"),
+                current_balance=Decimal("0.00"),
+                lines=[],
+            )
+
+        inv_ids = [inv.id for inv in invoices]
+
+        # ── 4. Fetch matched payments for those invoices ─────────────────
+        pay_conditions = [
+            Payment.invoice_id.in_(inv_ids),
+            Payment.tenant_id == tid,
+            Payment.match_status == "matched",
+        ]
+        if from_date is not None:
+            pay_conditions.append(Payment.payment_date >= from_date)
+        if to_date is not None:
+            pay_conditions.append(Payment.payment_date <= to_date)
+
+        pay_stmt = (
+            select(Payment)
+            .where(*pay_conditions)
+            .order_by(Payment.payment_date.asc(), Payment.created_at.asc())
+        )
+        pay_result = await session.execute(pay_stmt)
+        payments = list(pay_result.scalars().all())
+
+        # ── 5. Build paid-amount map per invoice ──────────────────────────
+        paid_map: dict[uuid.UUID, Decimal] = {inv_id: Decimal("0.00") for inv_id in inv_ids}
+        for p in payments:
+            if p.invoice_id:
+                paid_map[p.invoice_id] = paid_map.get(p.invoice_id, Decimal("0")) + p.amount
+
+        # ── 6. Compute opening_balance (debits - credits before from_date) ─
+        opening_debits: Decimal = Decimal("0.00")
+        opening_credits: Decimal = Decimal("0.00")
+        if from_date is not None:
+            pre_inv_result = await session.execute(
+                select(Invoice.total_amount).where(
+                    Invoice.customer_id == customer_id,
+                    Invoice.tenant_id == tid,
+                    Invoice.status != "voided",
+                    Invoice.invoice_date < from_date,
+                )
+            )
+            opening_debits = sum((r[0] for r in pre_inv_result.fetchall()), Decimal("0.00"))
+
+            pre_pay_result = await session.execute(
+                select(Payment.amount).where(
+                    Payment.invoice_id.in_(
+                        select(Invoice.id).where(
+                            Invoice.customer_id == customer_id,
+                            Invoice.tenant_id == tid,
+                            Invoice.status != "voided",
+                            Invoice.invoice_date < from_date,
+                        )
+                    ),
+                    Payment.tenant_id == tid,
+                    Payment.match_status == "matched",
+                )
+            )
+            opening_credits = sum((r[0] for r in pre_pay_result.fetchall()), Decimal("0.00"))
+
+        opening_balance = opening_debits - opening_credits
+
+        # ── 7. Build invoice and payment statement lines ─────────────────
+        inv_number_map: dict[uuid.UUID, str] = {inv.id: inv.invoice_number for inv in invoices}
+
+        invoice_lines: list[StatementLine] = []
+        for inv in invoices:
+            amount_paid = paid_map.get(inv.id, Decimal("0.00"))
+            debit = inv.total_amount
+            outstanding = max(Decimal("0.00"), inv.total_amount - amount_paid)
+            if amount_paid > 0 and outstanding > 0:
+                desc = f"Invoice {inv.invoice_number} — partial payment received"
+            elif outstanding == 0:
+                desc = f"Invoice {inv.invoice_number} — paid"
+            else:
+                desc = f"Invoice {inv.invoice_number}"
+            invoice_lines.append(
+                StatementLine(
+                    date=inv.invoice_date,
+                    type="invoice",
+                    reference=inv.invoice_number,
+                    description=desc,
+                    debit=debit,
+                    credit=Decimal("0.00"),
+                    balance=Decimal("0.00"),
+                )
+            )
+
+        payment_lines: list[StatementLine] = []
+        for p in payments:
+            inv_num = inv_number_map.get(p.invoice_id) if p.invoice_id else "—"
+            payment_lines.append(
+                StatementLine(
+                    date=p.payment_date,
+                    type="payment",
+                    reference=p.payment_ref,
+                    description=f"Payment for {inv_num}" if inv_num != "—" else "Payment (unmatched)",
+                    debit=Decimal("0.00"),
+                    credit=p.amount,
+                    balance=Decimal("0.00"),
+                )
+            )
+
+        # ── 8. Interleave and sort by date ───────────────────────────────
+        all_lines: list[StatementLine] = invoice_lines + payment_lines
+        all_lines.sort(key=lambda l: (l.date, l.type))
+
+        # ── 9. Compute running balance ───────────────────────────────────
+        balance = opening_balance
+        for line in all_lines:
+            balance += line.debit - line.credit
+            line.balance = balance
+
+        current_balance = all_lines[-1].balance if all_lines else opening_balance
+
+        return CustomerStatementResponse(
+            customer_id=customer_id,
+            company_name=customer.company_name,
+            currency_code="TWD",
+            opening_balance=opening_balance,
+            current_balance=current_balance,
+            lines=all_lines,
+        )

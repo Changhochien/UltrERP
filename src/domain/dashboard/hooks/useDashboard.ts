@@ -2,8 +2,32 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { fetchRevenueSummary, fetchTopProducts, fetchLowStockAlerts, fetchVisitorStats } from "../../../lib/api/dashboard";
-import type { RevenueSummary, TopProductsResponse, LowStockAlertListResponse, VisitorStatsResponse } from "../types";
+import {
+  fetchRevenueSummary,
+  fetchTopProducts,
+  fetchLowStockAlerts,
+  fetchVisitorStats,
+  fetchKPISummary,
+  fetchTopCustomers,
+  fetchARAging,
+  fetchAPAging,
+  fetchGrossMargin,
+  fetchCashFlow,
+  fetchRevenueTrend,
+} from "../../../lib/api/dashboard";
+import type {
+  RevenueSummary,
+  TopProductsResponse,
+  LowStockAlertListResponse,
+  VisitorStatsResponse,
+  KPISummary,
+  TopCustomersResponse,
+  ARAgingResponse,
+  APAgingResponse,
+  GrossMarginResponse,
+  CashFlowResponse,
+  RevenueTrendResponse,
+} from "../types";
 
 export function useRevenueSummary() {
   const [data, setData] = useState<RevenueSummary | null>(null);
@@ -93,4 +117,194 @@ export function useVisitorStats() {
   }, [load]);
 
   return { data, isLoading, error };
+}
+
+export function useKPISummary() {
+  const [data, setData] = useState<KPISummary | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refetch = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetchKPISummary();
+      setData(res);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load KPI summary");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refetch();
+  }, [refetch]);
+
+  return { data, isLoading, error, refetch };
+}
+
+export function useTopCustomers(initialPeriod: "month" | "quarter" | "year" = "month") {
+  const [data, setData] = useState<TopCustomersResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [period, setPeriod] = useState(initialPeriod);
+
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetchTopCustomers(period);
+      setData(res);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load top customers");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [period]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const refetch = useCallback(async () => {
+    await load();
+  }, [load]);
+
+  return { data, isLoading, error, refetch, period, setPeriod };
+}
+
+export function useARAging() {
+  const [data, setData] = useState<ARAgingResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetchARAging();
+      setData(res);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load AR aging");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const refetch = useCallback(async () => {
+    await load();
+  }, [load]);
+
+  return { data, isLoading, error, refetch };
+}
+
+export function useAPAging() {
+  const [data, setData] = useState<APAgingResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetchAPAging();
+      setData(res);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load AP aging");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const refetch = useCallback(async () => {
+    await load();
+  }, [load]);
+
+  return { data, isLoading, error, refetch };
+}
+
+export function useGrossMargin() {
+  const [data, setData] = useState<GrossMarginResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsLoading(true);
+    fetchGrossMargin()
+      .then(setData)
+      .catch((err) =>
+        setError(err instanceof Error ? err.message : "Failed to load gross margin"),
+      )
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  return { data, isLoading, error };
+}
+
+export function useCashFlow() {
+  const [data, setData] = useState<CashFlowResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetchCashFlow();
+      setData(res);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load cash flow");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const refetch = useCallback(async () => {
+    await load();
+  }, [load]);
+
+  return { data, isLoading, error, refetch };
+}
+
+export function useRevenueTrend(initialPeriod: "month" | "quarter" | "year" = "month") {
+  const [data, setData] = useState<RevenueTrendResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [period, setPeriod] = useState(initialPeriod);
+
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetchRevenueTrend(period === "month" ? "month" : "week");
+      setData(res);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load revenue trend");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [period]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const refetch = useCallback(async () => {
+    await load();
+  }, [load]);
+
+  return { data, isLoading, error, refetch, period, setPeriod };
 }

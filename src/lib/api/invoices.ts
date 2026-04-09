@@ -80,6 +80,7 @@ export async function createInvoice(
 }
 
 export async function fetchInvoices(params?: {
+  customer_id?: string;
   payment_status?: string;
   sort_by?: string;
   sort_order?: string;
@@ -87,6 +88,7 @@ export async function fetchInvoices(params?: {
   page_size?: number;
 }): Promise<InvoiceListResponse> {
   const qs = new URLSearchParams();
+  if (params?.customer_id) qs.set("customer_id", params.customer_id);
   if (params?.payment_status) qs.set("payment_status", params.payment_status);
   if (params?.sort_by) qs.set("sort_by", params.sort_by);
   if (params?.sort_order) qs.set("sort_order", params.sort_order);

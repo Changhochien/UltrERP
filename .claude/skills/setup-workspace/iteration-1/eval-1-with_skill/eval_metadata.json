@@ -1,0 +1,37 @@
+{
+  "eval_id": 1,
+  "eval_name": "health-check-existing-system",
+  "prompt": "The ERP has been running for a while. Run /setup check-health to verify everything is working correctly.",
+  "assertions": [
+    {
+      "text": "Skill runs check-db and reports DB connectivity",
+      "passed": null,
+      "evidence": null
+    },
+    {
+      "text": "Skill runs check-alembic and reports Alembic revision",
+      "passed": null,
+      "evidence": null
+    },
+    {
+      "text": "Skill runs check-tables and reports table existence",
+      "passed": null,
+      "evidence": null
+    },
+    {
+      "text": "Skill runs check-users and reports user count",
+      "passed": null,
+      "evidence": null
+    },
+    {
+      "text": "Skill runs check-legacy and reports legacy batch count",
+      "passed": null,
+      "evidence": null
+    },
+    {
+      "text": "Skill summarizes all checks in a single health summary",
+      "passed": null,
+      "evidence": null
+    }
+  ]
+}

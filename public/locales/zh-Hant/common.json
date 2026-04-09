@@ -167,7 +167,42 @@
       "notFound": "找不到客戶。",
       "phone": "電話",
       "status": "狀態",
-      "title": "客戶詳情"
+      "title": "客戶詳情",
+      "tabs": {
+        "overview": "概覽",
+        "invoices": "發票",
+        "orders": "訂單",
+        "outstanding": "應收帳款",
+        "statement": "對帳單"
+      },
+      "statement": {
+        "title": "客戶對帳單",
+        "summary": {
+          "totalOutstanding": "應收帳款總額",
+          "oldestUnpaid": "最舊未付款項",
+          "avgDaysToPay": "平均付款天數"
+        },
+        "table": {
+          "date": "日期",
+          "type": "類型",
+          "reference": "參考編號",
+          "description": "說明",
+          "debit": "借方",
+          "credit": "貸方",
+          "balance": "餘額"
+        },
+        "filter": {
+          "from": "起始",
+          "to": "截止"
+        },
+        "actions": {
+          "print": "列印",
+          "exportCSV": "匯出 CSV"
+        },
+        "empty": "查無交易記錄。",
+        "invoiceType": "發票",
+        "paymentType": "付款"
+      }
     },
     "form": {
       "billingAddress": "帳單地址",

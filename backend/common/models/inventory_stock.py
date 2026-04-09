@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, func
+from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -43,6 +43,8 @@ class InventoryStock(Base):
 	)
 	quantity: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 	reorder_point: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+	safety_factor: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+	lead_time_days: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 	updated_at: Mapped[datetime] = mapped_column(
 		DateTime(timezone=True),
 		server_default=func.now(),

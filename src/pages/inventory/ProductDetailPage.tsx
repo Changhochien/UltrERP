@@ -8,7 +8,7 @@ import { SectionCard } from "@/components/layout/PageLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useProductDetail } from "@/domain/inventory/hooks/useProductDetail";
 import { useStockHistory } from "@/domain/inventory/hooks/useStockHistory";
-import { useWarehouseContext } from "@/domain/inventory/context/WarehouseContext";
+import { WarehouseProvider, useWarehouseContext } from "@/domain/inventory/context/WarehouseContext";
 import { AdjustmentTimeline } from "@/domain/inventory/components/AdjustmentTimeline";
 import { StockTrendChart } from "@/domain/inventory/components/StockTrendChart";
 import { AnalyticsTab } from "@/domain/inventory/components/AnalyticsTab";
@@ -173,6 +173,7 @@ export function ProductDetailPage({ productId: propProductId }: { productId?: st
   } = useStockHistory(stockId ?? "");
 
   return (
+    <WarehouseProvider>
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
@@ -322,7 +323,7 @@ export function ProductDetailPage({ productId: propProductId }: { productId?: st
 
         <TabsContent value="settings">
           {product && (
-            <SettingsTab productId={productId ?? ""} warehouses={product.warehouses} />
+            <SettingsTab productId={productId ?? ""} />
           )}
         </TabsContent>
 
@@ -331,5 +332,6 @@ export function ProductDetailPage({ productId: propProductId }: { productId?: st
         </TabsContent>
       </Tabs>
     </div>
+    </WarehouseProvider>
   );
 }

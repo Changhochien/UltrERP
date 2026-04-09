@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.auth import get_current_user
@@ -15,11 +15,20 @@ from common.config import settings
 from common.database import get_db
 from common.tenant import DEFAULT_TENANT_ID
 from domains.dashboard.schemas import (
+    CashFlowResponse,
+    KpiSummaryResponse,
     RevenueSummaryResponse,
+    TopCustomersResponse,
     TopProductsResponse,
     VisitorStatsResponse,
 )
-from domains.dashboard.services import get_revenue_summary, get_top_products
+from domains.dashboard.services import (
+    get_cash_flow,
+    get_kpi_summary,
+    get_revenue_summary,
+    get_top_customers,
+    get_top_products,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,12 +42,32 @@ async def get_revenue_summary_endpoint(session: DbSession) -> RevenueSummaryResp
     return await get_revenue_summary(session, DEFAULT_TENANT_ID)
 
 
+@router.get("/kpi-summary", response_model=KpiSummaryResponse)
+async def get_kpi_summary_endpoint(
+    session: DbSession,
+    response: Response,
+    date: Annotated[date | None, Query(description="Target date YYYY-MM-DD")] = None,
+) -> KpiSummaryResponse:
+    response.headers["Cache-Control"] = "public, max-age=300"
+    return await get_kpi_summary(session, DEFAULT_TENANT_ID, target_date=date)
+
+
 @router.get("/top-products", response_model=TopProductsResponse)
 async def get_top_products_endpoint(
     session: DbSession,
     period: Annotated[Literal["day", "week"], Query()] = "day",
 ) -> TopProductsResponse:
     return await get_top_products(session, DEFAULT_TENANT_ID, period=period)
+
+
+
+@router.get("/top-customers", response_model=TopCustomersResponse)
+async def get_top_customers_endpoint(
+    session: DbSession,
+    period: Annotated[Literal["month", "quarter", "year"], Query()] = "month",
+    limit: Annotated[int, Query(ge=1, le=100)] = 10,
+) -> TopCustomersResponse:
+    return await get_top_customers(session, DEFAULT_TENANT_ID, period=period, limit=limit)
 
 
 @router.get("/visitor-stats", response_model=VisitorStatsResponse)
@@ -87,3 +116,12 @@ async def get_visitor_stats_endpoint() -> VisitorStatsResponse:
         date=yesterday,
         is_configured=True,
     )
+
+
+@router.get("/cash-flow", response_model=CashFlowResponse)
+async def get_cash_flow_endpoint(
+    session: DbSession,
+    start_date: Annotated[date, Query(description="Start date (YYYY-MM-DD)")],
+    end_date: Annotated[date, Query(description="End date (YYYY-MM-DD)")],
+) -> CashFlowResponse:
+    return await get_cash_flow(session, DEFAULT_TENANT_ID, start_date, end_date)

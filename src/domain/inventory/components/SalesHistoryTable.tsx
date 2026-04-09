@@ -6,7 +6,8 @@ interface SalesHistoryTableProps {
 }
 
 function formatDate(dateStr: string): string {
-  return parseBackendDate(dateStr).toLocaleDateString("en-US", {
+  return parseBackendDate(dateStr).toLocaleDateString("zh-TW", {
+    timeZone: "Asia/Taipei",
     month: "short",
     day: "numeric",
     year: "numeric",

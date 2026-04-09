@@ -63,6 +63,7 @@ export interface ProductSearchResponse {
 }
 
 export interface WarehouseStockInfo {
+  stock_id: string;
   warehouse_id: string;
   warehouse_name: string;
   current_stock: number;
@@ -130,6 +131,7 @@ export interface ReorderAlertItem {
   current_stock: number;
   reorder_point: number;
   status: string;
+  severity: string | null;
   created_at: string;
   acknowledged_at: string | null;
   acknowledged_by: string | null;
@@ -145,6 +147,25 @@ export interface AcknowledgeAlertResponse {
   status: string;
   acknowledged_at: string;
   acknowledged_by: string;
+}
+
+// --- Stock history types ---
+
+export interface StockHistoryPoint {
+  date: string;
+  quantity_change: number;
+  reason_code: string;
+  running_stock: number;
+  notes: string | null;
+}
+
+export interface StockHistoryResponse {
+  points: StockHistoryPoint[];
+  current_stock: number;
+  reorder_point: number;
+  avg_daily_usage: number | null;
+  lead_time_days: number | null;
+  safety_stock: number | null;
 }
 
 // --- Supplier types ---
@@ -241,4 +262,47 @@ export interface ReceiveOrderRequest {
 export interface UpdateOrderStatusRequest {
   status: SupplierOrderStatus;
   notes?: string;
+}
+
+// --- Stock history types ---
+
+export interface StockHistoryPoint {
+  timestamp: string;
+  quantity: number;
+  change: number;
+}
+
+// --- Reorder point types ---
+
+export interface ReorderPointPreviewRow {
+  stock_id: string;
+  product_id: string;
+  product_name: string;
+  warehouse_id: string;
+  warehouse_name: string;
+  current_quantity: number;
+  current_reorder_point: number;
+  computed_reorder_point: number | null;
+  avg_daily_usage: number | null;
+  lead_time_days: number | null;
+  safety_stock: number | null;
+  demand_basis: string | null;
+  movement_count: number | null;
+  lead_time_source: string | null;
+  quality_note: string | null;
+  skip_reason: string | null;
+  is_selected: boolean;
+  suggested_order_qty: number | null;
+}
+
+export interface ReorderPointComputeResponse {
+  candidate_rows: ReorderPointPreviewRow[];
+  skipped_rows: ReorderPointPreviewRow[];
+  parameters: Record<string, unknown>;
+}
+
+export interface ReorderPointApplyResponse {
+  updated_count: number;
+  skipped_count: number;
+  run_parameters: Record<string, unknown>;
 }

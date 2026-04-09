@@ -168,6 +168,7 @@ class InvoiceLine(Base):
     description: Mapped[str] = mapped_column(String(500), nullable=False)
     quantity: Mapped[Decimal] = mapped_column(Numeric(18, 3), nullable=False)
     unit_price: Mapped[Decimal] = mapped_column(Numeric(20, 2), nullable=False)
+    unit_cost: Mapped["Decimal | None"] = mapped_column(Numeric(20, 2), nullable=True)
     subtotal_amount: Mapped[Decimal] = mapped_column(Numeric(20, 2), nullable=False)
     tax_type: Mapped[int] = mapped_column(Integer, nullable=False)
     tax_rate: Mapped[Decimal] = mapped_column(Numeric(6, 4), nullable=False)

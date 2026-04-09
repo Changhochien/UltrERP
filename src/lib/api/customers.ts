@@ -172,3 +172,35 @@ export async function updateCustomer(
   const body: ApiError = await resp.json().catch(() => ({ detail: [] }));
   return { ok: false, errors: body.detail ?? [] };
 }
+
+export interface StatementLine {
+  date: string;
+  type: "invoice" | "payment";
+  reference: string;
+  description: string;
+  debit: string;
+  credit: string;
+  balance: string;
+}
+
+export interface CustomerStatementResponse {
+  customer_id: string;
+  company_name: string;
+  currency_code: string;
+  opening_balance: string;
+  current_balance: string;
+  lines: StatementLine[];
+}
+
+export async function getCustomerStatement(
+  customerId: string,
+  from?: string,
+  to?: string,
+): Promise<CustomerStatementResponse> {
+  const params = new URLSearchParams();
+  if (from) params.set("from_date", from);
+  if (to) params.set("to_date", to);
+  const qs = params.toString();
+  const resp = await apiFetch(`/api/v1/customers/${customerId}/statement${qs ? `?${qs}` : ""}`);
+  return resp.json();
+}

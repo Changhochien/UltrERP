@@ -1,0 +1,5 @@
+{"t":0,"agent":"system","event":"skill_invoked","skill_name":"UltrERP-ops"}
+{"t":0,"agent":"system","event":"skill_invoked","skill_name":"UltrERP-migrate"}
+{"t":0,"agent":"system","event":"skill_invoked","skill_name":"UltrERP-dump-import"}
+{"t":0,"agent":"a057960","agent_type":"Explore","event":"agent_start","parent_mode":"none"}
+{"t":0,"agent":"a057960","agent_type":"Explore","event":"agent_stop","success":true,"duration_ms":97788}

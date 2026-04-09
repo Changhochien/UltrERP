@@ -41,6 +41,7 @@ class OrderLine(Base):
 	quantity: Mapped[Decimal] = mapped_column(Numeric(18, 3), nullable=False)
 	list_unit_price: Mapped[Decimal] = mapped_column(Numeric(20, 2), nullable=False, default=Decimal("0.00"))
 	unit_price: Mapped[Decimal] = mapped_column(Numeric(20, 2), nullable=False)
+	unit_cost: Mapped["Decimal | None"] = mapped_column(Numeric(20, 2), nullable=True)
 	discount_amount: Mapped[Decimal] = mapped_column(Numeric(20, 2), nullable=False, default=Decimal("0.00"))
 	tax_policy_code: Mapped[str] = mapped_column(String(20), nullable=False)
 	tax_type: Mapped[int] = mapped_column(Integer, nullable=False)

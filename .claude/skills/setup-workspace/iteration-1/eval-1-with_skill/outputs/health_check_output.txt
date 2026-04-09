@@ -1,0 +1,65 @@
+=== UltrERP Health Check Results ===
+Command: check-health (setup skill)
+Date: 2026-04-05
+
+--- Component Status ---
+
+DB: OK
+  - PostgreSQL database is reachable and responsive
+
+Alembic Revision: TWO HEADS DETECTED
+  - ww444yy44z65 (head)
+  - ss000aa00a01 (head)
+  - WARNING: Multiple migration heads exist on the active branch.
+    This indicates a branching conflict that should be resolved before
+    running new migrations.
+
+Tables: 40
+  - 40 non-system tables exist in the database
+  - Core application tables are present
+
+App Settings: 25 row(s)
+  - App settings are SEEDED (25 rows present)
+  - No need to run seed-settings
+
+Users: 4
+  - 4 user accounts exist in the system
+  - User accounts are present, no need to create admin from scratch
+
+Legacy Import Batches: table not found
+  - Table "legacy_import_control" does not exist
+  - Legacy import has not been set up yet (this is normal for a fresh install)
+
+--- Summary ---
+
+PRESENT:
+  - DB connectivity: OK
+  - App tables: 40 tables present
+  - App settings: seeded (25 rows)
+  - Users: 4 accounts
+
+MISSING / UNCONFIGURED:
+  - Legacy import table (not migrated yet)
+  - Alembic has 2 heads (branching conflict)
+
+--- Recommended Actions ---
+
+1. [WARNING] Resolve Alembic multiple heads before running migrations:
+   Run: cd backend && uv run alembic -c ../migrations/alembic.ini heads
+   Then merge the heads before proceeding.
+
+2. [OPTIONAL] Run legacy-import skill if legacy data staging is needed.
+   The legacy_import_control table does not exist yet.
+
+3. No need to run: seed-settings (already seeded)
+4. No need to run: create-admin (4 users already exist)
+
+--- Commands Executed ---
+
+1. cd backend && uv run alembic -c ../migrations/alembic.ini current
+2. cd backend && uv run python -c "<table count query>"
+3. cd backend && uv run python -c "<app settings count query>"
+4. cd backend && uv run python -c "<user count query>"
+5. cd backend && uv run python -c "<legacy import check query>" (failed - table not found)
+
+All commands run from backend/ directory using uv run.
