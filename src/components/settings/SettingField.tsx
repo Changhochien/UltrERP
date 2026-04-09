@@ -17,7 +17,7 @@ import type { SettingItem } from "../../lib/api/settings";
 
 interface SettingFieldProps {
   item: SettingItem;
-  onSave: (key: string, value: string) => Promise<void>;
+  onSave: (key: string, value: string, valueType: string) => Promise<void>;
   onReset: (key: string) => Promise<void>;
   saving?: boolean;
   resetting?: boolean;
@@ -40,7 +40,7 @@ export function SettingField({
   const displayValue = item.is_null ? "" : item.value;
 
   function handleSave() {
-    void onSave(item.key, localValue);
+    void onSave(item.key, localValue, item.value_type);
   }
 
   function handleReset() {

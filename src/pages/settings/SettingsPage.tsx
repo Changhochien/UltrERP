@@ -67,7 +67,7 @@ function CategoryContent({
   saveError,
 }: {
   category: SettingsCategory;
-  onSave: (key: string, value: string) => Promise<void>;
+  onSave: (key: string, value: string, valueType: string) => Promise<void>;
   onReset: (key: string) => Promise<void>;
   savingKey: string | null;
   resettingKey: string | null;
@@ -120,9 +120,31 @@ export function SettingsPage() {
   // Set first category as active once loaded
   const currentCategory = activeCategory ?? (categories[0]?.category ?? null);
 
-  async function handleSave(key: string, value: string) {
+  async function handleSave(key: string, value: string, valueType: string) {
     setSaveError(null);
     setErrorKey(null);
+
+    // Client-side validation
+    if (valueType === "int") {
+      const num = Number(value);
+      if (isNaN(num) || !Number.isInteger(num)) {
+        const msg = t("settingsPage.invalidInt", "Must be a whole number.");
+        setSaveError(msg);
+        setErrorKey(key);
+        return;
+      }
+    }
+    if (valueType === "json" || valueType === "tuple") {
+      try {
+        JSON.parse(value);
+      } catch {
+        const msg = t("settingsPage.invalidJson", "Must be valid JSON.");
+        setSaveError(msg);
+        setErrorKey(key);
+        return;
+      }
+    }
+
     setSavingKey(key);
     try {
       await updateSetting(key, value);
