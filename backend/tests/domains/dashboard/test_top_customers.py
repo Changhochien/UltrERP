@@ -84,6 +84,31 @@ async def test_top_customers_empty_result() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("period", "anchor_date", "expected_start", "expected_end"),
+    [
+        ("month", date(2025, 11, 18), date(2025, 11, 1), date(2025, 11, 30)),
+        ("quarter", date(2025, 11, 18), date(2025, 10, 1), date(2025, 12, 31)),
+        ("year", date(2025, 11, 18), date(2025, 1, 1), date(2025, 12, 31)),
+    ],
+)
+async def test_top_customers_uses_anchor_date_for_period_boundaries(
+    period: str,
+    anchor_date: date,
+    expected_start: date,
+    expected_end: date,
+) -> None:
+    session = FakeAsyncSession()
+    session.queue_scalar(None)  # set_tenant
+    session.queue_rows([])
+
+    result = await get_top_customers(session, TENANT, period=period, anchor_date=anchor_date)
+
+    assert result.start_date == expected_start
+    assert result.end_date == expected_end
+
+
+@pytest.mark.asyncio
 @freeze_time("2026-04-09")
 async def test_top_customers_route_returns_json() -> None:
     """Integration-style test through HTTP."""
