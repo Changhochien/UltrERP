@@ -13,14 +13,16 @@ from common.database import get_db
 from domains.audit.queries import list_audit_logs
 from domains.audit.schemas import AuditLogListResponse, AuditLogResponse
 
-router = APIRouter(dependencies=[Depends(require_role("owner"))])
+router = APIRouter(dependencies=[Depends(require_role("admin", "owner"))])
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
+CurrentUser = Annotated[dict, Depends(require_role("admin", "owner"))]
 
 
 @router.get("/", response_model=AuditLogListResponse)
 async def get_audit_logs(
     db: DbSession,
+    current_user: CurrentUser,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
     entity_type: str | None = Query(default=None),
@@ -32,8 +34,11 @@ async def get_audit_logs(
     created_before: datetime | None = Query(default=None),
 ) -> AuditLogListResponse:
     """List audit log entries with pagination and filtering."""
+    import uuid
+    tenant_id = uuid.UUID(current_user["tenant_id"])
     result = await list_audit_logs(
         db,
+        tenant_id,
         page=page,
         page_size=page_size,
         entity_type=entity_type,

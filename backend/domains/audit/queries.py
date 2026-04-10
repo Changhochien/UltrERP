@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 from typing import Any
 
@@ -14,6 +15,7 @@ from common.tenant import DEFAULT_TENANT_ID
 
 async def list_audit_logs(
     session: AsyncSession,
+    tenant_id: uuid.UUID | None = None,
     *,
     page: int = 1,
     page_size: int = 50,
@@ -26,9 +28,10 @@ async def list_audit_logs(
     created_before: datetime | None = None,
 ) -> dict[str, Any]:
     """Query audit logs with optional filtering and offset-based pagination."""
-    base = select(AuditLog).where(AuditLog.tenant_id == DEFAULT_TENANT_ID)
+    tid = tenant_id if tenant_id is not None else DEFAULT_TENANT_ID
+    base = select(AuditLog).where(AuditLog.tenant_id == tid)
     count_base = select(func.count(AuditLog.id)).where(
-        AuditLog.tenant_id == DEFAULT_TENANT_ID,
+        AuditLog.tenant_id == tid,
     )
 
     if entity_type is not None:

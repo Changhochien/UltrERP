@@ -13,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from common.auth import require_role
 from common.database import get_db
 from common.errors import ValidationError, error_response
-from common.tenant import DEFAULT_TENANT_ID
 from domains.payments.schemas import (
     ManualMatchRequest,
     PaymentCreate,
@@ -36,6 +35,7 @@ from domains.payments.services import (
 router = APIRouter(dependencies=[Depends(require_role("admin", "finance"))])
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
+CurrentUser = Annotated[dict, Depends(require_role("admin", "finance"))]
 
 
 @router.post(
@@ -43,9 +43,11 @@ DbSession = Annotated[AsyncSession, Depends(get_db)]
     response_model=PaymentResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def create(data: PaymentCreate, session: DbSession) -> PaymentResponse | JSONResponse:
+async def create(
+    data: PaymentCreate, session: DbSession, current_user: CurrentUser
+) -> PaymentResponse | JSONResponse:
     try:
-        payment = await record_payment(session, DEFAULT_TENANT_ID, data)
+        payment = await record_payment(session, uuid.UUID(current_user["tenant_id"]), data)
         return PaymentResponse.model_validate(payment)
     except ValidationError as exc:
         # Determine status code from error message
@@ -74,6 +76,7 @@ async def create(data: PaymentCreate, session: DbSession) -> PaymentResponse | J
 )
 async def list_all(
     session: DbSession,
+    current_user: CurrentUser,
     invoice_id: uuid.UUID | None = Query(default=None),
     customer_id: uuid.UUID | None = Query(default=None),
     page: int = Query(default=1, ge=1),
@@ -81,7 +84,7 @@ async def list_all(
 ) -> PaymentListResponse:
     items, total = await list_payments(
         session,
-        DEFAULT_TENANT_ID,
+        uuid.UUID(current_user["tenant_id"]),
         invoice_id=invoice_id,
         customer_id=customer_id,
         page=page,
@@ -99,8 +102,8 @@ async def list_all(
     "/{payment_id}",
     response_model=PaymentResponse,
 )
-async def get(payment_id: uuid.UUID, session: DbSession) -> PaymentResponse | JSONResponse:
-    payment = await get_payment(session, DEFAULT_TENANT_ID, payment_id)
+async def get(payment_id: uuid.UUID, session: DbSession, current_user: CurrentUser) -> PaymentResponse | JSONResponse:
+    payment = await get_payment(session, uuid.UUID(current_user["tenant_id"]), payment_id)
     if payment is None:
         return JSONResponse(
             status_code=404,
@@ -115,10 +118,10 @@ async def get(payment_id: uuid.UUID, session: DbSession) -> PaymentResponse | JS
     status_code=status.HTTP_201_CREATED,
 )
 async def create_unmatched(
-    data: PaymentCreateUnmatched, session: DbSession
+    data: PaymentCreateUnmatched, session: DbSession, current_user: CurrentUser
 ) -> PaymentResponse | JSONResponse:
     try:
-        payment = await record_unmatched_payment(session, DEFAULT_TENANT_ID, data)
+        payment = await record_unmatched_payment(session, uuid.UUID(current_user["tenant_id"]), data)
         return PaymentResponse.model_validate(payment)
     except ValidationError as exc:
         return JSONResponse(
@@ -138,8 +141,8 @@ async def create_unmatched(
     "/reconcile",
     response_model=ReconciliationResult,
 )
-async def reconcile(session: DbSession) -> ReconciliationResult:
-    result = await run_reconciliation(session, DEFAULT_TENANT_ID)
+async def reconcile(session: DbSession, current_user: CurrentUser) -> ReconciliationResult:
+    result = await run_reconciliation(session, uuid.UUID(current_user["tenant_id"]))
     return ReconciliationResult(**result)
 
 
@@ -150,9 +153,10 @@ async def reconcile(session: DbSession) -> ReconciliationResult:
 async def confirm_match(
     payment_id: uuid.UUID,
     session: DbSession,
+    current_user: CurrentUser,
 ) -> PaymentResponse | JSONResponse:
     try:
-        payment = await confirm_suggested_match(session, DEFAULT_TENANT_ID, payment_id)
+        payment = await confirm_suggested_match(session, uuid.UUID(current_user["tenant_id"]), payment_id)
         return PaymentResponse.model_validate(payment)
     except ValidationError as exc:
         return JSONResponse(
@@ -169,9 +173,10 @@ async def do_manual_match(
     payment_id: uuid.UUID,
     data: ManualMatchRequest,
     session: DbSession,
+    current_user: CurrentUser,
 ) -> PaymentResponse | JSONResponse:
     try:
-        payment = await manual_match(session, DEFAULT_TENANT_ID, payment_id, data.invoice_id)
+        payment = await manual_match(session, uuid.UUID(current_user["tenant_id"]), payment_id, data.invoice_id)
         return PaymentResponse.model_validate(payment)
     except ValidationError as exc:
         msg = exc.errors[0]["message"] if exc.errors else ""

@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.auth import require_role
 from common.database import get_db
-from common.tenant import DEFAULT_TENANT_ID, set_tenant
+from common.tenant import set_tenant
 from domains.purchases.schemas import (
     SupplierInvoiceListItem,
     SupplierInvoiceListResponse,
@@ -21,6 +21,7 @@ from domains.purchases.service import get_supplier_invoice, list_supplier_invoic
 router = APIRouter(dependencies=[Depends(require_role("admin", "finance", "warehouse"))])
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
+CurrentUser = Annotated[dict, Depends(require_role("admin", "finance", "warehouse"))]
 
 
 @router.get(
@@ -29,6 +30,7 @@ DbSession = Annotated[AsyncSession, Depends(get_db)]
 )
 async def list_supplier_invoices_endpoint(
     session: DbSession,
+    user: CurrentUser,
     status_filter: Literal["open", "paid", "voided"] | None = Query(default=None, alias="status"),
     supplier_id: uuid.UUID | None = Query(default=None),
     sort_by: Literal["created_at", "invoice_date", "total_amount"] = Query(
@@ -38,9 +40,10 @@ async def list_supplier_invoices_endpoint(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ) -> SupplierInvoiceListResponse:
+    tenant_id = uuid.UUID(user["tenant_id"])
     items, total = await list_supplier_invoices(
         session,
-        DEFAULT_TENANT_ID,
+        tenant_id,
         status_filter=status_filter,
         supplier_id=supplier_id,
         page=page,
@@ -63,10 +66,12 @@ async def list_supplier_invoices_endpoint(
 async def get_supplier_invoice_endpoint(
     invoice_id: uuid.UUID,
     session: DbSession,
+    user: CurrentUser,
 ) -> SupplierInvoiceResponse:
+    tenant_id = uuid.UUID(user["tenant_id"])
     async with session.begin():
-        await set_tenant(session, DEFAULT_TENANT_ID)
-        invoice = await get_supplier_invoice(session, invoice_id, DEFAULT_TENANT_ID)
+        await set_tenant(session, tenant_id)
+        invoice = await get_supplier_invoice(session, invoice_id, tenant_id)
     if invoice is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

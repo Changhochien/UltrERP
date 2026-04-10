@@ -60,6 +60,7 @@ def _build_invoice_artifact_store() -> S3ObjectStore | None:
 @router.get("", response_model=InvoiceListResponse)
 async def list_all(
     session: DbSession,
+    current_user: Annotated[dict, Depends(require_role("admin", "finance", "sales"))],
     payment_status: Literal["paid", "unpaid", "partial", "overdue"] | None = Query(default=None),
     sort_by: Literal["created_at", "invoice_date", "outstanding_balance"] = Query(
         default="created_at"
@@ -68,8 +69,10 @@ async def list_all(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ) -> InvoiceListResponse:
+    real_tid = uuid.UUID(current_user["tenant_id"])
     items, total = await list_invoices(
         session,
+        tenant_id=real_tid,
         page=page,
         page_size=page_size,
         payment_status=payment_status or None,
@@ -89,12 +92,18 @@ async def list_all(
     response_model=InvoiceResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def create(data: InvoiceCreate, session: DbSession) -> InvoiceResponse | JSONResponse:
+async def create(
+    data: InvoiceCreate,
+    session: DbSession,
+    current_user: Annotated[dict, Depends(require_role("admin", "finance", "sales"))],
+) -> InvoiceResponse | JSONResponse:
+    real_tid = uuid.UUID(current_user["tenant_id"])
     try:
         settings = get_settings()
         invoice = await create_invoice(
             session,
             data,
+            tenant_id=real_tid,
             artifact_store=_build_invoice_artifact_store(),
             artifact_retention_class=settings.invoice_artifact_retention_class,
             artifact_storage_policy=settings.invoice_artifact_storage_policy,
@@ -113,23 +122,28 @@ async def create(data: InvoiceCreate, session: DbSession) -> InvoiceResponse | J
     "/{invoice_id}",
     response_model=InvoiceResponse,
 )
-async def get(invoice_id: uuid.UUID, session: DbSession) -> InvoiceResponse | JSONResponse:
-    from common.tenant import DEFAULT_TENANT_ID, set_tenant
+async def get(
+    invoice_id: uuid.UUID,
+    session: DbSession,
+    current_user: Annotated[dict, Depends(require_role("admin", "finance", "sales"))],
+) -> InvoiceResponse | JSONResponse:
+    from common.tenant import set_tenant
 
+    real_tid = uuid.UUID(current_user["tenant_id"])
     settings = get_settings()
     async with session.begin():
-        await set_tenant(session, DEFAULT_TENANT_ID)
-        invoice = await get_invoice(session, invoice_id)
+        await set_tenant(session, real_tid)
+        invoice = await get_invoice(session, invoice_id, tenant_id=real_tid)
         if invoice is None:
             return JSONResponse(
                 status_code=404,
                 content={"detail": "Invoice not found"},
             )
-        summary = await compute_invoice_payment_summary(session, invoice, DEFAULT_TENANT_ID)
+        summary = await compute_invoice_payment_summary(session, invoice, real_tid)
         egui_submission = await get_invoice_egui_submission(
             session,
             invoice,
-            DEFAULT_TENANT_ID,
+            real_tid,
             enabled=settings.egui_tracking_enabled,
             mode=settings.egui_submission_mode,
         )
@@ -149,10 +163,13 @@ async def get(invoice_id: uuid.UUID, session: DbSession) -> InvoiceResponse | JS
     response_model=EguiSubmissionResponse,
 )
 async def refresh_egui(
-    invoice_id: uuid.UUID, session: DbSession
+    invoice_id: uuid.UUID,
+    session: DbSession,
+    current_user: Annotated[dict, Depends(require_role("admin", "finance", "sales"))],
 ) -> EguiSubmissionResponse | JSONResponse:
-    from common.tenant import DEFAULT_TENANT_ID, set_tenant
+    from common.tenant import set_tenant
 
+    real_tid = uuid.UUID(current_user["tenant_id"])
     settings = get_settings()
     if not settings.egui_tracking_enabled:
         return JSONResponse(
@@ -166,8 +183,8 @@ async def refresh_egui(
         )
 
     async with session.begin():
-        await set_tenant(session, DEFAULT_TENANT_ID)
-        invoice = await get_invoice(session, invoice_id)
+        await set_tenant(session, real_tid)
+        invoice = await get_invoice(session, invoice_id, tenant_id=real_tid)
         if invoice is None:
             return JSONResponse(
                 status_code=404,
@@ -176,7 +193,7 @@ async def refresh_egui(
         egui_submission = await refresh_invoice_egui_submission(
             session,
             invoice,
-            DEFAULT_TENANT_ID,
+            real_tid,
             enabled=settings.egui_tracking_enabled,
             mode=settings.egui_submission_mode,
         )
@@ -200,9 +217,11 @@ async def void(
     invoice_id: uuid.UUID,
     data: VoidInvoiceRequest,
     session: DbSession,
+    current_user: Annotated[dict, Depends(require_role("admin", "finance", "sales"))],
 ) -> InvoiceResponse | JSONResponse:
+    real_tid = uuid.UUID(current_user["tenant_id"])
     try:
-        invoice = await void_invoice(session, invoice_id, reason=data.reason)
+        invoice = await void_invoice(session, invoice_id, reason=data.reason, tenant_id=real_tid)
         return InvoiceResponse.model_validate(invoice)
     except ValueError as exc:
         msg = str(exc)
@@ -221,12 +240,14 @@ async def void(
 async def export_pdf(
     invoice_id: uuid.UUID,
     session: DbSession,
+    current_user: Annotated[dict, Depends(require_role("admin", "finance", "sales"))],
 ) -> Response | JSONResponse:
-    from common.tenant import DEFAULT_TENANT_ID, set_tenant
+    from common.tenant import set_tenant
 
+    real_tid = uuid.UUID(current_user["tenant_id"])
     async with session.begin():
-        await set_tenant(session, DEFAULT_TENANT_ID)
-        invoice = await get_invoice(session, invoice_id)
+        await set_tenant(session, real_tid)
+        invoice = await get_invoice(session, invoice_id, tenant_id=real_tid)
     if invoice is None:
         return JSONResponse(
             status_code=404,

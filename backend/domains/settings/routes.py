@@ -52,8 +52,10 @@ async def update_setting_endpoint(
     current_user: CurrentUser,
 ) -> SettingItem:
     """Update a single setting."""
+    import uuid
     actor_id = UUID(current_user["sub"])
-    return await set_setting(db, key, body.value, actor_id)
+    tenant_id = uuid.UUID(current_user["tenant_id"])
+    return await set_setting(db, key, body.value, actor_id, tenant_id=tenant_id)
 
 
 @router.delete("/{key}", status_code=204)
@@ -63,5 +65,7 @@ async def reset_setting_endpoint(
     current_user: CurrentUser,
 ) -> None:
     """Reset a setting to its env var default."""
+    import uuid
     actor_id = UUID(current_user["sub"])
-    await reset_setting(db, key, actor_id)
+    tenant_id = uuid.UUID(current_user["tenant_id"])
+    await reset_setting(db, key, actor_id, tenant_id=tenant_id)

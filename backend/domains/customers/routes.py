@@ -49,14 +49,15 @@ WriteUser = Annotated[dict, Depends(require_role("admin", "sales"))]
 @router.get("", response_model=CustomerListResponse)
 async def list_all(
     session: DbSession,
-    _user: ReadUser,
+    user: ReadUser,
     q: str | None = Query(default=None, max_length=200),
     customer_status: str | None = Query(default=None, alias="status", max_length=20),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ) -> CustomerListResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
     params = CustomerListParams(q=q, status=customer_status, page=page, page_size=page_size)
-    items, total_count = await list_customers(session, params)
+    items, total_count = await list_customers(session, params, tenant_id=real_tid)
     total_pages = max(1, math.ceil(total_count / page_size))
     return CustomerListResponse(
         items=[CustomerSummary.model_validate(c) for c in items],
@@ -70,10 +71,11 @@ async def list_all(
 @router.get("/lookup", response_model=CustomerResponse | None)
 async def lookup_by_ban(
     session: DbSession,
-    _user: ReadUser,
+    user: ReadUser,
     business_number: str = Query(..., min_length=1, max_length=20),
 ) -> CustomerResponse | JSONResponse:
-    customer = await lookup_customer_by_ban(session, business_number)
+    real_tid = uuid.UUID(user["tenant_id"])
+    customer = await lookup_customer_by_ban(session, business_number, tenant_id=real_tid)
     if customer is None:
         return JSONResponse(status_code=404, content={"detail": "Customer not found."})
     return CustomerResponse.model_validate(customer)
@@ -82,10 +84,11 @@ async def lookup_by_ban(
 @router.get("/{customer_id}", response_model=CustomerResponse)
 async def get_by_id(
     session: DbSession,
-    _user: ReadUser,
+    user: ReadUser,
     customer_id: uuid.UUID,
 ) -> CustomerResponse | JSONResponse:
-    customer = await get_customer(session, customer_id)
+    real_tid = uuid.UUID(user["tenant_id"])
+    customer = await get_customer(session, customer_id, tenant_id=real_tid)
     if customer is None:
         return JSONResponse(status_code=404, content={"detail": "Customer not found."})
     return CustomerResponse.model_validate(customer)
@@ -97,10 +100,11 @@ async def get_by_id(
     status_code=status.HTTP_201_CREATED,
 )
 async def create(
-    data: CustomerCreate, session: DbSession, _user: WriteUser
+    data: CustomerCreate, session: DbSession, user: WriteUser
 ) -> CustomerResponse | JSONResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
     try:
-        customer = await create_customer(session, data)
+        customer = await create_customer(session, data, tenant_id=real_tid)
         return CustomerResponse.model_validate(customer)
     except DuplicateBusinessNumberError as exc:
         return JSONResponse(
@@ -119,10 +123,11 @@ async def update(
     customer_id: uuid.UUID,
     data: CustomerUpdate,
     session: DbSession,
-    _user: WriteUser,
+    user: WriteUser,
 ) -> CustomerResponse | JSONResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
     try:
-        customer = await update_customer(session, customer_id, data)
+        customer = await update_customer(session, customer_id, data, tenant_id=real_tid)
         if customer is None:
             return JSONResponse(status_code=404, content={"detail": "Customer not found."})
         return CustomerResponse.model_validate(customer)
@@ -151,12 +156,13 @@ async def update(
 async def outstanding(
     customer_id: uuid.UUID,
     session: DbSession,
-    _user: ReadUser,
+    user: ReadUser,
 ) -> CustomerOutstandingSummary | JSONResponse:
     from domains.invoices.service import get_customer_outstanding
 
+    real_tid = uuid.UUID(user["tenant_id"])
     try:
-        summary = await get_customer_outstanding(session, customer_id, verify_customer=True)
+        summary = await get_customer_outstanding(session, customer_id, tenant_id=real_tid, verify_customer=True)
     except ValueError as exc:
         return JSONResponse(status_code=409, content={"detail": str(exc)})
     if summary is None:
@@ -168,13 +174,14 @@ async def outstanding(
 async def get_statement(
     customer_id: uuid.UUID,
     session: DbSession,
-    _user: ReadUser,
+    user: ReadUser,
     from_date: date | None = Query(default=None),
     to_date: date | None = Query(default=None),
 ) -> CustomerStatementResponse | JSONResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
     try:
         statement = await get_customer_statement(
-            session, customer_id, None, from_date, to_date
+            session, customer_id, real_tid, from_date, to_date
         )
     except ValueError as exc:
         return JSONResponse(status_code=409, content={"detail": str(exc)})

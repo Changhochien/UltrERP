@@ -389,6 +389,7 @@ async def create_adjustment_endpoint(
                 "reason_code": data.reason_code,
                 "notes": data.notes,
             },
+            tenant_id=tenant_id,
         )
         await session.commit()
         return JSONResponse(
