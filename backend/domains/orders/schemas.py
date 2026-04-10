@@ -6,6 +6,7 @@ import enum
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -98,6 +99,7 @@ class OrderResponse(BaseModel):
     total_amount: Decimal | None
     invoice_id: uuid.UUID | None
     notes: str | None
+    legacy_header_snapshot: dict[str, Any] | None = None
     created_by: str
     created_at: datetime
     updated_at: datetime
@@ -115,6 +117,7 @@ class OrderListItem(BaseModel):
     status: OrderStatus
     payment_terms_code: str
     total_amount: Decimal | None
+    legacy_header_snapshot: dict[str, Any] | None = None
     created_at: datetime
     updated_at: datetime
 

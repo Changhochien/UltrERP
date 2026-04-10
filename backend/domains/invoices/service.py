@@ -744,6 +744,7 @@ async def enrich_invoices_with_payment_status(
                 "currency_code": inv.currency_code,
                 "total_amount": inv.total_amount,
                 "status": inv.status,
+                "legacy_header_snapshot": getattr(inv, "legacy_header_snapshot", None),
                 "created_at": inv.created_at,
                 "amount_paid": amount_paid,
                 "outstanding_balance": outstanding,

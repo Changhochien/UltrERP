@@ -9,6 +9,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+	JSON,
 	Date,
 	DateTime,
 	Enum,
@@ -72,6 +73,7 @@ class SupplierInvoice(Base):
 		nullable=False,
 	)
 	notes: Mapped[str | None] = mapped_column(Text)
+	legacy_header_snapshot: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
 	created_at: Mapped[datetime] = mapped_column(
 		DateTime(timezone=True),
 		server_default=func.now(),

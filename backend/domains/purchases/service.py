@@ -75,6 +75,7 @@ async def get_supplier_invoice(
         "total_amount": invoice.total_amount,
         "status": invoice.status.value,
         "notes": invoice.notes,
+        "legacy_header_snapshot": getattr(invoice, "legacy_header_snapshot", None),
         "created_at": invoice.created_at,
         "updated_at": invoice.updated_at,
         "lines": [
@@ -160,6 +161,7 @@ async def list_supplier_invoices(
             "currency_code": invoice.currency_code,
             "total_amount": invoice.total_amount,
             "status": invoice.status.value,
+            "legacy_header_snapshot": getattr(invoice, "legacy_header_snapshot", None),
             "created_at": invoice.created_at,
             "updated_at": invoice.updated_at,
             "line_count": len(invoice.lines),

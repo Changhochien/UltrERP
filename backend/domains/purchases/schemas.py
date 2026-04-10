@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -38,6 +39,7 @@ class SupplierInvoiceResponse(BaseModel):
     total_amount: Decimal
     status: str
     notes: str | None
+    legacy_header_snapshot: dict[str, Any] | None = None
     created_at: datetime
     updated_at: datetime
     lines: list[SupplierInvoiceLineResponse]
@@ -52,6 +54,7 @@ class SupplierInvoiceListItem(BaseModel):
     currency_code: str
     total_amount: Decimal
     status: str
+    legacy_header_snapshot: dict[str, Any] | None = None
     created_at: datetime
     updated_at: datetime
     line_count: int

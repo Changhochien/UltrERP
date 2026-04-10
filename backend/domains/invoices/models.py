@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
+    JSON,
     Date,
     DateTime,
     ForeignKey,
@@ -81,6 +82,7 @@ class Invoice(Base):
     total_amount: Mapped[Decimal] = mapped_column(Numeric(20, 2), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="issued")
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    legacy_header_snapshot: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
 
     # Void-related fields
     voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -145,6 +145,7 @@ async def list_orders_endpoint(
                 customer_id=o.customer_id,
                 payment_terms_code=o.payment_terms_code,
                 total_amount=o.total_amount,
+                legacy_header_snapshot=getattr(o, "legacy_header_snapshot", None),
                 created_at=o.created_at,
                 updated_at=o.updated_at,
             )
@@ -228,6 +229,7 @@ def _to_order_response(order) -> OrderResponse:
         total_amount=order.total_amount,
         invoice_id=order.invoice_id,
         notes=order.notes,
+        legacy_header_snapshot=getattr(order, "legacy_header_snapshot", None),
         created_by=order.created_by,
         created_at=order.created_at,
         updated_at=order.updated_at,
