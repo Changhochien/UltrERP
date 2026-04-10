@@ -72,6 +72,42 @@ class ImportReplayMetadata:
 
 
 @dataclass(slots=True, frozen=True)
+class LegacyHeaderSnapshotCoverage:
+    order_count: int
+    order_snapshot_count: int
+    invoice_count: int
+    invoice_snapshot_count: int
+    supplier_invoice_count: int
+    supplier_invoice_snapshot_count: int
+
+    @property
+    def imported_document_count(self) -> int:
+        return self.order_count + self.invoice_count + self.supplier_invoice_count
+
+    @property
+    def snapshot_count(self) -> int:
+        return (
+            self.order_snapshot_count
+            + self.invoice_snapshot_count
+            + self.supplier_invoice_snapshot_count
+        )
+
+    @property
+    def missing_snapshot_count(self) -> int:
+        return max(0, self.imported_document_count - self.snapshot_count)
+
+    def to_counts(self) -> dict[str, int]:
+        return {
+            "legacy_header_snapshot_document_count": self.imported_document_count,
+            "legacy_header_snapshot_count": self.snapshot_count,
+            "legacy_header_snapshot_missing_count": self.missing_snapshot_count,
+            "order_snapshot_count": self.order_snapshot_count,
+            "invoice_snapshot_count": self.invoice_snapshot_count,
+            "supplier_invoice_snapshot_count": self.supplier_invoice_snapshot_count,
+        }
+
+
+@dataclass(slots=True, frozen=True)
 class MigrationValidationReport:
     batch_id: str
     tenant_id: str
@@ -86,6 +122,7 @@ class MigrationValidationReport:
     replay: ImportReplayMetadata
     epic13_handoff: dict[str, object]
     counts: dict[str, int] | None = None
+    snapshot_coverage: LegacyHeaderSnapshotCoverage | None = None
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -99,6 +136,9 @@ class MigrationValidationReport:
             "stage_reconciliation": [asdict(row) for row in self.stage_reconciliation],
             "mapping_summary": asdict(self.mapping_summary),
             "failed_stages": [asdict(stage) for stage in self.failed_stages],
+            "snapshot_coverage": (
+                asdict(self.snapshot_coverage) if self.snapshot_coverage is not None else None
+            ),
             "issues": [
                 {
                     "code": issue.code,
@@ -180,6 +220,7 @@ def build_validation_report(
     counts: Mapping[str, int],
     cutoff_date: str | None,
     previous_scope_run: Mapping[str, object] | None,
+    snapshot_coverage: LegacyHeaderSnapshotCoverage | None = None,
 ) -> MigrationValidationReport:
     issues: list[MigrationValidationIssue] = []
     for row in stage_rows:
@@ -244,6 +285,30 @@ def build_validation_report(
             )
         )
 
+    if snapshot_coverage is not None and snapshot_coverage.missing_snapshot_count > 0:
+        issues.append(
+            MigrationValidationIssue(
+                code="legacy-header-snapshot-missing",
+                severity=1,
+                message=(
+                    "Legacy header snapshots are missing for "
+                    f"{snapshot_coverage.missing_snapshot_count} of "
+                    f"{snapshot_coverage.imported_document_count} imported documents."
+                ),
+                details={
+                    "order_count": snapshot_coverage.order_count,
+                    "order_snapshot_count": snapshot_coverage.order_snapshot_count,
+                    "invoice_count": snapshot_coverage.invoice_count,
+                    "invoice_snapshot_count": snapshot_coverage.invoice_snapshot_count,
+                    "supplier_invoice_count": snapshot_coverage.supplier_invoice_count,
+                    "supplier_invoice_snapshot_count": (
+                        snapshot_coverage.supplier_invoice_snapshot_count
+                    ),
+                    "missing_snapshot_count": snapshot_coverage.missing_snapshot_count,
+                },
+            )
+        )
+
     issues.sort(key=lambda issue: (issue.severity, issue.code, issue.message))
     blocking_issue_count = sum(1 for issue in issues if issue.blocking)
     status = "blocked" if blocking_issue_count else ("warning" if issues else "clean")
@@ -292,10 +357,15 @@ def build_validation_report(
             "mapping_summary",
             "failed_stages",
             "counts",
+            "snapshot_coverage",
         ],
         "boundary": (
             "Story 15.5 emits batch-scoped import evidence only. "
             "Epic 13 owns longer-horizon shadow-mode reconciliation."
+        ),
+        "legacy_header_snapshot_count": _as_int(counts.get("legacy_header_snapshot_count")),
+        "legacy_header_snapshot_missing_count": _as_int(
+            counts.get("legacy_header_snapshot_missing_count")
         ),
     }
 
@@ -313,6 +383,7 @@ def build_validation_report(
         replay=replay,
         epic13_handoff=epic13_handoff,
         counts=dict(counts),
+        snapshot_coverage=snapshot_coverage,
     )
 
 
@@ -345,6 +416,20 @@ def render_validation_markdown(report: MigrationValidationReport) -> str:
         f"orphan_codes={report.mapping_summary.orphan_code_count}, "
         f"orphan_rows={report.mapping_summary.orphan_row_count}"
     )
+    lines.extend(["", "## Snapshot Coverage", ""])
+    if report.snapshot_coverage is None:
+        lines.append("- Snapshot coverage was not collected.")
+    else:
+        lines.append(
+            "- "
+            f"orders={report.snapshot_coverage.order_snapshot_count}/"
+            f"{report.snapshot_coverage.order_count}, "
+            f"invoices={report.snapshot_coverage.invoice_snapshot_count}/"
+            f"{report.snapshot_coverage.invoice_count}, "
+            f"supplier_invoices={report.snapshot_coverage.supplier_invoice_snapshot_count}/"
+            f"{report.snapshot_coverage.supplier_invoice_count}, "
+            f"missing={report.snapshot_coverage.missing_snapshot_count}"
+        )
     lines.extend(["", "## Discrepancies", ""])
     if not report.issues:
         lines.append("- No discrepancies detected.")
@@ -647,7 +732,69 @@ def _merge_summary_payload(
     }
     merged["replay"] = asdict(report.replay)
     merged["epic13_handoff"] = report.epic13_handoff
+    if report.snapshot_coverage is not None:
+        merged["legacy_header_snapshot_coverage"] = asdict(report.snapshot_coverage)
     return merged
+
+
+async def _fetch_legacy_header_snapshot_coverage(
+    connection,
+    schema_name: str,
+    tenant_id: uuid.UUID,
+    batch_id: str,
+) -> LegacyHeaderSnapshotCoverage:
+    quoted_schema = _quoted_identifier(schema_name)
+    row = await connection.fetchrow(
+        f"""
+        SELECT
+            COUNT(*) FILTER (WHERE lineage.canonical_table = 'orders')::INTEGER AS order_count,
+            COUNT(*) FILTER (
+                WHERE lineage.canonical_table = 'orders'
+                    AND orders_record.legacy_header_snapshot IS NOT NULL
+            )::INTEGER AS order_snapshot_count,
+            COUNT(*) FILTER (WHERE lineage.canonical_table = 'invoices')::INTEGER AS invoice_count,
+            COUNT(*) FILTER (
+                WHERE lineage.canonical_table = 'invoices'
+                    AND invoices_record.legacy_header_snapshot IS NOT NULL
+            )::INTEGER AS invoice_snapshot_count,
+            COUNT(*) FILTER (
+                WHERE lineage.canonical_table = 'supplier_invoices'
+            )::INTEGER AS supplier_invoice_count,
+            COUNT(*) FILTER (
+                WHERE lineage.canonical_table = 'supplier_invoices'
+                    AND supplier_invoices_record.legacy_header_snapshot IS NOT NULL
+            )::INTEGER AS supplier_invoice_snapshot_count
+        FROM {quoted_schema}.canonical_record_lineage AS lineage
+        LEFT JOIN orders AS orders_record
+            ON lineage.canonical_table = 'orders'
+            AND orders_record.id = lineage.canonical_id
+            AND orders_record.tenant_id = lineage.tenant_id
+        LEFT JOIN invoices AS invoices_record
+            ON lineage.canonical_table = 'invoices'
+            AND invoices_record.id = lineage.canonical_id
+            AND invoices_record.tenant_id = lineage.tenant_id
+        LEFT JOIN supplier_invoices AS supplier_invoices_record
+            ON lineage.canonical_table = 'supplier_invoices'
+            AND supplier_invoices_record.id = lineage.canonical_id
+            AND supplier_invoices_record.tenant_id = lineage.tenant_id
+        WHERE lineage.tenant_id = $1
+            AND lineage.batch_id = $2
+            AND lineage.canonical_table IN ('orders', 'invoices', 'supplier_invoices')
+        """,
+        tenant_id,
+        batch_id,
+    )
+    payload = _coerce_row(row)
+    return LegacyHeaderSnapshotCoverage(
+        order_count=_as_int(payload.get("order_count")),
+        order_snapshot_count=_as_int(payload.get("order_snapshot_count")),
+        invoice_count=_as_int(payload.get("invoice_count")),
+        invoice_snapshot_count=_as_int(payload.get("invoice_snapshot_count")),
+        supplier_invoice_count=_as_int(payload.get("supplier_invoice_count")),
+        supplier_invoice_snapshot_count=_as_int(
+            payload.get("supplier_invoice_snapshot_count")
+        ),
+    )
 
 
 async def validate_import_batch(
@@ -691,6 +838,12 @@ async def validate_import_batch(
         failed_stages = await _fetch_canonical_step_runs(
             connection, resolved_schema, canonical_run_id
         )
+        snapshot_coverage = await _fetch_legacy_header_snapshot_coverage(
+            connection,
+            resolved_schema,
+            tenant_id,
+            batch_id,
+        )
         canonical_status = _as_text(canonical_run.get("status")) or "unknown"
         if canonical_status != "completed" and not failed_stages:
             failed_stages = (
@@ -731,9 +884,10 @@ async def validate_import_batch(
             stage_rows=stage_rows,
             mapping_summary=mapping_summary,
             failed_stages=failed_stages,
-            counts=counts,
+            counts={**counts, **snapshot_coverage.to_counts()},
             cutoff_date=cutoff_date,
             previous_scope_run=previous_scope_run,
+            snapshot_coverage=snapshot_coverage,
         )
         json_path, markdown_path = _artifact_paths_for_report(report, output_dir=output_dir)
         temp_json_path = json_path.with_suffix(f"{json_path.suffix}.tmp")
