@@ -98,6 +98,10 @@
       "description": "Navigate your ERP workspace.",
       "label": "Workspace",
       "section": "Workspace"
+    },
+    "ownerDashboard": {
+      "label": "Owner Dashboard",
+      "description": "Business overview and KPIs for owners."
     }
   },
   "app": {
@@ -296,6 +300,78 @@
       "title": "Visitor Stats",
       "uniqueVisitors": "Unique Visitors",
       "yesterday": "Yesterday ({date})"
+    },
+    "kpi": {
+      "title": "KPI Summary",
+      "description": "Today's key business metrics.",
+      "todayRevenue": "Today's Revenue",
+      "openInvoices": "Open Invoices",
+      "openInvoiceAmount": "Open Invoice Amount",
+      "pendingOrders": "Pending Orders",
+      "pendingOrderRevenue": "Pending Order Revenue",
+      "lowStock": "Low Stock Products",
+      "overdueReceivables": "Overdue Receivables"
+    },
+    "grossMargin": {
+      "title": "Gross Margin",
+      "description": "Margin % vs previous period.",
+      "unavailable": "Margin data unavailable",
+      "vsPreviousPeriod": "vs. previous period",
+      "revenue": "Revenue",
+      "cogs": "COGS"
+    },
+    "cashFlow": {
+      "title": "Cash Flow",
+      "description": "Weekly inflows vs outflows.",
+      "inflows": "Inflows",
+      "outflows": "Outflows",
+      "net": "Net",
+      "totalInflows": "Total Inflows",
+      "totalOutflows": "Total Outflows",
+      "netCashFlow": "Net Cash Flow"
+    },
+    "revenueTrend": {
+      "title": "Revenue Trend",
+      "30d": "30 Days",
+      "90d": "90 Days",
+      "1y": "1 Year",
+      "month": "Month",
+      "quarter": "Quarter",
+      "year": "Year",
+      "loadMore": "Load more",
+      "zoomHint": "Drag the navigator to zoom and pan."
+    },
+    "arAging": {
+      "title": "AR Aging",
+      "asOf": "As of {date}",
+      "invoices": "{count} invoice(s)",
+      "totalOutstanding": "Total Outstanding",
+      "totalOverdue": "Total Overdue"
+    },
+    "apAging": {
+      "title": "AP Aging",
+      "asOf": "As of {date}",
+      "invoices": "{count} invoice(s)",
+      "totalOutstanding": "Total Outstanding",
+      "totalOverdue": "Total Overdue"
+    },
+    "topCustomers": {
+      "title": "Top Customers",
+      "description": "Customers ranked by revenue.",
+      "month": "Month",
+      "quarter": "Quarter",
+      "year": "Year",
+      "company": "Company",
+      "revenue": "Revenue",
+      "invoices": "Invoices",
+      "anchorMonth": "Anchor month",
+      "previousPeriod": "Previous period",
+      "nextPeriod": "Next period",
+      "periodRange": "Period: {start} to {end}",
+      "topTotal": "Top {count} total: {amount}",
+      "lastInvoice": "Last invoice {date}",
+      "avgInvoice": "Avg {amount}",
+      "noData": "No data for this period."
     }
   },
   "purchase": {
