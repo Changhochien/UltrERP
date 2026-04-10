@@ -45,8 +45,15 @@ export async function fetchKPISummary(): Promise<KPISummary> {
   return resp.json();
 }
 
-export async function fetchTopCustomers(period: "month" | "quarter" | "year"): Promise<TopCustomersResponse> {
-  const resp = await apiFetch(`/api/v1/dashboard/top-customers?period=${encodeURIComponent(period)}`);
+export async function fetchTopCustomers(
+  period: "month" | "quarter" | "year",
+  anchorDate: string | null = null,
+): Promise<TopCustomersResponse> {
+  const params = new URLSearchParams({ period });
+  if (anchorDate) {
+    params.set("anchor_date", anchorDate);
+  }
+  const resp = await apiFetch(`/api/v1/dashboard/top-customers?${params}`);
   if (!resp.ok) throw new Error("Failed to fetch top customers");
   return resp.json();
 }
@@ -75,8 +82,26 @@ export async function fetchCashFlow(): Promise<CashFlowResponse> {
   return resp.json();
 }
 
-export async function fetchRevenueTrend(period: "week" | "month"): Promise<RevenueTrendResponse> {
-  const resp = await apiFetch(`/api/v1/dashboard/revenue-trend?period=${encodeURIComponent(period)}`);
+export async function fetchRevenueTrend(
+  period: "month" | "quarter" | "year",
+  before: string | null = null,
+): Promise<RevenueTrendResponse> {
+  // "month" (30d) → daily granularity, paginated via `before`
+  // "quarter" → weekly granularity for 3 months, paginated via `before`
+  // "year" → monthly granularity, paginated via `before`
+  const granularity = period === "month" ? "day" : period === "quarter" ? "week" : "month";
+  const params = new URLSearchParams({ granularity });
+  if (period === "month") {
+    params.set("days", "30");
+  } else if (period === "quarter") {
+    params.set("months", "3");
+  } else {
+    params.set("months", "12");
+  }
+  if (before) {
+    params.set("before", before);
+  }
+  const resp = await apiFetch(`/api/v1/dashboard/revenue-trend?${params}`);
   if (!resp.ok) throw new Error("Failed to fetch revenue trend");
   return resp.json();
 }

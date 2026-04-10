@@ -22,9 +22,11 @@ describe("TopCustomersCard", () => {
       refetch: vi.fn(),
       period: "month",
       setPeriod: vi.fn(),
+      anchorDate: "2026-04-01",
+      setAnchorDate: vi.fn(),
     });
     const { container } = render(<TopCustomersCard />);
-    expect(container.querySelector('[class*="skeleton"]')).toBeTruthy();
+    expect(container.querySelector(".animate-pulse")).toBeTruthy();
   });
 
   it("renders error state", () => {
@@ -35,6 +37,8 @@ describe("TopCustomersCard", () => {
       refetch: vi.fn(),
       period: "month",
       setPeriod: vi.fn(),
+      anchorDate: "2026-04-01",
+      setAnchorDate: vi.fn(),
     });
     render(<TopCustomersCard />);
     expect(screen.getByText("Network error")).toBeTruthy();
@@ -56,12 +60,19 @@ describe("TopCustomersCard", () => {
       refetch: vi.fn(),
       period: "month",
       setPeriod: vi.fn(),
+      anchorDate: "2026-04-01",
+      setAnchorDate: vi.fn(),
     });
     render(<TopCustomersCard />);
     expect(screen.getByText("Acme Corp")).toBeTruthy();
     expect(screen.getByText("Beta LLC")).toBeTruthy();
     expect(screen.getByText("NT$ 50,000.00")).toBeTruthy();
     expect(screen.getByText("NT$ 30,000.00")).toBeTruthy();
+    expect(screen.getByText("Period: 2026-04-01 to 2026-04-30")).toBeTruthy();
+    expect(screen.getByText("Top 2 total: NT$ 80,000.00")).toBeTruthy();
+    expect(screen.getByText("Last invoice 2026-04-01")).toBeTruthy();
+    expect(screen.getByText("Avg NT$ 5,000.00")).toBeTruthy();
+    expect((screen.getByLabelText("Anchor month") as HTMLInputElement).value).toBe("2026-04");
   });
 
   it("renders empty state", () => {
@@ -72,6 +83,8 @@ describe("TopCustomersCard", () => {
       refetch: vi.fn(),
       period: "month",
       setPeriod: vi.fn(),
+      anchorDate: "2026-04-01",
+      setAnchorDate: vi.fn(),
     });
     render(<TopCustomersCard />);
     expect(screen.getByTestId("top-customers-table")).toBeTruthy();

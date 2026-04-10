@@ -138,11 +138,12 @@ export interface CashFlowResponse {
 export interface RevenueTrendItem {
   date: string;
   revenue: string;
+  order_count: number;
 }
 
 export interface RevenueTrendResponse {
-  period: string;
+  items: RevenueTrendItem[];
   start_date: string;
   end_date: string;
-  items: RevenueTrendItem[];
+  has_more?: boolean;
 }

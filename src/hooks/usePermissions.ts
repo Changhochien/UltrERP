@@ -11,6 +11,7 @@ export type AppFeature =
   | "orders"
   | "payments"
   | "admin"
+  | "owner_dashboard"
   | "settings";
 
 type PermissionLevel = "read" | "write";
@@ -24,6 +25,8 @@ const ROLE_PERMISSIONS: Record<string, Partial<Record<AppFeature, PermissionLeve
     invoices: "write",
     orders: "write",
     payments: "write",
+    admin: "write",
+    owner_dashboard: "write",
     settings: "write",
   },
   owner: {
@@ -35,6 +38,7 @@ const ROLE_PERMISSIONS: Record<string, Partial<Record<AppFeature, PermissionLeve
     orders: "write",
     payments: "write",
     admin: "write",
+    owner_dashboard: "write",
     settings: "write",
   },
   finance: {
