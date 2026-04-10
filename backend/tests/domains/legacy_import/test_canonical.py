@@ -411,6 +411,15 @@ async def test_run_canonical_import_orders_dependencies_and_holding(
     order_line_args = next(
         args for query, args in connection.execute_calls if "INSERT INTO order_lines" in query
     )
+    order_args = next(args for query, args in connection.execute_calls if "INSERT INTO orders" in query)
+    invoice_args = next(
+        args for query, args in connection.execute_calls if "INSERT INTO invoices" in query
+    )
+    order_snapshot = json.loads(cast(str, order_args[8]))
+    invoice_snapshot = json.loads(cast(str, invoice_args[10]))
+    assert order_snapshot["source_table"] == "tbsslipx"
+    assert order_snapshot["legacy_doc_number"] == "1130826001"
+    assert invoice_snapshot["customer_code"] == "C001"
     assert (
         canonical._tenant_scoped_uuid(tenant_id, "product", UNKNOWN_PRODUCT_CODE) in order_line_args
     )
@@ -797,8 +806,12 @@ async def test_run_canonical_import_imports_purchase_history_into_supplier_invoi
             "purchase_headers": [
                 {
                     "doc_number": "1130827001",
+                    "raw_invoice_number": "GG46104158",
                     "invoice_number": "GG46104158",
+                    "slip_date": "2024-08-27",
+                    "raw_invoice_date": "2024-08-27",
                     "invoice_date": "2024-08-27",
+                    "period_code": "11308",
                     "supplier_code": "T067",
                     "supplier_name": "Supplier A",
                     "address": "Taoyuan",
@@ -842,6 +855,9 @@ async def test_run_canonical_import_imports_purchase_history_into_supplier_invoi
     )
     assert supplier_invoice_args[3] == "GG46104158"
     assert supplier_invoice_args[9] == "SQ04"
+    supplier_snapshot = json.loads(cast(str, supplier_invoice_args[10]))
+    assert supplier_snapshot["source_table"] == "tbsslipj"
+    assert supplier_snapshot["invoice_number_source"] == "legacy_invoice_number"
     assert any(
         "INSERT INTO supplier_invoice_lines" in query for query, _ in connection.execute_calls
     )

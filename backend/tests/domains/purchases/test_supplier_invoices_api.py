@@ -63,6 +63,10 @@ class FakeSupplierInvoice:
         self.total_amount = Decimal("105.00")
         self.status = _FakeEnum(status)
         self.notes = "Imported from legacy purchase history"
+        self.legacy_header_snapshot = {
+            "source_table": "tbsslipj",
+            "legacy_doc_number": "1130827001",
+        }
         self.created_at = datetime.now(tz=UTC)
         self.updated_at = datetime.now(tz=UTC)
         self.lines = lines or []
@@ -189,6 +193,7 @@ async def test_list_supplier_invoices_returns_serialized_items() -> None:
         assert body["items"][0]["supplier_name"] == "Acme Supply"
         assert body["items"][0]["line_count"] == 2
         assert body["items"][0]["status"] == "open"
+        assert body["items"][0]["legacy_header_snapshot"]["source_table"] == "tbsslipj"
     finally:
         _teardown(previous_override)
 
@@ -214,6 +219,7 @@ async def test_get_supplier_invoice_returns_detail_with_product_names() -> None:
         assert body["supplier_name"] == "Acme Supply"
         assert body["lines"][0]["product_name"] == "Widget Pro"
         assert body["lines"][0]["product_code_snapshot"] == "P-100"
+        assert body["legacy_header_snapshot"]["legacy_doc_number"] == "1130827001"
     finally:
         _teardown(previous_override)
 
