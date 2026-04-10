@@ -30,6 +30,7 @@ import {
   ORDERS_ROUTE,
   ORDER_CREATE_ROUTE,
   ORDER_DETAIL_ROUTE,
+  OWNER_DASHBOARD_ROUTE,
   PAYMENTS_ROUTE,
   PURCHASES_ROUTE,
   SETTINGS_ROUTE,
@@ -38,6 +39,7 @@ import { AdminPage } from "./pages/AdminPage";
 import CreateCustomerPage from "./pages/customers/CreateCustomerPage";
 import { CustomerListPage } from "./pages/customers/CustomerListPage";
 import { DashboardPage } from "./pages/dashboard/DashboardPage";
+import { OwnerDashboardPage } from "./domain/owner-dashboard/OwnerDashboardPage";
 import { InventoryPage } from "./pages/InventoryPage";
 import CreateInvoicePage from "./pages/invoices/CreateInvoicePage";
 import { InvoicesPage } from "./pages/InvoicesPage";
@@ -287,6 +289,16 @@ export default function App() {
               <ProtectedAppRoute requiredFeature="admin">
                 <RoutedPage>
                   <AdminPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={OWNER_DASHBOARD_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="owner_dashboard">
+                <RoutedPage>
+                  <OwnerDashboardPage />
                 </RoutedPage>
               </ProtectedAppRoute>
             }

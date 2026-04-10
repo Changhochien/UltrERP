@@ -9,13 +9,14 @@ import {
   ShoppingCart,
   Users,
   WalletCards,
+  LayoutDashboardIcon,
 } from "lucide-react";
 
 import type { AppFeature } from "../hooks/usePermissions";
 import {
   ADMIN_ROUTE,
-  CUSTOMERS_ROUTE,
   CUSTOMER_CREATE_ROUTE,
+  CUSTOMERS_ROUTE,
   HOME_ROUTE,
   INVENTORY_ROUTE,
   INVOICES_ROUTE,
@@ -23,6 +24,7 @@ import {
   LOGIN_ROUTE,
   ORDERS_ROUTE,
   ORDER_CREATE_ROUTE,
+  OWNER_DASHBOARD_ROUTE,
   PAYMENTS_ROUTE,
   PURCHASES_ROUTE,
   SETTINGS_ROUTE,
@@ -58,6 +60,13 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
         to: ADMIN_ROUTE,
         description: "routes.admin.description",
         icon: ShieldCheck,
+      },
+      {
+        feature: "owner_dashboard",
+        label: "nav.ownerDashboard",
+        to: OWNER_DASHBOARD_ROUTE,
+        description: "routes.ownerDashboard.description",
+        icon: LayoutDashboardIcon,
       },
       {
         feature: "settings",
@@ -135,6 +144,7 @@ export const ROUTE_CONTEXT_KEYS = [
   { match: INVENTORY_ROUTE, labelKey: "routes.inventory.label", descriptionKey: "routes.inventory.description" },
   { match: PURCHASES_ROUTE, labelKey: "routes.purchases.label", descriptionKey: "routes.purchases.description" },
   { match: ADMIN_ROUTE, labelKey: "routes.admin.label", descriptionKey: "routes.admin.description" },
+  { match: OWNER_DASHBOARD_ROUTE, labelKey: "routes.ownerDashboard.label", descriptionKey: "routes.ownerDashboard.description" },
   { match: SETTINGS_ROUTE, labelKey: "routes.settings.label", descriptionKey: "routes.settings.description" },
   { match: LOGIN_ROUTE, labelKey: "routes.login.label", descriptionKey: "routes.login.description" },
 ] as const;

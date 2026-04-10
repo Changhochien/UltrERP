@@ -31,9 +31,9 @@ export function OwnerDashboardPage() {
   const apAging = useAPAging();
   const cashFlow = useCashFlow();
   const grossMargin = useGrossMargin();
-  const revenueTrend = useRevenueTrend();
 
   const [revenuePeriod, setRevenuePeriod] = useState<"month" | "quarter" | "year">("month");
+  const revenueTrend = useRevenueTrend(revenuePeriod);
 
   return (
     <div className="space-y-6">
@@ -74,10 +74,13 @@ export function OwnerDashboardPage() {
         <RevenueTrendChart
           data={revenueTrend.data?.items ?? []}
           isLoading={revenueTrend.isLoading}
+          isLoadingMore={revenueTrend.isLoadingMore}
           error={revenueTrend.error}
           onRetry={() => void revenueTrend.refetch()}
           period={revenuePeriod}
           onPeriodChange={setRevenuePeriod}
+          hasMore={revenueTrend.hasMore}
+          onLoadMore={revenueTrend.loadMore}
         />
       </section>
 
