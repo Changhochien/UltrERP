@@ -107,6 +107,56 @@ def _currency_code(value: object | None) -> str:
     return raw[:3]
 
 
+def _compact_snapshot(snapshot: dict[str, object | None]) -> dict[str, object]:
+    return {key: value for key, value in snapshot.items() if value not in (None, "")}
+
+
+def _build_sales_header_snapshot(header: dict[str, object]) -> dict[str, object]:
+    return _compact_snapshot(
+        {
+            "source_table": "tbsslipx",
+            "legacy_doc_number": _as_text(header.get("doc_number")),
+            "invoice_date_raw": _as_text(header.get("invoice_date")),
+            "customer_code": _as_text(header.get("customer_code")),
+            "customer_name": _as_text(header.get("customer_name")),
+            "address": _as_text(header.get("address")),
+            "currency_code": _as_text(header.get("currency_code")),
+            "exchange_rate": _as_text(header.get("exchange_rate")),
+            "tax_type": _as_text(header.get("tax_type")),
+            "tax_rate": _as_text(header.get("tax_rate")),
+            "period_code": _as_text(header.get("period_code")),
+            "source_status": _as_text(header.get("source_status")),
+            "remark": _as_text(header.get("remark")),
+            "created_by": _as_text(header.get("created_by")),
+        }
+    )
+
+
+def _build_purchase_header_snapshot(header: dict[str, object]) -> dict[str, object]:
+    raw_invoice_number = _as_text(header.get("raw_invoice_number"))
+    raw_invoice_date = _as_text(header.get("raw_invoice_date"))
+    return _compact_snapshot(
+        {
+            "source_table": "tbsslipj",
+            "legacy_doc_number": _as_text(header.get("doc_number")),
+            "supplier_code": _as_text(header.get("supplier_code")),
+            "supplier_name": _as_text(header.get("supplier_name")),
+            "address": _as_text(header.get("address")),
+            "currency_code": _as_text(header.get("currency_code")),
+            "period_code": _as_text(header.get("period_code")),
+            "tax_rate": _as_text(header.get("tax_rate")),
+            "raw_invoice_number": raw_invoice_number,
+            "resolved_invoice_number": _as_text(header.get("invoice_number")),
+            "invoice_number_source": "legacy_invoice_number" if raw_invoice_number else "doc_number",
+            "raw_invoice_date": raw_invoice_date,
+            "resolved_invoice_date": _as_text(header.get("invoice_date")),
+            "invoice_date_source": "legacy_invoice_date" if raw_invoice_date else "slip_date",
+            "slip_date": _as_text(header.get("slip_date")),
+            "notes": _as_text(header.get("notes")),
+        }
+    )
+
+
 def _tax_policy_code(tax_amount: Decimal) -> tuple[str, int, Decimal]:
     if tax_amount > Decimal("0"):
         return ("standard", 1, Decimal("0.05"))
@@ -633,7 +683,9 @@ async def _fetch_sales_headers(
 			col_19 AS tax_amount,
 			col_24 AS total_amount,
 			col_30 AS remark,
+            col_31 AS period_code,
 			col_32 AS created_by,
+            col_80 AS source_status,
 			col_85 AS tax_rate,
 			_source_row_number AS source_row_number
 		FROM {quoted_schema}.tbsslipx
@@ -689,6 +741,11 @@ async def _fetch_purchase_headers(
         f"""
 		SELECT
 			col_2 AS doc_number,
+            col_3 AS slip_date,
+            col_30 AS period_code,
+            col_42 AS raw_invoice_number,
+            col_62 AS raw_invoice_date,
+            col_78 AS tax_rate,
             CASE
                 WHEN COALESCE(col_42, '') <> '' THEN col_42
                 ELSE col_2
@@ -1178,6 +1235,7 @@ async def _import_sales_history(
         created_at = _as_timestamp(invoice_date)
         order_id = _tenant_scoped_uuid(tenant_id, "order", doc_number)
         invoice_id = _tenant_scoped_uuid(tenant_id, "invoice", doc_number)
+        legacy_header_snapshot = _build_sales_header_snapshot(header)
 
         await connection.execute(
             """
@@ -1194,6 +1252,7 @@ async def _import_sales_history(
 				total_amount,
 				invoice_id,
 				notes,
+                legacy_header_snapshot,
 				created_by,
 				created_at,
 				updated_at,
@@ -1212,10 +1271,11 @@ async def _import_sales_history(
                 $7,
                 NULL,
                 $8,
-                $9,
+                $9::json,
                 $10,
-                $10,
-                $10
+                $11,
+                $11,
+                $11
             )
 			ON CONFLICT (id) DO UPDATE SET
 				customer_id = EXCLUDED.customer_id,
@@ -1225,6 +1285,7 @@ async def _import_sales_history(
 				tax_amount = EXCLUDED.tax_amount,
 				total_amount = EXCLUDED.total_amount,
 				notes = EXCLUDED.notes,
+                legacy_header_snapshot = EXCLUDED.legacy_header_snapshot,
 				created_by = EXCLUDED.created_by,
 				updated_at = NOW(),
 				confirmed_at = EXCLUDED.confirmed_at
@@ -1237,6 +1298,7 @@ async def _import_sales_history(
             _as_decimal(header.get("tax_amount"), "0.00"),
             _as_decimal(header.get("total_amount"), "0.00"),
             _as_text(header.get("remark")) or None,
+            json.dumps(legacy_header_snapshot),
             _as_text(header.get("created_by")) or "legacy-import",
             created_at,
         )
@@ -1271,11 +1333,12 @@ async def _import_sales_history(
 				total_amount,
 				status,
 				version,
+                legacy_header_snapshot,
 				order_id,
 				created_at,
 				updated_at
 			)
-			VALUES ($1, $2, $3, $4, $5, 'b2b', $6, $7, $8, $9, $10, 'issued', 1, $11, $12, $12)
+            VALUES ($1, $2, $3, $4, $5, 'b2b', $6, $7, $8, $9, $10, 'issued', 1, $11::json, $12, $13, $13)
 			ON CONFLICT (id) DO UPDATE SET
 				invoice_number = EXCLUDED.invoice_number,
 				invoice_date = EXCLUDED.invoice_date,
@@ -1287,6 +1350,7 @@ async def _import_sales_history(
 				tax_amount = EXCLUDED.tax_amount,
 				total_amount = EXCLUDED.total_amount,
 				status = EXCLUDED.status,
+                legacy_header_snapshot = EXCLUDED.legacy_header_snapshot,
 				order_id = EXCLUDED.order_id,
 				updated_at = NOW()
 			""",
@@ -1300,6 +1364,7 @@ async def _import_sales_history(
             _as_decimal(header.get("subtotal"), "0.00"),
             _as_decimal(header.get("tax_amount"), "0.00"),
             _as_decimal(header.get("total_amount"), "0.00"),
+            json.dumps(legacy_header_snapshot),
             order_id,
             created_at,
         )
@@ -1670,6 +1735,7 @@ async def _import_purchase_history(
         created_at = _as_timestamp(invoice_date)
         supplier_invoice_id = _tenant_scoped_uuid(tenant_id, "supplier-invoice", doc_number)
         tax_amount = _as_money(_as_decimal(header.get("tax_amount"), "0.00"))
+        legacy_header_snapshot = _build_purchase_header_snapshot(header)
 
         await connection.execute(
             """
@@ -1685,10 +1751,11 @@ async def _import_purchase_history(
 				total_amount,
 				status,
 				notes,
+                legacy_header_snapshot,
 				created_at,
 				updated_at
 			)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'open', $10, $11, $11)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'open', $10, $11::json, $12, $12)
 			ON CONFLICT (id) DO UPDATE SET
 				supplier_id = EXCLUDED.supplier_id,
 				invoice_number = EXCLUDED.invoice_number,
@@ -1699,6 +1766,7 @@ async def _import_purchase_history(
 				total_amount = EXCLUDED.total_amount,
 				status = EXCLUDED.status,
 				notes = EXCLUDED.notes,
+                legacy_header_snapshot = EXCLUDED.legacy_header_snapshot,
 				updated_at = NOW()
 			""",
             supplier_invoice_id,
@@ -1711,6 +1779,7 @@ async def _import_purchase_history(
             tax_amount,
             _as_money(_as_decimal(header.get("total_amount"), "0.00")),
             _as_text(header.get("notes")) or None,
+            json.dumps(legacy_header_snapshot),
             created_at,
         )
         await _upsert_lineage(
