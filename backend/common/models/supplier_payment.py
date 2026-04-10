@@ -72,6 +72,7 @@ class SupplierPayment(Base):
 		Enum(
 			SupplierPaymentStatus,
 			name="supplier_payment_status_enum",
+			values_callable=lambda enum_type: [member.value for member in enum_type],
 			create_constraint=True,
 		),
 		default=SupplierPaymentStatus.UNAPPLIED,

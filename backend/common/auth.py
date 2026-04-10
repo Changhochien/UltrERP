@@ -20,9 +20,13 @@ _API_ROLES = frozenset({"owner", "admin", "finance", "warehouse", "sales"})
 
 
 async def get_current_user(
+	request: Request,
 	credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
 ) -> dict:
-	"""Decode JWT, return payload dict with sub, tenant_id, role."""
+	"""Decode JWT, return payload dict with sub, tenant_id, role.
+
+	Stores tenant_id in request.state for access by get_tenant_id().
+	"""
 	if not credentials:
 		raise HTTPException(status_code=401, detail="Not authenticated")
 	try:
@@ -42,8 +46,7 @@ async def get_current_user(
 	if not isinstance(role, str) or role not in _API_ROLES:
 		raise HTTPException(status_code=401, detail="Invalid token")
 	try:
-		UUID(str(sub))
-		UUID(str(tenant_id))
+		request.state.tenant_id = UUID(tenant_id)
 	except (TypeError, ValueError):
 		raise HTTPException(status_code=401, detail="Invalid token")
 	return payload
