@@ -35,10 +35,13 @@ export interface AuditLogQueryParams {
   page_size?: number;
   action?: string;
   actor_id?: string;
+  actor_type?: string;
   entity_type?: string;
   entity_id?: string;
   created_after?: string;
   created_before?: string;
+  sort_by?: "created_at" | "actor_id" | "actor_type" | "action" | "entity_id";
+  sort_direction?: "asc" | "desc";
 }
 
 export interface AuditLogListResult {
@@ -122,10 +125,13 @@ export async function fetchAuditLogs(
   if (params?.page_size) qs.set("page_size", String(params.page_size));
   if (params?.action) qs.set("action", params.action);
   if (params?.actor_id) qs.set("actor_id", params.actor_id);
+  if (params?.actor_type) qs.set("actor_type", params.actor_type);
   if (params?.entity_type) qs.set("entity_type", params.entity_type);
   if (params?.entity_id) qs.set("entity_id", params.entity_id);
   if (params?.created_after) qs.set("created_after", params.created_after);
   if (params?.created_before) qs.set("created_before", params.created_before);
+  if (params?.sort_by) qs.set("sort_by", params.sort_by);
+  if (params?.sort_direction) qs.set("sort_direction", params.sort_direction);
   const qsStr = qs.toString();
   const url = `/api/v1/admin/audit-logs/${qsStr ? `?${qsStr}` : ""}`;
   const resp = await apiFetch(url);

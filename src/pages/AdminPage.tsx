@@ -8,7 +8,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-import { DataTable } from "../components/layout/DataTable";
+import { DataTable, type DataTableSortState } from "../components/layout/DataTable";
 import { PageHeader, SectionCard, SurfaceMessage } from "../components/layout/PageLayout";
 import { Badge } from "../components/ui/badge";
 import { buttonVariants, Button } from "../components/ui/button";
@@ -22,7 +22,13 @@ import {
 } from "../components/ui/dialog";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import { Skeleton } from "../components/ui/skeleton";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "../components/ui/sheet";
 import { cn } from "../lib/utils";
 import { SETTINGS_ROUTE } from "../lib/routes";
 import {
@@ -62,9 +68,17 @@ type PermissionLevelOrNone = PermissionLevel | "none";
 
 interface AuditFilterState {
   actorId: string;
+  actorType: string;
   action: string;
   entityType: string;
   entityId: string;
+  createdAfter: string;
+  createdBefore: string;
+}
+
+interface SavedAuditPreset {
+  name: string;
+  filters: AuditFilterState;
 }
 
 interface PermissionMatrixRow {
@@ -82,11 +96,15 @@ const EMPTY_FORM: AdminUserFormState = {
 
 const EMPTY_AUDIT_FILTERS: AuditFilterState = {
   actorId: "",
+  actorType: "",
   action: "",
   entityType: "",
   entityId: "",
+  createdAfter: "",
+  createdBefore: "",
 };
 
+const AUDIT_PRESET_STORAGE_KEY = "ultrerp_admin_audit_presets";
 const AUDIT_PAGE_SIZE = 20;
 const MATRIX_ROLES: MatrixRole[] = ["admin", "owner", "finance", "warehouse", "sales"];
 const AUDIT_ACTION_SUGGESTIONS = [
@@ -97,6 +115,7 @@ const AUDIT_ACTION_SUGGESTIONS = [
   "inventory.adjust",
   "product.update",
 ];
+const AUDIT_ACTOR_TYPE_SUGGESTIONS = ["user", "system"];
 const AUDIT_ENTITY_SUGGESTIONS = [
   "user",
   "approval",
@@ -104,6 +123,92 @@ const AUDIT_ENTITY_SUGGESTIONS = [
   "product",
   "settings",
 ];
+
+function buildAuditFilterOptions(baseOptions: readonly string[], currentValue: string): string[] {
+  const normalizedValue = currentValue.trim();
+  if (!normalizedValue || baseOptions.includes(normalizedValue)) {
+    return [...baseOptions];
+  }
+  return [normalizedValue, ...baseOptions];
+}
+
+function formatDateInput(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function shiftUtcDays(date: Date, days: number): Date {
+  const next = new Date(date);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next;
+}
+
+function formatAuditState(value: Record<string, unknown> | null): string | null {
+  if (value == null) {
+    return null;
+  }
+  return JSON.stringify(value, null, 2);
+}
+
+function cloneAuditFilters(filters: AuditFilterState): AuditFilterState {
+  return { ...filters };
+}
+
+function loadSavedAuditPresets(): SavedAuditPreset[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const raw = window.localStorage.getItem(AUDIT_PRESET_STORAGE_KEY);
+    if (!raw) {
+      return [];
+    }
+    const parsed = JSON.parse(raw) as Array<{ name?: unknown; filters?: Partial<AuditFilterState> }>;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed
+      .filter((preset) => typeof preset.name === "string" && preset.name.trim())
+      .map((preset) => ({
+        name: String(preset.name).trim(),
+        filters: {
+          actorId: String(preset.filters?.actorId ?? ""),
+          actorType: String(preset.filters?.actorType ?? ""),
+          action: String(preset.filters?.action ?? ""),
+          entityType: String(preset.filters?.entityType ?? ""),
+          entityId: String(preset.filters?.entityId ?? ""),
+          createdAfter: String(preset.filters?.createdAfter ?? ""),
+          createdBefore: String(preset.filters?.createdBefore ?? ""),
+        },
+      }));
+  } catch {
+    return [];
+  }
+}
+
+function persistSavedAuditPresets(presets: SavedAuditPreset[]) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.localStorage.setItem(AUDIT_PRESET_STORAGE_KEY, JSON.stringify(presets));
+}
+
+function downloadTextFile(filename: string, content: string, mimeType: string, prependBom = false) {
+  const blob = new Blob([prependBom ? `\uFEFF${content}` : content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function csvCell(value: unknown): string {
+  return `"${String(value ?? "").replace(/"/g, '""')}"`;
+}
 
 function buildEditForm(user: AdminUser): AdminUserFormState {
   return {
@@ -148,6 +253,16 @@ function generateTemporaryPassword(length = 16): string {
     }
   }
   return Array.from(values, (value) => alphabet[value % alphabet.length]).join("");
+}
+
+function toAuditDateBoundary(value: string, boundary: "start" | "end"): string | undefined {
+  const trimmedValue = value.trim();
+  if (!trimmedValue) {
+    return undefined;
+  }
+  return boundary === "start"
+    ? `${trimmedValue}T00:00:00`
+    : `${trimmedValue}T23:59:59.999999`;
 }
 
 function validateForm(
@@ -197,6 +312,26 @@ export function AdminPage() {
   const [auditFilters, setAuditFilters] = useState<AuditFilterState>(EMPTY_AUDIT_FILTERS);
   const [auditPage, setAuditPage] = useState(1);
   const [auditTotal, setAuditTotal] = useState(0);
+  const [auditSortState, setAuditSortState] = useState<DataTableSortState>({
+    columnId: "created_at",
+    direction: "desc",
+  });
+  const [selectedAuditLog, setSelectedAuditLog] = useState<AuditLogEntry | null>(null);
+  const [savedAuditPresetName, setSavedAuditPresetName] = useState("");
+  const [savedAuditPresets, setSavedAuditPresets] = useState<SavedAuditPreset[]>(() => loadSavedAuditPresets());
+
+  const auditActorTypeOptions = useMemo(
+    () => buildAuditFilterOptions(AUDIT_ACTOR_TYPE_SUGGESTIONS, auditFilters.actorType),
+    [auditFilters.actorType],
+  );
+  const auditActionOptions = useMemo(
+    () => buildAuditFilterOptions(AUDIT_ACTION_SUGGESTIONS, auditFilters.action),
+    [auditFilters.action],
+  );
+  const auditEntityOptions = useMemo(
+    () => buildAuditFilterOptions(AUDIT_ENTITY_SUGGESTIONS, auditFilters.entityType),
+    [auditFilters.entityType],
+  );
 
   const roleLabel = (role: MatrixRole) => {
     if (role === "admin") {
@@ -242,7 +377,8 @@ export function AdminPage() {
     setUsersLoading(true);
     setUsersError(null);
     try {
-      setUsers(await fetchUsers());
+      const response = await fetchUsers();
+      setUsers(Array.isArray(response) ? response : []);
     } catch (err) {
       setUsersError(err instanceof Error ? err.message : t("adminPage.errors.loadFailed"));
     } finally {
@@ -259,17 +395,36 @@ export function AdminPage() {
         page_size: AUDIT_PAGE_SIZE,
         action: auditFilters.action || undefined,
         actor_id: auditFilters.actorId || undefined,
+        actor_type: auditFilters.actorType || undefined,
         entity_type: auditFilters.entityType || undefined,
         entity_id: auditFilters.entityId || undefined,
+        created_after: toAuditDateBoundary(auditFilters.createdAfter, "start"),
+        created_before: toAuditDateBoundary(auditFilters.createdBefore, "end"),
+        sort_by: auditSortState.columnId as "created_at" | "actor_id" | "actor_type" | "action" | "entity_id",
+        sort_direction: auditSortState.direction,
       });
-      setAuditLogs(response.items);
-      setAuditTotal(response.total);
+      const items = Array.isArray(response) ? response : response.items ?? [];
+      const total = Array.isArray(response) ? items.length : response.total ?? items.length;
+      setAuditLogs(items);
+      setAuditTotal(total);
     } catch (err) {
       setAuditError(err instanceof Error ? err.message : t("adminPage.errors.loadFailed"));
     } finally {
       setAuditLoading(false);
     }
-  }, [auditFilters.action, auditFilters.actorId, auditFilters.entityId, auditFilters.entityType, auditPage, t]);
+  }, [
+    auditFilters.action,
+    auditFilters.actorId,
+    auditFilters.actorType,
+    auditFilters.createdAfter,
+    auditFilters.createdBefore,
+    auditFilters.entityId,
+    auditFilters.entityType,
+    auditPage,
+    auditSortState.columnId,
+    auditSortState.direction,
+    t,
+  ]);
 
   useEffect(() => {
     void loadUsers();
@@ -303,6 +458,110 @@ export function AdminPage() {
   function updateAuditFilter<K extends keyof AuditFilterState>(key: K, value: AuditFilterState[K]) {
     setAuditPage(1);
     setAuditFilters((current) => ({ ...current, [key]: value }));
+  }
+
+  function setAuditDateRange(createdAfter: string, createdBefore: string) {
+    setAuditPage(1);
+    setAuditFilters((current) => ({ ...current, createdAfter, createdBefore }));
+  }
+
+  function applyAuditDatePreset(preset: "today" | "last7Days" | "thisMonth") {
+    const today = new Date();
+    const todayValue = formatDateInput(today);
+
+    if (preset === "today") {
+      setAuditDateRange(todayValue, todayValue);
+      return;
+    }
+
+    if (preset === "last7Days") {
+      setAuditDateRange(formatDateInput(shiftUtcDays(today, -6)), todayValue);
+      return;
+    }
+
+    setAuditDateRange(`${todayValue.slice(0, 8)}01`, todayValue);
+  }
+
+  function clearAuditDateRange() {
+    setAuditDateRange("", "");
+  }
+
+  function saveCurrentAuditPreset() {
+    const name = savedAuditPresetName.trim();
+    if (!name) {
+      return;
+    }
+    const next = [
+      { name, filters: cloneAuditFilters(auditFilters) },
+      ...savedAuditPresets.filter((preset) => preset.name !== name),
+    ].slice(0, 8);
+    setSavedAuditPresets(next);
+    persistSavedAuditPresets(next);
+    setSavedAuditPresetName("");
+  }
+
+  function applySavedAuditPreset(preset: SavedAuditPreset) {
+    setAuditPage(1);
+    setAuditFilters(cloneAuditFilters(preset.filters));
+  }
+
+  function deleteSavedAuditPreset(name: string) {
+    const next = savedAuditPresets.filter((preset) => preset.name !== name);
+    setSavedAuditPresets(next);
+    persistSavedAuditPresets(next);
+  }
+
+  function handleAuditSortChange(nextSortState: DataTableSortState) {
+    setAuditPage(1);
+    setAuditSortState(nextSortState);
+  }
+
+  function exportAuditLogs(format: "csv" | "json") {
+    if (auditLogs.length === 0) {
+      return;
+    }
+
+    const filenameBase = `audit-log-${formatDateInput(new Date())}`;
+    if (format === "json") {
+      downloadTextFile(
+        `${filenameBase}.json`,
+        JSON.stringify(auditLogs, null, 2),
+        "application/json;charset=utf-8;",
+      );
+      return;
+    }
+
+    const rows = auditLogs.map((entry) => [
+      entry.created_at,
+      entry.actor_id,
+      entry.actor_type,
+      entry.action,
+      entry.entity_type,
+      entry.entity_id,
+      entry.correlation_id ?? "",
+      entry.notes ?? "",
+      JSON.stringify(entry.before_state ?? null),
+      JSON.stringify(entry.after_state ?? null),
+    ]);
+    const csv = [
+      [
+        "created_at",
+        "actor_id",
+        "actor_type",
+        "action",
+        "entity_type",
+        "entity_id",
+        "correlation_id",
+        "notes",
+        "before_state",
+        "after_state",
+      ],
+      ...rows,
+    ]
+      .map((row) => row.map(csvCell).join(","))
+      .join("\n");
+
+    downloadTextFile(`${filenameBase}.csv`, csv, "text/csv;charset=utf-8;", true);
   }
 
   function handleGeneratePassword() {
@@ -492,7 +751,90 @@ export function AdminPage() {
           <SectionCard
             title={t("adminPage.auditLog.title")}
             description={t("adminPage.auditLog.description")}
+            actions={(
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => exportAuditLogs("csv")}
+                  disabled={auditLogs.length === 0}
+                >
+                  {t("adminPage.auditLog.export.csv")}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => exportAuditLogs("json")}
+                  disabled={auditLogs.length === 0}
+                >
+                  {t("adminPage.auditLog.export.json")}
+                </Button>
+              </div>
+            )}
           >
+            <div className="mb-4 rounded-2xl border border-border/70 bg-muted/15 p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-end">
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Label htmlFor="admin-audit-preset-name">{t("adminPage.auditLog.savedPresets.name")}</Label>
+                  <Input
+                    id="admin-audit-preset-name"
+                    value={savedAuditPresetName}
+                    onChange={(event) => setSavedAuditPresetName(event.target.value)}
+                    placeholder={t("adminPage.auditLog.savedPresets.namePlaceholder")}
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={saveCurrentAuditPreset}
+                  disabled={!savedAuditPresetName.trim()}
+                >
+                  {t("adminPage.auditLog.savedPresets.save")}
+                </Button>
+              </div>
+
+              {savedAuditPresets.length === 0 ? (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  {t("adminPage.auditLog.savedPresets.empty")}
+                </p>
+              ) : (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {savedAuditPresets.map((preset) => (
+                    <div
+                      key={preset.name}
+                      className="flex items-center gap-1 rounded-full border border-border/70 bg-background px-2 py-1"
+                    >
+                      <Button variant="ghost" size="sm" onClick={() => applySavedAuditPreset(preset)}>
+                        {preset.name}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={t("adminPage.auditLog.savedPresets.delete")}
+                        onClick={() => deleteSavedAuditPreset(preset.name)}
+                      >
+                        {t("adminPage.auditLog.savedPresets.delete")}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mb-4 flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={() => applyAuditDatePreset("today")}>
+                {t("adminPage.auditLog.presets.today")}
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => applyAuditDatePreset("last7Days")}>
+                {t("adminPage.auditLog.presets.last7Days")}
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => applyAuditDatePreset("thisMonth")}>
+                {t("adminPage.auditLog.presets.thisMonth")}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={clearAuditDateRange}>
+                {t("adminPage.auditLog.presets.clear")}
+              </Button>
+            </div>
+
             <div className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <div className="space-y-2">
                 <Label htmlFor="admin-audit-actor">{t("adminPage.auditLog.filters.actor")}</Label>
@@ -504,34 +846,52 @@ export function AdminPage() {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="admin-audit-actor-type">{t("adminPage.auditLog.filters.actorType")}</Label>
+                <select
+                  id="admin-audit-actor-type"
+                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  value={auditFilters.actorType}
+                  onChange={(event) => updateAuditFilter("actorType", event.target.value)}
+                >
+                  <option value="">{t("adminPage.auditLog.filters.actorTypePlaceholder")}</option>
+                  {auditActorTypeOptions.map((actorType) => (
+                    <option key={actorType} value={actorType}>
+                      {actorType}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="admin-audit-action">{t("adminPage.auditLog.filters.action")}</Label>
-                <Input
+                <select
                   id="admin-audit-action"
-                  list="admin-audit-action-list"
+                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                   value={auditFilters.action}
                   onChange={(event) => updateAuditFilter("action", event.target.value)}
-                  placeholder={t("adminPage.auditLog.filters.actionPlaceholder")}
-                />
-                <datalist id="admin-audit-action-list">
-                  {AUDIT_ACTION_SUGGESTIONS.map((action) => (
-                    <option key={action} value={action} />
+                >
+                  <option value="">{t("adminPage.auditLog.filters.actionPlaceholder")}</option>
+                  {auditActionOptions.map((action) => (
+                    <option key={action} value={action}>
+                      {action}
+                    </option>
                   ))}
-                </datalist>
+                </select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="admin-audit-entity-type">{t("adminPage.auditLog.filters.entityType")}</Label>
-                <Input
+                <select
                   id="admin-audit-entity-type"
-                  list="admin-audit-entity-type-list"
+                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                   value={auditFilters.entityType}
                   onChange={(event) => updateAuditFilter("entityType", event.target.value)}
-                  placeholder={t("adminPage.auditLog.filters.entityTypePlaceholder")}
-                />
-                <datalist id="admin-audit-entity-type-list">
-                  {AUDIT_ENTITY_SUGGESTIONS.map((entityType) => (
-                    <option key={entityType} value={entityType} />
+                >
+                  <option value="">{t("adminPage.auditLog.filters.entityTypePlaceholder")}</option>
+                  {auditEntityOptions.map((entityType) => (
+                    <option key={entityType} value={entityType}>
+                      {entityType}
+                    </option>
                   ))}
-                </datalist>
+                </select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="admin-audit-entity-id">{t("adminPage.auditLog.filters.entityId")}</Label>
@@ -542,6 +902,24 @@ export function AdminPage() {
                   placeholder={t("adminPage.auditLog.filters.entityIdPlaceholder")}
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="admin-audit-created-after">{t("adminPage.auditLog.filters.createdAfter")}</Label>
+                <Input
+                  id="admin-audit-created-after"
+                  type="date"
+                  value={auditFilters.createdAfter}
+                  onChange={(event) => updateAuditFilter("createdAfter", event.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="admin-audit-created-before">{t("adminPage.auditLog.filters.createdBefore")}</Label>
+                <Input
+                  id="admin-audit-created-before"
+                  type="date"
+                  value={auditFilters.createdBefore}
+                  onChange={(event) => updateAuditFilter("createdBefore", event.target.value)}
+                />
+              </div>
             </div>
 
             <DataTable
@@ -549,30 +927,41 @@ export function AdminPage() {
                 {
                   id: "created_at",
                   header: t("adminPage.auditLog.columns.createdAt"),
-                  sortable: true,
                   getSortValue: (entry) => new Date(entry.created_at).getTime(),
                   cell: (entry) => new Date(entry.created_at).toLocaleString(),
                 },
                 {
                   id: "actor_id",
                   header: t("adminPage.auditLog.columns.actor"),
-                  sortable: true,
                   getSortValue: (entry) => entry.actor_id,
                   cell: (entry) => entry.actor_id,
                 },
                 {
+                  id: "actor_type",
+                  header: t("adminPage.auditLog.columns.actorType"),
+                  getSortValue: (entry) => entry.actor_type,
+                  cell: (entry) => entry.actor_type,
+                },
+                {
                   id: "action",
                   header: t("adminPage.auditLog.columns.action"),
-                  sortable: true,
                   getSortValue: (entry) => entry.action,
                   cell: (entry) => entry.action,
                 },
                 {
-                  id: "target",
+                  id: "entity_id",
                   header: t("adminPage.auditLog.columns.target"),
-                  sortable: true,
                   getSortValue: (entry) => `${entry.entity_type}:${entry.entity_id}`,
                   cell: (entry) => `${entry.entity_type}:${entry.entity_id}`,
+                },
+                {
+                  id: "details",
+                  header: t("adminPage.auditLog.columns.details"),
+                  cell: (entry) => (
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedAuditLog(entry)}>
+                      {t("adminPage.auditLog.actions.view")}
+                    </Button>
+                  ),
                 },
               ]}
               data={auditLogs}
@@ -587,6 +976,8 @@ export function AdminPage() {
               pageSize={AUDIT_PAGE_SIZE}
               totalItems={auditTotal}
               onPageChange={setAuditPage}
+              sortState={auditSortState}
+              onSortChange={handleAuditSortChange}
               getRowId={(entry) => entry.id}
             />
           </SectionCard>
@@ -796,6 +1187,92 @@ export function AdminPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <Sheet
+        open={selectedAuditLog !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedAuditLog(null);
+          }
+        }}
+      >
+        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-xl">
+          <SheetHeader>
+            <SheetTitle>{t("adminPage.auditLog.detailSheet.title")}</SheetTitle>
+            <SheetDescription>{t("adminPage.auditLog.detailSheet.description")}</SheetDescription>
+          </SheetHeader>
+
+          {selectedAuditLog ? (
+            <div className="mt-6 space-y-6 text-sm">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    {t("adminPage.auditLog.detailSheet.fields.createdAt")}
+                  </p>
+                  <p>{new Date(selectedAuditLog.created_at).toLocaleString()}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    {t("adminPage.auditLog.detailSheet.fields.action")}
+                  </p>
+                  <p>{selectedAuditLog.action}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    {t("adminPage.auditLog.detailSheet.fields.actor")}
+                  </p>
+                  <p>{selectedAuditLog.actor_id}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    {t("adminPage.auditLog.detailSheet.fields.actorType")}
+                  </p>
+                  <p>{selectedAuditLog.actor_type}</p>
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    {t("adminPage.auditLog.detailSheet.fields.target")}
+                  </p>
+                  <p>{`${selectedAuditLog.entity_type}:${selectedAuditLog.entity_id}`}</p>
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    {t("adminPage.auditLog.detailSheet.fields.correlationId")}
+                  </p>
+                  <p>{selectedAuditLog.correlation_id ?? t("adminPage.auditLog.detailSheet.emptyState")}</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  {t("adminPage.auditLog.detailSheet.fields.notes")}
+                </p>
+                <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-3 text-sm">
+                  {selectedAuditLog.notes ?? t("adminPage.auditLog.detailSheet.emptyState")}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  {t("adminPage.auditLog.detailSheet.fields.beforeState")}
+                </p>
+                <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-xl border border-border/70 bg-muted/20 p-4 text-xs leading-6 text-foreground">
+                  {formatAuditState(selectedAuditLog.before_state) ?? t("adminPage.auditLog.detailSheet.emptyState")}
+                </pre>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  {t("adminPage.auditLog.detailSheet.fields.afterState")}
+                </p>
+                <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-xl border border-border/70 bg-muted/20 p-4 text-xs leading-6 text-foreground">
+                  {formatAuditState(selectedAuditLog.after_state) ?? t("adminPage.auditLog.detailSheet.emptyState")}
+                </pre>
+              </div>
+            </div>
+          ) : null}
+        </SheetContent>
+      </Sheet>
     </>
   );
 }

@@ -102,13 +102,18 @@ describe("admin api client", () => {
       page: 2,
       page_size: 20,
       actor_id: "owner-1",
+      actor_type: "user",
       action: "user.update",
       entity_type: "user",
       entity_id: "abc123",
+      created_after: "2025-01-01T00:00:00",
+      created_before: "2025-01-31T23:59:59.999999",
+      sort_by: "action",
+      sort_direction: "asc",
     });
 
     expect(apiFetchMock).toHaveBeenCalledWith(
-      "/api/v1/admin/audit-logs/?page=2&page_size=20&action=user.update&actor_id=owner-1&entity_type=user&entity_id=abc123",
+      "/api/v1/admin/audit-logs/?page=2&page_size=20&action=user.update&actor_id=owner-1&actor_type=user&entity_type=user&entity_id=abc123&created_after=2025-01-01T00%3A00%3A00&created_before=2025-01-31T23%3A59%3A59.999999&sort_by=action&sort_direction=asc",
     );
   });
 });
