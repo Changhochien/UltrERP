@@ -1,17 +1,13 @@
-/** Cash Flow dashboard card — weekly inflows vs outflows bar chart. */
+/** Cash Flow dashboard card — weekly inflows vs outflows bar chart using @visx. */
 
 import { useTranslation } from "react-i18next";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  ReferenceLine,
-} from "recharts";
+import { ParentSize } from "@visx/responsive";
+import { scaleBand, scaleLinear } from "@visx/scale";
+import { Bar } from "@visx/shape";
+import { AxisBottom, AxisLeft } from "@visx/axis";
+import { GridRows } from "@visx/grid";
+import { Group } from "@visx/group";
+import { TooltipWithBounds, useTooltip } from "@visx/tooltip";
 
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
 import { Skeleton } from "../../../components/ui/skeleton";
@@ -30,6 +26,170 @@ interface CashFlowCardProps {
   isLoading: boolean;
   error: string | null;
   onRetry: () => void;
+}
+
+interface ChartData {
+  date: string;
+  inflows: number;
+  outflows: number;
+  net: number;
+}
+
+function ChartInner({
+  chartData,
+  width,
+  height,
+  t,
+}: {
+  chartData: ChartData[];
+  width: number;
+  height: number;
+  t: (key: string) => string;
+}) {
+  const { showTooltip, hideTooltip, tooltipOpen, tooltipData, tooltipLeft, tooltipTop } =
+    useTooltip<ChartData>();
+
+  const margin = { top: 10, right: 10, left: 60, bottom: 40 };
+  const innerWidth = width - margin.left - margin.right;
+  const innerHeight = height - margin.top - margin.bottom;
+
+  const xScale = scaleBand({
+    domain: chartData.map((d) => d.date),
+    range: [0, innerWidth],
+    padding: 0.3,
+  });
+
+  const allValues = chartData.flatMap((d) => [d.inflows, d.outflows, d.net]);
+  const yMax = Math.max(...allValues, 1);
+
+  const yScale = scaleLinear({
+    domain: [0, yMax * 1.1],
+    range: [innerHeight, 0],
+  });
+
+  const barWidth = xScale.bandwidth();
+  const netBarWidth = barWidth * 0.4;
+  const inflowsWidth = (barWidth - netBarWidth) / 2 - 1;
+  const outflowsWidth = inflowsWidth;
+
+  return (
+    <div style={{ position: "relative" }}>
+      <svg width={width} height={height}>
+        <Group left={margin.left} top={margin.top}>
+          <GridRows
+            scale={yScale}
+            width={innerWidth}
+            stroke="var(--border)"
+            strokeDasharray="3 3"
+          />
+          <AxisBottom
+            top={innerHeight}
+            scale={xScale}
+            tickLabelProps={() => ({
+              fill: "var(--muted-foreground)",
+              fontSize: 11,
+              textAnchor: "middle",
+            })}
+            stroke="var(--border)"
+          />
+          <AxisLeft
+            scale={yScale}
+            tickFormat={(d) => `NT$ ${((d as number) / 1000).toFixed(0)}k`}
+            tickLabelProps={() => ({
+              fill: "var(--muted-foreground)",
+              fontSize: 11,
+              textAnchor: "end",
+            })}
+            stroke="var(--border)"
+          />
+
+          {chartData.map((d, i) => {
+            const x = xScale(d.date) ?? 0;
+            const inflowsY = yScale(d.inflows);
+            const outflowsY = yScale(d.outflows);
+            const netY = yScale(Math.max(0, d.net));
+            const netHeight = Math.abs(yScale(0) - netY);
+            const netBarX = x + inflowsWidth + 2;
+
+            return (
+              <g key={i}>
+                <Bar
+                  x={x}
+                  y={inflowsY}
+                  width={inflowsWidth}
+                  height={innerHeight - inflowsY}
+                  fill="#22c55e"
+                  rx={2}
+                  onMouseEnter={(e) => {
+                    showTooltip({ tooltipData: d, tooltipLeft: e.clientX, tooltipTop: e.clientY });
+                  }}
+                  onMouseLeave={hideTooltip}
+                />
+                <Bar
+                  x={x + inflowsWidth + 2}
+                  y={outflowsY}
+                  width={outflowsWidth}
+                  height={innerHeight - outflowsY}
+                  fill="#ef4444"
+                  rx={2}
+                  onMouseEnter={(e) => {
+                    showTooltip({ tooltipData: d, tooltipLeft: e.clientX, tooltipTop: e.clientY });
+                  }}
+                  onMouseLeave={hideTooltip}
+                />
+                <Bar
+                  x={netBarX}
+                  y={d.net >= 0 ? netY : yScale(0)}
+                  width={netBarWidth}
+                  height={netHeight}
+                  fill="#3b82f6"
+                  rx={2}
+                  onMouseEnter={(e) => {
+                    showTooltip({ tooltipData: d, tooltipLeft: e.clientX, tooltipTop: e.clientY });
+                  }}
+                  onMouseLeave={hideTooltip}
+                />
+              </g>
+            );
+          })}
+        </Group>
+      </svg>
+      <div className="flex gap-4 pt-1 text-xs" style={{ paddingLeft: margin.left }}>
+        <span className="flex items-center gap-1">
+          <span className="size-2 rounded-full bg-green-500" /> {t("dashboard.cashFlow.inflows")}
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="size-2 rounded-full bg-red-500" /> {t("dashboard.cashFlow.outflows")}
+        </span>
+        {chartData.length <= 8 && (
+          <span className="flex items-center gap-1">
+            <span className="size-2 rounded-full bg-blue-500" /> {t("dashboard.cashFlow.net")}
+          </span>
+        )}
+      </div>
+      {tooltipOpen && tooltipData && (
+        <TooltipWithBounds
+          left={tooltipLeft ?? 0}
+          top={tooltipTop ?? 0}
+          style={{
+            background: "var(--background)",
+            border: "1px solid var(--border)",
+            borderRadius: 8,
+            padding: "8px 12px",
+            fontSize: 12,
+            position: "fixed",
+          }}
+        >
+          <div style={{ color: "var(--muted-foreground)", marginBottom: 4 }}>
+            {tooltipData.date}
+          </div>
+          <div style={{ color: "#22c55e" }}>Inflows: {formatTWD(tooltipData.inflows)}</div>
+          <div style={{ color: "#ef4444" }}>Outflows: {formatTWD(tooltipData.outflows)}</div>
+          <div style={{ color: "#3b82f6" }}>Net: {formatTWD(tooltipData.net)}</div>
+        </TooltipWithBounds>
+      )}
+    </div>
+  );
 }
 
 export function CashFlowCard({ data, isLoading, error, onRetry }: CashFlowCardProps) {
@@ -71,19 +231,29 @@ export function CashFlowCard({ data, isLoading, error, onRetry }: CashFlowCardPr
 
   if (!data) return null;
 
-  // Merge inflows, outflows by date for the chart
-  const periodMap: Record<string, { date: string; inflows: number; outflows: number; net: number }> = {};
+  const periodMap: Record<
+    string,
+    { date: string; inflows: number; outflows: number; net: number }
+  > = {};
   for (const item of data.cash_inflows) {
-    periodMap[item.date] = { date: item.date, inflows: Number(item.amount), outflows: 0, net: 0 };
+    periodMap[item.date] = {
+      date: item.date,
+      inflows: Number(item.amount),
+      outflows: 0,
+      net: 0,
+    };
   }
   for (const item of data.cash_outflows) {
-    if (!periodMap[item.date]) periodMap[item.date] = { date: item.date, inflows: 0, outflows: 0, net: 0 };
+    if (!periodMap[item.date])
+      periodMap[item.date] = { date: item.date, inflows: 0, outflows: 0, net: 0 };
     periodMap[item.date].outflows = Number(item.amount);
   }
 
-  const chartData = Object.values(periodMap);
+  const chartData = Object.values(periodMap).map((d) => ({
+    ...d,
+    net: d.inflows - d.outflows,
+  }));
 
-  // Totals
   const totalInflows = data.cash_inflows.reduce((s, i) => s + Number(i.amount), 0);
   const totalOutflows = data.cash_outflows.reduce((s, i) => s + Number(i.amount), 0);
   const totalNet = totalInflows - totalOutflows;
@@ -95,54 +265,32 @@ export function CashFlowCard({ data, isLoading, error, onRetry }: CashFlowCardPr
         <p className="text-sm text-muted-foreground">{t("dashboard.cashFlow.description")}</p>
       </CardHeader>
       <CardContent className="space-y-4 pt-0">
-        {/* Chart */}
         <div data-testid="cash-flow-chart" className="h-48 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 11 }}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                tickFormatter={(v) => `NT$ ${(v / 1000).toFixed(0)}k`}
-                tick={{ fontSize: 11 }}
-                tickLine={false}
-                axisLine={false}
-                width={60}
-              />
-              <Tooltip
-                formatter={(value) => formatTWD(value as number)}
-                contentStyle={{ fontSize: 12 }}
-              />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="inflows" name={t("dashboard.cashFlow.inflows")} fill="#22c55e" radius={[2, 2, 0, 0]} />
-              <Bar dataKey="outflows" name={t("dashboard.cashFlow.outflows")} fill="#ef4444" radius={[2, 2, 0, 0]} />
-              {chartData.length <= 8 && (
-                <Bar dataKey="net" name={t("dashboard.cashFlow.net")} fill="#3b82f6" radius={[2, 2, 0, 0]} />
-              )}
-              {chartData.length > 8 && (
-                <ReferenceLine y={0} stroke="#94a3b8" />
-              )}
-            </BarChart>
-          </ResponsiveContainer>
+          <ParentSize>
+            {({ width }) => (
+              <ChartInner chartData={chartData} width={width} height={192} t={(key) => t(key)} />
+            )}
+          </ParentSize>
         </div>
 
-        {/* Summary row */}
         <div data-testid="cash-flow-summary" className="flex gap-6 pt-2 border-t">
           <div>
-            <p className="text-xs text-muted-foreground">{t("dashboard.cashFlow.totalInflows")}</p>
+            <p className="text-xs text-muted-foreground">
+              {t("dashboard.cashFlow.totalInflows")}
+            </p>
             <p className="text-sm font-semibold text-[#22c55e]">{formatTWD(totalInflows)}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">{t("dashboard.cashFlow.totalOutflows")}</p>
+            <p className="text-xs text-muted-foreground">
+              {t("dashboard.cashFlow.totalOutflows")}
+            </p>
             <p className="text-sm font-semibold text-[#ef4444]">{formatTWD(totalOutflows)}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">{t("dashboard.cashFlow.netCashFlow")}</p>
-            <p className={`text-sm font-semibold ${totalNet >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}>
+            <p
+              className={`text-sm font-semibold ${totalNet >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}
+            >
               {formatTWD(Math.abs(totalNet))}
               {totalNet < 0 ? " ↓" : " ↑"}
             </p>

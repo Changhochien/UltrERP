@@ -1,6 +1,5 @@
-import './i18n';
-
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
+import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
@@ -34,37 +33,43 @@ import {
   PURCHASES_ROUTE,
   SETTINGS_ROUTE,
 } from "./lib/routes";
-import { AdminPage } from "./pages/AdminPage";
-import CreateCustomerPage from "./pages/customers/CreateCustomerPage";
-import { CustomerListPage } from "./pages/customers/CustomerListPage";
-import { DashboardPage } from "./pages/dashboard/DashboardPage";
-import { InventoryPage } from "./pages/InventoryPage";
-import CreateInvoicePage from "./pages/invoices/CreateInvoicePage";
-import { InvoicesPage } from "./pages/InvoicesPage";
-import { OrdersPage } from "./pages/orders/OrdersPage";
-import { PaymentsPage } from "./pages/PaymentsPage";
-import { PurchasesPage } from "./pages/PurchasesPage";
-import LoginPage from "./pages/LoginPage";
-import SettingsPage from "./pages/settings/SettingsPage";
+
+import "./i18n";
 
 export const APP_TITLE = "UltrERP";
 
-function AuthGate({ children }: { children: ReactNode }) {
+// Lazy-loaded page components — default imports work for default exports (LoginPage, CreateCustomerPage, CreateInvoicePage)
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const CreateCustomerPage = lazy(() => import("./pages/customers/CreateCustomerPage"));
+const CreateInvoicePage = lazy(() => import("./pages/invoices/CreateInvoicePage"));
+// Named exports (AdminPage, CustomerListPage, etc.) use `as ComponentType<any>` to satisfy React.lazy's { default: ... } type
+const AdminPage = lazy(() => import("./pages/AdminPage") as unknown as Promise<{ default: ComponentType<any> }>);
+const CustomerListPage = lazy(() => import("./pages/customers/CustomerListPage") as unknown as Promise<{ default: ComponentType<any> }>);
+const DashboardPage = lazy(() => import("./pages/dashboard/DashboardPage") as unknown as Promise<{ default: ComponentType<any> }>);
+const InventoryPage = lazy(() => import("./pages/InventoryPage") as unknown as Promise<{ default: ComponentType<any> }>);
+const InvoicesPage = lazy(() => import("./pages/InvoicesPage") as unknown as Promise<{ default: ComponentType<any> }>);
+const OrdersPage = lazy(() => import("./pages/orders/OrdersPage") as unknown as Promise<{ default: ComponentType<any> }>);
+const PaymentsPage = lazy(() => import("./pages/PaymentsPage") as unknown as Promise<{ default: ComponentType<any> }>);
+const PurchasesPage = lazy(() => import("./pages/PurchasesPage") as unknown as Promise<{ default: ComponentType<any> }>);
+const SettingsPage = lazy(() => import("./pages/settings/SettingsPage") as unknown as Promise<{ default: ComponentType<any> }>);
+
+// AuthGate loading state — matches the centered-card login layout
+function AuthGateSkeleton() {
   const { t } = useTranslation("common");
-  const { isAuthLoading } = useAuth();
-
-  if (isAuthLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center px-6 py-16">
-        <div className="w-full max-w-md rounded-[2rem] border border-border/80 bg-card/95 p-8 text-center shadow-[0_24px_80px_-40px_rgba(15,23,42,0.5)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-primary/80">{t("navMenu.workspace")}</p>
-          <div className="mt-4 text-3xl font-semibold tracking-tight">{APP_TITLE}</div>
-          <div className="mt-2 text-sm text-muted-foreground">{t("auth.signingIn")}</div>
-        </div>
+  return (
+    <div className="flex min-h-screen items-center justify-center px-6 py-16">
+      <div className="w-full max-w-md rounded-[2rem] border border-border/80 bg-card/95 p-8 text-center shadow-[0_24px_80px_-40px_rgba(15,23,42,0.5)]">
+        <p className="text-xs font-semibold uppercase tracking-[0.32em] text-primary/80">{t("navMenu.workspace")}</p>
+        <div className="mt-4 text-3xl font-semibold tracking-tight">{APP_TITLE}</div>
+        <div className="mt-2 text-sm text-muted-foreground">{t("auth.signingIn")}</div>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
+function AuthGate({ children }: { children: ReactNode }) {
+  const { isAuthLoading } = useAuth();
+  if (isAuthLoading) return <AuthGateSkeleton />;
   return <>{children}</>;
 }
 
@@ -103,15 +108,15 @@ function ShellHeader() {
 function RoutedPage({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider defaultOpen>
-        <AppNavigation />
-        <SidebarInset>
-          <DesktopTrayController />
-          <ShortcutLayer />
-          <ShellHeader />
-          <main className="px-4 py-6 sm:px-6 lg:px-8">
-            <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">{children}</div>
-          </main>
-        </SidebarInset>
+      <AppNavigation />
+      <SidebarInset>
+        <DesktopTrayController />
+        <ShortcutLayer />
+        <ShellHeader />
+        <main className="px-4 py-6 sm:px-6 lg:px-8">
+          <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">{children}</div>
+        </main>
+      </SidebarInset>
     </SidebarProvider>
   );
 }
@@ -120,7 +125,7 @@ function CreateCustomerRoute() {
   const navigate = useNavigate();
   return (
     <RoutedPage>
-      <CreateCustomerPage onNavigate={(path) => navigate(path)} />
+      <CreateCustomerPage onNavigate={(path: string) => navigate(path)} />
     </RoutedPage>
   );
 }
@@ -166,7 +171,14 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <Routes>
-          <Route path={LOGIN_ROUTE} element={<LoginPage />} />
+          <Route
+            path={LOGIN_ROUTE}
+            element={
+              <Suspense fallback={<AuthGateSkeleton />}>
+                <LoginPage />
+              </Suspense>
+            }
+          />
           <Route
             path={HOME_ROUTE}
             element={

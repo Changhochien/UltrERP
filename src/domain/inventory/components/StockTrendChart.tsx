@@ -1,19 +1,14 @@
 /** Stock trend line chart with reorder point reference line and stockout projection. */
 
 import { useMemo, useState } from "react";
-
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ReferenceLine,
-  ReferenceArea,
-  ResponsiveContainer,
-  Dot,
-} from "recharts";
+import { ParentSize } from "@visx/responsive";
+import { scaleTime, scaleLinear } from "@visx/scale";
+import { LinePath } from "@visx/shape";
+import { AxisBottom, AxisLeft } from "@visx/axis";
+import { GridRows } from "@visx/grid";
+import { Group } from "@visx/group";
+import { curveMonotoneX } from "@visx/curve";
+import { TooltipWithBounds, useTooltip } from "@visx/tooltip";
 import { parseBackendDate } from "../../../lib/time";
 import type { StockHistoryPoint } from "../types";
 
@@ -51,26 +46,215 @@ function dotColor(reasonCode: string): string {
   }
 }
 
-function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload?: StockHistoryPoint & { daysUntilStockout?: number } }> }) {
-  if (!active || !payload || payload.length === 0) return null;
-  const p = payload[0].payload ?? (payload[0] as unknown as StockHistoryPoint & { daysUntilStockout?: number });
+interface TooltipData {
+  date: string;
+  running_stock: number;
+  quantity_change: number;
+  reason_code: string;
+  daysUntilStockout?: number;
+}
+
+function ChartInner({
+  filtered,
+  projectedLine,
+  reorderPoint,
+  safetyStock,
+  width,
+  height,
+  daysUntilStockout,
+}: {
+  filtered: StockHistoryPoint[];
+  projectedLine: Array<{ date: string; running_stock: number }>;
+  reorderPoint: number;
+  safetyStock?: number;
+  width: number;
+  height: number;
+  daysUntilStockout: number | null;
+}) {
+  const { showTooltip, hideTooltip, tooltipOpen, tooltipData, tooltipLeft, tooltipTop } =
+    useTooltip<TooltipData>();
+
+  const margin = { top: 10, right: 10, left: 40, bottom: 40 };
+  const innerWidth = width - margin.left - margin.right;
+  const innerHeight = height - margin.top - margin.bottom;
+
+  const allPoints = [...filtered, ...projectedLine];
+  if (allPoints.length === 0) return null;
+
+  const parsedActual = filtered.map((d) => ({
+    date: parseBackendDate(d.date),
+    running_stock: d.running_stock,
+    quantity_change: d.quantity_change,
+    reason_code: d.reason_code ?? "other",
+  }));
+
+  const parsedProjected = projectedLine.map((d) => ({
+    date: parseBackendDate(d.date),
+    running_stock: d.running_stock,
+  }));
+
+  const xDomain: [Date, Date] = [
+    parseBackendDate(allPoints[0]?.date ?? ""),
+    parseBackendDate(allPoints[allPoints.length - 1]?.date ?? ""),
+  ];
+  const yMax = Math.max(...allPoints.map((d) => d.running_stock), reorderPoint) * 1.1;
+
+  const xScale = scaleTime({ domain: xDomain, range: [0, innerWidth] });
+  const yScale = scaleLinear({ domain: [0, yMax], range: [innerHeight, 0] });
+
+  const safetyStockY1 = safetyStock != null ? yScale(safetyStock) : null;
+  const safetyStockY2 = yScale(0);
+
   return (
-    <div className="rounded-xl border border-border bg-background px-3 py-2 shadow-lg">
-      <p className="text-xs font-medium text-muted-foreground">{formatDate(p.date)}</p>
-      {p.quantity_change !== 0 && (
-        <p className="text-sm">
-          <span className={p.quantity_change > 0 ? "text-success" : "text-destructive"}>
-            {p.quantity_change > 0 ? "+" : ""}
-            {p.quantity_change}
-          </span>
-          <span className="ml-1 text-muted-foreground">{p.reason_code}</span>
-        </p>
-      )}
-      <p className="mt-0.5 text-sm font-semibold">Stock: {p.running_stock}</p>
-      {p.daysUntilStockout != null && p.daysUntilStockout > 0 && (
-        <p className="text-xs text-muted-foreground">
-          Stockout in ~{Math.round(p.daysUntilStockout)}d
-        </p>
+    <div style={{ position: "relative" }}>
+      <svg width={width} height={height}>
+        <Group left={margin.left} top={margin.top}>
+          <GridRows
+            scale={yScale}
+            width={innerWidth}
+            stroke="var(--border)"
+            strokeDasharray="3 3"
+          />
+
+          {safetyStock != null && safetyStockY1 != null && (
+            <rect
+              x={0}
+              y={safetyStockY1}
+              width={innerWidth}
+              height={(safetyStockY2 ?? 0) - safetyStockY1}
+              fill="#f97316"
+              fillOpacity={0.1}
+            />
+          )}
+
+          {reorderPoint > 0 && (
+            <>
+              <line
+                x1={0}
+                x2={innerWidth}
+                y1={yScale(reorderPoint)}
+                y2={yScale(reorderPoint)}
+                stroke="#ef4444"
+                strokeDasharray="5 3"
+              />
+              <text
+                x={innerWidth - 4}
+                y={yScale(reorderPoint) - 4}
+                fill="#ef4444"
+                fontSize={11}
+                textAnchor="end"
+              >
+                ROP
+              </text>
+            </>
+          )}
+
+          <AxisBottom
+            top={innerHeight}
+            scale={xScale}
+            numTicks={innerWidth > 400 ? 8 : 4}
+            tickFormat={(d) => formatDate((d as Date).toISOString().slice(0, 10))}
+            tickLabelProps={() => ({
+              fill: "var(--muted-foreground)",
+              fontSize: 11,
+              textAnchor: "middle",
+            })}
+            stroke="var(--border)"
+          />
+          <AxisLeft
+            scale={yScale}
+            tickLabelProps={() => ({
+              fill: "var(--muted-foreground)",
+              fontSize: 11,
+              textAnchor: "end",
+            })}
+            stroke="var(--border)"
+          />
+
+          {parsedActual.length > 0 && (
+            <LinePath
+              data={parsedActual}
+              x={(d) => xScale(d.date) ?? 0}
+              y={(d) => yScale(d.running_stock) ?? 0}
+              stroke="#3b82f6"
+              strokeWidth={2}
+              curve={curveMonotoneX}
+            />
+          )}
+
+          {parsedActual.map((d, i) => {
+            const cx = xScale(d.date) ?? 0;
+            const cy = yScale(d.running_stock) ?? 0;
+            return (
+              <circle
+                key={i}
+                cx={cx}
+                cy={cy}
+                r={4}
+                fill={dotColor(d.reason_code)}
+                stroke="white"
+                strokeWidth={1.5}
+                onMouseEnter={(e) => {
+                  showTooltip({
+                    tooltipData: {
+                      ...d,
+                      date: filtered[i].date,
+                      daysUntilStockout: daysUntilStockout ?? undefined,
+                    },
+                    tooltipLeft: e.clientX,
+                    tooltipTop: e.clientY,
+                  });
+                }}
+                onMouseLeave={hideTooltip}
+              />
+            );
+          })}
+
+          {parsedProjected.length > 0 && (
+            <LinePath
+              data={parsedProjected}
+              x={(d) => xScale(d.date) ?? 0}
+              y={(d) => yScale(d.running_stock) ?? 0}
+              stroke="#94a3b8"
+              strokeWidth={1.5}
+              strokeDasharray="4 3"
+              curve={curveMonotoneX}
+            />
+          )}
+        </Group>
+      </svg>
+      {tooltipOpen && tooltipData && (
+        <TooltipWithBounds
+          left={tooltipLeft ?? 0}
+          top={tooltipTop ?? 0}
+          style={{
+            background: "var(--background)",
+            border: "1px solid var(--border)",
+            borderRadius: 12,
+            padding: "8px 12px",
+            fontSize: 12,
+            position: "fixed",
+          }}
+        >
+          <p className="text-xs font-medium text-muted-foreground">
+            {formatDate(tooltipData.date)}
+          </p>
+          {tooltipData.quantity_change !== 0 && (
+            <p className="text-sm">
+              <span className={tooltipData.quantity_change > 0 ? "text-success" : "text-destructive"}>
+                {tooltipData.quantity_change > 0 ? "+" : ""}
+                {tooltipData.quantity_change}
+              </span>
+              <span className="ml-1 text-muted-foreground">{tooltipData.reason_code}</span>
+            </p>
+          )}
+          <p className="mt-0.5 text-sm font-semibold">Stock: {tooltipData.running_stock}</p>
+          {tooltipData.daysUntilStockout != null && tooltipData.daysUntilStockout > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Stockout in ~{Math.round(tooltipData.daysUntilStockout)}d
+            </p>
+          )}
+        </TooltipWithBounds>
       )}
     </div>
   );
@@ -91,7 +275,10 @@ export function StockTrendChart({
 
     const now = Date.now();
     const cutoff = range === -1 ? 0 : now - range * 24 * 60 * 60 * 1000;
-    const filtered = cutoff > 0 ? points.filter((p) => parseBackendDate(p.date).getTime() >= cutoff) : points;
+    const filtered =
+      cutoff > 0
+        ? points.filter((p) => parseBackendDate(p.date).getTime() >= cutoff)
+        : points;
 
     const last = points[points.length - 1];
     const currentStock = last?.running_stock ?? 0;
@@ -116,9 +303,8 @@ export function StockTrendChart({
     return { filtered, currentStock, daysUntilStockout, projectedLine };
   }, [points, range, avgDailyUsage]);
 
-  // When the selected range excludes all data (e.g. 90d range but latest data is older),
-  // fall back to showing all available data instead of an error.
-  const displayPoints = filtered.length < 2 && points.length >= 2 ? points : filtered;
+  const displayPoints =
+    filtered.length < 2 && points.length >= 2 ? points : filtered;
 
   if (displayPoints.length === 0) {
     return (
@@ -131,7 +317,6 @@ export function StockTrendChart({
 
   return (
     <div className="space-y-3">
-      {/* Time range selector */}
       <div className="flex items-center gap-1">
         {TIME_RANGES.map((r) => (
           <button
@@ -154,91 +339,20 @@ export function StockTrendChart({
         )}
       </div>
 
-      <ResponsiveContainer width="100%" height={260}>
-        <LineChart data={[...displayPoints, ...projectedLine]} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-          <XAxis
-            dataKey="date"
-            tickFormatter={formatDate}
-            tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-            tickLine={false}
-            axisLine={{ stroke: "var(--border)" }}
+      <ParentSize>
+        {({ width }) => (
+          <ChartInner
+            filtered={displayPoints}
+            projectedLine={projectedLine}
+            reorderPoint={reorderPoint}
+            safetyStock={safetyStock}
+            width={width}
+            height={260}
+            daysUntilStockout={daysUntilStockout}
           />
-          <YAxis
-            tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-            tickLine={false}
-            axisLine={false}
-            width={40}
-          />
-          <Tooltip content={<CustomTooltip />} />
+        )}
+      </ParentSize>
 
-          {/* Safety stock shaded area */}
-          {safetyStock != null && safetyStock > 0 && (
-            <ReferenceArea
-              y1={0}
-              y2={safetyStock}
-              fill="#f97316"
-              fillOpacity={0.1}
-              strokeOpacity={0}
-            />
-          )}
-
-          {/* Reorder point reference line */}
-          <ReferenceLine
-            y={reorderPoint}
-            stroke="#ef4444"
-            strokeDasharray="5 3"
-            label={{
-              value: "ROP",
-              position: "insideTopRight",
-              fill: "#ef4444",
-              fontSize: 11,
-            }}
-          />
-
-          {/* Actual stock line */}
-          <Line
-            data={filtered}
-            type="monotone"
-            dataKey="running_stock"
-            stroke="#3b82f6"
-            strokeWidth={2}
-            dot={(props: { cx?: number; cy?: number; payload?: StockHistoryPoint }) => {
-              if (!props.cx || !props.cy || !props.payload) return <Dot {...props} />;
-              const { cx, cy, payload } = props;
-              return (
-                <Dot
-                  cx={cx}
-                  cy={cy}
-                  r={4}
-                  fill={dotColor(payload.reason_code ?? "other")}
-                  stroke="white"
-                  strokeWidth={1.5}
-                />
-              );
-            }}
-            activeDot={{ r: 5, stroke: "white", strokeWidth: 1.5 }}
-            connectNulls={false}
-          />
-
-          {/* Projected stockout line (dashed) */}
-          {projectedLine.length > 0 && (
-            <Line
-              data={projectedLine}
-              type="monotone"
-              dataKey="running_stock"
-              stroke="#94a3b8"
-              strokeWidth={1.5}
-              strokeDasharray="4 3"
-              dot={false}
-              activeDot={false}
-              connectNulls={false}
-            />
-          )}
-        </LineChart>
-      </ResponsiveContainer>
-
-      {/* Legend */}
       <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
         <span className="flex items-center gap-1">
           <span className="size-2 rounded-full bg-blue-500" /> Stock
