@@ -53,6 +53,9 @@ export interface InventoryStock {
   warehouse_id: string;
   quantity: number;
   reorder_point: number;
+  safety_factor: number;
+  lead_time_days: number;
+  review_cycle_days: number;
   updated_at: string;
 }
 
@@ -77,6 +80,9 @@ export interface WarehouseStockInfo {
   warehouse_name: string;
   current_stock: number;
   reorder_point: number;
+  safety_factor: number;
+  lead_time_days: number;
+  review_cycle_days: number;
   is_below_reorder: boolean;
   last_adjusted: string | null;
 }
@@ -312,7 +318,9 @@ export interface ReorderPointPreviewRow {
   computed_reorder_point: number | null;
   avg_daily_usage: number | null;
   lead_time_days: number | null;
+  review_cycle_days: number | null;
   safety_stock: number | null;
+  target_stock_level: number | null;
   demand_basis: string | null;
   movement_count: number | null;
   lead_time_source: string | null;

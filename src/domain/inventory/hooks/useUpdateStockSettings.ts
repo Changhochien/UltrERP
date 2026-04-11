@@ -6,6 +6,7 @@ export interface UpdateStockSettingsPayload {
   reorder_point?: number;
   safety_factor?: number;
   lead_time_days?: number;
+  review_cycle_days?: number;
 }
 
 export function useUpdateStockSettings() {

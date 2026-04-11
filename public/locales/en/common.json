@@ -844,12 +844,14 @@
       "noCandidatesDesc": "No products met eligibility criteria for the selected scope.",
       "noSkippedTitle": "No skipped rows.",
       "noSkippedDesc": "All evaluated rows had sufficient data.",
-      "formula": "Computed ROP = Safety Stock + (Lead Time × Avg Daily Usage)",
+      "formula": "ROP covers lead-time demand; target stock covers lead time + review cycle.",
       "setParamsAndClick": "Set parameters and click Preview",
       "safetyFactorBuffer": "Safety factor buffer: {value}",
       "ropUnits": "ROP / safety stock = units",
       "avgDailyUsageUnits": "Avg daily usage = units per day",
       "leadTimeDays": "Lead time = days",
+      "reviewCycleDays": "Review cycle = days",
+      "targetStockUnits": "Target stock / suggested order = units",
       "applied": "Applied {updated} rows · {skipped} skipped",
       "col": {
         "product": "Product",
@@ -858,7 +860,10 @@
         "computedRop": "Computed ROP (units)",
         "avgDailyUsage": "Avg Daily Usage (units/day)",
         "leadTime": "Lead Time (days)",
+        "reviewCycle": "Review Cycle (days)",
         "safetyStock": "Safety Stock (units)",
+        "targetStock": "Target Stock (units)",
+        "suggestedOrderQty": "Suggested Order Qty",
         "demandBasis": "Demand Basis",
         "movements": "Movements",
         "ltSource": "LT Source",
@@ -868,6 +873,7 @@
       },
       "leadTimeSource": {
         "actual": "Historical",
+        "manual_override": "Manual override",
         "supplier_default": "Supplier default",
         "fallback_7d": "7d fallback"
       }
@@ -1051,8 +1057,13 @@
         "manualOverride": "Manual override",
         "reorderPoint": "Reorder Point",
         "leadTime": "Lead Time (days)",
+        "reviewCycle": "Review Cycle (days)",
         "safetyFactor": "Safety Factor ({{value}})",
         "computedRop": "Computed ROP:",
+        "safetyStock": "Safety Stock",
+        "targetStock": "Target Stock",
+        "suggestedOrderQty": "Suggested Order Qty",
+        "previewNote": "Suggested order compares target stock against current stock {{currentStock}}.",
         "noSupplierConfigured": "No supplier configured.",
         "supplierInfo": "Supplier Info",
         "save": "Save"

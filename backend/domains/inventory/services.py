@@ -760,6 +760,9 @@ async def get_product_detail(
             Warehouse.name.label("warehouse_name"),
             InventoryStock.quantity,
             InventoryStock.reorder_point,
+            InventoryStock.safety_factor,
+            InventoryStock.lead_time_days,
+            InventoryStock.review_cycle_days,
             last_adj_sq.c.last_adjusted,
         )
         .join(Warehouse, InventoryStock.warehouse_id == Warehouse.id)
@@ -788,6 +791,9 @@ async def get_product_detail(
                 "warehouse_name": row.warehouse_name,
                 "current_stock": row.quantity,
                 "reorder_point": row.reorder_point,
+                "safety_factor": row.safety_factor,
+                "lead_time_days": row.lead_time_days,
+                "review_cycle_days": row.review_cycle_days,
                 "is_below_reorder": (row.reorder_point > 0 and row.quantity < row.reorder_point),
                 "last_adjusted": row.last_adjusted,
             }
@@ -1530,6 +1536,8 @@ async def get_stock_history(
 
     current_stock = stock.quantity if stock else 0
     reorder_point = stock.reorder_point if stock else 0
+    configured_safety_factor = stock.safety_factor if stock and stock.safety_factor > 0 else 0.5
+    configured_lead_time_days = stock.lead_time_days if stock and stock.lead_time_days > 0 else None
 
     # 2. Fetch adjustments ordered ASC
     adj_where = [
@@ -1601,10 +1609,17 @@ async def get_stock_history(
         avg_daily, _mov_count = await get_average_daily_usage(
             session, tenant_id, product_id, warehouse_id, lookback_days=90,
         )
-        lead_time_days, _lt_source = await get_lead_time_days(
-            session, tenant_id, product_id, warehouse_id, lookback_days=180,
+        if configured_lead_time_days is not None:
+            lead_time_days = configured_lead_time_days
+        else:
+            lead_time_days, _lt_source = await get_lead_time_days(
+                session, tenant_id, product_id, warehouse_id, lookback_days=180,
+            )
+        safety_stock = (
+            round(avg_daily * configured_safety_factor * lead_time_days, 2)
+            if avg_daily and lead_time_days
+            else None
         )
-        safety_stock = round(avg_daily * 0.5 * lead_time_days, 2) if avg_daily and lead_time_days else None
     except Exception:
         avg_daily = None
         lead_time_days = None
@@ -1631,8 +1646,9 @@ async def update_stock_settings(
     reorder_point: int | None = None,
     safety_factor: float | None = None,
     lead_time_days: int | None = None,
+    review_cycle_days: int | None = None,
 ) -> InventoryStock | None:
-    """Update reorder_point, safety_factor, and/or lead_time_days for a stock record."""
+    """Update replenishment settings for a stock record."""
     stmt = select(InventoryStock).where(
         InventoryStock.id == stock_id,
         InventoryStock.tenant_id == tenant_id,
@@ -1648,6 +1664,8 @@ async def update_stock_settings(
         stock.safety_factor = safety_factor
     if lead_time_days is not None:
         stock.lead_time_days = lead_time_days
+    if review_cycle_days is not None:
+        stock.review_cycle_days = review_cycle_days
 
     await session.flush()
     return stock
