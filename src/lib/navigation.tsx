@@ -158,6 +158,14 @@ export function getRouteContext(pathname: string) {
     };
   }
 
+  if (pathname.startsWith(`${INVENTORY_ROUTE}/`) && pathname !== INVENTORY_ROUTE) {
+    return {
+      labelKey: "routes.productDetail.label",
+      descriptionKey: "routes.productDetail.description",
+      sectionKey: "nav.operations",
+    };
+  }
+
   const route = ROUTE_CONTEXT_KEYS.find((entry) => entry.match === pathname);
   if (route) {
     const group = NAVIGATION_GROUPS.find((candidate) =>
