@@ -48,7 +48,7 @@ export function ProductTable({ warehouseId, onProductClick }: ProductTableProps)
       description={t("browseProducts")}
       actions={
         <div className="text-sm text-muted-foreground">
-          {total > 0 ? t("products", { count: total.toLocaleString() }) : ""}
+          {total > 0 ? t("products", { count: total }) : ""}
         </div>
       }
     >

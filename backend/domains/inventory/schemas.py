@@ -78,6 +78,7 @@ class InventoryStockResponse(BaseModel):
     reorder_point: int
     safety_factor: float
     lead_time_days: int
+    review_cycle_days: int
     updated_at: datetime
 
 
@@ -85,6 +86,7 @@ class StockSettingsUpdateRequest(BaseModel):
     reorder_point: int | None = Field(None, ge=0)
     safety_factor: float | None = Field(None, ge=0.0)
     lead_time_days: int | None = Field(None, ge=0)
+    review_cycle_days: int | None = Field(None, ge=0)
 
 
 # --- Monthly demand schemas ---
@@ -161,6 +163,9 @@ class WarehouseStockInfo(BaseModel):
     warehouse_name: str
     current_stock: int
     reorder_point: int
+    safety_factor: float
+    lead_time_days: int
+    review_cycle_days: int
     is_below_reorder: bool
     last_adjusted: datetime | None
 
@@ -410,10 +415,12 @@ class ReorderPointPreviewRow(BaseModel):
     computed_reorder_point: float | None = None  # None if skipped
     avg_daily_usage: float | None = None
     lead_time_days: float | None = None
+    review_cycle_days: float | None = None
     safety_stock: float | None = None
+    target_stock_level: float | None = None
     demand_basis: str | None = None  # e.g. "SALES_RESERVATION"
     movement_count: int | None = None
-    lead_time_source: str | None = None  # "actual" | "supplier_default" | "fallback_7d"
+    lead_time_source: str | None = None  # "actual" | "supplier_default" | "fallback_7d" | "manual_override"
     quality_note: str | None = None  # Human-readable explanation
     skip_reason: str | None = None  # "insufficient_history" | "source_unresolved" | None
     is_selected: bool = False

@@ -45,6 +45,7 @@ class InventoryStock(Base):
 	reorder_point: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 	safety_factor: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
 	lead_time_days: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+	review_cycle_days: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 	updated_at: Mapped[datetime] = mapped_column(
 		DateTime(timezone=True),
 		server_default=func.now(),

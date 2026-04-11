@@ -244,7 +244,9 @@ async def compute_reorder_points_endpoint(
             computed_reorder_point=None if d.get("skipped_reason") else float(d["reorder_point"]),
             avg_daily_usage=d.get("avg_daily_usage"),
             lead_time_days=d.get("lead_time_days"),
+            review_cycle_days=d.get("review_cycle_days"),
             safety_stock=d.get("safety_stock"),
+            target_stock_level=d.get("target_stock_level"),
             demand_basis=",".join(d.get("demand_reason") or []),
             movement_count=d.get("movement_count"),
             lead_time_source=d.get("lead_time_source"),
@@ -917,6 +919,7 @@ async def update_stock_settings_endpoint(
         reorder_point=data.reorder_point,
         safety_factor=data.safety_factor,
         lead_time_days=data.lead_time_days,
+        review_cycle_days=data.review_cycle_days,
     )
     if stock is None:
         raise HTTPException(

@@ -203,10 +203,31 @@ function ReorderPointAdmin() {
       ),
     },
     {
+      id: "review_cycle_days",
+      header: t("col.reviewCycle"),
+      cell: (row: CandidateRow) => (
+        <span className="font-mono text-sm tabular-nums">{num(row.review_cycle_days)}</span>
+      ),
+    },
+    {
       id: "safety_stock",
       header: t("col.safetyStock"),
       cell: (row: CandidateRow) => (
         <span className="font-mono text-sm tabular-nums">{num(row.safety_stock)}</span>
+      ),
+    },
+    {
+      id: "target_stock_level",
+      header: t("col.targetStock"),
+      cell: (row: CandidateRow) => (
+        <span className="font-mono text-sm tabular-nums">{num(row.target_stock_level)}</span>
+      ),
+    },
+    {
+      id: "suggested_order_qty",
+      header: t("col.suggestedOrderQty"),
+      cell: (row: CandidateRow) => (
+        <span className="font-mono text-sm tabular-nums">{num(row.suggested_order_qty)}</span>
       ),
     },
     {
@@ -391,6 +412,8 @@ function ReorderPointAdmin() {
           <Badge variant="outline" className="normal-case tracking-normal">{t("ropUnits")}</Badge>
           <Badge variant="outline" className="normal-case tracking-normal">{t("avgDailyUsageUnits")}</Badge>
           <Badge variant="outline" className="normal-case tracking-normal">{t("leadTimeDays")}</Badge>
+          <Badge variant="outline" className="normal-case tracking-normal">{t("reviewCycleDays")}</Badge>
+          <Badge variant="outline" className="normal-case tracking-normal">{t("targetStockUnits")}</Badge>
         </div>
       </div>
 

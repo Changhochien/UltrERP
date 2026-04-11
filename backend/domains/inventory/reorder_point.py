@@ -242,9 +242,11 @@ async def compute_reorder_point_preview_row(
     product_id: uuid.UUID,
     warehouse_id: uuid.UUID,
     safety_factor: float = 0.5,
+    review_cycle_days: int = 0,
     demand_lookback_days: int = 90,
     lead_time_lookback_days: int = 180,
     allowed_reasons: tuple[ReasonCode, ...] = (ReasonCode.SALES_RESERVATION,),
+    lead_time_days_override: int | None = None,
     current_quantity: float = 0.0,
 ) -> dict[str, Any]:
     """Compute reorder point for a single product+warehouse row.
@@ -265,6 +267,7 @@ async def compute_reorder_point_preview_row(
             "safety_stock": 0.0,
             "avg_daily_usage": 0.0,
             "lead_time_days": 0,
+            "review_cycle_days": review_cycle_days,
             "lead_time_source": "",
             "safety_factor": safety_factor,
             "demand_lookback_days": demand_lookback_days,
@@ -275,19 +278,25 @@ async def compute_reorder_point_preview_row(
                 f"Only {movement_count} demand events in {demand_lookback_days} days; "
                 f"need at least {MIN_DEMAND_EVENTS}"
             ),
+            "target_stock_level": None,
             "suggested_order_qty": None,
         }
 
     # Resolve lead time
-    lead_time_days, lt_source = await get_lead_time_days(
-        session, tenant_id, product_id, warehouse_id, lead_time_lookback_days
-    )
+    if lead_time_days_override is not None and lead_time_days_override > 0:
+        lead_time_days = lead_time_days_override
+        lt_source = "manual_override"
+    else:
+        lead_time_days, lt_source = await get_lead_time_days(
+            session, tenant_id, product_id, warehouse_id, lead_time_lookback_days
+        )
 
     # Compute ROP
     safety_stock = round(avg_daily_usage * safety_factor * lead_time_days, 2)
-    reorder_point = round(safety_stock + (lead_time_days * avg_daily_usage))
+    reorder_point = round((lead_time_days * avg_daily_usage) + safety_stock)
+    target_stock_level = round((avg_daily_usage * (lead_time_days + review_cycle_days)) + safety_stock)
 
-    suggested_order_qty = max(0, round(reorder_point - current_quantity))
+    suggested_order_qty = max(0, round(target_stock_level - current_quantity))
     return {
         "product_id": product_id,
         "warehouse_id": warehouse_id,
@@ -295,6 +304,7 @@ async def compute_reorder_point_preview_row(
         "safety_stock": safety_stock,
         "avg_daily_usage": round(avg_daily_usage, 4),
         "lead_time_days": lead_time_days,
+        "review_cycle_days": review_cycle_days,
         "lead_time_source": lt_source,
         "safety_factor": safety_factor,
         "demand_lookback_days": demand_lookback_days,
@@ -302,6 +312,7 @@ async def compute_reorder_point_preview_row(
         "movement_count": movement_count,
         "skipped_reason": None,
         "quality_note": None,
+        "target_stock_level": target_stock_level,
         "suggested_order_qty": suggested_order_qty,
     }
 
@@ -350,6 +361,9 @@ async def compute_reorder_points_preview(
             InventoryStock.warehouse_id.label("warehouse_id"),
             InventoryStock.quantity.label("current_quantity"),
             InventoryStock.reorder_point.label("current_reorder_point"),
+            InventoryStock.safety_factor.label("stored_safety_factor"),
+            InventoryStock.lead_time_days.label("stored_lead_time_days"),
+            InventoryStock.review_cycle_days.label("review_cycle_days"),
             Warehouse.name.label("warehouse_name"),
         )
         .join(InventoryStock, InventoryStock.product_id == Product.id)
@@ -363,14 +377,23 @@ async def compute_reorder_points_preview(
     skipped: list[dict[str, Any]] = []
 
     for row in rows:
+        effective_safety_factor = (
+            row.stored_safety_factor
+            if row.stored_safety_factor is not None and row.stored_safety_factor > 0
+            else safety_factor
+        )
         preview = await compute_reorder_point_preview_row(
             session,
             tenant_id,
             row.product_id,
             row.warehouse_id,
-            safety_factor,
+            effective_safety_factor,
+            row.review_cycle_days or 0,
             demand_lookback_days,
             lead_time_lookback_days,
+            lead_time_days_override=(
+                row.stored_lead_time_days if row.stored_lead_time_days and row.stored_lead_time_days > 0 else None
+            ),
             current_quantity=row.current_quantity,
         )
         preview["product_name"] = row.product_name
@@ -401,7 +424,7 @@ async def apply_reorder_points(
 ) -> dict[str, Any]:
     """Apply reorder points to explicitly selected preview rows.
 
-    Updates ``inventory_stock.reorder_point`` for rows whose product_id +
+    Updates persisted replenishment settings for rows whose product_id +
     warehouse_id match a selected row. Returns a summary dict.
     """
     updated_count = 0
@@ -429,6 +452,9 @@ async def apply_reorder_points(
             continue
 
         stock.reorder_point = new_rop
+        stock.safety_factor = float(row.get("safety_factor") or safety_factor)
+        stock.lead_time_days = int(row.get("lead_time_days") or 0)
+        stock.review_cycle_days = int(row.get("review_cycle_days") or 0)
         updated_count += 1
 
     await session.flush()
