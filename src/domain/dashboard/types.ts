@@ -1,5 +1,7 @@
 /** Dashboard domain types. */
 
+import type { AlertSeverity } from "../../lib/alertSeverity";
+
 export interface RevenueSummary {
   today_revenue: string;
   yesterday_revenue: string;
@@ -30,6 +32,7 @@ export interface LowStockAlert {
   warehouse_name: string;
   current_stock: number;
   reorder_point: number;
+  severity: AlertSeverity;
   status: string;
   created_at: string;
   acknowledged_at: string | null;

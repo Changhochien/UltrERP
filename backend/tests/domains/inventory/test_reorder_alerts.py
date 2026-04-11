@@ -12,6 +12,7 @@ from httpx import ASGITransport, AsyncClient
 from app.main import app
 from common.database import get_db
 from common.models.reorder_alert import AlertStatus
+from domains.inventory.services import _compute_severity
 from tests.domains.orders._helpers import auth_header
 
 # ── Fake objects ──────────────────────────────────────────────
@@ -66,6 +67,10 @@ class FakeReorderAlert:
         self.created_at = datetime.now(tz=UTC)
         self.acknowledged_at = None
         self.acknowledged_by = None
+        self.snoozed_until = None
+        self.snoozed_by = None
+        self.dismissed_at = None
+        self.dismissed_by = None
 
 
 class FakeAsyncSession:
@@ -170,9 +175,14 @@ async def test_list_alerts_returns_items() -> None:
                     current_stock=3,
                     reorder_point=10,
                     status=AlertStatus.PENDING,
+                    severity="WARNING",
                     created_at=now,
                     acknowledged_at=None,
                     acknowledged_by=None,
+                    snoozed_until=None,
+                    snoozed_by=None,
+                    dismissed_at=None,
+                    dismissed_by=None,
                 ),
             ]
         )
@@ -190,6 +200,9 @@ async def test_list_alerts_returns_items() -> None:
         assert item["current_stock"] == 3
         assert item["reorder_point"] == 10
         assert item["status"] == "pending"
+        assert item["severity"] == "WARNING"
+        assert item["snoozed_until"] is None
+        assert item["dismissed_at"] is None
     finally:
         _teardown(prev)
 
@@ -232,6 +245,19 @@ async def test_list_alerts_invalid_status_rejected() -> None:
     assert resp.status_code == 422
 
 
+async def test_list_alerts_accepts_snoozed_filter() -> None:
+    session = FakeAsyncSession()
+    session.queue_result(FakeResult(scalar_val=0))
+    session.queue_result(FakeResult(rows=[]))
+
+    prev = _setup(session)
+    try:
+        resp = await _get("/api/v1/inventory/alerts/reorder?status=snoozed")
+        assert resp.status_code == 200
+    finally:
+        _teardown(prev)
+
+
 async def test_list_alerts_with_warehouse_filter() -> None:
     session = FakeAsyncSession()
     wh_id = uuid.uuid4()
@@ -256,6 +282,22 @@ async def test_list_alerts_limit_exceeds_max_returns_422() -> None:
 async def test_list_alerts_negative_offset_returns_422() -> None:
     resp = await _get("/api/v1/inventory/alerts/reorder?offset=-1")
     assert resp.status_code == 422
+
+
+def test_compute_severity_marks_stockout_critical() -> None:
+    assert _compute_severity(0, 20) == "CRITICAL"
+
+
+def test_compute_severity_marks_below_quarter_critical() -> None:
+    assert _compute_severity(4, 20) == "CRITICAL"
+
+
+def test_compute_severity_marks_exact_quarter_warning() -> None:
+    assert _compute_severity(5, 20) == "WARNING"
+
+
+def test_compute_severity_marks_exact_reorder_point_info() -> None:
+    assert _compute_severity(20, 20) == "INFO"
 
 
 # ── Acknowledge alert tests ──────────────────────────────────
@@ -314,3 +356,63 @@ async def test_acknowledge_resolved_alert_returns_200_already_resolved() -> None
 async def test_acknowledge_invalid_uuid_returns_422() -> None:
     resp = await _put("/api/v1/inventory/alerts/reorder/not-a-uuid/acknowledge")
     assert resp.status_code == 422
+
+
+async def test_snooze_alert_success() -> None:
+    session = FakeAsyncSession()
+    alert = FakeReorderAlert()
+    session.queue_result(FakeResult(obj=alert))
+
+    transport = ASGITransport(app=app)
+    prev = _setup(session)
+    try:
+        async with AsyncClient(transport=transport, base_url="http://test", headers=auth_header()) as c:
+            resp = await c.put(
+                f"/api/v1/inventory/alerts/reorder/{alert.id}/snooze",
+                json={"duration_minutes": 60},
+            )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["status"] == "snoozed"
+        assert body["snoozed_by"] == "system"
+        assert body["snoozed_until"] is not None
+    finally:
+        _teardown(prev)
+
+
+async def test_dismiss_alert_success() -> None:
+    session = FakeAsyncSession()
+    alert = FakeReorderAlert(status=AlertStatus.ACKNOWLEDGED)
+    session.queue_result(FakeResult(obj=alert))
+
+    transport = ASGITransport(app=app)
+    prev = _setup(session)
+    try:
+        async with AsyncClient(transport=transport, base_url="http://test", headers=auth_header()) as c:
+            resp = await c.put(f"/api/v1/inventory/alerts/reorder/{alert.id}/dismiss")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["status"] == "dismissed"
+        assert body["dismissed_by"] == "system"
+        assert body["dismissed_at"] is not None
+    finally:
+        _teardown(prev)
+
+
+async def test_snooze_closed_alert_returns_already_resolved() -> None:
+    session = FakeAsyncSession()
+    alert = FakeReorderAlert(status=AlertStatus.DISMISSED)
+    session.queue_result(FakeResult(obj=alert))
+
+    transport = ASGITransport(app=app)
+    prev = _setup(session)
+    try:
+        async with AsyncClient(transport=transport, base_url="http://test", headers=auth_header()) as c:
+            resp = await c.put(
+                f"/api/v1/inventory/alerts/reorder/{alert.id}/snooze",
+                json={"duration_minutes": 60},
+            )
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "already_resolved"
+    finally:
+        _teardown(prev)

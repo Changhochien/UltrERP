@@ -6,16 +6,21 @@ import { DataTable, DataTableToolbar } from "../../../components/layout/DataTabl
 import { SectionCard } from "../../../components/layout/PageLayout";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
+import type { ReorderAlertStatus } from "../types";
 import { useWarehouses } from "../hooks/useWarehouses";
 import {
-  useReorderAlerts,
   useAcknowledgeAlert,
+  useDismissAlert,
+  useReorderAlerts,
+  useSnoozeAlert,
 } from "../hooks/useReorderAlerts";
 
 const STATUS_OPTIONS = [
   { value: "", label: "All statuses" },
   { value: "pending", label: "Pending" },
   { value: "acknowledged", label: "Acknowledged" },
+  { value: "snoozed", label: "Snoozed" },
+  { value: "dismissed", label: "Dismissed" },
   { value: "resolved", label: "Resolved" },
 ] as const;
 
@@ -33,19 +38,37 @@ export function ReorderAlerts() {
 
   const { alerts, total, loading, error, reload } = useReorderAlerts(filters);
   const { warehouses, loading: whLoading } = useWarehouses();
-  const { acknowledge, submitting, error: ackError } = useAcknowledgeAlert();
+  const { acknowledge, submitting: acknowledging, error: ackError } = useAcknowledgeAlert();
+  const { snooze, submitting: snoozing, error: snoozeError } = useSnoozeAlert();
+  const { dismiss, submitting: dismissing, error: dismissError } = useDismissAlert();
 
   const handleAcknowledge = async (alertId: string) => {
     const ok = await acknowledge(alertId);
     if (ok) void reload();
   };
 
-  const statusVariant = (status: string) => {
+  const handleSnooze = async (alertId: string) => {
+    const ok = await snooze(alertId, 60);
+    if (ok) void reload();
+  };
+
+  const handleDismiss = async (alertId: string) => {
+    const ok = await dismiss(alertId);
+    if (ok) void reload();
+  };
+
+  const isSubmitting = acknowledging || snoozing || dismissing;
+
+  const statusVariant = (status: ReorderAlertStatus) => {
     switch (status) {
       case "pending":
         return "warning" as const;
       case "acknowledged":
         return "default" as const;
+      case "snoozed":
+        return "info" as const;
+      case "dismissed":
+        return "secondary" as const;
       case "resolved":
         return "success" as const;
       default:
@@ -53,10 +76,14 @@ export function ReorderAlerts() {
     }
   };
 
+  const canAcknowledge = (status: ReorderAlertStatus) => status === "pending" || status === "snoozed";
+  const canSnooze = (status: ReorderAlertStatus) => status !== "resolved" && status !== "dismissed";
+  const canDismiss = (status: ReorderAlertStatus) => status !== "resolved" && status !== "dismissed";
+
   return (
     <SectionCard title="Reorder Alerts" description="Prioritized low-stock exceptions for the current warehouse scope.">
       <DataTable
-        tableClassName="min-w-[760px]"
+        tableClassName="min-w-[980px]"
         columns={[
           { id: "product_name", header: "Product", sortable: true, getSortValue: (item) => item.product_name, cell: (item) => <span className="font-medium">{item.product_name}</span> },
           { id: "warehouse_name", header: "Warehouse", sortable: true, getSortValue: (item) => item.warehouse_name, cell: (item) => item.warehouse_name },
@@ -87,26 +114,69 @@ export function ReorderAlerts() {
           {
             id: "actions",
             header: "Action",
-            className: "whitespace-nowrap",
+            className: "min-w-[240px] whitespace-nowrap",
             headerClassName: "whitespace-nowrap",
-            cell: (item) => item.status === "pending" ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="whitespace-nowrap"
-                onClick={() => void handleAcknowledge(item.id)}
-                disabled={submitting}
-                aria-label={`Acknowledge alert for ${item.product_name}`}
-              >
-                Acknowledge
-              </Button>
-            ) : "—",
+            cell: (item) => {
+              const actions = [];
+
+              if (canAcknowledge(item.status)) {
+                actions.push(
+                  <Button
+                    key="ack"
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="whitespace-nowrap"
+                    onClick={() => void handleAcknowledge(item.id)}
+                    disabled={isSubmitting}
+                    aria-label={`Acknowledge alert for ${item.product_name}`}
+                  >
+                    Acknowledge
+                  </Button>,
+                );
+              }
+
+              if (canSnooze(item.status)) {
+                actions.push(
+                  <Button
+                    key="snooze"
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="whitespace-nowrap"
+                    onClick={() => void handleSnooze(item.id)}
+                    disabled={isSubmitting}
+                    aria-label={`Snooze alert for ${item.product_name}`}
+                  >
+                    Snooze 1h
+                  </Button>,
+                );
+              }
+
+              if (canDismiss(item.status)) {
+                actions.push(
+                  <Button
+                    key="dismiss"
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="whitespace-nowrap text-muted-foreground"
+                    onClick={() => void handleDismiss(item.id)}
+                    disabled={isSubmitting}
+                    aria-label={`Dismiss alert for ${item.product_name}`}
+                  >
+                    Dismiss
+                  </Button>,
+                );
+              }
+
+              return actions.length > 0 ? <div className="flex flex-wrap gap-2">{actions}</div> : "—";
+            },
           },
         ]}
         data={alerts}
         loading={loading}
-        error={error || ackError}
+        error={error || ackError || snoozeError || dismissError}
         emptyTitle="No reorder alerts found."
         emptyDescription="Critical stock alerts will appear here once inventory crosses reorder thresholds."
         toolbar={(

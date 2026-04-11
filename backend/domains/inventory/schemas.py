@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -256,10 +256,14 @@ class ReorderAlertItem(BaseModel):
     current_stock: int
     reorder_point: int
     status: str
-    severity: str | None = None
+    severity: Literal["CRITICAL", "WARNING", "INFO"]
     created_at: datetime
     acknowledged_at: datetime | None
     acknowledged_by: str | None
+    snoozed_until: datetime | None
+    snoozed_by: str | None
+    dismissed_at: datetime | None
+    dismissed_by: str | None
 
 
 class ReorderAlertListResponse(BaseModel):
@@ -272,6 +276,24 @@ class AcknowledgeAlertResponse(BaseModel):
     status: str
     acknowledged_at: datetime
     acknowledged_by: str
+
+
+class SnoozeAlertRequest(BaseModel):
+    duration_minutes: int = Field(ge=1, le=7 * 24 * 60)
+
+
+class SnoozeAlertResponse(BaseModel):
+    id: uuid.UUID
+    status: str
+    snoozed_until: datetime
+    snoozed_by: str
+
+
+class DismissAlertResponse(BaseModel):
+    id: uuid.UUID
+    status: str
+    dismissed_at: datetime
+    dismissed_by: str
 
 
 # --- Supplier schemas ---

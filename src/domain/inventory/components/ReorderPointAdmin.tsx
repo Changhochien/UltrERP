@@ -1,6 +1,6 @@
 /** Reorder point calculator admin — compute preview and apply selected rows. */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { SlidersHorizontal, CheckCircle2, AlertCircle, Info } from "lucide-react";
 
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SectionCard } from "@/components/layout/PageLayout";
 import { DataTable, DataTableToolbar } from "@/components/layout/DataTable";
+import { useTranslation } from "react-i18next";
 import { useReorderPointAdmin } from "../hooks/useReorderPointAdmin";
 import { useWarehouses } from "../hooks/useWarehouses";
 import type { ReorderPointPreviewRow } from "../types";
@@ -23,13 +24,15 @@ const LOOKBACK_OPTIONS = [
 function SafetyFactorSlider({
   value,
   onChange,
+  label,
 }: {
   value: number;
   onChange: (v: number) => void;
+  label: string;
 }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="text-sm font-medium">Safety Factor</span>
+      <span className="text-sm font-medium">{label}</span>
       <input
         type="range"
         min={0}
@@ -39,7 +42,7 @@ function SafetyFactorSlider({
         className="flex-1 accent-primary"
         aria-label="Safety factor"
       />
-      <span className="w-10 text-right font-mono text-sm tabular-nums">{value.toFixed(1)}</span>
+      <span className="w-14 text-right font-mono text-sm tabular-nums">{Math.round(value * 100)}%</span>
     </div>
   );
 }
@@ -49,20 +52,12 @@ function num(value: number | null | undefined, fallback = "—"): string {
   return value.toFixed(1);
 }
 
-function leadTimeSourceLabel(source: string | null | undefined): string {
-  switch (source) {
-    case "actual": return "Historical";
-    case "supplier_default": return "Supplier default";
-    case "fallback_7d": return "7d fallback";
-    default: return source ?? "—";
-  }
-}
-
 interface CandidateRow extends ReorderPointPreviewRow {
   _checked: boolean;
 }
 
 function ReorderPointAdmin() {
+  const { t } = useTranslation("common", { keyPrefix: "inventory.reorderPointAdmin" });
   const [safetyFactor, setSafetyFactor] = useState(0.5);
   const [lookbackDays, setLookbackDays] = useState<30 | 60 | 90 | 180 | 365>(90);
   const [warehouseId, setWarehouseId] = useState("");
@@ -102,6 +97,20 @@ function ReorderPointAdmin() {
     );
   }, []);
 
+  useEffect(() => {
+    setCandidateRows((rows) => {
+      if (candidates.length === 0) {
+        return [];
+      }
+
+      const checkedMap = new Map(rows.map((row) => [row.stock_id, row._checked]));
+      return candidates.map((candidate) => ({
+        ...candidate,
+        _checked: checkedMap.get(candidate.stock_id) ?? false,
+      }));
+    });
+  }, [candidates]);
+
   const selectedCount = useMemo(
     () => candidateRows.filter((r) => r._checked).length,
     [candidateRows],
@@ -123,18 +132,6 @@ function ReorderPointAdmin() {
     setCandidateRows([]);
   }, [applyReorderPoints, selectedStockIds, safetyFactor, lookbackDays, warehouseId]);
 
-  // Sync candidates into local checkbox state
-  const syncedCandidates = useMemo(() => {
-    if (candidates.length === 0 && candidateRows.length === 0) return [];
-    if (candidates.length === 0) return [];
-    // Preserve checkbox state from candidateRows
-    const checkedMap = new Map(candidateRows.map((r) => [r.stock_id, r._checked]));
-    return candidates.map((c) => ({
-      ...c,
-      _checked: checkedMap.get(c.stock_id) ?? false,
-    }));
-  }, [candidates, candidateRows]);
-
   const candidateColumns = [
     {
       id: "checkbox",
@@ -143,11 +140,11 @@ function ReorderPointAdmin() {
           type="checkbox"
           className="accent-primary"
           onChange={(e) => handleSelectAll(e.target.checked)}
-          checked={syncedCandidates.length > 0 && syncedCandidates.every((r) => r._checked)}
+          checked={candidateRows.length > 0 && candidateRows.every((r) => r._checked)}
           ref={(el) => {
-            if (el) el.indeterminate = syncedCandidates.some((r) => r._checked) && !syncedCandidates.every((r) => r._checked);
+            if (el) el.indeterminate = candidateRows.some((r) => r._checked) && !candidateRows.every((r) => r._checked);
           }}
-          aria-label="Select all rows"
+          aria-label={t("col.product")}
         />
       ),
       cell: (row: CandidateRow) => (
@@ -156,7 +153,7 @@ function ReorderPointAdmin() {
           className="accent-primary"
           checked={row._checked}
           onChange={(e) => handleSelectRow(row.stock_id, e.target.checked)}
-          aria-label={`Select ${row.product_name}`}
+          aria-label={t("col.product")}
         />
       ),
       className: "w-8",
@@ -164,24 +161,24 @@ function ReorderPointAdmin() {
     },
     {
       id: "product_name",
-      header: "Product",
+      header: t("col.product"),
       cell: (row: CandidateRow) => <span className="font-medium">{row.product_name}</span>,
     },
     {
       id: "warehouse_name",
-      header: "Warehouse",
+      header: t("col.warehouse"),
       cell: (row: CandidateRow) => row.warehouse_name,
     },
     {
       id: "current_reorder_point",
-      header: "Current ROP",
+      header: t("col.currentRop"),
       cell: (row: CandidateRow) => (
         <span className="font-mono text-sm tabular-nums">{num(row.current_reorder_point)}</span>
       ),
     },
     {
       id: "computed_reorder_point",
-      header: "Computed ROP",
+      header: t("col.computedRop"),
       cell: (row: CandidateRow) =>
         row.computed_reorder_point != null ? (
           <span className="font-mono text-sm font-semibold tabular-nums text-primary">
@@ -193,28 +190,28 @@ function ReorderPointAdmin() {
     },
     {
       id: "avg_daily_usage",
-      header: "Avg Daily Usage",
+      header: t("col.avgDailyUsage"),
       cell: (row: CandidateRow) => (
         <span className="font-mono text-sm tabular-nums">{num(row.avg_daily_usage)}</span>
       ),
     },
     {
       id: "lead_time_days",
-      header: "Lead Time (d)",
+      header: t("col.leadTime"),
       cell: (row: CandidateRow) => (
         <span className="font-mono text-sm tabular-nums">{num(row.lead_time_days)}</span>
       ),
     },
     {
       id: "safety_stock",
-      header: "Safety Stock",
+      header: t("col.safetyStock"),
       cell: (row: CandidateRow) => (
         <span className="font-mono text-sm tabular-nums">{num(row.safety_stock)}</span>
       ),
     },
     {
       id: "demand_basis",
-      header: "Demand Basis",
+      header: t("col.demandBasis"),
       cell: (row: CandidateRow) =>
         row.demand_basis ? (
           <Badge variant="outline" className="normal-case tracking-normal">{row.demand_basis}</Badge>
@@ -224,7 +221,7 @@ function ReorderPointAdmin() {
     },
     {
       id: "movement_count",
-      header: "Movements",
+      header: t("col.movements"),
       cell: (row: CandidateRow) =>
         row.movement_count != null ? (
           <span className="font-mono text-sm tabular-nums">{row.movement_count}</span>
@@ -234,16 +231,16 @@ function ReorderPointAdmin() {
     },
     {
       id: "lead_time_source",
-      header: "LT Source",
+      header: t("col.ltSource"),
       cell: (row: CandidateRow) => (
         <span className="text-xs text-muted-foreground">
-          {leadTimeSourceLabel(row.lead_time_source)}
+          {t(`leadTimeSource.${row.lead_time_source ?? "—"}`, { defaultValue: row.lead_time_source ?? "—" })}
         </span>
       ),
     },
     {
       id: "quality_note",
-      header: "Quality Note",
+      header: t("col.qualityNote"),
       cell: (row: CandidateRow) =>
         row.quality_note ? (
           <span className="text-xs text-muted-foreground">{row.quality_note}</span>
@@ -256,24 +253,24 @@ function ReorderPointAdmin() {
   const skippedColumns = [
     {
       id: "product_name",
-      header: "Product",
+      header: t("col.product"),
       cell: (row: ReorderPointPreviewRow) => <span className="font-medium">{row.product_name}</span>,
     },
     {
       id: "warehouse_name",
-      header: "Warehouse",
+      header: t("col.warehouse"),
       cell: (row: ReorderPointPreviewRow) => row.warehouse_name,
     },
     {
       id: "current_reorder_point",
-      header: "Current ROP",
+      header: t("col.currentRop"),
       cell: (row: ReorderPointPreviewRow) => (
         <span className="font-mono text-sm tabular-nums">{num(row.current_reorder_point)}</span>
       ),
     },
     {
       id: "skip_reason",
-      header: "Skip Reason",
+      header: t("col.skipReason"),
       cell: (row: ReorderPointPreviewRow) =>
         row.skip_reason ? (
           <Badge variant="outline" className="normal-case tracking-normal text-muted-foreground">
@@ -285,7 +282,7 @@ function ReorderPointAdmin() {
     },
     {
       id: "quality_note",
-      header: "Note",
+      header: t("col.note"),
       cell: (row: ReorderPointPreviewRow) =>
         row.quality_note ? (
           <span className="text-xs text-muted-foreground">{row.quality_note}</span>
@@ -300,20 +297,20 @@ function ReorderPointAdmin() {
 
   return (
     <SectionCard
-      title="Reorder Point Calculator"
-      description="Preview computed reorder points from demand history, then apply selected rows."
+      title={t("title")}
+      description={t("description")}
       actions={
         showPreview ? (
           <div className="flex items-center gap-3">
             <Badge variant="outline" className="normal-case tracking-normal">
-              {candidates.length} candidates · {skipped.length} skipped
+              {t("candidatesCount", { count: candidates.length })} · {t("skippedCount", { count: skipped.length })}
             </Badge>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => { clearResults(); setCandidateRows([]); }}
             >
-              Clear
+              {t("clear")}
             </Button>
           </div>
         ) : undefined
@@ -324,12 +321,12 @@ function ReorderPointAdmin() {
         <div className="mb-4 flex flex-wrap items-center gap-6">
           {/* Safety factor */}
           <div className="min-w-52 flex-1">
-            <SafetyFactorSlider value={safetyFactor} onChange={setSafetyFactor} />
+            <SafetyFactorSlider value={safetyFactor} onChange={setSafetyFactor} label={t("safetyFactor")} />
           </div>
 
           {/* Lookback days */}
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Lookback</span>
+            <span className="text-sm font-medium">{t("lookback")}</span>
             <div className="flex rounded-lg border border-border bg-background p-0.5">
               {LOOKBACK_OPTIONS.map((opt) => (
                 <button
@@ -351,14 +348,14 @@ function ReorderPointAdmin() {
 
           {/* Warehouse filter */}
           <div className="flex items-center gap-2">
-            <label htmlFor="rop-warehouse" className="text-sm font-medium">Warehouse</label>
+            <label htmlFor="rop-warehouse" className="text-sm font-medium">{t("warehouse")}</label>
             <select
               id="rop-warehouse"
               value={warehouseId}
               onChange={(e) => setWarehouseId(e.target.value)}
               className="h-8 rounded-lg border border-input bg-background px-2 text-sm"
             >
-              <option value="">All warehouses</option>
+              <option value="">{t("allWarehouses")}</option>
               {warehouses.map((wh) => (
                 <option key={wh.id} value={wh.id}>{wh.name}</option>
               ))}
@@ -373,7 +370,7 @@ function ReorderPointAdmin() {
             className="gap-2"
           >
             <SlidersHorizontal className="size-4" />
-            {loading ? "Computing…" : "Preview"}
+            {loading ? t("computing") : t("preview")}
           </Button>
 
           {hasResults && (
@@ -384,9 +381,16 @@ function ReorderPointAdmin() {
               className="gap-2"
             >
               <CheckCircle2 className="size-4" />
-              {applying ? "Applying…" : `Apply Selected (${selectedCount})`}
+              {applying ? t("applying") : `${t("apply")} ${t("selectedCount", { count: selectedCount })}`}
             </Button>
           )}
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
+          <Badge variant="outline" className="normal-case tracking-normal">{t("safetyFactorBuffer", { value: Math.round(safetyFactor * 100) })}</Badge>
+          <Badge variant="outline" className="normal-case tracking-normal">{t("ropUnits")}</Badge>
+          <Badge variant="outline" className="normal-case tracking-normal">{t("avgDailyUsageUnits")}</Badge>
+          <Badge variant="outline" className="normal-case tracking-normal">{t("leadTimeDays")}</Badge>
         </div>
       </div>
 
@@ -403,7 +407,7 @@ function ReorderPointAdmin() {
         <div className="mb-4 flex items-start gap-2 rounded-xl border border-success/20 bg-success/8 px-4 py-3 text-sm text-success">
           <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
           <span>
-            Applied {applyResult.updated_count} rows · {applyResult.skipped_count} skipped
+            {t("applied", { updated: applyResult.updated_count, skipped: applyResult.skipped_count })}
           </span>
         </div>
       )}
@@ -422,7 +426,7 @@ function ReorderPointAdmin() {
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              Candidate Rows
+              {t("candidates")}
               <Badge variant="outline" className="normal-case tracking-normal">{candidates.length}</Badge>
             </button>
             <button
@@ -434,7 +438,7 @@ function ReorderPointAdmin() {
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              Skipped Rows
+              {t("skipped")}
               <Badge variant="outline" className="normal-case tracking-normal">{skipped.length}</Badge>
             </button>
           </div>
@@ -445,19 +449,19 @@ function ReorderPointAdmin() {
               tableClassName="min-w-[900px]"
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               columns={candidateColumns as any}
-              data={syncedCandidates}
+              data={candidateRows}
               loading={loading}
               loadingRowCount={5}
-              emptyTitle="No candidate rows."
-              emptyDescription="No products met eligibility criteria for the selected scope."
+              emptyTitle={t("noCandidatesTitle")}
+              emptyDescription={t("noCandidatesDesc")}
               toolbar={
                 <DataTableToolbar>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Info className="size-3.5" />
                     <span>
-                      {syncedCandidates.length > 0
-                        ? `${syncedCandidates.length} candidate rows · check rows to include in apply`
-                        : "Run Preview to see candidate rows"}
+                      {candidateRows.length > 0
+                        ? t("candidatesHint", { count: candidateRows.length })
+                        : t("noCandidatesHint")}
                     </span>
                   </div>
                 </DataTableToolbar>
@@ -474,13 +478,13 @@ function ReorderPointAdmin() {
               data={skipped}
               loading={loading}
               loadingRowCount={5}
-              emptyTitle="No skipped rows."
-              emptyDescription="All evaluated rows had sufficient data."
+              emptyTitle={t("noSkippedTitle")}
+              emptyDescription={t("noSkippedDesc")}
               toolbar={
                 <DataTableToolbar>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Info className="size-3.5" />
-                    <span>Skipped rows were not eligible and will not be modified.</span>
+                    <span>{t("noSkippedHint")}</span>
                   </div>
                 </DataTableToolbar>
               }
@@ -494,9 +498,9 @@ function ReorderPointAdmin() {
       {!showPreview && !loading && (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <SlidersHorizontal className="mb-3 size-10 text-muted-foreground/40" />
-          <p className="text-sm font-medium">Set parameters and click Preview</p>
+          <p className="text-sm font-medium">{t("setParamsAndClick")}</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Computed ROP = Safety Stock + (Lead Time × Avg Daily Usage)
+            {t("formula")}
           </p>
         </div>
       )}

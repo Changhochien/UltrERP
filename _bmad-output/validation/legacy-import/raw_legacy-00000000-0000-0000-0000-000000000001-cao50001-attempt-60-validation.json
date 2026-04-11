@@ -1,0 +1,812 @@
+{
+  "attempt_number": 60,
+  "batch_id": "cao50001",
+  "blocking_issue_count": 0,
+  "counts": {
+    "customer_count": 931,
+    "holding_count": 514,
+    "inventory_count": 6588,
+    "invoice_count": 133389,
+    "invoice_line_count": 596647,
+    "invoice_snapshot_count": 132659,
+    "legacy_header_snapshot_count": 274563,
+    "legacy_header_snapshot_document_count": 274563,
+    "legacy_header_snapshot_missing_count": 0,
+    "lineage_count": 1545285,
+    "order_count": 133389,
+    "order_line_count": 596647,
+    "order_snapshot_count": 132659,
+    "product_count": 6612,
+    "supplier_count": 91,
+    "supplier_invoice_count": 9250,
+    "supplier_invoice_line_count": 61740,
+    "supplier_invoice_snapshot_count": 9245,
+    "warehouse_count": 1
+  },
+  "epic13_handoff": {
+    "boundary": "Story 15.5 emits batch-scoped import evidence only. Epic 13 owns longer-horizon shadow-mode reconciliation.",
+    "comparison_inputs": [
+      "stage_reconciliation",
+      "mapping_summary",
+      "failed_stages",
+      "counts",
+      "snapshot_coverage"
+    ],
+    "holding_count": 514,
+    "legacy_header_snapshot_count": 274563,
+    "legacy_header_snapshot_missing_count": 0,
+    "lineage_count": 1545285,
+    "scope_cutoff_date": "2025-06-10",
+    "scope_key": "c0bb047aafb7a511"
+  },
+  "failed_stages": [],
+  "issues": [
+    {
+      "code": "unresolved-product-mappings",
+      "details": {
+        "candidate_count": 100,
+        "orphan_code_count": 190,
+        "orphan_row_count": 523,
+        "unknown_count": 190
+      },
+      "message": "190 product codes remain routed to UNKNOWN across 523 sales-detail rows.",
+      "severity": 2
+    }
+  ],
+  "mapping_summary": {
+    "candidate_count": 100,
+    "mapping_count": 6111,
+    "orphan_code_count": 190,
+    "orphan_row_count": 523,
+    "unknown_count": 190
+  },
+  "replay": {
+    "disposition": "new-scope",
+    "previous_attempt_number": null,
+    "previous_batch_id": null,
+    "previous_status": null,
+    "scope_cutoff_date": "2025-06-10",
+    "scope_key": "c0bb047aafb7a511"
+  },
+  "schema_name": "raw_legacy",
+  "snapshot_coverage": {
+    "invoice_count": 132659,
+    "invoice_snapshot_count": 132659,
+    "order_count": 132659,
+    "order_snapshot_count": 132659,
+    "supplier_invoice_count": 9245,
+    "supplier_invoice_snapshot_count": 9245
+  },
+  "stage_reconciliation": [
+    {
+      "error_message": null,
+      "expected_row_count": 1,
+      "loaded_row_count": 1,
+      "source_file": "tbaaccounts.csv",
+      "status": "completed",
+      "table_name": "tbaaccounts"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 5,
+      "loaded_row_count": 5,
+      "source_file": "tbaadjust.csv",
+      "status": "completed",
+      "table_name": "tbaadjust"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 232,
+      "loaded_row_count": 232,
+      "source_file": "tbaamnt.csv",
+      "status": "completed",
+      "table_name": "tbaamnt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 24,
+      "loaded_row_count": 24,
+      "source_file": "tbaarapctlsub.csv",
+      "status": "completed",
+      "table_name": "tbaarapctlsub"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 7831,
+      "loaded_row_count": 7831,
+      "source_file": "tbabank.csv",
+      "status": "completed",
+      "table_name": "tbabank"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 4,
+      "loaded_row_count": 4,
+      "source_file": "tbabankitem.csv",
+      "status": "completed",
+      "table_name": "tbabankitem"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 261,
+      "loaded_row_count": 261,
+      "source_file": "tbabankzh.csv",
+      "status": "completed",
+      "table_name": "tbabankzh"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 103,
+      "loaded_row_count": 103,
+      "source_file": "tbacashflow.csv",
+      "status": "completed",
+      "table_name": "tbacashflow"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 4,
+      "loaded_row_count": 4,
+      "source_file": "tbacashpaytype.csv",
+      "status": "completed",
+      "table_name": "tbacashpaytype"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 1,
+      "loaded_row_count": 1,
+      "source_file": "tbacodefmt.csv",
+      "status": "completed",
+      "table_name": "tbacodefmt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 69,
+      "loaded_row_count": 69,
+      "source_file": "tbacost.csv",
+      "status": "completed",
+      "table_name": "tbacost"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 18,
+      "loaded_row_count": 18,
+      "source_file": "tbacostdetail.csv",
+      "status": "completed",
+      "table_name": "tbacostdetail"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 49,
+      "loaded_row_count": 49,
+      "source_file": "tbactlsub.csv",
+      "status": "completed",
+      "table_name": "tbactlsub"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 1,
+      "loaded_row_count": 1,
+      "source_file": "tbadoevent.csv",
+      "status": "completed",
+      "table_name": "tbadoevent"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 1,
+      "loaded_row_count": 1,
+      "source_file": "tbaemploy.csv",
+      "status": "completed",
+      "table_name": "tbaemploy"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 25,
+      "loaded_row_count": 25,
+      "source_file": "tbaemployitem.csv",
+      "status": "completed",
+      "table_name": "tbaemployitem"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 62,
+      "loaded_row_count": 62,
+      "source_file": "tbaemplt.csv",
+      "status": "completed",
+      "table_name": "tbaemplt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 1,
+      "loaded_row_count": 1,
+      "source_file": "tbaetgood.csv",
+      "status": "completed",
+      "table_name": "tbaetgood"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 28,
+      "loaded_row_count": 28,
+      "source_file": "tbaflagdc.csv",
+      "status": "completed",
+      "table_name": "tbaflagdc"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 6,
+      "loaded_row_count": 6,
+      "source_file": "tbafncuse.csv",
+      "status": "completed",
+      "table_name": "tbafncuse"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 50,
+      "loaded_row_count": 50,
+      "source_file": "tbahealth.csv",
+      "status": "completed",
+      "table_name": "tbahealth"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 7305,
+      "loaded_row_count": 7305,
+      "source_file": "tbaholiday.csv",
+      "status": "completed",
+      "table_name": "tbaholiday"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 50,
+      "loaded_row_count": 50,
+      "source_file": "tbahosthealth.csv",
+      "status": "completed",
+      "table_name": "tbahosthealth"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 90,
+      "loaded_row_count": 90,
+      "source_file": "tbainvorail.csv",
+      "status": "completed",
+      "table_name": "tbainvorail"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 9,
+      "loaded_row_count": 9,
+      "source_file": "tbaiotypeset.csv",
+      "status": "completed",
+      "table_name": "tbaiotypeset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 9,
+      "loaded_row_count": 9,
+      "source_file": "tbalog.csv",
+      "status": "completed",
+      "table_name": "tbalog"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 25,
+      "loaded_row_count": 25,
+      "source_file": "tbarate.csv",
+      "status": "completed",
+      "table_name": "tbarate"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 15,
+      "loaded_row_count": 15,
+      "source_file": "tbaraterefer.csv",
+      "status": "completed",
+      "table_name": "tbaraterefer"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 49,
+      "loaded_row_count": 49,
+      "source_file": "tbareptlst.csv",
+      "status": "completed",
+      "table_name": "tbareptlst"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 8,
+      "loaded_row_count": 8,
+      "source_file": "tbarichkind.csv",
+      "status": "completed",
+      "table_name": "tbarichkind"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 26,
+      "loaded_row_count": 26,
+      "source_file": "tbarptitvset.csv",
+      "status": "completed",
+      "table_name": "tbarptitvset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 127,
+      "loaded_row_count": 127,
+      "source_file": "tbasadset.csv",
+      "status": "completed",
+      "table_name": "tbasadset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 1,
+      "loaded_row_count": 1,
+      "source_file": "tbasalaryset.csv",
+      "status": "completed",
+      "table_name": "tbasalaryset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 63,
+      "loaded_row_count": 63,
+      "source_file": "tbasecondlang.csv",
+      "status": "completed",
+      "table_name": "tbasecondlang"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 74,
+      "loaded_row_count": 74,
+      "source_file": "tbasetinfo.csv",
+      "status": "completed",
+      "table_name": "tbasetinfo"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 248,
+      "loaded_row_count": 248,
+      "source_file": "tbastktokj.csv",
+      "status": "completed",
+      "table_name": "tbastktokj"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 9,
+      "loaded_row_count": 9,
+      "source_file": "tbasubbase.csv",
+      "status": "completed",
+      "table_name": "tbasubbase"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 25,
+      "loaded_row_count": 25,
+      "source_file": "tbasubclass.csv",
+      "status": "completed",
+      "table_name": "tbasubclass"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 232,
+      "loaded_row_count": 232,
+      "source_file": "tbasubject.csv",
+      "status": "completed",
+      "table_name": "tbasubject"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 1,
+      "loaded_row_count": 1,
+      "source_file": "tbasyspara.csv",
+      "status": "completed",
+      "table_name": "tbasyspara"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 840,
+      "loaded_row_count": 840,
+      "source_file": "tbatax.csv",
+      "status": "completed",
+      "table_name": "tbatax"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 3,
+      "loaded_row_count": 3,
+      "source_file": "tbazjrptaddi.csv",
+      "status": "completed",
+      "table_name": "tbazjrptaddi"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 518,
+      "loaded_row_count": 518,
+      "source_file": "tbazjrptfml.csv",
+      "status": "completed",
+      "table_name": "tbazjrptfml"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 187,
+      "loaded_row_count": 187,
+      "source_file": "tbazjsub.csv",
+      "status": "completed",
+      "table_name": "tbazjsub"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 3643,
+      "loaded_row_count": 3643,
+      "source_file": "tbcaddress.csv",
+      "status": "completed",
+      "table_name": "tbcaddress"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 2,
+      "loaded_row_count": 2,
+      "source_file": "tbcbaseno.csv",
+      "status": "completed",
+      "table_name": "tbcbaseno"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 1,
+      "loaded_row_count": 1,
+      "source_file": "tbcpasswd.csv",
+      "status": "completed",
+      "table_name": "tbcpasswd"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 53,
+      "loaded_row_count": 53,
+      "source_file": "tbcphrase.csv",
+      "status": "completed",
+      "table_name": "tbcphrase"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 10,
+      "loaded_row_count": 10,
+      "source_file": "tbcpubsyspara.csv",
+      "status": "completed",
+      "table_name": "tbcpubsyspara"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 2,
+      "loaded_row_count": 2,
+      "source_file": "tbctacdef.csv",
+      "status": "completed",
+      "table_name": "tbctacdef"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 3,
+      "loaded_row_count": 3,
+      "source_file": "tbcversion.csv",
+      "status": "completed",
+      "table_name": "tbcversion"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 640,
+      "loaded_row_count": 640,
+      "source_file": "tbhsyspara.csv",
+      "status": "completed",
+      "table_name": "tbhsyspara"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 2,
+      "loaded_row_count": 2,
+      "source_file": "tbsagio.csv",
+      "status": "completed",
+      "table_name": "tbsagio"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 6,
+      "loaded_row_count": 6,
+      "source_file": "tbscurrency.csv",
+      "status": "completed",
+      "table_name": "tbscurrency"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 81,
+      "loaded_row_count": 81,
+      "source_file": "tbscusfunkey.csv",
+      "status": "completed",
+      "table_name": "tbscusfunkey"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 1022,
+      "loaded_row_count": 1022,
+      "source_file": "tbscust.csv",
+      "status": "completed",
+      "table_name": "tbscust"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 73,
+      "loaded_row_count": 73,
+      "source_file": "tbscustreptdef.csv",
+      "status": "completed",
+      "table_name": "tbscustreptdef"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 73,
+      "loaded_row_count": 73,
+      "source_file": "tbscustreptset.csv",
+      "status": "completed",
+      "table_name": "tbscustreptset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 10,
+      "loaded_row_count": 10,
+      "source_file": "tbscxdt.csv",
+      "status": "completed",
+      "table_name": "tbscxdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 10,
+      "loaded_row_count": 10,
+      "source_file": "tbscxmain.csv",
+      "status": "completed",
+      "table_name": "tbscxmain"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 1,
+      "loaded_row_count": 1,
+      "source_file": "tbsdoevent.csv",
+      "status": "completed",
+      "table_name": "tbsdoevent"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 378,
+      "loaded_row_count": 378,
+      "source_file": "tbsexpdefdt.csv",
+      "status": "completed",
+      "table_name": "tbsexpdefdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 24,
+      "loaded_row_count": 24,
+      "source_file": "tbsexpdefmain.csv",
+      "status": "completed",
+      "table_name": "tbsexpdefmain"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 61,
+      "loaded_row_count": 61,
+      "source_file": "tbsfunkey.csv",
+      "status": "completed",
+      "table_name": "tbsfunkey"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 1,
+      "loaded_row_count": 1,
+      "source_file": "tbslocation.csv",
+      "status": "completed",
+      "table_name": "tbslocation"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 301460,
+      "loaded_row_count": 301460,
+      "source_file": "tbslog.csv",
+      "status": "completed",
+      "table_name": "tbslog"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 6056,
+      "loaded_row_count": 6056,
+      "source_file": "tbsno.csv",
+      "status": "completed",
+      "table_name": "tbsno"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 12,
+      "loaded_row_count": 12,
+      "source_file": "tbsplusetsec.csv",
+      "status": "completed",
+      "table_name": "tbsplusetsec"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 508,
+      "loaded_row_count": 508,
+      "source_file": "tbsprepay.csv",
+      "status": "completed",
+      "table_name": "tbsprepay"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 60,
+      "loaded_row_count": 60,
+      "source_file": "tbsratio.csv",
+      "status": "completed",
+      "table_name": "tbsratio"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 2220,
+      "loaded_row_count": 2220,
+      "source_file": "tbsremark.csv",
+      "status": "completed",
+      "table_name": "tbsremark"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 4,
+      "loaded_row_count": 4,
+      "source_file": "tbsslipcpd.csv",
+      "status": "completed",
+      "table_name": "tbsslipcpd"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 471,
+      "loaded_row_count": 471,
+      "source_file": "tbsslipctz.csv",
+      "status": "completed",
+      "table_name": "tbsslipctz"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 13,
+      "loaded_row_count": 13,
+      "source_file": "tbsslipdtcpd.csv",
+      "status": "completed",
+      "table_name": "tbsslipdtcpd"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 5426,
+      "loaded_row_count": 5426,
+      "source_file": "tbsslipdtctz.csv",
+      "status": "completed",
+      "table_name": "tbsslipdtctz"
+    },
+    {
+      "error_message": "fk_validation_skipped: tbsslipj not staged",
+      "expected_row_count": 61728,
+      "loaded_row_count": 61728,
+      "source_file": "tbsslipdtj.csv",
+      "status": "completed",
+      "table_name": "tbsslipdtj"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 833,
+      "loaded_row_count": 833,
+      "source_file": "tbsslipdto.csv",
+      "status": "completed",
+      "table_name": "tbsslipdto"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 593017,
+      "loaded_row_count": 593017,
+      "source_file": "tbsslipdtx.csv",
+      "status": "completed",
+      "table_name": "tbsslipdtx"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 117,
+      "loaded_row_count": 117,
+      "source_file": "tbsslipexp.csv",
+      "status": "completed",
+      "table_name": "tbsslipexp"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 9250,
+      "loaded_row_count": 9250,
+      "source_file": "tbsslipj.csv",
+      "status": "completed",
+      "table_name": "tbsslipj"
+    },
+    {
+      "error_message": "fk_warning: supplier_code -> tbscust [1000-G27, 1103, 1104, 1122, 1122-G55, 1122-G83, 1132, 11321, 1137, 1138, 11381, 1142, 1142-G11, 1143, 1148, 1149, 1150, 1151, 1152, 1154, 1155, 1157, 1158, 1160, 1164, 11641, 1169, 1174, 1178, 1180, 1182, 1183, 1184, 1188, 1192, 2000, 2007, 20801, 20821, 2114, 2127, 2129, 2130, 2132, 2137, 2139, 2148, 21501, 2151, 2154, 2155, 2156, 2230, 2234, 2235, 2238, 2240, 22401, 2242, 2313, 2504, 2506, 2507, 2514, 25252, 2585, 2592, 2618, 2620, 2638, 2644, 2704, 2711, 2718, 2720, 2735, 2736, 2749, 2751, 2801, 2804, 2806, 2815, 2818, 2838, 2845, 2903, 2906, 2915, 3111, 3118, 3121, 3207, 3309, 3310, 3311, 3405, 3407, 3411, 3414, 3415, 3416, 3418, 3508, 3509, 3511, 3515, 3517, 3520, 3526]",
+      "expected_row_count": 270,
+      "loaded_row_count": 270,
+      "source_file": "tbsslipo.csv",
+      "status": "completed",
+      "table_name": "tbsslipo"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 133419,
+      "loaded_row_count": 133419,
+      "source_file": "tbsslipx.csv",
+      "status": "completed",
+      "table_name": "tbsslipx"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 6,
+      "loaded_row_count": 6,
+      "source_file": "tbsspay.csv",
+      "status": "completed",
+      "table_name": "tbsspay"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 6588,
+      "loaded_row_count": 6588,
+      "source_file": "tbsstkhouse.csv",
+      "status": "completed",
+      "table_name": "tbsstkhouse"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 1647,
+      "loaded_row_count": 1647,
+      "source_file": "tbsstkpave.csv",
+      "status": "completed",
+      "table_name": "tbsstkpave"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 6611,
+      "loaded_row_count": 6611,
+      "source_file": "tbsstock.csv",
+      "status": "completed",
+      "table_name": "tbsstock"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 1,
+      "loaded_row_count": 1,
+      "source_file": "tbsstorehouse.csv",
+      "status": "completed",
+      "table_name": "tbsstorehouse"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 1175,
+      "loaded_row_count": 1175,
+      "source_file": "tbssyspara.csv",
+      "status": "completed",
+      "table_name": "tbssyspara"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 23,
+      "loaded_row_count": 23,
+      "source_file": "tbstmpqty.csv",
+      "status": "completed",
+      "table_name": "tbstmpqty"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 1,
+      "loaded_row_count": 1,
+      "source_file": "tbsusrempl.csv",
+      "status": "completed",
+      "table_name": "tbsusrempl"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 1,
+      "loaded_row_count": 1,
+      "source_file": "tbsusrhouse.csv",
+      "status": "completed",
+      "table_name": "tbsusrhouse"
+    }
+  ],
+  "status": "warning",
+  "tenant_id": "00000000-0000-0000-0000-000000000001"
+}

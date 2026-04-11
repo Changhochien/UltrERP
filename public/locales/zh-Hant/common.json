@@ -202,11 +202,33 @@
       },
       "analytics": {
         "totalRevenue": "12個月營收",
+        "revenueDescription": "最近 12 個月累計營收",
+        "invoiceCount": "發票數量",
+        "invoiceCountDesc": "最近 12 個月開立的發票數",
+        "avgInvoiceValue": "平均發票金額",
+        "avgInvoiceDesc": "每張發票平均金額",
         "outstanding": "應收帳款",
+        "outstandingBalance": "應收帳款餘額",
         "creditUtilization": "信用額度使用率",
         "avgDaysToPay": "平均付款天數",
+        "avgDaysDesc": "從發票日期到付款日期計算",
         "revenueTrend": "營收趨勢",
-        "paymentScore": "付款評分"
+        "revenueTrendDesc": "最近 12 個完整月份的月營收",
+        "paymentScore": "付款評分",
+        "daysOverdueAvg": "平均逾期天數",
+        "daysOverdueDesc": "超過付款條件後的平均逾期天數",
+        "creditLimit": "信用額度",
+        "creditLimitDesc": "此客戶設定的信用額度",
+        "emptyTitle": "目前沒有營收活動",
+        "emptyDescription": "此客戶在最近 12 個月內沒有發票營收。",
+        "loadError": "載入分析資料失敗。",
+        "tooltipRevenue": "營收",
+        "paymentScoreLabels": {
+          "excellent": "優秀",
+          "prompt": "準時",
+          "late": "延遲",
+          "at_risk": "高風險"
+        }
       },
       "invoices": {
         "title": "發票",
@@ -222,7 +244,13 @@
       },
       "outstanding": {
         "title": "應收帳款",
-        "description": "此客戶的應收帳款。"
+        "description": "此客戶的應收帳款概況。",
+        "loading": "正在載入應收帳款…",
+        "error": "錯誤：{message}",
+        "totalOutstanding": "應收帳款總額",
+        "invoiceCount": "發票數量",
+        "overdue": "逾期",
+        "overdueSummary": "{count} 張發票（{currency} {amount}）"
       },
       "statement": {
         "title": "客戶對帳單",
@@ -251,6 +279,12 @@
         "empty": "查無交易記錄。",
         "invoiceType": "發票",
         "paymentType": "付款"
+      },
+      "statusValues": {
+        "active": "啟用",
+        "suspended": "停權",
+        "inactive": "停用",
+        "deleted": "已刪除"
       }
     },
     "form": {
@@ -717,10 +751,13 @@
       "createInvoice": "開立發票",
       "description": "瀏覽發票狀態與付款進度。",
       "eyebrow": "發票",
+      "invoiceDate": "發票日期",
       "invoiceDetail": "發票詳情",
       "invoiceDetailDescription": "檢視及管理發票詳情與付款狀態。",
+      "invoiceNumber": "發票號碼",
       "invoiceWorkspace": "發票工作區",
       "invoiceWorkspaceDescription": "瀏覽並管理所有發票。",
+      "status": "狀態",
       "title": "發票"
     },
     "totals": {
@@ -728,7 +765,8 @@
       "lines": "明細",
       "subtotal": "未稅合計",
       "tax": "稅額",
-      "title": "合計"
+      "title": "合計",
+      "total": "合計"
     },
     "print": {
       "documentNumber": "單據號碼",
@@ -776,11 +814,64 @@
       "allWarehouses": "所有倉庫",
       "lowStock": "庫存過低",
       "totalAlerts": "共 {count} 筆警示",
+      "alertsUnavailable": "警示資料暫時無法取得",
       "attention": "注意",
       "pendingAlerts": "待處理警示",
       "requireAction": "需要處理",
       "reorderAlerts": "補貨警示",
       "acrossAllWarehouses": "所有倉庫合計"
+    },
+    "reorderPointAdmin": {
+      "title": "補貨點計算機",
+      "description": "從需求歷史預覽計算後的補貨點，再套用所選列。",
+      "safetyFactor": "安全係數",
+      "lookback": "回溯期間",
+      "warehouse": "倉庫",
+      "allWarehouses": "所有倉庫",
+      "preview": "預覽",
+      "computing": "計算中…",
+      "apply": "套用所選",
+      "applying": "套用中…",
+      "selectedCount": "（已選 {count} 筆）",
+      "clear": "清除",
+      "candidates": "候選列",
+      "skipped": "略過列",
+      "candidatesCount": "{count} 筆候選",
+      "skippedCount": "{count} 筆略過",
+      "candidatesHint": "{count} 筆候選列 · 勾選要套用的列",
+      "noCandidatesHint": "點選預覽以查看候選列",
+      "noSkippedHint": "略過的列不符合資格，不會被修改。",
+      "noCandidatesTitle": "無候選列。",
+      "noCandidatesDesc": "所選範圍內無產品符合候選資格。",
+      "noSkippedTitle": "無略過列。",
+      "noSkippedDesc": "所有已評估的列均有足夠資料。",
+      "formula": "計算後 ROP = 安全庫存 +（前置時間 × 平均日用量）",
+      "setParamsAndClick": "設定參數並點選預覽",
+      "safetyFactorBuffer": "安全係數緩衝：{value}",
+      "ropUnits": "ROP / 安全庫存 = 單位",
+      "avgDailyUsageUnits": "平均日用量 = 單位/日",
+      "leadTimeDays": "前置時間 = 天",
+      "applied": "已套用 {updated} 列 · {skipped} 列略過",
+      "col": {
+        "product": "產品",
+        "warehouse": "倉庫",
+        "currentRop": "目前 ROP（單位）",
+        "computedRop": "計算後 ROP（單位）",
+        "avgDailyUsage": "平均日用量（單位/日）",
+        "leadTime": "前置時間（天）",
+        "safetyStock": "安全庫存（單位）",
+        "demandBasis": "需求依據",
+        "movements": "異動次數",
+        "ltSource": "LT 來源",
+        "qualityNote": "品質備註",
+        "skipReason": "略過原因",
+        "note": "備註"
+      },
+      "leadTimeSource": {
+        "actual": "歷史資料",
+        "supplier_default": "供應商預設",
+        "fallback_7d": "7 天預設值"
+      }
     },
     "warehouseSelector": {
       "label": "倉庫",
@@ -795,6 +886,8 @@
       "allStatuses": "所有狀態",
       "pending": "待處理",
       "acknowledged": "已確認",
+      "snoozed": "已暫停",
+      "dismissed": "已忽略",
       "resolved": "已解決",
       "refreshAlerts": "重新整理警示",
       "loading": "載入中…",

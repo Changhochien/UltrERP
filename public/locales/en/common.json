@@ -159,19 +159,44 @@
       "titleCreated": "Customer Created"
     },
     "detail": {
+      "backToList": "Back to customer list",
       "ban": "Business Number",
       "billingAddress": "Billing Address",
       "companyName": "Company Name",
       "contactName": "Contact Name",
+      "createdAt": "Created At",
       "creditLimit": "Credit Limit",
+      "delete": "Delete",
       "description": "Customer details",
       "edit": "Edit",
       "email": "Email",
+      "eyebrow": "Customer",
       "loading": "Loading…",
       "notFound": "Customer not found.",
+      "overviewDescription": "Core profile and contact information for this customer.",
+      "overviewTitle": "Customer Overview",
       "phone": "Phone",
       "status": "Status",
+      "suspend": "Suspend",
       "title": "Customer Detail",
+      "updatedAt": "Last Updated",
+      "statusValues": {
+        "active": "Active",
+        "suspended": "Suspended",
+        "inactive": "Inactive",
+        "deleted": "Deleted"
+      },
+      "suspendConfirm": {
+        "message": "Suspend this customer?",
+        "error": "Failed to suspend customer."
+      },
+      "deleteConfirm": {
+        "message": "Delete this customer?",
+        "error": "Failed to delete customer."
+      },
+      "cannotDelete": {
+        "message": "Customers with outstanding balances cannot be deleted."
+      },
       "tabs": {
         "overview": "Overview",
         "invoices": "Invoices",
@@ -181,12 +206,56 @@
         "analytics": "Analytics"
       },
       "analytics": {
-        "totalRevenue": "Revenue (12mo)",
+        "totalRevenue": "Total Revenue (12 months)",
+        "revenueDescription": "Rolling 12-month revenue",
+        "invoiceCount": "Invoice Count",
+        "invoiceCountDesc": "Invoices issued in the last 12 months",
+        "avgInvoiceValue": "Average Invoice Value",
+        "avgInvoiceDesc": "Average value per invoice",
         "outstanding": "Outstanding",
+        "outstandingBalance": "Outstanding Balance",
         "creditUtilization": "Credit Utilization",
-        "avgDaysToPay": "Avg Days to Pay",
+        "avgDaysToPay": "Average Days to Pay",
+        "avgDaysDesc": "Measured from invoice date to payment date",
         "revenueTrend": "Revenue Trend",
-        "paymentScore": "Payment Score"
+        "revenueTrendDesc": "Monthly revenue across the last 12 complete months",
+        "paymentScore": "Payment Score",
+        "daysOverdueAvg": "Average Days Overdue",
+        "daysOverdueDesc": "Average lateness beyond terms",
+        "creditLimit": "Credit Limit",
+        "creditLimitDesc": "Configured customer credit line",
+        "emptyTitle": "No revenue activity yet",
+        "emptyDescription": "This customer has no invoice revenue in the last 12 months.",
+        "loadError": "Failed to load analytics.",
+        "tooltipRevenue": "Revenue",
+        "paymentScoreLabels": {
+          "excellent": "Excellent",
+          "prompt": "Prompt",
+          "late": "Late",
+          "at_risk": "At Risk"
+        }
+      },
+      "invoices": {
+        "title": "Invoices",
+        "description": "Invoices issued to this customer.",
+        "emptyTitle": "No invoices found",
+        "emptyDescription": "This customer does not have any invoices yet."
+      },
+      "orders": {
+        "title": "Orders",
+        "description": "Orders placed by this customer.",
+        "emptyTitle": "No orders found",
+        "emptyDescription": "This customer does not have any orders yet."
+      },
+      "outstanding": {
+        "title": "Outstanding Balance",
+        "description": "Receivables posture for the selected customer.",
+        "loading": "Loading outstanding…",
+        "error": "Error: {message}",
+        "totalOutstanding": "Total Outstanding",
+        "invoiceCount": "Invoices",
+        "overdue": "Overdue",
+        "overdueSummary": "{count} invoices ({currency} {amount})"
       },
       "statement": {
         "title": "Account Statement",
@@ -681,10 +750,13 @@
       "createInvoice": "Create Invoice",
       "description": "Browse invoice status and payment progress.",
       "eyebrow": "Invoices",
+      "invoiceDate": "Invoice Date",
       "invoiceDetail": "Invoice Detail",
       "invoiceDetailDescription": "View and manage invoice details and payment status.",
+      "invoiceNumber": "Invoice #",
       "invoiceWorkspace": "Invoice Workspace",
       "invoiceWorkspaceDescription": "Browse and manage all invoices.",
+      "status": "Status",
       "title": "Invoices"
     },
     "totals": {
@@ -692,7 +764,8 @@
       "lines": "Lines",
       "subtotal": "Subtotal",
       "tax": "Tax",
-      "title": "Totals"
+      "title": "Totals",
+      "total": "Total"
     },
     "print": {
       "documentNumber": "Document Number",
@@ -740,11 +813,64 @@
       "allWarehouses": "All warehouses",
       "lowStock": "Low Stock",
       "totalAlerts": "{count} total alerts",
+      "alertsUnavailable": "Alert data unavailable",
       "attention": "Attention",
       "pendingAlerts": "Pending Alerts",
       "requireAction": "Require action",
       "reorderAlerts": "Reorder Alerts",
       "acrossAllWarehouses": "Across all warehouses"
+    },
+    "reorderPointAdmin": {
+      "title": "Reorder Point Calculator",
+      "description": "Preview computed reorder points from demand history, then apply selected rows.",
+      "safetyFactor": "Safety Factor",
+      "lookback": "Lookback",
+      "warehouse": "Warehouse",
+      "allWarehouses": "All warehouses",
+      "preview": "Preview",
+      "computing": "Computing…",
+      "apply": "Apply Selected",
+      "applying": "Applying…",
+      "selectedCount": "({count} selected)",
+      "clear": "Clear",
+      "candidates": "Candidate Rows",
+      "skipped": "Skipped Rows",
+      "candidatesCount": "{count} candidates",
+      "skippedCount": "{count} skipped",
+      "candidatesHint": "{count} candidate rows · check rows to include in apply",
+      "noCandidatesHint": "Run Preview to see candidate rows",
+      "noSkippedHint": "Skipped rows were not eligible and will not be modified.",
+      "noCandidatesTitle": "No candidate rows.",
+      "noCandidatesDesc": "No products met eligibility criteria for the selected scope.",
+      "noSkippedTitle": "No skipped rows.",
+      "noSkippedDesc": "All evaluated rows had sufficient data.",
+      "formula": "Computed ROP = Safety Stock + (Lead Time × Avg Daily Usage)",
+      "setParamsAndClick": "Set parameters and click Preview",
+      "safetyFactorBuffer": "Safety factor buffer: {value}",
+      "ropUnits": "ROP / safety stock = units",
+      "avgDailyUsageUnits": "Avg daily usage = units per day",
+      "leadTimeDays": "Lead time = days",
+      "applied": "Applied {updated} rows · {skipped} skipped",
+      "col": {
+        "product": "Product",
+        "warehouse": "Warehouse",
+        "currentRop": "Current ROP (units)",
+        "computedRop": "Computed ROP (units)",
+        "avgDailyUsage": "Avg Daily Usage (units/day)",
+        "leadTime": "Lead Time (days)",
+        "safetyStock": "Safety Stock (units)",
+        "demandBasis": "Demand Basis",
+        "movements": "Movements",
+        "ltSource": "LT Source",
+        "qualityNote": "Quality Note",
+        "skipReason": "Skip Reason",
+        "note": "Note"
+      },
+      "leadTimeSource": {
+        "actual": "Historical",
+        "supplier_default": "Supplier default",
+        "fallback_7d": "7d fallback"
+      }
     },
     "warehouseSelector": {
       "label": "Warehouse",
@@ -759,6 +885,8 @@
       "allStatuses": "All statuses",
       "pending": "Pending",
       "acknowledged": "Acknowledged",
+      "snoozed": "Snoozed",
+      "dismissed": "Dismissed",
       "resolved": "Resolved",
       "refreshAlerts": "Refresh alerts",
       "loading": "Loading…",

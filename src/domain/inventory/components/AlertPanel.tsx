@@ -34,6 +34,8 @@ export function AlertPanel() {
     { value: "", label: t("allStatuses") },
     { value: "pending", label: t("pending") },
     { value: "acknowledged", label: t("acknowledged") },
+    { value: "snoozed", label: t("snoozed") },
+    { value: "dismissed", label: t("dismissed") },
     { value: "resolved", label: t("resolved") },
   ] as const;
 
@@ -51,6 +53,8 @@ export function AlertPanel() {
     switch (status) {
       case "pending": return "warning" as const;
       case "acknowledged": return "default" as const;
+      case "snoozed": return "info" as const;
+      case "dismissed": return "secondary" as const;
       case "resolved": return "success" as const;
       default: return "outline" as const;
     }

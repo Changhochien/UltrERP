@@ -12,9 +12,8 @@ import {
   YAxis,
 } from "recharts";
 
-import { MetricCard } from "@/components/layout/PageLayout";
+import { MetricCard, SectionCard, SurfaceMessage } from "@/components/layout/PageLayout";
 import { Badge } from "@/components/ui/badge";
-import { SectionCard } from "@/components/layout/PageLayout";
 import {
   getCustomerAnalyticsSummary,
   getCustomerRevenueTrend,
@@ -26,6 +25,8 @@ interface CustomerAnalyticsTabProps {
   customerId: string;
 }
 
+const ANALYTICS_MONTH_WINDOW = 12;
+
 function formatTWD(value: string): string {
   const num = Number(value);
   if (isNaN(num)) return value;
@@ -35,13 +36,6 @@ function formatTWD(value: string): string {
   })}`;
 }
 
-const SCORE_LABELS: Record<CustomerAnalyticsSummary["payment_score"], string> = {
-  excellent: "Excellent",
-  prompt: "Prompt",
-  late: "Late",
-  at_risk: "At Risk",
-};
-
 const SCORE_BADGE_VARIANT: Record<CustomerAnalyticsSummary["payment_score"], "success" | "warning" | "destructive" | "secondary"> = {
   excellent: "success",
   prompt: "warning",
@@ -49,8 +43,24 @@ const SCORE_BADGE_VARIANT: Record<CustomerAnalyticsSummary["payment_score"], "su
   at_risk: "destructive",
 };
 
+function buildTrendChartData(trend: CustomerRevenueTrend | null, months: number) {
+  const revenueByMonth = new Map(
+    trend?.trend.map((point) => [point.month, Number(point.revenue)]) ?? [],
+  );
+  const points: Array<{ month: string; revenue: number }> = [];
+  const now = new Date();
+
+  for (let offset = months; offset >= 1; offset -= 1) {
+    const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - offset, 1));
+    const month = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+    points.push({ month, revenue: revenueByMonth.get(month) ?? 0 });
+  }
+
+  return points;
+}
+
 export function CustomerAnalyticsTab({ customerId }: CustomerAnalyticsTabProps) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("common", { keyPrefix: "customer.detail.analytics" });
 
   const [summary, setSummary] = useState<CustomerAnalyticsSummary | null>(null);
   const [trend, setTrend] = useState<CustomerRevenueTrend | null>(null);
@@ -63,24 +73,33 @@ export function CustomerAnalyticsTab({ customerId }: CustomerAnalyticsTabProps) 
     try {
       const [summaryData, trendData] = await Promise.all([
         getCustomerAnalyticsSummary(customerId),
-        getCustomerRevenueTrend(customerId, 12),
+        getCustomerRevenueTrend(customerId, ANALYTICS_MONTH_WINDOW),
       ]);
       setSummary(summaryData);
       setTrend(trendData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load analytics");
+      setError(
+        err instanceof Error && err.message
+          ? err.message
+          : t("loadError", { defaultValue: "Failed to load analytics." }),
+      );
     } finally {
       setLoading(false);
     }
-  }, [customerId]);
+  }, [customerId, t]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const chartData = trend?.trend.map((p) => ({ month: p.month, revenue: Number(p.revenue) })) ?? [];
+  const chartData = buildTrendChartData(trend, ANALYTICS_MONTH_WINDOW);
+  const hasRevenueHistory = chartData.some((point) => point.revenue > 0);
 
-  const scoreLabel = summary ? SCORE_LABELS[summary.payment_score] : "";
+  const scoreLabel = summary
+    ? t(`paymentScoreLabels.${summary.payment_score}`, {
+        defaultValue: summary.payment_score,
+      })
+    : "";
   const scoreVariant = summary ? SCORE_BADGE_VARIANT[summary.payment_score] : "secondary";
 
   return (
@@ -88,27 +107,27 @@ export function CustomerAnalyticsTab({ customerId }: CustomerAnalyticsTabProps) 
       {/* 2x2 metric cards grid */}
       <div className="grid gap-4 sm:grid-cols-2">
         <MetricCard
-          title={t("customer.analytics.totalRevenue") ?? "Total Revenue (12m)"}
+          title={t("totalRevenue", { defaultValue: "Total Revenue (12 months)" })}
           value={loading ? "—" : (summary ? formatTWD(summary.total_revenue_12m) : "—")}
-          description={t("customer.analytics.revenueDescription") ?? "Last 12 months"}
+          description={t("revenueDescription", { defaultValue: "Rolling 12-month revenue" })}
         />
         <MetricCard
-          title={t("customer.analytics.invoiceCount") ?? "Invoice Count"}
+          title={t("invoiceCount", { defaultValue: "Invoice Count" })}
           value={loading ? "—" : (summary ? String(summary.invoice_count_12m) : "—")}
-          description={t("customer.analytics.invoiceCountDesc") ?? "Last 12 months"}
+          description={t("invoiceCountDesc", { defaultValue: "Invoices issued in the last 12 months" })}
         />
         <MetricCard
-          title={t("customer.analytics.avgInvoiceValue") ?? "Avg Invoice Value"}
+          title={t("avgInvoiceValue", { defaultValue: "Average Invoice Value" })}
           value={loading ? "—" : (summary ? formatTWD(summary.avg_invoice_value) : "—")}
-          description={t("customer.analytics.avgInvoiceDesc") ?? "Per invoice"}
+          description={t("avgInvoiceDesc", { defaultValue: "Average value per invoice" })}
         />
         <MetricCard
-          title={t("customer.analytics.outstandingBalance") ?? "Outstanding Balance"}
+          title={t("outstandingBalance", { defaultValue: "Outstanding Balance" })}
           value={loading ? "—" : (summary ? formatTWD(summary.outstanding_balance) : "—")}
           description={
             summary && !loading
-              ? `${t("customer.analytics.creditUtilization") ?? "Credit utilization"}: ${summary.credit_utilization_pct}%`
-              : (t("customer.analytics.outstandingBalance") ?? "Outstanding Balance")
+              ? `${t("creditUtilization", { defaultValue: "Credit utilization" })}: ${summary.credit_utilization_pct}%`
+              : t("outstandingBalance", { defaultValue: "Outstanding Balance" })
           }
           badge={
             summary && !loading ? (
@@ -122,13 +141,22 @@ export function CustomerAnalyticsTab({ customerId }: CustomerAnalyticsTabProps) 
 
       {/* Revenue trend chart */}
       <SectionCard
-        title={t("customer.analytics.revenueTrend") ?? "Revenue Trend"}
-        description={t("customer.analytics.revenueTrendDesc") ?? "Last 12 months"}
+        title={t("revenueTrend", { defaultValue: "Revenue Trend" })}
+        description={t("revenueTrendDesc", { defaultValue: "Monthly revenue across the last 12 complete months" })}
       >
         {loading ? (
           <div className="h-[300px] w-full animate-pulse rounded-lg bg-muted" />
         ) : error ? (
-          <p className="text-sm text-destructive">{error}</p>
+          <SurfaceMessage tone="danger">{error}</SurfaceMessage>
+        ) : !hasRevenueHistory ? (
+          <SurfaceMessage>
+            <p className="font-medium text-foreground">
+              {t("emptyTitle", { defaultValue: "No revenue activity yet" })}
+            </p>
+            <p className="mt-1">
+              {t("emptyDescription", { defaultValue: "This customer has no invoice revenue in the last 12 months." })}
+            </p>
+          </SurfaceMessage>
         ) : (
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={chartData} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
@@ -157,7 +185,7 @@ export function CustomerAnalyticsTab({ customerId }: CustomerAnalyticsTabProps) 
               <Tooltip
                 cursor={{ stroke: "#6366f1", strokeWidth: 1 }}
                 contentStyle={{ color: "#000" }}
-                formatter={(val) => [formatTWD(String(val)), "Revenue"]}
+                formatter={(val) => [formatTWD(String(val)), t("tooltipRevenue", { defaultValue: "Revenue" })]}
               />
               <Line
                 type="monotone"
@@ -185,19 +213,19 @@ export function CustomerAnalyticsTab({ customerId }: CustomerAnalyticsTabProps) 
       {!loading && summary && (
         <div className="grid gap-4 sm:grid-cols-3">
           <MetricCard
-            title={t("customer.analytics.avgDaysToPay") ?? "Avg Days to Pay"}
+            title={t("avgDaysToPay", { defaultValue: "Average Days to Pay" })}
             value={summary.avg_days_to_pay != null ? String(summary.avg_days_to_pay) : "—"}
-            description={t("customer.analytics.avgDaysDesc") ?? "From invoice date"}
+            description={t("avgDaysDesc", { defaultValue: "Measured from invoice date to payment date" })}
           />
           <MetricCard
-            title={t("customer.analytics.daysOverdueAvg") ?? "Avg Days Overdue"}
+            title={t("daysOverdueAvg", { defaultValue: "Average Days Overdue" })}
             value={summary.days_overdue_avg != null ? String(summary.days_overdue_avg) : "—"}
-            description={t("customer.analytics.daysOverdueDesc") ?? "After due date"}
+            description={t("daysOverdueDesc", { defaultValue: "Average lateness beyond terms" })}
           />
           <MetricCard
-            title={t("customer.analytics.creditLimit") ?? "Credit Limit"}
+            title={t("creditLimit", { defaultValue: "Credit Limit" })}
             value={formatTWD(summary.credit_limit)}
-            description={t("customer.analytics.creditLimitDesc") ?? "Total available credit"}
+            description={t("creditLimitDesc", { defaultValue: "Configured customer credit line" })}
           />
         </div>
       )}

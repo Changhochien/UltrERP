@@ -1,8 +1,11 @@
 import { apiFetch } from "../apiFetch";
 import type {
+  AcknowledgeAlertResponse,
+  DismissAlertResponse,
   ProductSearchResponse,
   ProductDetail,
   ReorderAlertListResponse,
+  SnoozeAlertResponse,
   WarehouseListResponse,
   TransferResponse,
   ReasonCodeListResponse,
@@ -84,7 +87,7 @@ export async function fetchReorderAlerts(options?: {
 export async function acknowledgeAlert(
   alertId: string,
 ): Promise<
-  { ok: true } |
+  { ok: true; data: AcknowledgeAlertResponse } |
   { ok: false; error: string; alreadyResolved?: boolean }
 > {
   try {
@@ -100,7 +103,59 @@ export async function acknowledgeAlert(
     if (!resp.ok) {
       return { ok: false, error: (body as { detail?: string }).detail ?? "Failed to acknowledge alert" };
     }
-    return { ok: true };
+    return { ok: true, data: body as AcknowledgeAlertResponse };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+export async function snoozeAlert(
+  alertId: string,
+  durationMinutes: number,
+): Promise<
+  { ok: true; data: SnoozeAlertResponse } |
+  { ok: false; error: string; alreadyResolved?: boolean }
+> {
+  try {
+    const resp = await apiFetch(
+      `/api/v1/inventory/alerts/reorder/${encodeURIComponent(alertId)}/snooze`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ duration_minutes: durationMinutes }),
+      },
+    );
+    const body = await resp.json().catch(() => ({}));
+    if ((body as { status?: string }).status === "already_resolved") {
+      return { ok: false, error: "Alert was already closed", alreadyResolved: true };
+    }
+    if (!resp.ok) {
+      return { ok: false, error: (body as { detail?: string }).detail ?? "Failed to snooze alert" };
+    }
+    return { ok: true, data: body as SnoozeAlertResponse };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+export async function dismissAlert(
+  alertId: string,
+): Promise<
+  { ok: true; data: DismissAlertResponse } |
+  { ok: false; error: string; alreadyResolved?: boolean }
+> {
+  try {
+    const resp = await apiFetch(
+      `/api/v1/inventory/alerts/reorder/${encodeURIComponent(alertId)}/dismiss`,
+      { method: "PUT" },
+    );
+    const body = await resp.json().catch(() => ({}));
+    if ((body as { status?: string }).status === "already_resolved") {
+      return { ok: false, error: "Alert was already closed", alreadyResolved: true };
+    }
+    if (!resp.ok) {
+      return { ok: false, error: (body as { detail?: string }).detail ?? "Failed to dismiss alert" };
+    }
+    return { ok: true, data: body as DismissAlertResponse };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
   }

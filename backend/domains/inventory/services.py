@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC
+from datetime import UTC, timedelta
 
-from sqlalchemy import asc, case, desc, distinct, func, literal, select, text
+from sqlalchemy import and_, asc, case, desc, distinct, func, literal, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -254,9 +254,22 @@ def _compute_severity(current_stock: int, reorder_point: int) -> str:
     """Compute alert severity based on stock level."""
     if current_stock == 0:
         return "CRITICAL"
-    if reorder_point > 0 and current_stock < reorder_point * 0.5:
+    if reorder_point > 0 and current_stock < reorder_point * 0.25:
+        return "CRITICAL"
+    if current_stock < reorder_point:
         return "WARNING"
     return "INFO"
+
+
+def _release_expired_snooze(alert: ReorderAlert, *, now) -> None:
+    if (
+        alert.status == AlertStatus.SNOOZED
+        and alert.snoozed_until is not None
+        and alert.snoozed_until <= now
+    ):
+        alert.status = AlertStatus.PENDING
+        alert.snoozed_until = None
+        alert.snoozed_by = None
 
 
 async def _check_reorder_alert(
@@ -271,6 +284,8 @@ async def _check_reorder_alert(
     """Create or resolve reorder alert based on stock level."""
     if reorder_point <= 0:
         return
+
+    now = utc_now()
 
     stmt = select(ReorderAlert).where(
         ReorderAlert.tenant_id == tenant_id,
@@ -296,17 +311,27 @@ async def _check_reorder_alert(
             )
             session.add(alert)
         else:
+            previous_stock = alert.current_stock
+            _release_expired_snooze(alert, now=now)
             alert.current_stock = current_quantity
             alert.severity = severity
             # Only collapse RESOLVED → PENDING; preserve ACKNOWLEDGED
             if alert.status == AlertStatus.RESOLVED:
                 alert.status = AlertStatus.PENDING
+            elif alert.status == AlertStatus.DISMISSED and previous_stock > reorder_point:
+                alert.status = AlertStatus.PENDING
+                alert.dismissed_at = None
+                alert.dismissed_by = None
             # ACKNOWLEDGED stays acknowledged — do not demote
-    elif alert is not None and alert.status == AlertStatus.PENDING:
-        # Only PENDING alerts auto-resolve when stock is restored.
-        # ACKNOWLEDGED alerts require explicit resolution or a real supplier delivery.
-        alert.status = AlertStatus.RESOLVED
+    elif alert is not None:
+        _release_expired_snooze(alert, now=now)
         alert.current_stock = current_quantity
+        if alert.status in {AlertStatus.PENDING, AlertStatus.SNOOZED}:
+            # Only active alerts auto-resolve when stock is restored.
+            # ACKNOWLEDGED alerts require explicit resolution or a real supplier delivery.
+            alert.status = AlertStatus.RESOLVED
+            alert.snoozed_until = None
+            alert.snoozed_by = None
     # If alert is ACKNOWLEDGED and stock is above threshold: do nothing (keep acknowledged)
 
 
@@ -326,9 +351,31 @@ async def list_reorder_alerts(
     """List reorder alerts with product/warehouse names."""
     from sqlalchemy import func as sqlfunc
 
+    now = utc_now()
+
     base_where = [ReorderAlert.tenant_id == tenant_id]
     if status_filter:
-        base_where.append(ReorderAlert.status == AlertStatus(status_filter))
+        if status_filter == AlertStatus.PENDING.value:
+            base_where.append(
+                or_(
+                    ReorderAlert.status == AlertStatus.PENDING,
+                    and_(
+                        ReorderAlert.status == AlertStatus.SNOOZED,
+                        ReorderAlert.snoozed_until.is_not(None),
+                        ReorderAlert.snoozed_until <= now,
+                    ),
+                )
+            )
+        elif status_filter == AlertStatus.SNOOZED.value:
+            base_where.append(ReorderAlert.status == AlertStatus.SNOOZED)
+            base_where.append(
+                or_(
+                    ReorderAlert.snoozed_until.is_(None),
+                    ReorderAlert.snoozed_until > now,
+                )
+            )
+        else:
+            base_where.append(ReorderAlert.status == AlertStatus(status_filter))
     if warehouse_id:
         base_where.append(ReorderAlert.warehouse_id == warehouse_id)
 
@@ -374,6 +421,10 @@ async def list_reorder_alerts(
             ReorderAlert.created_at,
             ReorderAlert.acknowledged_at,
             ReorderAlert.acknowledged_by,
+            ReorderAlert.snoozed_until,
+            ReorderAlert.snoozed_by,
+            ReorderAlert.dismissed_at,
+            ReorderAlert.dismissed_by,
         )
         .join(Product, ReorderAlert.product_id == Product.id)
         .join(Warehouse, ReorderAlert.warehouse_id == Warehouse.id)
@@ -394,11 +445,23 @@ async def list_reorder_alerts(
             "warehouse_name": row.warehouse_name,
             "current_stock": row.current_stock,
             "reorder_point": row.reorder_point,
-            "status": row.status.value if hasattr(row.status, "value") else row.status,
+            "status": (
+                AlertStatus.PENDING.value
+                if (
+                    row.status == AlertStatus.SNOOZED
+                    and row.snoozed_until is not None
+                    and row.snoozed_until <= now
+                )
+                else (row.status.value if hasattr(row.status, "value") else row.status)
+            ),
             "severity": row.severity,
             "created_at": row.created_at,
             "acknowledged_at": row.acknowledged_at,
             "acknowledged_by": row.acknowledged_by,
+            "snoozed_until": row.snoozed_until,
+            "snoozed_by": row.snoozed_by,
+            "dismissed_at": row.dismissed_at,
+            "dismissed_by": row.dismissed_by,
         }
         for row in rows
     ]
@@ -423,7 +486,9 @@ async def acknowledge_alert(
     if alert is None:
         return None
 
-    if alert.status == AlertStatus.RESOLVED:
+    _release_expired_snooze(alert, now=utc_now())
+
+    if alert.status in {AlertStatus.RESOLVED, AlertStatus.DISMISSED}:
         return None
 
     now = utc_now()
@@ -437,6 +502,84 @@ async def acknowledge_alert(
         "status": alert.status.value,
         "acknowledged_at": now,
         "acknowledged_by": actor_id,
+    }
+
+
+async def snooze_alert(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    alert_id: uuid.UUID,
+    *,
+    actor_id: str,
+    duration_minutes: int,
+) -> dict | None:
+    """Snooze a reorder alert for the requested duration."""
+    stmt = select(ReorderAlert).where(
+        ReorderAlert.id == alert_id,
+        ReorderAlert.tenant_id == tenant_id,
+    )
+    result = await session.execute(stmt)
+    alert = result.scalar_one_or_none()
+
+    if alert is None:
+        return None
+
+    _release_expired_snooze(alert, now=utc_now())
+
+    if alert.status in {AlertStatus.RESOLVED, AlertStatus.DISMISSED}:
+        return None
+
+    now = utc_now()
+    snoozed_until = now + timedelta(minutes=duration_minutes)
+    alert.status = AlertStatus.SNOOZED
+    alert.snoozed_until = snoozed_until
+    alert.snoozed_by = actor_id
+    await session.flush()
+
+    return {
+        "id": alert.id,
+        "status": alert.status.value,
+        "snoozed_until": snoozed_until,
+        "snoozed_by": actor_id,
+    }
+
+
+async def dismiss_alert(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    alert_id: uuid.UUID,
+    *,
+    actor_id: str,
+) -> dict | None:
+    """Dismiss a reorder alert until stock recovers and breaches again."""
+    stmt = select(ReorderAlert).where(
+        ReorderAlert.id == alert_id,
+        ReorderAlert.tenant_id == tenant_id,
+    )
+    result = await session.execute(stmt)
+    alert = result.scalar_one_or_none()
+
+    if alert is None:
+        return None
+
+    _release_expired_snooze(alert, now=utc_now())
+
+    if alert.status in {AlertStatus.RESOLVED, AlertStatus.DISMISSED}:
+        return None
+
+    now = utc_now()
+    alert.status = AlertStatus.DISMISSED
+    alert.dismissed_at = now
+    alert.dismissed_by = actor_id
+    alert.snoozed_until = None
+    alert.snoozed_by = None
+    await session.flush()
+
+    return {
+        "id": alert.id,
+        "status": alert.status.value,
+        "dismissed_at": now,
+        "dismissed_by": actor_id,
     }
 
 

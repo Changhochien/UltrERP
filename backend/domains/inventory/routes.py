@@ -30,6 +30,7 @@ from domains.inventory.schemas import (
     USER_SELECTABLE_REASON_CODES,
     AcknowledgeAlertResponse,
     AuditLogListResponse,
+    DismissAlertResponse,
     InventoryStockResponse,
     MonthlyDemandResponse,
     ProductDetailResponse,
@@ -52,6 +53,8 @@ from domains.inventory.schemas import (
     StockAdjustmentResponse,
     StockHistoryResponse,
     StockSettingsUpdateRequest,
+    SnoozeAlertRequest,
+    SnoozeAlertResponse,
     SupplierListResponse,
     SupplierOrderCreate,
     SupplierOrderListResponse,
@@ -72,6 +75,7 @@ from domains.inventory.services import (
     create_stock_adjustment,
     create_supplier_order,
     create_warehouse,
+    dismiss_alert,
     get_inventory_stocks,
     get_monthly_demand,
     get_product_audit_log,
@@ -88,6 +92,7 @@ from domains.inventory.services import (
     list_warehouses,
     receive_supplier_order,
     search_products,
+    snooze_alert,
     transfer_stock,
     update_stock_settings,
     update_supplier_order_status,
@@ -658,7 +663,7 @@ async def list_reorder_alerts_endpoint(
     session: DbSession,
     _user: ReadUser,
     tenant_id: CurrentTenant,
-    status: str | None = Query(None, pattern="^(pending|acknowledged|resolved)$"),
+    status: str | None = Query(None, pattern="^(pending|acknowledged|resolved|snoozed|dismissed)$"),
     warehouse_id: uuid.UUID | None = Query(None),
     sort_by: str = Query("severity", pattern="^(severity|created_at|current_stock)$"),
     limit: int = Query(50, ge=1, le=200),
@@ -696,13 +701,64 @@ async def acknowledge_alert_endpoint(
         actor_id=ACTOR_ID,
     )
     if result is None:
-        from fastapi.responses import JSONResponse
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content={"status": "already_resolved", "detail": "Alert not found or already resolved"},
         )
     await session.commit()
     return AcknowledgeAlertResponse(**result)
+
+
+@router.put(
+    "/alerts/reorder/{alert_id}/snooze",
+    response_model=SnoozeAlertResponse,
+)
+async def snooze_alert_endpoint(
+    alert_id: uuid.UUID,
+    data: SnoozeAlertRequest,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> SnoozeAlertResponse:
+    result = await snooze_alert(
+        session,
+        tenant_id,
+        alert_id,
+        actor_id=ACTOR_ID,
+        duration_minutes=data.duration_minutes,
+    )
+    if result is None:
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"status": "already_resolved", "detail": "Alert not found or already closed"},
+        )
+    await session.commit()
+    return SnoozeAlertResponse(**result)
+
+
+@router.put(
+    "/alerts/reorder/{alert_id}/dismiss",
+    response_model=DismissAlertResponse,
+)
+async def dismiss_alert_endpoint(
+    alert_id: uuid.UUID,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> DismissAlertResponse:
+    result = await dismiss_alert(
+        session,
+        tenant_id,
+        alert_id,
+        actor_id=ACTOR_ID,
+    )
+    if result is None:
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"status": "already_resolved", "detail": "Alert not found or already closed"},
+        )
+    await session.commit()
+    return DismissAlertResponse(**result)
 
 
 # ── Supplier endpoints ────────────────────────────────────────

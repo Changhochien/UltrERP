@@ -49,6 +49,7 @@ _TEST_KEYS = {
     "valid-admin": frozenset({"admin"}),
     "valid-agent": frozenset({"customers:read", "invoices:read", "inventory:read", "orders:read"}),
     "valid-narrow": frozenset({"customers:read"}),
+    "valid-finance": frozenset({"customers:read", "invoices:read", "payments:read", "purchases:read"}),
 }
 
 
@@ -267,3 +268,35 @@ async def test_api_key_takes_precedence_over_jwt():
     error = json.loads(str(exc_info.value))
     assert error["code"] == "INSUFFICIENT_SCOPE"
     assert "customers:read" in error["token_scopes"]
+
+
+@pytest.mark.asyncio
+async def test_jwt_warehouse_can_access_supplier_invoices():
+    """Warehouse JWT includes purchases:read for supplier invoice queries."""
+    mw = ApiKeyAuth(api_keys=_TEST_KEYS, tool_scopes=TOOL_SCOPES)
+    ctx = _make_context("supplier_invoices_list")
+    call_next = AsyncMock(return_value="supplier-ok")
+    jwt_token = _make_jwt("warehouse")
+
+    with patch(
+        "app.mcp_auth.get_http_headers",
+        return_value={"authorization": f"Bearer {jwt_token}"},
+    ):
+        result = await mw.on_call_tool(ctx, call_next)
+
+    assert result == "supplier-ok"
+    call_next.assert_awaited_once_with(ctx)
+
+
+@pytest.mark.asyncio
+async def test_finance_key_can_access_payments_tool():
+    """Explicit payments:read API keys can call payments MCP tools."""
+    mw = ApiKeyAuth(api_keys=_TEST_KEYS, tool_scopes=TOOL_SCOPES)
+    ctx = _make_context("payments_list")
+    call_next = AsyncMock(return_value="payments-ok")
+
+    with patch("app.mcp_auth.get_http_headers", return_value={"x-api-key": "valid-finance"}):
+        result = await mw.on_call_tool(ctx, call_next)
+
+    assert result == "payments-ok"
+    call_next.assert_awaited_once_with(ctx)

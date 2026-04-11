@@ -1,7 +1,8 @@
 from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, Depends, FastAPI, Response
+from fastapi import APIRouter, Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.mcp_setup import get_mcp_app
@@ -83,6 +84,18 @@ def create_app() -> FastAPI:
 	api_v1.include_router(reports_router, prefix="/reports", tags=["reports"])
 	api_v1.include_router(settings_router, prefix="/settings", tags=["settings"])
 	app.include_router(api_v1)
+
+	@app.api_route(
+		"/mcp",
+		methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+		include_in_schema=False,
+	)
+	async def mcp_base_alias(request: Request) -> RedirectResponse:
+		# Preserve the historical no-slash MCP base URL expected by older clients.
+		target = f"{request.url.path}/"
+		if request.url.query:
+			target = f"{target}?{request.url.query}"
+		return RedirectResponse(url=target, status_code=307)
 
 	app.mount("/mcp", mcp_app)
 

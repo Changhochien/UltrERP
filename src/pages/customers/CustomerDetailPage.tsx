@@ -29,6 +29,13 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "outline"> = {
   inactive: "outline",
 };
 
+const STATUS_LABEL_KEYS: Record<string, string> = {
+  active: "customer.detail.statusValues.active",
+  suspended: "customer.detail.statusValues.suspended",
+  inactive: "customer.detail.statusValues.inactive",
+  deleted: "customer.detail.statusValues.deleted",
+};
+
 export function CustomerDetailPage({ onBack }: CustomerDetailPageProps) {
   const { customerId } = useParams<{ customerId: string }>();
   const { t } = useTranslation("common");
@@ -124,12 +131,16 @@ export function CustomerDetailPage({ onBack }: CustomerDetailPageProps) {
     );
   }
 
+  const statusLabel = STATUS_LABEL_KEYS[customer.status]
+    ? t(STATUS_LABEL_KEYS[customer.status], { defaultValue: customer.status })
+    : customer.status;
+
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow={t("customer.detail.eyebrow")}
         title={customer.company_name}
-        description={`${customer.normalized_business_number} · ${customer.status}`}
+        description={`${customer.normalized_business_number} · ${statusLabel}`}
         actions={canWrite("customers") ? (
           <div className="flex items-center gap-2">
             <Button
@@ -209,7 +220,7 @@ export function CustomerDetailPage({ onBack }: CustomerDetailPageProps) {
                 <dt className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{t("customer.detail.status")}</dt>
                 <dd className="mt-1">
                   <Badge variant={STATUS_VARIANT[customer.status] ?? "outline"} className="normal-case tracking-normal">
-                    {customer.status}
+                    {statusLabel}
                   </Badge>
                 </dd>
               </div>

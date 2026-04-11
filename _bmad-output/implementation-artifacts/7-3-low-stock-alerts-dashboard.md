@@ -50,7 +50,7 @@ So that I can address inventory issues quickly.
   - [ ] Create `src/domain/dashboard/components/LowStockAlertsCard.tsx`:
     - Card header: "Low-Stock Alerts" with badge count
     - List of alerts: product name, current stock, reorder point
-    - Colored indicator: red when stock is critically low (< 50% of reorder point), orange otherwise
+    - Colored indicator: render from backend `severity` so the dashboard stays aligned with alert logic (`CRITICAL` for stockout or < 25% of ROP, `WARNING` below ROP, `INFO` at threshold)
     - Empty state: "All stock levels OK ✓" with green indicator
     - Loading skeleton state
     - Error fallback state
@@ -98,6 +98,8 @@ So that I can address inventory issues quickly.
   - [ ] Test: loading skeleton state
 
 ## Dev Notes
+
+- 2026-04-11: Removed duplicated severity math from the dashboard card. It now renders urgency from the reorder-alert payload so Story 7.3 stays consistent with Story 4.3 and the low-stock trigger spec.
 
 ### Architecture Compliance
 

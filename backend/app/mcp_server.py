@@ -1,9 +1,4 @@
-"""
-UltrERP MCP Server — FastMCP 2.14.6, session-mode HTTP.
-
-Mounted at /mcp on the FastAPI app. AI agents connect here
-via streamable-http transport.
-"""
+"""UltrERP MCP server mounted at /mcp/ for streamable HTTP clients."""
 from __future__ import annotations
 
 from fastmcp import FastMCP
@@ -15,7 +10,7 @@ mcp = FastMCP(
 	name="UltrERP",
 	instructions=(
 		"UltrERP MCP server — exposes inventory, customers, "
-		"invoices, orders, and payments domains. "
+		"invoices, orders, supplier invoices, and payments domains. "
 		"All tools require a valid X-API-Key header with "
 		"appropriate scopes."
 	),
@@ -30,3 +25,6 @@ mcp.add_middleware(ApiKeyAuth(api_keys=_api_keys, tool_scopes=TOOL_SCOPES))
 import domains.customers.mcp  # noqa: E402, F401
 import domains.inventory.mcp  # noqa: E402, F401
 import domains.invoices.mcp  # noqa: E402, F401
+import domains.orders.mcp  # noqa: E402, F401
+import domains.payments.mcp  # noqa: E402, F401
+import domains.purchases.mcp  # noqa: E402, F401

@@ -16,8 +16,9 @@ const alertsResponse = {
 			product_name: "Widget A",
 			warehouse_id: "w1",
 			warehouse_name: "Main",
-			current_stock: 5,
+			current_stock: 0,
 			reorder_point: 20,
+			severity: "CRITICAL",
 			status: "pending",
 			created_at: "2026-06-01T00:00:00Z",
 			acknowledged_at: null,
@@ -29,15 +30,30 @@ const alertsResponse = {
 			product_name: "Widget B",
 			warehouse_id: "w1",
 			warehouse_name: "Main",
-			current_stock: 15,
+			current_stock: 5,
 			reorder_point: 20,
+			severity: "WARNING",
+			status: "pending",
+			created_at: "2026-06-01T00:00:00Z",
+			acknowledged_at: null,
+			acknowledged_by: null,
+		},
+		{
+			id: "a3",
+			product_id: "p3",
+			product_name: "Widget C",
+			warehouse_id: "w1",
+			warehouse_name: "Main",
+			current_stock: 20,
+			reorder_point: 20,
+			severity: "INFO",
 			status: "pending",
 			created_at: "2026-06-01T00:00:00Z",
 			acknowledged_at: null,
 			acknowledged_by: null,
 		},
 	],
-	total: 2,
+	total: 3,
 };
 
 function renderCard() {
@@ -62,8 +78,9 @@ describe("LowStockAlertsCard", () => {
 		});
 
 		expect(screen.getByText("Widget B")).toBeTruthy();
-		expect(screen.getByText(/Stock: 5/)).toBeTruthy();
-		expect(screen.getAllByText(/Reorder: 20/)).toHaveLength(2);
+		expect(screen.getByText("Widget C")).toBeTruthy();
+		expect(screen.getByText(/Stock: 0/)).toBeTruthy();
+		expect(screen.getAllByText(/Reorder: 20/)).toHaveLength(3);
 	});
 
 	it("shows badge count", async () => {
@@ -76,7 +93,7 @@ describe("LowStockAlertsCard", () => {
 
 		await waitFor(() => {
 			const badge = screen.getByTestId("alert-badge");
-			expect(badge.textContent).toBe("2");
+			expect(badge.textContent).toBe("3");
 		});
 	});
 
@@ -103,7 +120,7 @@ describe("LowStockAlertsCard", () => {
 		expect(screen.getByTestId("low-stock-loading")).toBeTruthy();
 	});
 
-	it("applies critical class when stock < 50% of reorder point", async () => {
+	it("renders alert classes from API severity instead of recomputing thresholds", async () => {
 		vi.spyOn(globalThis, "fetch").mockResolvedValue({
 			ok: true,
 			json: async () => alertsResponse,
@@ -117,10 +134,12 @@ describe("LowStockAlertsCard", () => {
 
 		const list = screen.getByTestId("low-stock-list");
 		const items = list.querySelectorAll("li");
-		// Widget A: 5 < 20 * 0.5 = 10 → critical
+		// Widget A severity is explicitly critical.
 		expect(items[0].className).toContain("alert-item--critical");
-		// Widget B: 15 >= 20 * 0.5 = 10 → warning
+		// Widget B sits exactly on the old 50% cutoff, but the API now says warning.
 		expect(items[1].className).toContain("alert-item--warning");
+		// Widget C is exactly at reorder point, so it stays informational.
+		expect(items[2].className).toContain("alert-item--info");
 	});
 
 	it("shows error message on fetch failure", async () => {

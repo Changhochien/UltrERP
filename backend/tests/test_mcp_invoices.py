@@ -15,8 +15,8 @@ from fastmcp.exceptions import ToolError
 from domains.invoices.mcp import invoices_get, invoices_list
 
 # Access underlying function from FunctionTool wrapper.
-_list_fn = invoices_list.fn
-_get_fn = invoices_get.fn
+_list_fn = invoices_list
+_get_fn = invoices_get
 
 _INV_ID = str(uuid.uuid4())
 _CUST_ID = str(uuid.uuid4())
@@ -27,9 +27,11 @@ _LIST_RESULT = [
         "invoice_number": "AB12345678",
         "invoice_date": date(2025, 1, 1),
         "customer_id": uuid.UUID(_CUST_ID),
+        "order_id": None,
         "currency_code": "TWD",
         "total_amount": Decimal("1000.00"),
         "status": "issued",
+        "legacy_header_snapshot": {"source": "legacy"},
         "created_at": date(2025, 1, 1),
         "amount_paid": Decimal("0.00"),
         "outstanding_balance": Decimal("1000.00"),
@@ -51,13 +53,18 @@ _PAYMENT_SUMMARY = {
 @dataclass
 class FakeLine:
     id: uuid.UUID = field(default_factory=uuid.uuid4)
+    product_id: uuid.UUID | None = None
+    product_code_snapshot: str | None = "PROD-001"
     line_number: int = 1
     description: str = "Widget"
     quantity: Decimal = Decimal("2.000")
     unit_price: Decimal = Decimal("500.00")
     subtotal_amount: Decimal = Decimal("1000.00")
+    tax_type: int = 1
+    tax_rate: Decimal = Decimal("0.05")
     tax_amount: Decimal = Decimal("50.00")
     total_amount: Decimal = Decimal("1050.00")
+    zero_tax_rate_reason: str | None = None
 
 
 @dataclass
@@ -66,11 +73,20 @@ class FakeInvoice:
     invoice_number: str = "AB12345678"
     customer_id: uuid.UUID = field(default_factory=lambda: uuid.UUID(_CUST_ID))
     order_id: uuid.UUID | None = None
+    buyer_type: str = "b2b"
+    buyer_identifier_snapshot: str = "12345678"
+    currency_code: str = "TWD"
     status: str = "issued"
     invoice_date: date = field(default_factory=lambda: date(2025, 1, 1))
     subtotal_amount: Decimal = Decimal("1000.00")
     tax_amount: Decimal = Decimal("50.00")
     total_amount: Decimal = Decimal("1050.00")
+    version: int = 1
+    legacy_header_snapshot: dict | None = field(default_factory=lambda: {"source": "legacy"})
+    voided_at: date | None = None
+    void_reason: str | None = None
+    created_at: date = field(default_factory=lambda: date(2025, 1, 1))
+    updated_at: date = field(default_factory=lambda: date(2025, 1, 1))
     lines: list = field(default_factory=lambda: [FakeLine()])
 
 
@@ -113,6 +129,7 @@ async def test_invoices_list_returns_paginated_results():
     assert inv["id"] == _INV_ID
     assert inv["total_amount"] == "1000.00"
     assert inv["invoice_date"] == "2025-01-01"
+    assert inv["legacy_header_snapshot"] == {"source": "legacy"}
 
 
 @pytest.mark.asyncio
@@ -160,8 +177,9 @@ async def test_invoices_get_returns_invoice_with_payment():
     assert result["payment_status"] == "partial"
     assert result["amount_paid"] == "400.00"
     assert result["outstanding_balance"] == "600.00"
-    assert len(result["line_items"]) == 1
-    assert result["line_items"][0]["description"] == "Widget"
+    assert len(result["lines"]) == 1
+    assert result["lines"][0]["description"] == "Widget"
+    assert result["legacy_header_snapshot"] == {"source": "legacy"}
 
 
 @pytest.mark.asyncio
