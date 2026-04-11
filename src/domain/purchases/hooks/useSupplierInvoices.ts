@@ -9,7 +9,14 @@ import type {
   SupplierInvoice,
   SupplierInvoiceListItem,
   SupplierInvoiceStatus,
+  SupplierInvoiceStatusTotals,
 } from "../types";
+
+const EMPTY_STATUS_TOTALS: SupplierInvoiceStatusTotals = {
+  open: 0,
+  paid: 0,
+  voided: 0,
+};
 
 export function useSupplierInvoices(options?: {
   status?: SupplierInvoiceStatus;
@@ -17,6 +24,9 @@ export function useSupplierInvoices(options?: {
   sort_order?: "asc" | "desc";
 }) {
   const [items, setItems] = useState<SupplierInvoiceListItem[]>([]);
+  const [statusTotals, setStatusTotals] = useState<SupplierInvoiceStatusTotals>(
+    EMPTY_STATUS_TOTALS,
+  );
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
@@ -36,6 +46,7 @@ export function useSupplierInvoices(options?: {
           page_size: pageSize,
         });
         setItems(response.items);
+        setStatusTotals(response.status_totals);
         setTotal(response.total);
         setPage(nextPage);
       } catch (err) {
@@ -53,7 +64,7 @@ export function useSupplierInvoices(options?: {
     void load(1);
   }, [load]);
 
-  return { items, total, page, pageSize, loading, error, reload: load };
+  return { items, statusTotals, total, page, pageSize, loading, error, reload: load };
 }
 
 export function useSupplierInvoice(invoiceId: string) {

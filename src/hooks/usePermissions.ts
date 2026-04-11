@@ -14,9 +14,9 @@ export type AppFeature =
   | "owner_dashboard"
   | "settings";
 
-type PermissionLevel = "read" | "write";
+export type PermissionLevel = "read" | "write";
 
-const ROLE_PERMISSIONS: Record<string, Partial<Record<AppFeature, PermissionLevel>>> = {
+export const ROLE_PERMISSIONS: Record<string, Partial<Record<AppFeature, PermissionLevel>>> = {
   admin: {
     dashboard: "write",
     inventory: "write",

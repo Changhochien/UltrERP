@@ -10,8 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { format } from "date-fns";
-import { formatBackendCalendarDate, parseBackendDate } from "../../../lib/time";
+import { formatBackendCalendarDate } from "../../../lib/time";
 
 import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayout";
 import { Button } from "../../../components/ui/button";
@@ -59,8 +58,6 @@ export function RevenueTrendChart(props: RevenueTrendChartProps) {
         : t("dashboard.revenueTrend.1y");
 
   const xInterval: number | "preserveStartEnd" = period === "month" ? 6 : "preserveStartEnd";
-
-  const isValidDate = (d: Date) => d instanceof Date && !isNaN(d.getTime());
 
   const chartData = data.map((d) => ({ ...d, revenue: Number(d.revenue) }));
   const showZoomNavigator = chartData.length > 10 || Boolean(hasMore);

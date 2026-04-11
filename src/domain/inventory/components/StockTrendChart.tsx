@@ -204,10 +204,12 @@ export function StockTrendChart({
             stroke="#3b82f6"
             strokeWidth={2}
             dot={(props: { cx?: number; cy?: number; payload?: StockHistoryPoint }) => {
-              if (!props.cx || !props.cy || !props.payload) return <Dot {...props} />;
+              const { key: _key, ...rest } = props as typeof props & { key?: string };
+              if (!props.cx || !props.cy || !props.payload) return <Dot {...rest} />;
               const { cx, cy, payload } = props;
               return (
                 <Dot
+                  key={`dot-${payload.date}-${cx}-${cy}`}
                   cx={cx}
                   cy={cy}
                   r={4}

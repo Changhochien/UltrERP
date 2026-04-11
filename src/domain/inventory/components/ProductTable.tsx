@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Search } from "lucide-react";
+import { ExternalLink, Search } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 import { DataTable, DataTableToolbar } from "@/components/layout/DataTable";
 import { SectionCard } from "@/components/layout/PageLayout";
@@ -13,6 +14,7 @@ interface ProductTableProps {
 }
 
 export function ProductTable({ warehouseId, onProductClick }: ProductTableProps) {
+  const navigate = useNavigate();
   const {
     results,
     total,
@@ -108,6 +110,21 @@ export function ProductTable({ warehouseId, onProductClick }: ProductTableProps)
                 {item.status}
               </Badge>
             ),
+          },
+          {
+            id: "actions",
+            header: "",
+            cell: (item) => (
+              <button
+                type="button"
+                className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                onClick={(e) => { e.stopPropagation(); navigate(`/inventory/${item.id}`); }}
+                title="Open full page"
+              >
+                <ExternalLink size={15} />
+              </button>
+            ),
+            onClick: (_e, _item) => {}, // stop propagation so row click doesn't fire
           },
         ]}
         data={results}

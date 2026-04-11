@@ -576,10 +576,27 @@
         "warehouse": "Warehouse",
         "warehouseLabel": "Warehouse"
       },
-      "totalStock": "Total Stock: {stock}"
+      "totalStock": "Total Stock: {stock}",
+      "stockHealth": "Stock Health",
+      "byWarehouse": "By Warehouse",
+      "stockTrend": "Stock Trend",
+      "recentAdjustments": "Recent Adjustments",
+      "adjustStock": "Adjust Stock",
+      "transfer": "Transfer",
+      "order": "Order",
+      "overview": "Overview",
+      "analytics": "Analytics",
+      "settings": "Settings",
+      "auditLog": "Audit Log",
+      "totalUnits": "total units",
+      "outOfStock": "Out of stock",
+      "critical": "Critical",
+      "low": "Low",
+      "healthy": "Healthy",
+      "reorder": "Reorder",
+      "updated": "Updated"
     }
   },
-  "orders": {
     "detail": {
       "backToList": "Back to list",
       "cancelOrder": "Cancel Order",
