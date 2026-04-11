@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import { SectionCard } from "../../components/layout/PageLayout";
+import { PageHeader, SectionCard } from "../../components/layout/PageLayout";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Skeleton } from "../../components/ui/skeleton";
@@ -125,11 +125,11 @@ export function CustomerDetailPage({ onBack }: CustomerDetailPageProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <Button type="button" variant="outline" onClick={onBack}>
-          {t("customer.detail.backToList")}
-        </Button>
-        {canWrite("customers") && (
+      <PageHeader
+        eyebrow={t("customer.detail.eyebrow")}
+        title={customer.company_name}
+        description={`${customer.normalized_business_number} · ${customer.status}`}
+        actions={canWrite("customers") ? (
           <div className="flex items-center gap-2">
             <Button
               type="button"
@@ -157,20 +157,8 @@ export function CustomerDetailPage({ onBack }: CustomerDetailPageProps) {
               {t("customer.detail.delete")}
             </Button>
           </div>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-2">
-          <h2 className="text-xl font-semibold tracking-tight">{customer.company_name}</h2>
-          <div className="flex items-center gap-2">
-            <Badge variant={STATUS_VARIANT[customer.status] ?? "outline"} className="normal-case tracking-normal">
-              {customer.status}
-            </Badge>
-            <span className="text-sm text-muted-foreground">{customer.normalized_business_number}</span>
-          </div>
-        </div>
-      </div>
+        ) : undefined}
+      />
 
       <Tabs defaultValue="overview">
         <TabsList>
