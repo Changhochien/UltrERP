@@ -62,6 +62,7 @@ class SupplierInvoice(Base):
 	subtotal_amount: Mapped[Decimal] = mapped_column(Numeric(20, 2), nullable=False)
 	tax_amount: Mapped[Decimal] = mapped_column(Numeric(20, 2), nullable=False)
 	total_amount: Mapped[Decimal] = mapped_column(Numeric(20, 2), nullable=False)
+	remaining_payable_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
 	status: Mapped[SupplierInvoiceStatus] = mapped_column(
 		Enum(
 			SupplierInvoiceStatus,

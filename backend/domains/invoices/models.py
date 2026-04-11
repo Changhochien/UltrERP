@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
+    Enum,
     JSON,
     Date,
     DateTime,
@@ -23,6 +24,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from common.database import Base
+from domains.invoices.enums import InvoiceStatus
 
 if TYPE_CHECKING:
     from domains.customers.models import Customer
@@ -80,7 +82,16 @@ class Invoice(Base):
     subtotal_amount: Mapped[Decimal] = mapped_column(Numeric(20, 2), nullable=False)
     tax_amount: Mapped[Decimal] = mapped_column(Numeric(20, 2), nullable=False)
     total_amount: Mapped[Decimal] = mapped_column(Numeric(20, 2), nullable=False)
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="issued")
+    status: Mapped[InvoiceStatus] = mapped_column(
+        Enum(
+            InvoiceStatus,
+            name="invoice_status_enum",
+            values_callable=lambda enum_type: [member.value for member in enum_type],
+            create_constraint=True,
+        ),
+        nullable=False,
+        default=InvoiceStatus.ISSUED,
+    )
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     legacy_header_snapshot: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
 

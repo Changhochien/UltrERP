@@ -41,7 +41,7 @@ async def list_supplier_invoices_endpoint(
     page_size: int = Query(default=20, ge=1, le=100),
 ) -> SupplierInvoiceListResponse:
     tenant_id = uuid.UUID(user["tenant_id"])
-    items, total = await list_supplier_invoices(
+    items, total, status_totals = await list_supplier_invoices(
         session,
         tenant_id,
         status_filter=status_filter,
@@ -53,6 +53,7 @@ async def list_supplier_invoices_endpoint(
     )
     return SupplierInvoiceListResponse(
         items=[SupplierInvoiceListItem(**item) for item in items],
+        status_totals=status_totals,
         total=total,
         page=page,
         page_size=page_size,
