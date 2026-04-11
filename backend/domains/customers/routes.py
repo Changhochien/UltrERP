@@ -21,11 +21,13 @@ from common.errors import (
     error_response,
 )
 from domains.customers.schemas import (
+    CustomerAnalyticsSummary,
     CustomerCreate,
     CustomerListParams,
     CustomerListResponse,
     CustomerOutstandingSummary,
     CustomerResponse,
+    CustomerRevenueTrend,
     CustomerStatementResponse,
     CustomerSummary,
     CustomerUpdate,
@@ -33,6 +35,8 @@ from domains.customers.schemas import (
 from domains.customers.service import (
     create_customer,
     get_customer,
+    get_customer_analytics_summary,
+    get_customer_revenue_trend,
     get_customer_statement,
     list_customers,
     lookup_customer_by_ban,
@@ -187,3 +191,33 @@ async def get_statement(
         return JSONResponse(status_code=409, content={"detail": str(exc)})
     return statement
 
+
+@router.get("/{customer_id}/analytics/summary", response_model=CustomerAnalyticsSummary)
+async def analytics_summary(
+    customer_id: uuid.UUID,
+    session: DbSession,
+    user: ReadUser,
+) -> CustomerAnalyticsSummary | JSONResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
+    try:
+        summary = await get_customer_analytics_summary(session, customer_id, tenant_id=real_tid)
+    except ValueError as exc:
+        return JSONResponse(status_code=404, content={"detail": str(exc)})
+    return summary
+
+
+@router.get("/{customer_id}/analytics/revenue-trend", response_model=CustomerRevenueTrend)
+async def revenue_trend(
+    customer_id: uuid.UUID,
+    session: DbSession,
+    user: ReadUser,
+    months: int = Query(default=12, ge=3, le=36),
+) -> CustomerRevenueTrend | JSONResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
+    try:
+        trend = await get_customer_revenue_trend(
+            session, customer_id, tenant_id=real_tid, months=months
+        )
+    except ValueError as exc:
+        return JSONResponse(status_code=404, content={"detail": str(exc)})
+    return trend

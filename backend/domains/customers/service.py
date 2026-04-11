@@ -4,17 +4,29 @@ from __future__ import annotations
 
 import re
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.errors import DuplicateBusinessNumberError, ValidationError, VersionConflictError
+from common.models.order import Order
 from common.tenant import DEFAULT_TENANT_ID, set_tenant
 from domains.customers.models import Customer
-from domains.customers.schemas import CustomerCreate, CustomerListParams, CustomerUpdate
+from domains.customers.schemas import (
+    CustomerAnalyticsSummary,
+    CustomerCreate,
+    CustomerListParams,
+    CustomerRevenueTrend,
+    CustomerStatementResponse,
+    CustomerUpdate,
+    RevenueTrendPoint,
+)
+from domains.invoices.enums import InvoiceStatus
+from domains.invoices.models import Invoice
+from domains.payments.models import Payment
 from domains.customers.validators import validate_taiwan_business_number
 
 # Taiwan phone: mobile 09xx-xxx-xxx or landline (0X) xxxx-xxxx, with optional +886 prefix.
@@ -533,3 +545,221 @@ async def get_customer_statement(
             current_balance=current_balance,
             lines=all_lines,
         )
+
+
+async def get_customer_analytics_summary(
+    session: AsyncSession,
+    customer_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+) -> CustomerAnalyticsSummary:
+    """Return analytics summary for a single customer over the last 12 months.
+
+    Raises ValueError if the customer does not exist.
+    """
+    tid = tenant_id if tenant_id is not None else DEFAULT_TENANT_ID
+    today = datetime.now(tz=UTC).date()
+    twelve_months_ago = today - timedelta(days=365)
+
+    async with session.begin():
+        await set_tenant(session, tid)
+
+        # Verify customer
+        cust_result = await session.execute(
+            select(Customer).where(
+                Customer.id == customer_id,
+                Customer.tenant_id == tid,
+            )
+        )
+        customer = cust_result.scalar_one_or_none()
+        if customer is None:
+            raise ValueError("Customer not found.")
+
+        # Revenue & invoice count (12m) — paid + issued (non-voided)
+        rev_stmt = (
+            select(
+                func.coalesce(func.sum(Invoice.total_amount), 0).label("total_revenue"),
+                func.count(Invoice.id).label("invoice_count"),
+            )
+            .where(
+                Invoice.customer_id == customer_id,
+                Invoice.tenant_id == tid,
+                Invoice.invoice_date >= twelve_months_ago,
+                Invoice.invoice_date <= today,
+                Invoice.status.in_((InvoiceStatus.PAID, InvoiceStatus.ISSUED)),
+            )
+        )
+        rev_result = await session.execute(rev_stmt)
+        rev_row = rev_result.one()
+        total_revenue_12m: Decimal = Decimal(str(rev_row.total_revenue or "0"))
+        invoice_count_12m: int = int(rev_row.invoice_count or 0)
+
+        avg_invoice_value: Decimal
+        if invoice_count_12m > 0:
+            avg_invoice_value = (total_revenue_12m / invoice_count_12m).quantize(Decimal("0.01"))
+        else:
+            avg_invoice_value = Decimal("0.00")
+
+        # Outstanding balance (same pattern as dashboard/services.py)
+        payment_subq = (
+            select(
+                Payment.invoice_id,
+                func.coalesce(func.sum(Payment.amount), 0).label("paid_amount"),
+            )
+            .where(Payment.tenant_id == tid)
+            .group_by(Payment.invoice_id)
+            .subquery()
+        )
+        outstanding_expr = (
+            func.coalesce(Invoice.total_amount, 0)
+            - func.coalesce(payment_subq.c.paid_amount, 0)
+        )
+        outstanding_stmt = (
+            select(func.coalesce(func.sum(outstanding_expr), 0)).select_from(Invoice)
+            .outerjoin(payment_subq, Invoice.id == payment_subq.c.invoice_id)
+            .where(
+                Invoice.customer_id == customer_id,
+                Invoice.tenant_id == tid,
+                Invoice.status == InvoiceStatus.ISSUED,
+            )
+        )
+        outstanding_result = await session.execute(outstanding_stmt)
+        outstanding_balance: Decimal = Decimal(str(outstanding_result.scalar() or "0"))
+
+        # Credit utilization
+        credit_limit = customer.credit_limit
+        credit_utilization_pct: float
+        if credit_limit > 0:
+            credit_utilization_pct = float(outstanding_balance / credit_limit * 100)
+        else:
+            credit_utilization_pct = 0.0
+
+        # Avg days to pay & payment score — compute from completed payments on paid invoices
+        pay_stmt = (
+            select(
+                Payment.payment_date,
+                Invoice.invoice_date,
+                Invoice.id,
+            )
+            .join(Invoice, Invoice.id == Payment.invoice_id)
+            .where(
+                Invoice.customer_id == customer_id,
+                Invoice.tenant_id == tid,
+                Invoice.status == InvoiceStatus.PAID,
+                Payment.match_status == "matched",
+                Payment.payment_date >= twelve_months_ago,
+            )
+        )
+        pay_result = await session.execute(pay_stmt)
+        payment_rows = pay_result.all()
+
+        avg_days_to_pay: float | None = None
+        days_overdue_avg: int | None = None
+
+        if payment_rows:
+            total_days = 0
+            overdue_days_total = 0
+            paid_count = 0
+            overdue_count = 0
+
+            for row in payment_rows:
+                diff = (row.payment_date - row.invoice_date).days
+                total_days += diff
+                paid_count += 1
+
+                # Overdue if > 30 days (default terms)
+                if diff > 30:
+                    overdue_count += 1
+                    overdue_days_total += diff - 30
+
+            avg_days_to_pay = round(total_days / paid_count, 1) if paid_count > 0 else None
+            days_overdue_avg = overdue_days_total // overdue_count if overdue_count > 0 else 0
+
+        # Payment score bucketing
+        if avg_days_to_pay is None:
+            payment_score = "at_risk"
+        elif avg_days_to_pay <= 15:
+            payment_score = "excellent"
+        elif avg_days_to_pay <= 30:
+            payment_score = "prompt"
+        elif avg_days_to_pay <= 60:
+            payment_score = "late"
+        else:
+            payment_score = "at_risk"
+
+        return CustomerAnalyticsSummary(
+            total_revenue_12m=total_revenue_12m,
+            invoice_count_12m=invoice_count_12m,
+            avg_invoice_value=avg_invoice_value,
+            outstanding_balance=outstanding_balance,
+            credit_limit=credit_limit,
+            credit_utilization_pct=round(credit_utilization_pct, 2),
+            avg_days_to_pay=avg_days_to_pay,
+            payment_score=payment_score,
+            days_overdue_avg=days_overdue_avg,
+        )
+
+
+async def get_customer_revenue_trend(
+    session: AsyncSession,
+    customer_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    months: int = 12,
+) -> CustomerRevenueTrend:
+    """Return monthly revenue trend for a customer.
+
+    Raises ValueError if the customer does not exist.
+    """
+    tid = tenant_id if tenant_id is not None else DEFAULT_TENANT_ID
+    today = datetime.now(tz=UTC).date()
+
+    async with session.begin():
+        await set_tenant(session, tid)
+
+        # Verify customer
+        cust_result = await session.execute(
+            select(Customer).where(
+                Customer.id == customer_id,
+                Customer.tenant_id == tid,
+            )
+        )
+        customer = cust_result.scalar_one_or_none()
+        if customer is None:
+            raise ValueError("Customer not found.")
+
+        # Build date range: last `months` complete months
+        end_date = date(today.year, today.month, 1)
+        start_date = end_date - timedelta(days=1)
+        start_date = date(start_date.year, start_date.month, 1)
+        for _ in range(months - 1):
+            start_date = start_date - timedelta(days=1)
+            start_date = date(start_date.year, start_date.month, 1)
+
+        # Monthly aggregation
+        month_trunc = func.date_trunc("month", Invoice.invoice_date).label("month")
+        rev_stmt = (
+            select(
+                month_trunc,
+                func.coalesce(func.sum(Invoice.total_amount), 0).label("revenue"),
+            )
+            .where(
+                Invoice.customer_id == customer_id,
+                Invoice.tenant_id == tid,
+                Invoice.invoice_date >= start_date,
+                Invoice.invoice_date < end_date,
+                Invoice.status.in_((InvoiceStatus.PAID, InvoiceStatus.ISSUED)),
+            )
+            .group_by(month_trunc)
+            .order_by(month_trunc)
+        )
+        rev_result = await session.execute(rev_stmt)
+        rev_rows = rev_result.all()
+
+        trend = [
+            RevenueTrendPoint(
+                month=row.month.strftime("%Y-%m"),
+                revenue=Decimal(str(row.revenue or "0")),
+            )
+            for row in rev_rows
+        ]
+
+        return CustomerRevenueTrend(trend=trend)
