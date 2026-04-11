@@ -682,6 +682,7 @@ async def get_product_detail(
         "name": product.name,
         "category": product.category,
         "status": product.status,
+        "legacy_master_snapshot": getattr(product, "legacy_master_snapshot", None),
         "total_stock": total_stock,
         "warehouses": warehouses,
         "adjustment_history": history,
@@ -917,6 +918,7 @@ async def list_suppliers(
             "address": s.address,
             "default_lead_time_days": s.default_lead_time_days,
             "is_active": s.is_active,
+            "legacy_master_snapshot": getattr(s, "legacy_master_snapshot", None),
             "created_at": s.created_at,
         }
         for s in suppliers

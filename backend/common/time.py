@@ -89,6 +89,7 @@ def _query_bg_loop() -> date:
                 r2 = await s.execute(
                     text("SELECT MAX(col_3) FROM raw_legacy.tbsslipx WHERE col_3 IS NOT NULL AND col_3 != ''")
                 )
+                stock_max = r1.scalar()
                 legacy_raw = r2.scalar()
 
                 candidates: list[date] = []

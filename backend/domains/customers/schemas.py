@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -54,6 +54,7 @@ class CustomerResponse(BaseModel):
     contact_email: str
     credit_limit: Decimal
     status: str
+    legacy_master_snapshot: dict[str, Any] | None = None
     version: int
     created_at: datetime
     updated_at: datetime

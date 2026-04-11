@@ -6,7 +6,7 @@ import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, Index, Numeric, String, Text, Uuid
+from sqlalchemy import JSON, DateTime, Index, Numeric, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from common.database import Base
@@ -34,6 +34,7 @@ class Customer(Base):
         Numeric(5, 4), nullable=False, default=Decimal("0.0000")
     )
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
+    legacy_master_snapshot: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
     version: Mapped[int] = mapped_column(nullable=False, default=1)
 
     created_at: Mapped[datetime] = mapped_column(

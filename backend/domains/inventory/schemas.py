@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -179,6 +180,7 @@ class ProductDetailResponse(BaseModel):
     name: str
     category: str | None
     status: str
+    legacy_master_snapshot: dict[str, Any] | None = None
     total_stock: int
     warehouses: list[WarehouseStockInfo]
     adjustment_history: list[AdjustmentHistoryItem]
@@ -286,6 +288,7 @@ class SupplierResponse(BaseModel):
     address: str | None
     default_lead_time_days: int | None
     is_active: bool
+    legacy_master_snapshot: dict[str, Any] | None = None
     created_at: datetime
 
 

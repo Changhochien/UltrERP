@@ -13,6 +13,7 @@ from common.models.supplier_invoice import SupplierInvoice, SupplierInvoiceStatu
 from common.models.supplier_payment import SupplierPaymentAllocation, SupplierPaymentAllocationKind
 from common.tenant import DEFAULT_TENANT_ID, set_tenant
 from common.time import today
+from domains.invoices.enums import InvoiceStatus
 from domains.invoices.models import Invoice
 from domains.payments.models import Payment
 from domains.reports.schemas import APAgingReportResponse, ARAgingBucketItem, ARAgingReportResponse
@@ -28,7 +29,6 @@ async def get_ar_aging_report(
         await set_tenant(session, tid)
 
         today_dt = today()
-        # Use SQL CURRENT_DATE for date arithmetic (PostgreSQL date - date = integer days)
         # Subquery: total paid per invoice (only matched/auto_matched payments)
         payment_subq = (
             select(
@@ -56,7 +56,7 @@ async def get_ar_aging_report(
             .scalar_subquery()
         )
         due_date_expr = Invoice.invoice_date + func.coalesce(order_terms_subq, 30)
-        age_days_expr = func.current_date() - due_date_expr
+        age_days_expr = today_dt - due_date_expr
 
         # Build bucket sums using case expressions
         bucket_0_30 = func.sum(
@@ -129,7 +129,7 @@ async def get_ar_aging_report(
             .outerjoin(payment_subq, Invoice.id == payment_subq.c.invoice_id)
             .where(
                 Invoice.tenant_id == tid,
-                Invoice.status.notin_(("voided", "paid")),
+                Invoice.status.notin_((InvoiceStatus.VOIDED, InvoiceStatus.PAID)),
             )
         )
 
@@ -188,8 +188,6 @@ async def get_ap_aging_report(
         await set_tenant(session, tid)
 
         today_dt = today()
-        # Use SQL CURRENT_DATE for date arithmetic (PostgreSQL date - date = integer days)
-        sql_today = func.current_date()
 
         # Subquery: total applied per supplier invoice (only invoice_settlement allocations)
         alloc_subq = (
@@ -209,12 +207,13 @@ async def get_ap_aging_report(
 
         # Outstanding per supplier invoice
         outstanding_expr = func.coalesce(
+            SupplierInvoice.remaining_payable_amount,
             SupplierInvoice.total_amount - func.coalesce(alloc_subq.c.applied_amount, 0),
             SupplierInvoice.total_amount,
         )
 
         # Age in days since invoice_date (AP aging uses invoice date, not due date)
-        age_days_expr = sql_today - SupplierInvoice.invoice_date
+        age_days_expr = today_dt - SupplierInvoice.invoice_date
 
         bucket_0_30 = func.sum(
             case((outstanding_expr > 0, outstanding_expr), else_=0)
