@@ -33,7 +33,7 @@ function getStatusVariant(
 }
 
 function StockHealthBar({ warehouses }: { warehouses: WarehouseStockInfo[] }) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("common", { keyPrefix: "inventory.productDetail" });
   const totalStock = warehouses.reduce((sum, w) => sum + w.current_stock, 0);
   if (totalStock === 0) {
     return (
@@ -44,7 +44,7 @@ function StockHealthBar({ warehouses }: { warehouses: WarehouseStockInfo[] }) {
         <div className="stock-health-legend">
           <div className="stock-health-legend-item">
             <div className="stock-health-dot critical" />
-            <span>{t("productDetail.outOfStock")}</span>
+            <span>{t("outOfStock")}</span>
           </div>
         </div>
       </div>
@@ -88,19 +88,19 @@ function StockHealthBar({ warehouses }: { warehouses: WarehouseStockInfo[] }) {
         {critical > 0 && (
           <div className="stock-health-legend-item">
             <div className="stock-health-dot critical" />
-            <span>{t("productDetail.critical")} {pct(critical)}</span>
+            <span>{t("critical")} {pct(critical)}</span>
           </div>
         )}
         {warning > 0 && (
           <div className="stock-health-legend-item">
             <div className="stock-health-dot warning" />
-            <span>{t("productDetail.low")} {pct(warning)}</span>
+            <span>{t("low")} {pct(warning)}</span>
           </div>
         )}
         {healthy > 0 && (
           <div className="stock-health-legend-item">
             <div className="stock-health-dot healthy" />
-            <span>{t("productDetail.healthy")} {pct(healthy)}</span>
+            <span>{t("healthy")} {pct(healthy)}</span>
           </div>
         )}
       </div>
@@ -109,7 +109,7 @@ function StockHealthBar({ warehouses }: { warehouses: WarehouseStockInfo[] }) {
 }
 
 function AuditLogTabContent({ productId }: { productId: string }) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("common", { keyPrefix: "inventory.productDetail" });
   const PAGE_SIZE = 50;
   const [offset, setOffset] = useState(0);
   const { items, total, loading, error } = useProductAuditLog(productId, {
@@ -121,13 +121,13 @@ function AuditLogTabContent({ productId }: { productId: string }) {
   const end = Math.min(offset + PAGE_SIZE, total);
 
   return (
-    <SectionCard title={t("productDetail.auditLog")}>
+    <SectionCard title={t("auditLog")}>
       {error && <div className="mb-3 text-sm text-destructive">{error}</div>}
       <AuditLogTable items={items} loading={loading} error={error} />
       {total > 0 && (
         <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
           <span>
-            {start}–{end} of {total}
+            {t("auditPagination.showing", { start, end, total })}
           </span>
           <div className="flex gap-2">
             <Button
@@ -136,7 +136,7 @@ function AuditLogTabContent({ productId }: { productId: string }) {
               disabled={offset === 0}
               onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
             >
-              Previous
+              {t("auditPagination.previous")}
             </Button>
             <Button
               variant="outline"
@@ -144,7 +144,7 @@ function AuditLogTabContent({ productId }: { productId: string }) {
               disabled={end >= total}
               onClick={() => setOffset(offset + PAGE_SIZE)}
             >
-              Next
+              {t("auditPagination.next")}
             </Button>
           </div>
         </div>
@@ -154,7 +154,7 @@ function AuditLogTabContent({ productId }: { productId: string }) {
 }
 
 function ProductDetailContent({ productId }: { productId: string }) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("common", { keyPrefix: "inventory.productDetail" });
   const navigate = useNavigate();
   const { product, loading, error } = useProductDetail(productId);
   const { selectedWarehouse } = useWarehouseContext();
@@ -204,7 +204,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
           ) : error ? (
             <div>
               <p style={{ color: "var(--inv-critical)", fontSize: 14 }}>
-                {t("productDetail.error", { message: error })}
+                {t("error", { message: error })}
               </p>
             </div>
           ) : product ? (
@@ -230,7 +230,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
                   variant={product.status === "active" ? "success" : "destructive"}
                   style={{ textTransform: "capitalize" }}
                 >
-                  {product.status}
+                  {t(`statuses.${product.status}`, { defaultValue: product.status })}
                 </Badge>
               </div>
             </div>
@@ -240,17 +240,17 @@ function ProductDetailContent({ productId }: { productId: string }) {
 
       <Tabs defaultValue="overview">
         <TabsList>
-          <TabsTrigger value="overview">{t("productDetail.overview")}</TabsTrigger>
-          <TabsTrigger value="analytics">{t("productDetail.analytics")}</TabsTrigger>
-          <TabsTrigger value="settings">{t("productDetail.settings")}</TabsTrigger>
-          <TabsTrigger value="audit">{t("productDetail.auditLog")}</TabsTrigger>
+          <TabsTrigger value="overview">{t("overview")}</TabsTrigger>
+          <TabsTrigger value="analytics">{t("analytics")}</TabsTrigger>
+          <TabsTrigger value="settings">{t("settings")}</TabsTrigger>
+          <TabsTrigger value="audit">{t("auditLog")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
           {!loading && product && (
             <div className="space-y-6">
               {/* Stock Health */}
-              <SectionCard title={t("productDetail.stockHealth")}>
+              <SectionCard title={t("stockHealth")}>
                 <div
                   style={{
                     fontFamily: "var(--inv-font-mono)",
@@ -261,17 +261,17 @@ function ProductDetailContent({ productId }: { productId: string }) {
                 >
                   {product.total_stock.toLocaleString()}{" "}
                   <span style={{ fontSize: 14, color: "var(--inv-muted)", fontWeight: 400 }}>
-                    {t("productDetail.totalUnits")}
+                    {t("totalUnits")}
                   </span>
                 </div>
                 <StockHealthBar warehouses={product.warehouses} />
               </SectionCard>
 
               {/* By Warehouse */}
-              <SectionCard title={t("productDetail.byWarehouse")}>
+              <SectionCard title={t("byWarehouse")}>
                 {product.warehouses.length === 0 ? (
                   <p style={{ fontSize: 13, color: "var(--inv-muted)" }}>
-                    {t("productDetail.stockByWarehouse.noRecords")}
+                    {t("stockByWarehouse.noRecords")}
                   </p>
                 ) : (
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -293,14 +293,14 @@ function ProductDetailContent({ productId }: { productId: string }) {
                           </div>
                           <div className="warehouse-card-meta">
                             <span>
-                              {t("productDetail.reorder")}:{" "}
+                              {t("reorder")}:{" "}
                               <strong style={{ color: "var(--inv-text)" }}>
                                 {wh.reorder_point}
                               </strong>
                             </span>
                             {wh.last_adjusted && (
                               <span>
-                                {t("productDetail.updated")}:{" "}
+                                {t("updated")}:{" "}
                                 <strong style={{ color: "var(--inv-text)" }}>
                                   {parseBackendDate(wh.last_adjusted).toLocaleDateString()}
                                 </strong>
@@ -316,7 +316,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
 
               {/* Stock Trend Chart */}
               {(stockId || chartLoading) && (
-                <SectionCard title={t("productDetail.stockTrend")}>
+                <SectionCard title={t("stockTrend")}>
                   {chartLoading ? (
                     <div
                       style={{
@@ -327,7 +327,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
                       }}
                     >
                       <span style={{ color: "var(--inv-muted)", fontSize: 13 }}>
-                        {t("productDetail.loading")}
+                        {t("loading")}
                       </span>
                     </div>
                   ) : chartError ? (
@@ -344,7 +344,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
               )}
 
               {/* Recent Adjustments */}
-              <SectionCard title={t("productDetail.recentAdjustments")}>
+              <SectionCard title={t("recentAdjustments")}>
                 <AdjustmentTimeline history={product.adjustment_history} />
               </SectionCard>
 
@@ -353,15 +353,15 @@ function ProductDetailContent({ productId }: { productId: string }) {
                 <div className="flex flex-wrap gap-3">
                   <Button variant="default" size="sm">
                     <SlidersHorizontal size={14} />
-                    {t("productDetail.adjustStock")}
+                    {t("adjustStock")}
                   </Button>
                   <Button variant="outline" size="sm">
                     <ArrowRightLeft size={14} />
-                    {t("productDetail.transfer")}
+                    {t("transfer")}
                   </Button>
                   <Button variant="outline" size="sm">
                     <ShoppingCart size={14} />
-                    {t("productDetail.order")}
+                    {t("order")}
                   </Button>
                 </div>
               )}

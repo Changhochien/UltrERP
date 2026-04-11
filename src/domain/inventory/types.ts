@@ -266,7 +266,7 @@ export interface UpdateOrderStatusRequest {
 
 // --- Stock history types ---
 
-export interface StockHistoryPoint {
+export interface StockSnapshotPoint {
   timestamp: string;
   quantity: number;
   change: number;
