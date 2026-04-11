@@ -27,7 +27,7 @@ async def main():
                     COUNT(sa.id) AS event_count
                 FROM stock_adjustment sa
                 WHERE sa.tenant_id = :tenant_id
-                  AND sa.reason_code = 'sales_reservation'
+                  AND sa.reason_code = 'SALES_RESERVATION'
                   AND sa.created_at >= NOW() - INTERVAL '{DEMAND_LOOKBACK_DAYS} days'
                 GROUP BY sa.product_id, sa.warehouse_id
                 HAVING COUNT(sa.id) >= 2

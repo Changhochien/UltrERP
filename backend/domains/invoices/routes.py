@@ -61,6 +61,7 @@ def _build_invoice_artifact_store() -> S3ObjectStore | None:
 async def list_all(
     session: DbSession,
     current_user: Annotated[dict, Depends(require_role("admin", "finance", "sales"))],
+    customer_id: uuid.UUID | None = Query(default=None),
     payment_status: Literal["paid", "unpaid", "partial", "overdue"] | None = Query(default=None),
     sort_by: Literal["created_at", "invoice_date", "outstanding_balance"] = Query(
         default="created_at"
@@ -73,6 +74,7 @@ async def list_all(
     items, total = await list_invoices(
         session,
         tenant_id=real_tid,
+        customer_id=customer_id,
         page=page,
         page_size=page_size,
         payment_status=payment_status or None,

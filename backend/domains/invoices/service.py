@@ -763,6 +763,7 @@ async def enrich_invoices_with_payment_status(
 async def list_invoices(
     session: AsyncSession,
     tenant_id: uuid.UUID | None = None,
+    customer_id: uuid.UUID | None = None,
     page: int = 1,
     page_size: int = 20,
     payment_status: str | None = None,
@@ -794,6 +795,8 @@ async def list_invoices(
         non_paid_statuses = ("voided", "paid")
 
         base = select(Invoice).where(Invoice.tenant_id == tid)
+        if customer_id:
+            base = base.where(Invoice.customer_id == customer_id)
 
         # Due date expression (computed in SQL to enable correct overdue pagination)
         order_terms_subq = (

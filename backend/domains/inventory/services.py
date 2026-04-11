@@ -1521,9 +1521,10 @@ async def get_monthly_demand(
     """Return 12-month rolling monthly totals for sales_reservation reason code."""
     twelve_months_ago = utc_now().replace(day=1) - __import__("datetime").timedelta(days=365)
 
+    month_expr = func.date_trunc("month", StockAdjustment.created_at).label("month")
     stmt = (
         select(
-            func.date_trunc("month", StockAdjustment.created_at).label("month"),
+            month_expr,
             func.sum(StockAdjustment.quantity_change).label("total_qty"),
         )
         .where(
@@ -1532,8 +1533,8 @@ async def get_monthly_demand(
             StockAdjustment.reason_code == ReasonCode.SALES_RESERVATION,
             StockAdjustment.created_at >= twelve_months_ago,
         )
-        .group_by(func.date_trunc("month", StockAdjustment.created_at))
-        .order_by(func.date_trunc("month", StockAdjustment.created_at))
+        .group_by(month_expr)
+        .order_by(month_expr)
     )
     result = await session.execute(stmt)
     rows = result.all()

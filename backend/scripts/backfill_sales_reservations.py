@@ -27,7 +27,7 @@ from common.time import utc_now
 
 
 WAREHOUSE_ID = uuid.UUID("e0e9028a-7d6c-5abd-976a-735586cedc34")
-REASON_CODE = "sales_reservation"
+REASON_CODE = "SALES_RESERVATION"
 ACTOR_ID = "backfill-script"
 
 
