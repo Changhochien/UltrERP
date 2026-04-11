@@ -1,7 +1,8 @@
 from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, Depends, FastAPI, Response
+from fastapi import APIRouter, Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.mcp_setup import get_mcp_app
@@ -21,6 +22,7 @@ from domains.line.webhook import router as line_router
 from domains.orders.routes import router as orders_router
 from domains.payments.routes import router as payments_router
 from domains.purchases.routes import router as purchases_router
+from domains.reports.routes import router as reports_router
 from domains.settings.routes import router as settings_router
 from domains.users.routes import router as users_router
 
@@ -31,13 +33,14 @@ def create_app() -> FastAPI:
 	@asynccontextmanager
 	async def lifespan(app: FastAPI):
 		# Startup tasks — outside MCP lifespan so failures don't leak MCP context.
-		from domains.settings.seed import seed_settings_if_empty
-
 		# Import this to register domain event handlers (e.g. @on(StockChangedEvent))
 		import domains.inventory.handlers  # noqa: F401
+		from domains.settings.seed import seed_settings_if_empty
+		from domains.users.seed import seed_dev_users_if_empty
 
 		async with AsyncSessionLocal() as db:
 			await seed_settings_if_empty(db)
+			await seed_dev_users_if_empty(db)
 
 		# Only enter MCP lifespan after all startup tasks succeed.
 		mcp_lifespan = mcp_app.router.lifespan_context
@@ -53,8 +56,9 @@ def create_app() -> FastAPI:
 		version="0.1.0",
 		lifespan=lifespan,
 		strict_content_type=False,
+		redirect_slashes=False,
 	)
-	api_v1 = APIRouter(prefix="/api/v1")
+	api_v1 = APIRouter(prefix="/api/v1", redirect_slashes=False)
 
 	app.add_middleware(
 		CORSMiddleware,
@@ -77,8 +81,21 @@ def create_app() -> FastAPI:
 	api_v1.include_router(orders_router, prefix="/orders", tags=["orders"])
 	api_v1.include_router(payments_router, prefix="/payments", tags=["payments"])
 	api_v1.include_router(purchases_router, prefix="/purchases", tags=["purchases"])
+	api_v1.include_router(reports_router, prefix="/reports", tags=["reports"])
 	api_v1.include_router(settings_router, prefix="/settings", tags=["settings"])
 	app.include_router(api_v1)
+
+	@app.api_route(
+		"/mcp",
+		methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+		include_in_schema=False,
+	)
+	async def mcp_base_alias(request: Request) -> RedirectResponse:
+		# Preserve the historical no-slash MCP base URL expected by older clients.
+		target = f"{request.url.path}/"
+		if request.url.query:
+			target = f"{target}?{request.url.query}"
+		return RedirectResponse(url=target, status_code=307)
 
 	app.mount("/mcp", mcp_app)
 

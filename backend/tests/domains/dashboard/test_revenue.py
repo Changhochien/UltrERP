@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
 
+from common.time import today as get_today
 from domains.dashboard.services import get_revenue_summary
 from tests.domains.orders._helpers import FakeAsyncSession
 
@@ -31,7 +32,7 @@ async def test_revenue_both_days() -> None:
     assert result.today_revenue == Decimal("10000.00")
     assert result.yesterday_revenue == Decimal("8000.00")
     assert result.change_percent == Decimal("25.0")
-    today = datetime.now(UTC).date()
+    today = get_today()
     assert result.today_date == today
     assert result.yesterday_date == today - timedelta(days=1)
 

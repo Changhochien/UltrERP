@@ -12,6 +12,7 @@ class BuyerType(StrEnum):
 
 class InvoiceStatus(StrEnum):
     ISSUED = "issued"
+    PAID = "paid"
     VOIDED = "voided"
 
 
@@ -27,7 +28,8 @@ class EguiSubmissionStatus(StrEnum):
 
 # Only these transitions are permitted.
 ALLOWED_TRANSITIONS: dict[InvoiceStatus, frozenset[InvoiceStatus]] = {
-    InvoiceStatus.ISSUED: frozenset({InvoiceStatus.VOIDED}),
+    InvoiceStatus.ISSUED: frozenset({InvoiceStatus.PAID, InvoiceStatus.VOIDED}),
+    InvoiceStatus.PAID: frozenset({InvoiceStatus.VOIDED}),
     InvoiceStatus.VOIDED: frozenset(),
 }
 

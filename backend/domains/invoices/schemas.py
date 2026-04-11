@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -91,6 +92,7 @@ class InvoiceResponse(BaseModel):
     total_amount: Decimal
     status: str
     version: int
+    legacy_header_snapshot: dict[str, Any] | None = None
     voided_at: datetime | None = None
     void_reason: str | None = None
     created_at: datetime
@@ -116,6 +118,7 @@ class InvoiceListItem(BaseModel):
     currency_code: str
     total_amount: Decimal
     status: str
+    legacy_header_snapshot: dict[str, Any] | None = None
     created_at: datetime
     # Payment summary fields (computed)
     amount_paid: Decimal

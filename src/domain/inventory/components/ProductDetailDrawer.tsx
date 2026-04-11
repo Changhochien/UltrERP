@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { X, ArrowRightLeft, ShoppingCart, SlidersHorizontal } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { X, ArrowRightLeft, ExternalLink, ShoppingCart, SlidersHorizontal } from "lucide-react";
 
 import "../inventory.css";
 
@@ -170,6 +171,7 @@ export function ProductDetailDrawer({
   onNewOrder,
 }: ProductDetailDrawerProps) {
   const { product, loading, error } = useProductDetail(productId ?? "");
+  const navigate = useNavigate();
   const { selectedWarehouse } = useWarehouseContext();
 
   // Close on Escape
@@ -403,6 +405,14 @@ export function ProductDetailDrawer({
             >
               <ShoppingCart size={14} />
               Order
+            </button>
+            <button
+              type="button"
+              className="drawer-action-btn"
+              onClick={() => navigate(`/inventory/${product.id}`)}
+            >
+              <ExternalLink size={14} />
+              Open Full Page
             </button>
           </div>
         )}

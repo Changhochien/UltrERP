@@ -209,6 +209,11 @@ class FakeResult:
     def all(self) -> list:
         return list(self._items) if self._items is not None else []
 
+    def first(self) -> object | None:
+        if self._items is not None:
+            return self._items[0] if self._items else None
+        return self._obj
+
 
 class FakeScalarsResult:
     def __init__(self, objs: list[object]):

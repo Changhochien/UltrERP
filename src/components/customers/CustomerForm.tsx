@@ -1,10 +1,8 @@
-/** Reusable customer create/edit form component — react-hook-form + zod + shadcn field. */
+/** Reusable customer create/edit form component — react-hook-form + native validation + shadcn field. */
 
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -21,23 +19,63 @@ export interface CustomerFormProps {
   submittingLabel?: string;
 }
 
-// Zod schema — mirrors CustomerCreatePayload with all validation rules
-// NOTE: all fields typed as string to match HTML input values; number conversion happens on submit
-const customerSchema = z.object({
-  company_name: z.string().min(1, "customer.form.companyNameRequired").max(200),
-  business_number: z.string().min(1, "customer.form.businessNumberRequired").max(20),
-  billing_address: z.string().max(500),
-  contact_name: z.string().min(1, "customer.form.contactNameRequired").max(100),
-  contact_phone: z.string().min(1, "customer.form.contactPhoneRequired").max(30),
-  contact_email: z
-    .string()
-    .min(1, "customer.form.contactEmailRequired")
-    .email("customer.form.invalidEmail")
-    .max(254),
-  credit_limit: z.string(),
-});
+// Plain TypeScript interface — mirrors CustomerCreatePayload
+type CustomerFormValues = {
+  company_name: string;
+  business_number: string;
+  billing_address: string;
+  contact_name: string;
+  contact_phone: string;
+  contact_email: string;
+  credit_limit: string;
+};
 
-type CustomerFormValues = z.infer<typeof customerSchema>;
+// Custom native resolver — replicates zod validation and returns same i18n error keys
+function buildNativeResolver(
+  _t: (key: string) => string,
+) {
+  return async (values: CustomerFormValues) => {
+    const errors: Record<string, { type: string; message: string }> = {};
+
+    if (!values.company_name?.trim()) {
+      errors.company_name = { type: "required", message: "customer.form.companyNameRequired" };
+    } else if (values.company_name.length > 200) {
+      errors.company_name = { type: "max", message: "customer.form.companyNameTooLong" };
+    }
+
+    if (!values.business_number?.trim()) {
+      errors.business_number = { type: "required", message: "customer.form.businessNumberRequired" };
+    } else if (values.business_number.length > 20) {
+      errors.business_number = { type: "max", message: "customer.form.businessNumberTooLong" };
+    }
+
+    if (values.billing_address?.length > 500) {
+      errors.billing_address = { type: "max", message: "customer.form.billingAddressTooLong" };
+    }
+
+    if (!values.contact_name?.trim()) {
+      errors.contact_name = { type: "required", message: "customer.form.contactNameRequired" };
+    } else if (values.contact_name.length > 100) {
+      errors.contact_name = { type: "max", message: "customer.form.contactNameTooLong" };
+    }
+
+    if (!values.contact_phone?.trim()) {
+      errors.contact_phone = { type: "required", message: "customer.form.contactPhoneRequired" };
+    } else if (values.contact_phone.length > 30) {
+      errors.contact_phone = { type: "max", message: "customer.form.contactPhoneTooLong" };
+    }
+
+    if (!values.contact_email?.trim()) {
+      errors.contact_email = { type: "required", message: "customer.form.contactEmailRequired" };
+    } else if (values.contact_email.length > 254) {
+      errors.contact_email = { type: "max", message: "customer.form.contactEmailTooLong" };
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.contact_email)) {
+      errors.contact_email = { type: "email", message: "customer.form.invalidEmail" };
+    }
+
+    return Object.keys(errors).length > 0 ? { errors, values } : { errors: {}, values };
+  };
+}
 
 export default function CustomerForm({
   onSubmit,
@@ -57,7 +95,7 @@ export default function CustomerForm({
     setError,
     formState: { errors },
   } = useForm<CustomerFormValues>({
-    resolver: zodResolver(customerSchema),
+    resolver: buildNativeResolver(t) as any,
     defaultValues: {
       company_name: initialValues?.company_name ?? "",
       business_number: initialValues?.business_number ?? "",
@@ -92,7 +130,7 @@ export default function CustomerForm({
           return;
         }
 
-        // Taiwan business number has a special checksum algorithm — run after zod
+        // Taiwan business number has a special checksum algorithm — run after native validation
         const ban = validateTaiwanBusinessNumber(values.business_number ?? "");
         if (!ban.valid) {
           setError("business_number", {

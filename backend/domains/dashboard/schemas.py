@@ -82,9 +82,30 @@ class RunningBalanceItem(BaseModel):
 
 
 class CashFlowResponse(BaseModel):
-    period_start: date
-    period_end: date
+    start_date: date
+    end_date: date
     cash_inflows: list[CashFlowItem]
     cash_outflows: list[CashFlowItem]
     net_cash_flow: Decimal
     running_balance_by_date: list[RunningBalanceItem]
+
+
+class GrossMarginResponse(BaseModel):
+    gross_margin: Decimal
+    revenue: Decimal
+    cogs: Decimal
+    margin_percent: Decimal | None  # None when revenue is 0
+
+
+class RevenueTrendItem(BaseModel):
+    date: date  # Day, week (Monday), or month (1st) depending on granularity
+    revenue: Decimal
+    order_count: int
+
+
+class RevenueTrendResponse(BaseModel):
+    items: list[RevenueTrendItem]
+    start_date: date
+    end_date: date
+    has_more: bool = False
+    total: int | None = None  # total months with data (monthly granularity only)

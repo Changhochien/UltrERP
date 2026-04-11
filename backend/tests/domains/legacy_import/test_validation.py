@@ -25,6 +25,8 @@ class FakeValidationConnection:
             if "summary->>'scope_key'" in query:
                 return self.rows_by_key.get("previous_scope_run")
             return self.rows_by_key.get("canonical_run")
+        if 'FROM "raw_legacy".canonical_record_lineage AS lineage' in query:
+            return self.rows_by_key.get("snapshot_coverage")
         return None
 
     async def fetch(self, query: str, *args: object):
@@ -65,6 +67,13 @@ class CutoffQueryConnection:
     async def fetch(self, query: str, *args: object):
         self.queries.append(query)
         return self.rows
+
+
+def test_coerce_row_parses_json_object_strings() -> None:
+    assert validation._coerce_row('{"lineage_count": 3, "holding_count": 0}') == {
+        "lineage_count": 3,
+        "holding_count": 0,
+    }
 
 
 @pytest.mark.asyncio
@@ -130,6 +139,14 @@ async def test_validate_import_batch_blocks_on_severity1_and_keeps_severity2_vis
                 "batch_id": "batch-154",
                 "attempt_number": 1,
                 "status": "completed",
+            },
+            "snapshot_coverage": {
+                "order_count": 1,
+                "order_snapshot_count": 1,
+                "invoice_count": 1,
+                "invoice_snapshot_count": 1,
+                "supplier_invoice_count": 0,
+                "supplier_invoice_snapshot_count": 0,
             },
             "cutoff_date": date(2024, 8, 31),
         }
@@ -234,6 +251,14 @@ async def test_validate_import_batch_marks_clean_replayed_scope_success(
                 "attempt_number": 1,
                 "status": "completed",
             },
+            "snapshot_coverage": {
+                "order_count": 0,
+                "order_snapshot_count": 0,
+                "invoice_count": 0,
+                "invoice_snapshot_count": 0,
+                "supplier_invoice_count": 0,
+                "supplier_invoice_snapshot_count": 0,
+            },
             "cutoff_date": date(2024, 8, 31),
         }
     )
@@ -294,6 +319,14 @@ async def test_validate_import_batch_blocks_failed_canonical_run_without_failed_
                 "summary": {"customer_count": 1, "lineage_count": 1, "holding_count": 0},
             },
             "canonical_steps": [],
+            "snapshot_coverage": {
+                "order_count": 0,
+                "order_snapshot_count": 0,
+                "invoice_count": 0,
+                "invoice_snapshot_count": 0,
+                "supplier_invoice_count": 0,
+                "supplier_invoice_snapshot_count": 0,
+            },
             "cutoff_date": date(2024, 8, 31),
         }
     )
@@ -357,6 +390,14 @@ async def test_validate_import_batch_marks_replay_after_failed_scope(
                 "attempt_number": 2,
                 "status": "failed",
             },
+            "snapshot_coverage": {
+                "order_count": 0,
+                "order_snapshot_count": 0,
+                "invoice_count": 0,
+                "invoice_snapshot_count": 0,
+                "supplier_invoice_count": 0,
+                "supplier_invoice_snapshot_count": 0,
+            },
             "cutoff_date": date(2024, 8, 31),
         }
     )
@@ -412,6 +453,14 @@ async def test_validate_import_batch_removes_temp_artifacts_when_summary_persist
                 "summary": {"customer_count": 1, "lineage_count": 1, "holding_count": 0},
             },
             "canonical_steps": [],
+            "snapshot_coverage": {
+                "order_count": 0,
+                "order_snapshot_count": 0,
+                "invoice_count": 0,
+                "invoice_snapshot_count": 0,
+                "supplier_invoice_count": 0,
+                "supplier_invoice_snapshot_count": 0,
+            },
             "cutoff_date": date(2024, 8, 31),
         }
     )
@@ -493,6 +542,91 @@ def test_build_validation_report_scope_key_changes_when_mapping_state_changes() 
     )
 
     assert report_clean.replay.scope_key != report_with_unknowns.replay.scope_key
+
+
+@pytest.mark.asyncio
+async def test_validate_import_batch_flags_missing_legacy_header_snapshots(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    connection = FakeValidationConnection(
+        {
+            "stage_run": {"id": uuid.uuid4(), "attempt_number": 1, "status": "completed"},
+            "stage_tables": [
+                {
+                    "table_name": "tbsslipx",
+                    "source_file": "tbsslipx.csv",
+                    "expected_row_count": 2,
+                    "loaded_row_count": 2,
+                    "status": "completed",
+                    "error_message": None,
+                }
+            ],
+            "canonical_run": {
+                "id": uuid.uuid4(),
+                "attempt_number": 1,
+                "status": "completed",
+                "summary": {
+                    "order_count": 1,
+                    "invoice_count": 1,
+                    "supplier_invoice_count": 1,
+                    "lineage_count": 3,
+                    "holding_count": 0,
+                },
+            },
+            "canonical_steps": [],
+            "snapshot_coverage": {
+                "order_count": 1,
+                "order_snapshot_count": 1,
+                "invoice_count": 1,
+                "invoice_snapshot_count": 0,
+                "supplier_invoice_count": 1,
+                "supplier_invoice_snapshot_count": 1,
+            },
+            "cutoff_date": date(2024, 8, 31),
+        }
+    )
+
+    async def fake_open_raw_connection() -> FakeValidationConnection:
+        return connection
+
+    async def fake_fetch_mapping_summary(*args, **kwargs):
+        return validation.ProductMappingValidationSummary(
+            mapping_count=0,
+            candidate_count=0,
+            unknown_count=0,
+            orphan_code_count=0,
+            orphan_row_count=0,
+        )
+
+    monkeypatch.setattr(validation, "_open_raw_connection", fake_open_raw_connection)
+    monkeypatch.setattr(validation, "_fetch_product_mapping_summary", fake_fetch_mapping_summary)
+
+    result = await validation.validate_import_batch(
+        batch_id="batch-155-snapshots",
+        tenant_id=uuid.UUID("00000000-0000-0000-0000-000000001558"),
+        schema_name="raw_legacy",
+        output_dir=tmp_path,
+    )
+
+    assert result.report.status == "blocked"
+    assert result.report.snapshot_coverage is not None
+    assert result.report.snapshot_coverage.missing_snapshot_count == 1
+    assert result.report.issues[0].code == "legacy-header-snapshot-missing"
+
+    report_payload = json.loads(result.json_path.read_text(encoding="utf-8"))
+    assert report_payload["snapshot_coverage"]["invoice_snapshot_count"] == 0
+    assert report_payload["counts"]["legacy_header_snapshot_missing_count"] == 1
+    assert "## Snapshot Coverage" in result.markdown_path.read_text(encoding="utf-8")
+
+    update_call = next(
+        args
+        for query, args in connection.execute_calls
+        if 'UPDATE "raw_legacy".canonical_import_runs' in query
+    )
+    stored_summary = json.loads(update_call[1])
+    assert stored_summary["legacy_header_snapshot_missing_count"] == 1
+    assert stored_summary["legacy_header_snapshot_coverage"]["invoice_snapshot_count"] == 0
 
 
 def test_write_validation_report_scopes_artifact_names_by_schema_and_tenant(
@@ -598,6 +732,14 @@ async def test_validate_import_batch_binds_stage_lookup_to_canonical_started_at(
                 "summary": {"customer_count": 1, "lineage_count": 1, "holding_count": 0},
             },
             "canonical_steps": [],
+            "snapshot_coverage": {
+                "order_count": 0,
+                "order_snapshot_count": 0,
+                "invoice_count": 0,
+                "invoice_snapshot_count": 0,
+                "supplier_invoice_count": 0,
+                "supplier_invoice_snapshot_count": 0,
+            },
             "cutoff_date": date(2024, 8, 31),
         }
     )

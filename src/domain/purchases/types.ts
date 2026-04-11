@@ -1,5 +1,7 @@
 export type SupplierInvoiceStatus = "open" | "paid" | "voided";
 
+export type SupplierInvoiceStatusTotals = Record<SupplierInvoiceStatus, number>;
+
 export interface SupplierInvoiceLine {
   id: string;
   line_number: number;
@@ -50,6 +52,7 @@ export interface SupplierInvoiceListItem {
 
 export interface SupplierInvoiceListResponse {
   items: SupplierInvoiceListItem[];
+  status_totals: SupplierInvoiceStatusTotals;
   total: number;
   page: number;
   page_size: number;

@@ -107,6 +107,143 @@ def _currency_code(value: object | None) -> str:
     return raw[:3]
 
 
+def _compact_snapshot(snapshot: dict[str, object | None]) -> dict[str, object]:
+    return {key: value for key, value in snapshot.items() if value not in (None, "")}
+
+
+def _build_sales_header_snapshot(header: dict[str, object]) -> dict[str, object]:
+    return _compact_snapshot(
+        {
+            "source_table": "tbsslipx",
+            "legacy_doc_number": _as_text(header.get("doc_number")),
+            "invoice_date_raw": _as_text(header.get("invoice_date")),
+            "customer_code": _as_text(header.get("customer_code")),
+            "customer_name": _as_text(header.get("customer_name")),
+            "address": _as_text(header.get("address")),
+            "currency_code": _as_text(header.get("currency_code")),
+            "exchange_rate": _as_text(header.get("exchange_rate")),
+            "tax_type": _as_text(header.get("tax_type")),
+            "tax_rate": _as_text(header.get("tax_rate")),
+            "period_code": _as_text(header.get("period_code")),
+            "source_status": _as_text(header.get("source_status")),
+            "remark": _as_text(header.get("remark")),
+            "created_by": _as_text(header.get("created_by")),
+        }
+    )
+
+
+def _map_legacy_status_to_canonical(source_status: str) -> str:
+    """Map legacy source_status (col_80) to canonical invoice status.
+
+    Common legacy status values and their mappings:
+    - '1', 'N', 'ACTIVE', 'ISSUED', 'OPEN': 'issued' (new invoice, awaiting payment)
+    - 'A', 'PAID', 'CLEARED', 'CLOSED', 'DONE': 'paid' (fully paid / cleared)
+    - '2', '3', 'VOID', 'VOIDED', 'CANCELLED', 'CANCEL': 'voided' (voided/cancelled)
+    - '' (empty): default to 'issued'
+
+    The legacy system stores payment state in col_80 of tbsslipx.
+    """
+    raw = source_status.strip().upper()
+    if raw in {"", "1", "N", "ACTIVE", "ISSUED", "OPEN"}:
+        return "issued"
+    if raw in {"A", "PAID", "CLEARED", "CLOSED", "DONE", "2"}:
+        return "paid"
+    if raw in {"3", "VOID", "VOIDED", "CANCELLED", "CANCEL"}:
+        return "voided"
+    # Unknown status — treat as issued (open/pending) for safety
+    return "issued"
+
+
+def _map_legacy_order_status(source_status: str) -> str:
+    """Map imported historical sales documents to canonical order status.
+
+    The sales-history import only creates orders for documents that already became
+    invoices in the legacy system, so non-void documents should land as fulfilled
+    rather than remaining on the active-order dashboard.
+    """
+    return "cancelled" if _map_legacy_status_to_canonical(source_status) == "voided" else "fulfilled"
+
+
+def _map_purchase_invoice_status(must_pay_amount: object | None) -> str:
+    """Map purchase invoice status from the legacy remaining-payable amount."""
+    return "open" if _as_money(_as_decimal(must_pay_amount, "0.00")) > 0 else "paid"
+
+
+def _resolve_purchase_invoice_total(
+    subtotal_amount: object | None,
+    tax_amount: object | None,
+    must_pay_amount: object | None,
+    line_total_amount: object | None = None,
+) -> Decimal:
+    gross_total = _as_money(_as_decimal(subtotal_amount, "0.00") + _as_decimal(tax_amount, "0.00"))
+    if gross_total != 0:
+        return gross_total
+    line_total = _as_money(_as_decimal(line_total_amount, "0.00"))
+    if line_total != 0:
+        return line_total
+    return _as_money(_as_decimal(must_pay_amount, "0.00"))
+
+
+def _build_purchase_header_snapshot(header: dict[str, object]) -> dict[str, object]:
+    raw_invoice_number = _as_text(header.get("raw_invoice_number"))
+    raw_invoice_date = _as_text(header.get("raw_invoice_date"))
+    return _compact_snapshot(
+        {
+            "source_table": "tbsslipj",
+            "legacy_doc_number": _as_text(header.get("doc_number")),
+            "supplier_code": _as_text(header.get("supplier_code")),
+            "supplier_name": _as_text(header.get("supplier_name")),
+            "address": _as_text(header.get("address")),
+            "currency_code": _as_text(header.get("currency_code")),
+            "period_code": _as_text(header.get("period_code")),
+            "tax_rate": _as_text(header.get("tax_rate")),
+            "must_pay_amount": _as_text(header.get("must_pay_amount")),
+            "raw_invoice_number": raw_invoice_number,
+            "resolved_invoice_number": _as_text(header.get("invoice_number")),
+            "invoice_number_source": "legacy_invoice_number" if raw_invoice_number else "doc_number",
+            "raw_invoice_date": raw_invoice_date,
+            "resolved_invoice_date": _as_text(header.get("invoice_date")),
+            "invoice_date_source": "legacy_invoice_date" if raw_invoice_date else "slip_date",
+            "slip_date": _as_text(header.get("slip_date")),
+            "notes": _as_text(header.get("notes")),
+        }
+    )
+
+
+def _build_party_master_snapshot(row: dict[str, object]) -> dict[str, object]:
+    return _compact_snapshot(
+        {
+            "legacy_code": _as_text(row.get("legacy_code")),
+            "role": _as_text(row.get("role")),
+            "company_name": _as_text(row.get("company_name")),
+            "short_name": _as_text(row.get("short_name")),
+            "tax_id": _as_text(row.get("tax_id")),
+            "full_address": _as_text(row.get("full_address")),
+            "address": _as_text(row.get("address")),
+            "phone": _as_text(row.get("phone")),
+            "email": _as_text(row.get("email")),
+            "contact_person": _as_text(row.get("contact_person")),
+            "source_table": _as_text(row.get("source_table")),
+            "source_row_number": _as_int(row.get("source_row_number")),
+        }
+    )
+
+
+def _build_product_master_snapshot(row: dict[str, object]) -> dict[str, object]:
+    return _compact_snapshot(
+        {
+            "legacy_code": _as_text(row.get("legacy_code")),
+            "name": _as_text(row.get("name")),
+            "category": _as_text(row.get("category")),
+            "description": _as_text(row.get("description")),
+            "unit": _as_text(row.get("unit")),
+            "status": _as_text(row.get("status")),
+            "source_table": _as_text(row.get("source_table")),
+            "source_row_number": _as_int(row.get("source_row_number")),
+        }
+    )
+
+
 def _tax_policy_code(tax_amount: Decimal) -> tuple[str, int, Decimal]:
     if tax_amount > Decimal("0"):
         return ("standard", 1, Decimal("0.05"))
@@ -633,7 +770,9 @@ async def _fetch_sales_headers(
 			col_19 AS tax_amount,
 			col_24 AS total_amount,
 			col_30 AS remark,
+            col_31 AS period_code,
 			col_32 AS created_by,
+            col_80 AS source_status,
 			col_85 AS tax_rate,
 			_source_row_number AS source_row_number
 		FROM {quoted_schema}.tbsslipx
@@ -689,6 +828,11 @@ async def _fetch_purchase_headers(
         f"""
 		SELECT
 			col_2 AS doc_number,
+            col_3 AS slip_date,
+            col_30 AS period_code,
+            col_42 AS raw_invoice_number,
+            col_62 AS raw_invoice_date,
+            col_78 AS tax_rate,
             CASE
                 WHEN COALESCE(col_42, '') <> '' THEN col_42
                 ELSE col_2
@@ -704,7 +848,12 @@ async def _fetch_purchase_headers(
 			col_17 AS subtotal,
 			col_19 AS tax_amount,
             col_29 AS notes,
-			col_49 AS total_amount,
+            col_48 AS must_pay_amount,
+            CASE
+                WHEN (COALESCE(col_17::numeric, 0) + COALESCE(col_19::numeric, 0)) <> 0
+                    THEN (COALESCE(col_17::numeric, 0) + COALESCE(col_19::numeric, 0))
+                ELSE col_49::numeric
+            END AS total_amount,
 			_source_row_number AS source_row_number
 		FROM {quoted_schema}.tbsslipj
 		WHERE _batch_id = $1
@@ -767,6 +916,7 @@ async def _import_customers(
         contact_phone = _as_text(row.get("phone")) or "N/A"
         contact_email = _as_text(row.get("email")) or "N/A"
         billing_address = _as_text(row.get("address")) or _as_text(row.get("full_address")) or "N/A"
+        legacy_master_snapshot = _build_party_master_snapshot(row)
         # Truncate phone to column limit
         if contact_phone and len(contact_phone) > 30:
             contact_phone = contact_phone[:30]
@@ -783,11 +933,12 @@ async def _import_customers(
 				contact_email,
 				credit_limit,
 				status,
+                legacy_master_snapshot,
 				version,
 				created_at,
 				updated_at
 			)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 1, NOW(), NOW())
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::json, 1, NOW(), NOW())
 			ON CONFLICT (tenant_id, normalized_business_number) DO UPDATE SET
 				company_name = EXCLUDED.company_name,
 				billing_address = EXCLUDED.billing_address,
@@ -795,6 +946,7 @@ async def _import_customers(
 				contact_phone = EXCLUDED.contact_phone,
 				contact_email = EXCLUDED.contact_email,
 				status = EXCLUDED.status,
+                legacy_master_snapshot = EXCLUDED.legacy_master_snapshot,
 				updated_at = NOW()
 			""",
             customer_id,
@@ -807,6 +959,7 @@ async def _import_customers(
             contact_email,
             Decimal("0.00"),
             "active",
+            json.dumps(legacy_master_snapshot),
         )
         # Resolve actual customer_id: ON CONFLICT may have reused an existing row
         # Always look up by BN to get the actual persisted id
@@ -856,6 +1009,7 @@ async def _import_suppliers(
             continue
         legacy_code = _as_text(row.get("legacy_code"))
         supplier_id = _tenant_scoped_uuid(tenant_id, "party", "supplier", legacy_code)
+        legacy_master_snapshot = _build_party_master_snapshot(row)
         await connection.execute(
             """
 			INSERT INTO supplier (
@@ -865,16 +1019,18 @@ async def _import_suppliers(
 				contact_email,
 				phone,
 				address,
+                legacy_master_snapshot,
 				default_lead_time_days,
 				is_active,
 				created_at
 			)
-			VALUES ($1, $2, $3, $4, $5, $6, NULL, TRUE, NOW())
+            VALUES ($1, $2, $3, $4, $5, $6, $7::json, NULL, TRUE, NOW())
 			ON CONFLICT (id) DO UPDATE SET
 				name = EXCLUDED.name,
 				contact_email = EXCLUDED.contact_email,
 				phone = EXCLUDED.phone,
 				address = EXCLUDED.address,
+                legacy_master_snapshot = EXCLUDED.legacy_master_snapshot,
 				default_lead_time_days = EXCLUDED.default_lead_time_days,
 				is_active = EXCLUDED.is_active
 			""",
@@ -884,6 +1040,7 @@ async def _import_suppliers(
             _as_text(row.get("email")) or None,
             _as_text(row.get("phone")) or None,
             _as_text(row.get("address")) or _as_text(row.get("full_address")) or None,
+            json.dumps(legacy_master_snapshot),
         )
         await _upsert_lineage(
             connection,
@@ -922,6 +1079,7 @@ async def _import_products(
         if legacy_code == UNKNOWN_PRODUCT_CODE:
             unknown_product_present = True
         product_id = _tenant_scoped_uuid(tenant_id, "product", legacy_code)
+        legacy_master_snapshot = _build_product_master_snapshot(row)
         status = (
             "inactive"
             if legacy_code == UNKNOWN_PRODUCT_CODE
@@ -942,13 +1100,14 @@ async def _import_products(
 				description,
 				unit,
 				status,
+                legacy_master_snapshot,
 				search_vector,
 				created_at,
 				updated_at
 			)
 			VALUES (
 				$1::uuid, $2::uuid, $3::varchar, $4::varchar, $5::varchar, $6::text,
-				$7::varchar, $8::varchar,
+                $7::varchar, $8::varchar, $9::json,
                 to_tsvector(
                     'simple',
                     coalesce($3::text, '')
@@ -966,6 +1125,7 @@ async def _import_products(
 				description = EXCLUDED.description,
 				unit = EXCLUDED.unit,
 				status = EXCLUDED.status,
+                legacy_master_snapshot = EXCLUDED.legacy_master_snapshot,
 				search_vector = EXCLUDED.search_vector,
 				updated_at = NOW()
 			""",
@@ -977,6 +1137,7 @@ async def _import_products(
             _as_text(row.get("description")) if row.get("description") else None,
             _as_text(row.get("unit")) or "pcs",
             status,
+            json.dumps(legacy_master_snapshot),
         )
         await _upsert_lineage(
             connection,
@@ -1178,6 +1339,8 @@ async def _import_sales_history(
         created_at = _as_timestamp(invoice_date)
         order_id = _tenant_scoped_uuid(tenant_id, "order", doc_number)
         invoice_id = _tenant_scoped_uuid(tenant_id, "invoice", doc_number)
+        order_status = _map_legacy_order_status(_as_text(header.get("source_status")))
+        legacy_header_snapshot = _build_sales_header_snapshot(header)
 
         await connection.execute(
             """
@@ -1194,6 +1357,7 @@ async def _import_sales_history(
 				total_amount,
 				invoice_id,
 				notes,
+                legacy_header_snapshot,
 				created_by,
 				created_at,
 				updated_at,
@@ -1204,18 +1368,19 @@ async def _import_sales_history(
                 $2,
                 $3,
                 $4,
-                'confirmed',
+                $5,
                 'NET_30',
                 30,
-                $5,
                 $6,
                 $7,
-                NULL,
                 $8,
+                NULL,
                 $9,
-                $10,
-                $10,
-                $10
+                $10::json,
+                $11,
+                $12,
+                $12,
+                $12
             )
 			ON CONFLICT (id) DO UPDATE SET
 				customer_id = EXCLUDED.customer_id,
@@ -1225,6 +1390,7 @@ async def _import_sales_history(
 				tax_amount = EXCLUDED.tax_amount,
 				total_amount = EXCLUDED.total_amount,
 				notes = EXCLUDED.notes,
+                legacy_header_snapshot = EXCLUDED.legacy_header_snapshot,
 				created_by = EXCLUDED.created_by,
 				updated_at = NOW(),
 				confirmed_at = EXCLUDED.confirmed_at
@@ -1233,10 +1399,12 @@ async def _import_sales_history(
             tenant_id,
             customer_id,
             doc_number,
+            order_status,
             _as_decimal(header.get("subtotal"), "0.00"),
             _as_decimal(header.get("tax_amount"), "0.00"),
             _as_decimal(header.get("total_amount"), "0.00"),
             _as_text(header.get("remark")) or None,
+            json.dumps(legacy_header_snapshot),
             _as_text(header.get("created_by")) or "legacy-import",
             created_at,
         )
@@ -1271,11 +1439,12 @@ async def _import_sales_history(
 				total_amount,
 				status,
 				version,
+                legacy_header_snapshot,
 				order_id,
 				created_at,
 				updated_at
 			)
-			VALUES ($1, $2, $3, $4, $5, 'b2b', $6, $7, $8, $9, $10, 'issued', 1, $11, $12, $12)
+            VALUES ($1, $2, $3, $4, $5, 'b2b', $6, $7, $8, $9, $10, $11, 1, $12::json, $13, $14, $14)
 			ON CONFLICT (id) DO UPDATE SET
 				invoice_number = EXCLUDED.invoice_number,
 				invoice_date = EXCLUDED.invoice_date,
@@ -1287,6 +1456,7 @@ async def _import_sales_history(
 				tax_amount = EXCLUDED.tax_amount,
 				total_amount = EXCLUDED.total_amount,
 				status = EXCLUDED.status,
+                legacy_header_snapshot = EXCLUDED.legacy_header_snapshot,
 				order_id = EXCLUDED.order_id,
 				updated_at = NOW()
 			""",
@@ -1300,6 +1470,8 @@ async def _import_sales_history(
             _as_decimal(header.get("subtotal"), "0.00"),
             _as_decimal(header.get("tax_amount"), "0.00"),
             _as_decimal(header.get("total_amount"), "0.00"),
+            _map_legacy_status_to_canonical(_as_text(header.get("source_status"))),
+            json.dumps(legacy_header_snapshot),
             order_id,
             created_at,
         )
@@ -1669,7 +1841,25 @@ async def _import_purchase_history(
 
         created_at = _as_timestamp(invoice_date)
         supplier_invoice_id = _tenant_scoped_uuid(tenant_id, "supplier-invoice", doc_number)
+        header_lines = sorted(
+            lines_by_doc.get(doc_number, []), key=lambda item: _as_int(item.get("line_number"), 0)
+        )
         tax_amount = _as_money(_as_decimal(header.get("tax_amount"), "0.00"))
+        remaining_payable_amount = _as_money(_as_decimal(header.get("must_pay_amount"), "0.00"))
+        line_total_amount = _as_money(
+            sum(
+                (_as_decimal(line.get("extended_amount"), "0.00") for line in header_lines),
+                Decimal("0.00"),
+            )
+        )
+        total_amount = _resolve_purchase_invoice_total(
+            header.get("subtotal"),
+            header.get("tax_amount"),
+            header.get("must_pay_amount"),
+            line_total_amount,
+        )
+        supplier_invoice_status = _map_purchase_invoice_status(header.get("must_pay_amount"))
+        legacy_header_snapshot = _build_purchase_header_snapshot(header)
 
         await connection.execute(
             """
@@ -1683,12 +1873,14 @@ async def _import_purchase_history(
 				subtotal_amount,
 				tax_amount,
 				total_amount,
+                remaining_payable_amount,
 				status,
 				notes,
+                legacy_header_snapshot,
 				created_at,
 				updated_at
 			)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'open', $10, $11, $11)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::json, $14, $14)
 			ON CONFLICT (id) DO UPDATE SET
 				supplier_id = EXCLUDED.supplier_id,
 				invoice_number = EXCLUDED.invoice_number,
@@ -1697,8 +1889,10 @@ async def _import_purchase_history(
 				subtotal_amount = EXCLUDED.subtotal_amount,
 				tax_amount = EXCLUDED.tax_amount,
 				total_amount = EXCLUDED.total_amount,
+                remaining_payable_amount = EXCLUDED.remaining_payable_amount,
 				status = EXCLUDED.status,
 				notes = EXCLUDED.notes,
+                legacy_header_snapshot = EXCLUDED.legacy_header_snapshot,
 				updated_at = NOW()
 			""",
             supplier_invoice_id,
@@ -1709,8 +1903,11 @@ async def _import_purchase_history(
             _currency_code(header.get("currency_code")),
             _as_money(_as_decimal(header.get("subtotal"), "0.00")),
             tax_amount,
-            _as_money(_as_decimal(header.get("total_amount"), "0.00")),
+            total_amount,
+            remaining_payable_amount,
+            supplier_invoice_status,
             _as_text(header.get("notes")) or None,
+            json.dumps(legacy_header_snapshot),
             created_at,
         )
         await _upsert_lineage(
@@ -1728,9 +1925,6 @@ async def _import_purchase_history(
         invoice_count += 1
         lineage_count += 1
 
-        header_lines = sorted(
-            lines_by_doc.get(doc_number, []), key=lambda item: _as_int(item.get("line_number"), 0)
-        )
         line_subtotals = [
             _as_money(_as_decimal(line.get("extended_amount"), "0.00"))
             for line in header_lines

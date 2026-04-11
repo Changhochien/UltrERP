@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import uuid
 
+from fastapi import Request
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,6 +24,15 @@ async def set_tenant(session: AsyncSession, tenant_id: uuid.UUID) -> None:
     )
 
 
-async def get_tenant_id() -> uuid.UUID:
-    """Return the current tenant ID (placeholder — returns default)."""
+async def get_tenant_id(request: Request) -> uuid.UUID:
+    """Return tenant_id stored in request state by get_current_user()."""
+    if hasattr(request.state, "tenant_id"):
+        return request.state.tenant_id
+    return DEFAULT_TENANT_ID
+
+
+def get_tenant_id_or_default(request: Request) -> uuid.UUID:
+    """Return tenant_id from request state, or default (sync version for module-level calls)."""
+    if hasattr(request.state, "tenant_id"):
+        return request.state.tenant_id
     return DEFAULT_TENANT_ID

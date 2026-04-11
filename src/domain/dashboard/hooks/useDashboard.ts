@@ -1,6 +1,6 @@
 /** Hooks for dashboard domain. */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   fetchRevenueSummary,
@@ -15,6 +15,7 @@ import {
   fetchCashFlow,
   fetchRevenueTrend,
 } from "../../../lib/api/dashboard";
+import { appTodayISO } from "../../../lib/time";
 import type {
   RevenueSummary,
   TopProductsResponse,
@@ -27,6 +28,7 @@ import type {
   GrossMarginResponse,
   CashFlowResponse,
   RevenueTrendResponse,
+  RevenueTrendItem,
 } from "../types";
 
 export function useRevenueSummary() {
@@ -149,19 +151,20 @@ export function useTopCustomers(initialPeriod: "month" | "quarter" | "year" = "m
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState(initialPeriod);
+  const [anchorDate, setAnchorDate] = useState(() => appTodayISO());
 
   const load = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetchTopCustomers(period);
+      const res = await fetchTopCustomers(period, anchorDate);
       setData(res);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load top customers");
     } finally {
       setIsLoading(false);
     }
-  }, [period]);
+  }, [anchorDate, period]);
 
   useEffect(() => {
     void load();
@@ -171,7 +174,7 @@ export function useTopCustomers(initialPeriod: "month" | "quarter" | "year" = "m
     await load();
   }, [load]);
 
-  return { data, isLoading, error, refetch, period, setPeriod };
+  return { data, isLoading, error, refetch, period, setPeriod, anchorDate, setAnchorDate };
 }
 
 export function useARAging() {
@@ -247,7 +250,20 @@ export function useGrossMargin() {
       .finally(() => setIsLoading(false));
   }, []);
 
-  return { data, isLoading, error };
+  const refetch = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetchGrossMargin();
+      setData(res);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load gross margin");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  return { data, isLoading, error, refetch };
 }
 
 export function useCashFlow() {
@@ -279,32 +295,69 @@ export function useCashFlow() {
   return { data, isLoading, error, refetch };
 }
 
-export function useRevenueTrend(initialPeriod: "month" | "quarter" | "year" = "month") {
-  const [data, setData] = useState<RevenueTrendResponse | null>(null);
+export function useRevenueTrend(period: "month" | "quarter" | "year" = "month") {
+  const [allItems, setAllItems] = useState<RevenueTrendItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [period, setPeriod] = useState(initialPeriod);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  const load = useCallback(async () => {
-    setIsLoading(true);
+  const latestItemsRef = useRef<RevenueTrendItem[]>([]);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const load = useCallback(async (before: string | null = null) => {
+    // Cancel any in-flight request
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+
+    if (!before) setIsLoading(true);
+    else setIsLoadingMore(true);
     setError(null);
     try {
-      const res = await fetchRevenueTrend(period === "month" ? "month" : "week");
-      setData(res);
+      const res = await fetchRevenueTrend(period, before);
+      // Guard: if request was aborted, ignore response
+      if (abortRef.current?.signal.aborted) return;
+      if (!before) {
+        latestItemsRef.current = res.items;
+        setAllItems(res.items);
+      } else {
+        const newItems = [...res.items, ...latestItemsRef.current];
+        latestItemsRef.current = newItems;
+        setAllItems(newItems);
+      }
+      setHasMore(res.has_more ?? false);
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Failed to load revenue trend");
     } finally {
-      setIsLoading(false);
+      if (!before) setIsLoading(false);
+      else setIsLoadingMore(false);
     }
   }, [period]);
 
   useEffect(() => {
-    void load();
+    latestItemsRef.current = [];
+    setAllItems([]);
+    abortRef.current?.abort();
+    void load(null);
   }, [load]);
 
   const refetch = useCallback(async () => {
-    await load();
+    latestItemsRef.current = [];
+    setAllItems([]);
+    await load(null);
   }, [load]);
 
-  return { data, isLoading, error, refetch, period, setPeriod };
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || !hasMore || !latestItemsRef.current.length) return;
+    const oldest = latestItemsRef.current[0]?.date;
+    if (!oldest) return;
+    await load(oldest);
+  }, [hasMore, isLoadingMore, load]);
+
+  const data: RevenueTrendResponse | null = allItems.length > 0
+    ? { items: allItems, start_date: allItems[0].date, end_date: allItems[allItems.length - 1].date, has_more: hasMore }
+    : null;
+
+  return { data, isLoading, isLoadingMore, error, refetch, hasMore, loadMore };
 }

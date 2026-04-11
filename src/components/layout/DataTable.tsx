@@ -21,6 +21,7 @@ export interface DataTableColumn<TData> {
   getSortValue?: (row: TData) => string | number | null | undefined;
   className?: string;
   headerClassName?: string;
+  onClick?: (event: React.MouseEvent, row: TData) => void;
 }
 
 interface DataTableProps<TData> {
@@ -251,7 +252,11 @@ export function DataTable<TData>({
                     >
                       {columns.map((column) => (
                         <TableCell key={column.id} className={column.className}>
-                          {column.cell(row)}
+                          {column.onClick ? (
+                            <div onClick={(e) => column.onClick?.(e, row)}>{column.cell(row)}</div>
+                          ) : (
+                            column.cell(row)
+                          )}
                         </TableCell>
                       ))}
                     </TableRow>

@@ -1,16 +1,16 @@
-/** Revenue trend line chart — configurable period (month/quarter/year) daily revenue using @visx. */
+/** Revenue trend line chart — configurable period (month/quarter/year) daily revenue using recharts. */
 
 import { useTranslation } from "react-i18next";
-import { format } from "date-fns";
-import { ParentSize } from "@visx/responsive";
-import { scaleTime, scaleLinear } from "@visx/scale";
-import { LinePath } from "@visx/shape";
-import { AxisBottom, AxisLeft } from "@visx/axis";
-import { GridRows } from "@visx/grid";
-import { Group } from "@visx/group";
-import { curveMonotoneX } from "@visx/curve";
-import { TooltipWithBounds, useTooltip } from "@visx/tooltip";
-import { parseBackendDate } from "../../../lib/time";
+import {
+  Brush,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { formatBackendCalendarDate } from "../../../lib/time";
 
 import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayout";
 import { Button } from "../../../components/ui/button";
@@ -20,10 +20,13 @@ import { Tabs, TabsList, TabsTrigger } from "../../../components/ui/tabs";
 interface RevenueTrendChartProps {
   data: Array<{ date: string; revenue: string }>;
   isLoading: boolean;
+  isLoadingMore?: boolean;
   error: string | null;
   onRetry: () => void;
   period: "month" | "quarter" | "year";
   onPeriodChange: (period: "month" | "quarter" | "year") => void;
+  hasMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 function formatTWD(value: number): string {
@@ -33,124 +36,43 @@ function formatTWD(value: number): string {
   })}`;
 }
 
-interface TooltipData {
-  date: string;
-  revenue: number;
-}
-
-function ChartInner({ data, width, height }: { data: Array<{ date: string; revenue: string }>; width: number; height: number }) {
-  const {
-    showTooltip,
-    hideTooltip,
-    tooltipOpen,
-    tooltipData,
-    tooltipLeft,
-    tooltipTop,
-  } = useTooltip<TooltipData>();
-
-  const margin = { top: 10, right: 10, left: 60, bottom: 40 };
-  const innerWidth = width - margin.left - margin.right;
-  const innerHeight = height - margin.top - margin.bottom;
-
-  const parsedData = data.map((d) => ({
-    date: parseBackendDate(d.date),
-    revenue: Number(d.revenue),
-  }));
-
-  const xScale = scaleTime({
-    domain: [parsedData[0]?.date ?? new Date(), parsedData[parsedData.length - 1]?.date ?? new Date()],
-    range: [0, innerWidth],
-  });
-
-  const yScale = scaleLinear({
-    domain: [0, Math.max(...parsedData.map((d) => d.revenue)) * 1.1],
-    range: [innerHeight, 0],
-  });
-
-  return (
-    <div style={{ position: "relative" }}>
-      <svg width={width} height={height}>
-        <Group left={margin.left} top={margin.top}>
-          <GridRows
-            scale={yScale}
-            width={innerWidth}
-            stroke="var(--border)"
-            strokeDasharray="3 3"
-          />
-          <AxisBottom
-            top={innerHeight}
-            scale={xScale}
-            numTicks={innerWidth > 400 ? 8 : 4}
-            tickFormat={(d) => format(d as Date, "MM/dd")}
-            tickLabelProps={() => ({
-              fill: "var(--muted-foreground)",
-              fontSize: 12,
-              textAnchor: "middle",
-            })}
-            stroke="var(--border)"
-          />
-          <AxisLeft
-            scale={yScale}
-            tickFormat={(d) => `NT$ ${((d as number) / 1000).toFixed(0)}k`}
-            tickLabelProps={() => ({
-              fill: "var(--muted-foreground)",
-              fontSize: 12,
-              textAnchor: "end",
-            })}
-            stroke="var(--border)"
-          />
-          <LinePath
-            data={parsedData}
-            x={(d) => xScale(d.date) ?? 0}
-            y={(d) => yScale(d.revenue) ?? 0}
-            stroke="#6366f1"
-            strokeWidth={2}
-            curve={curveMonotoneX}
-          />
-          {parsedData.map((d, i) => (
-            <rect
-              key={i}
-              x={(xScale(d.date) ?? 0) - innerWidth / parsedData.length / 2}
-              y={0}
-              width={innerWidth / parsedData.length}
-              height={innerHeight}
-              fill="transparent"
-              onMouseEnter={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                showTooltip({
-                  tooltipData: { date: data[i].date, revenue: d.revenue },
-                  tooltipLeft: rect.left + rect.width / 2,
-                  tooltipTop: rect.top,
-                });
-              }}
-              onMouseLeave={hideTooltip}
-            />
-          ))}
-        </Group>
-      </svg>
-      {tooltipOpen && tooltipData && (
-        <TooltipWithBounds
-          left={tooltipLeft}
-          top={tooltipTop}
-          style={{ background: "var(--background)", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 12px", fontSize: 12 }}
-        >
-          <div style={{ color: "var(--muted-foreground)", marginBottom: 4 }}>
-            {format(parseBackendDate(tooltipData.date), "yyyy-MM-dd")}
-          </div>
-          <div style={{ fontWeight: 600 }}>{formatTWD(tooltipData.revenue)}</div>
-        </TooltipWithBounds>
-      )}
-    </div>
-  );
-}
-
-export function RevenueTrendChart({ data, isLoading, error, onRetry, period, onPeriodChange }: RevenueTrendChartProps) {
+export function RevenueTrendChart(props: RevenueTrendChartProps) {
   const { t } = useTranslation("common");
+  const {
+    data,
+    isLoading,
+    isLoadingMore,
+    error,
+    onRetry,
+    period,
+    onPeriodChange,
+    hasMore,
+    onLoadMore,
+  } = props;
 
   const periodLabel =
-    period === "month" ? t("dashboard.revenueTrend.30d")
-    : period === "quarter" ? t("dashboard.revenueTrend.90d")
-    : t("dashboard.revenueTrend.1y");
+    period === "month"
+      ? t("dashboard.revenueTrend.30d")
+      : period === "quarter"
+        ? t("dashboard.revenueTrend.90d")
+        : t("dashboard.revenueTrend.1y");
+
+  const xInterval: number | "preserveStartEnd" = period === "month" ? 6 : "preserveStartEnd";
+
+  const chartData = data.map((d) => ({ ...d, revenue: Number(d.revenue) }));
+  const showZoomNavigator = chartData.length > 10 || Boolean(hasMore);
+
+  const loadMoreContent = (): React.ReactNode => {
+    if (!hasMore) return null;
+    const label = isLoadingMore ? t("common.loading") : t("dashboard.revenueTrend.loadMore");
+    return (
+      <div className="mt-3 flex justify-center">
+        <Button variant="outline" size="sm" onClick={onLoadMore} disabled={isLoadingMore}>
+          {label}
+        </Button>
+      </div>
+    );
+  };
 
   return (
     <SectionCard
@@ -176,11 +98,76 @@ export function RevenueTrendChart({ data, isLoading, error, onRetry, period, onP
           </Button>
         </>
       ) : (
-        <ParentSize>
-          {({ width }) => (
-            <ChartInner data={data} width={width} height={300} />
-          )}
-        </ParentSize>
+        <>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={chartData} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
+              <defs>
+                <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <XAxis
+                dataKey="date"
+                tickFormatter={(d) => formatBackendCalendarDate(d as string, "MM/dd")}
+                interval={xInterval}
+                minTickGap={24}
+                fontSize={12}
+                tick={{ fill: "currentColor" }}
+                axisLine={{ stroke: "currentColor" }}
+                style={{ fontSize: "12px" }}
+              />
+              <YAxis
+                tickFormatter={(v) => `NT$ ${(v / 1000).toFixed(0)}k`}
+                fontSize={12}
+                width={60}
+                domain={[0, "auto"]}
+                padding={{ top: 2, bottom: 0 }}
+                tick={{ fill: "currentColor" }}
+                axisLine={{ stroke: "currentColor" }}
+                style={{ fontSize: "12px" }}
+              />
+              <Tooltip
+                cursor={{ stroke: "#6366f1", strokeWidth: 1 }}
+                contentStyle={{ color: "#000" }}
+                labelFormatter={(d) => formatBackendCalendarDate(d as string, "yyyy-MM-dd")}
+                formatter={(val) => [formatTWD(Number(val)), "Revenue"]}
+              />
+              <Line
+                type="monotone"
+                dataKey="revenue"
+                stroke="#6366f1"
+                strokeWidth={1.5}
+                dot={false}
+                isAnimationActive={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="revenue"
+                stroke="url(#revenueGradient)"
+                strokeWidth={0}
+                fill="url(#revenueGradient)"
+                isAnimationActive={false}
+                connectNulls={true}
+              />
+              {showZoomNavigator ? (
+                <Brush
+                  dataKey="date"
+                  height={24}
+                  stroke="#6366f1"
+                  travellerWidth={10}
+                  tickFormatter={(d) => formatBackendCalendarDate(d as string, "MM/dd")}
+                />
+              ) : null}
+            </LineChart>
+          </ResponsiveContainer>
+          {showZoomNavigator ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              {t("dashboard.revenueTrend.zoomHint")}
+            </p>
+          ) : null}
+          {loadMoreContent()}
+        </>
       )}
     </SectionCard>
   );

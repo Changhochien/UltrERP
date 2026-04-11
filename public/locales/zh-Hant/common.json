@@ -15,7 +15,8 @@
     "payments": "付款",
     "revenue": "營收",
     "settings": "設定",
-    "admin": "管理"
+    "admin": "管理",
+    "ownerDashboard": "經營者儀表板"
   },
   "common": {
     "cancel": "取消",
@@ -98,6 +99,10 @@
       "description": "瀏覽您的 ERP 工作區。",
       "label": "工作區",
       "section": "工作區"
+    },
+    "ownerDashboard": {
+      "label": "經營者儀表板",
+      "description": "業主專屬的經營總覽與關鍵指標。"
     }
   },
   "app": {
@@ -155,25 +160,97 @@
       "titleCreated": "客戶已建立"
     },
     "detail": {
+      "backToList": "返回列表",
       "ban": "統一編號",
       "billingAddress": "帳單地址",
       "companyName": "公司名稱",
       "contactName": "聯絡人",
+      "createdAt": "建立時間",
       "creditLimit": "信用額度",
+      "delete": "刪除",
       "description": "客戶詳情",
       "edit": "編輯",
       "email": "電子郵件",
+      "eyebrow": "客戶",
       "loading": "載入中…",
       "notFound": "找不到客戶。",
+      "overviewDescription": "此客戶的基本資訊與聯絡方式。",
+      "overviewTitle": "客戶概覽",
       "phone": "電話",
       "status": "狀態",
+      "suspend": "停權",
       "title": "客戶詳情",
+      "updatedAt": "最後更新",
+      "suspendConfirm": {
+        "message": "確定要停權此客戶嗎？",
+        "error": "停權失敗。"
+      },
+      "deleteConfirm": {
+        "message": "確定要刪除此客戶嗎？",
+        "error": "刪除失敗。"
+      },
+      "cannotDelete": {
+        "message": "無法刪除尚有應收帳款的客戶。"
+      },
       "tabs": {
         "overview": "概覽",
         "invoices": "發票",
         "orders": "訂單",
         "outstanding": "應收帳款",
-        "statement": "對帳單"
+        "statement": "對帳單",
+        "analytics": "分析"
+      },
+      "analytics": {
+        "totalRevenue": "12個月營收",
+        "revenueDescription": "最近 12 個月累計營收",
+        "invoiceCount": "發票數量",
+        "invoiceCountDesc": "最近 12 個月開立的發票數",
+        "avgInvoiceValue": "平均發票金額",
+        "avgInvoiceDesc": "每張發票平均金額",
+        "outstanding": "應收帳款",
+        "outstandingBalance": "應收帳款餘額",
+        "creditUtilization": "信用額度使用率",
+        "avgDaysToPay": "平均付款天數",
+        "avgDaysDesc": "從發票日期到付款日期計算",
+        "revenueTrend": "營收趨勢",
+        "revenueTrendDesc": "最近 12 個完整月份的月營收",
+        "paymentScore": "付款評分",
+        "daysOverdueAvg": "平均逾期天數",
+        "daysOverdueDesc": "超過付款條件後的平均逾期天數",
+        "creditLimit": "信用額度",
+        "creditLimitDesc": "此客戶設定的信用額度",
+        "emptyTitle": "目前沒有營收活動",
+        "emptyDescription": "此客戶在最近 12 個月內沒有發票營收。",
+        "loadError": "載入分析資料失敗。",
+        "tooltipRevenue": "營收",
+        "paymentScoreLabels": {
+          "excellent": "優秀",
+          "prompt": "準時",
+          "late": "延遲",
+          "at_risk": "高風險"
+        }
+      },
+      "invoices": {
+        "title": "發票",
+        "description": "開給此客戶的發票。",
+        "emptyTitle": "無發票",
+        "emptyDescription": "此客戶沒有發票記錄。"
+      },
+      "orders": {
+        "title": "訂單",
+        "description": "此客戶的訂單。",
+        "emptyTitle": "無訂單",
+        "emptyDescription": "此客戶沒有訂單記錄。"
+      },
+      "outstanding": {
+        "title": "應收帳款",
+        "description": "此客戶的應收帳款概況。",
+        "loading": "正在載入應收帳款…",
+        "error": "錯誤：{message}",
+        "totalOutstanding": "應收帳款總額",
+        "invoiceCount": "發票數量",
+        "overdue": "逾期",
+        "overdueSummary": "{count} 張發票（{currency} {amount}）"
       },
       "statement": {
         "title": "客戶對帳單",
@@ -202,6 +279,12 @@
         "empty": "查無交易記錄。",
         "invoiceType": "發票",
         "paymentType": "付款"
+      },
+      "statusValues": {
+        "active": "啟用",
+        "suspended": "停權",
+        "inactive": "停用",
+        "deleted": "已刪除"
       }
     },
     "form": {
@@ -296,6 +379,259 @@
       "title": "訪客統計",
       "uniqueVisitors": "獨立訪客",
       "yesterday": "昨日（{date}）"
+    },
+    "kpi": {
+      "title": "KPI 摘要",
+      "description": "今日關鍵營運指標。",
+      "todayRevenue": "今日營收",
+      "openInvoices": "待收款發票",
+      "openInvoiceAmount": "待收款金額",
+      "pendingOrders": "待處理訂單",
+      "pendingOrderRevenue": "待處理訂單金額",
+      "lowStock": "低庫存產品",
+      "overdueReceivables": "逾期應收帳款"
+    },
+    "grossMargin": {
+      "title": "毛利率",
+      "description": "與前期比較的毛利率。",
+      "unavailable": "毛利率資料無法取得",
+      "vsPreviousPeriod": "與前期相比",
+      "revenue": "營收",
+      "cogs": "銷貨成本"
+    },
+    "cashFlow": {
+      "title": "現金流量",
+      "description": "每週現金流入與流出。",
+      "inflows": "流入",
+      "outflows": "流出",
+      "net": "淨額",
+      "totalInflows": "流入合計",
+      "totalOutflows": "流出合計",
+      "netCashFlow": "淨現金流量"
+    },
+    "revenueTrend": {
+      "title": "營收趨勢",
+      "30d": "30 天",
+      "90d": "90 天",
+      "1y": "1 年",
+      "month": "月",
+      "quarter": "季",
+      "year": "年",
+      "loadMore": "載入更多",
+      "zoomHint": "拖曳下方導覽列即可縮放與平移。"
+    },
+    "arAging": {
+      "title": "應收帳款帳齡",
+      "asOf": "統計日期：{date}",
+      "invoices": "{count} 張發票",
+      "totalOutstanding": "應收總額",
+      "totalOverdue": "逾期總額"
+    },
+    "apAging": {
+      "title": "應付帳款帳齡",
+      "asOf": "統計日期：{date}",
+      "invoices": "{count} 張發票",
+      "totalOutstanding": "應付總額",
+      "totalOverdue": "逾期總額"
+    },
+    "topCustomers": {
+      "title": "熱門客戶",
+      "description": "依營收排名的客戶。",
+      "month": "月",
+      "quarter": "季",
+      "year": "年",
+      "company": "公司",
+      "revenue": "營收",
+      "invoices": "發票",
+      "anchorMonth": "基準月份",
+      "previousPeriod": "上一期間",
+      "nextPeriod": "下一期間",
+      "periodRange": "期間：{start} 至 {end}",
+      "topTotal": "前 {count} 名合計：{amount}",
+      "lastInvoice": "最近發票 {date}",
+      "avgInvoice": "平均每張 {amount}",
+      "noData": "此期間無資料。"
+    }
+  },
+  "adminPage": {
+    "eyebrow": "管理",
+    "title": "管理",
+    "description": "僅限擁有者檢視工作區使用者、角色與最新管理稽核紀錄。",
+    "errors": {
+      "loadFailed": "載入管理資料失敗",
+      "saveFailed": "儲存使用者失敗"
+    },
+    "users": {
+      "title": "使用者",
+      "description": "檢視工作區使用者名單、角色與啟用狀態。",
+      "loadingDescription": "工作區存取名單。",
+      "emptyTitle": "找不到使用者。",
+      "emptyDescription": "此租戶目前沒有可顯示的使用者。",
+      "addUser": "新增使用者",
+      "editUser": "編輯",
+      "columns": {
+        "email": "電子郵件",
+        "displayName": "名稱",
+        "role": "角色",
+        "status": "狀態",
+        "actions": "操作"
+      },
+      "filters": {
+        "search": "搜尋",
+        "searchPlaceholder": "依電子郵件或名稱搜尋",
+        "role": "角色篩選",
+        "status": "狀態篩選",
+        "allRoles": "所有角色",
+        "allStatuses": "所有狀態"
+      },
+      "fields": {
+        "email": "電子郵件",
+        "displayName": "顯示名稱",
+        "role": "角色",
+        "status": "狀態",
+        "password": "密碼",
+        "resetPassword": "重設密碼"
+      },
+      "summary": "顯示 {total} 位中的 {filtered} 位使用者。",
+      "roles": {
+        "owner": "擁有者",
+        "finance": "財務",
+        "warehouse": "倉儲",
+        "sales": "業務"
+      },
+      "statuses": {
+        "active": "啟用",
+        "disabled": "停用"
+      },
+      "errors": {
+        "formUnavailable": "使用者表單尚未就緒",
+        "emailRequired": "必須填寫電子郵件",
+        "emailInvalid": "請輸入有效的電子郵件地址",
+        "displayNameRequired": "必須填寫顯示名稱",
+        "passwordTooShort": "密碼至少需要 8 個字元",
+        "resetPasswordTooShort": "重設密碼至少需要 8 個字元",
+        "copyFailed": "複製密碼失敗"
+      },
+      "dialog": {
+        "createTitle": "新增使用者",
+        "editTitle": "編輯使用者",
+        "createDescription": "建立新的工作區使用者並設定其初始角色。",
+        "editDescription": "更新所選使用者的角色、狀態或密碼。",
+        "passwordHelp": "請使用至少 8 個字元。",
+        "resetPasswordHelp": "留白可保留目前密碼。",
+        "generatePassword": "產生密碼",
+        "copyPassword": "複製",
+        "passwordGenerated": "已產生臨時密碼。",
+        "passwordCopied": "已將密碼複製到剪貼簿。",
+        "cancel": "取消",
+        "createAction": "建立使用者",
+        "save": "儲存變更",
+        "creating": "建立中...",
+        "saving": "儲存中..."
+      }
+    },
+    "auditLog": {
+      "title": "稽核紀錄",
+      "description": "此工作區最近的管理操作紀錄。",
+      "loadingDescription": "最近的管理操作。",
+      "emptyTitle": "找不到稽核紀錄。",
+      "emptyDescription": "有管理活動時會顯示在這裡。",
+      "summary": "顯示 {total} 筆中的 {filtered} 筆稽核紀錄。",
+      "filters": {
+        "actor": "執行者篩選",
+        "actorPlaceholder": "依執行者 ID 篩選",
+        "actorType": "執行者類型篩選",
+        "actorTypePlaceholder": "依執行者類型篩選",
+        "action": "動作篩選",
+        "actionPlaceholder": "依動作篩選",
+        "entityType": "目標類型篩選",
+        "entityTypePlaceholder": "依目標類型篩選",
+        "entityId": "目標 ID 篩選",
+        "entityIdPlaceholder": "依目標 ID 篩選",
+        "createdAfter": "建立時間起",
+        "createdBefore": "建立時間迄"
+      },
+      "presets": {
+        "today": "今天",
+        "last7Days": "最近 7 天",
+        "thisMonth": "本月",
+        "clear": "清除日期"
+      },
+      "columns": {
+        "createdAt": "時間",
+        "actor": "執行者",
+        "actorType": "執行者類型",
+        "action": "動作",
+        "target": "目標",
+        "details": "詳細資料"
+      },
+      "actions": {
+        "view": "檢視"
+      },
+      "savedPresets": {
+        "name": "預設名稱",
+        "namePlaceholder": "儲存目前的稽核篩選條件",
+        "save": "儲存預設",
+        "empty": "尚未儲存任何稽核預設。",
+        "delete": "刪除預設"
+      },
+      "export": {
+        "csv": "匯出 CSV",
+        "json": "匯出 JSON"
+      },
+      "detailSheet": {
+        "title": "稽核事件",
+        "description": "檢視所選稽核事件的備註與狀態變更內容。",
+        "emptyState": "未記錄資料。",
+        "fields": {
+          "createdAt": "時間",
+          "action": "動作",
+          "actor": "執行者",
+          "actorType": "執行者類型",
+          "target": "目標",
+          "correlationId": "關聯 ID",
+          "notes": "備註",
+          "beforeState": "變更前",
+          "afterState": "變更後"
+        }
+      }
+    },
+    "permissions": {
+      "title": "權限矩陣",
+      "description": "直接檢視目前前端實際套用的角色權限對照。",
+      "emptyTitle": "找不到權限資料。",
+      "emptyDescription": "角色權限規則可用時會顯示於此。",
+      "columns": {
+        "feature": "功能"
+      },
+      "levels": {
+        "write": "可編輯",
+        "read": "可檢視",
+        "none": "無權限"
+      },
+      "features": {
+        "dashboard": "儀表板",
+        "inventory": "庫存",
+        "purchases": "採購",
+        "customers": "客戶",
+        "invoices": "發票",
+        "orders": "訂單",
+        "payments": "付款",
+        "admin": "管理",
+        "owner_dashboard": "老闆儀表板",
+        "settings": "設定"
+      }
+    },
+    "settingsHub": {
+      "title": "工作區控制",
+      "description": "快速前往設定頁面以管理全域工作區設定。",
+      "openSettings": "開啟設定",
+      "items": {
+        "general": "一般預設值與工作區設定",
+        "security": "安全性、驗證與權限相關設定",
+        "appearance": "主題與介面呈現設定",
+        "data": "資料處理與營運設定"
+      }
     }
   },
   "purchase": {
@@ -324,6 +660,7 @@
       "emptyTitle": "找不到供應商發票。",
       "rowLabel": "供應商發票 {invoiceNumber}",
       "statusFilter": "狀態",
+      "statusOverview": "狀態總覽",
       "summary": "本頁顯示 {count} 筆供應商發票。",
       "title": "已匯入的供應商發票"
     },
@@ -414,10 +751,13 @@
       "createInvoice": "開立發票",
       "description": "瀏覽發票狀態與付款進度。",
       "eyebrow": "發票",
+      "invoiceDate": "發票日期",
       "invoiceDetail": "發票詳情",
       "invoiceDetailDescription": "檢視及管理發票詳情與付款狀態。",
+      "invoiceNumber": "發票號碼",
       "invoiceWorkspace": "發票工作區",
       "invoiceWorkspaceDescription": "瀏覽並管理所有發票。",
+      "status": "狀態",
       "title": "發票"
     },
     "totals": {
@@ -425,7 +765,8 @@
       "lines": "明細",
       "subtotal": "未稅合計",
       "tax": "稅額",
-      "title": "合計"
+      "title": "合計",
+      "total": "合計"
     },
     "print": {
       "documentNumber": "單據號碼",
@@ -467,6 +808,126 @@
       "warehouseScope": "倉庫範圍",
       "warehouseScopeDescription": "依倉庫篩選庫存檢視。"
     },
+    "metricCards": {
+      "totalSkus": "SKU總數",
+      "filteredScope": "篩選範圍",
+      "allWarehouses": "所有倉庫",
+      "lowStock": "庫存過低",
+      "totalAlerts": "共 {count} 筆警示",
+      "alertsUnavailable": "警示資料暫時無法取得",
+      "attention": "注意",
+      "pendingAlerts": "待處理警示",
+      "requireAction": "需要處理",
+      "reorderAlerts": "補貨警示",
+      "acrossAllWarehouses": "所有倉庫合計"
+    },
+    "reorderPointAdmin": {
+      "title": "補貨點計算機",
+      "description": "從需求歷史預覽計算後的補貨點，再套用所選列。",
+      "safetyFactor": "安全係數",
+      "lookback": "回溯期間",
+      "warehouse": "倉庫",
+      "allWarehouses": "所有倉庫",
+      "preview": "預覽",
+      "computing": "計算中…",
+      "apply": "套用所選",
+      "applying": "套用中…",
+      "selectedCount": "（已選 {count} 筆）",
+      "clear": "清除",
+      "candidates": "候選列",
+      "skipped": "略過列",
+      "candidatesCount": "{count} 筆候選",
+      "skippedCount": "{count} 筆略過",
+      "candidatesHint": "{count} 筆候選列 · 勾選要套用的列",
+      "noCandidatesHint": "點選預覽以查看候選列",
+      "noSkippedHint": "略過的列不符合資格，不會被修改。",
+      "noCandidatesTitle": "無候選列。",
+      "noCandidatesDesc": "所選範圍內無產品符合候選資格。",
+      "noSkippedTitle": "無略過列。",
+      "noSkippedDesc": "所有已評估的列均有足夠資料。",
+      "formula": "計算後 ROP = 安全庫存 +（前置時間 × 平均日用量）",
+      "setParamsAndClick": "設定參數並點選預覽",
+      "safetyFactorBuffer": "安全係數緩衝：{value}",
+      "ropUnits": "ROP / 安全庫存 = 單位",
+      "avgDailyUsageUnits": "平均日用量 = 單位/日",
+      "leadTimeDays": "前置時間 = 天",
+      "applied": "已套用 {updated} 列 · {skipped} 列略過",
+      "col": {
+        "product": "產品",
+        "warehouse": "倉庫",
+        "currentRop": "目前 ROP（單位）",
+        "computedRop": "計算後 ROP（單位）",
+        "avgDailyUsage": "平均日用量（單位/日）",
+        "leadTime": "前置時間（天）",
+        "safetyStock": "安全庫存（單位）",
+        "demandBasis": "需求依據",
+        "movements": "異動次數",
+        "ltSource": "LT 來源",
+        "qualityNote": "品質備註",
+        "skipReason": "略過原因",
+        "note": "備註"
+      },
+      "leadTimeSource": {
+        "actual": "歷史資料",
+        "supplier_default": "供應商預設",
+        "fallback_7d": "7 天預設值"
+      }
+    },
+    "warehouseSelector": {
+      "label": "倉庫",
+      "selectWarehouse": "選擇倉庫",
+      "allWarehouses": "所有倉庫"
+    },
+    "alertPanel": {
+      "title": "補貨警示",
+      "description": "目前倉庫範圍內的庫存過低異常。",
+      "total": "共 {count} 筆",
+      "status": "狀態",
+      "allStatuses": "所有狀態",
+      "pending": "待處理",
+      "acknowledged": "已確認",
+      "snoozed": "已暫停",
+      "dismissed": "已忽略",
+      "resolved": "已解決",
+      "refreshAlerts": "重新整理警示",
+      "loading": "載入中…",
+      "noAlertsFound": "查無警示",
+      "criticalStockAlertsAppearHere": "危急庫存警示會在此顯示",
+      "ack": "確認"
+    },
+    "productGrid": {
+      "searchPlaceholder": "依編號或名稱搜尋…",
+      "allStatus": "所有狀態",
+      "active": "啟用",
+      "lowStock": "偏低",
+      "critical": "危急",
+      "inactive": "停用",
+      "nameAZ": "名稱 A→Z",
+      "nameZA": "名稱 Z→A",
+      "codeAZ": "編號 A→Z",
+      "codeZA": "編號 Z→A",
+      "stockHighLow": "庫存 高→低",
+      "stockLowHigh": "庫存 低→高",
+      "categoryAZ": "類別 A→Z",
+      "categoryZA": "類別 Z→A",
+      "products": "{count} 項產品",
+      "failedToLoadProducts": "載入產品失敗",
+      "noProductsFound": "查無產品",
+      "tryDifferentSearchTerm": "嘗試其他搜尋關鍵字",
+      "noProductsInSystem": "系統中尚無產品",
+      "code": "編號",
+      "name": "名稱",
+      "category": "類別",
+      "stock": "庫存",
+      "retry": "重試",
+      "openFullPage": "開啟完整頁面",
+      "browseProducts": "瀏覽所有產品的當前庫存。",
+      "productsTitle": "產品",
+      "scope": "範圍",
+      "allWarehouses": "所有倉庫",
+      "status": "狀態",
+      "units": "單位"
+    },
     "productDetail": {
       "adjustmentHistory": {
         "actor": "操作者",
@@ -500,7 +961,103 @@
         "warehouse": "倉庫",
         "warehouseLabel": "倉庫"
       },
-      "totalStock": "總庫存：{stock}"
+      "totalStock": "總庫存：{stock}",
+      "stockHealth": "庫存健康",
+      "byWarehouse": "各倉庫",
+      "stockTrend": "庫存趨勢",
+      "recentAdjustments": "最近異動",
+      "adjustStock": "調整庫存",
+      "transfer": "調撥",
+      "order": "訂貨",
+      "overview": "概覽",
+      "analytics": "分析",
+      "settings": "設定",
+      "auditLog": "異動紀錄",
+      "totalUnits": "總單位",
+      "outOfStock": "缺貨",
+      "critical": "危急",
+      "low": "偏低",
+      "healthy": "正常",
+      "reorder": "補貨點",
+      "updated": "更新於",
+      "statuses": {
+        "active": "啟用",
+        "inactive": "停用",
+        "archived": "封存",
+        "discontinued": "停產"
+      },
+      "auditPagination": {
+        "showing": "{{start}}-{{end}} / 共 {{total}}",
+        "previous": "上一頁",
+        "next": "下一頁"
+      },
+      "adjustmentTimeline": {
+        "empty": "目前沒有庫存異動紀錄。",
+        "byActor": "由 {{actorId}} 執行",
+        "reasons": {
+          "sales_reservation": "銷售 / 保留",
+          "supplier_delivery": "供應商到貨",
+          "transfer_in": "調入",
+          "transfer_out": "調出",
+          "adjustment": "調整",
+          "opening": "期初"
+        }
+      },
+      "analyticsTab": {
+        "summary": {
+          "title": "分析摘要",
+          "metrics": {
+            "avgDailyUsage": "日均用量",
+            "avgDailyUsageUnit": "單位 / 天",
+            "leadTime": "前置天數",
+            "leadTimeUnit": "天",
+            "reorderPoint": "ROP",
+            "reorderPointUnit": "補貨點",
+            "safetyStock": "安全庫存",
+            "safetyStockUnit": "單位"
+          }
+        },
+        "monthlyDemand": {
+          "title": "每月需求",
+          "empty": "沒有需求資料",
+          "tooltipUnits": "{count} 單位"
+        },
+        "salesHistory": {
+          "title": "銷售歷史",
+          "empty": "沒有銷售歷史資料",
+          "columns": {
+            "date": "日期",
+            "quantity": "數量",
+            "reason": "原因",
+            "actor": "操作者"
+          },
+          "reasonLabels": {
+            "sales_reservation": "銷售 / 保留",
+            "supplier_delivery": "供應商到貨",
+            "transfer_in": "調入",
+            "transfer_out": "調出",
+            "adjustment": "調整",
+            "opening": "期初"
+          }
+        },
+        "topCustomer": {
+          "title": "主要客戶",
+          "empty": "尚無訂單。",
+          "totalUnits": "累計 {count} 單位"
+        }
+      },
+      "settingsTab": {
+        "saved": "已儲存 {{warehouse}} 的設定",
+        "saving": "儲存中…",
+        "manualOverride": "手動覆寫",
+        "reorderPoint": "補貨點",
+        "leadTime": "前置天數（天）",
+        "safetyFactor": "安全係數（{{value}}）",
+        "computedRop": "計算後 ROP：",
+        "noSupplierConfigured": "尚未設定供應商。",
+        "supplierInfo": "供應商資訊",
+        "save": "儲存"
+      }
     }
   },
   "orders": {

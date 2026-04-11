@@ -446,6 +446,10 @@ function normalizeEventKey(event: KeyboardEvent): string | null {
     return "/";
   }
 
+  if (typeof event.key !== "string" || event.key.length === 0) {
+    return null;
+  }
+
   const key = event.key.toLowerCase();
   if (key === " ") {
     return "space";

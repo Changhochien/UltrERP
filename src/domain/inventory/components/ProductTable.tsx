@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { Search } from "lucide-react";
+import { ExternalLink, Search } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { DataTable, DataTableToolbar } from "@/components/layout/DataTable";
 import { SectionCard } from "@/components/layout/PageLayout";
@@ -13,6 +15,8 @@ interface ProductTableProps {
 }
 
 export function ProductTable({ warehouseId, onProductClick }: ProductTableProps) {
+  const { t } = useTranslation("common", { keyPrefix: "inventory.productGrid" });
+  const navigate = useNavigate();
   const {
     results,
     total,
@@ -40,11 +44,11 @@ export function ProductTable({ warehouseId, onProductClick }: ProductTableProps)
 
   return (
     <SectionCard
-      title="Products"
-      description="Browse all products with current stock levels."
+      title={t("productsTitle")}
+      description={t("browseProducts")}
       actions={
         <div className="text-sm text-muted-foreground">
-          {total > 0 ? `${total.toLocaleString()} total` : ""}
+          {total > 0 ? t("products", { count: total.toLocaleString() }) : ""}
         </div>
       }
     >
@@ -52,7 +56,7 @@ export function ProductTable({ warehouseId, onProductClick }: ProductTableProps)
         columns={[
           {
             id: "code",
-            header: "Code",
+            header: t("code"),
             sortable: true,
             getSortValue: (item) => item.code,
             cell: (item) => (
@@ -63,14 +67,14 @@ export function ProductTable({ warehouseId, onProductClick }: ProductTableProps)
           },
           {
             id: "name",
-            header: "Name",
+            header: t("name"),
             sortable: true,
             getSortValue: (item) => item.name,
             cell: (item) => <span className="font-medium">{item.name}</span>,
           },
           {
             id: "category",
-            header: "Category",
+            header: t("category"),
             sortable: true,
             getSortValue: (item) => item.category ?? "",
             cell: (item) =>
@@ -78,7 +82,7 @@ export function ProductTable({ warehouseId, onProductClick }: ProductTableProps)
           },
           {
             id: "current_stock",
-            header: "Stock",
+            header: t("stock"),
             sortable: true,
             getSortValue: (item) => item.current_stock,
             cell: (item) => (
@@ -97,7 +101,7 @@ export function ProductTable({ warehouseId, onProductClick }: ProductTableProps)
           },
           {
             id: "status",
-            header: "Status",
+            header: t("status"),
             sortable: true,
             getSortValue: (item) => item.status,
             cell: (item) => (
@@ -108,6 +112,21 @@ export function ProductTable({ warehouseId, onProductClick }: ProductTableProps)
                 {item.status}
               </Badge>
             ),
+          },
+          {
+            id: "actions",
+            header: "",
+            cell: (item) => (
+              <button
+                type="button"
+                className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                onClick={(e) => { e.stopPropagation(); navigate(`/inventory/${item.id}`); }}
+                title={t("openFullPage")}
+              >
+                <ExternalLink size={15} />
+              </button>
+            ),
+            onClick: (_e, _item) => {},
           },
         ]}
         data={results}
@@ -121,16 +140,16 @@ export function ProductTable({ warehouseId, onProductClick }: ProductTableProps)
                 onClick={() => search(query, warehouseId)}
                 className="text-sm underline"
               >
-                Retry
+                {t("retry")}
               </button>
             </div>
           ) : undefined
         }
-        emptyTitle={query ? "No matching products" : "No products found"}
+        emptyTitle={query ? t("noProductsFound") : t("noProductsInSystem")}
         emptyDescription={
           query
-            ? "Try a broader keyword or change warehouse scope."
-            : "No products exist in the system yet."
+            ? t("tryDifferentSearchTerm")
+            : undefined
         }
         page={page}
         pageSize={pageSize}
@@ -149,10 +168,10 @@ export function ProductTable({ warehouseId, onProductClick }: ProductTableProps)
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="Search by code or name…"
+                placeholder={t("searchPlaceholder")}
                 value={query}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                aria-label="Search products"
+                aria-label={t("searchPlaceholder")}
                 className="pl-9"
               />
             </div>

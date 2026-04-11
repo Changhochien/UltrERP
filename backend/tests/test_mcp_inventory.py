@@ -15,10 +15,9 @@ from domains.inventory.mcp import (
     inventory_search,
 )
 
-# @mcp.tool() wraps functions into FunctionTool objects; access .fn for the raw callable.
-_check = inventory_check.fn
-_search = inventory_search.fn
-_alerts = inventory_reorder_alerts.fn
+_check = inventory_check
+_search = inventory_search
+_alerts = inventory_reorder_alerts
 
 _PRODUCT_ID = str(uuid.uuid4())
 _TENANT_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
@@ -127,7 +126,7 @@ async def test_inventory_search_returns_results():
         patch(
             "domains.inventory.mcp.search_products",
             new_callable=AsyncMock,
-            return_value=_SEARCH_RESULTS,
+            return_value=(_SEARCH_RESULTS, len(_SEARCH_RESULTS)),
         ),
     ):
         result = await _search(query="PROD", limit=20)
@@ -141,7 +140,11 @@ async def test_inventory_search_empty_results():
     with (
         _patch_session(),
         _patch_tenant(),
-        patch("domains.inventory.mcp.search_products", new_callable=AsyncMock, return_value=[]),
+        patch(
+            "domains.inventory.mcp.search_products",
+            new_callable=AsyncMock,
+            return_value=([], 0),
+        ),
     ):
         result = await _search(query="NONEXISTENT")
 
@@ -181,6 +184,8 @@ async def test_inventory_reorder_alerts_with_filters():
         result = await _alerts(
             status_filter="PENDING",
             warehouse_id=_WH_ID,
+            limit=25,
+            offset=5,
         )
 
     assert result["alerts"] == []
@@ -188,3 +193,5 @@ async def test_inventory_reorder_alerts_with_filters():
     call_kwargs = mock_alerts.call_args[1]
     assert call_kwargs["status_filter"] == "PENDING"
     assert call_kwargs["warehouse_id"] == uuid.UUID(_WH_ID)
+    assert call_kwargs["limit"] == 25
+    assert call_kwargs["offset"] == 5

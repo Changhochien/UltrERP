@@ -29,11 +29,12 @@ export function SupplierInvoiceList({ onSelect }: SupplierInvoiceListProps) {
     direction: "desc",
   });
 
-  const { items, total, page, pageSize, loading, error, reload } = useSupplierInvoices({
+  const { items, statusTotals, total, page, pageSize, loading, error, reload } = useSupplierInvoices({
     status: statusFilter || undefined,
     sort_by: sortState.columnId as "created_at" | "invoice_date" | "total_amount",
     sort_order: sortState.direction,
   });
+  const allStatusCount = statusTotals.open + statusTotals.paid + statusTotals.voided;
 
   return (
     <section aria-label={t("purchase.list.ariaLabel")}>
@@ -94,6 +95,23 @@ export function SupplierInvoiceList({ onSelect }: SupplierInvoiceListProps) {
               <p className="text-sm text-muted-foreground">
                 {t("purchase.list.description")}
               </p>
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <span className="text-xs text-muted-foreground">
+                  {t("purchase.list.statusOverview")}
+                </span>
+                <Badge variant="outline" className="normal-case tracking-normal">
+                  {t("purchase.list.allStatuses")} {allStatusCount}
+                </Badge>
+                {STATUS_OPTIONS.map((status) => (
+                  <Badge
+                    key={status}
+                    variant={supplierInvoiceStatusBadgeVariant(status)}
+                    className="normal-case tracking-normal"
+                  >
+                    {statusLabel(status)} {statusTotals[status]}
+                  </Badge>
+                ))}
+              </div>
             </div>
             <label className="flex flex-col items-start gap-2 text-sm font-medium text-foreground sm:flex-row sm:items-center sm:gap-3">
               <span>{t("purchase.list.statusFilter")}</span>

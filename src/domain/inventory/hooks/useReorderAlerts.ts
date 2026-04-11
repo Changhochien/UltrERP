@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 
 import type { ReorderAlertItem } from "../types";
-import { acknowledgeAlert, fetchReorderAlerts } from "../../../lib/api/inventory";
+import {
+  acknowledgeAlert,
+  dismissAlert,
+  fetchReorderAlerts,
+  snoozeAlert,
+} from "../../../lib/api/inventory";
 
 export function useReorderAlerts(filters?: {
   status?: string;
@@ -74,4 +79,54 @@ export function useAcknowledgeAlert() {
   }, []);
 
   return { acknowledge, submitting, error };
+}
+
+export function useSnoozeAlert() {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const snooze = useCallback(async (alertId: string, durationMinutes: number) => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const result = await snoozeAlert(alertId, durationMinutes);
+      if (result.ok || result.alreadyResolved) {
+        return result.ok;
+      }
+      setError(result.error);
+      return false;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to snooze alert");
+      return false;
+    } finally {
+      setSubmitting(false);
+    }
+  }, []);
+
+  return { snooze, submitting, error };
+}
+
+export function useDismissAlert() {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const dismiss = useCallback(async (alertId: string) => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const result = await dismissAlert(alertId);
+      if (result.ok || result.alreadyResolved) {
+        return result.ok;
+      }
+      setError(result.error);
+      return false;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to dismiss alert");
+      return false;
+    } finally {
+      setSubmitting(false);
+    }
+  }, []);
+
+  return { dismiss, submitting, error };
 }

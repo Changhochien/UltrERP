@@ -1,5 +1,6 @@
 import { Package, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { useProductSearch } from "../hooks/useProductSearch";
 import { useWarehouseContext } from "../context/WarehouseContext";
@@ -28,6 +29,7 @@ function stockBarPercent(product: ProductSearchResult): number {
 }
 
 export function ProductGrid({ onProductClick }: ProductGridProps) {
+  const { t } = useTranslation("common", { keyPrefix: "inventory.productGrid" });
   const { selectedWarehouse } = useWarehouseContext();
   const { results, loading, error, search } = useProductSearch();
 
@@ -85,7 +87,7 @@ export function ProductGrid({ onProductClick }: ProductGridProps) {
           <Search size={15} />
           <input
             type="search"
-            placeholder="Search by code or name…"
+            placeholder={t("searchPlaceholder")}
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             aria-label="Search products"
@@ -98,11 +100,11 @@ export function ProductGrid({ onProductClick }: ProductGridProps) {
           onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
           aria-label="Filter by status"
         >
-          <option value="all">All Status</option>
-          <option value="active">Active</option>
-          <option value="low">Low Stock</option>
-          <option value="critical">Critical</option>
-          <option value="inactive">Inactive</option>
+          <option value="all">{t("allStatus")}</option>
+          <option value="active">{t("active")}</option>
+          <option value="low">{t("lowStock")}</option>
+          <option value="critical">{t("critical")}</option>
+          <option value="inactive">{t("inactive")}</option>
         </select>
 
         <select
@@ -115,18 +117,18 @@ export function ProductGrid({ onProductClick }: ProductGridProps) {
           }}
           aria-label="Sort by"
         >
-          <option value="name-asc">Name A→Z</option>
-          <option value="name-desc">Name Z→A</option>
-          <option value="code-asc">Code A→Z</option>
-          <option value="code-desc">Code Z→A</option>
-          <option value="current_stock-desc">Stock High→Low</option>
-          <option value="current_stock-asc">Stock Low→High</option>
-          <option value="category-asc">Category A→Z</option>
-          <option value="category-desc">Category Z→A</option>
+          <option value="name-asc">{t("nameAZ")}</option>
+          <option value="name-desc">{t("nameZA")}</option>
+          <option value="code-asc">{t("codeAZ")}</option>
+          <option value="code-desc">{t("codeZA")}</option>
+          <option value="current_stock-desc">{t("stockHighLow")}</option>
+          <option value="current_stock-asc">{t("stockLowHigh")}</option>
+          <option value="category-asc">{t("categoryAZ")}</option>
+          <option value="category-desc">{t("categoryZA")}</option>
         </select>
 
         <span className="grid-count">
-          {loading ? "—" : `${filtered.length} products`}
+          {loading ? "—" : t("products", { count: filtered.length })}
         </span>
       </div>
 
@@ -139,15 +141,15 @@ export function ProductGrid({ onProductClick }: ProductGridProps) {
         ) : error ? (
           <div className="product-grid-empty">
             <Search size={40} />
-            <p style={{ fontSize: 14, fontWeight: 600 }}>Failed to load products</p>
+            <p style={{ fontSize: 14, fontWeight: 600 }}>{t("failedToLoadProducts")}</p>
             <p style={{ fontSize: 12 }}>{error}</p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="product-grid-empty">
             <Package size={40} />
-            <p style={{ fontSize: 14, fontWeight: 600 }}>No products found</p>
+            <p style={{ fontSize: 14, fontWeight: 600 }}>{t("noProductsFound")}</p>
             <p style={{ fontSize: 12 }}>
-              {searchInput ? "Try a different search term" : "No products in the system"}
+              {searchInput ? t("tryDifferentSearchTerm") : t("noProductsInSystem")}
             </p>
           </div>
         ) : (
@@ -188,7 +190,7 @@ export function ProductGrid({ onProductClick }: ProductGridProps) {
                   <span className={`stock-number ${status !== "healthy" ? status : ""}`}>
                     {product.current_stock}
                   </span>
-                  <span className="stock-label">units</span>
+                  <span className="stock-label">{t("units")}</span>
                 </div>
 
                 <div className="stock-bar-wrap">
@@ -202,11 +204,11 @@ export function ProductGrid({ onProductClick }: ProductGridProps) {
 
                 <div className="product-card-warehouse-hint">
                   <div className="warehouse-hint-row">
-                    <span>Scope</span>
-                    <span>{selectedWarehouse?.name ?? "All warehouses"}</span>
+                    <span>{t("scope")}</span>
+                    <span>{selectedWarehouse?.name ?? t("allWarehouses")}</span>
                   </div>
                   <div className="warehouse-hint-row">
-                    <span>Status</span>
+                    <span>{t("status")}</span>
                     <span style={{ textTransform: "capitalize" }}>{status}</span>
                   </div>
                 </div>

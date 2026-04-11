@@ -108,6 +108,18 @@ uv run alembic -c ../migrations/alembic.ini history
 The backend defaults to `postgresql+asyncpg://ultr_erp@localhost:5432/ultr_erp`, which matches the Story 1.1 local role/database bootstrap. Settings are loaded from either the repository-root `.env` or `backend/.env`, plus the current shell environment, so copying `.env.example` to the repository root is part of the required local bootstrap.
 Set `VITE_API_PROXY_TARGET` if the frontend should proxy `/api` requests to a non-default backend address, and set `CORS_ORIGINS` as a JSON array when local origins differ from the default desktop/browser pair.
 
+## Agent MCP Setup
+
+UltrERP exposes MCP from the backend at `/mcp/`. To add project-scoped MCP config for both Codex and Claude Code in one step:
+
+```bash
+ULTRERP_MCP_API_KEY=dev-readonly-key ./scripts/setup-mcp-clients.sh
+```
+
+The script writes `.codex/config.toml` for Codex and `.mcp.json` for Claude Code, both pointing at the backend MCP endpoint and both reading the API key from `ULTRERP_MCP_API_KEY`.
+
+See [docs/mcp-client-setup.md](docs/mcp-client-setup.md) for the backend `MCP_API_KEYS` example, custom URLs, and verification steps.
+
 ## CI Requirements
 
 GitHub Actions runs two required checks:

@@ -1,5 +1,14 @@
 /** Inventory domain types. */
 
+import type { AlertSeverity } from "../../lib/alertSeverity";
+
+export type ReorderAlertStatus =
+  | "pending"
+  | "acknowledged"
+  | "snoozed"
+  | "dismissed"
+  | "resolved";
+
 export interface Warehouse {
   id: string;
   tenant_id: string;
@@ -130,11 +139,15 @@ export interface ReorderAlertItem {
   warehouse_name: string;
   current_stock: number;
   reorder_point: number;
-  status: string;
-  severity: string | null;
+  status: ReorderAlertStatus;
+  severity: AlertSeverity;
   created_at: string;
   acknowledged_at: string | null;
   acknowledged_by: string | null;
+  snoozed_until: string | null;
+  snoozed_by: string | null;
+  dismissed_at: string | null;
+  dismissed_by: string | null;
 }
 
 export interface ReorderAlertListResponse {
@@ -144,9 +157,23 @@ export interface ReorderAlertListResponse {
 
 export interface AcknowledgeAlertResponse {
   id: string;
-  status: string;
+  status: ReorderAlertStatus;
   acknowledged_at: string;
   acknowledged_by: string;
+}
+
+export interface SnoozeAlertResponse {
+  id: string;
+  status: ReorderAlertStatus;
+  snoozed_until: string;
+  snoozed_by: string;
+}
+
+export interface DismissAlertResponse {
+  id: string;
+  status: ReorderAlertStatus;
+  dismissed_at: string;
+  dismissed_by: string;
 }
 
 // --- Stock history types ---
@@ -266,7 +293,7 @@ export interface UpdateOrderStatusRequest {
 
 // --- Stock history types ---
 
-export interface StockHistoryPoint {
+export interface StockSnapshotPoint {
   timestamp: string;
   quantity: number;
   change: number;

@@ -16,6 +16,8 @@ from common.database import Base
 class AlertStatus(str, enum.Enum):
 	PENDING = "pending"
 	ACKNOWLEDGED = "acknowledged"
+	SNOOZED = "snoozed"
+	DISMISSED = "dismissed"
 	RESOLVED = "resolved"
 
 
@@ -65,3 +67,7 @@ class ReorderAlert(Base):
 	)
 	acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 	acknowledged_by: Mapped[str | None] = mapped_column(String(100))
+	snoozed_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+	snoozed_by: Mapped[str | None] = mapped_column(String(100))
+	dismissed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+	dismissed_by: Mapped[str | None] = mapped_column(String(100))

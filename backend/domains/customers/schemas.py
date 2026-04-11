@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -54,6 +54,7 @@ class CustomerResponse(BaseModel):
     contact_email: str
     credit_limit: Decimal
     status: str
+    legacy_master_snapshot: dict[str, Any] | None = None
     version: int
     created_at: datetime
     updated_at: datetime
@@ -128,3 +129,30 @@ class CustomerStatementResponse(BaseModel):
     opening_balance: Decimal
     current_balance: Decimal
     lines: list[StatementLine]
+
+
+class RevenueTrendPoint(BaseModel):
+    """A single month revenue point."""
+
+    month: str  # "2025-01"
+    revenue: Decimal
+
+
+class CustomerAnalyticsSummary(BaseModel):
+    """Analytics summary for a single customer."""
+
+    total_revenue_12m: Decimal
+    invoice_count_12m: int
+    avg_invoice_value: Decimal
+    outstanding_balance: Decimal
+    credit_limit: Decimal
+    credit_utilization_pct: float
+    avg_days_to_pay: float | None
+    payment_score: str  # "excellent" | "prompt" | "late" | "at_risk"
+    days_overdue_avg: int | None
+
+
+class CustomerRevenueTrend(BaseModel):
+    """Monthly revenue trend for a customer."""
+
+    trend: list[RevenueTrendPoint]

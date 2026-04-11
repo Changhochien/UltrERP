@@ -5,13 +5,15 @@ from __future__ import annotations
 import uuid
 from decimal import Decimal
 
-from sqlalchemy import Integer, case, func, select
+from sqlalchemy import Integer, case, cast, func, select, String
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from common.models.supplier_invoice import SupplierInvoice
-from common.models.supplier_payment import SupplierPaymentAllocation
-from common.tenant import get_tenant_id_or_default, set_tenant
+from common.models.order import Order
+from common.models.supplier_invoice import SupplierInvoice, SupplierInvoiceStatus
+from common.models.supplier_payment import SupplierPaymentAllocation, SupplierPaymentAllocationKind
+from common.tenant import DEFAULT_TENANT_ID, set_tenant
 from common.time import today
+from domains.invoices.enums import InvoiceStatus
 from domains.invoices.models import Invoice
 from domains.payments.models import Payment
 from domains.reports.schemas import APAgingReportResponse, ARAgingBucketItem, ARAgingReportResponse
@@ -23,11 +25,10 @@ async def get_ar_aging_report(
 ) -> ARAgingReportResponse:
     """Return AR aging report buckets for the given tenant."""
     async with session.begin():
-        tid = tenant_id if tenant_id is not None else get_tenant_id_or_default()
+        tid = tenant_id if tenant_id is not None else DEFAULT_TENANT_ID
         await set_tenant(session, tid)
 
-        today = today()
-
+        today_dt = today()
         # Subquery: total paid per invoice (only matched/auto_matched payments)
         payment_subq = (
             select(
@@ -47,8 +48,15 @@ async def get_ar_aging_report(
             Invoice.total_amount,
         )
 
-        # Age in days past due
-        age_days_expr = func.date_part("day", today - Invoice.due_date).cast(Integer)
+        # Age in days past due (due_date = invoice_date + payment_terms_days, default 30)
+        order_terms_subq = (
+            select(Order.payment_terms_days)
+            .where(Order.id == Invoice.order_id, Order.tenant_id == tid)
+            .correlate(Invoice)
+            .scalar_subquery()
+        )
+        due_date_expr = Invoice.invoice_date + func.coalesce(order_terms_subq, 30)
+        age_days_expr = today_dt - due_date_expr
 
         # Build bucket sums using case expressions
         bucket_0_30 = func.sum(
@@ -121,15 +129,28 @@ async def get_ar_aging_report(
             .outerjoin(payment_subq, Invoice.id == payment_subq.c.invoice_id)
             .where(
                 Invoice.tenant_id == tid,
-                Invoice.status.notin_(("voided", "paid")),
+                Invoice.status.notin_((InvoiceStatus.VOIDED, InvoiceStatus.PAID)),
             )
         )
 
         result = await session.execute(stmt)
-        row = result.one()
+        row = result.one_or_none()
+
+        if row is None:
+            return ARAgingReportResponse(
+                as_of_date=today_dt,
+                buckets=[
+                    ARAgingBucketItem(bucket_label="0-30 days", amount=Decimal("0"), invoice_count=0),
+                    ARAgingBucketItem(bucket_label="31-60 days", amount=Decimal("0"), invoice_count=0),
+                    ARAgingBucketItem(bucket_label="61-90 days", amount=Decimal("0"), invoice_count=0),
+                    ARAgingBucketItem(bucket_label="90+ days", amount=Decimal("0"), invoice_count=0),
+                ],
+                total_outstanding=Decimal("0"),
+                total_overdue=Decimal("0"),
+            )
 
         return ARAgingReportResponse(
-            as_of_date=today,
+            as_of_date=today_dt,
             buckets=[
                 ARAgingBucketItem(
                     bucket_label="0-30 days",
@@ -163,10 +184,10 @@ async def get_ap_aging_report(
 ) -> APAgingReportResponse:
     """Return AP aging report buckets for the given tenant."""
     async with session.begin():
-        tid = tenant_id if tenant_id is not None else get_tenant_id_or_default()
+        tid = tenant_id if tenant_id is not None else DEFAULT_TENANT_ID
         await set_tenant(session, tid)
 
-        today = today()
+        today_dt = today()
 
         # Subquery: total applied per supplier invoice (only invoice_settlement allocations)
         alloc_subq = (
@@ -178,7 +199,7 @@ async def get_ap_aging_report(
             )
             .where(
                 SupplierPaymentAllocation.tenant_id == tid,
-                SupplierPaymentAllocation.allocation_kind.name == "INVOICE_SETTLEMENT",
+                cast(SupplierPaymentAllocation.allocation_kind, String) == "invoice_settlement",
             )
             .group_by(SupplierPaymentAllocation.supplier_invoice_id)
             .subquery()
@@ -186,12 +207,13 @@ async def get_ap_aging_report(
 
         # Outstanding per supplier invoice
         outstanding_expr = func.coalesce(
+            SupplierInvoice.remaining_payable_amount,
             SupplierInvoice.total_amount - func.coalesce(alloc_subq.c.applied_amount, 0),
             SupplierInvoice.total_amount,
         )
 
         # Age in days since invoice_date (AP aging uses invoice date, not due date)
-        age_days_expr = func.date_part("day", today - SupplierInvoice.invoice_date).cast(Integer)
+        age_days_expr = today_dt - SupplierInvoice.invoice_date
 
         bucket_0_30 = func.sum(
             case((outstanding_expr > 0, outstanding_expr), else_=0)
@@ -213,13 +235,15 @@ async def get_ap_aging_report(
             case((outstanding_expr > 0, outstanding_expr), else_=0)
         )
 
+        # total_overdue: sum of outstanding invoices older than 0 days.
+        # Uses age_days_expr > 0 (not >= 0) to match AR aging semantics, excluding current invoices.
         total_overdue = func.sum(
             case((outstanding_expr > 0, outstanding_expr), else_=0)
         ).filter(age_days_expr > 0)
 
-        # Count invoices per bucket (only outstanding invoices)
+        # Count invoices per bucket (only outstanding invoices, age > 0 matches AR semantics)
         count_0_30 = func.count().filter(
-            outstanding_expr > 0, age_days_expr >= 0, age_days_expr <= 30
+            outstanding_expr > 0, age_days_expr > 0, age_days_expr <= 30
         )
         count_31_60 = func.count().filter(
             outstanding_expr > 0, age_days_expr > 30, age_days_expr <= 60
@@ -249,7 +273,7 @@ async def get_ap_aging_report(
             .where(
                 SupplierInvoice.tenant_id == tid,
                 SupplierInvoice.status.notin_(
-                    (SupplierInvoice.status.VOIDED.value, SupplierInvoice.status.PAID.value)
+                    (SupplierInvoiceStatus.VOIDED.value, SupplierInvoiceStatus.PAID.value)
                 ),
             )
         )
@@ -257,8 +281,21 @@ async def get_ap_aging_report(
         result = await session.execute(stmt)
         row = result.one()
 
+        if row is None:
+            return APAgingReportResponse(
+                as_of_date=today_dt,
+                buckets=[
+                    ARAgingBucketItem(bucket_label="0-30 days", amount=Decimal("0"), invoice_count=0),
+                    ARAgingBucketItem(bucket_label="31-60 days", amount=Decimal("0"), invoice_count=0),
+                    ARAgingBucketItem(bucket_label="61-90 days", amount=Decimal("0"), invoice_count=0),
+                    ARAgingBucketItem(bucket_label="90+ days", amount=Decimal("0"), invoice_count=0),
+                ],
+                total_outstanding=Decimal("0"),
+                total_overdue=Decimal("0"),
+            )
+
         return APAgingReportResponse(
-            as_of_date=today,
+            as_of_date=today_dt,
             buckets=[
                 ARAgingBucketItem(
                     bucket_label="0-30 days",

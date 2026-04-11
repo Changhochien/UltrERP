@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -112,7 +113,7 @@ async def get_setting(db: AsyncSession, key: str) -> str:
     return str(getattr(settings_obj, key))
 
 
-async def set_setting(db: AsyncSession, key: str, value: str, actor_id: UUID) -> SettingItem:
+async def set_setting(db: AsyncSession, key: str, value: str, actor_id: UUID, tenant_id: uuid.UUID | None = None) -> SettingItem:
     """Update or insert a setting value, validate it, write audit log, return SettingItem."""
     meta = _read_settings_metadata()
     if key not in meta:
@@ -152,6 +153,7 @@ async def set_setting(db: AsyncSession, key: str, value: str, actor_id: UUID) ->
         db,
         actor_id=str(actor_id),
         action="settings.update",
+        tenant_id=tenant_id,
         entity_type="app_settings",
         entity_id=key,
         before_state={"key": key, "value": old_value} if old_value else None,
@@ -251,7 +253,7 @@ async def get_all_settings(db: AsyncSession) -> list[SettingSection]:
     return [SettingSection(**s) for s in sections.values()]
 
 
-async def reset_setting(db: AsyncSession, key: str, actor_id: UUID) -> None:
+async def reset_setting(db: AsyncSession, key: str, actor_id: UUID, tenant_id: uuid.UUID | None = None) -> None:
     """Delete a setting from DB, restoring env var default."""
     meta = _read_settings_metadata()
     if key not in meta:
@@ -273,6 +275,7 @@ async def reset_setting(db: AsyncSession, key: str, actor_id: UUID) -> None:
         db,
         actor_id=str(actor_id),
         action="settings.reset",
+        tenant_id=tenant_id,
         entity_type="app_settings",
         entity_id=key,
         before_state={"key": key, "value": old_value},

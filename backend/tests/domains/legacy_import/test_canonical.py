@@ -411,6 +411,32 @@ async def test_run_canonical_import_orders_dependencies_and_holding(
     order_line_args = next(
         args for query, args in connection.execute_calls if "INSERT INTO order_lines" in query
     )
+    customer_args = next(
+        args for query, args in connection.execute_calls if "INSERT INTO customers" in query
+    )
+    supplier_args = next(
+        args for query, args in connection.execute_calls if "INSERT INTO supplier" in query
+    )
+    product_args = next(
+        args for query, args in connection.execute_calls if "INSERT INTO product" in query
+    )
+    order_args = next(args for query, args in connection.execute_calls if "INSERT INTO orders" in query)
+    invoice_args = next(
+        args for query, args in connection.execute_calls if "INSERT INTO invoices" in query
+    )
+    customer_snapshot = json.loads(cast(str, customer_args[10]))
+    supplier_snapshot = json.loads(cast(str, supplier_args[6]))
+    product_snapshot = json.loads(cast(str, product_args[8]))
+    assert order_args[4] == "fulfilled"
+    assert invoice_args[10] == "issued"
+    order_snapshot = json.loads(cast(str, order_args[9]))
+    invoice_snapshot = json.loads(cast(str, invoice_args[11]))
+    assert customer_snapshot["legacy_code"] == "C001"
+    assert supplier_snapshot["role"] == "supplier"
+    assert product_snapshot["legacy_code"] == "P001"
+    assert order_snapshot["source_table"] == "tbsslipx"
+    assert order_snapshot["legacy_doc_number"] == "1130826001"
+    assert invoice_snapshot["customer_code"] == "C001"
     assert (
         canonical._tenant_scoped_uuid(tenant_id, "product", UNKNOWN_PRODUCT_CODE) in order_line_args
     )
@@ -797,14 +823,19 @@ async def test_run_canonical_import_imports_purchase_history_into_supplier_invoi
             "purchase_headers": [
                 {
                     "doc_number": "1130827001",
+                    "raw_invoice_number": "GG46104158",
                     "invoice_number": "GG46104158",
+                    "slip_date": "2024-08-27",
+                    "raw_invoice_date": "2024-08-27",
                     "invoice_date": "2024-08-27",
+                    "period_code": "11308",
                     "supplier_code": "T067",
                     "supplier_name": "Supplier A",
                     "address": "Taoyuan",
                     "notes": "SQ04",
                     "subtotal": "90.00",
                     "tax_amount": "5.00",
+                    "must_pay_amount": "95.00",
                     "total_amount": "95.00",
                     "source_row_number": 17,
                 }
@@ -841,7 +872,14 @@ async def test_run_canonical_import_imports_purchase_history_into_supplier_invoi
         args for query, args in connection.execute_calls if "INSERT INTO supplier_invoices" in query
     )
     assert supplier_invoice_args[3] == "GG46104158"
-    assert supplier_invoice_args[9] == "SQ04"
+    assert str(supplier_invoice_args[8]) == "95.00"
+    assert str(supplier_invoice_args[9]) == "95.00"
+    assert supplier_invoice_args[10] == "open"
+    assert supplier_invoice_args[11] == "SQ04"
+    supplier_snapshot = json.loads(cast(str, supplier_invoice_args[12]))
+    assert supplier_snapshot["source_table"] == "tbsslipj"
+    assert supplier_snapshot["must_pay_amount"] == "95.00"
+    assert supplier_snapshot["invoice_number_source"] == "legacy_invoice_number"
     assert any(
         "INSERT INTO supplier_invoice_lines" in query for query, _ in connection.execute_calls
     )
@@ -853,6 +891,97 @@ async def test_run_canonical_import_imports_purchase_history_into_supplier_invoi
         'INSERT INTO "raw_legacy".unsupported_history_holding' in query and "tbsslipdtj" in args
         for query, args in connection.execute_calls
     )
+
+
+@pytest.mark.asyncio
+async def test_run_canonical_import_uses_purchase_line_total_when_header_total_is_zero(
+    monkeypatch,
+) -> None:
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000415")
+    connection = FakeCanonicalConnection(
+        {
+            "normalized_parties": [
+                {
+                    "legacy_code": "T001",
+                    "role": "supplier",
+                    "company_name": "Supplier Zero Header",
+                    "tax_id": "12345678",
+                    "full_address": "Taipei",
+                    "address": "Taipei",
+                    "phone": "02-1111",
+                    "email": "",
+                    "contact_person": "Zero",
+                    "source_table": "tbscust",
+                    "source_row_number": 1,
+                    "deterministic_id": deterministic_legacy_uuid("party", "supplier", "T001"),
+                }
+            ],
+            "normalized_products": [
+                {
+                    "legacy_code": "P001",
+                    "name": "Widget",
+                    "category": "BELT",
+                    "unit": "pcs",
+                    "status": "A",
+                    "source_table": "tbsstock",
+                    "source_row_number": 12,
+                    "deterministic_id": deterministic_legacy_uuid("product", "P001"),
+                }
+            ],
+            "normalized_warehouses": [],
+            "normalized_inventory_prep": [],
+            "product_code_mapping": [],
+            "sales_headers": [],
+            "sales_lines": [],
+            "purchase_headers": [
+                {
+                    "doc_number": "89052201",
+                    "invoice_number": "89052201",
+                    "slip_date": "2000-05-22",
+                    "invoice_date": "2000-05-22",
+                    "supplier_code": "T001",
+                    "supplier_name": "Supplier Zero Header",
+                    "address": "Taipei",
+                    "subtotal": "0.00",
+                    "tax_amount": "0.00",
+                    "must_pay_amount": "0.00",
+                    "total_amount": "0.00",
+                    "source_row_number": 21,
+                }
+            ],
+            "purchase_lines": [
+                {
+                    "doc_number": "89052201",
+                    "line_number": 1,
+                    "product_code": "P001",
+                    "qty": "1",
+                    "unit_price": "12.04",
+                    "extended_amount": "12.04",
+                    "source_row_number": 22,
+                }
+            ],
+        }
+    )
+
+    async def fake_open_raw_connection() -> FakeCanonicalConnection:
+        return connection
+
+    monkeypatch.setattr(canonical, "_open_raw_connection", fake_open_raw_connection)
+
+    result = await canonical.run_canonical_import(
+        batch_id="batch-purchase-line-fallback",
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+    )
+
+    assert result.holding_count == 0
+    supplier_invoice_args = next(
+        args for query, args in connection.execute_calls if "INSERT INTO supplier_invoices" in query
+    )
+    assert supplier_invoice_args[3] == "89052201"
+    assert str(supplier_invoice_args[8]) == "12.04"
+    assert str(supplier_invoice_args[9]) == "0.00"
+    assert supplier_invoice_args[10] == "paid"
 
 
 @pytest.mark.asyncio

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from typing import Annotated
 from uuid import UUID
 
@@ -19,10 +20,10 @@ from domains.users.schemas import (
 )
 from domains.users.service import create_user, get_user, list_users, update_user
 
-router = APIRouter(dependencies=[Depends(require_role("owner"))])
+router = APIRouter(dependencies=[Depends(require_role("admin", "owner"))])
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
-CurrentUser = Annotated[dict, Depends(require_role("owner"))]
+CurrentUser = Annotated[dict, Depends(require_role("admin", "owner"))]
 
 
 @router.post("/", response_model=UserResponse, status_code=201)
@@ -31,6 +32,7 @@ async def create_user_endpoint(
     db: DbSession,
     current_user: CurrentUser,
 ) -> UserResponse:
+    real_tid = uuid.UUID(current_user["tenant_id"])
     try:
         user = await create_user(
             db,
@@ -39,6 +41,7 @@ async def create_user_endpoint(
             display_name=body.display_name,
             role=body.role,
             actor_id=str(current_user.get("sub") or "unknown"),
+            tenant_id=real_tid,
         )
         await db.commit()
         return UserResponse.model_validate(user)
@@ -48,8 +51,12 @@ async def create_user_endpoint(
 
 
 @router.get("/", response_model=UserListResponse)
-async def list_users_endpoint(db: DbSession) -> UserListResponse:
-    users = await list_users(db)
+async def list_users_endpoint(
+    db: DbSession,
+    current_user: CurrentUser,
+) -> UserListResponse:
+    real_tid = uuid.UUID(current_user["tenant_id"])
+    users = await list_users(db, tenant_id=real_tid)
     return UserListResponse(
         items=[UserResponse.model_validate(u) for u in users],
         total=len(users),
@@ -57,8 +64,13 @@ async def list_users_endpoint(db: DbSession) -> UserListResponse:
 
 
 @router.get("/{user_id}", response_model=UserResponse)
-async def get_user_endpoint(user_id: UUID, db: DbSession) -> UserResponse:
-    user = await get_user(db, user_id)
+async def get_user_endpoint(
+    user_id: UUID,
+    db: DbSession,
+    current_user: CurrentUser,
+) -> UserResponse:
+    real_tid = uuid.UUID(current_user["tenant_id"])
+    user = await get_user(db, user_id, tenant_id=real_tid)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return UserResponse.model_validate(user)
@@ -71,6 +83,7 @@ async def update_user_endpoint(
     db: DbSession,
     current_user: CurrentUser,
 ) -> UserResponse:
+    real_tid = uuid.UUID(current_user["tenant_id"])
     user = await update_user(
         db,
         user_id,
@@ -79,6 +92,7 @@ async def update_user_endpoint(
         status=body.status,
         password=body.password,
         actor_id=str(current_user.get("sub") or "unknown"),
+        tenant_id=real_tid,
     )
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")

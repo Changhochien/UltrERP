@@ -8,12 +8,15 @@ import { AlertPanel } from "../domain/inventory/components/AlertPanel";
 import { MetricCards } from "../domain/inventory/components/MetricCards";
 import { PageHeader } from "../components/layout/PageLayout";
 import { ProductDetailDrawer } from "../domain/inventory/components/ProductDetailDrawer";
+import { ReorderPointAdmin } from "../domain/inventory/components/ReorderPointAdmin";
 import { StockAdjustmentForm } from "../domain/inventory/components/StockAdjustmentForm";
 import { StockTransferForm } from "../domain/inventory/components/StockTransferForm";
+import { usePermissions } from "../hooks/usePermissions";
 
 function InventoryWorkspace() {
   const { t } = useTranslation("common");
   const { selectedWarehouse, setSelectedWarehouse } = useWarehouseContext();
+  const { canWrite } = usePermissions();
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [adjustProductId, setAdjustProductId] = useState<string | null>(null);
   const [transferProductId, setTransferProductId] = useState<string | null>(null);
@@ -32,7 +35,7 @@ function InventoryWorkspace() {
         }
       />
 
-      <MetricCards />
+      <MetricCards warehouseId={selectedWarehouse?.id} />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
         <ProductTable
@@ -41,6 +44,8 @@ function InventoryWorkspace() {
         />
         <AlertPanel />
       </div>
+
+      {canWrite("inventory") ? <ReorderPointAdmin /> : null}
 
       <ProductDetailDrawer
         productId={selectedProductId}

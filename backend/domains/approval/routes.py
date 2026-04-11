@@ -27,10 +27,12 @@ CurrentUser = Annotated[dict, Depends(require_role("finance"))]
 @router.get("", response_model=ApprovalListResponse)
 async def list_approvals_endpoint(
     db: DbSession,
-    _user: CurrentUser,
+    user: CurrentUser,
     status: str | None = Query(default=None),
 ) -> ApprovalListResponse:
-    items = await list_approvals(db, status=status)
+    import uuid
+    tenant_id = uuid.UUID(user["tenant_id"])
+    items = await list_approvals(db, tenant_id, status=status)
     await db.commit()
     return ApprovalListResponse(
         items=[ApprovalResponse.model_validate(item) for item in items],
@@ -46,11 +48,14 @@ async def resolve_approval_endpoint(
     current_user: CurrentUser,
 ) -> ApprovalResponse:
     try:
+        import uuid as uuid_mod
+        tenant_id = uuid_mod.UUID(current_user["tenant_id"])
         approval = await resolve_approval(
             db,
             approval_id,
             action=body.action,
             resolved_by=str(current_user.get("sub") or "unknown"),
+            tenant_id=tenant_id,
         )
     except ApprovalNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Approval request not found") from exc

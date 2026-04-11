@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.auth import require_role
 from common.database import get_db
-from common.tenant import DEFAULT_TENANT_ID
 from domains.line.notification import notify_new_order
 from domains.orders.schemas import (
     PAYMENT_TERMS_CONFIG,
@@ -39,9 +38,6 @@ router = APIRouter()
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 ReadUser = Annotated[dict, Depends(require_role("admin", "warehouse", "sales"))]
 WriteUser = Annotated[dict, Depends(require_role("admin", "sales"))]
-
-TENANT_ID = DEFAULT_TENANT_ID
-ACTOR_ID = "system"
 
 
 # ── Payment Terms reference ──────────────────────────────────
@@ -75,7 +71,8 @@ async def check_stock_endpoint(
     _user: ReadUser,
     product_id: uuid.UUID = Query(...),
 ) -> StockCheckResponse:
-    data = await check_stock_availability(session, TENANT_ID, product_id)
+    tenant_id = uuid.UUID(_user["tenant_id"])
+    data = await check_stock_availability(session, tenant_id, product_id)
     return StockCheckResponse(
         product_id=data["product_id"],
         warehouses=[
@@ -104,7 +101,8 @@ async def create_order_endpoint(
     background_tasks: BackgroundTasks,
     _user: WriteUser,
 ) -> OrderResponse:
-    order = await create_order(session, data, tenant_id=TENANT_ID)
+    tenant_id = uuid.UUID(_user["tenant_id"])
+    order = await create_order(session, data, tenant_id=tenant_id)
     response = _to_order_response(order)
     background_tasks.add_task(
         notify_new_order,
@@ -128,9 +126,10 @@ async def list_orders_endpoint(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ) -> OrderListResponse:
+    tenant_id = uuid.UUID(_user["tenant_id"])
     orders, total = await list_orders(
         session,
-        tenant_id=TENANT_ID,
+        tenant_id=tenant_id,
         status=status.value if status else None,
         customer_id=customer_id,
         page=page,
@@ -146,6 +145,7 @@ async def list_orders_endpoint(
                 customer_id=o.customer_id,
                 payment_terms_code=o.payment_terms_code,
                 total_amount=o.total_amount,
+                legacy_header_snapshot=getattr(o, "legacy_header_snapshot", None),
                 created_at=o.created_at,
                 updated_at=o.updated_at,
             )
@@ -166,7 +166,8 @@ async def get_order_endpoint(
     session: DbSession,
     _user: ReadUser,
 ) -> OrderResponse:
-    order = await get_order(session, order_id, tenant_id=TENANT_ID)
+    tenant_id = uuid.UUID(_user["tenant_id"])
+    order = await get_order(session, order_id, tenant_id=tenant_id)
     return _to_order_response(order)
 
 
@@ -180,12 +181,13 @@ async def update_order_status_endpoint(
     session: DbSession,
     _user: WriteUser,
 ) -> OrderResponse:
+    tenant_id = uuid.UUID(_user["tenant_id"])
     order = await update_order_status(
         session,
         order_id,
         body.new_status,
-        tenant_id=TENANT_ID,
-        actor_id=ACTOR_ID,
+        tenant_id=tenant_id,
+        actor_id="system",
     )
     return _to_order_response(order)
 
@@ -199,12 +201,13 @@ async def cancel_order_endpoint(
     session: DbSession,
     _user: WriteUser,
 ) -> OrderResponse:
+    tenant_id = uuid.UUID(_user["tenant_id"])
     order = await update_order_status(
         session,
         order_id,
         OrderStatus.CANCELLED,
-        tenant_id=TENANT_ID,
-        actor_id=ACTOR_ID,
+        tenant_id=tenant_id,
+        actor_id="system",
     )
     return _to_order_response(order)
 
@@ -226,6 +229,7 @@ def _to_order_response(order) -> OrderResponse:
         total_amount=order.total_amount,
         invoice_id=order.invoice_id,
         notes=order.notes,
+        legacy_header_snapshot=getattr(order, "legacy_header_snapshot", None),
         created_by=order.created_by,
         created_at=order.created_at,
         updated_at=order.updated_at,

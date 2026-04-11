@@ -1,6 +1,7 @@
 /** Browse / search customers page. */
 
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { PageHeader, SectionCard } from "../../components/layout/PageLayout";
@@ -12,8 +13,9 @@ import { CustomerDetailDialog } from "../../components/customers/CustomerDetailD
 import { EditCustomerDialog } from "../../components/customers/EditCustomerDialog";
 import { CustomerResultsTable } from "../../components/customers/CustomerResultsTable";
 import { CustomerSearchBar } from "../../components/customers/CustomerSearchBar";
+import { CustomerDetailPage } from "./CustomerDetailPage";
 import { usePermissions } from "../../hooks/usePermissions";
-import { CUSTOMER_CREATE_ROUTE } from "../../lib/routes";
+import { CUSTOMER_CREATE_ROUTE, CUSTOMERS_ROUTE } from "../../lib/routes";
 
 const CUSTOMER_STATUS_OPTIONS = [
   { value: "active", labelKey: "customer.listPage.active" },
@@ -22,8 +24,10 @@ const CUSTOMER_STATUS_OPTIONS = [
 ] as const;
 
 export function CustomerListPage() {
+  const { customerId } = useParams<{ customerId: string }>();
   const { t } = useTranslation("common");
   const { canWrite } = usePermissions();
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(1);
@@ -95,6 +99,10 @@ export function CustomerListPage() {
   const hasActiveFilters = activeFilterCount > 0;
   const activeStatusLabel = CUSTOMER_STATUS_OPTIONS.find((option) => option.value === statusFilter)?.labelKey;
 
+  if (customerId) {
+    return <CustomerDetailPage onBack={() => navigate(CUSTOMERS_ROUTE)} />;
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -161,7 +169,7 @@ export function CustomerListPage() {
               pageSize={data.page_size}
               totalCount={data.total_count}
               onPageChange={setPage}
-              onSelect={setSelectedId}
+              onSelect={(id) => navigate(`/customers/${id}`)}
             />
           ) : null}
 

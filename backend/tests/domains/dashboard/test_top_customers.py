@@ -9,6 +9,7 @@ from decimal import Decimal
 import pytest
 from freezegun import freeze_time
 
+from common.time import today as get_today
 from domains.dashboard.services import get_top_customers
 from tests.domains.orders._helpers import FakeAsyncSession
 
@@ -33,11 +34,12 @@ async def test_top_customers_returns_sorted_by_revenue() -> None:
     session = FakeAsyncSession()
     c1 = uuid.uuid4()
     c2 = uuid.uuid4()
-    today = datetime.now(UTC).date()
+    invoice_date = datetime.now(UTC).date()
+    today = get_today()
     session.queue_scalar(None)  # set_tenant
     session.queue_rows([
-        _make_customer_row(c1, "Acme Corp", Decimal("50000.00"), 10, today),
-        _make_customer_row(c2, "Beta LLC", Decimal("30000.00"), 5, today),
+        _make_customer_row(c1, "Acme Corp", Decimal("50000.00"), 10, invoice_date),
+        _make_customer_row(c2, "Beta LLC", Decimal("30000.00"), 5, invoice_date),
     ])
 
     result = await get_top_customers(session, TENANT, period="month", limit=10)
@@ -81,6 +83,31 @@ async def test_top_customers_empty_result() -> None:
 
     assert result.customers == []
     assert result.period == "month"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("period", "anchor_date", "expected_start", "expected_end"),
+    [
+        ("month", date(2025, 11, 18), date(2025, 11, 1), date(2025, 11, 30)),
+        ("quarter", date(2025, 11, 18), date(2025, 10, 1), date(2025, 12, 31)),
+        ("year", date(2025, 11, 18), date(2025, 1, 1), date(2025, 12, 31)),
+    ],
+)
+async def test_top_customers_uses_anchor_date_for_period_boundaries(
+    period: str,
+    anchor_date: date,
+    expected_start: date,
+    expected_end: date,
+) -> None:
+    session = FakeAsyncSession()
+    session.queue_scalar(None)  # set_tenant
+    session.queue_rows([])
+
+    result = await get_top_customers(session, TENANT, period=period, anchor_date=anchor_date)
+
+    assert result.start_date == expected_start
+    assert result.end_date == expected_end
 
 
 @pytest.mark.asyncio

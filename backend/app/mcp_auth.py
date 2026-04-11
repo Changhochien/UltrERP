@@ -26,6 +26,9 @@ TOOL_SCOPES: dict[str, frozenset[str]] = {
 	"inventory_check": frozenset({"inventory:read"}),
 	"inventory_search": frozenset({"inventory:read"}),
 	"inventory_reorder_alerts": frozenset({"inventory:read"}),
+	# orders domain
+	"orders_list": frozenset({"orders:read"}),
+	"orders_get": frozenset({"orders:read"}),
 	# customers domain (Story 8.2)
 	"customers_list": frozenset({"customers:read"}),
 	"customers_get": frozenset({"customers:read"}),
@@ -33,6 +36,12 @@ TOOL_SCOPES: dict[str, frozenset[str]] = {
 	# invoices domain (Story 8.3)
 	"invoices_list": frozenset({"invoices:read"}),
 	"invoices_get": frozenset({"invoices:read"}),
+	# purchases domain
+	"supplier_invoices_list": frozenset({"purchases:read"}),
+	"supplier_invoices_get": frozenset({"purchases:read"}),
+	# payments domain
+	"payments_list": frozenset({"payments:read"}),
+	"payments_get": frozenset({"payments:read"}),
 }
 
 # ── Default role scope sets (architecture §7.3) ────────────────
@@ -42,11 +51,11 @@ DEFAULT_ROLE_SCOPES: dict[str, list[str]] = {
 	"owner": ["admin"],
 	"finance": [
 		"customers:read", "invoices:read", "invoices:write",
-		"payments:read", "payments:write",
+		"payments:read", "payments:write", "purchases:read",
 	],
 	"warehouse": [
 		"inventory:read", "inventory:write",
-		"orders:read",
+		"orders:read", "purchases:read",
 	],
 	"sales": [
 		"customers:read", "customers:write",

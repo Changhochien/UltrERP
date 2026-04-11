@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import { SectionCard } from "../../components/layout/PageLayout";
+import { PageHeader, SectionCard } from "../../components/layout/PageLayout";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Skeleton } from "../../components/ui/skeleton";
@@ -16,6 +16,7 @@ import { CustomerInvoicesTab } from "../../components/customers/CustomerInvoices
 import { CustomerOrdersTab } from "../../components/customers/CustomerOrdersTab";
 import { CustomerOutstandingTab } from "../../components/customers/CustomerOutstandingTab";
 import { CustomerStatementTab } from "../../components/customers/CustomerStatementTab";
+import { CustomerAnalyticsTab } from "@/components/customers/CustomerAnalyticsTab";
 import { usePermissions } from "../../hooks/usePermissions";
 
 interface CustomerDetailPageProps {
@@ -26,6 +27,13 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "outline"> = {
   active: "success",
   suspended: "warning",
   inactive: "outline",
+};
+
+const STATUS_LABEL_KEYS: Record<string, string> = {
+  active: "customer.detail.statusValues.active",
+  suspended: "customer.detail.statusValues.suspended",
+  inactive: "customer.detail.statusValues.inactive",
+  deleted: "customer.detail.statusValues.deleted",
 };
 
 export function CustomerDetailPage({ onBack }: CustomerDetailPageProps) {
@@ -123,13 +131,17 @@ export function CustomerDetailPage({ onBack }: CustomerDetailPageProps) {
     );
   }
 
+  const statusLabel = STATUS_LABEL_KEYS[customer.status]
+    ? t(STATUS_LABEL_KEYS[customer.status], { defaultValue: customer.status })
+    : customer.status;
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <Button type="button" variant="outline" onClick={onBack}>
-          {t("customer.detail.backToList")}
-        </Button>
-        {canWrite("customers") && (
+      <PageHeader
+        eyebrow={t("customer.detail.eyebrow")}
+        title={customer.company_name}
+        description={`${customer.normalized_business_number} · ${statusLabel}`}
+        actions={canWrite("customers") ? (
           <div className="flex items-center gap-2">
             <Button
               type="button"
@@ -157,20 +169,8 @@ export function CustomerDetailPage({ onBack }: CustomerDetailPageProps) {
               {t("customer.detail.delete")}
             </Button>
           </div>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-2">
-          <h2 className="text-xl font-semibold tracking-tight">{customer.company_name}</h2>
-          <div className="flex items-center gap-2">
-            <Badge variant={STATUS_VARIANT[customer.status] ?? "outline"} className="normal-case tracking-normal">
-              {customer.status}
-            </Badge>
-            <span className="text-sm text-muted-foreground">{customer.normalized_business_number}</span>
-          </div>
-        </div>
-      </div>
+        ) : undefined}
+      />
 
       <Tabs defaultValue="overview">
         <TabsList>
@@ -179,6 +179,7 @@ export function CustomerDetailPage({ onBack }: CustomerDetailPageProps) {
           <TabsTrigger value="orders">{t("customer.detail.tabs.orders")}</TabsTrigger>
           <TabsTrigger value="outstanding">{t("customer.detail.tabs.outstanding")}</TabsTrigger>
           <TabsTrigger value="statement">{t("customer.detail.tabs.statement")}</TabsTrigger>
+          <TabsTrigger value="analytics">{t("customer.detail.tabs.analytics")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -219,7 +220,7 @@ export function CustomerDetailPage({ onBack }: CustomerDetailPageProps) {
                 <dt className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{t("customer.detail.status")}</dt>
                 <dd className="mt-1">
                   <Badge variant={STATUS_VARIANT[customer.status] ?? "outline"} className="normal-case tracking-normal">
-                    {customer.status}
+                    {statusLabel}
                   </Badge>
                 </dd>
               </div>
@@ -251,6 +252,10 @@ export function CustomerDetailPage({ onBack }: CustomerDetailPageProps) {
           {customerId ? (
             <CustomerStatementTab customerId={customerId} customerName={customer.company_name} />
           ) : null}
+        </TabsContent>
+
+        <TabsContent value="analytics">
+          {customerId ? <CustomerAnalyticsTab customerId={customerId} /> : null}
         </TabsContent>
       </Tabs>
 

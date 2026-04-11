@@ -1,0 +1,36 @@
+wing: ultrerp
+rooms:
+- name: research
+  description: Files from research/
+- name: design_artifacts
+  description: Files from design-artifacts/
+- name: migrations
+  description: Files from migrations/
+- name: legacy_data
+  description: Files from legacy data/
+- name: legacy_migration_pipeline
+  description: Files from legacy-migration-pipeline/
+- name: backend
+  description: Files from backend/
+- name: documentation
+  description: Files from docs/
+- name: state
+  description: Files from state/
+- name: public
+  description: Files from public/
+- name: erp_skills
+  description: Files from erp-skills/
+- name: scripts
+  description: Files from scripts/
+- name: src_tauri
+  description: Files from src-tauri/
+- name: src
+  description: Files from src/
+- name: testing
+  description: Files from tests/
+- name: costs
+  description: Files from invoices/
+- name: frontend
+  description: Files from components/
+- name: general
+  description: Files that don't fit other rooms

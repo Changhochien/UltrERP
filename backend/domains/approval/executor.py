@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.models.approval_request import ApprovalRequest
 from common.models.stock_adjustment import ReasonCode
-from common.tenant import DEFAULT_TENANT_ID
 from domains.inventory.services import create_stock_adjustment
 
 
@@ -22,7 +21,7 @@ async def execute_approval_action(
     context = approval.context
     result = await create_stock_adjustment(
         session,
-        DEFAULT_TENANT_ID,
+        approval.tenant_id,
         product_id=uuid.UUID(context["product_id"]),
         warehouse_id=uuid.UUID(context["warehouse_id"]),
         quantity_change=int(context["quantity_change"]),

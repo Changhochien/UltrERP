@@ -3,6 +3,7 @@ import { useEffect } from "react";
 
 import { MetricCard } from "@/components/layout/PageLayout";
 import { Badge } from "@/components/ui/badge";
+import { useTranslation } from "react-i18next";
 import { useProductSearch } from "../hooks/useProductSearch";
 import { useReorderAlerts } from "../hooks/useReorderAlerts";
 
@@ -11,8 +12,15 @@ interface MetricCardsProps {
 }
 
 export function MetricCards({ warehouseId }: MetricCardsProps) {
-  const { total: allTotal, search: searchAll } = useProductSearch();
-  const { alerts, total: alertTotal, reload: reloadAlerts } = useReorderAlerts({
+  const { t } = useTranslation("common", { keyPrefix: "inventory.metricCards" });
+  const { total: allTotal, loading: productsLoading, search: searchAll } = useProductSearch();
+  const {
+    alerts,
+    total: alertTotal,
+    loading: alertsLoading,
+    error: alertsError,
+    reload: reloadAlerts,
+  } = useReorderAlerts({
     warehouseId,
   });
 
@@ -23,24 +31,26 @@ export function MetricCards({ warehouseId }: MetricCardsProps) {
   }, [warehouseId]);
 
   const pendingCount = alerts.filter((a) => a.status === "pending").length;
+  const alertsUnavailable = Boolean(alertsError);
+  const loading = productsLoading || alertsLoading;
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <MetricCard
-        title="Total SKUs"
-        value={allTotal.toLocaleString()}
-        description={warehouseId ? "Filtered scope" : "All warehouses"}
+        title={t("totalSkus")}
+        value={productsLoading ? "—" : allTotal.toLocaleString()}
+        description={warehouseId ? t("filteredScope") : t("allWarehouses")}
         badge={<Boxes className="size-5 text-muted-foreground" />}
       />
       <MetricCard
-        title="Low Stock"
-        value={String(pendingCount)}
-        description={`${alertTotal} total alerts`}
+        title={t("lowStock")}
+        value={loading || alertsUnavailable ? "—" : String(pendingCount)}
+        description={alertsUnavailable ? t("alertsUnavailable") : t("totalAlerts", { count: alertTotal })}
         badge={
-          pendingCount > 0 ? (
+          !alertsUnavailable && pendingCount > 0 ? (
             <Badge variant="warning" className="gap-1.5 normal-case tracking-normal">
               <AlertTriangle className="size-3" />
-              Attention
+              {t("attention")}
             </Badge>
           ) : (
             <Boxes className="size-5 text-muted-foreground" />
@@ -48,11 +58,11 @@ export function MetricCards({ warehouseId }: MetricCardsProps) {
         }
       />
       <MetricCard
-        title="Pending Alerts"
-        value={String(pendingCount)}
-        description="Require action"
+        title={t("pendingAlerts")}
+        value={loading || alertsUnavailable ? "—" : String(pendingCount)}
+        description={alertsUnavailable ? t("alertsUnavailable") : t("requireAction")}
         badge={
-          pendingCount > 0 ? (
+          !alertsUnavailable && pendingCount > 0 ? (
             <Badge variant="destructive" className="gap-1.5 normal-case tracking-normal">
               <Bell className="size-3" />
               {pendingCount}
@@ -63,9 +73,9 @@ export function MetricCards({ warehouseId }: MetricCardsProps) {
         }
       />
       <MetricCard
-        title="Reorder Alerts"
-        value={alertTotal.toLocaleString()}
-        description="Across all warehouses"
+        title={t("reorderAlerts")}
+        value={loading || alertsUnavailable ? "—" : alertTotal.toLocaleString()}
+        description={alertsUnavailable ? t("alertsUnavailable") : t("acrossAllWarehouses")}
         badge={<AlertTriangle className="size-5 text-muted-foreground" />}
       />
     </div>

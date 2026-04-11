@@ -31,10 +31,10 @@ So that warehouse staff can proactively reorder.
 **When** I view the business dashboard
 **Then** I see low-stock alerts section (Epic 7, Story 7.3)
 
-**✓ AC4:** Alert dismissal
+**✓ AC4:** Alert lifecycle controls
 **Given** a reorder alert is displayed
-**When** I dismiss or acknowledge the alert
-**Then** the alert status changes to "acknowledged"
+**When** I acknowledge, snooze, or dismiss the alert
+**Then** the alert status changes to "acknowledged", "snoozed", or "dismissed" respectively
 
 **✓ AC5:** Alert persistence
 **Given** a product stock is still below reorder point
@@ -56,7 +56,7 @@ So that warehouse staff can proactively reorder.
 ## Tasks / Subtasks
 
 - [ ] **Task 1: Alert Data Model & Transactional Logic** (AC1-AC2)
-  - [ ] Create Alembic migration for `reorder_alert` table: (id, tenant_id, product_id, warehouse_id, current_stock, reorder_point, status, created_at, acknowledged_at, acknowledged_by)
+  - [ ] Create Alembic migration for `reorder_alert` table: (id, tenant_id, product_id, warehouse_id, current_stock, reorder_point, status, created_at, acknowledged_at, acknowledged_by, snoozed_until, snoozed_by, dismissed_at, dismissed_by)
   - [ ] Add UNIQUE constraint: `UNIQUE(tenant_id, product_id, warehouse_id)` — prevents duplicate active alerts
   - [ ] **CRITICAL:** Alert creation uses TRANSACTIONAL pattern (NOT PostgreSQL triggers)
   - [ ] Alert logic implemented within stock adjustment transaction (see Story 4.4 Task 3 pattern)
@@ -68,19 +68,23 @@ So that warehouse staff can proactively reorder.
     4. If above reorder_point: `UPDATE reorder_alert SET status='resolved'`
     5. Create audit_log entry for the adjustment (not the alert creation)
   - [ ] All operations within single `async with session.begin():` block to ensure atomicity
-  - [ ] Status enum values: pending, acknowledged, resolved
+  - [ ] Status enum values: pending, acknowledged, snoozed, dismissed, resolved
 
 - [ ] **Task 2: Backend Alert API** (AC1-AC3)
   - [ ] Create GET `/api/v1/inventory/alerts/reorder` endpoint
-  - [ ] Return: product_id, product_name, current_stock, reorder_point, warehouse_name, status, created_at
-  - [ ] Support filtering: status (pending, acknowledged, resolved), warehouse_id, date_range
+  - [ ] Return: product_id, product_name, current_stock, reorder_point, warehouse_name, severity, status, created_at, snoozed_until, dismissed_at
+  - [ ] Support filtering: status (pending, acknowledged, snoozed, dismissed, resolved), warehouse_id, date_range
   - [ ] Sort by created_at DESC (newest first) or by urgency (most below reorder point first)
   - [ ] Add HTTP error codes: 200 OK, 400 Bad Request, 404 Not Found, 422 Unprocessable Entity
   - [ ] Include tenant_id filter to ensure multi-tenancy isolation
 
-- [ ] **Task 3: Reorder Acknowledgment Endpoint** (AC4)
+- [ ] **Task 3: Reorder Lifecycle Endpoints** (AC4)
   - [ ] Create PUT `/api/v1/inventory/alerts/reorder/{alert_id}/acknowledge` endpoint
   - [ ] Update alert status to "acknowledged", record timestamp & actor
+  - [ ] Create PUT `/api/v1/inventory/alerts/reorder/{alert_id}/snooze` endpoint
+  - [ ] Update alert status to "snoozed", record snooze deadline & actor
+  - [ ] Create PUT `/api/v1/inventory/alerts/reorder/{alert_id}/dismiss` endpoint
+  - [ ] Update alert status to "dismissed", record timestamp & actor
   - [ ] Scope acknowledge updates by `tenant_id` so one tenant cannot acknowledge another tenant's alert
 
 - [ ] **Task 4: Frontend Alert Display** (AC2-AC6)
@@ -112,6 +116,13 @@ So that warehouse staff can proactively reorder.
 - **Real-time:** Stock adjustments immediately trigger alert logic (no async delay)
 - **Caching:** Alert list cached with 1-minute TTL (Redis)
 
+### Post-Implementation Notes
+
+- 2026-04-11: Aligned the reorder-alert severity contract with the low-stock investigation. Backend `_compute_severity()` now treats stockout or stock below 25% of ROP as `CRITICAL`, stock below ROP as `WARNING`, and exact-threshold alerts as `INFO`.
+- 2026-04-11: The backend/API is now the single source of truth for alert severity. Downstream clients should render `severity` from the alert payload instead of recomputing urgency from `current_stock` and `reorder_point`.
+- 2026-04-11: Extended the alert lifecycle beyond acknowledge-only handling. Reorder alerts now support `snoozed` and `dismissed` states with explicit endpoints, persisted actor/timestamp metadata, and list filtering for the new states.
+- 2026-04-11: Dismissed alerts stay suppressed for the current breach cycle, but reopen automatically after stock genuinely recovers above ROP and drops again. Expired snoozes surface as `pending` in the alert list so the UI does not strand overdue alerts.
+
 ### Project Structure
 
 **Backend:**
@@ -132,9 +143,9 @@ So that warehouse staff can proactively reorder.
 
 ```
 pending → (user acknowledges) → acknowledged
-  ↓ (or stock restored) → resolved
-  ↓
-deleted after 30 days (cleanup job)
+  ├→ (user snoozes) → snoozed → (snooze expires) → pending
+  ├→ (user dismisses) → dismissed
+  └→ (stock restored) → resolved
 ```
 
 ### ⚠️ CRITICAL: Transactional Alert Pattern (NOT Triggers)

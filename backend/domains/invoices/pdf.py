@@ -15,6 +15,7 @@ from datetime import date
 from decimal import Decimal
 from html import escape
 
+from domains.invoices.enums import InvoiceStatus
 from domains.invoices.models import Invoice
 
 
@@ -227,7 +228,7 @@ def generate_invoice_pdf(
     seller: SellerInfo = DEFAULT_SELLER,
 ) -> bytes:
     """Render invoice HTML to PDF bytes via WeasyPrint."""
-    if invoice.status == "voided":
+    if invoice.status == InvoiceStatus.VOIDED:
         raise ValueError("Cannot export a voided invoice to PDF.")
     if not invoice.lines:
         raise ValueError("Invoice has no line items.")

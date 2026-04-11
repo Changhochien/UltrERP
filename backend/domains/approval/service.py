@@ -31,9 +31,11 @@ async def create_approval(
     requested_by: str,
     requested_by_type: str,
     context: dict,
+    tenant_id: uuid.UUID | None = None,
 ) -> ApprovalRequest:
+    tid = tenant_id if tenant_id is not None else DEFAULT_TENANT_ID
     approval = ApprovalRequest(
-        tenant_id=DEFAULT_TENANT_ID,
+        tenant_id=tid,
         action=action,
         entity_type=entity_type,
         entity_id=entity_id,
@@ -50,12 +52,14 @@ async def create_approval(
 
 async def list_approvals(
     session,
+    tenant_id: uuid.UUID | None = None,
     *,
     status: str | None = None,
 ) -> list[ApprovalRequest]:
+    tid = tenant_id if tenant_id is not None else DEFAULT_TENANT_ID
     stmt = (
         select(ApprovalRequest)
-        .where(ApprovalRequest.tenant_id == DEFAULT_TENANT_ID)
+        .where(ApprovalRequest.tenant_id == tid)
         .order_by(ApprovalRequest.created_at.desc())
     )
     result = await session.execute(stmt)
@@ -78,10 +82,12 @@ async def resolve_approval(
     *,
     action: str,
     resolved_by: str,
+    tenant_id: uuid.UUID | None = None,
 ) -> ApprovalRequest:
+    tid = tenant_id if tenant_id is not None else DEFAULT_TENANT_ID
     stmt = select(ApprovalRequest).where(
         ApprovalRequest.id == approval_id,
-        ApprovalRequest.tenant_id == DEFAULT_TENANT_ID,
+        ApprovalRequest.tenant_id == tid,
     )
     result = await session.execute(stmt)
     approval = result.scalar_one_or_none()

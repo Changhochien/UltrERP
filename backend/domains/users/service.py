@@ -23,10 +23,12 @@ async def create_user(
     display_name: str,
     role: str,
     actor_id: str = "system",
+    tenant_id: uuid.UUID | None = None,
 ) -> User:
     """Create a new user. Raises IntegrityError on duplicate email."""
+    tid = tenant_id or DEFAULT_TENANT_ID
     user = User(
-        tenant_id=DEFAULT_TENANT_ID,
+        tenant_id=tid,
         email=email,
         password_hash=hash_password(password),
         display_name=display_name,
@@ -51,16 +53,18 @@ async def create_user(
     return user
 
 
-async def list_users(session: AsyncSession) -> list[User]:
-    stmt = select(User).where(User.tenant_id == DEFAULT_TENANT_ID).order_by(User.created_at.desc())
+async def list_users(session: AsyncSession, tenant_id: uuid.UUID | None = None) -> list[User]:
+    tid = tenant_id or DEFAULT_TENANT_ID
+    stmt = select(User).where(User.tenant_id == tid).order_by(User.created_at.desc())
     result = await session.execute(stmt)
     return list(result.scalars().all())
 
 
-async def get_user(session: AsyncSession, user_id: uuid.UUID) -> User | None:
+async def get_user(session: AsyncSession, user_id: uuid.UUID, tenant_id: uuid.UUID | None = None) -> User | None:
+    tid = tenant_id or DEFAULT_TENANT_ID
     stmt = select(User).where(
         User.id == user_id,
-        User.tenant_id == DEFAULT_TENANT_ID,
+        User.tenant_id == tid,
     )
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
@@ -75,8 +79,9 @@ async def update_user(
     status: str | None = None,
     password: str | None = None,
     actor_id: str = "system",
+    tenant_id: uuid.UUID | None = None,
 ) -> User | None:
-    user = await get_user(session, user_id)
+    user = await get_user(session, user_id, tenant_id=tenant_id)
     if user is None:
         return None
 
@@ -117,10 +122,11 @@ async def update_user(
     return user
 
 
-async def get_user_by_email(session: AsyncSession, email: str) -> User | None:
+async def get_user_by_email(session: AsyncSession, email: str, tenant_id: uuid.UUID | None = None) -> User | None:
+    tid = tenant_id or DEFAULT_TENANT_ID
     stmt = select(User).where(
         func.lower(User.email) == email.lower(),
-        User.tenant_id == DEFAULT_TENANT_ID,
+        User.tenant_id == tid,
     )
     result = await session.execute(stmt)
     return result.scalar_one_or_none()

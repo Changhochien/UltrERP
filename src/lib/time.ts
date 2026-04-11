@@ -11,6 +11,8 @@
 import { format } from "date-fns";
 import { zhTW } from "date-fns/locale";
 
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 /** Canonical business timezone for UltrERP — Taiwan. */
 export const TIMEZONE = "Asia/Taipei";
 
@@ -36,10 +38,25 @@ export function appTodayISO(): string {
  * not what the browser's TZ offset would shift it to.
  */
 export function parseBackendDate(isoOrDateStr: string): Date {
-  const normalised = /^\d{4}-\d{2}-\d{2}$/.test(isoOrDateStr)
+  const normalised = DATE_ONLY_RE.test(isoOrDateStr)
     ? `${isoOrDateStr}T00:00:00Z`
     : isoOrDateStr;
   return new Date(normalised);
+}
+
+/** Format backend calendar dates without letting browser timezone shift date-only values. */
+export function formatBackendCalendarDate(
+  isoOrDateStr: string,
+  pattern: "MM/dd" | "yyyy-MM-dd",
+): string {
+  if (DATE_ONLY_RE.test(isoOrDateStr)) {
+    return pattern === "MM/dd"
+      ? isoOrDateStr.slice(5).replace("-", "/")
+      : isoOrDateStr;
+  }
+
+  const parsed = parseBackendDate(isoOrDateStr);
+  return Number.isNaN(parsed.getTime()) ? "" : format(parsed, pattern);
 }
 
 /** Format a UTC ISO date string for display in Taiwan timezone */

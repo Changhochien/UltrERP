@@ -31,6 +31,7 @@ class FakeSupplier:
         self.address = "123 Supply St"
         self.default_lead_time_days = 7
         self.is_active = True
+        self.legacy_master_snapshot = {"legacy_code": f"SUP-{name}"}
         self.created_at = datetime.now(tz=UTC)
 
 
@@ -237,6 +238,7 @@ async def test_list_suppliers() -> None:
         assert body["total"] == 2
         assert body["items"][0]["name"] == "Acme Corp"
         assert body["items"][1]["name"] == "Beta Supply"
+        assert body["items"][0]["legacy_master_snapshot"]["legacy_code"] == "SUP-Acme Corp"
     finally:
         _teardown(prev)
 

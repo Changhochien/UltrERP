@@ -13,6 +13,7 @@ from common.errors import ValidationError
 from common.models.audit_log import AuditLog
 from common.tenant import DEFAULT_TENANT_ID, set_tenant
 from domains.customers.models import Customer
+from domains.invoices.enums import InvoiceStatus
 from domains.invoices.models import Invoice
 from domains.payments.models import Payment
 from domains.payments.schemas import PaymentCreate, PaymentCreateUnmatched
@@ -71,7 +72,7 @@ async def record_payment(
             raise ValidationError([{"field": "invoice_id", "message": "Invoice not found."}])
 
         # AC4: Voided invoice guard
-        if invoice.status == "voided":
+        if invoice.status == InvoiceStatus.VOIDED:
             raise ValidationError(
                 [
                     {
@@ -130,7 +131,7 @@ async def record_payment(
         # AC2: Auto-transition to "paid" when fully paid
         new_outstanding = outstanding - data.amount
         if new_outstanding == 0:
-            invoice.status = "paid"
+            invoice.status = InvoiceStatus.PAID
             invoice.updated_at = datetime.now(tz=UTC)
 
         # AC6: Audit log
@@ -437,7 +438,7 @@ async def _allocate_payment(
 ) -> None:
     """Allocate a payment to an invoice and update invoice status if fully paid."""
     # Guard: only issued invoices can receive allocations
-    if invoice.status != "issued":
+    if invoice.status != InvoiceStatus.ISSUED:
         raise ValidationError(
             [
                 {
@@ -531,8 +532,8 @@ async def confirm_suggested_match(
                 [{"field": "invoice_id", "message": "Suggested invoice no longer exists."}]
             )
 
-        if invoice.status != "issued":
-            if invoice.status == "voided":
+        if invoice.status != InvoiceStatus.ISSUED:
+            if invoice.status == InvoiceStatus.VOIDED:
                 raise ValidationError(
                     [{"field": "invoice_id", "message": "Invoice has been voided."}]
                 )
@@ -624,8 +625,8 @@ async def manual_match(
                 [{"field": "invoice_id", "message": "Invoice belongs to a different customer."}]
             )
 
-        if invoice.status != "issued":
-            if invoice.status == "voided":
+        if invoice.status != InvoiceStatus.ISSUED:
+            if invoice.status == InvoiceStatus.VOIDED:
                 raise ValidationError(
                     [{"field": "invoice_id", "message": "Invoice has been voided."}]
                 )

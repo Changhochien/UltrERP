@@ -75,19 +75,22 @@ async def inventory_search(
     """Search products by code, name, or SKU using hybrid matching."""
     async with AsyncSessionLocal() as session:
         await set_tenant(session, DEFAULT_TENANT_ID)
-        return await search_products(session, DEFAULT_TENANT_ID, query, limit=limit)
+        results, _total = await search_products(session, DEFAULT_TENANT_ID, query, limit=limit)
+        return results
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
 async def inventory_reorder_alerts(
     status_filter: Annotated[
         str | None,
-        Field(description="Filter: PENDING, ACKNOWLEDGED, RESOLVED"),
+        Field(description="Filter: PENDING, ACKNOWLEDGED, SNOOZED, DISMISSED, RESOLVED"),
     ] = None,
     warehouse_id: Annotated[
         str | None,
         Field(description="Filter by warehouse UUID"),
     ] = None,
+    limit: Annotated[int, Field(description="Max results", ge=1, le=200)] = 50,
+    offset: Annotated[int, Field(description="Result offset", ge=0)] = 0,
 ) -> dict:
     """List products below their reorder point (low stock alerts)."""
     wid = _parse_uuid(warehouse_id, "warehouse_id") if warehouse_id else None
@@ -98,5 +101,7 @@ async def inventory_reorder_alerts(
             DEFAULT_TENANT_ID,
             status_filter=status_filter,
             warehouse_id=wid,
+            limit=limit,
+            offset=offset,
         )
         return {"alerts": alerts, "total": total}

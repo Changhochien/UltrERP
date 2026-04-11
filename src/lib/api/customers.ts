@@ -173,6 +173,39 @@ export async function updateCustomer(
   return { ok: false, errors: body.detail ?? [] };
 }
 
+export interface CustomerAnalyticsSummary {
+  total_revenue_12m: string;
+  invoice_count_12m: number;
+  avg_invoice_value: string;
+  outstanding_balance: string;
+  credit_limit: string;
+  credit_utilization_pct: number;
+  avg_days_to_pay: number | null;
+  payment_score: "excellent" | "prompt" | "late" | "at_risk";
+  days_overdue_avg: number | null;
+}
+
+export interface RevenueTrendPoint {
+  month: string;
+  revenue: string;
+}
+
+export interface CustomerRevenueTrend {
+  trend: RevenueTrendPoint[];
+}
+
+export async function getCustomerAnalyticsSummary(customerId: string): Promise<CustomerAnalyticsSummary> {
+  const resp = await apiFetch(`/api/v1/customers/${customerId}/analytics/summary`);
+  if (!resp.ok) throw new Error("Failed to fetch customer analytics summary");
+  return resp.json();
+}
+
+export async function getCustomerRevenueTrend(customerId: string, months = 12): Promise<CustomerRevenueTrend> {
+  const resp = await apiFetch(`/api/v1/customers/${customerId}/analytics/revenue-trend?months=${months}`);
+  if (!resp.ok) throw new Error("Failed to fetch customer revenue trend");
+  return resp.json();
+}
+
 export interface StatementLine {
   date: string;
   type: "invoice" | "payment";

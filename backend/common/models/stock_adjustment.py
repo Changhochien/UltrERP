@@ -24,16 +24,16 @@ class ReasonCode(str, enum.Enum):
 	System-only: SUPPLIER_DELIVERY, TRANSFER_OUT, TRANSFER_IN
 	"""
 
-	RECEIVED = "received"
-	DAMAGED = "damaged"
-	RETURNED = "returned"
-	CORRECTION = "correction"
-	OTHER = "other"
-	SUPPLIER_DELIVERY = "supplier_delivery"
-	TRANSFER_OUT = "transfer_out"
-	TRANSFER_IN = "transfer_in"
-	SALES_RESERVATION = "sales_reservation"
-	SALES_RELEASE = "sales_release"
+	RECEIVED = "RECEIVED"
+	DAMAGED = "DAMAGED"
+	RETURNED = "RETURNED"
+	CORRECTION = "CORRECTION"
+	OTHER = "OTHER"
+	SUPPLIER_DELIVERY = "SUPPLIER_DELIVERY"
+	TRANSFER_OUT = "TRANSFER_OUT"
+	TRANSFER_IN = "TRANSFER_IN"
+	SALES_RESERVATION = "SALES_RESERVATION"
+	SALES_RELEASE = "SALES_RELEASE"
 
 	@classmethod
 	def user_selectable(cls) -> list[ReasonCode]:

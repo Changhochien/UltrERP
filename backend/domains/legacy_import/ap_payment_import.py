@@ -217,11 +217,11 @@ async def _upsert_run_row(
 			$5,
 			$6,
 			$7::jsonb,
-			$8,
+            $8::text,
 			$9,
 			NOW(),
 			CASE
-				WHEN $8 = 'completed' OR $8 = 'failed' THEN NOW()
+                WHEN $8::text = 'completed' OR $8::text = 'failed' THEN NOW()
 				ELSE NULL
 			END
 		)
@@ -260,6 +260,7 @@ async def _upsert_table_run_row(
     await connection.execute(
         """
 		INSERT INTO legacy_import_table_runs (
+            id,
 			run_id,
 			table_name,
 			source_file,
@@ -278,11 +279,12 @@ async def _upsert_table_run_row(
 			$4,
 			$5,
 			$6,
-			$7,
-			$8,
+            $7,
+            $8::text,
+            $9,
 			NOW(),
 			CASE
-				WHEN $7 = 'completed' OR $7 = 'failed' THEN NOW()
+                WHEN $8::text = 'completed' OR $8::text = 'failed' THEN NOW()
 				ELSE NULL
 			END
 		)
@@ -295,6 +297,7 @@ async def _upsert_table_run_row(
 			error_message = EXCLUDED.error_message,
 			completed_at = EXCLUDED.completed_at
 		""",
+        uuid.uuid4(),
         run_id,
         table_name,
         source_file,

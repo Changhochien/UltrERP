@@ -5,6 +5,7 @@ import { AxisBottom, AxisLeft } from "@visx/axis";
 import { GridRows } from "@visx/grid";
 import { Group } from "@visx/group";
 import { TooltipWithBounds, useTooltip } from "@visx/tooltip";
+import { useTranslation } from "react-i18next";
 
 interface MonthlyDemandChartProps {
   data: { month: string; total_qty: number }[];
@@ -19,6 +20,9 @@ function ChartInner({
   width: number;
   height: number;
 }) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "inventory.productDetail.analyticsTab.monthlyDemand",
+  });
   const { showTooltip, hideTooltip, tooltipOpen, tooltipData, tooltipLeft, tooltipTop } =
     useTooltip<{ month: string; total_qty: number }>();
 
@@ -107,7 +111,9 @@ function ChartInner({
           }}
         >
           <p className="text-xs font-medium text-muted-foreground">{tooltipData.month}</p>
-          <p className="text-sm font-semibold">{tooltipData.total_qty} units</p>
+          <p className="text-sm font-semibold">
+            {t("tooltipUnits", { count: tooltipData.total_qty })}
+          </p>
         </TooltipWithBounds>
       )}
     </div>
@@ -115,10 +121,14 @@ function ChartInner({
 }
 
 export function MonthlyDemandChart({ data }: MonthlyDemandChartProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "inventory.productDetail.analyticsTab.monthlyDemand",
+  });
+
   if (data.length === 0) {
     return (
       <div className="flex h-64 flex-col items-center justify-center text-muted-foreground">
-        <p className="text-sm">No demand data available</p>
+        <p className="text-sm">{t("empty")}</p>
       </div>
     );
   }

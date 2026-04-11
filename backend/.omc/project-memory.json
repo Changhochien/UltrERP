@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1775640764720,
+  "lastScanned": 1775749956982,
   "projectRoot": "/Volumes/2T_SSD_App/Projects/UltrERP/backend",
   "techStack": {
     "languages": [
@@ -57,7 +57,7 @@
       "path": "app",
       "purpose": "Application code",
       "fileCount": 5,
-      "lastAccessed": 1775640764707,
+      "lastAccessed": 1775749956971,
       "keyFiles": [
         "__init__.py",
         "main.py",
@@ -70,7 +70,7 @@
       "path": "common",
       "purpose": null,
       "fileCount": 9,
-      "lastAccessed": 1775640764707,
+      "lastAccessed": 1775749956971,
       "keyFiles": [
         "__init__.py",
         "auth.py",
@@ -83,7 +83,7 @@
       "path": "domains",
       "purpose": null,
       "fileCount": 1,
-      "lastAccessed": 1775640764708,
+      "lastAccessed": 1775749956972,
       "keyFiles": [
         "__init__.py"
       ]
@@ -92,7 +92,7 @@
       "path": "scripts",
       "purpose": "Build/utility scripts",
       "fileCount": 1,
-      "lastAccessed": 1775640764708,
+      "lastAccessed": 1775749956972,
       "keyFiles": [
         "backfill_sales_reservations.py"
       ]
@@ -101,7 +101,7 @@
       "path": "tests",
       "purpose": "Test files",
       "fileCount": 23,
-      "lastAccessed": 1775640764709,
+      "lastAccessed": 1775749956973,
       "keyFiles": [
         "__init__.py",
         "conftest.py",
@@ -114,7 +114,7 @@
       "path": "common/models",
       "purpose": "Data models",
       "fileCount": 18,
-      "lastAccessed": 1775640764709,
+      "lastAccessed": 1775749956973,
       "keyFiles": [
         "__init__.py",
         "approval_request.py",
@@ -125,7 +125,7 @@
       "path": "tests/api",
       "purpose": "API routes",
       "fileCount": 5,
-      "lastAccessed": 1775640764710,
+      "lastAccessed": 1775749956974,
       "keyFiles": [
         "__init__.py",
         "test_create_customer.py",
@@ -135,33 +135,63 @@
   },
   "hotPaths": [
     {
+      "path": "domains/dashboard/services.py",
+      "accessCount": 59,
+      "lastAccessed": 1775808934136,
+      "type": "directory"
+    },
+    {
       "path": "scripts/backfill_sales_reservations.py",
-      "accessCount": 22,
-      "lastAccessed": 1775665753019,
+      "accessCount": 25,
+      "lastAccessed": 1775889999503,
       "type": "file"
     },
     {
-      "path": "common/time.py",
-      "accessCount": 9,
-      "lastAccessed": 1775702709459,
+      "path": "",
+      "accessCount": 22,
+      "lastAccessed": 1775891426703,
+      "type": "directory"
+    },
+    {
+      "path": "app/main.py",
+      "accessCount": 19,
+      "lastAccessed": 1775752338578,
+      "type": "directory"
+    },
+    {
+      "path": "domains/reports/services.py",
+      "accessCount": 16,
+      "lastAccessed": 1775787397127,
       "type": "file"
     },
     {
       "path": "domains/inventory/services.py",
-      "accessCount": 9,
-      "lastAccessed": 1775718636425,
+      "accessCount": 12,
+      "lastAccessed": 1775893202000,
       "type": "directory"
     },
     {
-      "path": "",
+      "path": "common/time.py",
+      "accessCount": 10,
+      "lastAccessed": 1775806664189,
+      "type": "file"
+    },
+    {
+      "path": "domains/dashboard/routes.py",
       "accessCount": 8,
-      "lastAccessed": 1775713818296,
+      "lastAccessed": 1775808573517,
       "type": "directory"
     },
     {
-      "path": "domains/dashboard/services.py",
-      "accessCount": 5,
-      "lastAccessed": 1775659431062,
+      "path": "domains/users/seed.py",
+      "accessCount": 7,
+      "lastAccessed": 1775752032267,
+      "type": "file"
+    },
+    {
+      "path": "domains/auth/routes.py",
+      "accessCount": 6,
+      "lastAccessed": 1775749986985,
       "type": "directory"
     },
     {
@@ -171,10 +201,28 @@
       "type": "file"
     },
     {
-      "path": "domains/dashboard/routes.py",
-      "accessCount": 3,
-      "lastAccessed": 1775659388678,
+      "path": "domains/users",
+      "accessCount": 4,
+      "lastAccessed": 1775749973814,
       "type": "directory"
+    },
+    {
+      "path": "compute_rop_sql.py",
+      "accessCount": 4,
+      "lastAccessed": 1775890006210,
+      "type": "file"
+    },
+    {
+      "path": "domains/users/service.py",
+      "accessCount": 3,
+      "lastAccessed": 1775749977022,
+      "type": "file"
+    },
+    {
+      "path": "common/models/supplier_payment.py",
+      "accessCount": 3,
+      "lastAccessed": 1775787118753,
+      "type": "file"
     },
     {
       "path": "domains",
@@ -195,21 +243,57 @@
       "type": "file"
     },
     {
-      "path": "domains/legacy_import/staging.py",
-      "accessCount": 1,
-      "lastAccessed": 1775640812786,
-      "type": "file"
-    },
-    {
       "path": "domains/auth",
-      "accessCount": 1,
-      "lastAccessed": 1775641915054,
+      "accessCount": 2,
+      "lastAccessed": 1775749895173,
       "type": "directory"
     },
     {
-      "path": "domains/auth/routes.py",
-      "accessCount": 1,
-      "lastAccessed": 1775641921912,
+      "path": "common/models",
+      "accessCount": 2,
+      "lastAccessed": 1775750015903,
+      "type": "directory"
+    },
+    {
+      "path": "domains/settings/seed.py",
+      "accessCount": 2,
+      "lastAccessed": 1775751162815,
+      "type": "file"
+    },
+    {
+      "path": "common",
+      "accessCount": 2,
+      "lastAccessed": 1775752211222,
+      "type": "directory"
+    },
+    {
+      "path": "common/auth.py",
+      "accessCount": 2,
+      "lastAccessed": 1775752214161,
+      "type": "directory"
+    },
+    {
+      "path": "common/config.py",
+      "accessCount": 2,
+      "lastAccessed": 1775752275831,
+      "type": "file"
+    },
+    {
+      "path": "domains/legacy_import/cli.py",
+      "accessCount": 2,
+      "lastAccessed": 1775869362745,
+      "type": "directory"
+    },
+    {
+      "path": "domains/legacy_import/staging.py",
+      "accessCount": 2,
+      "lastAccessed": 1775869475604,
+      "type": "file"
+    },
+    {
+      "path": "app",
+      "accessCount": 2,
+      "lastAccessed": 1775893160964,
       "type": "directory"
     },
     {
@@ -267,12 +351,6 @@
       "type": "file"
     },
     {
-      "path": "compute_rop_sql.py",
-      "accessCount": 1,
-      "lastAccessed": 1775704125202,
-      "type": "file"
-    },
-    {
       "path": "tests/domains/inventory/test_reorder_alerts.py",
       "accessCount": 1,
       "lastAccessed": 1775714110893,
@@ -288,6 +366,72 @@
       "path": "common/database.py",
       "accessCount": 1,
       "lastAccessed": 1775718703032,
+      "type": "file"
+    },
+    {
+      "path": "app/mcp_auth.py",
+      "accessCount": 1,
+      "lastAccessed": 1775747236594,
+      "type": "directory"
+    },
+    {
+      "path": "common/models/user.py",
+      "accessCount": 1,
+      "lastAccessed": 1775749697157,
+      "type": "file"
+    },
+    {
+      "path": "domains/users/auth.py",
+      "accessCount": 1,
+      "lastAccessed": 1775749962434,
+      "type": "file"
+    },
+    {
+      "path": "domains/audit",
+      "accessCount": 1,
+      "lastAccessed": 1775751149258,
+      "type": "directory"
+    },
+    {
+      "path": "domains/audit/service.py",
+      "accessCount": 1,
+      "lastAccessed": 1775751151864,
+      "type": "file"
+    },
+    {
+      "path": "domains/settings",
+      "accessCount": 1,
+      "lastAccessed": 1775751159957,
+      "type": "directory"
+    },
+    {
+      "path": "app/mcp_setup.py",
+      "accessCount": 1,
+      "lastAccessed": 1775751168570,
+      "type": "file"
+    },
+    {
+      "path": "domains/users/routes.py",
+      "accessCount": 1,
+      "lastAccessed": 1775752223409,
+      "type": "file"
+    },
+    {
+      "path": "domains/audit/routes.py",
+      "accessCount": 1,
+      "lastAccessed": 1775752233635,
+      "type": "file"
+    },
+    {
+      "path": "domains/invoices/models.py",
+      "accessCount": 1,
+      "lastAccessed": 1775786198941,
+      "type": "file"
+    },
+    {
+      "path": "domains/invoices/service.py",
+      "accessCount": 1,
+      "lastAccessed": 1775786227511,
       "type": "file"
     }
   ],

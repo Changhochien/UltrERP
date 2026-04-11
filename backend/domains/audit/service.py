@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,10 +23,12 @@ async def write_audit(
     after_state: dict[str, Any] | None = None,
     correlation_id: str | None = None,
     notes: str | None = None,
+    tenant_id: UUID | None = None,
 ) -> AuditLog:
-    """Create an audit log entry with DEFAULT_TENANT_ID."""
+    """Create an audit log entry."""
+    tid = tenant_id if tenant_id is not None else DEFAULT_TENANT_ID
     entry = AuditLog(
-        tenant_id=DEFAULT_TENANT_ID,
+        tenant_id=tid,
         actor_id=actor_id,
         actor_type=actor_type,
         action=action,

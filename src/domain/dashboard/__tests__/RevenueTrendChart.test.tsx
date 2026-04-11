@@ -7,6 +7,7 @@ vi.mock("recharts", async () => {
 
   return {
     ...actual,
+    Brush: () => <div data-testid="chart-brush" />,
     ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
       <div data-testid="responsive-container">{children}</div>
     ),
@@ -18,7 +19,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const mockData = Array.from({ length: 7 }, (_, i) => ({
+const mockData = Array.from({ length: 12 }, (_, i) => ({
   date: `2026-04-0${i + 1}`,
   revenue: String((i + 1) * 1000),
 }));
@@ -47,5 +48,10 @@ describe("RevenueTrendChart", () => {
   it("renders chart container with recharts when data is provided", () => {
     render(<RevenueTrendChart data={mockData} isLoading={false} error={null} onRetry={vi.fn()} period="month" onPeriodChange={vi.fn()} />);
     expect(screen.getByTestId("responsive-container")).toBeTruthy();
+  });
+
+  it("renders a zoom navigator when enough data is provided", () => {
+    render(<RevenueTrendChart data={mockData} isLoading={false} error={null} onRetry={vi.fn()} period="month" onPeriodChange={vi.fn()} />);
+    expect(screen.getByText("Drag the navigator to zoom and pan.")).toBeTruthy();
   });
 });

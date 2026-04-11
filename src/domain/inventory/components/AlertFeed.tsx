@@ -7,6 +7,7 @@ import {
 } from "../hooks/useReorderAlerts";
 import { useWarehouseContext } from "../context/WarehouseContext";
 import type { ReorderAlertItem } from "../types";
+import { normalizeAlertSeverity } from "../../../lib/alertSeverity";
 
 type AlertFilter = "all" | "low_stock" | "critical" | "transfer" | "adjustment";
 
@@ -44,8 +45,7 @@ function getAlertIconClass(type: AlertFilter): string {
 
 function alertTypeFromItem(item: ReorderAlertItem): AlertFilter {
   if (item.status === "pending") {
-    if (item.current_stock === 0) return "critical";
-    if (item.current_stock < item.reorder_point * 0.5) return "critical";
+    if (normalizeAlertSeverity(item.severity) === "CRITICAL") return "critical";
     return "low_stock";
   }
   if (item.status === "acknowledged") return "adjustment";
@@ -129,6 +129,7 @@ export function AlertFeed() {
         ) : (
           filteredAlerts.map((alert, index) => {
             const type = alertTypeFromItem(alert);
+            const severity = normalizeAlertSeverity(alert.severity);
             return (
               <div
                 key={alert.id}
@@ -144,7 +145,9 @@ export function AlertFeed() {
                     <div className="alert-desc">
                       {type === "critical"
                         ? `Out of stock (${alert.current_stock} units)`
-                        : type === "low_stock"
+                        : type === "low_stock" && severity === "INFO"
+                          ? `${alert.current_stock} at reorder point ${alert.reorder_point}`
+                          : type === "low_stock"
                           ? `${alert.current_stock} below reorder point ${alert.reorder_point}`
                           : `${alert.status} — ${alert.warehouse_name}`}
                     </div>
