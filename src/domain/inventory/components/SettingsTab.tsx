@@ -1,6 +1,7 @@
 /** Settings tab — per-warehouse ROP override, safety factor, lead time, supplier info. */
 
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Save } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ interface SettingsTabProps {
 }
 
 export function SettingsTab({ productId }: SettingsTabProps) {
+  const { t } = useTranslation("common", { keyPrefix: "inventory.productDetail.settingsTab" });
   const { product, loading: productLoading } = useProductDetail(productId);
   const { selectedWarehouse } = useWarehouseContext();
 
@@ -93,7 +95,7 @@ export function SettingsTab({ productId }: SettingsTabProps) {
       lead_time_days: ws.leadTimeDays,
     });
     if (result) {
-      setSavedMessage(`Saved settings for ${wh.warehouse_name}`);
+      setSavedMessage(t("saved", { warehouse: wh.warehouse_name }));
       setTimeout(() => setSavedMessage(null), 3000);
     }
   }, [warehouseSettings, warehouses, update]);
@@ -128,7 +130,7 @@ export function SettingsTab({ productId }: SettingsTabProps) {
             title={wh.warehouse_name}
             actions={
               override ? (
-                <span className="text-xs text-muted-foreground">Manual override</span>
+                <span className="text-xs text-muted-foreground">{t("manualOverride")}</span>
               ) : undefined
             }
           >
@@ -137,7 +139,7 @@ export function SettingsTab({ productId }: SettingsTabProps) {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                    Reorder Point
+                    {t("reorderPoint")}
                   </label>
                   <input
                     type="number"
@@ -152,7 +154,7 @@ export function SettingsTab({ productId }: SettingsTabProps) {
 
                 <div>
                   <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                    Lead Time (days)
+                    {t("leadTime")}
                   </label>
                   <input
                     type="number"
@@ -167,7 +169,7 @@ export function SettingsTab({ productId }: SettingsTabProps) {
 
                 <div>
                   <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                    Safety Factor ({ws.safetyFactor.toFixed(1)})
+                    {t("safetyFactor", { value: ws.safetyFactor.toFixed(1) })}
                   </label>
                   <input
                     type="range"
@@ -185,7 +187,7 @@ export function SettingsTab({ productId }: SettingsTabProps) {
 
               {/* ROP Preview */}
               <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-sm">
-                <span className="text-muted-foreground">Computed ROP:</span>
+                <span className="text-muted-foreground">{t("computedRop")}</span>
                 <span className="font-mono font-semibold tabular-nums">{preview.toLocaleString()}</span>
                 <span className="text-xs text-muted-foreground">
                   ({avgDailyUsage?.toFixed(1) ?? "—" } × {ws.leadTimeDays} × { (1 + ws.safetyFactor).toFixed(1) })
@@ -201,7 +203,7 @@ export function SettingsTab({ productId }: SettingsTabProps) {
                   className="gap-1.5"
                 >
                   <Save size={14} />
-                  {saving ? "Saving…" : "Save"}
+                  {saving ? t("saving") : t("save")}
                 </Button>
               </div>
             </div>
@@ -210,8 +212,8 @@ export function SettingsTab({ productId }: SettingsTabProps) {
       })}
 
       {/* Supplier info */}
-      <SectionCard title="Supplier Info">
-        <p className="text-sm text-muted-foreground">No supplier configured.</p>
+      <SectionCard title={t("supplierInfo")}>
+        <p className="text-sm text-muted-foreground">{t("noSupplierConfigured")}</p>
       </SectionCard>
     </div>
   );

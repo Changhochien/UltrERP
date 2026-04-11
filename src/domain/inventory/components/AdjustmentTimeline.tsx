@@ -1,4 +1,5 @@
 import type { AdjustmentHistoryItem } from "../types";
+import { useTranslation } from "react-i18next";
 import { parseBackendDate } from "@/lib/time";
 
 interface AdjustmentTimelineProps {
@@ -6,10 +7,14 @@ interface AdjustmentTimelineProps {
 }
 
 export function AdjustmentTimeline({ history }: AdjustmentTimelineProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "inventory.productDetail.adjustmentTimeline",
+  });
+
   if (history.length === 0) {
     return (
       <p style={{ fontSize: 13, color: "var(--inv-muted)" }}>
-        No adjustment history available.
+        {t("empty")}
       </p>
     );
   }
@@ -40,9 +45,11 @@ export function AdjustmentTimeline({ history }: AdjustmentTimelineProps) {
                 })}
               </span>
             </div>
-            <div className="timeline-item-reason">{item.reason_code}</div>
+            <div className="timeline-item-reason">
+              {t(`reasons.${item.reason_code}`, { defaultValue: item.reason_code })}
+            </div>
             <div style={{ fontSize: 12, color: "var(--inv-muted)" }}>
-              by {item.actor_id}
+              {t("byActor", { actorId: item.actor_id })}
               {item.notes && (
                 <span style={{ fontStyle: "italic" }}> — {item.notes}</span>
               )}

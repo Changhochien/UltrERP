@@ -7,6 +7,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { useTranslation } from "react-i18next";
 
 interface MonthlyDemandChartProps {
   data: { month: string; total_qty: number }[];
@@ -19,21 +20,29 @@ function CustomTooltip({
   active?: boolean;
   payload?: Array<{ payload: { month: string; total_qty: number } }>;
 }) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "inventory.productDetail.analyticsTab.monthlyDemand",
+  });
+
   if (!active || !payload || payload.length === 0) return null;
   const p = payload[0].payload;
   return (
     <div className="rounded-xl border border-border bg-background px-3 py-2 shadow-lg">
       <p className="text-xs font-medium text-muted-foreground">{p.month}</p>
-      <p className="text-sm font-semibold">{p.total_qty} units</p>
+      <p className="text-sm font-semibold">{t("tooltipUnits", { count: p.total_qty })}</p>
     </div>
   );
 }
 
 export function MonthlyDemandChart({ data }: MonthlyDemandChartProps) {
+  const { t } = useTranslation("common", {
+    keyPrefix: "inventory.productDetail.analyticsTab.monthlyDemand",
+  });
+
   if (data.length === 0) {
     return (
       <div className="flex h-64 flex-col items-center justify-center text-muted-foreground">
-        <p className="text-sm">No demand data available</p>
+        <p className="text-sm">{t("empty")}</p>
       </div>
     );
   }

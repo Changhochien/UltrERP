@@ -1,5 +1,7 @@
 /** Analytics tab — monthly demand chart, sales history table, top customer card. */
 
+import { useTranslation } from "react-i18next";
+
 import { SectionCard } from "@/components/layout/PageLayout";
 import { useProductMonthlyDemand } from "../hooks/useProductMonthlyDemand";
 import { useProductSalesHistory } from "../hooks/useProductSalesHistory";
@@ -17,6 +19,7 @@ interface AnalyticsTabProps {
 }
 
 export function AnalyticsTab({ productId, warehouses }: AnalyticsTabProps) {
+  const { t } = useTranslation("common", { keyPrefix: "inventory.productDetail.analyticsTab" });
   const { items: demandItems, loading: demandLoading, error: demandError } = useProductMonthlyDemand(productId);
   const { items: salesItems, loading: salesLoading, error: salesError } = useProductSalesHistory(productId);
   const { customer: topCustomer, loading: customerLoading, error: customerError } = useProductTopCustomer(productId);
@@ -56,14 +59,14 @@ export function AnalyticsTab({ productId, warehouses }: AnalyticsTabProps) {
       />
 
       {/* Monthly demand chart */}
-      <SectionCard title="Monthly Demand">
+      <SectionCard title={t("monthlyDemand.title")}>
         <MonthlyDemandChart data={demandItems} />
       </SectionCard>
 
       {/* Sales history + Top customer side by side on larger screens */}
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <SectionCard title="Sales History">
+          <SectionCard title={t("salesHistory.title")}>
             <SalesHistoryTable items={salesItems} />
           </SectionCard>
         </div>

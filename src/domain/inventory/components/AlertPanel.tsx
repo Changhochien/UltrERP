@@ -10,13 +10,7 @@ import {
   useReorderAlerts,
 } from "../hooks/useReorderAlerts";
 import { useWarehouseContext } from "../context/WarehouseContext";
-
-const STATUS_OPTIONS = [
-  { value: "", label: "All statuses" },
-  { value: "pending", label: "Pending" },
-  { value: "acknowledged", label: "Acknowledged" },
-  { value: "resolved", label: "Resolved" },
-] as const;
+import { useTranslation } from "react-i18next";
 
 function formatDate(dateStr: string): string {
   return parseBackendDate(dateStr).toLocaleDateString("zh-TW", {
@@ -27,6 +21,7 @@ function formatDate(dateStr: string): string {
 }
 
 export function AlertPanel() {
+  const { t } = useTranslation("common", { keyPrefix: "inventory.alertPanel" });
   const [statusFilter, setStatusFilter] = useState("");
   const { selectedWarehouse } = useWarehouseContext();
   const { alerts, total, loading, error, reload } = useReorderAlerts({
@@ -34,6 +29,13 @@ export function AlertPanel() {
     warehouseId: selectedWarehouse?.id,
   });
   const { acknowledge, submitting } = useAcknowledgeAlert();
+
+  const STATUS_OPTIONS = [
+    { value: "", label: t("allStatuses") },
+    { value: "pending", label: t("pending") },
+    { value: "acknowledged", label: t("acknowledged") },
+    { value: "resolved", label: t("resolved") },
+  ] as const;
 
   // Reload when warehouse or status filter changes
   useEffect(() => {
@@ -56,18 +58,18 @@ export function AlertPanel() {
 
   return (
     <SectionCard
-      title="Reorder Alerts"
-      description="Low-stock exceptions for the current warehouse scope."
+      title={t("title")}
+      description={t("description")}
       actions={
         <Badge variant="outline" className="normal-case tracking-normal">
-          {total} total
+          {t("total", { count: total })}
         </Badge>
       }
     >
       {/* Filters */}
       <div className="mb-4 flex items-center gap-3">
         <label className="flex items-center gap-2 text-sm font-medium">
-          <span className="text-muted-foreground">Status</span>
+          <span className="text-muted-foreground">{t("status")}</span>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -84,7 +86,7 @@ export function AlertPanel() {
           size="sm"
           onClick={() => void reload()}
           disabled={loading}
-          aria-label="Refresh alerts"
+          aria-label={t("refreshAlerts")}
         >
           <RefreshCw className={`Size-3.5 ${loading ? "animate-spin" : ""}`} />
         </Button>
@@ -95,7 +97,7 @@ export function AlertPanel() {
         {loading ? (
           <div className="flex items-center justify-center py-8 text-muted-foreground">
             <RefreshCw className="mr-2 size-4 animate-spin" />
-            <span className="text-sm">Loading…</span>
+            <span className="text-sm">{t("loading")}</span>
           </div>
         ) : error ? (
           <div className="rounded-xl border border-destructive/20 bg-destructive/8 px-4 py-3 text-sm text-destructive">
@@ -104,8 +106,8 @@ export function AlertPanel() {
         ) : alerts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
             <Package className="mb-2 size-8 opacity-30" />
-            <p className="text-sm font-medium">No alerts found</p>
-            <p className="text-xs">Critical stock alerts appear here</p>
+            <p className="text-sm font-medium">{t("noAlertsFound")}</p>
+            <p className="text-xs">{t("criticalStockAlertsAppearHere")}</p>
           </div>
         ) : (
           alerts.map((alert) => (
@@ -148,7 +150,7 @@ export function AlertPanel() {
                   disabled={submitting}
                   className="shrink-0"
                 >
-                  Ack
+                  {t("ack")}
                 </Button>
               )}
             </div>

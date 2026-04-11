@@ -177,7 +177,16 @@
         "invoices": "Invoices",
         "orders": "Orders",
         "outstanding": "Outstanding",
-        "statement": "Statement"
+        "statement": "Statement",
+        "analytics": "Analytics"
+      },
+      "analytics": {
+        "totalRevenue": "Revenue (12mo)",
+        "outstanding": "Outstanding",
+        "creditUtilization": "Credit Utilization",
+        "avgDaysToPay": "Avg Days to Pay",
+        "revenueTrend": "Revenue Trend",
+        "paymentScore": "Payment Score"
       },
       "statement": {
         "title": "Account Statement",
@@ -374,6 +383,187 @@
       "noData": "No data for this period."
     }
   },
+  "adminPage": {
+    "eyebrow": "Admin",
+    "title": "Admin",
+    "description": "Owner-only workspace controls for users, roles, and recent administrative activity.",
+    "errors": {
+      "loadFailed": "Failed to load admin data",
+      "saveFailed": "Failed to save user"
+    },
+    "users": {
+      "title": "Users",
+      "description": "Review workspace members, their assigned roles, and current access state.",
+      "loadingDescription": "Workspace access list.",
+      "emptyTitle": "No users found.",
+      "emptyDescription": "There are no users to display for this tenant.",
+      "addUser": "Add User",
+      "editUser": "Edit",
+      "columns": {
+        "email": "Email",
+        "displayName": "Name",
+        "role": "Role",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "filters": {
+        "search": "Search",
+        "searchPlaceholder": "Search by email or name",
+        "role": "Role filter",
+        "status": "Status filter",
+        "allRoles": "All roles",
+        "allStatuses": "All statuses"
+      },
+      "fields": {
+        "email": "Email",
+        "displayName": "Display Name",
+        "role": "Role",
+        "status": "Status",
+        "password": "Password",
+        "resetPassword": "Reset Password"
+      },
+      "summary": "Showing {filtered} of {total} users.",
+      "roles": {
+        "owner": "Owner",
+        "finance": "Finance",
+        "warehouse": "Warehouse",
+        "sales": "Sales"
+      },
+      "statuses": {
+        "active": "Active",
+        "disabled": "Disabled"
+      },
+      "errors": {
+        "formUnavailable": "User form is not ready",
+        "emailRequired": "Email is required",
+        "emailInvalid": "Enter a valid email address",
+        "displayNameRequired": "Display name is required",
+        "passwordTooShort": "Password must be at least 8 characters",
+        "resetPasswordTooShort": "Reset password must be at least 8 characters",
+        "copyFailed": "Failed to copy password"
+      },
+      "dialog": {
+        "createTitle": "Add User",
+        "editTitle": "Edit User",
+        "createDescription": "Create a new workspace user and assign their initial role.",
+        "editDescription": "Update the selected user's role, status, or password.",
+        "passwordHelp": "Use at least 8 characters.",
+        "resetPasswordHelp": "Leave blank to keep the current password.",
+        "generatePassword": "Generate",
+        "copyPassword": "Copy",
+        "passwordGenerated": "Generated a temporary password.",
+        "passwordCopied": "Copied password to clipboard.",
+        "cancel": "Cancel",
+        "createAction": "Create User",
+        "save": "Save Changes",
+        "creating": "Creating...",
+        "saving": "Saving..."
+      }
+    },
+    "auditLog": {
+      "title": "Audit Log",
+      "description": "Recent administrative events for this workspace.",
+      "loadingDescription": "Recent administrative actions.",
+      "emptyTitle": "No audit entries found.",
+      "emptyDescription": "Administrative events will appear here as activity occurs.",
+      "summary": "Showing {filtered} of {total} audit entries.",
+      "filters": {
+        "actor": "Actor filter",
+        "actorPlaceholder": "Filter by actor id",
+        "actorType": "Actor type filter",
+        "actorTypePlaceholder": "Filter by actor type",
+        "action": "Action filter",
+        "actionPlaceholder": "Filter by action",
+        "entityType": "Entity type filter",
+        "entityTypePlaceholder": "Filter by entity type",
+        "entityId": "Entity id filter",
+        "entityIdPlaceholder": "Filter by entity id",
+        "createdAfter": "Created after",
+        "createdBefore": "Created before"
+      },
+      "presets": {
+        "today": "Today",
+        "last7Days": "Last 7 Days",
+        "thisMonth": "This Month",
+        "clear": "Clear dates"
+      },
+      "columns": {
+        "createdAt": "When",
+        "actor": "Actor",
+        "actorType": "Actor Type",
+        "action": "Action",
+        "target": "Target",
+        "details": "Details"
+      },
+      "actions": {
+        "view": "View"
+      },
+      "savedPresets": {
+        "name": "Preset name",
+        "namePlaceholder": "Save the current audit filters",
+        "save": "Save preset",
+        "empty": "No saved audit presets yet.",
+        "delete": "Delete preset"
+      },
+      "export": {
+        "csv": "Export CSV",
+        "json": "Export JSON"
+      },
+      "detailSheet": {
+        "title": "Audit Entry",
+        "description": "Inspect the selected audit event, including notes and state changes.",
+        "emptyState": "No data recorded.",
+        "fields": {
+          "createdAt": "When",
+          "action": "Action",
+          "actor": "Actor",
+          "actorType": "Actor type",
+          "target": "Target",
+          "correlationId": "Correlation id",
+          "notes": "Notes",
+          "beforeState": "Before state",
+          "afterState": "After state"
+        }
+      }
+    },
+    "permissions": {
+      "title": "Permission Matrix",
+      "description": "Live visibility into the role map currently enforced in the frontend.",
+      "emptyTitle": "No permissions found.",
+      "emptyDescription": "Role access rules will appear here once available.",
+      "columns": {
+        "feature": "Feature"
+      },
+      "levels": {
+        "write": "Write",
+        "read": "Read",
+        "none": "No access"
+      },
+      "features": {
+        "dashboard": "Dashboard",
+        "inventory": "Inventory",
+        "purchases": "Purchases",
+        "customers": "Customers",
+        "invoices": "Invoices",
+        "orders": "Orders",
+        "payments": "Payments",
+        "admin": "Admin",
+        "owner_dashboard": "Owner Dashboard",
+        "settings": "Settings"
+      }
+    },
+    "settingsHub": {
+      "title": "Workspace Controls",
+      "description": "Jump to the settings surface for global workspace configuration.",
+      "openSettings": "Open Settings",
+      "items": {
+        "general": "General defaults and workspace configuration",
+        "security": "Security, auth, and permission-adjacent settings",
+        "appearance": "Theme and interface presentation settings",
+        "data": "Data-handling and operational configuration"
+      }
+    }
+  },
   "purchase": {
     "page": {
       "description": "Review imported supplier invoices and audit migrated AP history.",
@@ -400,6 +590,7 @@
       "emptyTitle": "No supplier invoices found.",
       "rowLabel": "Supplier invoice {invoiceNumber}",
       "statusFilter": "Status",
+      "statusOverview": "Status overview",
       "summary": "Showing {count} supplier invoices on this page.",
       "title": "Imported Supplier Invoices"
     },
@@ -543,6 +734,71 @@
       "warehouseScope": "Warehouse Scope",
       "warehouseScopeDescription": "Filter stock view by warehouse."
     },
+    "metricCards": {
+      "totalSkus": "Total SKUs",
+      "filteredScope": "Filtered scope",
+      "allWarehouses": "All warehouses",
+      "lowStock": "Low Stock",
+      "totalAlerts": "{count} total alerts",
+      "attention": "Attention",
+      "pendingAlerts": "Pending Alerts",
+      "requireAction": "Require action",
+      "reorderAlerts": "Reorder Alerts",
+      "acrossAllWarehouses": "Across all warehouses"
+    },
+    "warehouseSelector": {
+      "label": "Warehouse",
+      "selectWarehouse": "Select warehouse",
+      "allWarehouses": "All Warehouses"
+    },
+    "alertPanel": {
+      "title": "Reorder Alerts",
+      "description": "Low-stock exceptions for the current warehouse scope.",
+      "total": "{count} total",
+      "status": "Status",
+      "allStatuses": "All statuses",
+      "pending": "Pending",
+      "acknowledged": "Acknowledged",
+      "resolved": "Resolved",
+      "refreshAlerts": "Refresh alerts",
+      "loading": "Loading…",
+      "noAlertsFound": "No alerts found",
+      "criticalStockAlertsAppearHere": "Critical stock alerts appear here",
+      "ack": "Ack"
+    },
+    "productGrid": {
+      "searchPlaceholder": "Search by code or name…",
+      "allStatus": "All Status",
+      "active": "Active",
+      "lowStock": "Low Stock",
+      "critical": "Critical",
+      "inactive": "Inactive",
+      "nameAZ": "Name A→Z",
+      "nameZA": "Name Z→A",
+      "codeAZ": "Code A→Z",
+      "codeZA": "Code Z→A",
+      "stockHighLow": "Stock High→Low",
+      "stockLowHigh": "Stock Low→High",
+      "categoryAZ": "Category A→Z",
+      "categoryZA": "Category Z→A",
+      "products": "{count} products",
+      "failedToLoadProducts": "Failed to load products",
+      "noProductsFound": "No products found",
+      "tryDifferentSearchTerm": "Try a different search term",
+      "noProductsInSystem": "No products in the system",
+      "code": "Code",
+      "name": "Name",
+      "category": "Category",
+      "stock": "Stock",
+      "retry": "Retry",
+      "openFullPage": "Open full page",
+      "browseProducts": "Browse all products with current stock levels.",
+      "productsTitle": "Products",
+      "scope": "Scope",
+      "allWarehouses": "All warehouses",
+      "status": "Status",
+      "units": "units"
+    },
     "productDetail": {
       "adjustmentHistory": {
         "actor": "Actor",
@@ -594,9 +850,88 @@
       "low": "Low",
       "healthy": "Healthy",
       "reorder": "Reorder",
-      "updated": "Updated"
+      "updated": "Updated",
+      "statuses": {
+        "active": "Active",
+        "inactive": "Inactive",
+        "archived": "Archived",
+        "discontinued": "Discontinued"
+      },
+      "auditPagination": {
+        "showing": "{{start}}-{{end}} of {{total}}",
+        "previous": "Previous",
+        "next": "Next"
+      },
+      "adjustmentTimeline": {
+        "empty": "No adjustment history available.",
+        "byActor": "by {{actorId}}",
+        "reasons": {
+          "sales_reservation": "Sales / Reservation",
+          "supplier_delivery": "Supplier Delivery",
+          "transfer_in": "Transfer In",
+          "transfer_out": "Transfer Out",
+          "adjustment": "Adjustment",
+          "opening": "Opening"
+        }
+      },
+      "analyticsTab": {
+        "summary": {
+          "title": "Analytics Summary",
+          "metrics": {
+            "avgDailyUsage": "Avg Daily Usage",
+            "avgDailyUsageUnit": "units / day",
+            "leadTime": "Lead Time",
+            "leadTimeUnit": "days",
+            "reorderPoint": "ROP",
+            "reorderPointUnit": "reorder point",
+            "safetyStock": "Safety Stock",
+            "safetyStockUnit": "units"
+          }
+        },
+        "monthlyDemand": {
+          "title": "Monthly Demand",
+          "empty": "No demand data available",
+          "tooltipUnits": "{count} units"
+        },
+        "salesHistory": {
+          "title": "Sales History",
+          "empty": "No sales history found",
+          "columns": {
+            "date": "Date",
+            "quantity": "Qty",
+            "reason": "Reason",
+            "actor": "Actor"
+          },
+          "reasonLabels": {
+            "sales_reservation": "Sales / Reservation",
+            "supplier_delivery": "Supplier Delivery",
+            "transfer_in": "Transfer In",
+            "transfer_out": "Transfer Out",
+            "adjustment": "Adjustment",
+            "opening": "Opening"
+          }
+        },
+        "topCustomer": {
+          "title": "Top Customer",
+          "empty": "No orders yet.",
+          "totalUnits": "{count} units total"
+        }
+      },
+      "settingsTab": {
+        "saved": "Saved settings for {{warehouse}}",
+        "saving": "Saving…",
+        "manualOverride": "Manual override",
+        "reorderPoint": "Reorder Point",
+        "leadTime": "Lead Time (days)",
+        "safetyFactor": "Safety Factor ({{value}})",
+        "computedRop": "Computed ROP:",
+        "noSupplierConfigured": "No supplier configured.",
+        "supplierInfo": "Supplier Info",
+        "save": "Save"
+      }
     }
   },
+  "orders": {
     "detail": {
       "backToList": "Back to list",
       "cancelOrder": "Cancel Order",

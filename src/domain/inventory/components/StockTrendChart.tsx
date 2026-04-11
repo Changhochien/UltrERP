@@ -203,15 +203,17 @@ export function StockTrendChart({
             dataKey="running_stock"
             stroke="#3b82f6"
             strokeWidth={2}
-            dot={(props: { cx?: number; cy?: number; payload?: StockHistoryPoint }) => {
-              const { key: _key, ...rest } = props as typeof props & { key?: string };
-              if (!props.cx || !props.cy || !props.payload) return <Dot {...rest} />;
-              const { cx, cy, payload } = props;
+            dot={(props: { cx?: number; cy?: number; payload?: StockHistoryPoint; key?: string | number }) => {
+              const { key: dotKey, payload, ...rest } = props;
+
+              if (rest.cx == null || rest.cy == null || !payload) {
+                return <Dot key={dotKey} {...rest} />;
+              }
+
               return (
                 <Dot
-                  key={`dot-${payload.date}-${cx}-${cy}`}
-                  cx={cx}
-                  cy={cy}
+                  key={dotKey}
+                  {...rest}
                   r={4}
                   fill={dotColor(payload.reason_code ?? "other")}
                   stroke="white"

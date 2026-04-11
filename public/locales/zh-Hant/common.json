@@ -197,7 +197,16 @@
         "invoices": "發票",
         "orders": "訂單",
         "outstanding": "應收帳款",
-        "statement": "對帳單"
+        "statement": "對帳單",
+        "analytics": "分析"
+      },
+      "analytics": {
+        "totalRevenue": "12個月營收",
+        "outstanding": "應收帳款",
+        "creditUtilization": "信用額度使用率",
+        "avgDaysToPay": "平均付款天數",
+        "revenueTrend": "營收趨勢",
+        "paymentScore": "付款評分"
       },
       "invoices": {
         "title": "發票",
@@ -497,18 +506,60 @@
       "filters": {
         "actor": "執行者篩選",
         "actorPlaceholder": "依執行者 ID 篩選",
+        "actorType": "執行者類型篩選",
+        "actorTypePlaceholder": "依執行者類型篩選",
         "action": "動作篩選",
         "actionPlaceholder": "依動作篩選",
         "entityType": "目標類型篩選",
         "entityTypePlaceholder": "依目標類型篩選",
         "entityId": "目標 ID 篩選",
-        "entityIdPlaceholder": "依目標 ID 篩選"
+        "entityIdPlaceholder": "依目標 ID 篩選",
+        "createdAfter": "建立時間起",
+        "createdBefore": "建立時間迄"
+      },
+      "presets": {
+        "today": "今天",
+        "last7Days": "最近 7 天",
+        "thisMonth": "本月",
+        "clear": "清除日期"
       },
       "columns": {
         "createdAt": "時間",
         "actor": "執行者",
+        "actorType": "執行者類型",
         "action": "動作",
-        "target": "目標"
+        "target": "目標",
+        "details": "詳細資料"
+      },
+      "actions": {
+        "view": "檢視"
+      },
+      "savedPresets": {
+        "name": "預設名稱",
+        "namePlaceholder": "儲存目前的稽核篩選條件",
+        "save": "儲存預設",
+        "empty": "尚未儲存任何稽核預設。",
+        "delete": "刪除預設"
+      },
+      "export": {
+        "csv": "匯出 CSV",
+        "json": "匯出 JSON"
+      },
+      "detailSheet": {
+        "title": "稽核事件",
+        "description": "檢視所選稽核事件的備註與狀態變更內容。",
+        "emptyState": "未記錄資料。",
+        "fields": {
+          "createdAt": "時間",
+          "action": "動作",
+          "actor": "執行者",
+          "actorType": "執行者類型",
+          "target": "目標",
+          "correlationId": "關聯 ID",
+          "notes": "備註",
+          "beforeState": "變更前",
+          "afterState": "變更後"
+        }
       }
     },
     "permissions": {
@@ -719,6 +770,71 @@
       "warehouseScope": "倉庫範圍",
       "warehouseScopeDescription": "依倉庫篩選庫存檢視。"
     },
+    "metricCards": {
+      "totalSkus": "SKU總數",
+      "filteredScope": "篩選範圍",
+      "allWarehouses": "所有倉庫",
+      "lowStock": "庫存過低",
+      "totalAlerts": "共 {count} 筆警示",
+      "attention": "注意",
+      "pendingAlerts": "待處理警示",
+      "requireAction": "需要處理",
+      "reorderAlerts": "補貨警示",
+      "acrossAllWarehouses": "所有倉庫合計"
+    },
+    "warehouseSelector": {
+      "label": "倉庫",
+      "selectWarehouse": "選擇倉庫",
+      "allWarehouses": "所有倉庫"
+    },
+    "alertPanel": {
+      "title": "補貨警示",
+      "description": "目前倉庫範圍內的庫存過低異常。",
+      "total": "共 {count} 筆",
+      "status": "狀態",
+      "allStatuses": "所有狀態",
+      "pending": "待處理",
+      "acknowledged": "已確認",
+      "resolved": "已解決",
+      "refreshAlerts": "重新整理警示",
+      "loading": "載入中…",
+      "noAlertsFound": "查無警示",
+      "criticalStockAlertsAppearHere": "危急庫存警示會在此顯示",
+      "ack": "確認"
+    },
+    "productGrid": {
+      "searchPlaceholder": "依編號或名稱搜尋…",
+      "allStatus": "所有狀態",
+      "active": "啟用",
+      "lowStock": "偏低",
+      "critical": "危急",
+      "inactive": "停用",
+      "nameAZ": "名稱 A→Z",
+      "nameZA": "名稱 Z→A",
+      "codeAZ": "編號 A→Z",
+      "codeZA": "編號 Z→A",
+      "stockHighLow": "庫存 高→低",
+      "stockLowHigh": "庫存 低→高",
+      "categoryAZ": "類別 A→Z",
+      "categoryZA": "類別 Z→A",
+      "products": "{count} 項產品",
+      "failedToLoadProducts": "載入產品失敗",
+      "noProductsFound": "查無產品",
+      "tryDifferentSearchTerm": "嘗試其他搜尋關鍵字",
+      "noProductsInSystem": "系統中尚無產品",
+      "code": "編號",
+      "name": "名稱",
+      "category": "類別",
+      "stock": "庫存",
+      "retry": "重試",
+      "openFullPage": "開啟完整頁面",
+      "browseProducts": "瀏覽所有產品的當前庫存。",
+      "productsTitle": "產品",
+      "scope": "範圍",
+      "allWarehouses": "所有倉庫",
+      "status": "狀態",
+      "units": "單位"
+    },
     "productDetail": {
       "adjustmentHistory": {
         "actor": "操作者",
@@ -770,7 +886,85 @@
       "low": "偏低",
       "healthy": "正常",
       "reorder": "補貨點",
-      "updated": "更新於"
+      "updated": "更新於",
+      "statuses": {
+        "active": "啟用",
+        "inactive": "停用",
+        "archived": "封存",
+        "discontinued": "停產"
+      },
+      "auditPagination": {
+        "showing": "{{start}}-{{end}} / 共 {{total}}",
+        "previous": "上一頁",
+        "next": "下一頁"
+      },
+      "adjustmentTimeline": {
+        "empty": "目前沒有庫存異動紀錄。",
+        "byActor": "由 {{actorId}} 執行",
+        "reasons": {
+          "sales_reservation": "銷售 / 保留",
+          "supplier_delivery": "供應商到貨",
+          "transfer_in": "調入",
+          "transfer_out": "調出",
+          "adjustment": "調整",
+          "opening": "期初"
+        }
+      },
+      "analyticsTab": {
+        "summary": {
+          "title": "分析摘要",
+          "metrics": {
+            "avgDailyUsage": "日均用量",
+            "avgDailyUsageUnit": "單位 / 天",
+            "leadTime": "前置天數",
+            "leadTimeUnit": "天",
+            "reorderPoint": "ROP",
+            "reorderPointUnit": "補貨點",
+            "safetyStock": "安全庫存",
+            "safetyStockUnit": "單位"
+          }
+        },
+        "monthlyDemand": {
+          "title": "每月需求",
+          "empty": "沒有需求資料",
+          "tooltipUnits": "{count} 單位"
+        },
+        "salesHistory": {
+          "title": "銷售歷史",
+          "empty": "沒有銷售歷史資料",
+          "columns": {
+            "date": "日期",
+            "quantity": "數量",
+            "reason": "原因",
+            "actor": "操作者"
+          },
+          "reasonLabels": {
+            "sales_reservation": "銷售 / 保留",
+            "supplier_delivery": "供應商到貨",
+            "transfer_in": "調入",
+            "transfer_out": "調出",
+            "adjustment": "調整",
+            "opening": "期初"
+          }
+        },
+        "topCustomer": {
+          "title": "主要客戶",
+          "empty": "尚無訂單。",
+          "totalUnits": "累計 {count} 單位"
+        }
+      },
+      "settingsTab": {
+        "saved": "已儲存 {{warehouse}} 的設定",
+        "saving": "儲存中…",
+        "manualOverride": "手動覆寫",
+        "reorderPoint": "補貨點",
+        "leadTime": "前置天數（天）",
+        "safetyFactor": "安全係數（{{value}}）",
+        "computedRop": "計算後 ROP：",
+        "noSupplierConfigured": "尚未設定供應商。",
+        "supplierInfo": "供應商資訊",
+        "save": "儲存"
+      }
     }
   },
   "orders": {
