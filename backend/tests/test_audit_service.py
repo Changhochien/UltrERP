@@ -44,6 +44,16 @@ def _make_audit_log(**overrides: object) -> FakeAuditLog:
     return FakeAuditLog(**overrides)
 
 
+class CapturingAsyncSession(FakeAsyncSession):
+    def __init__(self) -> None:
+        super().__init__()
+        self.statements: list[object] = []
+
+    async def execute(self, stmt: object, _params: object = None) -> object:
+        self.statements.append(stmt)
+        return await super().execute(stmt, _params)
+
+
 # ── write_audit service tests ─────────────────────────────────
 
 
@@ -213,6 +223,23 @@ async def test_list_audit_logs_ordered_newest_first():
 
     result = await list_audit_logs(session)
     assert result["items"][0].created_at >= result["items"][1].created_at
+
+
+@pytest.mark.anyio
+async def test_list_audit_logs_allows_server_side_sorting():
+    """AC2: Explicit sort params change the ORDER BY clause."""
+    from domains.audit.queries import list_audit_logs
+
+    session = CapturingAsyncSession()
+    first_log = _make_audit_log(action="approval.approve")
+    second_log = _make_audit_log(action="user.update")
+
+    session.queue_count(2)
+    session.queue_scalars([first_log, second_log])
+
+    result = await list_audit_logs(session, sort_by="action", sort_direction="asc")
+    assert result["total"] == 2
+    assert "ORDER BY audit_log.action ASC" in str(session.statements[1])
 
 
 @pytest.mark.anyio

@@ -4,13 +4,24 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.models.audit_log import AuditLog
 from common.tenant import DEFAULT_TENANT_ID
+
+AuditSortBy = Literal["created_at", "actor_id", "actor_type", "action", "entity_id"]
+AuditSortDirection = Literal["asc", "desc"]
+
+AUDIT_SORT_COLUMNS = {
+    "created_at": AuditLog.created_at,
+    "actor_id": AuditLog.actor_id,
+    "actor_type": AuditLog.actor_type,
+    "action": AuditLog.action,
+    "entity_id": AuditLog.entity_id,
+}
 
 
 async def list_audit_logs(
@@ -26,6 +37,8 @@ async def list_audit_logs(
     entity_id: str | None = None,
     created_after: datetime | None = None,
     created_before: datetime | None = None,
+    sort_by: AuditSortBy = "created_at",
+    sort_direction: AuditSortDirection = "desc",
 ) -> dict[str, Any]:
     """Query audit logs with optional filtering and offset-based pagination."""
     tid = tenant_id if tenant_id is not None else DEFAULT_TENANT_ID
@@ -60,7 +73,9 @@ async def list_audit_logs(
     total = total_result.scalar() or 0
 
     offset = (page - 1) * page_size
-    query = base.order_by(AuditLog.created_at.desc()).offset(offset).limit(page_size)
+    sort_column = AUDIT_SORT_COLUMNS[sort_by]
+    sort_clause = sort_column.asc() if sort_direction == "asc" else sort_column.desc()
+    query = base.order_by(sort_clause).offset(offset).limit(page_size)
     result = await session.execute(query)
     items = list(result.scalars().all())
 
