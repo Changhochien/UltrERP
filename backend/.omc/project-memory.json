@@ -142,20 +142,20 @@
     },
     {
       "path": "scripts/backfill_sales_reservations.py",
-      "accessCount": 22,
-      "lastAccessed": 1775665753019,
+      "accessCount": 25,
+      "lastAccessed": 1775889999503,
       "type": "file"
+    },
+    {
+      "path": "",
+      "accessCount": 22,
+      "lastAccessed": 1775891426703,
+      "type": "directory"
     },
     {
       "path": "app/main.py",
       "accessCount": 19,
       "lastAccessed": 1775752338578,
-      "type": "directory"
-    },
-    {
-      "path": "",
-      "accessCount": 17,
-      "lastAccessed": 1775885456114,
       "type": "directory"
     },
     {
@@ -165,16 +165,16 @@
       "type": "file"
     },
     {
+      "path": "domains/inventory/services.py",
+      "accessCount": 12,
+      "lastAccessed": 1775893202000,
+      "type": "directory"
+    },
+    {
       "path": "common/time.py",
       "accessCount": 10,
       "lastAccessed": 1775806664189,
       "type": "file"
-    },
-    {
-      "path": "domains/inventory/services.py",
-      "accessCount": 9,
-      "lastAccessed": 1775718636425,
-      "type": "directory"
     },
     {
       "path": "domains/dashboard/routes.py",
@@ -205,6 +205,12 @@
       "accessCount": 4,
       "lastAccessed": 1775749973814,
       "type": "directory"
+    },
+    {
+      "path": "compute_rop_sql.py",
+      "accessCount": 4,
+      "lastAccessed": 1775890006210,
+      "type": "file"
     },
     {
       "path": "domains/users/service.py",
@@ -285,6 +291,12 @@
       "type": "file"
     },
     {
+      "path": "app",
+      "accessCount": 2,
+      "lastAccessed": 1775893160964,
+      "type": "directory"
+    },
+    {
       "path": "test_join.py",
       "accessCount": 1,
       "lastAccessed": 1775665708542,
@@ -339,12 +351,6 @@
       "type": "file"
     },
     {
-      "path": "compute_rop_sql.py",
-      "accessCount": 1,
-      "lastAccessed": 1775704125202,
-      "type": "file"
-    },
-    {
       "path": "tests/domains/inventory/test_reorder_alerts.py",
       "accessCount": 1,
       "lastAccessed": 1775714110893,
@@ -366,12 +372,6 @@
       "path": "app/mcp_auth.py",
       "accessCount": 1,
       "lastAccessed": 1775747236594,
-      "type": "directory"
-    },
-    {
-      "path": "app",
-      "accessCount": 1,
-      "lastAccessed": 1775749653311,
       "type": "directory"
     },
     {
