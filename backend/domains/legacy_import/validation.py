@@ -165,6 +165,12 @@ def _coerce_row(row: Mapping[str, object] | object | None) -> dict[str, object]:
         return {}
     if isinstance(row, dict):
         return row
+    if isinstance(row, (str, bytes, bytearray)):
+        raw = row.decode("utf-8") if isinstance(row, (bytes, bytearray)) else row
+        if raw.strip() == "":
+            return {}
+        payload = json.loads(raw)
+        return payload if isinstance(payload, dict) else {}
     return dict(row)
 
 
