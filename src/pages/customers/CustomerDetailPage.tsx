@@ -16,6 +16,7 @@ import { CustomerInvoicesTab } from "../../components/customers/CustomerInvoices
 import { CustomerOrdersTab } from "../../components/customers/CustomerOrdersTab";
 import { CustomerOutstandingTab } from "../../components/customers/CustomerOutstandingTab";
 import { CustomerStatementTab } from "../../components/customers/CustomerStatementTab";
+import { CustomerAnalyticsTab } from "@/components/customers/CustomerAnalyticsTab";
 import { usePermissions } from "../../hooks/usePermissions";
 
 interface CustomerDetailPageProps {
@@ -167,6 +168,7 @@ export function CustomerDetailPage({ onBack }: CustomerDetailPageProps) {
           <TabsTrigger value="orders">{t("customer.detail.tabs.orders")}</TabsTrigger>
           <TabsTrigger value="outstanding">{t("customer.detail.tabs.outstanding")}</TabsTrigger>
           <TabsTrigger value="statement">{t("customer.detail.tabs.statement")}</TabsTrigger>
+          <TabsTrigger value="analytics">{t("customer.detail.tabs.analytics")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -239,6 +241,10 @@ export function CustomerDetailPage({ onBack }: CustomerDetailPageProps) {
           {customerId ? (
             <CustomerStatementTab customerId={customerId} customerName={customer.company_name} />
           ) : null}
+        </TabsContent>
+
+        <TabsContent value="analytics">
+          {customerId ? <CustomerAnalyticsTab customerId={customerId} /> : null}
         </TabsContent>
       </Tabs>
 
