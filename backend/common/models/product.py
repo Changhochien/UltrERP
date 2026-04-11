@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import DateTime, Index, String, Text, func
+from sqlalchemy import JSON, DateTime, Index, String, Text, func
 from sqlalchemy.dialects.postgresql import TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -33,6 +33,7 @@ class Product(Base):
 	description: Mapped[str | None] = mapped_column(Text)
 	unit: Mapped[str] = mapped_column(String(50), default="pcs", nullable=False)
 	status: Mapped[str] = mapped_column(String(20), default="active", nullable=False)
+	legacy_master_snapshot: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
 	search_vector: Mapped[Any] = mapped_column(TSVECTOR, nullable=True)
 	created_at: Mapped[datetime] = mapped_column(
 		DateTime(timezone=True), server_default=func.now(), nullable=False,

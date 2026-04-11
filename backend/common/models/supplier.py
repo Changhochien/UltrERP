@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String, func
+from sqlalchemy import JSON, Boolean, DateTime, Integer, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -26,6 +26,7 @@ class Supplier(Base):
 	phone: Mapped[str | None] = mapped_column(String(50))
 	address: Mapped[str | None] = mapped_column(String(500))
 	default_lead_time_days: Mapped[int | None] = mapped_column(Integer)
+	legacy_master_snapshot: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
 	is_active: Mapped[bool] = mapped_column(
 		Boolean, default=True, nullable=False,
 	)
