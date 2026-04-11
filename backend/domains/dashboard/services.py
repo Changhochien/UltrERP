@@ -32,6 +32,7 @@ from domains.dashboard.schemas import (
     TopProductItem,
     TopProductsResponse,
 )
+from domains.invoices.enums import InvoiceStatus
 from domains.invoices.models import Invoice, InvoiceLine
 from domains.payments.models import Payment
 
@@ -78,7 +79,7 @@ async def _sum_revenue_for_date(
     """Sum total_amount of non-voided invoices for a given date."""
     stmt = select(func.coalesce(func.sum(Invoice.total_amount), 0)).where(
         Invoice.invoice_date == target_date,
-        Invoice.status != "voided",
+        Invoice.status != InvoiceStatus.VOIDED,
     )
     result = await session.execute(stmt)
     return Decimal(str(result.scalar()))
@@ -136,7 +137,7 @@ async def get_kpi_summary(
             .outerjoin(payment_subq, Invoice.id == payment_subq.c.invoice_id)
             .where(
                 Invoice.tenant_id == tenant_id,
-                Invoice.status == "issued",
+                Invoice.status == InvoiceStatus.ISSUED,
             )
         )
         open_result = await session.execute(open_invoice_stmt)
@@ -185,7 +186,7 @@ async def get_kpi_summary(
         overdue_stmt = (
             select(func.coalesce(func.sum(Invoice.total_amount), 0)).where(
                 Invoice.tenant_id == tenant_id,
-                Invoice.status == "issued",
+                Invoice.status == InvoiceStatus.ISSUED,
                 due_date_expr < today,
             )
         )
@@ -377,7 +378,7 @@ async def get_gross_margin(
             select(func.coalesce(func.sum(Invoice.total_amount), 0)).where(
                 Invoice.invoice_date >= start_of_month,
                 Invoice.invoice_date <= today,
-                Invoice.status != "voided",
+                Invoice.status != InvoiceStatus.VOIDED,
             )
         )
         revenue_result = await session.execute(revenue_stmt)
@@ -395,7 +396,7 @@ async def get_gross_margin(
             .where(
                 Invoice.invoice_date >= start_of_month,
                 Invoice.invoice_date <= today,
-                Invoice.status != "voided",
+                Invoice.status != InvoiceStatus.VOIDED,
                 InvoiceLine.unit_cost.isnot(None),
             )
         )
@@ -454,7 +455,7 @@ async def get_revenue_trend(
                 .where(
                     Invoice.invoice_date >= start_date,
                     Invoice.invoice_date <= end_date,
-                    Invoice.status != "voided",
+                    Invoice.status != InvoiceStatus.VOIDED,
                 )
                 .group_by(Invoice.invoice_date)
                 .order_by(Invoice.invoice_date)
@@ -476,7 +477,7 @@ async def get_revenue_trend(
                 .where(
                     Invoice.invoice_date >= start_date,
                     Invoice.invoice_date <= end_date,
-                    Invoice.status != "voided",
+                    Invoice.status != InvoiceStatus.VOIDED,
                 )
                 .group_by(week_trunc)
                 .order_by(week_trunc)
@@ -514,7 +515,7 @@ async def get_revenue_trend(
                 .where(
                     Invoice.invoice_date >= start_date,
                     Invoice.invoice_date < end_date,
-                    Invoice.status != "voided",
+                    Invoice.status != InvoiceStatus.VOIDED,
                 )
                 .group_by(month_trunc)
                 .order_by(month_trunc)
@@ -543,7 +544,7 @@ async def get_revenue_trend(
                     .where(
                         Invoice.invoice_date < oldest,
                         Invoice.invoice_date <= today,
-                        Invoice.status != "voided",
+                        Invoice.status != InvoiceStatus.VOIDED,
                     )
                     .order_by(Invoice.invoice_date.desc())
                     .limit(1)
@@ -555,7 +556,7 @@ async def get_revenue_trend(
                     .where(
                         week_expr < oldest,
                         Invoice.invoice_date <= today,
-                        Invoice.status != "voided",
+                        Invoice.status != InvoiceStatus.VOIDED,
                     )
                     .group_by(week_expr)
                     .order_by(week_expr.desc())
@@ -570,7 +571,7 @@ async def get_revenue_trend(
                     .where(
                         Invoice.invoice_date < check_end,
                         Invoice.invoice_date <= today,
-                        Invoice.status != "voided",
+                        Invoice.status != InvoiceStatus.VOIDED,
                     )
                     .group_by(month_expr)
                     .order_by(month_expr.desc())
@@ -645,7 +646,7 @@ async def get_top_customers(
             .where(
                 Invoice.invoice_date >= start_date,
                 Invoice.invoice_date <= end_date,
-                Invoice.status.in_(("paid", "issued")),
+                Invoice.status.in_((InvoiceStatus.PAID, InvoiceStatus.ISSUED)),
             )
             .group_by(Customer.id, Customer.company_name)
             .order_by(total_revenue.desc())

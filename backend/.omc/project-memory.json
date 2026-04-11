@@ -135,6 +135,12 @@
   },
   "hotPaths": [
     {
+      "path": "domains/dashboard/services.py",
+      "accessCount": 59,
+      "lastAccessed": 1775808934136,
+      "type": "directory"
+    },
+    {
       "path": "scripts/backfill_sales_reservations.py",
       "accessCount": 22,
       "lastAccessed": 1775665753019,
@@ -148,20 +154,32 @@
     },
     {
       "path": "",
-      "accessCount": 13,
-      "lastAccessed": 1775752271030,
+      "accessCount": 17,
+      "lastAccessed": 1775885456114,
       "type": "directory"
     },
     {
+      "path": "domains/reports/services.py",
+      "accessCount": 16,
+      "lastAccessed": 1775787397127,
+      "type": "file"
+    },
+    {
       "path": "common/time.py",
-      "accessCount": 9,
-      "lastAccessed": 1775702709459,
+      "accessCount": 10,
+      "lastAccessed": 1775806664189,
       "type": "file"
     },
     {
       "path": "domains/inventory/services.py",
       "accessCount": 9,
       "lastAccessed": 1775718636425,
+      "type": "directory"
+    },
+    {
+      "path": "domains/dashboard/routes.py",
+      "accessCount": 8,
+      "lastAccessed": 1775808573517,
       "type": "directory"
     },
     {
@@ -177,12 +195,6 @@
       "type": "directory"
     },
     {
-      "path": "domains/dashboard/services.py",
-      "accessCount": 5,
-      "lastAccessed": 1775659431062,
-      "type": "directory"
-    },
-    {
       "path": "domains/inventory/routes.py",
       "accessCount": 4,
       "lastAccessed": 1775718613566,
@@ -195,15 +207,15 @@
       "type": "directory"
     },
     {
-      "path": "domains/dashboard/routes.py",
-      "accessCount": 3,
-      "lastAccessed": 1775659388678,
-      "type": "directory"
-    },
-    {
       "path": "domains/users/service.py",
       "accessCount": 3,
       "lastAccessed": 1775749977022,
+      "type": "file"
+    },
+    {
+      "path": "common/models/supplier_payment.py",
+      "accessCount": 3,
+      "lastAccessed": 1775787118753,
       "type": "file"
     },
     {
@@ -261,9 +273,15 @@
       "type": "file"
     },
     {
+      "path": "domains/legacy_import/cli.py",
+      "accessCount": 2,
+      "lastAccessed": 1775869362745,
+      "type": "directory"
+    },
+    {
       "path": "domains/legacy_import/staging.py",
-      "accessCount": 1,
-      "lastAccessed": 1775640812786,
+      "accessCount": 2,
+      "lastAccessed": 1775869475604,
       "type": "file"
     },
     {
@@ -345,12 +363,6 @@
       "type": "file"
     },
     {
-      "path": "domains/legacy_import/cli.py",
-      "accessCount": 1,
-      "lastAccessed": 1775747200478,
-      "type": "directory"
-    },
-    {
       "path": "app/mcp_auth.py",
       "accessCount": 1,
       "lastAccessed": 1775747236594,
@@ -408,6 +420,18 @@
       "path": "domains/audit/routes.py",
       "accessCount": 1,
       "lastAccessed": 1775752233635,
+      "type": "file"
+    },
+    {
+      "path": "domains/invoices/models.py",
+      "accessCount": 1,
+      "lastAccessed": 1775786198941,
+      "type": "file"
+    },
+    {
+      "path": "domains/invoices/service.py",
+      "accessCount": 1,
+      "lastAccessed": 1775786227511,
       "type": "file"
     }
   ],
