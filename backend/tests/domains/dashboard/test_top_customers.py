@@ -9,6 +9,7 @@ from decimal import Decimal
 import pytest
 from freezegun import freeze_time
 
+from common.time import today as get_today
 from domains.dashboard.services import get_top_customers
 from tests.domains.orders._helpers import FakeAsyncSession
 
@@ -33,11 +34,12 @@ async def test_top_customers_returns_sorted_by_revenue() -> None:
     session = FakeAsyncSession()
     c1 = uuid.uuid4()
     c2 = uuid.uuid4()
-    today = datetime.now(UTC).date()
+    invoice_date = datetime.now(UTC).date()
+    today = get_today()
     session.queue_scalar(None)  # set_tenant
     session.queue_rows([
-        _make_customer_row(c1, "Acme Corp", Decimal("50000.00"), 10, today),
-        _make_customer_row(c2, "Beta LLC", Decimal("30000.00"), 5, today),
+        _make_customer_row(c1, "Acme Corp", Decimal("50000.00"), 10, invoice_date),
+        _make_customer_row(c2, "Beta LLC", Decimal("30000.00"), 5, invoice_date),
     ])
 
     result = await get_top_customers(session, TENANT, period="month", limit=10)

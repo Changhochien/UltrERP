@@ -69,6 +69,13 @@ class CutoffQueryConnection:
         return self.rows
 
 
+def test_coerce_row_parses_json_object_strings() -> None:
+    assert validation._coerce_row('{"lineage_count": 3, "holding_count": 0}') == {
+        "lineage_count": 3,
+        "holding_count": 0,
+    }
+
+
 @pytest.mark.asyncio
 async def test_validate_import_batch_blocks_on_severity1_and_keeps_severity2_visible(
     monkeypatch,

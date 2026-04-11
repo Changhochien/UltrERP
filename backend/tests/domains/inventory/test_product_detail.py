@@ -32,6 +32,7 @@ class FakeProduct:
         self.name = name
         self.category = category
         self.status = status
+        self.legacy_master_snapshot = {"legacy_code": code}
 
 
 class FakeStockRow:
@@ -46,6 +47,7 @@ class FakeStockRow:
         reorder_point: int = 20,
         last_adjusted: datetime | None = None,
     ):
+        self.stock_id = uuid.uuid4()
         self.warehouse_id = warehouse_id or uuid.uuid4()
         self.warehouse_name = warehouse_name
         self.quantity = quantity
@@ -224,6 +226,7 @@ async def test_product_detail_multi_warehouse() -> None:
         assert body["name"] == "Test Product"
         assert body["category"] == "Electronics"
         assert body["status"] == "active"
+        assert body["legacy_master_snapshot"]["legacy_code"] == "TST-001"
         assert body["total_stock"] == 60
         assert len(body["warehouses"]) == 2
         assert len(body["adjustment_history"]) == 2

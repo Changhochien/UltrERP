@@ -15,7 +15,8 @@
     "payments": "付款",
     "revenue": "營收",
     "settings": "設定",
-    "admin": "管理"
+    "admin": "管理",
+    "ownerDashboard": "經營者儀表板"
   },
   "common": {
     "cancel": "取消",
@@ -159,25 +160,60 @@
       "titleCreated": "客戶已建立"
     },
     "detail": {
+      "backToList": "返回列表",
       "ban": "統一編號",
       "billingAddress": "帳單地址",
       "companyName": "公司名稱",
       "contactName": "聯絡人",
+      "createdAt": "建立時間",
       "creditLimit": "信用額度",
+      "delete": "刪除",
       "description": "客戶詳情",
       "edit": "編輯",
       "email": "電子郵件",
+      "eyebrow": "客戶",
       "loading": "載入中…",
       "notFound": "找不到客戶。",
+      "overviewDescription": "此客戶的基本資訊與聯絡方式。",
+      "overviewTitle": "客戶概覽",
       "phone": "電話",
       "status": "狀態",
+      "suspend": "停權",
       "title": "客戶詳情",
+      "updatedAt": "最後更新",
+      "suspendConfirm": {
+        "message": "確定要停權此客戶嗎？",
+        "error": "停權失敗。"
+      },
+      "deleteConfirm": {
+        "message": "確定要刪除此客戶嗎？",
+        "error": "刪除失敗。"
+      },
+      "cannotDelete": {
+        "message": "無法刪除尚有應收帳款的客戶。"
+      },
       "tabs": {
         "overview": "概覽",
         "invoices": "發票",
         "orders": "訂單",
         "outstanding": "應收帳款",
         "statement": "對帳單"
+      },
+      "invoices": {
+        "title": "發票",
+        "description": "開給此客戶的發票。",
+        "emptyTitle": "無發票",
+        "emptyDescription": "此客戶沒有發票記錄。"
+      },
+      "orders": {
+        "title": "訂單",
+        "description": "此客戶的訂單。",
+        "emptyTitle": "無訂單",
+        "emptyDescription": "此客戶沒有訂單記錄。"
+      },
+      "outstanding": {
+        "title": "應收帳款",
+        "description": "此客戶的應收帳款。"
       },
       "statement": {
         "title": "客戶對帳單",
@@ -374,6 +410,145 @@
       "noData": "此期間無資料。"
     }
   },
+  "adminPage": {
+    "eyebrow": "管理",
+    "title": "管理",
+    "description": "僅限擁有者檢視工作區使用者、角色與最新管理稽核紀錄。",
+    "errors": {
+      "loadFailed": "載入管理資料失敗",
+      "saveFailed": "儲存使用者失敗"
+    },
+    "users": {
+      "title": "使用者",
+      "description": "檢視工作區使用者名單、角色與啟用狀態。",
+      "loadingDescription": "工作區存取名單。",
+      "emptyTitle": "找不到使用者。",
+      "emptyDescription": "此租戶目前沒有可顯示的使用者。",
+      "addUser": "新增使用者",
+      "editUser": "編輯",
+      "columns": {
+        "email": "電子郵件",
+        "displayName": "名稱",
+        "role": "角色",
+        "status": "狀態",
+        "actions": "操作"
+      },
+      "filters": {
+        "search": "搜尋",
+        "searchPlaceholder": "依電子郵件或名稱搜尋",
+        "role": "角色篩選",
+        "status": "狀態篩選",
+        "allRoles": "所有角色",
+        "allStatuses": "所有狀態"
+      },
+      "fields": {
+        "email": "電子郵件",
+        "displayName": "顯示名稱",
+        "role": "角色",
+        "status": "狀態",
+        "password": "密碼",
+        "resetPassword": "重設密碼"
+      },
+      "summary": "顯示 {total} 位中的 {filtered} 位使用者。",
+      "roles": {
+        "owner": "擁有者",
+        "finance": "財務",
+        "warehouse": "倉儲",
+        "sales": "業務"
+      },
+      "statuses": {
+        "active": "啟用",
+        "disabled": "停用"
+      },
+      "errors": {
+        "formUnavailable": "使用者表單尚未就緒",
+        "emailRequired": "必須填寫電子郵件",
+        "emailInvalid": "請輸入有效的電子郵件地址",
+        "displayNameRequired": "必須填寫顯示名稱",
+        "passwordTooShort": "密碼至少需要 8 個字元",
+        "resetPasswordTooShort": "重設密碼至少需要 8 個字元",
+        "copyFailed": "複製密碼失敗"
+      },
+      "dialog": {
+        "createTitle": "新增使用者",
+        "editTitle": "編輯使用者",
+        "createDescription": "建立新的工作區使用者並設定其初始角色。",
+        "editDescription": "更新所選使用者的角色、狀態或密碼。",
+        "passwordHelp": "請使用至少 8 個字元。",
+        "resetPasswordHelp": "留白可保留目前密碼。",
+        "generatePassword": "產生密碼",
+        "copyPassword": "複製",
+        "passwordGenerated": "已產生臨時密碼。",
+        "passwordCopied": "已將密碼複製到剪貼簿。",
+        "cancel": "取消",
+        "createAction": "建立使用者",
+        "save": "儲存變更",
+        "creating": "建立中...",
+        "saving": "儲存中..."
+      }
+    },
+    "auditLog": {
+      "title": "稽核紀錄",
+      "description": "此工作區最近的管理操作紀錄。",
+      "loadingDescription": "最近的管理操作。",
+      "emptyTitle": "找不到稽核紀錄。",
+      "emptyDescription": "有管理活動時會顯示在這裡。",
+      "summary": "顯示 {total} 筆中的 {filtered} 筆稽核紀錄。",
+      "filters": {
+        "actor": "執行者篩選",
+        "actorPlaceholder": "依執行者 ID 篩選",
+        "action": "動作篩選",
+        "actionPlaceholder": "依動作篩選",
+        "entityType": "目標類型篩選",
+        "entityTypePlaceholder": "依目標類型篩選",
+        "entityId": "目標 ID 篩選",
+        "entityIdPlaceholder": "依目標 ID 篩選"
+      },
+      "columns": {
+        "createdAt": "時間",
+        "actor": "執行者",
+        "action": "動作",
+        "target": "目標"
+      }
+    },
+    "permissions": {
+      "title": "權限矩陣",
+      "description": "直接檢視目前前端實際套用的角色權限對照。",
+      "emptyTitle": "找不到權限資料。",
+      "emptyDescription": "角色權限規則可用時會顯示於此。",
+      "columns": {
+        "feature": "功能"
+      },
+      "levels": {
+        "write": "可編輯",
+        "read": "可檢視",
+        "none": "無權限"
+      },
+      "features": {
+        "dashboard": "儀表板",
+        "inventory": "庫存",
+        "purchases": "採購",
+        "customers": "客戶",
+        "invoices": "發票",
+        "orders": "訂單",
+        "payments": "付款",
+        "admin": "管理",
+        "owner_dashboard": "老闆儀表板",
+        "settings": "設定"
+      }
+    },
+    "settingsHub": {
+      "title": "工作區控制",
+      "description": "快速前往設定頁面以管理全域工作區設定。",
+      "openSettings": "開啟設定",
+      "items": {
+        "general": "一般預設值與工作區設定",
+        "security": "安全性、驗證與權限相關設定",
+        "appearance": "主題與介面呈現設定",
+        "data": "資料處理與營運設定"
+      }
+    }
+  },
   "purchase": {
     "page": {
       "description": "檢視已匯入的供應商發票，並稽核遷移後的應付帳款歷史。",
@@ -400,6 +575,7 @@
       "emptyTitle": "找不到供應商發票。",
       "rowLabel": "供應商發票 {invoiceNumber}",
       "statusFilter": "狀態",
+      "statusOverview": "狀態總覽",
       "summary": "本頁顯示 {count} 筆供應商發票。",
       "title": "已匯入的供應商發票"
     },
@@ -576,7 +752,25 @@
         "warehouse": "倉庫",
         "warehouseLabel": "倉庫"
       },
-      "totalStock": "總庫存：{stock}"
+      "totalStock": "總庫存：{stock}",
+      "stockHealth": "庫存健康",
+      "byWarehouse": "各倉庫",
+      "stockTrend": "庫存趨勢",
+      "recentAdjustments": "最近異動",
+      "adjustStock": "調整庫存",
+      "transfer": "調撥",
+      "order": "訂貨",
+      "overview": "概覽",
+      "analytics": "分析",
+      "settings": "設定",
+      "auditLog": "異動紀錄",
+      "totalUnits": "總單位",
+      "outOfStock": "缺貨",
+      "critical": "危急",
+      "low": "偏低",
+      "healthy": "正常",
+      "reorder": "補貨點",
+      "updated": "更新於"
     }
   },
   "orders": {

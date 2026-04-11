@@ -166,6 +166,10 @@ async def test_run_ap_payment_import_imports_verified_special_payments_and_holds
         if "INSERT INTO legacy_import_runs" in query
     )
     assert lock_index < run_index
+    run_query = next(
+        query for query, _args in connection.execute_calls if "INSERT INTO legacy_import_runs" in query
+    )
+    assert "$8::text" in run_query
 
     payment_args = next(
         args for query, args in connection.execute_calls if "INSERT INTO supplier_payments" in query
@@ -198,12 +202,19 @@ async def test_run_ap_payment_import_imports_verified_special_payments_and_holds
         for query, args in connection.execute_calls
         if "INSERT INTO legacy_import_table_runs" in query
     ]
+    table_run_query = next(
+        query
+        for query, _args in connection.execute_calls
+        if "INSERT INTO legacy_import_table_runs" in query
+    )
+    assert "$8::text" in table_run_query
+    assert all(isinstance(args[0], uuid.UUID) for args in table_run_args)
     assert any(
-        args[1] == "tbsspay" and args[4] == 2 and args[6] == "completed"
+        args[2] == "tbsspay" and args[5] == 2 and args[7] == "completed"
         for args in table_run_args
     )
     assert any(
-        args[1] == "tbsprepay" and args[4] == 1 and args[6] == "completed"
+        args[2] == "tbsprepay" and args[5] == 1 and args[7] == "completed"
         for args in table_run_args
     )
 

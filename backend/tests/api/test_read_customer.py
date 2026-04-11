@@ -39,6 +39,7 @@ def _make_customer(**overrides: object) -> Customer:
         "contact_email": "a@b.com",
         "credit_limit": 1000,
         "status": "active",
+        "legacy_master_snapshot": {"legacy_code": "C001"},
         "version": 1,
         "created_at": now,
         "updated_at": now,
@@ -240,6 +241,7 @@ class TestGetByIdEndpoint:
                 r = await cl.get(f"/api/v1/customers/{c.id}")
             assert r.status_code == 200
             assert r.json()["id"] == str(c.id)
+            assert r.json()["legacy_master_snapshot"]["legacy_code"] == "C001"
         finally:
             _restore_db_override(previous_override)
 

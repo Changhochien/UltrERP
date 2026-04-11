@@ -181,6 +181,7 @@ async def test_list_supplier_invoices_returns_serialized_items() -> None:
     )
     session = FakeAsyncSession()
     session.queue_count(1)
+    session.queue_rows([(_FakeEnum("open"), 1), (_FakeEnum("paid"), 2)])
     session.queue_scalars([invoice])
     session.queue_rows([(supplier_id, "Acme Supply")])
     previous_override = _setup(session)
@@ -190,6 +191,7 @@ async def test_list_supplier_invoices_returns_serialized_items() -> None:
         assert response.status_code == 200
         body = response.json()
         assert body["total"] == 1
+        assert body["status_totals"] == {"open": 1, "paid": 2, "voided": 0}
         assert body["items"][0]["supplier_name"] == "Acme Supply"
         assert body["items"][0]["line_count"] == 2
         assert body["items"][0]["status"] == "open"
