@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import AsyncGenerator
 from datetime import UTC, date, datetime
+from decimal import Decimal
 from typing import Any
 
 from httpx import ASGITransport, AsyncClient
@@ -43,6 +44,7 @@ class FakeSupplierOrderLine:
         product_id: uuid.UUID | None = None,
         warehouse_id: uuid.UUID | None = None,
         quantity_ordered: int = 100,
+        unit_price: Decimal | None = None,
         quantity_received: int = 0,
     ):
         self.id = uuid.uuid4()
@@ -50,6 +52,7 @@ class FakeSupplierOrderLine:
         self.product_id = product_id or uuid.uuid4()
         self.warehouse_id = warehouse_id or uuid.uuid4()
         self.quantity_ordered = quantity_ordered
+        self.unit_price = unit_price
         self.quantity_received = quantity_received
         self.notes = None
 
@@ -272,6 +275,7 @@ async def test_create_supplier_order_success() -> None:
         product_id=product_id,
         warehouse_id=warehouse_id,
         quantity_ordered=50,
+        unit_price=Decimal("48.50"),
     )
     order = FakeSupplierOrder(
         supplier_id=supplier_id,
@@ -300,6 +304,7 @@ async def test_create_supplier_order_success() -> None:
                         "product_id": str(product_id),
                         "warehouse_id": str(warehouse_id),
                         "quantity_ordered": 50,
+                        "unit_price": 48.5,
                     },
                 ],
             },
@@ -311,6 +316,7 @@ async def test_create_supplier_order_success() -> None:
         assert body["status"] == "pending"
         assert len(body["lines"]) == 1
         assert body["lines"][0]["quantity_ordered"] == 50
+        assert body["lines"][0]["unit_price"] == "48.50"
     finally:
         _teardown(prev)
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal
 
 from ._helpers import (
     FakeAsyncSession,
@@ -25,7 +26,13 @@ from ._helpers import (
 # ── Confirm order tests ──────────────────────────────────────
 
 
-def _queue_confirm_success(session: FakeAsyncSession, order: FakeOrder, customer: FakeCustomer):
+def _queue_confirm_success(
+    session: FakeAsyncSession,
+    order: FakeOrder,
+    customer: FakeCustomer,
+    *,
+    unit_costs: list[Decimal | None] | None = None,
+):
     """Queue all results needed for successful confirm_order call.
 
     Execution flow:
@@ -35,12 +42,15 @@ def _queue_confirm_success(session: FakeAsyncSession, order: FakeOrder, customer
       4. customer lookup in confirm_order → scalar(customer)
       5. _create_invoice_core: customer lookup → scalar(customer)
       6. _create_invoice_core: number_range lookup → scalar(number_range)
-      7. warehouse_id lookup (inside _get_default_warehouse_id) → scalar(uuid)
-      8. stock FOR UPDATE (per line) → scalar(FakeInventoryStock)
-      9. flush (invoice + lines), flush (audits)
-     10. get_order reload: set_tenant → scalar(None)
-     11. get_order reload: selectinload → scalar(confirmed_order)
+      7. supplier invoice unit_cost lookup (per line) → scalar(Decimal | None)
+      8. warehouse_id lookup (inside _get_default_warehouse_id) → scalar(uuid)
+      9. stock FOR UPDATE (per line) → scalar(FakeInventoryStock)
+     10. flush (invoice + lines), flush (audits)
+     11. get_order reload: set_tenant → scalar(None)
+     12. get_order reload: selectinload → scalar(confirmed_order)
     """
+    resolved_unit_costs = unit_costs or [None] * len(order.lines)
+
     session.queue_scalar(None)  # 1. set_tenant
     session.queue_scalar(order)  # 2. order lookup
     # Product code lookup — return fake rows with id and code attributes
@@ -52,13 +62,15 @@ def _queue_confirm_success(session: FakeAsyncSession, order: FakeOrder, customer
     session.queue_scalar(customer)  # 4. customer lookup (confirm_order)
     session.queue_scalar(customer)  # 5. customer lookup (_create_invoice_core)
     session.queue_scalar(FakeInvoiceNumberRange())  # 6. number_range
-    session.queue_scalar(order.tenant_id)  # 7. warehouse_id lookup
+    for unit_cost in resolved_unit_costs:
+        session.queue_scalar(unit_cost)  # 7. supplier invoice unit_cost lookup
+    session.queue_scalar(order.tenant_id)  # 8. warehouse_id lookup
     # Stock rows for each line (FOR UPDATE lock)
     for _line in order.lines:
-        session.queue_scalar(FakeInventoryStock(quantity=100))  # 8. stock rows
-    session.queue_scalar(None)  # 9. flush scalar
-    session.queue_scalar(None)  # 10. set_tenant (get_order)
-    session.queue_scalar(order)  # 11. get_order reload
+        session.queue_scalar(FakeInventoryStock(quantity=100))  # 9. stock rows
+    session.queue_scalar(None)  # 10. flush scalar
+    session.queue_scalar(None)  # 11. set_tenant (get_order)
+    session.queue_scalar(order)  # 12. get_order reload
 
 
 async def test_confirm_order_success() -> None:
@@ -81,6 +93,31 @@ async def test_confirm_order_success() -> None:
         body = resp.json()
         assert body["status"] == "confirmed"
         assert body["invoice_id"] is not None
+    finally:
+        _teardown(prev)
+
+
+async def test_confirm_order_resolves_invoice_line_unit_costs() -> None:
+    """Confirming an order stamps resolved unit cost onto the created invoice lines."""
+    customer = FakeCustomer()
+    line = FakeOrderLine()
+    order = FakeOrder(customer_id=customer.id, lines=[line], customer=customer)
+
+    session = FakeAsyncSession()
+    _queue_confirm_success(session, order, customer, unit_costs=[Decimal("55.00")])
+
+    prev = _setup(session)
+    try:
+        resp = await _patch(
+            f"/api/v1/orders/{order.id}/status",
+            json={"new_status": "confirmed"},
+        )
+        assert resp.status_code == 200
+
+        from domains.invoices.models import Invoice
+
+        invoice = next(obj for obj in session.added if isinstance(obj, Invoice))
+        assert invoice.lines[0].unit_cost == Decimal("55.00")
     finally:
         _teardown(prev)
 

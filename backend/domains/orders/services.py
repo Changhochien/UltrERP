@@ -332,6 +332,7 @@ async def confirm_order(
                     description=line.description,
                     quantity=line.quantity,
                     unit_price=line.unit_price,
+                    unit_cost=getattr(line, "unit_cost", None),
                     tax_policy_code=TaxPolicyCode(line.tax_policy_code),
                 )
                 for line in order.lines

@@ -82,6 +82,7 @@ class FakeOrderLine:
         order_id: uuid.UUID | None = None,
         product_id: uuid.UUID | None = None,
         line_number: int = 1,
+        unit_cost: Decimal | None = None,
         available_stock_snapshot: int | None = None,
         backorder_note: str | None = None,
         description: str = "Test product",
@@ -94,6 +95,7 @@ class FakeOrderLine:
         self.quantity = Decimal("10.000")
         self.list_unit_price = Decimal("100.00")
         self.unit_price = Decimal("100.00")
+        self.unit_cost = unit_cost
         self.discount_amount = Decimal("0.00")
         self.tax_policy_code = "standard"
         self.tax_type = 1

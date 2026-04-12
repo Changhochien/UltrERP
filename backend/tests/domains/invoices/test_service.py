@@ -253,6 +253,7 @@ class TestCreateInvoice:
         session = FakeAsyncSession()
         session.queue_result(customer)
         session.queue_result(range_record)
+        session.queue_result(Decimal("60.00"))
 
         invoice = await create_invoice(session, payload)
 
@@ -266,6 +267,7 @@ class TestCreateInvoice:
         assert len(invoice.lines) == 1
         assert invoice.lines[0].description == "測試商品"
         assert invoice.lines[0].product_code_snapshot == "P-100"
+        assert invoice.lines[0].unit_cost == Decimal("60.00")
 
     @pytest.mark.asyncio
     async def test_normalizes_b2c_identifier_in_persisted_invoice(self) -> None:
@@ -273,6 +275,7 @@ class TestCreateInvoice:
         session = FakeAsyncSession()
         session.queue_result(customer)
         session.queue_result(_range())
+        session.queue_result(None)
 
         invoice = await create_invoice(
             session,
@@ -347,6 +350,7 @@ class TestCreateInvoice:
         session = FakeAsyncSession()
         session.queue_result(customer)
         session.queue_result(range_record)
+        session.queue_result(None)
         store = InMemoryObjectStore()
 
         invoice = await create_invoice(
