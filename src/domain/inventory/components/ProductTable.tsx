@@ -6,7 +6,9 @@ import { useTranslation } from "react-i18next";
 import { DataTable, DataTableToolbar } from "@/components/layout/DataTable";
 import { SectionCard } from "@/components/layout/PageLayout";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { buildProductDetailPath } from "@/lib/routes";
 import { useProductSearch } from "../hooks/useProductSearch";
 
 interface ProductTableProps {
@@ -117,14 +119,19 @@ export function ProductTable({ warehouseId, onProductClick }: ProductTableProps)
             id: "actions",
             header: "",
             cell: (item) => (
-              <button
+              <Button
                 type="button"
-                className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                onClick={(e) => { e.stopPropagation(); navigate(`/inventory/${item.id}`); }}
-                title={t("openFullPage")}
+                variant="ghost"
+                size="icon-xs"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(buildProductDetailPath(item.id, "settings"));
+                }}
+                title={t("openSettingsPage")}
+                aria-label={t("openSettingsPage")}
               >
-                <ExternalLink size={15} />
-              </button>
+                <ExternalLink className="size-[15px]" />
+              </Button>
             ),
             onClick: (_e, _item) => {},
           },

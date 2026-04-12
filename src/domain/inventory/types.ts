@@ -9,6 +9,8 @@ export type ReorderAlertStatus =
   | "dismissed"
   | "resolved";
 
+export type ReplenishmentPolicy = "continuous" | "periodic" | "manual";
+
 export interface Warehouse {
   id: string;
   tenant_id: string;
@@ -55,6 +57,12 @@ export interface InventoryStock {
   reorder_point: number;
   safety_factor: number;
   lead_time_days: number;
+  policy_type: ReplenishmentPolicy;
+  target_stock_qty: number;
+  on_order_qty: number;
+  in_transit_qty: number;
+  reserved_qty: number;
+  planning_horizon_days: number;
   review_cycle_days: number;
   updated_at: string;
 }
@@ -82,6 +90,12 @@ export interface WarehouseStockInfo {
   reorder_point: number;
   safety_factor: number;
   lead_time_days: number;
+  policy_type: ReplenishmentPolicy;
+  target_stock_qty: number;
+  on_order_qty: number;
+  in_transit_qty: number;
+  reserved_qty: number;
+  planning_horizon_days: number;
   review_cycle_days: number;
   is_below_reorder: boolean;
   last_adjusted: string | null;
@@ -314,10 +328,20 @@ export interface ReorderPointPreviewRow {
   warehouse_id: string;
   warehouse_name: string;
   current_quantity: number;
+  inventory_position: number | null;
+  on_order_qty: number | null;
+  in_transit_qty: number | null;
+  reserved_qty: number | null;
   current_reorder_point: number;
+  policy_type: ReplenishmentPolicy | null;
+  target_stock_qty: number | null;
+  planning_horizon_days: number | null;
+  effective_horizon_days: number | null;
   computed_reorder_point: number | null;
   avg_daily_usage: number | null;
   lead_time_days: number | null;
+  lead_time_sample_count: number | null;
+  lead_time_confidence: "high" | "medium" | "low" | null;
   review_cycle_days: number | null;
   safety_stock: number | null;
   target_stock_level: number | null;

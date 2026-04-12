@@ -36,3 +36,11 @@ export type AppRoute =
   | typeof ADMIN_ROUTE
   | typeof SETTINGS_ROUTE
   | typeof OWNER_DASHBOARD_ROUTE;
+
+export function buildProductDetailPath(productId: string, tab?: string): string {
+  const basePath = PRODUCT_DETAIL_ROUTE.replace(":productId", encodeURIComponent(productId));
+  if (!tab) {
+    return basePath;
+  }
+  return `${basePath}?tab=${encodeURIComponent(tab)}`;
+}

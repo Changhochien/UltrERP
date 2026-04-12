@@ -17,6 +17,15 @@ const mocks = vi.hoisted(() => ({
         warehouse_name: "Main Warehouse",
         current_stock: 12,
         reorder_point: 5,
+        safety_factor: 0.5,
+        lead_time_days: 7,
+        policy_type: "periodic",
+        target_stock_qty: 0,
+        on_order_qty: 0,
+        in_transit_qty: 0,
+        reserved_qty: 0,
+        planning_horizon_days: 30,
+        review_cycle_days: 85,
         is_below_reorder: false,
         last_adjusted: null,
       },
@@ -116,6 +125,18 @@ vi.mock("@/domain/inventory/components/StockTrendChart", () => ({
   StockTrendChart: () => <div>stock-trend-chart</div>,
 }));
 
+vi.mock("@/domain/inventory/components/AnalyticsTab", () => ({
+  AnalyticsTab: () => (
+    <div>
+      <div>inventory.productDetail.analyticsTab.summary.title</div>
+      <div>inventory.productDetail.analyticsTab.monthlyDemand.title</div>
+      <div>inventory.productDetail.analyticsTab.salesHistory.title</div>
+      <div>inventory.productDetail.analyticsTab.topCustomer.title</div>
+      <div>inventory.productDetail.analyticsTab.salesHistory.columns.date</div>
+    </div>
+  ),
+}));
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -126,9 +147,9 @@ describe("ProductDetailPage", () => {
     const { ProductDetailPage } = await import("./ProductDetailPage");
 
     render(
-      <MemoryRouter initialEntries={["/inventory/products/product-1"]}>
+      <MemoryRouter initialEntries={["/inventory/product-1"]}>
         <Routes>
-          <Route path="/inventory/products/:productId" element={<ProductDetailPage />} />
+          <Route path="/inventory/:productId" element={<ProductDetailPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -146,5 +167,20 @@ describe("ProductDetailPage", () => {
     expect(screen.getByText("inventory.productDetail.analyticsTab.salesHistory.title")).toBeTruthy();
     expect(screen.getByText("inventory.productDetail.analyticsTab.topCustomer.title")).toBeTruthy();
     expect(screen.getByText("inventory.productDetail.analyticsTab.salesHistory.columns.date")).toBeTruthy();
+  });
+
+  it("opens directly on the settings tab when tab=settings is provided", async () => {
+    const { ProductDetailPage } = await import("./ProductDetailPage");
+
+    render(
+      <MemoryRouter initialEntries={["/inventory/product-1?tab=settings"]}>
+        <Routes>
+          <Route path="/inventory/:productId" element={<ProductDetailPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("inventory.productDetail.settingsTab.reorderPoint")).toBeTruthy();
+    expect(screen.getByText("inventory.productDetail.settingsTab.planningHorizon")).toBeTruthy();
   });
 });
