@@ -81,6 +81,7 @@ The original Epic 1 notes referenced pnpm 9, but current official pnpm action ex
 ```bash
 pnpm install
 pnpm dev
+pnpm dev:proxy:8001
 pnpm test
 pnpm build
 ```
@@ -94,6 +95,19 @@ uv run pytest
 uv run uvicorn app.main:app --reload
 uv run alembic -c ../migrations/alembic.ini upgrade head
 ```
+
+Fresh local validation helpers from the repository root:
+
+```bash
+pnpm dev:backend:8000
+pnpm dev:backend:8001
+pnpm dev:proxy:8001
+```
+
+- `pnpm dev:backend:8000` runs the current backend worktree on the default Vite proxy port.
+- `pnpm dev:backend:8001` runs a fresh backend on `127.0.0.1:8001` without disturbing anything already bound to `:8000`.
+- `pnpm dev:proxy:8001` keeps the frontend on `127.0.0.1:5173` but proxies `/api` to the fresh backend on `:8001`.
+- If browser QA still shows `/api` 500s while in-repo backend checks pass, verify which process owns `:8000` with `lsof -nP -iTCP:8000 -sTCP:LISTEN` before assuming the workspace code is still broken.
 
 Additional Alembic commands:
 
