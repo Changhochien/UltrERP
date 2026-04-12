@@ -874,11 +874,16 @@ async def _fetch_purchase_lines(
 			col_2 AS doc_number,
 			col_3 AS line_number,
 			col_6 AS product_code,
-			col_19 AS unit_price,
+			col_7 AS product_name,
+			col_16 AS warehouse_code,
+			col_18 AS unit,
+			col_19 AS foldprice,
 			col_20 AS discount_multiplier,
-			col_21 AS foldprice,
+			col_21 AS unit_price,
 			col_22 AS qty,
-			(col_19::numeric * col_20::numeric * col_22::numeric) AS extended_amount,
+			col_25 AS taxable,
+			col_26 AS line_total,
+			(col_21::numeric * col_22::numeric) AS extended_amount,
 			_source_row_number AS source_row_number
 		FROM {quoted_schema}.tbsslipdtj
 		WHERE _batch_id = $1
@@ -1997,7 +2002,7 @@ async def _import_purchase_history(
                 line_number,
                 product_id,
                 legacy_product_code,
-                legacy_product_code,
+                _as_text(line.get("product_name")) or legacy_product_code,
                 quantity,
                 unit_price,
                 subtotal,
