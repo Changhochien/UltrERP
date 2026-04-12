@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, func
+from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -45,6 +45,12 @@ class InventoryStock(Base):
 	reorder_point: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 	safety_factor: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
 	lead_time_days: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+	policy_type: Mapped[str] = mapped_column(String(20), default="continuous", nullable=False)
+	target_stock_qty: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+	on_order_qty: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+	in_transit_qty: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+	reserved_qty: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+	planning_horizon_days: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 	review_cycle_days: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 	updated_at: Mapped[datetime] = mapped_column(
 		DateTime(timezone=True),

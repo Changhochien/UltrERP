@@ -78,6 +78,12 @@ class InventoryStockResponse(BaseModel):
     reorder_point: int
     safety_factor: float
     lead_time_days: int
+    policy_type: Literal["continuous", "periodic", "manual"]
+    target_stock_qty: int
+    on_order_qty: int
+    in_transit_qty: int
+    reserved_qty: int
+    planning_horizon_days: int
     review_cycle_days: int
     updated_at: datetime
 
@@ -86,6 +92,12 @@ class StockSettingsUpdateRequest(BaseModel):
     reorder_point: int | None = Field(None, ge=0)
     safety_factor: float | None = Field(None, ge=0.0)
     lead_time_days: int | None = Field(None, ge=0)
+    policy_type: Literal["continuous", "periodic", "manual"] | None = None
+    target_stock_qty: int | None = Field(None, ge=0)
+    on_order_qty: int | None = Field(None, ge=0)
+    in_transit_qty: int | None = Field(None, ge=0)
+    reserved_qty: int | None = Field(None, ge=0)
+    planning_horizon_days: int | None = Field(None, ge=0)
     review_cycle_days: int | None = Field(None, ge=0)
 
 
@@ -165,6 +177,12 @@ class WarehouseStockInfo(BaseModel):
     reorder_point: int
     safety_factor: float
     lead_time_days: int
+    policy_type: Literal["continuous", "periodic", "manual"]
+    target_stock_qty: int
+    on_order_qty: int
+    in_transit_qty: int
+    reserved_qty: int
+    planning_horizon_days: int
     review_cycle_days: int
     is_below_reorder: bool
     last_adjusted: datetime | None
@@ -411,10 +429,20 @@ class ReorderPointPreviewRow(BaseModel):
     warehouse_id: uuid.UUID
     warehouse_name: str
     current_quantity: float
+    inventory_position: int | None = None
+    on_order_qty: int | None = None
+    in_transit_qty: int | None = None
+    reserved_qty: int | None = None
     current_reorder_point: float
+    policy_type: Literal["continuous", "periodic", "manual"] | None = None
+    target_stock_qty: int | None = None
+    planning_horizon_days: int | None = None
+    effective_horizon_days: int | None = None
     computed_reorder_point: float | None = None  # None if skipped
     avg_daily_usage: float | None = None
     lead_time_days: float | None = None
+    lead_time_sample_count: int | None = None
+    lead_time_confidence: Literal["high", "medium", "low"] | None = None
     review_cycle_days: float | None = None
     safety_stock: float | None = None
     target_stock_level: float | None = None

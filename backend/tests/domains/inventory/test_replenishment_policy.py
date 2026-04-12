@@ -15,6 +15,9 @@ from common.models.stock_adjustment import ReasonCode, StockAdjustment
 from common.models.warehouse import Warehouse
 from common.tenant import DEFAULT_TENANT_ID
 from domains.inventory.reorder_point import (
+    POLICY_CONTINUOUS,
+    POLICY_MANUAL,
+    POLICY_PERIODIC,
     apply_reorder_points,
     compute_reorder_point_preview_row,
     compute_reorder_points_preview,
@@ -37,6 +40,12 @@ async def _seed_stock(
     reorder_point: int = 0,
     safety_factor: float = 0.0,
     lead_time_days: int = 0,
+    policy_type: str = POLICY_CONTINUOUS,
+    target_stock_qty: int = 0,
+    on_order_qty: int = 0,
+    in_transit_qty: int = 0,
+    reserved_qty: int = 0,
+    planning_horizon_days: int = 0,
     review_cycle_days: int = 0,
 ) -> tuple[Product, Warehouse, InventoryStock]:
     warehouse = Warehouse(
@@ -63,6 +72,12 @@ async def _seed_stock(
         reorder_point=reorder_point,
         safety_factor=safety_factor,
         lead_time_days=lead_time_days,
+        policy_type=policy_type,
+        target_stock_qty=target_stock_qty,
+        on_order_qty=on_order_qty,
+        in_transit_qty=in_transit_qty,
+        reserved_qty=reserved_qty,
+        planning_horizon_days=planning_horizon_days,
         review_cycle_days=review_cycle_days,
     )
 
@@ -95,7 +110,7 @@ async def _add_sales_history(
 
 
 @pytest.mark.asyncio
-async def test_preview_uses_review_cycle_for_target_stock_and_order_qty(db_session):
+async def test_preview_uses_inventory_position_for_periodic_order_qty(db_session):
     product, warehouse, _stock = await _seed_stock(db_session, quantity=5)
     await _add_sales_history(
         db_session,
@@ -110,16 +125,110 @@ async def test_preview_uses_review_cycle_for_target_stock_and_order_qty(db_sessi
         product.id,
         warehouse.id,
         safety_factor=0.5,
+        policy_type=POLICY_PERIODIC,
         review_cycle_days=85,
         lead_time_days_override=7,
         current_quantity=5,
+        on_order_qty=4,
+        in_transit_qty=3,
+        reserved_qty=2,
     )
 
     assert preview["skipped_reason"] is None
     assert preview["avg_daily_usage"] == 0.2
     assert preview["reorder_point"] == 2
     assert preview["target_stock_level"] == 19
-    assert preview["suggested_order_qty"] == 14
+    assert preview["inventory_position"] == 10
+    assert preview["lead_time_sample_count"] == 0
+    assert preview["lead_time_confidence"] == "high"
+    assert preview["suggested_order_qty"] == 9
+
+
+@pytest.mark.asyncio
+async def test_preview_uses_target_stock_for_continuous_policy(db_session):
+    product, warehouse, _stock = await _seed_stock(db_session, quantity=5)
+    await _add_sales_history(
+        db_session,
+        product_id=product.id,
+        warehouse_id=warehouse.id,
+        quantities=[9, 9],
+    )
+
+    preview = await compute_reorder_point_preview_row(
+        db_session,
+        TENANT_ID,
+        product.id,
+        warehouse.id,
+        safety_factor=0.5,
+        policy_type=POLICY_CONTINUOUS,
+        target_stock_qty=25,
+        lead_time_days_override=7,
+        current_quantity=5,
+        on_order_qty=4,
+        reserved_qty=2,
+    )
+
+    assert preview["skipped_reason"] is None
+    assert preview["reorder_point"] == 2
+    assert preview["target_stock_level"] == 25
+    assert preview["inventory_position"] == 7
+    assert preview["lead_time_sample_count"] == 0
+    assert preview["lead_time_confidence"] == "high"
+    assert preview["suggested_order_qty"] == 18
+
+
+@pytest.mark.asyncio
+async def test_periodic_policy_prefers_planning_horizon_over_review_cycle(db_session):
+    product, warehouse, _stock = await _seed_stock(db_session, quantity=5)
+    await _add_sales_history(
+        db_session,
+        product_id=product.id,
+        warehouse_id=warehouse.id,
+        quantities=[9, 9],
+    )
+
+    preview = await compute_reorder_point_preview_row(
+        db_session,
+        TENANT_ID,
+        product.id,
+        warehouse.id,
+        safety_factor=0.5,
+        policy_type=POLICY_PERIODIC,
+        planning_horizon_days=30,
+        review_cycle_days=85,
+        lead_time_days_override=7,
+        current_quantity=5,
+    )
+
+    assert preview["planning_horizon_days"] == 30
+    assert preview["effective_horizon_days"] == 30
+    assert preview["target_stock_level"] == 8
+    assert preview["suggested_order_qty"] == 3
+
+
+@pytest.mark.asyncio
+async def test_preview_skips_manual_policy_rows(db_session):
+    product, warehouse, _stock = await _seed_stock(db_session, quantity=5)
+
+    preview = await compute_reorder_point_preview_row(
+        db_session,
+        TENANT_ID,
+        product.id,
+        warehouse.id,
+        safety_factor=0.5,
+        policy_type=POLICY_MANUAL,
+        target_stock_qty=18,
+        current_quantity=5,
+        on_order_qty=2,
+        reserved_qty=1,
+    )
+
+    assert preview["skipped_reason"] == "manual_policy"
+    assert preview["target_stock_level"] == 18
+    assert preview["inventory_position"] == 6
+    assert preview["lead_time_sample_count"] is None
+    assert preview["lead_time_confidence"] is None
+    assert preview["suggested_order_qty"] is None
 
 
 @pytest.mark.asyncio
@@ -172,6 +281,12 @@ async def test_apply_persists_replenishment_settings(db_session):
                 "reorder_point": 2,
                 "safety_factor": 0.5,
                 "lead_time_days": 7,
+                "policy_type": POLICY_PERIODIC,
+                "target_stock_qty": 19,
+                "on_order_qty": 4,
+                "in_transit_qty": 3,
+                "reserved_qty": 2,
+                "planning_horizon_days": 45,
                 "review_cycle_days": 85,
             }
         ],
@@ -186,4 +301,10 @@ async def test_apply_persists_replenishment_settings(db_session):
     assert stock.reorder_point == 2
     assert stock.safety_factor == 0.5
     assert stock.lead_time_days == 7
+    assert stock.policy_type == POLICY_PERIODIC
+    assert stock.target_stock_qty == 19
+    assert stock.on_order_qty == 4
+    assert stock.in_transit_qty == 3
+    assert stock.reserved_qty == 2
+    assert stock.planning_horizon_days == 45
     assert stock.review_cycle_days == 85

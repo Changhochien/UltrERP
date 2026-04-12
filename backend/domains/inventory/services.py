@@ -762,6 +762,12 @@ async def get_product_detail(
             InventoryStock.reorder_point,
             InventoryStock.safety_factor,
             InventoryStock.lead_time_days,
+            InventoryStock.policy_type,
+            InventoryStock.target_stock_qty,
+            InventoryStock.on_order_qty,
+            InventoryStock.in_transit_qty,
+            InventoryStock.reserved_qty,
+            InventoryStock.planning_horizon_days,
             InventoryStock.review_cycle_days,
             last_adj_sq.c.last_adjusted,
         )
@@ -793,6 +799,12 @@ async def get_product_detail(
                 "reorder_point": row.reorder_point,
                 "safety_factor": row.safety_factor,
                 "lead_time_days": row.lead_time_days,
+                "policy_type": row.policy_type,
+                "target_stock_qty": row.target_stock_qty,
+                "on_order_qty": row.on_order_qty,
+                "in_transit_qty": row.in_transit_qty,
+                "reserved_qty": row.reserved_qty,
+                "planning_horizon_days": row.planning_horizon_days,
                 "review_cycle_days": row.review_cycle_days,
                 "is_below_reorder": (row.reorder_point > 0 and row.quantity < row.reorder_point),
                 "last_adjusted": row.last_adjusted,
@@ -1646,6 +1658,12 @@ async def update_stock_settings(
     reorder_point: int | None = None,
     safety_factor: float | None = None,
     lead_time_days: int | None = None,
+    policy_type: str | None = None,
+    target_stock_qty: int | None = None,
+    on_order_qty: int | None = None,
+    in_transit_qty: int | None = None,
+    reserved_qty: int | None = None,
+    planning_horizon_days: int | None = None,
     review_cycle_days: int | None = None,
 ) -> InventoryStock | None:
     """Update replenishment settings for a stock record."""
@@ -1664,6 +1682,18 @@ async def update_stock_settings(
         stock.safety_factor = safety_factor
     if lead_time_days is not None:
         stock.lead_time_days = lead_time_days
+    if policy_type is not None:
+        stock.policy_type = policy_type
+    if target_stock_qty is not None:
+        stock.target_stock_qty = target_stock_qty
+    if on_order_qty is not None:
+        stock.on_order_qty = on_order_qty
+    if in_transit_qty is not None:
+        stock.in_transit_qty = in_transit_qty
+    if reserved_qty is not None:
+        stock.reserved_qty = reserved_qty
+    if planning_horizon_days is not None:
+        stock.planning_horizon_days = planning_horizon_days
     if review_cycle_days is not None:
         stock.review_cycle_days = review_cycle_days
 

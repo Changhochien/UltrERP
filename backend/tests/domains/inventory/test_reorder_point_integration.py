@@ -157,6 +157,26 @@ async def product_with_history(db_session, tenant_id, warehouse):
     db_session.add(stock)
     await db_session.flush()
 
+    supplier = Supplier(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        name="History Supplier",
+        is_active=True,
+        default_lead_time_days=12,
+    )
+    db_session.add(supplier)
+    await db_session.flush()
+
+    await _make_received_order(
+        db_session,
+        supplier.id,
+        p.id,
+        warehouse.id,
+        date.today() - timedelta(days=24),
+        date.today() - timedelta(days=15),
+        quantity=30,
+    )
+
     for days in [10, 20, 30]:
         await _make_adjustment(
             db_session, p.id, warehouse.id,
@@ -244,8 +264,17 @@ async def test_compute_endpoint_returns_candidate_and_skipped(
         r for r in body["skipped_rows"]
         if str(r["product_id"]) == str(product_without_history.id)
     )
-    assert skipped_row["skip_reason"] in ("insufficient_history", "source_unresolved", None)
+    assert skipped_row["skip_reason"] in ("insufficient_history", "source_unresolved", "lead_time_unconfigured", None)
     assert skipped_row["computed_reorder_point"] is None
+    assert skipped_row["policy_type"] == "continuous"
+    assert skipped_row["target_stock_qty"] == 0
+    assert skipped_row["on_order_qty"] == 0
+    assert skipped_row["in_transit_qty"] == 0
+    assert skipped_row["reserved_qty"] == 0
+    assert skipped_row["planning_horizon_days"] == 0
+    assert skipped_row["effective_horizon_days"] == 0
+    assert skipped_row["lead_time_sample_count"] is None
+    assert skipped_row["lead_time_confidence"] is None
 
     candidate_row = next(
         r for r in body["candidate_rows"]
@@ -253,6 +282,17 @@ async def test_compute_endpoint_returns_candidate_and_skipped(
     )
     assert candidate_row["computed_reorder_point"] is not None
     assert candidate_row["computed_reorder_point"] >= 0
+    assert candidate_row["policy_type"] == "continuous"
+    assert candidate_row["target_stock_qty"] == 0
+    assert candidate_row["inventory_position"] == 100
+    assert candidate_row["on_order_qty"] == 0
+    assert candidate_row["in_transit_qty"] == 0
+    assert candidate_row["reserved_qty"] == 0
+    assert candidate_row["planning_horizon_days"] == 0
+    assert candidate_row["effective_horizon_days"] == 0
+    assert candidate_row["lead_time_source"] == "actual"
+    assert candidate_row["lead_time_sample_count"] == 1
+    assert candidate_row["lead_time_confidence"] == "low"
 
 
 @pytest.mark.asyncio
@@ -543,12 +583,7 @@ async def test_lead_time_fallback_chain(
     tenant_id,
     warehouse,
 ):
-    """AC3: No supplier order history → lead_time_source = 'fallback', lead_time = 7.
-
-    Given a product with demand history but no supplier order history,
-    the lead_time_source must be 'fallback' and lead_time_days must be 7.
-    """
-    from sqlalchemy import select
+    """Rows without configured lead time are skipped from auto-calculation preview."""
 
     p = Product(
         id=uuid.uuid4(),
@@ -582,21 +617,6 @@ async def test_lead_time_fallback_chain(
         )
     await _commit(db_session)
 
-    # Query via service directly to check lead_time_source
-    from sqlalchemy import select
-
-    stmt = select(
-        InventoryStock.id,
-        InventoryStock.product_id,
-        InventoryStock.warehouse_id,
-    ).where(
-        InventoryStock.product_id == p.id,
-        InventoryStock.warehouse_id == warehouse.id,
-    )
-    result = await db_session.execute(stmt)
-    row = result.one()
-
-    # Use reorder_point service directly
     preview_rows, skipped_rows = await compute_reorder_points_preview(
         db_session, tenant_id,
         safety_factor=0.5,
@@ -605,10 +625,13 @@ async def test_lead_time_fallback_chain(
     )
 
     candidate = next((c for c in preview_rows if c["product_id"] == p.id), None)
-    assert candidate is not None, "Product with history should be a candidate"
+    assert candidate is None, "Product without lead-time data should not be a candidate"
 
-    assert candidate["lead_time_source"] == "fallback_7d"
-    assert candidate["lead_time_days"] == 7
+    skipped = next((row for row in skipped_rows if row["product_id"] == p.id), None)
+    assert skipped is not None, "Product without lead-time data should be skipped"
+    assert skipped["skipped_reason"] == "lead_time_unconfigured"
+    assert skipped["lead_time_source"] == "fallback_7d"
+    assert skipped["lead_time_days"] == 0
 
 
 @pytest.mark.asyncio
@@ -618,10 +641,7 @@ async def test_lead_time_supplier_default_fallback(
     warehouse,
     product_supplier_default_fallback,
 ):
-    """AC3: Supplier with default_lead_time_days=14 but no received orders.
-
-    The lead_time_source must be 'supplier_default' and lead_time_days must be 14.
-    """
+    """Rows without a resolved replenishment source are skipped before using a guessed lead time."""
     product = product_supplier_default_fallback
 
     preview_rows, skipped_rows = await compute_reorder_points_preview(
@@ -632,10 +652,13 @@ async def test_lead_time_supplier_default_fallback(
     )
 
     candidate = next((c for c in preview_rows if c["product_id"] == product.id), None)
-    assert candidate is not None, "Product with demand history should be a candidate"
+    assert candidate is None, "Product without a resolved lead-time source should be skipped"
 
-    assert candidate["lead_time_source"] == "fallback_7d"
-    assert candidate["lead_time_days"] == 7
+    skipped = next((row for row in skipped_rows if row["product_id"] == product.id), None)
+    assert skipped is not None
+    assert skipped["skipped_reason"] == "lead_time_unconfigured"
+    assert skipped["lead_time_source"] == "fallback_7d"
+    assert skipped["lead_time_days"] == 0
 
 
 @pytest.mark.asyncio

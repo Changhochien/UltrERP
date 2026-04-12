@@ -25,6 +25,10 @@ from common.time import utc_now
 
 # Sentinel for unresolved source
 SOURCE_UNRESOLVED = "source_unresolved"
+# Supported replenishment policies
+POLICY_CONTINUOUS = "continuous"
+POLICY_PERIODIC = "periodic"
+POLICY_MANUAL = "manual"
 # Minimum demand events required in the lookback window
 MIN_DEMAND_EVENTS = 2
 # Default lead time fallback when no history exists
@@ -138,9 +142,28 @@ async def get_actual_lead_time_days(
     supplier_id: uuid.UUID,
     lookback_days: int = 180,
 ) -> int | None:
+    lead_time_days, _sample_count = await get_actual_lead_time_stats(
+        session,
+        tenant_id,
+        product_id,
+        warehouse_id,
+        supplier_id,
+        lookback_days,
+    )
+    return lead_time_days
+
+
+async def get_actual_lead_time_stats(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+    warehouse_id: uuid.UUID,
+    supplier_id: uuid.UUID,
+    lookback_days: int = 180,
+) -> tuple[int | None, int]:
     """Calculate average lead time in days from order_date to received_date.
 
-    Returns None when no received orders exist for the given supplier within
+    Returns ``(lead_time_days, sample_count)`` and ``(None, 0)`` when no received orders exist for the given supplier within
     the lookback window.
     """
     cutoff = utc_now() - timedelta(days=lookback_days)
@@ -150,7 +173,8 @@ async def get_actual_lead_time_days(
             func.avg(
                 func.date_trunc("day", SupplierOrder.received_date)
                 - func.date_trunc("day", SupplierOrder.order_date)
-            ).label("avg_lead_days")
+            ).label("avg_lead_days"),
+            func.count(func.distinct(SupplierOrder.id)).label("sample_count"),
         )
         .join(SupplierOrderLine, SupplierOrderLine.order_id == SupplierOrder.id)
         .where(
@@ -163,39 +187,58 @@ async def get_actual_lead_time_days(
         )
     )
     result = await session.execute(stmt)
-    row = result.scalar_one_or_none()
+    row = result.one()
 
-    if row is None or row < 0:
-        return None
+    avg_lead_days = row.avg_lead_days
+    sample_count = int(row.sample_count or 0)
 
-    return max(1, round(float(row)))
+    if avg_lead_days is None:
+        return None, sample_count
+
+    if hasattr(avg_lead_days, "total_seconds"):
+        avg_lead_days_value = avg_lead_days.total_seconds() / 86400
+    else:
+        avg_lead_days_value = float(avg_lead_days)
+
+    if avg_lead_days_value < 0:
+        return None, sample_count
+
+    return max(1, round(avg_lead_days_value)), sample_count
 
 
-async def get_lead_time_days(
+def _get_lead_time_confidence(source: str, sample_count: int) -> str:
+    if source == "manual_override":
+        return "high"
+    if source == "actual":
+        if sample_count >= 5:
+            return "high"
+        if sample_count >= 2:
+            return "medium"
+        return "low"
+    if source == "supplier_default":
+        return "medium"
+    return "low"
+
+
+async def get_lead_time_details(
     session: AsyncSession,
     tenant_id: uuid.UUID,
     product_id: uuid.UUID,
     warehouse_id: uuid.UUID,
     lookback_days: int = 180,
-) -> tuple[int, str]:
-    """Resolve lead time using fallback chain, returning (lead_time, source).
-
-    Source is one of: "actual", "supplier_default", "fallback"
-    """
-    # Step 1: resolve source supplier
+) -> tuple[int, str, int, str]:
+    """Resolve lead time using fallback chain with sample count and confidence."""
     source = await resolve_replenishment_source(
         session, tenant_id, product_id, warehouse_id, lookback_days
     )
 
     if source != SOURCE_UNRESOLVED:
-        actual_lt = await get_actual_lead_time_days(
+        actual_lt, sample_count = await get_actual_lead_time_stats(
             session, tenant_id, product_id, warehouse_id, source, lookback_days
         )
         if actual_lt is not None:
-            return actual_lt, "actual"
+            return actual_lt, "actual", sample_count, _get_lead_time_confidence("actual", sample_count)
 
-    # Step 2: supplier default lead time — try resolved source, or any supplier if unresolved.
-    # Even when source is ambiguous (SOURCE_UNRESOLVED), use a supplier's default if found.
     lookup_supplier_id = source if source != SOURCE_UNRESOLVED else None
     if lookup_supplier_id is not None:
         supplier_stmt = select(Supplier.default_lead_time_days).where(
@@ -205,10 +248,8 @@ async def get_lead_time_days(
         supplier_result = await session.execute(supplier_stmt)
         default_lt = supplier_result.scalar_one_or_none()
         if default_lt is not None and default_lt > 0:
-            return default_lt, "supplier_default"
+            return default_lt, "supplier_default", 0, _get_lead_time_confidence("supplier_default", 0)
 
-    # If source was unresolved and we couldn't get a supplier default, try to find
-    # any supplier that has delivered this product+warehouse (less preferred but usable).
     if lookup_supplier_id is None:
         fallback_stmt = (
             select(Supplier.default_lead_time_days)
@@ -227,10 +268,97 @@ async def get_lead_time_days(
         fallback_result = await session.execute(fallback_stmt)
         fallback_lt = fallback_result.scalar_one_or_none()
         if fallback_lt is not None and fallback_lt > 0:
-            return fallback_lt, "supplier_default"
+            return fallback_lt, "supplier_default", 0, _get_lead_time_confidence("supplier_default", 0)
 
-    # Step 3: fallback
-    return DEFAULT_LEAD_TIME_DAYS, "fallback_7d"
+    return DEFAULT_LEAD_TIME_DAYS, "fallback_7d", 0, _get_lead_time_confidence("fallback_7d", 0)
+
+
+async def get_lead_time_days(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+    warehouse_id: uuid.UUID,
+    lookback_days: int = 180,
+) -> tuple[int, str]:
+    """Resolve lead time using fallback chain, returning (lead_time, source).
+
+    Source is one of: "actual", "supplier_default", "fallback"
+    """
+    lead_time_days, source, _sample_count, _confidence = await get_lead_time_details(
+        session,
+        tenant_id,
+        product_id,
+        warehouse_id,
+        lookback_days,
+    )
+    return lead_time_days, source
+
+
+def _normalize_policy_type(policy_type: str | None, review_cycle_days: int = 0) -> str:
+    if policy_type == POLICY_MANUAL:
+        return POLICY_MANUAL
+    if review_cycle_days > 0:
+        return POLICY_PERIODIC
+    if policy_type in {POLICY_CONTINUOUS, POLICY_PERIODIC}:
+        return policy_type
+    return POLICY_CONTINUOUS
+
+
+def _compute_inventory_position(
+    current_quantity: float,
+    on_order_qty: int,
+    in_transit_qty: int,
+    reserved_qty: int,
+) -> int:
+    return int(round(current_quantity + on_order_qty + in_transit_qty - reserved_qty))
+
+
+def _build_quality_note(
+    lead_time_source: str,
+    lead_time_sample_count: int,
+    lead_time_confidence: str,
+    policy_type: str,
+    target_stock_qty: int,
+    review_cycle_days: int,
+) -> str | None:
+    notes: list[str] = []
+
+    if lead_time_source == "fallback_7d":
+        notes.append("Lead time uses the 7-day fallback with no receipt samples; confidence is low.")
+    elif lead_time_source == "supplier_default":
+        notes.append("Lead time uses the supplier default with no receipt samples; confidence is medium.")
+    elif lead_time_source == "actual" and lead_time_sample_count > 0 and lead_time_confidence != "high":
+        sample_label = "sample" if lead_time_sample_count == 1 else "samples"
+        notes.append(
+            f"Lead time is based on {lead_time_sample_count} historical {sample_label}; confidence is {lead_time_confidence}."
+        )
+
+    if policy_type == POLICY_CONTINUOUS and target_stock_qty <= 0:
+        notes.append("Continuous policy has no target stock configured, so suggested order only tops up to the reorder point.")
+    elif policy_type == POLICY_PERIODIC and review_cycle_days <= 0 and target_stock_qty <= 0:
+        notes.append("Periodic policy has no review cycle or target stock configured, so target stock falls back to lead-time coverage.")
+
+    return " ".join(notes) or None
+
+
+def _compute_target_stock_level(
+    policy_type: str,
+    target_stock_qty: int,
+    reorder_point: int,
+    avg_daily_usage: float,
+    lead_time_days: int,
+    planning_horizon_days: int,
+    review_cycle_days: int,
+    safety_stock: float,
+) -> int:
+    if target_stock_qty > 0:
+        return target_stock_qty
+
+    if policy_type == POLICY_PERIODIC:
+        effective_horizon_days = planning_horizon_days if planning_horizon_days > 0 else review_cycle_days
+        return round((avg_daily_usage * (lead_time_days + effective_horizon_days)) + safety_stock)
+
+    return reorder_point
 
 
 # ── Single-row reorder point preview ────────────────────────────
@@ -242,18 +370,63 @@ async def compute_reorder_point_preview_row(
     product_id: uuid.UUID,
     warehouse_id: uuid.UUID,
     safety_factor: float = 0.5,
+    policy_type: str | None = None,
+    target_stock_qty: int = 0,
+    planning_horizon_days: int = 0,
     review_cycle_days: int = 0,
     demand_lookback_days: int = 90,
     lead_time_lookback_days: int = 180,
     allowed_reasons: tuple[ReasonCode, ...] = (ReasonCode.SALES_RESERVATION,),
     lead_time_days_override: int | None = None,
     current_quantity: float = 0.0,
+    on_order_qty: int = 0,
+    in_transit_qty: int = 0,
+    reserved_qty: int = 0,
 ) -> dict[str, Any]:
     """Compute reorder point for a single product+warehouse row.
 
     Returns a dict with all explanation columns plus a ``skipped_reason`` field.
     When ``skipped_reason`` is non-None the row was not computed.
     """
+    normalized_policy = _normalize_policy_type(policy_type, review_cycle_days)
+    inventory_position = _compute_inventory_position(
+        current_quantity,
+        on_order_qty,
+        in_transit_qty,
+        reserved_qty,
+    )
+    effective_horizon_days = planning_horizon_days if planning_horizon_days > 0 else review_cycle_days
+
+    if normalized_policy == POLICY_MANUAL:
+        return {
+            "product_id": product_id,
+            "warehouse_id": warehouse_id,
+            "policy_type": normalized_policy,
+            "reorder_point": 0,
+            "safety_stock": 0.0,
+            "avg_daily_usage": 0.0,
+            "lead_time_days": 0,
+            "review_cycle_days": review_cycle_days,
+            "planning_horizon_days": planning_horizon_days,
+            "effective_horizon_days": effective_horizon_days,
+            "target_stock_qty": target_stock_qty,
+            "inventory_position": inventory_position,
+            "on_order_qty": on_order_qty,
+            "in_transit_qty": in_transit_qty,
+            "reserved_qty": reserved_qty,
+            "lead_time_source": "",
+            "lead_time_sample_count": None,
+            "lead_time_confidence": None,
+            "safety_factor": safety_factor,
+            "demand_lookback_days": demand_lookback_days,
+            "demand_reason": [r.value for r in allowed_reasons],
+            "movement_count": 0,
+            "skipped_reason": "manual_policy",
+            "quality_note": "Manual policy rows are excluded from auto-calculated replenishment.",
+            "target_stock_level": target_stock_qty if target_stock_qty > 0 else None,
+            "suggested_order_qty": None,
+        }
+
     # Check demand history
     avg_daily_usage, movement_count = await get_average_daily_usage(
         session, tenant_id, product_id, warehouse_id, demand_lookback_days, allowed_reasons
@@ -263,12 +436,22 @@ async def compute_reorder_point_preview_row(
         return {
             "product_id": product_id,
             "warehouse_id": warehouse_id,
+            "policy_type": normalized_policy,
             "reorder_point": 0,
             "safety_stock": 0.0,
             "avg_daily_usage": 0.0,
             "lead_time_days": 0,
             "review_cycle_days": review_cycle_days,
+            "planning_horizon_days": planning_horizon_days,
+            "effective_horizon_days": effective_horizon_days,
+            "target_stock_qty": target_stock_qty,
+            "inventory_position": inventory_position,
+            "on_order_qty": on_order_qty,
+            "in_transit_qty": in_transit_qty,
+            "reserved_qty": reserved_qty,
             "lead_time_source": "",
+            "lead_time_sample_count": None,
+            "lead_time_confidence": None,
             "safety_factor": safety_factor,
             "demand_lookback_days": demand_lookback_days,
             "demand_reason": [r.value for r in allowed_reasons],
@@ -286,32 +469,94 @@ async def compute_reorder_point_preview_row(
     if lead_time_days_override is not None and lead_time_days_override > 0:
         lead_time_days = lead_time_days_override
         lt_source = "manual_override"
+        lead_time_sample_count = 0
+        lead_time_confidence = _get_lead_time_confidence("manual_override", 0)
     else:
-        lead_time_days, lt_source = await get_lead_time_days(
+        lead_time_days, lt_source, lead_time_sample_count, lead_time_confidence = await get_lead_time_details(
             session, tenant_id, product_id, warehouse_id, lead_time_lookback_days
         )
+
+    if lead_time_days_override is None and lt_source == "fallback_7d":
+        return {
+            "product_id": product_id,
+            "warehouse_id": warehouse_id,
+            "policy_type": normalized_policy,
+            "reorder_point": 0,
+            "safety_stock": 0.0,
+            "avg_daily_usage": round(avg_daily_usage, 4),
+            "lead_time_days": 0,
+            "review_cycle_days": review_cycle_days,
+            "planning_horizon_days": planning_horizon_days,
+            "effective_horizon_days": effective_horizon_days,
+            "target_stock_qty": target_stock_qty,
+            "inventory_position": inventory_position,
+            "on_order_qty": on_order_qty,
+            "in_transit_qty": in_transit_qty,
+            "reserved_qty": reserved_qty,
+            "lead_time_source": lt_source,
+            "lead_time_sample_count": lead_time_sample_count,
+            "lead_time_confidence": lead_time_confidence,
+            "safety_factor": safety_factor,
+            "demand_lookback_days": demand_lookback_days,
+            "demand_reason": [r.value for r in allowed_reasons],
+            "movement_count": movement_count,
+            "skipped_reason": "lead_time_unconfigured",
+            "quality_note": (
+                "No reliable lead time is configured for this stock row. "
+                "Add a manual lead time or supplier lead-time data before auto-calculation."
+            ),
+            "target_stock_level": None,
+            "suggested_order_qty": None,
+        }
 
     # Compute ROP
     safety_stock = round(avg_daily_usage * safety_factor * lead_time_days, 2)
     reorder_point = round((lead_time_days * avg_daily_usage) + safety_stock)
-    target_stock_level = round((avg_daily_usage * (lead_time_days + review_cycle_days)) + safety_stock)
+    target_stock_level = _compute_target_stock_level(
+        normalized_policy,
+        target_stock_qty,
+        reorder_point,
+        avg_daily_usage,
+        lead_time_days,
+        planning_horizon_days,
+        review_cycle_days,
+        safety_stock,
+    )
+    suggested_order_qty = max(0, round(target_stock_level - inventory_position))
+    quality_note = _build_quality_note(
+        lt_source,
+        lead_time_sample_count,
+        lead_time_confidence,
+        normalized_policy,
+        target_stock_qty,
+        review_cycle_days,
+    )
 
-    suggested_order_qty = max(0, round(target_stock_level - current_quantity))
     return {
         "product_id": product_id,
         "warehouse_id": warehouse_id,
+        "policy_type": normalized_policy,
         "reorder_point": reorder_point,
         "safety_stock": safety_stock,
         "avg_daily_usage": round(avg_daily_usage, 4),
         "lead_time_days": lead_time_days,
         "review_cycle_days": review_cycle_days,
+        "planning_horizon_days": planning_horizon_days,
+        "effective_horizon_days": effective_horizon_days,
+        "target_stock_qty": target_stock_qty,
+        "inventory_position": inventory_position,
+        "on_order_qty": on_order_qty,
+        "in_transit_qty": in_transit_qty,
+        "reserved_qty": reserved_qty,
         "lead_time_source": lt_source,
+        "lead_time_sample_count": lead_time_sample_count,
+        "lead_time_confidence": lead_time_confidence,
         "safety_factor": safety_factor,
         "demand_lookback_days": demand_lookback_days,
         "demand_reason": [r.value for r in allowed_reasons],
         "movement_count": movement_count,
         "skipped_reason": None,
-        "quality_note": None,
+        "quality_note": quality_note,
         "target_stock_level": target_stock_level,
         "suggested_order_qty": suggested_order_qty,
     }
@@ -363,6 +608,12 @@ async def compute_reorder_points_preview(
             InventoryStock.reorder_point.label("current_reorder_point"),
             InventoryStock.safety_factor.label("stored_safety_factor"),
             InventoryStock.lead_time_days.label("stored_lead_time_days"),
+            InventoryStock.policy_type.label("policy_type"),
+            InventoryStock.target_stock_qty.label("target_stock_qty"),
+            InventoryStock.on_order_qty.label("on_order_qty"),
+            InventoryStock.in_transit_qty.label("in_transit_qty"),
+            InventoryStock.reserved_qty.label("reserved_qty"),
+            InventoryStock.planning_horizon_days.label("planning_horizon_days"),
             InventoryStock.review_cycle_days.label("review_cycle_days"),
             Warehouse.name.label("warehouse_name"),
         )
@@ -387,14 +638,20 @@ async def compute_reorder_points_preview(
             tenant_id,
             row.product_id,
             row.warehouse_id,
-            effective_safety_factor,
-            row.review_cycle_days or 0,
-            demand_lookback_days,
-            lead_time_lookback_days,
+            safety_factor=effective_safety_factor,
+            policy_type=row.policy_type,
+            target_stock_qty=row.target_stock_qty or 0,
+            planning_horizon_days=row.planning_horizon_days or 0,
+            review_cycle_days=row.review_cycle_days or 0,
+            demand_lookback_days=demand_lookback_days,
+            lead_time_lookback_days=lead_time_lookback_days,
             lead_time_days_override=(
                 row.stored_lead_time_days if row.stored_lead_time_days and row.stored_lead_time_days > 0 else None
             ),
             current_quantity=row.current_quantity,
+            on_order_qty=row.on_order_qty or 0,
+            in_transit_qty=row.in_transit_qty or 0,
+            reserved_qty=row.reserved_qty or 0,
         )
         preview["product_name"] = row.product_name
         preview["category"] = row.category
@@ -454,6 +711,12 @@ async def apply_reorder_points(
         stock.reorder_point = new_rop
         stock.safety_factor = float(row.get("safety_factor") or safety_factor)
         stock.lead_time_days = int(row.get("lead_time_days") or 0)
+        stock.policy_type = row.get("policy_type") or POLICY_CONTINUOUS
+        stock.target_stock_qty = int(row.get("target_stock_qty") or 0)
+        stock.on_order_qty = int(row.get("on_order_qty") or 0)
+        stock.in_transit_qty = int(row.get("in_transit_qty") or 0)
+        stock.reserved_qty = int(row.get("reserved_qty") or 0)
+        stock.planning_horizon_days = int(row.get("planning_horizon_days") or 0)
         stock.review_cycle_days = int(row.get("review_cycle_days") or 0)
         updated_count += 1
 
