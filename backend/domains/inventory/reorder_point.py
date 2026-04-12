@@ -31,8 +31,8 @@ POLICY_PERIODIC = "periodic"
 POLICY_MANUAL = "manual"
 # Minimum demand events required in the lookback window
 MIN_DEMAND_EVENTS = 2
-# Default lead time fallback when no history exists
-DEFAULT_LEAD_TIME_DAYS = 7
+# Explicit business default lead time for container replenishment when no row-level or supplier signal exists.
+DEFAULT_LEAD_TIME_DAYS = 80
 
 
 # ── Average daily usage ─────────────────────────────────────────
@@ -270,7 +270,7 @@ async def get_lead_time_details(
         if fallback_lt is not None and fallback_lt > 0:
             return fallback_lt, "supplier_default", 0, _get_lead_time_confidence("supplier_default", 0)
 
-    return DEFAULT_LEAD_TIME_DAYS, "fallback_7d", 0, _get_lead_time_confidence("fallback_7d", 0)
+    return DEFAULT_LEAD_TIME_DAYS, "business_default", 0, _get_lead_time_confidence("business_default", 0)
 
 
 async def get_lead_time_days(
@@ -323,8 +323,10 @@ def _build_quality_note(
 ) -> str | None:
     notes: list[str] = []
 
-    if lead_time_source == "fallback_7d":
-        notes.append("Lead time uses the 7-day fallback with no receipt samples; confidence is low.")
+    if lead_time_source == "business_default":
+        notes.append(
+            f"Lead time uses the business default of {DEFAULT_LEAD_TIME_DAYS} days for container replenishment; confidence is low."
+        )
     elif lead_time_source == "supplier_default":
         notes.append("Lead time uses the supplier default with no receipt samples; confidence is medium.")
     elif lead_time_source == "actual" and lead_time_sample_count > 0 and lead_time_confidence != "high":

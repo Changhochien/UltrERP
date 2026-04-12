@@ -385,19 +385,19 @@ class TestLeadTimeFallbackChain:
         assert lead_time == supplier.default_lead_time_days
 
     @pytest.mark.asyncio
-    async def test_fallback_to_7_days(
+    async def test_fallback_to_business_default_days(
         self,
         db_session: AsyncSession,
         tenant_id: uuid.UUID,
         product: Product,
         warehouse: Warehouse,
     ):
-        """When no supplier history exists and no default, 7-day fallback is used."""
+        """When no supplier history exists and no default, the business default is used."""
         lead_time, source = await get_lead_time_days(
             db_session, tenant_id, product.id, warehouse.id,
         )
 
-        assert source == "fallback"
+        assert source == "business_default"
         assert lead_time == DEFAULT_LEAD_TIME_DAYS
 
 
@@ -607,6 +607,8 @@ class TestOrderConfirmationDemandHistory:
             session.queue_scalar(customer)  # customer lookup (confirm_order)
             session.queue_scalar(customer)  # customer lookup (_create_invoice_core)
             session.queue_scalar(FakeInvoiceNumberRange())  # number_range
+            for _line in order.lines:
+                session.queue_scalar(None)  # supplier invoice unit_cost lookup
             session.queue_scalar(uuid.uuid4())  # warehouse_id lookup
             for _line in order.lines:
                 # InventoryStock per line (for _create_invoice_core stock update)
@@ -682,6 +684,7 @@ class TestOrderConfirmationDemandHistory:
         session.queue_scalar(customer)
         session.queue_scalar(customer)
         session.queue_scalar(FakeInvoiceNumberRange())
+        session.queue_scalar(None)
         session.queue_scalar(uuid.uuid4())
         from tests.domains.orders._helpers import FakeInventoryStock
         session.queue_scalar(FakeInventoryStock(quantity=100))

@@ -24,17 +24,17 @@ const hookMocks = vi.hoisted(() => ({
       target_stock_qty: 60,
       computed_reorder_point: 12,
       avg_daily_usage: 1.5,
-      lead_time_days: 4,
+      lead_time_days: 80,
       planning_horizon_days: 21,
       effective_horizon_days: 21,
-      lead_time_sample_count: 3,
-      lead_time_confidence: "medium",
+      lead_time_sample_count: 0,
+      lead_time_confidence: "low",
       review_cycle_days: 30,
       safety_stock: 3,
       target_stock_level: 57,
       demand_basis: "sales_reservation",
       movement_count: 6,
-      lead_time_source: "actual",
+      lead_time_source: "business_default",
       quality_note: null,
       skip_reason: null,
       is_selected: false,
@@ -74,7 +74,7 @@ describe("ReorderPointAdmin", () => {
   it("shows the decision workflow and lets the user select a preview row", () => {
     render(<ReorderPointAdmin />);
 
-    expect(screen.getByText("Need lead time")).toBeTruthy();
+    expect(screen.getByText("Using operating default")).toBeTruthy();
     expect(screen.getByText("Review candidates")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Open details for Widget" }));

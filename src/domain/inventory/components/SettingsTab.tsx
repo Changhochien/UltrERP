@@ -31,6 +31,8 @@ interface SettingsTabProps {
   productId: string;
 }
 
+const BUSINESS_DEFAULT_LEAD_TIME_DAYS = 80;
+
 interface WarehouseSettingsCardProps {
   warehouse: WarehouseStockInfo;
   settings: WarehouseSettings;
@@ -355,7 +357,7 @@ export function SettingsTab({ productId }: SettingsTabProps) {
     warehouseName: warehouse.warehouse_name,
     reorderPoint: warehouse.reorder_point,
     safetyFactor: warehouse.safety_factor > 0 ? warehouse.safety_factor : 0.5,
-    leadTimeDays: warehouse.lead_time_days > 0 ? warehouse.lead_time_days : 0,
+    leadTimeDays: warehouse.lead_time_days > 0 ? warehouse.lead_time_days : BUSINESS_DEFAULT_LEAD_TIME_DAYS,
     policyType: warehouse.policy_type,
     targetStockQty: warehouse.target_stock_qty ?? 0,
     onOrderQty: warehouse.on_order_qty ?? 0,

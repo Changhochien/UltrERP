@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -349,6 +350,7 @@ class SupplierOrderLineRequest(BaseModel):
     product_id: uuid.UUID
     warehouse_id: uuid.UUID
     quantity_ordered: int = Field(..., gt=0)
+    unit_price: Decimal | None = Field(default=None, ge=0)
     notes: str | None = Field(None, max_length=1000)
 
 
@@ -359,6 +361,7 @@ class SupplierOrderLineResponse(BaseModel):
     product_id: uuid.UUID
     warehouse_id: uuid.UUID
     quantity_ordered: int
+    unit_price: Decimal | None = None
     quantity_received: int
     notes: str | None
 

@@ -174,7 +174,7 @@ interface CandidateRow extends ReorderPointPreviewRow {
 function ReorderPointAdmin() {
   const { t } = useTranslation("common", { keyPrefix: "inventory.reorderPointAdmin" });
   const [safetyFactor, setSafetyFactor] = useState(0.5);
-  const [lookbackDays, setLookbackDays] = useState<30 | 60 | 90 | 180 | 365>(90);
+  const [lookbackDays, setLookbackDays] = useState<30 | 60 | 90 | 180 | 365>(365);
   const [warehouseId, setWarehouseId] = useState("");
   const [activeTab, setActiveTab] = useState<"candidates" | "skipped">("candidates");
   const [candidateRows, setCandidateRows] = useState<CandidateRow[]>([]);
@@ -285,8 +285,8 @@ function ReorderPointAdmin() {
   );
 
   const leadTimeReviewCount = useMemo(
-    () => skipped.filter((row) => row.skip_reason === "lead_time_unconfigured").length,
-    [skipped],
+    () => candidateRows.filter((row) => row.lead_time_source === "business_default").length,
+    [candidateRows],
   );
 
   const candidateReviewCount = useMemo(
@@ -324,19 +324,15 @@ function ReorderPointAdmin() {
 
   const getLeadTimeStatusLabel = useCallback(
     (row: ReorderPointPreviewRow) => {
-      if (row.skip_reason === "lead_time_unconfigured") {
-        return t("leadTimeStatus.needsSetup");
-      }
-
       switch (row.lead_time_source) {
         case "actual":
           return t("leadTimeStatus.actual");
+        case "business_default":
+          return t("leadTimeStatus.businessDefault");
         case "manual_override":
           return t("leadTimeStatus.manual");
         case "supplier_default":
           return t("leadTimeStatus.supplier");
-        case "fallback_7d":
-          return t("leadTimeStatus.needsSetup");
         default:
           return t("leadTimeStatus.unknown");
       }
@@ -345,16 +341,17 @@ function ReorderPointAdmin() {
   );
 
   const getLeadTimeVariant = useCallback((row: ReorderPointPreviewRow) => {
-    if (row.skip_reason === "lead_time_unconfigured") {
-      return "warning" as const;
-    }
     if (row.lead_time_source === "manual_override" || row.lead_time_confidence === "high") {
       return "success" as const;
     }
     if (row.lead_time_confidence === "medium") {
       return "info" as const;
     }
-    if (row.lead_time_confidence === "low" || row.lead_time_source === "supplier_default") {
+    if (
+      row.lead_time_confidence === "low"
+      || row.lead_time_source === "supplier_default"
+      || row.lead_time_source === "business_default"
+    ) {
       return "warning" as const;
     }
     return "outline" as const;
@@ -364,8 +361,8 @@ function ReorderPointAdmin() {
     (row: ReorderPointPreviewRow) => {
       const notes: string[] = [];
 
-      if (row.skip_reason === "lead_time_unconfigured") {
-        notes.push(t("qualityMessage.leadTimeMissing"));
+      if (row.lead_time_source === "business_default") {
+        notes.push(t("qualityMessage.businessDefault", { days: 80 }));
       } else if (row.skip_reason === "insufficient_history") {
         notes.push(
           t("qualityMessage.insufficientHistory", {
@@ -673,7 +670,7 @@ function ReorderPointAdmin() {
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {leadTimeReviewCount > 0 ? (
               <Badge variant="warning" className="normal-case tracking-normal">
-                {t("leadTimeMissingCount", { count: leadTimeReviewCount })}
+                {t("businessDefaultCount", { count: leadTimeReviewCount, days: 80 })}
               </Badge>
             ) : null}
             <p className="text-sm text-muted-foreground">{t("rerunPreviewHint")}</p>
@@ -790,9 +787,9 @@ function ReorderPointAdmin() {
               hint={t("summary.skippedHint")}
             />
             <SummaryCard
-              label={t("summary.leadTimeReview")}
+              label={t("summary.businessDefault")}
               value={leadTimeReviewCount.toLocaleString()}
-              hint={t("summary.leadTimeReviewHint")}
+              hint={t("summary.businessDefaultHint", { days: 80 })}
               tone={leadTimeReviewCount > 0 ? "warning" : "default"}
             />
           </div>
@@ -832,7 +829,7 @@ function ReorderPointAdmin() {
             {activeTab === "candidates" ? (
               <DataTable
                 tableClassName="min-w-[780px]"
-                columns={candidateColumns as any}
+                columns={candidateColumns}
                 data={candidateRows}
                 loading={loading}
                 loadingRowCount={5}

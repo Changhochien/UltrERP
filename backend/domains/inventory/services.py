@@ -15,6 +15,7 @@ from common.models.inventory_stock import InventoryStock
 from common.models.product import Product
 from common.models.reorder_alert import AlertStatus, ReorderAlert
 from common.models.stock_adjustment import ReasonCode, StockAdjustment
+from common.models.supplier_invoice import SupplierInvoice, SupplierInvoiceLine
 from common.models.stock_transfer import StockTransferHistory
 from common.models.supplier import Supplier
 from common.models.supplier_order import SupplierOrder, SupplierOrderLine, SupplierOrderStatus
@@ -1121,6 +1122,7 @@ async def create_supplier_order(
             product_id=line_data["product_id"],
             warehouse_id=line_data["warehouse_id"],
             quantity_ordered=line_data["quantity_ordered"],
+            unit_price=line_data.get("unit_price"),
             notes=line_data.get("notes"),
         )
         session.add(line)
@@ -1197,6 +1199,7 @@ async def _serialize_order(
                 "product_id": line.product_id,
                 "warehouse_id": line.warehouse_id,
                 "quantity_ordered": line.quantity_ordered,
+                "unit_price": getattr(line, "unit_price", None),
                 "quantity_received": line.quantity_received,
                 "notes": line.notes,
             }
@@ -1844,66 +1847,61 @@ async def get_product_supplier(
     with the most recently received order lines for this product.
     Returns null if no supplier orders exist.
     """
-    # Use a subquery to find the supplier_id with the most recent received order
-    latest_order_line_sq = (
+    supplier_sources = (
         select(
-            SupplierOrderLine.product_id,
-            SupplierOrder.supplier_id,
-            func.max(SupplierOrder.received_date).label("latest_received"),
+            SupplierOrder.supplier_id.label("supplier_id"),
+            SupplierOrder.received_date.label("effective_date"),
+            SupplierOrderLine.unit_price.label("unit_cost"),
         )
         .join(SupplierOrder, SupplierOrder.id == SupplierOrderLine.order_id)
         .where(
             SupplierOrder.tenant_id == tenant_id,
             SupplierOrderLine.product_id == product_id,
             SupplierOrder.received_date.isnot(None),
+            SupplierOrderLine.unit_price.isnot(None),
         )
-        .group_by(SupplierOrderLine.product_id, SupplierOrder.supplier_id)
-        .subquery()
-    )
-
-    best_supplier_sq = (
-        select(
-            latest_order_line_sq.c.supplier_id,
-            latest_order_line_sq.c.latest_received,
+        .union_all(
+            select(
+                SupplierInvoice.supplier_id.label("supplier_id"),
+                SupplierInvoice.invoice_date.label("effective_date"),
+                SupplierInvoiceLine.unit_price.label("unit_cost"),
+            )
+            .join(
+                SupplierInvoice,
+                SupplierInvoice.id == SupplierInvoiceLine.supplier_invoice_id,
+            )
+            .where(
+                SupplierInvoice.tenant_id == tenant_id,
+                SupplierInvoiceLine.product_id == product_id,
+                SupplierInvoiceLine.unit_price.isnot(None),
+            )
         )
-        .order_by(latest_order_line_sq.c.latest_received.desc())
-        .limit(1)
         .subquery()
     )
 
     stmt = (
-        select(Supplier)
-        .join(best_supplier_sq, Supplier.id == best_supplier_sq.c.supplier_id)
-        .where(Supplier.tenant_id == tenant_id)
-    )
-    result = await session.execute(stmt)
-    supplier = result.scalar_one_or_none()
-
-    if supplier is None:
-        return None
-
-    # Get unit_cost from the most recent received order line
-    unit_cost_stmt = (
-        select(SupplierOrderLine.unit_price)
-        .join(SupplierOrder, SupplierOrder.id == SupplierOrderLine.order_id)
-        .where(
-            SupplierOrder.tenant_id == tenant_id,
-            SupplierOrderLine.product_id == product_id,
-            SupplierOrder.supplier_id == supplier.id,
-            SupplierOrder.received_date.isnot(None),
+        select(
+            Supplier.id,
+            Supplier.name,
+            Supplier.default_lead_time_days,
+            supplier_sources.c.unit_cost,
         )
-        .order_by(SupplierOrder.received_date.desc())
+        .join(supplier_sources, Supplier.id == supplier_sources.c.supplier_id)
+        .where(Supplier.tenant_id == tenant_id)
+        .order_by(supplier_sources.c.effective_date.desc())
         .limit(1)
     )
-    unit_cost_result = await session.execute(unit_cost_stmt)
-    unit_cost_row = unit_cost_result.first()
-    unit_cost = float(unit_cost_row.unit_price) if unit_cost_row else None
+    result = await session.execute(stmt)
+    row = result.first()
+
+    if row is None:
+        return None
 
     return {
-        "supplier_id": supplier.id,
-        "name": supplier.name,
-        "unit_cost": unit_cost,
-        "default_lead_time_days": supplier.default_lead_time_days,
+        "supplier_id": row.id,
+        "name": row.name,
+        "unit_cost": float(row.unit_cost) if row.unit_cost is not None else None,
+        "default_lead_time_days": row.default_lead_time_days,
     }
 
 

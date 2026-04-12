@@ -625,13 +625,9 @@ async def test_lead_time_fallback_chain(
     )
 
     candidate = next((c for c in preview_rows if c["product_id"] == p.id), None)
-    assert candidate is None, "Product without lead-time data should not be a candidate"
-
-    skipped = next((row for row in skipped_rows if row["product_id"] == p.id), None)
-    assert skipped is not None, "Product without lead-time data should be skipped"
-    assert skipped["skipped_reason"] == "lead_time_unconfigured"
-    assert skipped["lead_time_source"] == "fallback_7d"
-    assert skipped["lead_time_days"] == 0
+    assert candidate is not None, "Product without lead-time history should use the business default"
+    assert candidate["lead_time_source"] == "business_default"
+    assert candidate["lead_time_days"] == 80
 
 
 @pytest.mark.asyncio
@@ -652,13 +648,9 @@ async def test_lead_time_supplier_default_fallback(
     )
 
     candidate = next((c for c in preview_rows if c["product_id"] == product.id), None)
-    assert candidate is None, "Product without a resolved lead-time source should be skipped"
-
-    skipped = next((row for row in skipped_rows if row["product_id"] == product.id), None)
-    assert skipped is not None
-    assert skipped["skipped_reason"] == "lead_time_unconfigured"
-    assert skipped["lead_time_source"] == "fallback_7d"
-    assert skipped["lead_time_days"] == 0
+    assert candidate is not None, "Product without a resolved lead-time source should use the business default"
+    assert candidate["lead_time_source"] == "business_default"
+    assert candidate["lead_time_days"] == 80
 
 
 @pytest.mark.asyncio

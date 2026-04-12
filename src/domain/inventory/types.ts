@@ -249,6 +249,7 @@ export interface SupplierOrderLine {
   product_id: string;
   warehouse_id: string;
   quantity_ordered: number;
+  unit_price?: string | null;
   quantity_received: number;
   notes: string | null;
 }
@@ -297,6 +298,7 @@ export interface CreateSupplierOrderRequest {
     product_id: string;
     warehouse_id: string;
     quantity_ordered: number;
+    unit_price?: number;
     notes?: string;
   }>;
 }
