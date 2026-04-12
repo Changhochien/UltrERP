@@ -112,12 +112,15 @@ export interface APAgingResponse {
 
 // Gross Margin
 export interface GrossMarginPreviousPeriod {
-  gross_margin_percent: string;
+  available: boolean;
+  gross_margin_percent: string | null;
 }
 
 export interface GrossMarginResponse {
   available: boolean;
+  gross_margin: string;
   gross_margin_percent: string;
+  margin_percent: string | null;
   revenue: string;
   cogs: string;
   previous_period: GrossMarginPreviousPeriod;
