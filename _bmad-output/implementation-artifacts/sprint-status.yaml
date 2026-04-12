@@ -744,4 +744,19 @@ development_status:
         validation: "Validated on 2026-04-06: focused pytest for `test_ap_payment_import.py` + `test_cli.py`, the broader Epic 16 legacy-import regression slice (`test_ap_payment_import.py`, `test_cli.py`, `test_canonical.py`, `test_staging.py`, `test_validation.py`), and targeted Ruff over the AP payment import slice all passed. Current dump evidence keeps unverified rows on holding and only imports strictly verified AP-special-payment rows."
         prerequisites: ["16.5", "16.10", "16.11"]
 
-last_updated: "2026-04-06"
+  # Epic 18 - Legacy Inventory Receiving Audit Trail
+  epic-18:
+    status: "in-progress"
+    validation_note: ""
+    recommended_execution_order:
+      - "18.1 Legacy Receiving Audit Trail Import"
+    stories:
+      18-1-legacy-receiving-audit-trail-import:
+        status: "review"
+        story_id: "18.1"
+        title: "Legacy Receiving Audit Trail Import"
+        story_file: "18-1-legacy-receiving-audit-trail-import.md"
+        validation: "Validated on 2026-04-12: focused pytest for `tests/domains/legacy_import/test_canonical.py`, the full `tests/domains/legacy_import` suite (`77 passed`), and targeted Ruff over `domains/legacy_import/canonical.py` plus `tests/domains/legacy_import/test_canonical.py` all passed. Full backend pytest remains blocked by unrelated MCP customer collection and other pre-existing non-legacy failures outside this story."
+        prerequisites: ["15.2", "15.4", "16.4"]
+
+last_updated: "2026-04-12"

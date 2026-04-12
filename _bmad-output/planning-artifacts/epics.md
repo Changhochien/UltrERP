@@ -1874,3 +1874,87 @@ So that `tbsprepay` and `tbsspay` can be migrated deliberately without coupling 
 **When** focused backend validation runs
 **Then** pytest covers the CLI command and canonical AP payment import behavior
 **And** Ruff passes on the touched legacy-import and AP payment files
+
+---
+
+## Epic 18: Legacy Inventory Receiving Audit Trail
+
+### Epic Goal
+
+Complete the inventory audit trail for all historical goods received before UltrERP deployment by creating `StockAdjustment(SUPPLIER_DELIVERY)` records from legacy purchase invoice data, filling the gap left by the legacy system's snapshot-only inventory model.
+
+### Stories
+
+### Story 18.1: Legacy Receiving Audit Trail Import
+
+As a migration operator,
+I want every historical purchase invoice line from the legacy system to appear as a stock-receiving event in UltrERP,
+So that the inventory audit trail is complete even for goods received before the new system was deployed.
+
+**Acceptance Criteria:**
+
+**Given** the canonical import is run for a batch that includes tbsslipdtj rows
+**When** the receiving audit step executes
+**Then** every tbsslipdtj row produces exactly one StockAdjustment with reason_code = SUPPLIER_DELIVERY
+**And** the quantity_change equals fstkqty for that row
+**And** created_at equals dtslipdate for that row
+**And** notes contains the invoice number sslipno
+
+**Given** inventory_stock.quantity has already been set from the tbsstkhouse snapshot import
+**When** the receiving audit step runs
+**Then** inventory_stock.quantity is NOT modified by this step
+**And** StockAdjustment records do not trigger StockChangedEvent or reorder alert checks
+
+**Given** a previous import run created StockAdjustment records for a batch
+**When** the same batch is re-imported
+**Then** no duplicate StockAdjustment records are created
+**And** the legacy_import_batch / lineage key ensures deterministic replay
+
+**Given** StockAdjustment records are created by this step
+**Then** actor_id is set to "legacy_import" (consistent with all other Epic 15/16 import steps)
+
+**Given** a StockAdjustment is created from a tbsslipdtj row
+**When** an auditor inspects the record
+**Then** the record links back to source_table = 'tbsslipdtj' and source_id = sslipno + ':' + iidno
+
+---
+
+## Epic 18: Legacy Inventory Receiving Audit Trail
+
+### Epic Goal
+
+Complete the inventory audit trail for all historical goods received before UltrERP deployment by creating `StockAdjustment(SUPPLIER_DELIVERY)` records from legacy purchase invoice data, filling the gap left by the legacy system's snapshot-only inventory model.
+
+### Stories
+
+### Story 18.1: Legacy Receiving Audit Trail Import
+
+As a migration operator,
+I want every historical purchase invoice line from the legacy system to appear as a stock-receiving event in UltrERP,
+So that the inventory audit trail is complete even for goods received before the new system was deployed.
+
+**Acceptance Criteria:**
+
+**Given** the canonical import is run for a batch that includes tbsslipdtj rows
+**When** the receiving audit step executes
+**Then** every tbsslipdtj row produces exactly one StockAdjustment with reason_code = SUPPLIER_DELIVERY
+**And** the quantity_change equals fstkqty for that row
+**And** created_at equals dtslipdate for that row
+**And** notes contains the invoice number sslipno
+
+**Given** inventory_stock.quantity has already been set from the tbsstkhouse snapshot import
+**When** the receiving audit step runs
+**Then** inventory_stock.quantity is NOT modified by this step
+**And** StockAdjustment records do not trigger StockChangedEvent or reorder alert checks
+
+**Given** a previous import run created StockAdjustment records for a batch
+**When** the same batch is re-imported
+**Then** no duplicate StockAdjustment records are created
+**And** the legacy_import_batch / lineage key ensures deterministic replay
+
+**Given** StockAdjustment records are created by this step
+**Then** actor_id is set to "legacy_import" (consistent with all other Epic 15/16 import steps)
+
+**Given** a StockAdjustment is created from a tbsslipdtj row
+**When** an auditor inspects the record
+**Then** the record links back to source_table = 'tbsslipdtj' and source_id = sslipno + ':' + iidno

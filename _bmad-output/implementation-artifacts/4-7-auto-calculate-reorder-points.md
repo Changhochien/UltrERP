@@ -2,7 +2,7 @@
 
 **Epic:** 4 — Inventory Operations
 **Story ID:** 4.7
-**Status:** backlog
+**Status:** done
 
 ## Story
 
@@ -22,7 +22,7 @@ This story should implement reorder point calculation as a scoped, explainable r
 
 - Safety Stock = `avg_daily_usage x safety_factor x lead_time_days`
 - Average Daily Usage = whitelisted outbound demand over lookback window / lookback days
-- Lead Time = actual average from resolved replenishment-source history, or source default lead time, or 7-day fallback
+- Lead Time = actual average from resolved replenishment-source history, or source default lead time; rows without reliable lead time stay in review instead of using a guessed fallback
 
 **Holistic replenishment principles for this story:**
 
@@ -71,25 +71,19 @@ This story should implement reorder point calculation as a scoped, explainable r
 **When** reorder points are computed
 **Then** the system resolves a replenishment source from supplier receipt history for that product and warehouse
 **And** if a clear source exists, actual lead time is averaged from received supplier orders for that source
-**And** if no actual lead time history exists, `supplier.default_lead_time_days` is used
-**And** if no supplier default exists, a 7-day fallback is used
+**And** if no actual lead time history exists, `supplier.default_lead_time_days` is used when a reliable source can be resolved
+**And** if no reliable lead time exists, the row is skipped with reason `lead_time_unconfigured`
 **And** if multiple competing sources exist and no clear source can be resolved, the row is skipped with reason `source_unresolved`
 
 ### AC4: Reorder point preview is explainable before saving
 
 **Given** I am on the reorder point admin UI
 **When** I set safety factor, lookback days, and scope filters, then click `Preview`
-**Then** I see candidate and skipped rows with:
-- product name
-- warehouse
-- computed reorder point
-- average daily usage
-- lead time
-- safety stock
-- demand basis
-- movement count
-- lead time source
-- quality note or skipped reason
+**Then** I see a decision-focused preview with:
+- summary cards for candidate rows, selected rows, skipped rows, and rows missing lead time
+- a compact candidate table for scanning and batch selection
+- a detail panel that explains demand signal, stock position, lead time quality, and recommendation inputs for the focused row
+- skipped rows that clearly explain whether demand history, replenishment source, or lead time configuration is missing
 **And** no values are saved yet
 
 ### AC5: Apply updates only explicitly selected preview rows
@@ -107,7 +101,17 @@ This story should implement reorder point calculation as a scoped, explainable r
 **When** reorder points are computed
 **Then** the row is excluded from auto-update
 **And** the preview shows a note such as `insufficient_history`
-**And** lead time fallback is only used when demand history exists but actual lead time history is missing
+**And** rows missing reliable lead time remain in review instead of silently defaulting to 7 days
+
+---
+
+## Completion Notes (2026-04-12)
+
+- Reworked the reorder-point admin UI into a clearer workflow: parameter controls, decision rules, summary cards, compact candidate/skipped tables, and a localized detail panel.
+- Removed the silent 7-day default from the product planning settings UI; unset lead time now stays explicit and blocks auto-preview messaging until configured.
+- Changed reorder-point preview behavior so rows with unresolved lead time no longer auto-enter candidates with `fallback_7d`; they now surface as `lead_time_unconfigured` review rows.
+- Added localized review notes for lead-time confidence and policy fallback behavior, so planners do not need to decode raw backend notes.
+- Validated with focused backend integration tests, focused frontend Vitest coverage, and end-to-end browser verification against a fresh backend instance proxied through the frontend dev server.
 
 ---
 
