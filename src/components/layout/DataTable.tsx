@@ -15,7 +15,7 @@ export interface DataTableSortState {
 
 export interface DataTableColumn<TData> {
   id: string;
-  header: string;
+  header: ReactNode;
   cell: (row: TData) => ReactNode;
   sortable?: boolean;
   getSortValue?: (row: TData) => string | number | null | undefined;

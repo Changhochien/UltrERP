@@ -16,6 +16,8 @@ from common.errors import ValidationError
 from common.events import DomainEvent
 from common.models.audit_log import AuditLog
 from common.models.order import Order
+from common.models.supplier_invoice import SupplierInvoice, SupplierInvoiceLine
+from common.models.supplier_order import SupplierOrder, SupplierOrderLine
 from common.tenant import DEFAULT_TENANT_ID, set_tenant
 from domains.customers.models import Customer
 from domains.customers.validators import validate_taiwan_business_number
@@ -122,6 +124,48 @@ async def _get_active_number_range(
     return cast(InvoiceNumberRange | None, result.scalar_one_or_none())
 
 
+async def _resolve_latest_unit_cost(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+) -> Decimal | None:
+    supplier_order_costs = (
+        select(
+            SupplierOrder.received_date.label("effective_date"),
+            SupplierOrderLine.unit_price.label("unit_cost"),
+        )
+        .join(SupplierOrder, SupplierOrder.id == SupplierOrderLine.order_id)
+        .where(
+            SupplierOrder.tenant_id == tenant_id,
+            SupplierOrderLine.product_id == product_id,
+            SupplierOrder.received_date.isnot(None),
+            SupplierOrderLine.unit_price.isnot(None),
+        )
+    )
+    supplier_invoice_costs = (
+        select(
+            SupplierInvoice.invoice_date.label("effective_date"),
+            SupplierInvoiceLine.unit_price.label("unit_cost"),
+        )
+        .join(
+            SupplierInvoice,
+            SupplierInvoice.id == SupplierInvoiceLine.supplier_invoice_id,
+        )
+        .where(
+            SupplierInvoice.tenant_id == tenant_id,
+            SupplierInvoiceLine.product_id == product_id,
+            SupplierInvoiceLine.unit_price.isnot(None),
+        )
+    )
+    cost_sources = supplier_order_costs.union_all(supplier_invoice_costs).subquery()
+    result = await session.execute(
+        select(cost_sources.c.unit_cost)
+        .order_by(cost_sources.c.effective_date.desc())
+        .limit(1)
+    )
+    return cast(Decimal | None, result.scalar_one_or_none())
+
+
 async def _create_invoice_core(
     session: AsyncSession,
     data: InvoiceCreate,
@@ -194,27 +238,40 @@ async def _create_invoice_core(
         order_id=data.order_id,
     )
 
-    invoice.lines = [
-        InvoiceLine(
-            tenant_id=tenant_id,
-            line_number=index,
-            product_id=line.product_id,
-            product_code_snapshot=line.product_code,
-            description=line.description,
-            quantity=line.quantity,
-            unit_price=line.unit_price,
-            subtotal_amount=amounts.subtotal,
-            tax_type=amounts.tax_type,
-            tax_rate=amounts.tax_rate,
-            tax_amount=amounts.tax_amount,
-            total_amount=amounts.total_amount,
-            zero_tax_rate_reason=amounts.zero_tax_rate_reason,
+    unit_cost_cache: dict[uuid.UUID, Decimal | None] = {}
+    invoice.lines = []
+    for index, (line, amounts) in enumerate(
+        zip(data.lines, calculated_lines, strict=True),
+        start=1,
+    ):
+        resolved_unit_cost = line.unit_cost
+        if resolved_unit_cost is None and line.product_id is not None:
+            if line.product_id not in unit_cost_cache:
+                unit_cost_cache[line.product_id] = await _resolve_latest_unit_cost(
+                    session,
+                    tenant_id,
+                    line.product_id,
+                )
+            resolved_unit_cost = unit_cost_cache[line.product_id]
+
+        invoice.lines.append(
+            InvoiceLine(
+                tenant_id=tenant_id,
+                line_number=index,
+                product_id=line.product_id,
+                product_code_snapshot=line.product_code,
+                description=line.description,
+                quantity=line.quantity,
+                unit_price=line.unit_price,
+                unit_cost=resolved_unit_cost,
+                subtotal_amount=amounts.subtotal,
+                tax_type=amounts.tax_type,
+                tax_rate=amounts.tax_rate,
+                tax_amount=amounts.tax_amount,
+                total_amount=amounts.total_amount,
+                zero_tax_rate_reason=amounts.zero_tax_rate_reason,
+            )
         )
-        for index, (line, amounts) in enumerate(
-            zip(data.lines, calculated_lines, strict=True),
-            start=1,
-        )
-    ]
 
     number_range.next_number += 1
     number_range.updated_at = datetime.now(tz=UTC)

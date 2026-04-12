@@ -70,7 +70,7 @@ export function SupplierOrderForm({
         product_id: l.product_id,
         warehouse_id: l.warehouse_id,
         quantity_ordered: l.quantity,
-        unit_cost: l.unit_cost > 0 ? l.unit_cost : undefined,
+        unit_price: l.unit_cost > 0 ? l.unit_cost : undefined,
       })),
     });
     if (result) onCreated(result.id);
