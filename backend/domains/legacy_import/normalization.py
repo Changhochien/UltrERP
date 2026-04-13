@@ -15,6 +15,9 @@ from domains.legacy_import.staging import _open_raw_connection, _quoted_identifi
 _NAMESPACE = uuid.UUID("4e59177d-61e5-48f4-b1f8-6b2141739ab9")
 _DEFAULT_WAREHOUSE_CODE = "LEGACY_DEFAULT"
 _DEFAULT_WAREHOUSE_NAME = "Legacy Default Warehouse"
+_KNOWN_WAREHOUSE_NAMES = {
+    "A": "Legacy General Warehouse (總倉)",
+}
 
 
 @dataclass(slots=True, frozen=True)
@@ -69,6 +72,18 @@ def _normalize_decimal(value: object | None) -> Decimal | None:
         return Decimal(raw)
     except InvalidOperation as exc:
         raise ValueError(f"Invalid decimal value: {raw}") from exc
+
+
+def _normalize_warehouse_code(value: object | None) -> str:
+    raw = str(value or "").strip()
+    return raw or _DEFAULT_WAREHOUSE_CODE
+
+
+def _warehouse_name_for_code(code: str) -> str:
+    normalized_code = _normalize_warehouse_code(code)
+    if normalized_code == _DEFAULT_WAREHOUSE_CODE:
+        return _DEFAULT_WAREHOUSE_NAME
+    return _KNOWN_WAREHOUSE_NAMES.get(normalized_code, f"Legacy Warehouse {normalized_code}")
 
 
 def normalize_party_record(
@@ -148,21 +163,49 @@ def _normalize_product_record(
     )
 
 
-def _synthetic_warehouse_record(batch_id: str, tenant_id: uuid.UUID) -> tuple:
-    warehouse_id = deterministic_legacy_uuid("warehouse", _DEFAULT_WAREHOUSE_CODE)
+def _normalized_warehouse_record(
+    batch_id: str,
+    tenant_id: uuid.UUID,
+    warehouse_code: object | None,
+    *,
+    source_row_number: int,
+) -> tuple:
+    normalized_code = _normalize_warehouse_code(warehouse_code)
+    warehouse_id = deterministic_legacy_uuid("warehouse", normalized_code)
     return (
         batch_id,
         tenant_id,
         warehouse_id,
         None,
-        _DEFAULT_WAREHOUSE_CODE,
-        _DEFAULT_WAREHOUSE_NAME,
+        normalized_code,
+        _warehouse_name_for_code(normalized_code),
         None,
         None,
-        "synthetic-default",
-        "synthetic",
-        0,
+        "legacy-stock",
+        "tbsstkhouse",
+        source_row_number,
     )
+
+
+def _normalized_warehouse_records(
+    inventory_rows: list[Mapping[str, object]],
+    batch_id: str,
+    tenant_id: uuid.UUID,
+) -> list[tuple]:
+    source_row_by_code: dict[str, int] = {}
+    for row in inventory_rows:
+        warehouse_code = _normalize_warehouse_code(row.get("warehouse_code"))
+        source_row_by_code.setdefault(warehouse_code, int(row.get("source_row_number") or 0))
+
+    return [
+        _normalized_warehouse_record(
+            batch_id,
+            tenant_id,
+            warehouse_code,
+            source_row_number=source_row_by_code[warehouse_code],
+        )
+        for warehouse_code in sorted(source_row_by_code)
+    ]
 
 
 def _normalize_inventory_record(
@@ -174,14 +217,15 @@ def _normalize_inventory_record(
     if not product_code:
         raise ValueError("Inventory record missing product_code")
 
-    warehouse_id = deterministic_legacy_uuid("warehouse", _DEFAULT_WAREHOUSE_CODE)
+    warehouse_code = _normalize_warehouse_code(record.get("warehouse_code"))
+    warehouse_id = deterministic_legacy_uuid("warehouse", warehouse_code)
     return (
         batch_id,
         tenant_id,
         deterministic_legacy_uuid("product", product_code),
         warehouse_id,
         product_code,
-        _DEFAULT_WAREHOUSE_CODE,
+        warehouse_code,
         _normalize_decimal(record.get("qty_on_hand")) or Decimal("0"),
         0,
         "tbsstkhouse",
@@ -380,6 +424,7 @@ async def run_normalization(
                 "tbsstkhouse",
                 """
 				col_1 AS product_code,
+				col_2 AS warehouse_code,
 				col_7 AS qty_on_hand,
 				_source_row_number AS source_row_number
 				""",
@@ -392,7 +437,11 @@ async def run_normalization(
             product_records = [
                 _normalize_product_record(row, batch_id, tenant_id) for row in product_rows
             ]
-            warehouse_records = [_synthetic_warehouse_record(batch_id, tenant_id)]
+            warehouse_records = _normalized_warehouse_records(
+                inventory_rows,
+                batch_id,
+                tenant_id,
+            )
             inventory_records = [
                 _normalize_inventory_record(row, batch_id, tenant_id) for row in inventory_rows
             ]

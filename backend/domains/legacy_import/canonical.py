@@ -73,6 +73,30 @@ def _as_decimal(value: object | None, default: str | None = "0") -> Decimal | No
         raise ValueError(f"Invalid decimal value: {text}") from exc
 
 
+def _as_integral_quantity(value: object | None, *, field_name: str) -> int:
+    quantity = _as_decimal(value, "0")
+    if quantity is None:
+        return 0
+    if quantity != quantity.to_integral_value():
+        raise ValueError(f"{field_name} must be integral, got {quantity}")
+    return int(quantity)
+
+
+def _coerce_quantity_for_integer_schema(
+    value: object | None,
+    *,
+    field_name: str,
+) -> tuple[int, str | None]:
+    quantity = _as_decimal(value, "0")
+    if quantity is None:
+        return 0, None
+    if quantity == quantity.to_integral_value():
+        return int(quantity), None
+
+    coerced = int(quantity)
+    return coerced, f"{field_name} coerced from {quantity.normalize()} to {coerced}"
+
+
 def _as_money(value: Decimal) -> Decimal:
     return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
@@ -867,7 +891,7 @@ async def _fetch_purchase_headers(
             END AS total_amount,
 			_source_row_number AS source_row_number
 		FROM {quoted_schema}.tbsslipj
-		WHERE _batch_id = $1
+        WHERE _batch_id = $1 AND COALESCE(col_1, '') = '4'
 		ORDER BY col_2
 		""",
         batch_id,
@@ -898,7 +922,7 @@ async def _fetch_purchase_lines(
 			(col_21::numeric * col_22::numeric) AS extended_amount,
 			_source_row_number AS source_row_number
 		FROM {quoted_schema}.tbsslipdtj
-		WHERE _batch_id = $1
+		WHERE _batch_id = $1 AND COALESCE(col_1, '') = '4'
 		ORDER BY col_2, col_3
 		""",
         batch_id,
@@ -906,9 +930,25 @@ async def _fetch_purchase_lines(
     return [_coerce_row(row) for row in rows]
 
 
+def _derive_legacy_receiving_batch_fallback_day(
+    headers: list[dict[str, object]],
+    lines: list[dict[str, object]],
+) -> date | None:
+    candidates = [
+        candidate
+        for candidate in (
+            *(_as_legacy_date(header.get("invoice_date")) for header in headers),
+            *(_as_legacy_date(line.get("receipt_date")) for line in lines),
+        )
+        if candidate is not None
+    ]
+    return max(candidates) if candidates else None
+
+
 def _resolve_legacy_receiving_created_at(
     line: dict[str, object],
     header: dict[str, object] | None,
+    batch_fallback_day: date | None,
 ) -> datetime:
     source_identifier = (
         f"{_as_text(line.get('doc_number'))}:{_as_int(line.get('line_number'), 1)}"
@@ -925,6 +965,15 @@ def _resolve_legacy_receiving_created_at(
             source_identifier,
         )
         return _as_timestamp(header_day)
+
+    if batch_fallback_day is not None:
+        _LOGGER.warning(
+            "Legacy receiving line %s has no usable row/header date; "
+            "falling back to batch-scoped legacy date %s",
+            source_identifier,
+            batch_fallback_day.isoformat(),
+        )
+        return _as_timestamp(batch_fallback_day)
 
     _LOGGER.warning(
         "Legacy receiving line %s has sentinel/missing receipt_date and no "
@@ -1369,6 +1418,7 @@ async def _import_legacy_receiving_audit(
         for header in headers
         if _as_text(header.get("doc_number"))
     }
+    batch_fallback_day = _derive_legacy_receiving_batch_fallback_day(headers, lines)
 
     for line in lines:
         doc_number = _as_text(line.get("doc_number"))
@@ -1402,7 +1452,15 @@ async def _import_legacy_receiving_audit(
         created_at = _resolve_legacy_receiving_created_at(
             line,
             headers_by_doc.get(doc_number),
+            batch_fallback_day,
         )
+        quantity_change, quantity_note = _coerce_quantity_for_integer_schema(
+            line.get("qty"),
+            field_name=f"Receiving audit line {source_identifier} quantity",
+        )
+        notes = f"Legacy import: invoice {doc_number}"
+        if quantity_note:
+            notes = f"{notes}; {quantity_note}"
 
         await connection.execute(
             """
@@ -1419,24 +1477,16 @@ async def _import_legacy_receiving_audit(
 				created_at
 			)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-			ON CONFLICT (id) DO UPDATE SET
-				product_id = EXCLUDED.product_id,
-				warehouse_id = EXCLUDED.warehouse_id,
-				quantity_change = EXCLUDED.quantity_change,
-				reason_code = EXCLUDED.reason_code,
-				actor_id = EXCLUDED.actor_id,
-				notes = EXCLUDED.notes,
-				transfer_id = EXCLUDED.transfer_id,
-				created_at = EXCLUDED.created_at
+            ON CONFLICT (id) DO NOTHING
 			""",
             stock_adjustment_id,
             tenant_id,
             product_id,
             warehouse_id,
-            int(_as_decimal(line.get("qty"), "0")),
+            quantity_change,
             ReasonCode.SUPPLIER_DELIVERY.value,
             "legacy_import",
-            f"Legacy import: invoice {doc_number}",
+            notes,
             None,
             created_at,
         )
