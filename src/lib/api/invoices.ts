@@ -81,7 +81,10 @@ export async function createInvoice(
 
 export async function fetchInvoices(params?: {
   customer_id?: string;
-  payment_status?: string;
+  payment_status?: string | string[];
+  date_from?: string;
+  date_to?: string;
+  search?: string;
   sort_by?: string;
   sort_order?: string;
   page?: number;
@@ -89,7 +92,16 @@ export async function fetchInvoices(params?: {
 }): Promise<InvoiceListResponse> {
   const qs = new URLSearchParams();
   if (params?.customer_id) qs.set("customer_id", params.customer_id);
-  if (params?.payment_status) qs.set("payment_status", params.payment_status);
+  if (params?.payment_status) {
+    if (Array.isArray(params.payment_status)) {
+      params.payment_status.forEach((v) => qs.append("payment_status", v));
+    } else {
+      qs.set("payment_status", params.payment_status);
+    }
+  }
+  if (params?.date_from) qs.set("date_from", params.date_from);
+  if (params?.date_to) qs.set("date_to", params.date_to);
+  if (params?.search) qs.set("search", params.search);
   if (params?.sort_by) qs.set("sort_by", params.sort_by);
   if (params?.sort_order) qs.set("sort_order", params.sort_order);
   if (params?.page) qs.set("page", String(params.page));

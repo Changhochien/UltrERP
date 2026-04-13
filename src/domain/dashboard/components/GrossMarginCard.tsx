@@ -74,13 +74,15 @@ export function GrossMarginCard({ data, isLoading, error }: GrossMarginCardProps
     );
   }
 
-  const marginPercent = Number(data.gross_margin_percent);
+  const marginPercent =
+    data.gross_margin_percent != null ? Number(data.gross_margin_percent) : null;
+  const hasMarginPercent = marginPercent != null && !Number.isNaN(marginPercent);
   const previousMarginPercent =
     data.previous_period.available && data.previous_period.gross_margin_percent != null
       ? Number(data.previous_period.gross_margin_percent)
       : null;
   const marginDelta =
-    previousMarginPercent == null || Number.isNaN(previousMarginPercent)
+    !hasMarginPercent || previousMarginPercent == null || Number.isNaN(previousMarginPercent)
       ? null
       : marginPercent - previousMarginPercent;
 
@@ -102,7 +104,9 @@ export function GrossMarginCard({ data, isLoading, error }: GrossMarginCardProps
   }
 
   const sparkPoints =
-    previousMarginPercent == null
+    !hasMarginPercent
+      ? [0, 0, 0, 0]
+      : previousMarginPercent == null
       ? [marginPercent * 0.9, marginPercent, marginPercent, marginPercent]
       : [
           marginPercent * 0.9,
@@ -115,7 +119,7 @@ export function GrossMarginCard({ data, isLoading, error }: GrossMarginCardProps
     <div data-testid="gross-margin-card">
       <MetricCard
         title={t("dashboard.grossMargin.title")}
-        value={`${marginPercent.toFixed(1)}%`}
+        value={hasMarginPercent ? `${marginPercent.toFixed(1)}%` : "—"}
         description={t("dashboard.grossMargin.vsPreviousPeriod")}
         trendLabel={trendDisplay !== "—" ? trendDisplay : undefined}
         trendDirection={trendDisplay !== "—" ? trendDirection : undefined}

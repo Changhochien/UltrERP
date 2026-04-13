@@ -1,6 +1,6 @@
 /** Customer autocomplete combobox using Popover + Command — for invoice creation. */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Search } from "lucide-react";
 
 import { listCustomers } from "../../lib/api/customers";
@@ -24,14 +24,22 @@ import {
 interface CustomerComboboxProps {
   value: string;
   onChange: (customerId: string) => void;
+  onClear?: () => void;
+  onCustomersLoaded?: (customers: CustomerSummary[]) => void;
+  /** Label shown on the trigger button when no value is selected. */
   placeholder?: string;
+  /** Label shown inside the search input (defaults to placeholder). */
+  searchPlaceholder?: string;
   disabled?: boolean;
 }
 
 export function CustomerCombobox({
   value,
   onChange,
+  onClear,
+  onCustomersLoaded,
   placeholder = "Search customer by name or BAN…",
+  searchPlaceholder,
   disabled,
 }: CustomerComboboxProps) {
   const [open, setOpen] = useState(false);
@@ -39,38 +47,83 @@ export function CustomerCombobox({
   const [customers, setCustomers] = useState<CustomerSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load all active customers when the popover opens
+  const loadCustomers = useCallback(
+    (q: string) => {
+      const controller = new AbortController();
+      abortRef.current = controller;
+      setLoading(true);
+      listCustomers({
+        status: "active",
+        q: q || undefined,
+        page_size: q ? 50 : 200,
+      })
+        .then((response) => {
+          if (!controller.signal.aborted) {
+            setCustomers(response.items);
+            if (!q) onCustomersLoaded?.(response.items);
+          }
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) {
+            setLoading(false);
+          }
+        });
+      return controller;
+    },
+    [onCustomersLoaded],
+  );
+
+  // Load customers on popover open, or re-load with query when query changes (debounced)
   useEffect(() => {
     if (!open) return;
 
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setLoading(true);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    listCustomers({ status: "active", page_size: 200 })
-      .then((response) => {
-        if (!controller.signal.aborted) {
-          setCustomers(response.items);
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
-      });
+    if (query.trim().length === 0) {
+      // No query — load all active customers
+      loadCustomers("");
+      return () => {
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        abortRef.current?.abort();
+      };
+    }
 
-    return () => controller.abort();
-  }, [open]);
+    // Debounce server-side search
+    debounceRef.current = setTimeout(() => {
+      loadCustomers(query);
+    }, 300);
 
-  const filtered =
-    query.trim().length === 0
-      ? customers
-      : customers.filter(
-          (c) =>
-            c.company_name.toLowerCase().includes(query.toLowerCase()) ||
-            c.normalized_business_number.includes(query),
-        );
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      abortRef.current?.abort();
+    };
+  }, [open, query, loadCustomers]);
+
+  // If selected customer is not in the loaded set, fetch them
+  useEffect(() => {
+    if (!value || customers.some((c) => c.id === value)) return;
+    listCustomers({ q: undefined, status: "active", page_size: 500 }).then((r) => {
+      const match = r.items.find((c) => c.id === value);
+      if (match) {
+        setCustomers((prev) => {
+          if (prev.some((c) => c.id === value)) return prev;
+          return [...prev, match];
+        });
+      }
+    });
+  }, [value, customers]);
+
+  const filtered = useMemo(
+    () =>
+      customers.filter(
+        (c) =>
+          c.company_name.toLowerCase().includes(query.toLowerCase()) ||
+          c.normalized_business_number.includes(query),
+      ),
+    [customers, query],
+  );
 
   const selectedCustomer = customers.find((c) => c.id === value);
 
@@ -98,28 +151,47 @@ export function CustomerCombobox({
         }
       >
         {selectedCustomer ? (
-          <span className="truncate">
+          <span className="truncate flex-1">
             {selectedCustomer.company_name} ({selectedCustomer.normalized_business_number})
           </span>
         ) : (
-          <span className="truncate">{placeholder}</span>
+          <span className="truncate flex-1">{placeholder}</span>
         )}
-        <Search className="ml-auto size-4 shrink-0 opacity-50" />
+        {selectedCustomer && onClear ? (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClear();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.stopPropagation();
+                onClear();
+              }
+            }}
+            className="ml-1 rounded-sm opacity-70 hover:opacity-100 focus:outline-none cursor-pointer"
+            aria-label="Clear customer filter"
+          >
+            ×
+          </span>
+        ) : (
+          <Search className="ml-1 size-4 shrink-0 opacity-50" />
+        )}
       </PopoverTrigger>
       <PopoverContent className="w-[24rem] p-0" align="start">
         <Command shouldFilter={false}>
-          <CommandInput placeholder={placeholder} value={query} onValueChange={setQuery} />
+          <CommandInput placeholder={searchPlaceholder ?? placeholder} value={query} onValueChange={setQuery} />
           <CommandList>
             {loading ? (
               <div className="py-6 text-center text-sm text-muted-foreground">
-                Loading customers…
+                {query ? "Searching…" : "Loading customers…"}
               </div>
             ) : (
               <>
                 <CommandEmpty>
-                  {query.length >= 3
-                    ? "No customers match your search."
-                    : "Type at least 3 characters to search."}
+                  No customers match your search.
                 </CommandEmpty>
                 {filtered.length > 0 && (
                   <CommandGroup>

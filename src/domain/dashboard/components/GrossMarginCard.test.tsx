@@ -62,4 +62,27 @@ describe("GrossMarginCard", () => {
     expect(screen.getByText("NT$ 1,000.00")).toBeTruthy();
     expect(screen.getByText("NT$ 600.00")).toBeTruthy();
   });
+
+  it("renders an em dash when gross margin percent is null", () => {
+    render(
+      <GrossMarginCard
+        data={{
+          available: true,
+          gross_margin: "0.00",
+          gross_margin_percent: null,
+          margin_percent: null,
+          revenue: "0.00",
+          cogs: "0.00",
+          previous_period: {
+            available: false,
+            gross_margin_percent: null,
+          },
+        }}
+        isLoading={false}
+        error={null}
+      />,
+    );
+
+    expect(screen.getAllByText("—").length).toBeGreaterThan(0);
+  });
 });

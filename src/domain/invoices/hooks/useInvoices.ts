@@ -17,7 +17,11 @@ import type {
 /* ── Invoice list hook ─────────────────────────────────────── */
 
 export function useInvoices(options?: {
-  payment_status?: string;
+  customer_id?: string;
+  payment_status?: string | string[];
+  date_from?: string;
+  date_to?: string;
+  search?: string;
   sort_by?: string;
   sort_order?: string;
 }) {
@@ -34,7 +38,11 @@ export function useInvoices(options?: {
       setError(null);
       try {
         const res = await fetchInvoices({
+          customer_id: options?.customer_id,
           payment_status: options?.payment_status,
+          date_from: options?.date_from,
+          date_to: options?.date_to,
+          search: options?.search,
           sort_by: options?.sort_by,
           sort_order: options?.sort_order,
           page: p,
@@ -49,7 +57,16 @@ export function useInvoices(options?: {
         setLoading(false);
       }
     },
-    [options?.payment_status, options?.sort_by, options?.sort_order, pageSize],
+    [
+      options?.customer_id,
+      options?.payment_status,
+      options?.date_from,
+      options?.date_to,
+      options?.search,
+      options?.sort_by,
+      options?.sort_order,
+      pageSize,
+    ],
   );
 
   useEffect(() => {

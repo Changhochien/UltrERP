@@ -119,7 +119,7 @@ export interface GrossMarginPreviousPeriod {
 export interface GrossMarginResponse {
   available: boolean;
   gross_margin: string;
-  gross_margin_percent: string;
+  gross_margin_percent: string | null;
   margin_percent: string | null;
   revenue: string;
   cogs: string;
