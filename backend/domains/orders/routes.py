@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
+from datetime import date
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -123,6 +124,13 @@ async def list_orders_endpoint(
     _user: ReadUser,
     status: OrderStatus | None = Query(None),
     customer_id: uuid.UUID | None = Query(None),
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
+    search: str | None = Query(None),
+    sort_by: Literal["created_at", "order_number", "total_amount", "status"] | None = Query(
+        default=None
+    ),
+    sort_order: str = Query(default="desc", pattern="^(asc|desc)$"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ) -> OrderListResponse:
@@ -132,6 +140,11 @@ async def list_orders_endpoint(
         tenant_id=tenant_id,
         status=status.value if status else None,
         customer_id=customer_id,
+        date_from=date_from,
+        date_to=date_to,
+        search=search,
+        sort_by=sort_by,
+        sort_order=sort_order,
         page=page,
         page_size=page_size,
     )

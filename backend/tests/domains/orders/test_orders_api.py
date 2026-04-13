@@ -298,6 +298,100 @@ async def test_create_order_invalid_payment_terms() -> None:
         _teardown(prev)
 
 
+async def test_list_orders_sort_by_created_at_asc() -> None:
+    o1 = FakeOrder(status="pending")
+    o2 = FakeOrder(status="confirmed")
+
+    session = FakeAsyncSession()
+    session.queue_scalar(None)  # set_tenant
+    session.queue_count(2)
+    session.queue_scalars([o1, o2])
+
+    prev = _setup(session)
+    try:
+        resp = await _get("/api/v1/orders?sort_by=created_at&sort_order=asc")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total"] == 2
+    finally:
+        _teardown(prev)
+
+
+async def test_list_orders_sort_by_total_amount_desc() -> None:
+    o1 = FakeOrder(status="pending")
+    o2 = FakeOrder(status="confirmed")
+
+    session = FakeAsyncSession()
+    session.queue_scalar(None)  # set_tenant
+    session.queue_count(2)
+    session.queue_scalars([o1, o2])
+
+    prev = _setup(session)
+    try:
+        resp = await _get("/api/v1/orders?sort_by=total_amount&sort_order=desc")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total"] == 2
+    finally:
+        _teardown(prev)
+
+
+async def test_list_orders_sort_by_order_number_asc() -> None:
+    o1 = FakeOrder(status="pending")
+    o2 = FakeOrder(status="confirmed")
+
+    session = FakeAsyncSession()
+    session.queue_scalar(None)  # set_tenant
+    session.queue_count(2)
+    session.queue_scalars([o1, o2])
+
+    prev = _setup(session)
+    try:
+        resp = await _get("/api/v1/orders?sort_by=order_number&sort_order=asc")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total"] == 2
+    finally:
+        _teardown(prev)
+
+
+async def test_list_orders_sort_by_status_desc() -> None:
+    o1 = FakeOrder(status="pending")
+    o2 = FakeOrder(status="confirmed")
+
+    session = FakeAsyncSession()
+    session.queue_scalar(None)  # set_tenant
+    session.queue_count(2)
+    session.queue_scalars([o1, o2])
+
+    prev = _setup(session)
+    try:
+        resp = await _get("/api/v1/orders?sort_by=status&sort_order=desc")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total"] == 2
+    finally:
+        _teardown(prev)
+
+
+async def test_list_orders_with_date_range_filter() -> None:
+    o1 = FakeOrder(status="pending")
+
+    session = FakeAsyncSession()
+    session.queue_scalar(None)  # set_tenant
+    session.queue_count(1)
+    session.queue_scalars([o1])
+
+    prev = _setup(session)
+    try:
+        resp = await _get("/api/v1/orders?date_from=2026-01-01&date_to=2026-12-31")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total"] == 1
+    finally:
+        _teardown(prev)
+
+
 async def test_create_order_defaults_to_net30() -> None:
     """Omitting payment_terms_code defaults to NET_30."""
     customer = FakeCustomer()
