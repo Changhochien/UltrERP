@@ -7,14 +7,16 @@ against the real FastAPI app. Each test is fully independent.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, UTC, date
+from datetime import UTC, date, datetime, timedelta
 
 import jwt
 import pytest
 import pytest_asyncio
-from httpx import ASGITransport, AsyncClient as HttpxAsyncClient
+from httpx import ASGITransport
+from httpx import AsyncClient as HttpxAsyncClient
 
-from common.database import AsyncSessionLocal
+from app.main import create_app
+from common.database import AsyncSessionLocal, engine
 from common.models.inventory_stock import InventoryStock
 from common.models.product import Product
 from common.models.stock_adjustment import ReasonCode, StockAdjustment
@@ -26,13 +28,11 @@ from common.models.supplier_order import (
 )
 from common.models.warehouse import Warehouse
 from common.tenant import DEFAULT_TENANT_ID
+from domains.customers.models import Customer
 from domains.inventory.reorder_point import (
-    apply_reorder_points,
     compute_reorder_points_preview,
-    get_average_daily_usage,
-    get_lead_time_days,
 )
-from app.main import create_app
+from domains.invoices.models import InvoiceNumberRange
 
 TENANT = DEFAULT_TENANT_ID
 
@@ -116,6 +116,7 @@ def tenant_id():
 async def db_session():
     async with AsyncSessionLocal() as session:
         yield session
+    await engine.dispose()
 
 
 @pytest_asyncio.fixture
@@ -264,7 +265,12 @@ async def test_compute_endpoint_returns_candidate_and_skipped(
         r for r in body["skipped_rows"]
         if str(r["product_id"]) == str(product_without_history.id)
     )
-    assert skipped_row["skip_reason"] in ("insufficient_history", "source_unresolved", "lead_time_unconfigured", None)
+    assert skipped_row["skip_reason"] in (
+        "insufficient_history",
+        "source_unresolved",
+        "lead_time_unconfigured",
+        None,
+    )
     assert skipped_row["computed_reorder_point"] is None
     assert skipped_row["policy_type"] == "continuous"
     assert skipped_row["target_stock_qty"] == 0
@@ -346,7 +352,9 @@ async def test_apply_endpoint_only_updates_selected_rows(
             },
         )
 
-    assert apply_resp.status_code == 200, f"Expected 200, got {apply_resp.status_code}: {apply_resp.text}"
+    assert apply_resp.status_code == 200, (
+        f"Expected 200, got {apply_resp.status_code}: {apply_resp.text}"
+    )
     apply_body = apply_resp.json()
 
     assert "updated_count" in apply_body
@@ -543,10 +551,11 @@ async def test_source_unresolved_skips_row(
     warehouse,
     product_multi_supplier,
 ):
-    """AC3: Two suppliers with equal counts → skip_reason = 'source_unresolved'.
+    """AC3: Ambiguous supplier history falls back to business-default lead time.
 
     When a product has received orders from two suppliers at equal counts (50/50),
-    the preview row must appear in skipped_rows with skip_reason 'source_unresolved'.
+    the preview should still include the row, but supplier resolution stays unresolved
+    and lead time falls back to the business default.
     """
     app = create_app()
     transport = ASGITransport(app=app)
@@ -566,15 +575,17 @@ async def test_source_unresolved_skips_row(
     assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
     body = resp.json()
 
-    skipped_ids = {str(r["product_id"]) for r in body["skipped_rows"]}
-    assert str(product_multi_supplier.id) in skipped_ids, \
-        "Product with ambiguous source should be skipped"
+    candidate_ids = {str(r["product_id"]) for r in body["candidate_rows"]}
+    assert str(product_multi_supplier.id) in candidate_ids, \
+        "Product with ambiguous source should still appear in candidate rows"
 
-    skipped_row = next(
-        r for r in body["skipped_rows"]
+    candidate_row = next(
+        r for r in body["candidate_rows"]
         if str(r["product_id"]) == str(product_multi_supplier.id)
     )
-    assert skipped_row["skip_reason"] == "source_unresolved"
+    assert candidate_row["skip_reason"] is None
+    assert candidate_row["lead_time_source"] == "business_default"
+    assert candidate_row["lead_time_days"] == 80
 
 
 @pytest.mark.asyncio
@@ -625,7 +636,9 @@ async def test_lead_time_fallback_chain(
     )
 
     candidate = next((c for c in preview_rows if c["product_id"] == p.id), None)
-    assert candidate is not None, "Product without lead-time history should use the business default"
+    assert candidate is not None, (
+        "Product without lead-time history should use the business default"
+    )
     assert candidate["lead_time_source"] == "business_default"
     assert candidate["lead_time_days"] == 80
 
@@ -648,7 +661,9 @@ async def test_lead_time_supplier_default_fallback(
     )
 
     candidate = next((c for c in preview_rows if c["product_id"] == product.id), None)
-    assert candidate is not None, "Product without a resolved lead-time source should use the business default"
+    assert candidate is not None, (
+        "Product without a resolved lead-time source should use the business default"
+    )
     assert candidate["lead_time_source"] == "business_default"
     assert candidate["lead_time_days"] == 80
 
@@ -721,11 +736,13 @@ async def test_confirm_order_creates_sales_reservation_demand_history(
     NOTE: This test will fail until Task 1 (confirm_order event emission)
     is complete. It is included here to validate the full AC1 requirement.
     """
-    from sqlalchemy import select, text
-    from common.events import _registered_handlers
     from decimal import Decimal
+
+    from sqlalchemy import text
+
+    from common.events import _registered_handlers
     from domains.orders.schemas import OrderCreate, OrderCreateLine, PaymentTermsCode
-    from domains.orders.services import confirm_order
+    from domains.orders.services import confirm_order, create_order
 
     # Set up: product + stock + pending order
     product = Product(
@@ -750,8 +767,34 @@ async def test_confirm_order_creates_sales_reservation_demand_history(
     db_session.add(stock)
     await db_session.flush()
 
+    customer = Customer(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        company_name="Confirm Test Customer",
+        normalized_business_number=str(uuid.uuid4().int % 10**8).zfill(8),
+        billing_address="Taipei",
+        contact_name="Buyer",
+        contact_phone="02-12345678",
+        contact_email="buyer@test.local",
+    )
+    db_session.add(customer)
+    await db_session.flush()
+
+    number_range = InvoiceNumberRange(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        prefix=uuid.uuid4().hex[:2].upper(),
+        start_number=1,
+        end_number=99999999,
+        next_number=1,
+        is_active=True,
+    )
+    db_session.add(number_range)
+    await db_session.flush()
+    await db_session.commit()
+
     order_data = OrderCreate(
-        customer_id=uuid.uuid4(),
+        customer_id=customer.id,
         payment_terms_code=PaymentTermsCode.NET_30,
         lines=[
             OrderCreateLine(

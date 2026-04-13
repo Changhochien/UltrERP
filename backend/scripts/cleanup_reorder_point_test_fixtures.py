@@ -87,6 +87,15 @@ async def main() -> None:
         await session.execute(
             text(
                 """
+                with target_products as (select id from product where name = any(:names))
+                delete from order_lines where product_id in (select id from target_products)
+                """
+            ),
+            params,
+        )
+        await session.execute(
+            text(
+                """
                 with target_products as (select id from product where name = any(:names)),
                      target_warehouses as (select id from warehouse where name = :warehouse)
                 delete from inventory_stock
