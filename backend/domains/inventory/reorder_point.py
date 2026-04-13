@@ -8,7 +8,7 @@ replenishment lead times. Operates in two phases:
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
 from sqlalchemy import and_, func, select
@@ -20,8 +20,7 @@ from common.models.stock_adjustment import ReasonCode, StockAdjustment
 from common.models.supplier import Supplier
 from common.models.supplier_order import SupplierOrder, SupplierOrderLine, SupplierOrderStatus
 from common.models.warehouse import Warehouse
-from common.tenant import DEFAULT_TENANT_ID
-from common.time import utc_now
+from common.time import today
 
 # Sentinel for unresolved source
 SOURCE_UNRESOLVED = "source_unresolved"
@@ -31,7 +30,8 @@ POLICY_PERIODIC = "periodic"
 POLICY_MANUAL = "manual"
 # Minimum demand events required in the lookback window
 MIN_DEMAND_EVENTS = 2
-# Explicit business default lead time for container replenishment when no row-level or supplier signal exists.
+# Explicit business default lead time for container replenishment when no
+# row-level or supplier signal exists.
 DEFAULT_LEAD_TIME_DAYS = 80
 
 
@@ -52,7 +52,7 @@ async def get_average_daily_usage(
     window, then divides by lookback_days.
     Returns (0.0, 0) when no qualifying events exist.
     """
-    cutoff = utc_now() - timedelta(days=lookback_days)
+    cutoff_date = today() - timedelta(days=lookback_days)
     stmt = (
         select(
             func.coalesce(func.sum(func.abs(StockAdjustment.quantity_change)), 0).label("total"),
@@ -63,7 +63,7 @@ async def get_average_daily_usage(
             StockAdjustment.product_id == product_id,
             StockAdjustment.warehouse_id == warehouse_id,
             StockAdjustment.reason_code.in_(allowed_reasons),
-            StockAdjustment.created_at >= cutoff,
+            func.date(StockAdjustment.created_at) >= cutoff_date,
         )
     )
     result = await session.execute(stmt)
@@ -96,7 +96,7 @@ async def resolve_replenishment_source(
     than 60% of all received lines, it is returned as resolved. Otherwise returns
     SOURCE_UNRESOLVED.
     """
-    cutoff = utc_now() - timedelta(days=lookback_days)
+    cutoff_date = today() - timedelta(days=lookback_days)
 
     # Count received lines per supplier for this product+warehouse
     stmt = (
@@ -110,7 +110,7 @@ async def resolve_replenishment_source(
             SupplierOrderLine.product_id == product_id,
             SupplierOrderLine.warehouse_id == warehouse_id,
             SupplierOrder.status == SupplierOrderStatus.RECEIVED,
-            SupplierOrder.received_date >= cutoff,
+            SupplierOrder.received_date >= cutoff_date,
         )
         .group_by(SupplierOrder.supplier_id)
         .order_by(func.count(SupplierOrderLine.id).desc())
@@ -163,10 +163,10 @@ async def get_actual_lead_time_stats(
 ) -> tuple[int | None, int]:
     """Calculate average lead time in days from order_date to received_date.
 
-    Returns ``(lead_time_days, sample_count)`` and ``(None, 0)`` when no received orders exist for the given supplier within
-    the lookback window.
+    Returns ``(lead_time_days, sample_count)`` and ``(None, 0)`` when no
+    received orders exist for the given supplier within the lookback window.
     """
-    cutoff = utc_now() - timedelta(days=lookback_days)
+    cutoff_date = today() - timedelta(days=lookback_days)
 
     stmt = (
         select(
@@ -183,7 +183,7 @@ async def get_actual_lead_time_stats(
             SupplierOrderLine.product_id == product_id,
             SupplierOrderLine.warehouse_id == warehouse_id,
             SupplierOrder.status == SupplierOrderStatus.RECEIVED,
-            SupplierOrder.received_date >= cutoff,
+            SupplierOrder.received_date >= cutoff_date,
         )
     )
     result = await session.execute(stmt)
@@ -237,7 +237,12 @@ async def get_lead_time_details(
             session, tenant_id, product_id, warehouse_id, source, lookback_days
         )
         if actual_lt is not None:
-            return actual_lt, "actual", sample_count, _get_lead_time_confidence("actual", sample_count)
+            return (
+                actual_lt,
+                "actual",
+                sample_count,
+                _get_lead_time_confidence("actual", sample_count),
+            )
 
     lookup_supplier_id = source if source != SOURCE_UNRESOLVED else None
     if lookup_supplier_id is not None:
@@ -248,7 +253,12 @@ async def get_lead_time_details(
         supplier_result = await session.execute(supplier_stmt)
         default_lt = supplier_result.scalar_one_or_none()
         if default_lt is not None and default_lt > 0:
-            return default_lt, "supplier_default", 0, _get_lead_time_confidence("supplier_default", 0)
+            return (
+                default_lt,
+                "supplier_default",
+                0,
+                _get_lead_time_confidence("supplier_default", 0),
+            )
 
     if lookup_supplier_id is None:
         fallback_stmt = (
@@ -257,7 +267,7 @@ async def get_lead_time_details(
             .join(SupplierOrderLine, SupplierOrderLine.order_id == SupplierOrder.id)
             .where(
                 Supplier.tenant_id == tenant_id,
-                Supplier.is_active == True,
+                Supplier.is_active.is_(True),
                 SupplierOrderLine.product_id == product_id,
                 SupplierOrderLine.warehouse_id == warehouse_id,
                 Supplier.default_lead_time_days.isnot(None),
@@ -268,9 +278,19 @@ async def get_lead_time_details(
         fallback_result = await session.execute(fallback_stmt)
         fallback_lt = fallback_result.scalar_one_or_none()
         if fallback_lt is not None and fallback_lt > 0:
-            return fallback_lt, "supplier_default", 0, _get_lead_time_confidence("supplier_default", 0)
+            return (
+                fallback_lt,
+                "supplier_default",
+                0,
+                _get_lead_time_confidence("supplier_default", 0),
+            )
 
-    return DEFAULT_LEAD_TIME_DAYS, "business_default", 0, _get_lead_time_confidence("business_default", 0)
+    return (
+        DEFAULT_LEAD_TIME_DAYS,
+        "business_default",
+        0,
+        _get_lead_time_confidence("business_default", 0),
+    )
 
 
 async def get_lead_time_days(
@@ -325,20 +345,37 @@ def _build_quality_note(
 
     if lead_time_source == "business_default":
         notes.append(
-            f"Lead time uses the business default of {DEFAULT_LEAD_TIME_DAYS} days for container replenishment; confidence is low."
+            "Lead time uses the business default of "
+            f"{DEFAULT_LEAD_TIME_DAYS} days for container replenishment; "
+            "confidence is low."
         )
     elif lead_time_source == "supplier_default":
-        notes.append("Lead time uses the supplier default with no receipt samples; confidence is medium.")
-    elif lead_time_source == "actual" and lead_time_sample_count > 0 and lead_time_confidence != "high":
+        notes.append(
+            "Lead time uses the supplier default with no receipt samples; "
+            "confidence is medium."
+        )
+    elif (
+        lead_time_source == "actual"
+        and lead_time_sample_count > 0
+        and lead_time_confidence != "high"
+    ):
         sample_label = "sample" if lead_time_sample_count == 1 else "samples"
         notes.append(
-            f"Lead time is based on {lead_time_sample_count} historical {sample_label}; confidence is {lead_time_confidence}."
+            "Lead time is based on "
+            f"{lead_time_sample_count} historical {sample_label}; "
+            f"confidence is {lead_time_confidence}."
         )
 
     if policy_type == POLICY_CONTINUOUS and target_stock_qty <= 0:
-        notes.append("Continuous policy has no target stock configured, so suggested order only tops up to the reorder point.")
+        notes.append(
+            "Continuous policy has no target stock configured, so suggested "
+            "order only tops up to the reorder point."
+        )
     elif policy_type == POLICY_PERIODIC and review_cycle_days <= 0 and target_stock_qty <= 0:
-        notes.append("Periodic policy has no review cycle or target stock configured, so target stock falls back to lead-time coverage.")
+        notes.append(
+            "Periodic policy has no review cycle or target stock configured, "
+            "so target stock falls back to lead-time coverage."
+        )
 
     return " ".join(notes) or None
 
@@ -357,7 +394,9 @@ def _compute_target_stock_level(
         return target_stock_qty
 
     if policy_type == POLICY_PERIODIC:
-        effective_horizon_days = planning_horizon_days if planning_horizon_days > 0 else review_cycle_days
+        effective_horizon_days = (
+            planning_horizon_days if planning_horizon_days > 0 else review_cycle_days
+        )
         return round((avg_daily_usage * (lead_time_days + effective_horizon_days)) + safety_stock)
 
     return reorder_point
@@ -397,7 +436,9 @@ async def compute_reorder_point_preview_row(
         in_transit_qty,
         reserved_qty,
     )
-    effective_horizon_days = planning_horizon_days if planning_horizon_days > 0 else review_cycle_days
+    effective_horizon_days = (
+        planning_horizon_days if planning_horizon_days > 0 else review_cycle_days
+    )
 
     if normalized_policy == POLICY_MANUAL:
         return {
@@ -474,7 +515,12 @@ async def compute_reorder_point_preview_row(
         lead_time_sample_count = 0
         lead_time_confidence = _get_lead_time_confidence("manual_override", 0)
     else:
-        lead_time_days, lt_source, lead_time_sample_count, lead_time_confidence = await get_lead_time_details(
+        (
+            lead_time_days,
+            lt_source,
+            lead_time_sample_count,
+            lead_time_confidence,
+        ) = await get_lead_time_details(
             session, tenant_id, product_id, warehouse_id, lead_time_lookback_days
         )
 
@@ -648,7 +694,9 @@ async def compute_reorder_points_preview(
             demand_lookback_days=demand_lookback_days,
             lead_time_lookback_days=lead_time_lookback_days,
             lead_time_days_override=(
-                row.stored_lead_time_days if row.stored_lead_time_days and row.stored_lead_time_days > 0 else None
+                row.stored_lead_time_days
+                if row.stored_lead_time_days and row.stored_lead_time_days > 0
+                else None
             ),
             current_quantity=row.current_quantity,
             on_order_qty=row.on_order_qty or 0,
@@ -686,6 +734,15 @@ async def apply_reorder_points(
     Updates persisted replenishment settings for rows whose product_id +
     warehouse_id match a selected row. Returns a summary dict.
     """
+    if not selected_rows:
+        return {
+            "updated_count": 0,
+            "skipped_count": 0,
+            "safety_factor": safety_factor,
+            "demand_lookback_days": demand_lookback_days,
+            "lead_time_lookback_days": lead_time_lookback_days,
+        }
+
     updated_count = 0
     skipped_count = 0
 

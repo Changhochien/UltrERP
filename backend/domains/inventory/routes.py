@@ -49,12 +49,12 @@ from domains.inventory.schemas import (
     ReorderPointPreviewRow,
     SalesHistoryItem,
     SalesHistoryResponse,
+    SnoozeAlertRequest,
+    SnoozeAlertResponse,
     StockAdjustmentRequest,
     StockAdjustmentResponse,
     StockHistoryResponse,
     StockSettingsUpdateRequest,
-    SnoozeAlertRequest,
-    SnoozeAlertResponse,
     SupplierListResponse,
     SupplierOrderCreate,
     SupplierOrderListResponse,
@@ -106,6 +106,14 @@ ReadUser = Annotated[dict, Depends(require_role("admin", "warehouse", "sales"))]
 WriteUser = Annotated[dict, Depends(require_role("admin", "warehouse"))]
 
 ACTOR_ID = "system"
+
+
+def _api_reason_code(value: str) -> str:
+    return value.lower()
+
+
+def _enum_reason_code(value: str) -> ReasonCode:
+    return ReasonCode(value.upper())
 
 
 # ── Warehouse endpoints ───────────────────────────────────────
@@ -206,6 +214,15 @@ async def create_transfer_endpoint(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),
+        ) from exc
+    except InsufficientStockError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": f"Insufficient stock: {exc.available} units available",
+                "available": exc.available,
+                "requested": exc.requested,
+            },
         ) from exc
 
 
@@ -337,9 +354,9 @@ async def list_reason_codes(
 ) -> ReasonCodeListResponse:
     items = [
         ReasonCodeItem(
-            value=rc.value,
+            value=_api_reason_code(rc.value),
             label=rc.value.replace("_", " ").title(),
-            user_selectable=rc.value in USER_SELECTABLE_REASON_CODES,
+            user_selectable=_api_reason_code(rc.value) in USER_SELECTABLE_REASON_CODES,
         )
         for rc in ReasonCode
     ]
@@ -372,7 +389,7 @@ async def create_adjustment_endpoint(
         )
 
     try:
-        reason = ReasonCode(data.reason_code)
+        reason = _enum_reason_code(data.reason_code)
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -430,7 +447,12 @@ async def create_adjustment_endpoint(
             notes=data.notes,
         )
         await session.commit()
-        return StockAdjustmentResponse(**result)
+        return StockAdjustmentResponse(
+            **{
+                **result,
+                "reason_code": _api_reason_code(str(result["reason_code"])),
+            }
+        )
     except TransferValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,

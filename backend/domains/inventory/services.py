@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, timedelta
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import and_, asc, case, desc, distinct, func, literal, or_, select, text
 from sqlalchemy.exc import IntegrityError
@@ -15,9 +15,9 @@ from common.models.inventory_stock import InventoryStock
 from common.models.product import Product
 from common.models.reorder_alert import AlertStatus, ReorderAlert
 from common.models.stock_adjustment import ReasonCode, StockAdjustment
-from common.models.supplier_invoice import SupplierInvoice, SupplierInvoiceLine
 from common.models.stock_transfer import StockTransferHistory
 from common.models.supplier import Supplier
+from common.models.supplier_invoice import SupplierInvoice, SupplierInvoiceLine
 from common.models.supplier_order import SupplierOrder, SupplierOrderLine, SupplierOrderStatus
 from common.models.warehouse import Warehouse
 from common.time import today, utc_now
@@ -1533,6 +1533,7 @@ async def get_stock_history(
     initial stock from the current quantity and applying adjustments forward.
     """
     from collections import Counter
+
     from common.time import utc_now
 
     # Cap start_date to at most _max_range_days ago to avoid loading huge histories
@@ -1594,7 +1595,11 @@ async def get_stock_history(
 
         for day_key, info in sorted(by_date.items()):
             running += info["quantity_change"]
-            dominant_rc = info["reason_codes"].most_common(1)[0][0] if info["reason_codes"] else "unknown"
+            dominant_rc = (
+                info["reason_codes"].most_common(1)[0][0]
+                if info["reason_codes"]
+                else "unknown"
+            )
             points.append({
                 "date": datetime.fromisoformat(day_key),
                 "quantity_change": info["quantity_change"],
@@ -1756,10 +1761,6 @@ async def get_sales_history(
     offset: int = 0,
 ) -> dict:
     """Return paginated sales history (all reason codes) for a product."""
-    from common.models.order_line import OrderLine
-    from common.models.order import Order
-    from domains.customers.models import Customer
-
     count_stmt = select(func.count(StockAdjustment.id)).where(
         StockAdjustment.tenant_id == tenant_id,
         StockAdjustment.product_id == product_id,
@@ -1801,8 +1802,8 @@ async def get_top_customer(
     product_id: uuid.UUID,
 ) -> dict | None:
     """Return the customer who has ordered the most of this product (by quantity)."""
-    from common.models.order_line import OrderLine
     from common.models.order import Order
+    from common.models.order_line import OrderLine
     from domains.customers.models import Customer
 
     stmt = (
@@ -1852,19 +1853,20 @@ async def get_product_supplier(
             SupplierOrder.supplier_id.label("supplier_id"),
             SupplierOrder.received_date.label("effective_date"),
             SupplierOrderLine.unit_price.label("unit_cost"),
+            literal(0).label("source_priority"),
         )
         .join(SupplierOrder, SupplierOrder.id == SupplierOrderLine.order_id)
         .where(
             SupplierOrder.tenant_id == tenant_id,
             SupplierOrderLine.product_id == product_id,
             SupplierOrder.received_date.isnot(None),
-            SupplierOrderLine.unit_price.isnot(None),
         )
         .union_all(
             select(
                 SupplierInvoice.supplier_id.label("supplier_id"),
                 SupplierInvoice.invoice_date.label("effective_date"),
                 SupplierInvoiceLine.unit_price.label("unit_cost"),
+                literal(1).label("source_priority"),
             )
             .join(
                 SupplierInvoice,
@@ -1888,7 +1890,10 @@ async def get_product_supplier(
         )
         .join(supplier_sources, Supplier.id == supplier_sources.c.supplier_id)
         .where(Supplier.tenant_id == tenant_id)
-        .order_by(supplier_sources.c.effective_date.desc())
+        .order_by(
+            supplier_sources.c.effective_date.desc(),
+            supplier_sources.c.source_priority.desc(),
+        )
         .limit(1)
     )
     result = await session.execute(stmt)
