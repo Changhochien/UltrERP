@@ -1,6 +1,6 @@
 # Story 18.2: Legacy Sales Adjustment Backfill
 
-Status: pending
+Status: in-progress
 
 ## Story
 
@@ -94,31 +94,31 @@ Use the same `hash_to_uuid` / `_tenant_scoped_uuid` pattern already used in `can
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Fix `backfill_sales_reservations.py` ID strategy**
-  - [ ] Replace `uuid.uuid4()` with deterministic hash-based UUID
-  - [ ] Ensure `ON CONFLICT (id) DO UPDATE` is used in INSERT
-  - [ ] Add `warehouse_id` to the deterministic ID components
-  - [ ] Run existing tests to confirm no regressions
+- [x] **Task 1: Fix `backfill_sales_reservations.py` ID strategy**
+  - [x] Replace `uuid.uuid4()` with deterministic hash-based UUID
+  - [x] Ensure `ON CONFLICT (id) DO UPDATE` is used in INSERT
+  - [x] Add `warehouse_id` to the deterministic ID components
+  - [x] Run existing tests to confirm no regressions
 
-- [ ] **Task 2: Create `backfill_purchase_receipts.py`**
-  - [ ] Mirror the structure of `backfill_sales_reservations.py`
-  - [ ] Read from `tbsslipj` (header) + `tbsslipdtj` (lines) — same as canonical's receiving audit
-  - [ ] Use `col_4 AS receipt_date` as `created_at` (already added to canonical's query)
-  - [ ] Use deterministic IDs matching canonical's `_import_legacy_receiving_audit` pattern
-  - [ ] Default to dry-run, `--live` flag to insert
-  - [ ] Add tests
+- [x] **Task 2: Create `backfill_purchase_receipts.py`**
+  - [x] Mirror the structure of `backfill_sales_reservations.py`
+  - [x] Read from `tbsslipj` (header) + `tbsslipdtj` (lines) — same as canonical's receiving audit
+  - [x] Use `col_4 AS receipt_date` as `created_at` (already added to canonical's query)
+  - [x] Use deterministic IDs matching canonical's `_import_legacy_receiving_audit` pattern
+  - [x] Default to dry-run, `--live` flag to insert
+  - [x] Add tests
 
-- [ ] **Task 3: Create `verify_reconciliation.py`**
-  - [ ] For each `(product_id, warehouse_id)`, compute `SUM(StockAdjustment.quantity_change)`
-  - [ ] Compare against `inventory_stock.quantity` (anchored to today)
-  - [ ] Report products with non-zero gap
-  - [ ] Categorize gap by `reason_code` to show which source tables have missing records
-  - [ ] Output: CSV or table of `(product_id, warehouse_id, expected_adjustment_sum, actual_stock, gap)`
+- [x] **Task 3: Create `verify_reconciliation.py`**
+  - [x] For each `(product_id, warehouse_id)`, compute `SUM(StockAdjustment.quantity_change)`
+  - [x] Compare against `inventory_stock.quantity` (anchored to today)
+  - [x] Report products with non-zero gap
+  - [x] Categorize gap by `reason_code` to show which source tables have missing records
+  - [x] Output: CSV or table of `(product_id, warehouse_id, expected_adjustment_sum, actual_stock, gap)`
 
 - [ ] **Task 4: Verify complete reconciliation**
-  - [ ] Run purchase backfill with `--live`
-  - [ ] Run sales backfill with `--live`
-  - [ ] Run `verify_reconciliation.py`
+  - [x] Run purchase backfill with `--live`
+  - [x] Run sales backfill with `--live`
+  - [x] Run `verify_reconciliation.py`
   - [ ] Confirm gap is within acceptable tolerance
   - [ ] For any remaining gap, determine if a `CORRECTION` adjustment is warranted
 
@@ -147,9 +147,82 @@ If `SUM(adjustments) + current_stock != 0`:
 
 The gap is not an error — it's a data quality signal. It tells you what fraction of inventory movement was captured in the legacy transaction tables vs. what was managed outside the system.
 
+## Dev Agent Record
+
+### Debug Log
+
+- Introduced a shared `backend/scripts/_legacy_stock_adjustments.py` helper so the sales backfill, purchase backfill, and reconciliation verifier all use the same deterministic UUID, mapping, quantity-coercion, and batched upsert logic instead of cloning raw SQL.
+- Reworked `backfill_sales_reservations.py` to resolve the real legacy warehouse code, prune the stale hardcoded-warehouse rows from the previous broken backfill, and upsert deterministic daily adjustments.
+- Matched purchase receipts to canonical receiving-audit semantics: deterministic line-level IDs, `legacy_import` actor/notes, receipt-date fallback to the header invoice date, UNKNOWN-product fallback, and duplicate-ID collapse before bulk upsert.
+- Implemented `verify_reconciliation.py` as a read-only report with reason-code breakdowns. The verifier uses `adjustment_sum - current_stock`, because the story's `+ current_stock` formula conflicts with positive inventory quantities and with the story's own gap interpretation.
+- Investigated the post-run warehouse mismatch to its real source: `domains/legacy_import/normalization.py` was dropping `tbsstkhouse.col_2` (`shouseno`) and hardcoding `LEGACY_DEFAULT` for every current-stock row.
+- Fixed normalization to preserve `tbsstkhouse` warehouse codes and added `repair_inventory_snapshot_warehouses.py` so already-imported `inventory_stock` rows can be realigned from `LEGACY_DEFAULT` to the actual snapshot warehouse with lineage preserved.
+- Added `reset_legacy_import_batch.py` as a dry-run-first purge helper for clean cutover rehearsals, including the extra non-lineaged Story 18.2 sales-backfill slice.
+- Clean rehearsal found one more production-path defect: canonical receiving audit aborted on fractional `tbsslipdtj.qty` values from the live dataset. Fixed `domains/legacy_import/canonical.py` to coerce and annotate those receipt quantities the same way the standalone purchase backfill already does.
+
+### Completion Notes
+
+- Focused validation passed:
+  - `cd backend && uv run pytest tests/domains/legacy_import tests/test_legacy_stock_backfill_scripts.py -q`
+  - `cd backend && uv run ruff check scripts/_legacy_stock_adjustments.py scripts/backfill_sales_reservations.py scripts/backfill_purchase_receipts.py scripts/verify_reconciliation.py tests/test_legacy_stock_backfill_scripts.py`
+- Warehouse-normalization validation also passed:
+  - `cd backend && uv run pytest tests/domains/legacy_import/test_normalization.py -q`
+  - `cd backend && uv run python -m scripts.repair_inventory_snapshot_warehouses`
+- Clean-rehearsal validation also passed:
+  - `cd backend && uv run python -m scripts.reset_legacy_import_batch --batch-id cao50001 --include-sales-backfill`
+  - `cd backend && uv run pytest tests/domains/legacy_import/test_canonical.py tests/test_reset_legacy_import_batch.py -q`
+- Dry-run validation passed after fixing real data issues in the local dataset:
+  - Sales backfill now handles 12 fractional daily totals by explicit integer-schema coercion notes instead of crashing.
+  - Purchase backfill now falls back to canonical `UNKNOWN` for 88 unmapped purchase product codes instead of crashing.
+- Live runs completed in the local database:
+  - Purchase backfill: `61727` raw rows collapsed to `61710` deterministic receipt adjustments and upserted successfully.
+  - Sales backfill: `596701` raw sales rows aggregated to `482191` deterministic daily adjustments, `481754` stale wrong-warehouse sales rows were deleted, and `482191` corrected adjustments were upserted.
+- Inventory snapshot warehouse repair completed live:
+  - `repair_inventory_snapshot_warehouses.py --live` rebuilt `6588` `inventory_stock` rows onto warehouse code `A` and deleted the stale `LEGACY_DEFAULT` snapshot rows plus their lineage.
+- Post-repair reconciliation is still blocked at the data-review stage, so Task 4 remains incomplete:
+  - Strict `(product_id, warehouse_id)` report after the repair: `12064` adjustment groups, `6593` inventory groups, `2855` flagged gaps.
+  - The warehouse-normalization blocker is resolved. The remaining gaps are the true residual movement differences that need operator review.
+- A correction-plan generator is now available for the residual review step:
+  - `propose_reconciliation_corrections.py --min-abs-gap 100 --csv /tmp/ultrerp-correction-plan-gap100.csv` produced `520` deterministic `CORRECTION` proposals for the `>=100` slice on `2026-04-12`.
+  - The proposal layer is intentionally plan-only; no correction adjustments were auto-applied in this story.
+- The proposal layer now treats category `6` SKUs as review-only by default after candidate profiling showed that bucket only contains non-merchandise rows like `折讓`, `運費`, and `郵寄運費`.
+- A safe apply path now exists for operator-approved corrections:
+  - `propose_reconciliation_corrections.py` exports a blank `approval_action` column in the CSV.
+  - `apply_reconciliation_corrections.py` only applies rows explicitly marked `approval_action=apply`, rejects any non-actionable row, validates the deterministic correction ID, and stays dry-run by default.
+  - Dry-running the refreshed clean-rehearsal CSV with no approvals correctly reported `Approved rows: 0` and performed no writes.
+- A full clean cutover rehearsal now exists and reproduces the same residual-gap shape without carrying forward repaired dev artifacts:
+  - `reset_legacy_import_batch.py --batch-id cao50001 --include-sales-backfill --live` successfully purged the batch-derived canonical rows plus the tenant-scoped sales backfill slice.
+  - `legacy-import normalize --batch-id cao50001 ...` rebuilt `parties=1022`, `products=6611`, `warehouses=1`, `inventory=6588` on the fixed warehouse-aware normalization path.
+  - `legacy-import canonical-import --batch-id cao50001 ...` succeeded on attempt `67` after the receiving-audit fractional-quantity fix.
+  - `backfill_sales_reservations --lookback 10000 --live` reinserted `482191` deterministic daily sales adjustments.
+  - Fresh reconciliation after the clean rebuild reported `2850` strict gaps, and the refined `>=100` correction proposal set contains `506` actionable rows plus `3` review-only non-merchandise rows. That confirms the residual gaps are inherent to the legacy movement history, not artifacts of the repaired dev database.
+- No `CORRECTION` adjustments were created in this story. The remaining gaps need operator review to decide whether they reflect true missing movements, warehouse-normalization drift, or a separate inventory rebasing step.
+
 ## File List
 
-- `backend/scripts/backfill_sales_reservations.py` — existing template (needs deterministic IDs)
-- `backend/scripts/backfill_purchase_receipts.py` — new script
-- `backend/scripts/verify_reconciliation.py` — new script
-- `backend/domains/legacy_import/canonical.py:1353` — reference for deterministic ID pattern
+- `backend/scripts/_legacy_stock_adjustments.py`
+- `backend/domains/legacy_import/normalization.py`
+- `backend/domains/legacy_import/canonical.py`
+- `backend/scripts/backfill_sales_reservations.py`
+- `backend/scripts/backfill_purchase_receipts.py`
+- `backend/scripts/verify_reconciliation.py`
+- `backend/scripts/repair_inventory_snapshot_warehouses.py`
+- `backend/scripts/propose_reconciliation_corrections.py`
+- `backend/scripts/apply_reconciliation_corrections.py`
+- `backend/scripts/reset_legacy_import_batch.py`
+- `backend/tests/test_legacy_stock_backfill_scripts.py`
+- `backend/tests/domains/legacy_import/test_normalization.py`
+- `backend/tests/domains/legacy_import/test_canonical.py`
+- `backend/tests/test_apply_reconciliation_corrections.py`
+- `backend/tests/test_reset_legacy_import_batch.py`
+- `backend/tests/test_propose_reconciliation_corrections.py`
+
+## Change Log
+
+- 2026-04-12: Implemented deterministic warehouse-aware sales backfill, standalone purchase receipt backfill, shared legacy stock-adjustment helpers, and reconciliation reporting with focused regression coverage.
+- 2026-04-12: Executed live purchase and sales backfills on the local legacy dataset, removed `481754` stale wrong-warehouse sales rows, and captured the remaining reconciliation blocker (`A` vs `LEGACY_DEFAULT` warehouse normalization plus non-zero residual product gaps).
+- 2026-04-12: Fixed the `tbsstkhouse` warehouse-code normalization bug, added a reproducible inventory snapshot warehouse-repair script, repaired the live snapshot slice from `LEGACY_DEFAULT` to `A`, and reduced the reconciliation report to `2855` true residual gaps.
+- 2026-04-12: Added plan-only `CORRECTION` proposal generation and produced a `>=100`-gap CSV plan with `520` deterministic correction candidates for operator review.
+- 2026-04-12: Added a dry-run-first batch reset helper, fixed canonical receiving-audit fractional quantity handling, and completed a clean cutover rehearsal that reproduced `2850` residual gaps and `509` `>=100` correction proposals from a fresh rebuild.
+- 2026-04-12: Refined correction planning so category `6` non-merchandise SKUs are review-only by default, leaving `506` actionable `>=100` candidates and `3` review-only service/discount rows in the clean rehearsal plan.
+- 2026-04-12: Added the approval-driven correction apply path so refreshed proposal CSVs carry `approval_action`, `apply_reconciliation_corrections.py` only accepts explicitly approved actionable rows, and an unapproved dry run performs zero writes.

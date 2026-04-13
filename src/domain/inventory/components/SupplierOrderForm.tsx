@@ -16,7 +16,7 @@ interface OrderLine {
   product_id: string;
   warehouse_id: string;
   quantity: number;
-  unit_cost: number;
+  unit_cost: string;
 }
 
 interface SupplierOrderFormProps {
@@ -25,7 +25,7 @@ interface SupplierOrderFormProps {
 }
 
 function emptyLine(): OrderLine {
-  return { product_id: "", warehouse_id: "", quantity: 1, unit_cost: 0 };
+  return { product_id: "", warehouse_id: "", quantity: 1, unit_cost: "" };
 }
 
 export function SupplierOrderForm({
@@ -66,12 +66,16 @@ export function SupplierOrderForm({
       supplier_id: supplierId,
       order_date: orderDate,
       expected_arrival_date: expectedArrival || undefined,
-      lines: validLines.map((l) => ({
-        product_id: l.product_id,
-        warehouse_id: l.warehouse_id,
-        quantity_ordered: l.quantity,
-        unit_price: l.unit_cost > 0 ? l.unit_cost : undefined,
-      })),
+      lines: validLines.map((l) => {
+        const normalizedUnitPrice = l.unit_cost.trim();
+
+        return {
+          product_id: l.product_id,
+          warehouse_id: l.warehouse_id,
+          quantity_ordered: l.quantity,
+          unit_price: normalizedUnitPrice === "" ? undefined : Number(normalizedUnitPrice),
+        };
+      }),
     });
     if (result) onCreated(result.id);
   };
@@ -185,7 +189,7 @@ export function SupplierOrderForm({
                         min={0}
                         step="0.01"
                         value={line.unit_cost}
-                        onChange={(e) => updateLine(idx, { unit_cost: Number(e.target.value) })}
+                        onChange={(e) => updateLine(idx, { unit_cost: e.target.value })}
                         aria-label={`Line ${idx + 1} unit cost`}
                         className="w-28"
                       />

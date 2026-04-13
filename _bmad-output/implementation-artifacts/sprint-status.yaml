@@ -101,6 +101,13 @@ development_status:
         story_id: "2.7"
         validation: "updated with explicit immutable field inventory and mandatory DB enforcement"
         prerequisites: ["2.1", "2.3"]
+      2-8-advanced-filter-ui:
+        title: "Advanced Invoice & Order List Filter UI"
+        status: "ready-for-dev"
+        story_id: "2.8"
+        validation: "none"
+        prerequisites: []
+        cross_epic: "Epic 2 (Invoice) and Epic 5 (Order) — filter UX serves both"
 
   # Epic 3 - Customer Management
   epic-3:
@@ -744,19 +751,114 @@ development_status:
         validation: "Validated on 2026-04-06: focused pytest for `test_ap_payment_import.py` + `test_cli.py`, the broader Epic 16 legacy-import regression slice (`test_ap_payment_import.py`, `test_cli.py`, `test_canonical.py`, `test_staging.py`, `test_validation.py`), and targeted Ruff over the AP payment import slice all passed. Current dump evidence keeps unverified rows on holding and only imports strictly verified AP-special-payment rows."
         prerequisites: ["16.5", "16.10", "16.11"]
 
+  # Epic 19 - Customer Product Intelligence
+  epic-19:
+    status: "in-progress"
+    validation_note: "Epic 19 adds AI-actionable intelligence via MCP tools. AI agents are primary consumers; human UI is secondary. All intelligence computed from existing orders/order_lines/products/customers tables — no new tables. Start with 19.7 (route scaffolding) and 19.3 (customer snapshot foundation), then build 19.1/19.2/19.4 as independent aggregations; 19.5 depends on 19.1 + customer/category aggregates; 19.6 is late composition; 19.8 runs alongside feature stories, not only at end."
+    recommended_execution_order:
+      - "19.7 Intelligence Feature Gate"
+      - "19.3 Customer Product Profile"
+      - "19.1 Product Affinity Map"
+      - "19.2 Category Trend Radar"
+      - "19.4 Customer Risk Signals"
+      - "19.5 Prospect Gap Analysis"
+      - "19.6 Market Opportunities Signal Feed"
+      - "19.8 Intelligence Backend Test Coverage"
+    stories:
+      19-1-product-affinity-map:
+        status: "ready-for-dev"
+        story_id: "19.1"
+        title: "Product Affinity Map"
+        story_file: "19-1-product-affinity-map.md"
+        validation: "Depends on affinity semantics fix — coordinate with team before starting"
+        prerequisites: []
+      19-2-category-trend-radar:
+        status: "ready-for-dev"
+        story_id: "19.2"
+        title: "Category Trend Radar"
+        story_file: "19-2-category-trend-radar.md"
+        validation: ""
+        prerequisites: []
+      19-3-customer-product-profile:
+        status: "ready-for-dev"
+        story_id: "19.3"
+        title: "Customer Product Profile"
+        story_file: "19-3-customer-product-profile.md"
+        validation: ""
+        prerequisites: []
+      19-4-customer-risk-signals:
+        status: "ready-for-dev"
+        story_id: "19.4"
+        title: "Customer Risk Signals"
+        story_file: "19-4-customer-risk-signals.md"
+        validation: ""
+        prerequisites: ["19-3-customer-product-profile"]
+      19-5-prospect-gap-analysis:
+        status: "ready-for-dev"
+        story_id: "19.5"
+        title: "Prospect Gap Analysis"
+        story_file: "19-5-prospect-gap-analysis.md"
+        validation: ""
+        prerequisites: ["19-1-product-affinity-map", "19-2-category-trend-radar", "19-3-customer-product-profile"]
+      19-6-market-opportunities:
+        status: "ready-for-dev"
+        story_id: "19.6"
+        title: "Market Opportunities Signal Feed"
+        story_file: "19-6-market-opportunities.md"
+        validation: ""
+        prerequisites: ["19-2-category-trend-radar", "19-4-customer-risk-signals"]
+      19-7-intelligence-feature-gate:
+        status: "ready-for-dev"
+        story_id: "19.7"
+        title: "Intelligence Feature Gate"
+        story_file: "19-7-intelligence-feature-gate.md"
+        validation: "Start first — route scaffolding and MCP registration enables all other stories"
+        prerequisites: []
+      19-8-intelligence-backend-tests:
+        status: "ready-for-dev"
+        story_id: "19.8"
+        title: "Intelligence Backend Test Coverage"
+        story_file: "19-8-intelligence-backend-tests.md"
+        validation: ""
+        prerequisites: ["19-1-product-affinity-map", "19-2-category-trend-radar", "19-3-customer-product-profile", "19-4-customer-risk-signals"]
+
   # Epic 18 - Legacy Inventory Receiving Audit Trail
   epic-18:
     status: "in-progress"
     validation_note: ""
     recommended_execution_order:
       - "18.1 Legacy Receiving Audit Trail Import"
+      - "18.3 Purchase Price Mapping and Margin Calculation"
+      - "18.4 Historical Invoice Unit Cost Backfill"
+      - "18.5 Forward Invoice Unit Cost Ambiguity Guard"
     stories:
       18-1-legacy-receiving-audit-trail-import:
         status: "review"
         story_id: "18.1"
         title: "Legacy Receiving Audit Trail Import"
         story_file: "18-1-legacy-receiving-audit-trail-import.md"
-        validation: "Validated on 2026-04-12: focused pytest for `tests/domains/legacy_import/test_canonical.py`, the full `tests/domains/legacy_import` suite (`77 passed`), and targeted Ruff over `domains/legacy_import/canonical.py` plus `tests/domains/legacy_import/test_canonical.py` all passed. Full backend pytest remains blocked by unrelated MCP customer collection and other pre-existing non-legacy failures outside this story."
+        validation: "Validated on 2026-04-12: focused pytest for `tests/domains/legacy_import/test_canonical.py` (`15 passed` after review fixes), the full `tests/domains/legacy_import` suite (`79 passed`), and targeted Ruff over `domains/legacy_import/canonical.py` plus `tests/domains/legacy_import/test_canonical.py` all passed. Full backend pytest remains blocked by unrelated MCP customer collection and other pre-existing non-legacy failures outside this story."
         prerequisites: ["15.2", "15.4", "16.4"]
+      18-3-purchase-price-mapping-and-margin-calculation:
+        status: "review"
+        story_id: "18.3"
+        title: "Purchase Price Mapping and Margin Calculation"
+        story_file: "18-3-purchase-price-mapping-and-margin-calculation.md"
+        validation: "Validated on 2026-04-12: focused pytest for `tests/domains/dashboard/test_gross_margin.py`, `tests/domains/invoices/test_service.py`, `tests/domains/orders/test_order_confirmation.py`, and `tests/domains/inventory/test_supplier_orders.py` all passed on the targeted gross-margin/cost path; an additional focused pytest for `test_resolve_latest_unit_cost_uses_invoice_date_cutoff_and_priority` passed after review-driven fixes; frontend Vitest for `src/domain/dashboard/components/GrossMarginCard.test.tsx` and `src/domain/inventory/components/SupplierOrderForm.test.tsx` passed; Alembic upgraded the local DB from `a4d1c8e7b2f3` to `1c2d3e4f5a6b` and `alembic current` now reports `1c2d3e4f5a6b (head)`. Historical invoice-line backfill remains a separate follow-up task."
+        prerequisites: []
+      18-4-historical-invoice-unit-cost-backfill:
+        status: "review"
+        story_id: "18.4"
+        title: "Historical Invoice Unit Cost Backfill"
+        story_file: "18-4-historical-invoice-unit-cost-backfill.md"
+        validation: "Validated on 2026-04-12: focused pytest for `tests/domains/invoices/test_unit_cost_backfill.py` passed (`5 passed` after the BMAD code-review follow-up added a per-batch commit regression), targeted Ruff for `domains/invoices/service.py`, `scripts/backfill_invoice_unit_cost.py`, and `tests/domains/invoices/test_unit_cost_backfill.py` passed, invalid CLI control values are now rejected (`cd backend && uv run python -m scripts.backfill_invoice_unit_cost --limit 0` exits with `value must be a positive integer`), and bounded dry-run validation with `cd backend && uv run python -m scripts.backfill_invoice_unit_cost --batch-size 250 --limit 1000` reported `1000` candidates, `976` resolvable updates, `23` unmatched rows, and `1` ambiguous row before any live mutation."
+        prerequisites: ["18.3", "16.7"]
+      18-5-forward-invoice-unit-cost-ambiguity-guard:
+        status: "review"
+        story_id: "18.5"
+        title: "Forward Invoice Unit Cost Ambiguity Guard"
+        story_file: "18-5-forward-unit-cost-ambiguity-guard.md"
+        validation: "Validated on 2026-04-12: focused pytest for `tests/domains/invoices/test_unit_cost_backfill.py::test_forward_resolver_returns_none_for_ambiguous_top_ranked_prices`, `tests/domains/invoices/test_unit_cost_backfill.py::test_forward_resolver_prefers_same_day_supplier_invoice_when_unique`, `tests/domains/invoices/test_unit_cost_backfill.py::test_forward_resolver_ignores_future_purchase_costs`, `tests/domains/invoices/test_service.py::TestCreateInvoice::test_resolve_latest_unit_cost_uses_invoice_date_cutoff_and_priority`, and `tests/domains/invoices/test_service.py::TestCreateInvoice::test_create_invoice_leaves_unit_cost_null_when_latest_purchase_tier_is_ambiguous` passed (`5 passed`); targeted Ruff for `domains/invoices/service.py`, `tests/domains/invoices/test_service.py`, and `tests/domains/invoices/test_unit_cost_backfill.py` passed."
+        prerequisites: ["18.3", "18.4"]
 
 last_updated: "2026-04-12"

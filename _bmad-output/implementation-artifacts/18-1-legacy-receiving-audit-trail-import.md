@@ -177,6 +177,7 @@ Some `dtslipdate` values may be `1900-01-01` (the PostgreSQL NULL sentinel used 
 
 - Story 18.1 is implemented with the repo's existing lineage mechanism: `canonical_record_lineage` is the actual sidecar table used for `tbsslipdtj` provenance.
 - The unchecked Task 1 subtask is the unchosen schema-expansion alternative; the implemented best-practice path is the checked sidecar-lineage option.
+- A follow-up code-review pass tightened the import to `skind='4'` purchase rows, switched the audit insert to immutable `ON CONFLICT DO NOTHING`, and added replay coverage plus receipt-date query coverage.
 - Validation passed:
   - `cd backend && uv run pytest tests/domains/legacy_import/test_canonical.py -q`
   - `cd backend && uv run ruff check domains/legacy_import/canonical.py tests/domains/legacy_import/test_canonical.py`
@@ -193,3 +194,4 @@ Some `dtslipdate` values may be `1900-01-01` (the PostgreSQL NULL sentinel used 
 ## Change Log
 
 - 2026-04-12: Added legacy receiving audit import with deterministic stock-adjustment upserts, sentinel-date fallback, lineage recording, and focused regression coverage.
+- 2026-04-12: Addressed BMAD code-review findings by filtering to purchase-invoice rows, making replay immutable, and adding stronger replay/query tests.

@@ -104,9 +104,10 @@ pnpm dev:backend:8001
 pnpm dev:proxy:8001
 ```
 
-- `pnpm dev:backend:8000` runs the current backend worktree on the default Vite proxy port.
-- `pnpm dev:backend:8001` runs a fresh backend on `127.0.0.1:8001` without disturbing anything already bound to `:8000`.
+- `pnpm dev:backend:8000` runs the current backend worktree on the default Vite proxy port. Re-running it replaces an older UltrERP backend already listening on `:8000`.
+- `pnpm dev:backend:8001` runs a fresh backend on `127.0.0.1:8001`. Re-running it replaces an older UltrERP backend already listening on `:8001` so you do not have to hunt stale PIDs by hand.
 - `pnpm dev:proxy:8001` keeps the frontend on `127.0.0.1:5173` but proxies `/api` to the fresh backend on `:8001`.
+- If the port is owned by some other process, `scripts/dev-backend.sh` refuses to kill it and tells you to stop it manually first.
 - If browser QA still shows `/api` 500s while in-repo backend checks pass, verify which process owns `:8000` with `lsof -nP -iTCP:8000 -sTCP:LISTEN` before assuming the workspace code is still broken.
 
 Additional Alembic commands:
