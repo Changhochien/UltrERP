@@ -25,7 +25,7 @@ async def execute_approval_action(
         product_id=uuid.UUID(context["product_id"]),
         warehouse_id=uuid.UUID(context["warehouse_id"]),
         quantity_change=int(context["quantity_change"]),
-        reason_code=ReasonCode(context["reason_code"]),
+        reason_code=ReasonCode(str(context["reason_code"]).upper()),
         actor_id=approval.requested_by,
         notes=context.get("notes"),
     )

@@ -45,6 +45,15 @@ class FakeStockRow:
         warehouse_name: str = "Main",
         quantity: int = 50,
         reorder_point: int = 20,
+        safety_factor: float = 0.5,
+        lead_time_days: int = 7,
+        policy_type: str = "continuous",
+        target_stock_qty: int = 0,
+        on_order_qty: int = 0,
+        in_transit_qty: int = 0,
+        reserved_qty: int = 0,
+        planning_horizon_days: int = 0,
+        review_cycle_days: int = 0,
         last_adjusted: datetime | None = None,
     ):
         self.stock_id = uuid.uuid4()
@@ -52,6 +61,15 @@ class FakeStockRow:
         self.warehouse_name = warehouse_name
         self.quantity = quantity
         self.reorder_point = reorder_point
+        self.safety_factor = safety_factor
+        self.lead_time_days = lead_time_days
+        self.policy_type = policy_type
+        self.target_stock_qty = target_stock_qty
+        self.on_order_qty = on_order_qty
+        self.in_transit_qty = in_transit_qty
+        self.reserved_qty = reserved_qty
+        self.planning_horizon_days = planning_horizon_days
+        self.review_cycle_days = review_cycle_days
         self.last_adjusted = last_adjusted or datetime.now(tz=UTC)
 
 

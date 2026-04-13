@@ -78,7 +78,7 @@ class CustomerListParams(BaseModel):
     q: str | None = Field(default=None, max_length=200)
     status: str | None = Field(default=None, max_length=20)
     page: int = Field(default=1, ge=1)
-    page_size: int = Field(default=20, ge=1, le=100)
+    page_size: int = Field(default=20, ge=1, le=500)
 
 
 class CustomerListResponse(BaseModel):

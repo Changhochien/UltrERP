@@ -23,6 +23,7 @@ from domains.customers.schemas import (
     CustomerStatementResponse,
     CustomerUpdate,
     RevenueTrendPoint,
+    StatementLine,
 )
 from domains.invoices.enums import InvoiceStatus
 from domains.invoices.models import Invoice

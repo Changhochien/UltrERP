@@ -75,6 +75,7 @@ def _query_bg_loop() -> date:
 
     async def _query() -> None:
         global _bg_result, _bg_exc, _bg_cache_time, _bg_ready
+        engine = None
         try:
             db_url = getattr(settings, "database_url", None)
             if db_url is None:
@@ -111,6 +112,8 @@ def _query_bg_loop() -> date:
             _bg_exc = exc
             _bg_result = date.today()
         finally:
+            if engine is not None:
+                await engine.dispose()
             _bg_ready = True
 
     future = asyncio.run_coroutine_threadsafe(_query(), _bg_loop)

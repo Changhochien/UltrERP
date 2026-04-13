@@ -6,3 +6,4 @@ import os
 
 # JWT_SECRET must be set before Settings is first accessed.
 os.environ.setdefault("JWT_SECRET", "test-secret-at-least-32-characters-long")
+os.environ.setdefault("PYTEST_RUNNING", "1")

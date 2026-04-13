@@ -15,6 +15,7 @@ from domains.aeo.content import (
     _build_summary,
     generate_aeo_content,
 )
+from tests.domains.orders._helpers import auth_header
 
 _UNSET = object()
 
@@ -277,7 +278,11 @@ async def test_api_aeo_returns_200(_override_db):
     _override_db(mock_session)
 
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://testserver",
+        headers=auth_header(),
+    ) as client:
         resp = await client.get(
             f"/api/v1/inventory/products/{product.id}/aeo",
         )
@@ -298,7 +303,11 @@ async def test_api_aeo_returns_404_for_unknown(_override_db):
     _override_db(mock_session)
 
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://testserver",
+        headers=auth_header(),
+    ) as client:
         resp = await client.get(
             f"/api/v1/inventory/products/{uuid.uuid4()}/aeo",
         )

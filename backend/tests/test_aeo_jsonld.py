@@ -11,6 +11,7 @@ from httpx import ASGITransport, AsyncClient
 
 from app.main import app
 from domains.aeo.jsonld import generate_product_jsonld
+from tests.domains.orders._helpers import auth_header
 
 _UNSET = object()
 
@@ -194,7 +195,11 @@ async def test_api_jsonld_returns_200(_override_db):
     _override_db(mock_session)
 
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://testserver",
+        headers=auth_header(),
+    ) as client:
         resp = await client.get(
             f"/api/v1/inventory/products/{product.id}/jsonld",
         )
@@ -214,7 +219,11 @@ async def test_api_jsonld_returns_404_for_unknown(_override_db):
     _override_db(mock_session)
 
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://testserver",
+        headers=auth_header(),
+    ) as client:
         resp = await client.get(
             f"/api/v1/inventory/products/{uuid.uuid4()}/jsonld",
         )

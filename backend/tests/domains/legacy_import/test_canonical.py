@@ -49,6 +49,8 @@ class FakeCanonicalConnection:
         # Track inserted rows so fetchrow can find them after INSERT
         self._fake_customers: dict[tuple[object, object], dict] = {}
         self._fake_suppliers: dict[tuple[object, object], dict] = {}
+        self._fake_stock_adjustments: dict[uuid.UUID, dict[str, object]] = {}
+        self._fake_lineage_rows: dict[tuple[object, ...], dict[str, object]] = {}
 
     def transaction(self) -> FakeCanonicalTransaction:
         return FakeCanonicalTransaction(self)
@@ -134,6 +136,25 @@ class FakeCanonicalConnection:
         elif "INSERT INTO suppliers" in query:
             s_id, ten, co, bn = args[0], args[1], args[2], args[3]
             self._fake_suppliers[(ten, bn)] = {"id": s_id, "company_name": co}
+        elif "INSERT INTO stock_adjustment" in query:
+            adjustment_id = cast(uuid.UUID, args[0])
+            if adjustment_id not in self._fake_stock_adjustments:
+                self._fake_stock_adjustments[adjustment_id] = {
+                    "tenant_id": args[1],
+                    "product_id": args[2],
+                    "warehouse_id": args[3],
+                    "quantity_change": args[4],
+                    "reason_code": args[5],
+                    "actor_id": args[6],
+                    "notes": args[7],
+                    "created_at": args[9],
+                }
+        elif 'INSERT INTO "raw_legacy".canonical_record_lineage' in query:
+            lineage_key = tuple(args[:6])
+            self._fake_lineage_rows[lineage_key] = {
+                "source_row_number": args[6],
+                "import_run_id": args[7],
+            }
         return "OK"
 
     async def close(self) -> None:
@@ -204,6 +225,7 @@ async def test_fetch_purchase_headers_prefers_invoice_number_and_invoice_date() 
     assert "AS invoice_number" in connection.queries[0]
     assert "col_42" in connection.queries[0]
     assert "col_62" in connection.queries[0]
+    assert "COALESCE(col_1, '') = '4'" in connection.queries[0]
     assert rows == [
         {
             "doc_number": "1130827001",
@@ -220,6 +242,30 @@ async def test_fetch_purchase_headers_prefers_invoice_number_and_invoice_date() 
             "source_row_number": 17,
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_fetch_purchase_lines_selects_receipt_date_and_filters_purchase_invoices() -> None:
+    connection = RawPurchaseHeaderConnection(
+        [
+            {
+                "doc_number": "1130827001",
+                "line_number": 1,
+                "receipt_date": "2024-08-27",
+                "product_code": "P001",
+                "warehouse_code": "WH-A",
+                "qty": "3",
+                "source_row_number": 18,
+            }
+        ]
+    )
+
+    rows = await canonical._fetch_purchase_lines(connection, "raw_legacy", "batch-ap")
+
+    assert connection.queries
+    assert "col_4 AS receipt_date" in connection.queries[0]
+    assert "COALESCE(col_1, '') = '4'" in connection.queries[0]
+    assert rows[0]["receipt_date"] == "2024-08-27"
 
 
 @pytest.mark.asyncio
@@ -1023,7 +1069,7 @@ async def test_run_canonical_import_imports_legacy_receiving_audit_records(
     adjustment_args = next(
         args for query, args in connection.execute_calls if "INSERT INTO stock_adjustment" in query
     )
-    assert "ON CONFLICT (id) DO UPDATE" in adjustment_query
+    assert "ON CONFLICT (id) DO NOTHING" in adjustment_query
     assert adjustment_args[1] == tenant_id
     assert adjustment_args[4] == 3
     assert adjustment_args[5] == ReasonCode.SUPPLIER_DELIVERY
@@ -1043,6 +1089,114 @@ async def test_run_canonical_import_imports_legacy_receiving_audit_records(
         and args[5] == "1130827001:1"
         for args in lineage_args
     )
+
+
+@pytest.mark.asyncio
+async def test_run_canonical_import_receiving_audit_coerces_fractional_quantity(
+    monkeypatch,
+) -> None:
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000430")
+    connection = FakeCanonicalConnection(
+        {
+            "normalized_parties": [
+                {
+                    "legacy_code": "T067",
+                    "role": "supplier",
+                    "company_name": "Supplier A",
+                    "tax_id": "22345678",
+                    "full_address": "Taoyuan",
+                    "address": "Taoyuan",
+                    "phone": "03-1234",
+                    "email": "ap@supplier.test",
+                    "contact_person": "Betty",
+                    "source_table": "tbscust",
+                    "source_row_number": 7,
+                    "deterministic_id": deterministic_legacy_uuid("party", "supplier", "T067"),
+                }
+            ],
+            "normalized_products": [
+                {
+                    "legacy_code": "P001",
+                    "name": "Widget",
+                    "category": "BELT",
+                    "unit": "pcs",
+                    "status": "A",
+                    "source_table": "tbsstock",
+                    "source_row_number": 12,
+                    "deterministic_id": deterministic_legacy_uuid("product", "P001"),
+                }
+            ],
+            "normalized_warehouses": [
+                {
+                    "code": "WH-A",
+                    "name": "Legacy Warehouse A",
+                    "location": None,
+                    "address": None,
+                    "source_table": "tbsstkhouse",
+                    "source_row_number": 31,
+                    "deterministic_id": deterministic_legacy_uuid("warehouse", "WH-A"),
+                }
+            ],
+            "normalized_inventory_prep": [
+                {
+                    "product_legacy_code": "P001",
+                    "warehouse_code": "WH-A",
+                    "quantity_on_hand": 8,
+                    "reorder_point": 0,
+                    "product_deterministic_id": deterministic_legacy_uuid("product", "P001"),
+                    "warehouse_deterministic_id": deterministic_legacy_uuid("warehouse", "WH-A"),
+                }
+            ],
+            "product_code_mapping": [],
+            "sales_headers": [],
+            "sales_lines": [],
+            "purchase_headers": [
+                {
+                    "doc_number": "1070307001",
+                    "invoice_date": "2018-03-07",
+                    "supplier_code": "T067",
+                    "supplier_name": "Supplier A",
+                    "address": "Taoyuan",
+                    "subtotal": "0.00",
+                    "tax_amount": "0.00",
+                    "must_pay_amount": "0.00",
+                    "total_amount": "0.00",
+                    "source_row_number": 17,
+                }
+            ],
+            "purchase_lines": [
+                {
+                    "doc_number": "1070307001",
+                    "line_number": 1,
+                    "product_code": "P001",
+                    "product_name": "Widget",
+                    "warehouse_code": "WH-A",
+                    "qty": "4.10000000",
+                    "unit_price": "30.00",
+                    "extended_amount": "123.00",
+                    "receipt_date": "2018-03-07",
+                    "source_row_number": 18,
+                }
+            ],
+        }
+    )
+
+    async def fake_open_raw_connection() -> FakeCanonicalConnection:
+        return connection
+
+    monkeypatch.setattr(canonical, "_open_raw_connection", fake_open_raw_connection)
+
+    await canonical.run_canonical_import(
+        batch_id="batch-receiving-audit-fractional",
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+    )
+
+    adjustment_args = next(
+        args for query, args in connection.execute_calls if "INSERT INTO stock_adjustment" in query
+    )
+    assert adjustment_args[4] == 4
+    assert "coerced from 4.1 to 4" in adjustment_args[7]
 
 
 @pytest.mark.asyncio
@@ -1150,6 +1304,116 @@ async def test_run_canonical_import_legacy_receiving_audit_falls_back_to_header_
     )
     assert adjustment_args[9] == canonical._as_timestamp(canonical._as_legacy_date("2024-08-27"))
     assert "falling back to header invoice_date" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_run_canonical_import_replays_legacy_receiving_audit_idempotently(
+    monkeypatch,
+) -> None:
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000418")
+    connection = FakeCanonicalConnection(
+        {
+            "normalized_parties": [
+                {
+                    "legacy_code": "T067",
+                    "role": "supplier",
+                    "company_name": "Supplier A",
+                    "tax_id": "22345678",
+                    "full_address": "Taoyuan",
+                    "address": "Taoyuan",
+                    "phone": "03-1234",
+                    "email": "ap@supplier.test",
+                    "contact_person": "Betty",
+                    "source_table": "tbscust",
+                    "source_row_number": 7,
+                    "deterministic_id": deterministic_legacy_uuid("party", "supplier", "T067"),
+                }
+            ],
+            "normalized_products": [
+                {
+                    "legacy_code": "P001",
+                    "name": "Widget",
+                    "category": "BELT",
+                    "unit": "pcs",
+                    "status": "A",
+                    "source_table": "tbsstock",
+                    "source_row_number": 12,
+                    "deterministic_id": deterministic_legacy_uuid("product", "P001"),
+                }
+            ],
+            "normalized_warehouses": [
+                {
+                    "code": "WH-A",
+                    "name": "Legacy Warehouse A",
+                    "location": None,
+                    "address": None,
+                    "source_table": "tbsstkhouse",
+                    "source_row_number": 31,
+                    "deterministic_id": deterministic_legacy_uuid("warehouse", "WH-A"),
+                }
+            ],
+            "normalized_inventory_prep": [],
+            "product_code_mapping": [],
+            "sales_headers": [],
+            "sales_lines": [],
+            "purchase_headers": [
+                {
+                    "doc_number": "1130827001",
+                    "raw_invoice_number": "GG46104158",
+                    "invoice_number": "GG46104158",
+                    "slip_date": "2024-08-27",
+                    "raw_invoice_date": "2024-08-27",
+                    "invoice_date": "2024-08-27",
+                    "period_code": "11308",
+                    "supplier_code": "T067",
+                    "supplier_name": "Supplier A",
+                    "address": "Taoyuan",
+                    "notes": "SQ04",
+                    "subtotal": "90.00",
+                    "tax_amount": "5.00",
+                    "must_pay_amount": "95.00",
+                    "total_amount": "95.00",
+                    "source_row_number": 17,
+                }
+            ],
+            "purchase_lines": [
+                {
+                    "doc_number": "1130827001",
+                    "line_number": 1,
+                    "product_code": "P001",
+                    "product_name": "Widget",
+                    "warehouse_code": "WH-A",
+                    "qty": "3",
+                    "unit_price": "30.00",
+                    "extended_amount": "90.00",
+                    "receipt_date": "1900-01-01",
+                    "source_row_number": 18,
+                }
+            ],
+        }
+    )
+
+    async def fake_open_raw_connection() -> FakeCanonicalConnection:
+        return connection
+
+    monkeypatch.setattr(canonical, "_open_raw_connection", fake_open_raw_connection)
+
+    await canonical.run_canonical_import(
+        batch_id="batch-receiving-replay",
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+    )
+    await canonical.run_canonical_import(
+        batch_id="batch-receiving-replay",
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+    )
+
+    assert len(connection._fake_stock_adjustments) == 1
+    receiving_lineage = [
+        key for key in connection._fake_lineage_rows if key[2] == "stock_adjustment"
+    ]
+    assert len(receiving_lineage) == 1
 
 
 @pytest.mark.asyncio

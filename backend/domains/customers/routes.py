@@ -57,7 +57,7 @@ async def list_all(
     q: str | None = Query(default=None, max_length=200),
     customer_status: str | None = Query(default=None, alias="status", max_length=20),
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100),
+    page_size: int = Query(default=20, ge=1, le=500),
 ) -> CustomerListResponse:
     real_tid = uuid.UUID(user["tenant_id"])
     params = CustomerListParams(q=q, status=customer_status, page=page, page_size=page_size)

@@ -18,10 +18,11 @@ from domains.customers.mcp import (
     customers_lookup_by_ban,
 )
 
-# Access underlying function from FunctionTool wrapper.
-_list_fn = customers_list.fn
-_get_fn = customers_get.fn
-_lookup_fn = customers_lookup_by_ban.fn
+# FastMCP 3.x exports decorated tools as plain async callables in tests,
+# while older wrappers exposed the underlying coroutine via `.fn`.
+_list_fn = getattr(customers_list, "fn", customers_list)
+_get_fn = getattr(customers_get, "fn", customers_get)
+_lookup_fn = getattr(customers_lookup_by_ban, "fn", customers_lookup_by_ban)
 
 _CID = str(uuid.uuid4())
 _NOW = datetime.now(tz=UTC)

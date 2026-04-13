@@ -191,6 +191,7 @@ async def test_run_normalization_is_tenant_scoped_and_transactional(monkeypatch)
             "tbsstkhouse": [
                 {
                     "product_code": "P001",
+                    "warehouse_code": "A",
                     "qty_on_hand": "8.0000",
                     "source_row_number": 3,
                 }
@@ -225,6 +226,16 @@ async def test_run_normalization_is_tenant_scoped_and_transactional(monkeypatch)
     assert result.product_count == 1
     assert result.warehouse_count == 1
     assert result.inventory_count == 1
+
+    warehouse_copy = next(
+        call for call in connection.copy_calls if call["table_name"] == "normalized_warehouses"
+    )
+    inventory_copy = next(
+        call for call in connection.copy_calls if call["table_name"] == "normalized_inventory_prep"
+    )
+
+    assert warehouse_copy["rows"][0][4] == "A"
+    assert inventory_copy["rows"][0][5] == "A"
 
 
 @pytest.mark.asyncio
