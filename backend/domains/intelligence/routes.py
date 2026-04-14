@@ -3,7 +3,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,6 +12,7 @@ from common.database import get_db
 
 from domains.intelligence.schemas import (
 	CategoryTrends,
+	MarketOpportunities,
 	CustomerProductProfile,
 	ProspectGaps,
 	CustomerRiskSignals,
@@ -21,6 +22,7 @@ from domains.intelligence.service import (
 	get_category_trends,
 	get_customer_product_profile,
 	get_customer_risk_signals,
+	get_market_opportunities,
 	get_prospect_gaps,
 	get_product_affinity_map,
 )
@@ -28,8 +30,8 @@ from domains.intelligence.service import (
 router = APIRouter()
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 
-# Sales and admin users can read commercial intelligence; owner bypass is handled in require_role().
-IntelligenceReadUser = Annotated[dict, Depends(require_role("admin", "sales"))]
+# Sales, admin, and owner users can read commercial intelligence.
+IntelligenceReadUser = Annotated[dict, Depends(require_role("admin", "owner", "sales"))]
 
 
 @router.get("/customers/risk-signals", response_model=CustomerRiskSignals)
@@ -50,8 +52,20 @@ async def prospect_gaps(
 	category: str = Query(min_length=1),
 	limit: int = Query(default=20, ge=1, le=100),
 ) -> ProspectGaps:
+	if not category.strip():
+		raise HTTPException(status_code=400, detail="category is required")
 	tenant_id = uuid.UUID(user["tenant_id"])
-	return await get_prospect_gaps(session, tenant_id, category=category, limit=limit)
+	return await get_prospect_gaps(session, tenant_id, category=category.strip(), limit=limit)
+
+
+@router.get("/market-opportunities", response_model=MarketOpportunities)
+async def market_opportunities(
+	session: DbSession,
+	user: IntelligenceReadUser,
+	period: str = Query(default="last_90d", pattern="^(last_30d|last_90d|last_12m)$"),
+) -> MarketOpportunities:
+	tenant_id = uuid.UUID(user["tenant_id"])
+	return await get_market_opportunities(session, tenant_id, period=period)  # type: ignore[arg-type]
 
 
 @router.get("/category-trends", response_model=CategoryTrends)

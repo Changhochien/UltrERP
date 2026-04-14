@@ -753,8 +753,8 @@ development_status:
 
   # Epic 19 - Customer Product Intelligence
   epic-19:
-    status: "in-progress"
-    validation_note: "Epic 19 adds AI-actionable intelligence via MCP tools. AI agents are primary consumers; human UI is secondary. All intelligence computed from existing orders/order_lines/products/customers tables — no new tables. Start with 19.7 (route scaffolding) and 19.3 (customer snapshot foundation), then build 19.1/19.2/19.4 as independent aggregations; 19.5 depends on 19.1 + customer/category aggregates; 19.6 is late composition; 19.8 runs alongside feature stories, not only at end."
+    status: "completed"
+    validation_note: "Revalidated on 2026-04-14. Epic 19 is complete: Stories 19.1-19.8 are implemented, the 19.6 composition-layer review fixes landed, and 19.8 now asserts structured prospect evidence plus market-opportunity support metadata. Focused backend intelligence/auth validation passed 72 tests, and the focused frontend intelligence/customer-analytics/RBAC slice passed 40 tests."
     recommended_execution_order:
       - "19.7 Intelligence Feature Gate"
       - "19.3 Customer Product Profile"
@@ -766,60 +766,60 @@ development_status:
       - "19.8 Intelligence Backend Test Coverage"
     stories:
       19-1-product-affinity-map:
-        status: "ready-for-dev"
+        status: "done"
         story_id: "19.1"
         title: "Product Affinity Map"
         story_file: "19-1-product-affinity-map.md"
-        validation: "Depends on affinity semantics fix — coordinate with team before starting"
+        validation: "Customer-level Jaccard affinity service, REST endpoint, tenant-aware MCP tool, and sortable affinity UI are implemented; focused backend intelligence tests and frontend affinity/RBAC tests pass"
         prerequisites: []
       19-2-category-trend-radar:
-        status: "ready-for-dev"
+        status: "done"
         story_id: "19.2"
         title: "Category Trend Radar"
         story_file: "19-2-category-trend-radar.md"
-        validation: ""
+        validation: "Category trend schemas, service, REST/MCP surfaces, and chart-plus-ranked-list UI are implemented; review fixes bounded day windows, excluded future rows, ranked nullable deltas by current-period impact, and guarded stale period responses; focused backend/frontend tests pass"
         prerequisites: []
       19-3-customer-product-profile:
-        status: "ready-for-dev"
+        status: "done"
         story_id: "19.3"
         title: "Customer Product Profile"
         story_file: "19-3-customer-product-profile.md"
-        validation: ""
+        validation: "Customer product profile service, REST/MCP surfaces, and customer analytics embed are implemented; follow-up review aligned activity_basis and tenant-aware MCP handling; focused backend/frontend tests pass"
         prerequisites: []
       19-4-customer-risk-signals:
-        status: "ready-for-dev"
+        status: "done"
         story_id: "19.4"
         title: "Customer Risk Signals"
         story_file: "19-4-customer-risk-signals.md"
-        validation: ""
+        validation: "Customer risk signal schemas, tenant-wide ranking service, REST/MCP surfaces, and filtered feed UI are implemented; review fixes tenant-bound intelligence API keys, no-order dormancy, and sparse-baseline category expansion suppression; focused backend/frontend tests pass"
         prerequisites: ["19-3-customer-product-profile"]
       19-5-prospect-gap-analysis:
-        status: "ready-for-dev"
+        status: "done"
         story_id: "19.5"
         title: "Prospect Gap Analysis"
         story_file: "19-5-prospect-gap-analysis.md"
-        validation: ""
+        validation: "Whitespace prospect schemas, scoring service, REST/MCP surfaces, and dropdown-driven outreach table are implemented; review fixes bearer/header tenant precedence, full adjacency support, excluded-category-only candidate filtering, blank REST category rejection, and category bootstrap behavior; focused backend/frontend tests pass"
         prerequisites: ["19-1-product-affinity-map", "19-2-category-trend-radar", "19-3-customer-product-profile"]
       19-6-market-opportunities:
-        status: "ready-for-dev"
+        status: "done"
         story_id: "19.6"
         title: "Market Opportunities Signal Feed"
         story_file: "19-6-market-opportunities.md"
-        validation: ""
+        validation: "Market opportunity schemas, composition service, REST/MCP surfaces, and expandable banner integration are implemented; review fixes tightened growth support filtering, aligned tenant/auth precedence, and exposed support/source metadata; focused backend/frontend validation passes"
         prerequisites: ["19-2-category-trend-radar", "19-4-customer-risk-signals"]
       19-7-intelligence-feature-gate:
-        status: "ready-for-dev"
+        status: "done"
         story_id: "19.7"
         title: "Intelligence Feature Gate"
         story_file: "19-7-intelligence-feature-gate.md"
-        validation: "Start first — route scaffolding and MCP registration enables all other stories"
+        validation: "Feature gate, route/nav scaffold, backend router wiring, and MCP scope registration implemented. Code review fixed: per-tool TOOL_SCOPES per spec, added owner to REST route dependency, updated tests. All 19 tests passing."
         prerequisites: []
       19-8-intelligence-backend-tests:
-        status: "ready-for-dev"
+        status: "done"
         story_id: "19.8"
         title: "Intelligence Backend Test Coverage"
         story_file: "19-8-intelligence-backend-tests.md"
-        validation: ""
+        validation: "Intelligence backend coverage now exercises affinity, trends, profiles, risk signals, prospect transparency, and market opportunities; added assertions for score_components/PII omission and support/source metadata; focused backend intelligence/auth validation passes"
         prerequisites: ["19-1-product-affinity-map", "19-2-category-trend-radar", "19-3-customer-product-profile", "19-4-customer-risk-signals"]
 
   # Epic 18 - Legacy Inventory Receiving Audit Trail

@@ -44,12 +44,12 @@ TOOL_SCOPES: dict[str, frozenset[str]] = {
 	"payments_list": frozenset({"payments:read"}),
 	"payments_get": frozenset({"payments:read"}),
 	# intelligence domain (Epic 19)
-	"intelligence_product_affinity": frozenset({"intelligence:read"}),
-	"intelligence_category_trends": frozenset({"intelligence:read"}),
-	"intelligence_customer_product_profile": frozenset({"intelligence:read"}),
-	"intelligence_customer_risk_signals": frozenset({"intelligence:read"}),
-	"intelligence_prospect_gaps": frozenset({"intelligence:read"}),
-	"intelligence_market_opportunities": frozenset({"intelligence:read"}),
+	"intelligence_product_affinity": frozenset({"orders:read"}),
+	"intelligence_category_trends": frozenset({"orders:read", "customers:read"}),
+	"intelligence_customer_product_profile": frozenset({"customers:read", "orders:read"}),
+	"intelligence_customer_risk_signals": frozenset({"customers:read", "orders:read"}),
+	"intelligence_prospect_gaps": frozenset({"customers:read", "orders:read"}),
+	"intelligence_market_opportunities": frozenset({"customers:read", "orders:read"}),
 }
 
 # ── Default role scope sets (architecture §7.3) ────────────────
@@ -68,7 +68,7 @@ DEFAULT_ROLE_SCOPES: dict[str, list[str]] = {
 	"sales": [
 		"customers:read", "customers:write",
 		"invoices:read", "invoices:create",
-		"orders:read", "orders:write",
+		"orders:read", "orders:write", "intelligence:read",
 	],
 	"agent": [
 		"customers:read", "invoices:read", "invoices:create",

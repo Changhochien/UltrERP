@@ -51,13 +51,13 @@ def test_parse_api_keys_invalid_json_returns_empty_dict():
 
 
 def test_intelligence_tool_scopes_registered():
-    """Epic 19 gate registers all planned intelligence tool scopes."""
-    assert TOOL_SCOPES["intelligence_product_affinity"] == frozenset({"intelligence:read"})
-    assert TOOL_SCOPES["intelligence_category_trends"] == frozenset({"intelligence:read"})
-    assert TOOL_SCOPES["intelligence_customer_product_profile"] == frozenset({"intelligence:read"})
-    assert TOOL_SCOPES["intelligence_customer_risk_signals"] == frozenset({"intelligence:read"})
-    assert TOOL_SCOPES["intelligence_prospect_gaps"] == frozenset({"intelligence:read"})
-    assert TOOL_SCOPES["intelligence_market_opportunities"] == frozenset({"intelligence:read"})
+    """Epic 19 gate registers per-tool scopes matching the spec."""
+    assert TOOL_SCOPES["intelligence_product_affinity"] == frozenset({"orders:read"})
+    assert TOOL_SCOPES["intelligence_category_trends"] == frozenset({"customers:read", "orders:read"})
+    assert TOOL_SCOPES["intelligence_customer_product_profile"] == frozenset({"customers:read", "orders:read"})
+    assert TOOL_SCOPES["intelligence_customer_risk_signals"] == frozenset({"customers:read", "orders:read"})
+    assert TOOL_SCOPES["intelligence_prospect_gaps"] == frozenset({"customers:read", "orders:read"})
+    assert TOOL_SCOPES["intelligence_market_opportunities"] == frozenset({"customers:read", "orders:read"})
 
 
 # ── Middleware tests ───────────────────────────────────────────
@@ -65,7 +65,7 @@ def test_intelligence_tool_scopes_registered():
 _TEST_KEYS = {
     "valid-admin": frozenset({"admin"}),
     "valid-agent": frozenset({
-        "customers:read", "invoices:read", "inventory:read", "intelligence:read", "orders:read"
+        "customers:read", "invoices:read", "inventory:read", "orders:read",
     }),
     "valid-narrow": frozenset({"customers:read"}),
     "valid-finance": frozenset({"customers:read", "invoices:read", "payments:read", "purchases:read"}),
@@ -160,8 +160,8 @@ async def test_valid_key_with_correct_scope_allows_call():
 
 
 @pytest.mark.asyncio
-async def test_intelligence_tool_requires_dedicated_intelligence_scope():
-    """Epic 19 intelligence tools reject keys without the dedicated intelligence scope."""
+async def test_intelligence_tool_requires_both_required_scopes():
+    """Intelligence tools require all their specified scopes; missing any causes INSUFFICIENT_SCOPE."""
     mw = ApiKeyAuth(api_keys=_TEST_KEYS, tool_scopes=TOOL_SCOPES, api_key_tenants=_TEST_KEY_TENANTS)
     ctx = _make_context("intelligence_category_trends")
 
@@ -171,7 +171,7 @@ async def test_intelligence_tool_requires_dedicated_intelligence_scope():
 
     error = json.loads(str(exc_info.value))
     assert error["code"] == "INSUFFICIENT_SCOPE"
-    assert error["required_scope"] == ["intelligence:read"]
+    assert set(error["required_scope"]) == {"customers:read", "orders:read"}
 
 
 @pytest.mark.asyncio
@@ -189,24 +189,21 @@ async def test_intelligence_tool_allows_combined_scope_key():
 
 
 @pytest.mark.asyncio
-async def test_jwt_sales_cannot_access_intelligence_tools():
-    """Sales JWTs keep order/customer scopes but cannot bypass the intelligence gate."""
+async def test_jwt_sales_can_access_intelligence_tools():
+    """Sales JWTs inherit the same intelligence read surface exposed in REST/UI."""
     mw = ApiKeyAuth(api_keys=_TEST_KEYS, tool_scopes=TOOL_SCOPES)
     ctx = _make_context("intelligence_customer_product_profile")
     jwt_token = _make_jwt("sales")
+    call_next = AsyncMock(return_value="sales-intelligence-ok")
 
     with patch(
         "app.mcp_auth.get_http_headers",
         return_value={"authorization": f"Bearer {jwt_token}"},
     ):
-        with pytest.raises(ToolError) as exc_info:
-            await mw.on_call_tool(ctx, AsyncMock())
+        result = await mw.on_call_tool(ctx, call_next)
 
-    error = json.loads(str(exc_info.value))
-    assert error["code"] == "INSUFFICIENT_SCOPE"
-    assert error["required_scope"] == ["intelligence:read"]
-    assert "orders:read" in error["token_scopes"]
-    assert "customers:read" in error["token_scopes"]
+    assert result == "sales-intelligence-ok"
+    call_next.assert_awaited_once_with(ctx)
 
 
 @pytest.mark.asyncio

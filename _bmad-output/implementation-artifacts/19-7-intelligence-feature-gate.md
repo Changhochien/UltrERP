@@ -1,6 +1,6 @@
 # Story 19.7: Intelligence Feature Gate
 
-Status: revised-ready-for-dev
+Status: done
 
 ## Story
 
@@ -175,34 +175,48 @@ Use `raise ToolError(json.dumps({...}))` for all error cases and `model_dump(mod
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Add intelligence MCP tool scopes** (AC4, AC5, AC6)
-  - [ ] Add 6 `TOOL_SCOPES` entries in `backend/app/mcp_auth.py`
-  - [ ] Add `domains/intelligence.mcp` import to `backend/app/mcp_server.py`
+- [x] **Task 1: Add intelligence MCP tool scopes** (AC4, AC5, AC6)
+  - [x] Add 6 `TOOL_SCOPES` entries in `backend/app/mcp_auth.py`
+  - [x] Add `domains/intelligence.mcp` import to `backend/app/mcp_server.py`
 
-- [ ] **Task 2: Prepare intelligence module wiring for concrete tools** (AC4, AC5, AC6)
-  - [ ] Create `backend/domains/intelligence/__init__.py`
-  - [ ] Create `backend/domains/intelligence/mcp.py` only for real tool implementations that ship with the first intelligence stories
+- [x] **Task 2: Prepare intelligence module wiring for concrete tools** (AC4, AC5, AC6)
+  - [x] Create `backend/domains/intelligence/__init__.py`
+  - [x] Create `backend/domains/intelligence/mcp.py` only for real tool implementations that ship with the first intelligence stories
 
-- [ ] **Task 3: Add shared route protection for concrete intelligence endpoints** (AC1, AC2, AC3)
-  - [ ] Create `backend/domains/intelligence/routes.py` with shared router helpers or concrete endpoints that actually ship in the same change
-  - [ ] Apply an intelligence-specific `require_role(...)` dependency to intelligence routes
-  - [ ] Enforce the frontend / backend `intelligence` access contract without inventing a new backend feature registry
-  - [ ] Wire the intelligence router into the main FastAPI app once at least one concrete endpoint exists
+- [x] **Task 3: Add shared route protection for concrete intelligence endpoints** (AC1, AC2, AC3)
+  - [x] Create `backend/domains/intelligence/routes.py` with shared router helpers or concrete endpoints that actually ship in the same change
+  - [x] Apply an intelligence-specific `require_role(...)` dependency to intelligence routes
+  - [x] Enforce the frontend / backend `intelligence` access contract without inventing a new backend feature registry
+  - [x] Wire the intelligence router into the main FastAPI app once at least one concrete endpoint exists
 
-- [ ] **Task 4: Frontend route and navigation** (AC7, AC8)
-  - [ ] Add `INTELLIGENCE_ROUTE = "/intelligence"` to `src/lib/routes.ts`
-  - [ ] Add `INTELLIGENCE_ROUTE` to the `AppRoute` type union
-  - [ ] Add protected route in `src/App.tsx` with `requiredFeature="intelligence"`
-  - [ ] Create `src/pages/IntelligencePage.tsx` stub (simple page with title "Intelligence" — workbench tabs implemented in 19.1–19.6)
-  - [ ] Verify sidebar hides/shows based on feature flag (check how `AppNavigation` component reads features)
+- [x] **Task 4: Frontend route and navigation** (AC7, AC8)
+  - [x] Add `INTELLIGENCE_ROUTE = "/intelligence"` to `src/lib/routes.ts`
+  - [x] Add `INTELLIGENCE_ROUTE` to the `AppRoute` type union
+  - [x] Add protected route in `src/App.tsx` with `requiredFeature="intelligence"`
+  - [x] Create `src/pages/IntelligencePage.tsx` stub (simple page with title "Intelligence" — workbench tabs implemented in 19.1–19.6)
+  - [x] Verify sidebar hides/shows based on feature flag (check how `AppNavigation` component reads features)
 
-- [ ] **Task 5: Frontend role matrix update** (AC2, AC7, AC8)
-  - [ ] Add `intelligence` to the existing `AppFeature` union and role-permission matrix
-  - [ ] Ensure the `intelligence` feature is granted intentionally to the appropriate roles
+- [x] **Task 5: Frontend role matrix update** (AC2, AC7, AC8)
+  - [x] Add `intelligence` to the existing `AppFeature` union and role-permission matrix
+  - [x] Ensure the `intelligence` feature is granted intentionally to the appropriate roles
 
-- [ ] **Task 6: Wire intelligence router into FastAPI app** (AC1, AC2, AC3)
-  - [ ] Find where domain routers are included in the FastAPI app (e.g., `backend/app/routes.py` or `backend/app/__init__.py`)
-  - [ ] Add `router = APIRouter(prefix="/intelligence", tags=["intelligence"])` and include it in the app
+- [x] **Task 6: Wire intelligence router into FastAPI app** (AC1, AC2, AC3)
+  - [x] Find where domain routers are included in the FastAPI app (e.g., `backend/app/routes.py` or `backend/app/__init__.py`)
+  - [x] Add `router = APIRouter(prefix="/intelligence", tags=["intelligence"])` and include it in the app
+
+### Review Findings
+
+- [x] [Review][Patch] TOOL_SCOPES updated to per-tool scopes per spec — `intelligence_product_affinity` → `orders:read`; all others → `customers:read` + `orders:read` [`backend/app/mcp_auth.py:47-52`]
+- [x] [Review][Patch] REST route dependency added `owner` to `require_role("admin", "owner", "sales")` [`backend/domains/intelligence/routes.py:34`]
+- [x] [Review][Patch] Tests updated: scope assertions, test data, and negative JWT test [`backend/tests/test_mcp_auth.py`]
+- [x] [Review][Defer] Bearer token tenant_id not UUID-validated before service layer — deferred, pre-existing auth pattern
+- [x] [Review][Defer] `agent` role MCP/frontend inconsistency — deferred, may be intentional (M2M vs UI)
+
+## Completion Notes
+
+- Implemented the intelligence domain scaffold across backend routing, MCP registration, frontend navigation, protected routing, and locale strings.
+- Follow-up review work tightened intelligence MCP tenant handling and aligned the human read surface with later sales-facing story requirements while preserving feature gating for unauthorized roles.
+- Validation: `uv run pytest tests/test_mcp_auth.py -q`, `uv run pytest tests/domains/intelligence/test_routes.py tests/test_mcp_intelligence.py tests/test_mcp_auth.py -q`, `pnpm --dir /Volumes/2T_SSD_App/Projects/UltrERP exec vitest run src/tests/auth/rbac-ui.test.tsx`.
 
 ## Dev Notes
 
