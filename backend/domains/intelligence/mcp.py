@@ -236,6 +236,16 @@ async def intelligence_product_affinity(
 	limit: Annotated[int, Field(description="Maximum number of affinity pairs to return", ge=1, le=200)] = 50,
 ) -> dict:
 	"""Return top product affinity pairs scored by customer-level Jaccard similarity."""
+	if min_shared < 1 or limit < 1:
+		raise ToolError(
+			json.dumps(
+				{
+					"code": "VALIDATION_ERROR",
+					"message": f"min_shared and limit must be >= 1, got min_shared={min_shared}, limit={limit}",
+					"retry": False,
+				}
+			)
+		)
 	tenant_id = _resolve_tenant_id()
 	async with AsyncSessionLocal() as session:
 		result = await get_product_affinity_map(

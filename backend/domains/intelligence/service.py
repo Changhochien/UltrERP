@@ -1023,8 +1023,9 @@ async def get_product_affinity_map(
     limit: int = 50,
 ) -> ProductAffinityMap:
     """Compute customer-level product affinity pairs from qualifying orders."""
-    normalized_min_shared = max(1, min_shared)
-    normalized_limit = max(1, limit)
+    if min_shared < 1 or limit < 1:
+        raise ValueError(f"min_shared and limit must be >= 1, got min_shared={min_shared}, limit={limit}")
+    normalized_limit = limit
     computed_at = datetime.now(tz=UTC)
 
     async with session.begin():
@@ -1053,7 +1054,7 @@ async def get_product_affinity_map(
         return ProductAffinityMap(
             pairs=[],
             total=0,
-            min_shared=normalized_min_shared,
+            min_shared=min_shared,
             limit=normalized_limit,
             computed_at=computed_at,
         )
@@ -1083,7 +1084,7 @@ async def get_product_affinity_map(
 
     pairs: list[AffinityPair] = []
     for product_pair, shared_customer_count in pair_customer_counts.items():
-        if shared_customer_count < normalized_min_shared:
+        if shared_customer_count < min_shared:
             continue
 
         product_a_id, product_b_id = product_pair
@@ -1134,7 +1135,7 @@ async def get_product_affinity_map(
     return ProductAffinityMap(
         pairs=pairs[:normalized_limit],
         total=len(pairs),
-        min_shared=normalized_min_shared,
+        min_shared=min_shared,
         limit=normalized_limit,
         computed_at=computed_at,
     )

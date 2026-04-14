@@ -53,7 +53,7 @@ function sortPairs(
 
   return [...pairs].sort((left, right) => {
     if (sortKey === "product_a_name" || sortKey === "product_b_name") {
-      return left[sortKey].localeCompare(right[sortKey]) * multiplier;
+      return left[sortKey].localeCompare(right[sortKey], undefined, { sensitivity: "base" }) * multiplier;
     }
 
     return (left[sortKey] - right[sortKey]) * multiplier;
