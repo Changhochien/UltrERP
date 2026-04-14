@@ -6,6 +6,7 @@
     "language": "Language",
     "overview": "Overview",
     "inventory": "Inventory",
+    "intelligence": "Intelligence",
     "purchases": "Purchases",
     "customers": "Customers",
     "invoices": "Invoices",
@@ -64,6 +65,10 @@
     "inventory": {
       "description": "Manage stock levels and warehouse activity.",
       "label": "Inventory"
+    },
+    "intelligence": {
+      "description": "Review AI-ready customer and product intelligence signals.",
+      "label": "Intelligence"
     },
     "purchases": {
       "description": "Inspect imported supplier invoices and AP history.",
@@ -144,6 +149,146 @@
     "noCategories": "No settings categories available.",
     "saveError": "Failed to save setting.",
     "resetError": "Failed to reset setting."
+  },
+  "intelligence": {
+    "page": {
+      "eyebrow": "Commercial Intelligence",
+      "title": "Intelligence Workspace",
+      "description": "Role-gated customer and product signals for agent-assisted selling.",
+      "workspaceTitle": "Workspace Ready",
+      "workspaceDescription": "Epic 19 stories add the intelligence cards, tables, and MCP-backed insights here.",
+      "placeholder": "The intelligence feature gate is active. Sales, admin, and owner users can access this workspace while the remaining analytics stories land in sprint order."
+    },
+    "customerProfile": {
+      "title": "Product Profile",
+      "description": "What this customer buys, how often they order, and which categories are newly active.",
+      "totalRevenue12m": "Revenue (12 months)",
+      "orders12m": "Orders (12 months)",
+      "averageOrderValue": "Average Order Value",
+      "lastOrder": "Last Order",
+      "frequencyTrend": "Ordering frequency trend",
+      "aovTrend": "Average order value trend",
+      "dormant": "Dormant",
+      "activityBasis": "Based on confirmed, shipped, and fulfilled orders.",
+      "topCategories": "Top Categories",
+      "topCategoriesDescription": "Revenue mix across the last 12 months.",
+      "topProducts": "Top Products",
+      "topProductsDescription": "Products ranked by order count in the last 12 months.",
+      "new": "New",
+      "noOrdersYet": "No qualifying orders yet",
+      "daysSinceLastOrder_one": "{{count}} day since last order",
+      "daysSinceLastOrder_other": "{{count}} days since last order",
+      "noCategoryData": "No category activity yet.",
+      "noProductData": "No product activity yet.",
+      "product": "Product",
+      "category": "Category",
+      "orders": "Orders",
+      "revenue": "Revenue",
+      "loadError": "Failed to load product profile.",
+      "trend": {
+        "increasing": "Increasing",
+        "declining": "Declining",
+        "stable": "Stable"
+      },
+      "confidence": {
+        "high": "High confidence",
+        "medium": "Medium confidence",
+        "low": "Low confidence"
+      }
+    },
+    "affinity": {
+      "title": "Product Affinity Map",
+      "description": "Customer-level co-purchase pairs scored by overlap and Jaccard affinity.",
+      "productA": "Product A",
+      "productB": "Product B",
+      "sharedCustomers": "Shared Customers",
+      "overlap": "Overlap",
+      "affinityScore": "Affinity Score",
+      "pitchHint": "Pitch Hint",
+      "sharedOrders": "Shared orders: {count}",
+      "computedAt": "Computed {value}",
+      "minShared": "Min shared {count}",
+      "topPairs": "Top {count} pairs",
+      "empty": "No qualifying product affinities yet.",
+      "loadError": "Failed to load product affinity map.",
+      "showing": "Showing {shown} of {total} pairs",
+      "sortBy": "Sort by {label}",
+      "sortDirection": {
+        "asc": "ascending",
+        "desc": "descending"
+      }
+    },
+    "categoryTrends": {
+      "title": "Category Trend Radar",
+      "description": "Rolling demand signals across categories, with current-vs-prior period comparison.",
+      "period30d": "30d",
+      "period90d": "90d",
+      "period12m": "12m",
+      "currentPeriod": "Current",
+      "priorPeriod": "Prior",
+      "delta": "Revenue Delta",
+      "newCustomers": "New",
+      "churnedCustomers": "Churned",
+      "customerFootnote": "{current} / {prior} customers",
+      "topProducts": "Top Products",
+      "empty": "No category demand signals yet.",
+      "loadError": "Failed to load category trends.",
+      "generatedAt": "Generated {value}",
+      "activityBasis": "Based on confirmed, shipped, and fulfilled order-line demand.",
+      "trend": {
+        "growing": "Growing",
+        "declining": "Declining",
+        "stable": "Stable"
+      },
+      "trendContext": {
+        "newly_active": "Newly active",
+        "insufficient_history": "Insufficient history"
+      }
+    },
+    "riskSignals": {
+      "title": "Customer Risk Signals",
+      "description": "A ranked outreach queue across dormant, at-risk, growing, stable, and new accounts.",
+      "empty": "No customer risk signals yet.",
+      "loadError": "Failed to load customer risk signals.",
+      "generatedAt": "Generated {value}",
+      "filters": {
+        "all": "All",
+        "growing": "Growing",
+        "at_risk": "At Risk",
+        "dormant": "Dormant",
+        "new": "New",
+        "stable": "Stable"
+      },
+      "status": {
+        "growing": "Growing",
+        "at_risk": "At Risk",
+        "dormant": "Dormant",
+        "new": "New",
+        "stable": "Stable"
+      },
+      "revenueCurrent": "Current Revenue",
+      "revenuePrior": "Prior Revenue",
+      "delta": "Delta",
+      "daysSinceLastOrder": "{count} days since last order",
+      "expanded": "Expanded: {value}",
+      "contracted": "Contracted: {value}",
+      "noSignals": "No secondary signals for this account."
+    },
+    "prospectGaps": {
+      "title": "Prospect Gap Analysis",
+      "description": "Find active non-buyers who look like strong fits for a target category.",
+      "categoryLabel": "Target Category",
+      "existingBuyers": "{count} existing buyers",
+      "company": "Company",
+      "reason": "Reason",
+      "lastOrder": "Last Order",
+      "categoryCount": "Category Count",
+      "aov": "AOV",
+      "affinityScore": "Affinity Score",
+      "tags": "Tags",
+      "empty": "No whitespace prospects for this category yet.",
+      "loadError": "Failed to load prospect gaps."
+    }
   },
   "customer": {
     "createPage": {

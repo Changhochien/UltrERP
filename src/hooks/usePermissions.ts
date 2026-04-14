@@ -7,6 +7,7 @@ export type AppFeature =
   | "inventory"
   | "purchases"
   | "customers"
+  | "intelligence"
   | "invoices"
   | "orders"
   | "payments"
@@ -22,6 +23,7 @@ export const ROLE_PERMISSIONS: Record<string, Partial<Record<AppFeature, Permiss
     inventory: "write",
     purchases: "write",
     customers: "write",
+    intelligence: "read",
     invoices: "write",
     orders: "write",
     payments: "write",
@@ -34,6 +36,7 @@ export const ROLE_PERMISSIONS: Record<string, Partial<Record<AppFeature, Permiss
     inventory: "write",
     purchases: "write",
     customers: "write",
+    intelligence: "read",
     invoices: "write",
     orders: "write",
     payments: "write",
@@ -59,6 +62,7 @@ export const ROLE_PERMISSIONS: Record<string, Partial<Record<AppFeature, Permiss
     dashboard: "read",
     inventory: "read",
     customers: "write",
+    intelligence: "read",
     invoices: "read",
     orders: "write",
   },

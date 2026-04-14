@@ -7,6 +7,7 @@ export const PURCHASES_ROUTE = "/purchases";
 export const CUSTOMERS_ROUTE = "/customers";
 export const CUSTOMER_DETAIL_ROUTE = "/customers/:customerId";
 export const CUSTOMER_CREATE_ROUTE = "/customers/new";
+export const INTELLIGENCE_ROUTE = "/intelligence";
 export const INVOICES_ROUTE = "/invoices";
 export const INVOICE_CREATE_ROUTE = "/invoices/new";
 export const INVOICE_DETAIL_ROUTE = "/invoices/:invoiceId";
@@ -26,6 +27,7 @@ export type AppRoute =
   | typeof CUSTOMERS_ROUTE
   | typeof CUSTOMER_DETAIL_ROUTE
   | typeof CUSTOMER_CREATE_ROUTE
+  | typeof INTELLIGENCE_ROUTE
   | typeof INVOICES_ROUTE
   | typeof INVOICE_CREATE_ROUTE
   | typeof INVOICE_DETAIL_ROUTE
