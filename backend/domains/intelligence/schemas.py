@@ -137,6 +137,29 @@ class ProspectGaps(BaseModel):
     generated_at: datetime
 
 
+class OpportunitySignal(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    signal_type: Literal["category_growth", "concentration_risk"]
+    severity: Literal["info", "warning", "alert"]
+    headline: str
+    detail: str
+    affected_customer_count: int
+    revenue_impact: Decimal
+    recommended_action: str
+    support_counts: dict[str, int] | None = None
+    source_period: Literal["last_30d", "last_90d", "last_12m"]
+
+
+class MarketOpportunities(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    period: Literal["last_30d", "last_90d", "last_12m"]
+    generated_at: datetime
+    signals: list[OpportunitySignal]
+    deferred_signal_types: list[str]
+
+
 class AffinityPair(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

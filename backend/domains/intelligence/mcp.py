@@ -19,6 +19,7 @@ from domains.intelligence.service import (
 	get_product_affinity_map,
 	get_customer_product_profile,
 	get_customer_risk_signals,
+	get_market_opportunities,
 	get_prospect_gaps,
 )
 
@@ -41,9 +42,19 @@ def _parse_uuid(value: str, field: str) -> uuid.UUID:
 
 def _resolve_tenant_id() -> uuid.UUID:
 	headers = get_http_headers() or {}
-	tenant_header = headers.get("x-tenant-id")
-	if tenant_header:
-		return _parse_uuid(tenant_header, "tenant_id")
+	if headers.get("x-api-key"):
+		tenant_header = headers.get("x-tenant-id")
+		if tenant_header:
+			return _parse_uuid(tenant_header, "tenant_id")
+		raise ToolError(
+			json.dumps(
+				{
+					"code": "TENANT_REQUIRED",
+					"message": "X-Tenant-ID is required for tenant-bound intelligence API keys",
+					"retry": True,
+				}
+			)
+		)
 
 	auth_header = headers.get("authorization", "")
 	if auth_header.startswith("Bearer "):
@@ -72,7 +83,25 @@ def _resolve_tenant_id() -> uuid.UUID:
 					}
 				)
 			)
-		return _parse_uuid(tenant_id, "tenant_id")
+		resolved_tenant = _parse_uuid(tenant_id, "tenant_id")
+		tenant_header = headers.get("x-tenant-id")
+		if tenant_header:
+			header_tenant = _parse_uuid(tenant_header, "tenant_id")
+			if header_tenant != resolved_tenant:
+				raise ToolError(
+					json.dumps(
+						{
+							"code": "INVALID_TENANT",
+							"message": "X-Tenant-ID does not match the Bearer token tenant",
+							"retry": False,
+						}
+					)
+				)
+		return resolved_tenant
+
+	tenant_header = headers.get("x-tenant-id")
+	if tenant_header:
+		return _parse_uuid(tenant_header, "tenant_id")
 
 	raise ToolError(
 		json.dumps(
@@ -83,6 +112,34 @@ def _resolve_tenant_id() -> uuid.UUID:
 			}
 		)
 	)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+async def intelligence_market_opportunities(
+	period: Annotated[str, Field(description="Rolling period: last_30d, last_90d, or last_12m")] = "last_90d",
+) -> dict:
+	"""Return stabilized v1 market opportunity signals."""
+	if period not in {"last_30d", "last_90d", "last_12m"}:
+		raise ToolError(
+			json.dumps(
+				{
+					"code": "VALIDATION_ERROR",
+					"field": "period",
+					"message": "period must be one of: last_30d, last_90d, last_12m",
+					"retry": False,
+				}
+			)
+		)
+
+	tenant_id = _resolve_tenant_id()
+	async with AsyncSessionLocal() as session:
+		result = await get_market_opportunities(
+			session,
+			tenant_id,
+			period=period,
+		)
+
+	return result.model_dump(mode="json")
 
 
 @mcp.tool(annotations={"readOnlyHint": True})

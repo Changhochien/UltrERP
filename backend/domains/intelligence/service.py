@@ -24,9 +24,11 @@ from domains.intelligence.schemas import (
     CategoryRevenue,
     CustomerRiskSignal,
     CustomerRiskSignals,
+    MarketOpportunities,
     ProspectFit,
     ProspectGaps,
     ProspectScoreComponents,
+    OpportunitySignal,
     CustomerProductProfile,
     ProductAffinityMap,
     ProductPurchase,
@@ -40,6 +42,7 @@ _PCT_QUANT = Decimal("0.01")
 _ZERO = Decimal("0.00")
 _EXCLUDED_CATEGORIES = {"discount", "discounts", "freight", "misc", "miscellaneous", "service", "services", "shipping"}
 _RISK_STATUS_PRIORITY = {"dormant": 0, "at_risk": 1, "growing": 2, "stable": 3, "new": 4}
+_OPPORTUNITY_SEVERITY_PRIORITY = {"alert": 0, "warning": 1, "info": 2}
 
 
 def _subtract_months(anchor: datetime, months: int) -> datetime:
@@ -171,7 +174,7 @@ def _build_risk_signal_strings(
 
 def _bounded_similarity(value: float, baseline: float) -> float:
     if baseline <= 0:
-        return 0.0 if value <= 0 else 0.5
+        return 0.0
     return max(0.0, 1.0 - min(abs(value - baseline) / baseline, 1.0))
 
 
@@ -190,6 +193,139 @@ def _prospect_reason(company_name: str, category_count: int, adjacent_support: f
     if recency_factor >= 0.6:
         parts.append("has strong recent activity")
     return " and ".join(parts) + "."
+
+
+async def get_market_opportunities(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    *,
+    period: Literal["last_30d", "last_90d", "last_12m"] = "last_90d",
+) -> MarketOpportunities:
+    """Aggregate stabilized v1 market opportunity signals."""
+    current_start, prior_start, end = _period_windows(period)
+    current_start_dt = datetime.combine(current_start, time.min, tzinfo=UTC)
+    prior_start_dt = datetime.combine(prior_start, time.min, tzinfo=UTC)
+    next_day_dt = datetime.combine(end + timedelta(days=1), time.min, tzinfo=UTC)
+    generated_at = datetime.now(tz=UTC)
+
+    async with session.begin():
+        await set_tenant(session, tenant_id)
+
+        order_rows = (
+            await session.execute(
+                select(
+                    Order.customer_id.label("customer_id"),
+                    Customer.company_name.label("company_name"),
+                    Order.total_amount.label("total_amount"),
+                    Order.created_at.label("created_at"),
+                )
+                .join(Customer, Customer.id == Order.customer_id)
+                .where(
+                    Order.tenant_id == tenant_id,
+                    Order.status.in_(_COUNTABLE_STATUSES),
+                    Order.created_at >= prior_start_dt,
+                    Order.created_at < next_day_dt,
+                )
+            )
+        ).all()
+
+    current_revenue_total = _ZERO
+    prior_revenue_total = _ZERO
+    current_customer_revenue: dict[uuid.UUID, tuple[str, Decimal]] = {}
+    prior_customer_revenue: dict[uuid.UUID, Decimal] = {}
+
+    for row in order_rows:
+        amount = _to_decimal(row.total_amount)
+        if row.created_at >= current_start_dt:
+            current_revenue_total += amount
+            company_name, existing_amount = current_customer_revenue.get(row.customer_id, (row.company_name, _ZERO))
+            current_customer_revenue[row.customer_id] = (company_name, existing_amount + amount)
+        elif row.created_at >= prior_start_dt:
+            prior_revenue_total += amount
+            prior_customer_revenue[row.customer_id] = prior_customer_revenue.get(row.customer_id, _ZERO) + amount
+
+    signals: list[OpportunitySignal] = []
+    if current_revenue_total > 0:
+        for customer_id, (company_name, revenue) in current_customer_revenue.items():
+            share = (revenue / current_revenue_total) if current_revenue_total > 0 else Decimal("0")
+            if share <= Decimal("0.30"):
+                continue
+            prior_share = (
+                (prior_customer_revenue.get(customer_id, _ZERO) / prior_revenue_total) if prior_revenue_total > 0 else None
+            )
+            prior_share_text = (
+                f" Prior period share was {(prior_share * Decimal('100')).quantize(_PCT_QUANT)}%."
+                if prior_share is not None
+                else ""
+            )
+            signals.append(
+                OpportunitySignal(
+                    signal_type="concentration_risk",
+                    severity="alert",
+                    headline=f"{company_name} represents {(share * Decimal('100')).quantize(_PCT_QUANT)}% of total revenue — concentration risk",
+                    detail=(
+                        f"{company_name} contributed NT$ {revenue:,.2f} of NT$ {current_revenue_total:,.2f} total period revenue."
+                        f"{prior_share_text}"
+                    ),
+                    affected_customer_count=1,
+                    revenue_impact=revenue,
+                    recommended_action="Diversify revenue concentration and review expansion or mitigation actions.",
+                    support_counts={
+                        "customers_considered": len(current_customer_revenue),
+                        "prior_customers_considered": len(prior_customer_revenue),
+                    },
+                    source_period=period,
+                )
+            )
+
+    category_trends = await get_category_trends(session, tenant_id, period=period)
+    growth_trends = [
+        trend
+        for trend in category_trends.trends
+        if trend.revenue_delta_pct is not None
+        and trend.revenue_delta_pct > 0
+        and trend.trend == "growing"
+        and trend.customer_count >= 2
+        and trend.current_period_orders >= 2
+    ]
+    for trend in growth_trends[:3]:
+        delta_absolute = trend.current_period_revenue - trend.prior_period_revenue
+        severity: Literal["info", "warning"] = "warning" if trend.revenue_delta_pct >= 30 else "info"
+        signals.append(
+            OpportunitySignal(
+                signal_type="category_growth",
+                severity=severity,
+                headline=f"{trend.category} revenue up {trend.revenue_delta_pct:.2f}% vs prior period",
+                detail=(
+                    f"{trend.category} changed by NT$ {delta_absolute:,.2f} with {trend.customer_count} active buyers in the current period."
+                ),
+                affected_customer_count=trend.customer_count,
+                revenue_impact=delta_absolute,
+                recommended_action=f"Review supply, pricing, and sales focus for {trend.category}.",
+                support_counts={
+                    "current_period_orders": trend.current_period_orders,
+                    "prior_period_orders": trend.prior_period_orders,
+                    "current_customer_count": trend.customer_count,
+                    "prior_customer_count": trend.prior_customer_count,
+                },
+                source_period=period,
+            )
+        )
+
+    signals.sort(
+        key=lambda signal: (
+            _OPPORTUNITY_SEVERITY_PRIORITY[signal.severity],
+            -signal.revenue_impact,
+            signal.headline,
+        )
+    )
+
+    return MarketOpportunities(
+        period=period,
+        generated_at=generated_at,
+        signals=signals,
+        deferred_signal_types=["new_product_adoption", "churn_risk"],
+    )
 
 
 def _is_excluded_category(category: str | None) -> bool:
@@ -759,13 +895,7 @@ async def get_prospect_gaps(
             if adjacent == target_category:
                 continue
             adjacent_category_counts[adjacent] = adjacent_category_counts.get(adjacent, 0) + 1
-    adjacent_categories = {
-        category_name
-        for category_name, _count in sorted(
-            adjacent_category_counts.items(),
-            key=lambda item: (-item[1], item[0]),
-        )[:3]
-    }
+    adjacent_categories = set(adjacent_category_counts)
 
     buyer_frequency_values: list[float] = []
     buyer_breadth_values: list[float] = []
@@ -792,6 +922,8 @@ async def get_prospect_gaps(
 
         order_count_total = len(metrics["order_ids"])
         if order_count_total == 0:
+            continue
+        if len(metrics["categories"]) == 0:
             continue
 
         order_count_recent = len(metrics["order_ids_recent"])
