@@ -40,7 +40,17 @@ _MONEY_QUANT = Decimal("0.01")
 _RATIO_QUANT = Decimal("0.0001")
 _PCT_QUANT = Decimal("0.01")
 _ZERO = Decimal("0.00")
-_EXCLUDED_CATEGORIES = {"discount", "discounts", "freight", "misc", "miscellaneous", "service", "services", "shipping"}
+_EXCLUDED_CATEGORIES = {
+    "discount",
+    "discounts",
+    "freight",
+    "misc",
+    "miscellaneous",
+    "non-merchandise",
+    "service",
+    "services",
+    "shipping",
+}
 _RISK_STATUS_PRIORITY = {"dormant": 0, "at_risk": 1, "growing": 2, "stable": 3, "new": 4}
 _OPPORTUNITY_SEVERITY_PRIORITY = {"alert": 0, "warning": 1, "info": 2}
 

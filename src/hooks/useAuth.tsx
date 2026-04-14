@@ -28,15 +28,19 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const DEV_AUTO_LOGIN_ENABLED = import.meta.env.DEV
-  && import.meta.env.MODE !== "test"
-  && import.meta.env.VITE_DEV_AUTO_LOGIN === "true";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const IS_DEV = import.meta.env.DEV && import.meta.env.MODE !== "test";
+const DEV_AUTO_LOGIN_ENABLED = IS_DEV && import.meta.env.VITE_DEV_AUTO_LOGIN === "true";
 
 let devAutoLoginPromise: Promise<{ ok: boolean; error?: string }> | null = null;
 
 function isUuid(value: unknown): value is string {
   return typeof value === "string" && UUID_PATTERN.test(value);
+}
+
+function isValidSub(value: unknown): value is string {
+  return typeof value === "string" && (isUuid(value) || EMAIL_PATTERN.test(value));
 }
 
 function runDevAutoLogin(
@@ -54,7 +58,7 @@ function decodePayload(token: string): AuthUser | null {
     const parts = token.split(".");
     if (parts.length !== 3) return null;
     const payload = JSON.parse(decodeBase64Url(parts[1]));
-    if (!isUuid(payload.sub) || typeof payload.role !== "string" || !isUuid(payload.tenant_id)) return null;
+    if (!isValidSub(payload.sub) || typeof payload.role !== "string" || !isUuid(payload.tenant_id)) return null;
     // Check expiry
     if (payload.exp && payload.exp * 1000 < Date.now()) return null;
     return { sub: payload.sub, role: payload.role, tenant_id: payload.tenant_id };

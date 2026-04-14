@@ -33,8 +33,8 @@ export async function fetchLowStockAlerts(): Promise<LowStockAlertListResponse> 
   return resp.json();
 }
 
-export async function fetchVisitorStats(): Promise<VisitorStatsResponse> {
-  const resp = await apiFetch("/api/v1/dashboard/visitor-stats");
+export async function fetchVisitorStats(signal?: AbortSignal): Promise<VisitorStatsResponse> {
+  const resp = await apiFetch("/api/v1/dashboard/visitor-stats", { signal });
   if (!resp.ok) throw new Error("Failed to fetch visitor stats");
   return resp.json();
 }

@@ -78,7 +78,7 @@ describe("ReorderAlerts", () => {
       name: /Acknowledge alert for Ultra Long Product Name for Layout Pressure Test 001/i,
     });
 
-    expect(table.className).toContain("min-w-[760px]");
+    expect(table.className).toContain("min-w-[980px]");
     expect(acknowledgeButton.className).toContain("whitespace-nowrap");
     expect(acknowledgeButton.closest("td")?.className).toContain("whitespace-nowrap");
   });

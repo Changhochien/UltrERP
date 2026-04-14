@@ -1,6 +1,6 @@
 # Story 19.4: Customer Risk Signals
 
-Status: revised-ready-for-dev
+Status: done
 
 ## Story
 
@@ -391,45 +391,51 @@ const BADGE_COLORS = {
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add Pydantic schemas for risk signals (AC1)
-  - [ ] Subtask 1.1: Add `CustomerRiskSignal`, `CustomerRiskSignals` to `schemas.py`
-  - [ ] Subtask 1.2: Ensure `CategoryRevenue`, `ProductPurchase` schemas exist (from 19.3)
+- [x] Task 1: Add Pydantic schemas for risk signals (AC1)
+  - [x] Subtask 1.1: Add `CustomerRiskSignal`, `CustomerRiskSignals` to `schemas.py`
+  - [x] Subtask 1.2: Ensure `CategoryRevenue`, `ProductPurchase` schemas exist (from 19.3)
 
-- [ ] Task 2: Implement `get_customer_risk_signals()` in `service.py` (AC1, AC2)
-  - [ ] Subtask 2.1: Date window constants (reuse same pattern as 19.3)
-  - [ ] Subtask 2.2: CTE for current-period aggregates per customer
-  - [ ] Subtask 2.3: CTE for prior-period aggregates per customer
-  - [ ] Subtask 2.4: Category aggregation CTEs for `products_expanded_into` / `products_contracted_from`
-  - [ ] Subtask 2.5: Status classification logic with priority rules
-  - [ ] Subtask 2.6: Signal string generation for `signals` array
-  - [ ] Subtask 2.7: Sorting by status priority order
-  - [ ] Subtask 2.8: Limit application after sorting
+- [x] Task 2: Implement `get_customer_risk_signals()` in `service.py` (AC1, AC2)
+  - [x] Subtask 2.1: Date window constants (reuse same pattern as 19.3)
+  - [x] Subtask 2.2: CTE for current-period aggregates per customer
+  - [x] Subtask 2.3: CTE for prior-period aggregates per customer
+  - [x] Subtask 2.4: Category aggregation CTEs for `products_expanded_into` / `products_contracted_from`
+  - [x] Subtask 2.5: Status classification logic with priority rules
+  - [x] Subtask 2.6: Signal string generation for `signals` array
+  - [x] Subtask 2.7: Sorting by status priority order
+  - [x] Subtask 2.8: Limit application after sorting
 
-- [ ] Task 3: Add REST route in `routes.py` (AC1, AC3)
-  - [ ] Subtask 3.1: `GET /api/v1/intelligence/customers/risk-signals` with `status` and `limit` query params
-  - [ ] Subtask 3.2: `status` param: `Literal["all", "growing", "at_risk", "dormant", "new", "stable"]`
-  - [ ] Subtask 3.3: `limit` param: `Query(default=50, ge=1, le=200)`
-  - [ ] Subtask 3.4: Return `CustomerRiskSignals` response model
+- [x] Task 3: Add REST route in `routes.py` (AC1, AC3)
+  - [x] Subtask 3.1: `GET /api/v1/intelligence/customers/risk-signals` with `status` and `limit` query params
+  - [x] Subtask 3.2: `status` param: `Literal["all", "growing", "at_risk", "dormant", "new", "stable"]`
+  - [x] Subtask 3.3: `limit` param: `Query(default=50, ge=1, le=200)`
+  - [x] Subtask 3.4: Return `CustomerRiskSignals` response model
 
-- [ ] Task 4: Add MCP tool and wire `TOOL_SCOPES` (AC6)
-  - [ ] Subtask 4.1: Add `intelligence_customer_risk_signals` tool
-    - [ ] Subtask 4.2: Add `TOOL_SCOPES` entry: `intelligence_customer_risk_signals → customers:read`, `orders:read`
-  - [ ] Subtask 4.3: Register `domains.intelligence.mcp` in `mcp_server.py` (if not already done by 19.3)
+- [x] Task 4: Add MCP tool and wire `TOOL_SCOPES` (AC6)
+  - [x] Subtask 4.1: Add `intelligence_customer_risk_signals` tool
+  - [x] Subtask 4.2: Add `TOOL_SCOPES` entry: `intelligence_customer_risk_signals → customers:read`, `orders:read`
+  - [x] Subtask 4.3: Register `domains.intelligence.mcp` in `mcp_server.py` (if not already done by 19.3)
 
-- [ ] Task 5: Frontend TypeScript types and API helper (AC1)
-  - [ ] Subtask 5.1: Add `CustomerRiskSignal`, `CustomerRiskSignals` to `types.ts`
-  - [ ] Subtask 5.2: Add `fetchCustomerRiskSignals(status, limit)` to `src/lib/api/intelligence.ts`
+- [x] Task 5: Frontend TypeScript types and API helper (AC1)
+  - [x] Subtask 5.1: Add `CustomerRiskSignal`, `CustomerRiskSignals` to `types.ts`
+  - [x] Subtask 5.2: Add `fetchCustomerRiskSignals(status, limit)` to `src/lib/api/intelligence.ts`
 
-- [ ] Task 6: Frontend hook `useCustomerRiskSignals` (AC1)
-  - [ ] Subtask 6.1: Add `useCustomerRiskSignals(status, limit)` to `useIntelligence.ts`
-  - [ ] Subtask 6.2: Re-fetch when `status` or `limit` changes
+- [x] Task 6: Frontend hook `useCustomerRiskSignals` (AC1)
+  - [x] Subtask 6.1: Add `useCustomerRiskSignals(status, limit)` to `useIntelligence.ts`
+  - [x] Subtask 6.2: Re-fetch when `status` or `limit` changes
 
-- [ ] Task 7: Frontend component `RiskSignalFeed.tsx` (AC4, AC5)
-    - [ ] Subtask 7.1: Filter bar with 6 buttons (All / Growing / At Risk / Dormant / New / Stable)
-  - [ ] Subtask 7.2: Active filter state with visual highlight
-  - [ ] Subtask 7.3: Scrollable list of `SectionCard` items
-  - [ ] Subtask 7.4: Company name as card title, status badge (color-coded) using correct color map
-  - [ ] Subtask 7.5: Revenue delta and first 2–3 signals rendered as text in card body
+- [x] Task 7: Frontend component `RiskSignalFeed.tsx` (AC4, AC5)
+  - [x] Subtask 7.1: Filter bar with 6 buttons (All / Growing / At Risk / Dormant / New / Stable)
+  - [x] Subtask 7.2: Active filter state with visual highlight
+  - [x] Subtask 7.3: Scrollable list of `SectionCard` items
+  - [x] Subtask 7.4: Company name as card title, status badge (color-coded) using correct color map
+  - [x] Subtask 7.5: Revenue delta and first 2–3 signals rendered as text in card body
+
+## Completion Notes
+
+- Implemented the customer risk signal schemas, tenant-wide ranking service, REST route, MCP tool, TypeScript contract, API helper, hook, and a filtered feed UI with status badges.
+- The review cycle hardened the intelligence MCP path with tenant-bound API keys, aligned no-order customers with the shared dormancy rule, and suppressed misleading category expansion/contraction claims when there is no prior-period baseline.
+- Validation: `uv run pytest tests/domains/intelligence/test_service.py tests/domains/intelligence/test_routes.py tests/test_mcp_intelligence.py tests/test_mcp_auth.py -q`, `pnpm --dir /Volumes/2T_SSD_App/Projects/UltrERP exec vitest run src/tests/intelligence/RiskSignalFeed.test.tsx src/tests/intelligence/CategoryTrendRadar.test.tsx src/tests/intelligence/AffinityMatrix.test.tsx src/tests/auth/rbac-ui.test.tsx`.
 
 ## Dev Notes
 

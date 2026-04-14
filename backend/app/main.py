@@ -15,6 +15,7 @@ from domains.auth.routes import router as auth_router
 from domains.customers.routes import router as customers_router
 from domains.dashboard.routes import router as dashboard_router
 from domains.health.routes import router as health_router
+from domains.intelligence.routes import router as intelligence_router
 from domains.inventory.routes import router as inventory_router
 from domains.invoices.routes import router as invoices_router
 from domains.legacy_import.staging import close_raw_connection_pool
@@ -75,6 +76,7 @@ def create_app() -> FastAPI:
 	api_v1.include_router(users_router, prefix="/admin/users", tags=["users"])
 	api_v1.include_router(customers_router, prefix="/customers", tags=["customers"])
 	api_v1.include_router(dashboard_router, prefix="/dashboard", tags=["dashboard"])
+	api_v1.include_router(intelligence_router, prefix="/intelligence", tags=["intelligence"])
 	api_v1.include_router(invoices_router, prefix="/invoices", tags=["invoices"])
 	api_v1.include_router(inventory_router, prefix="/inventory", tags=["inventory"])
 	api_v1.include_router(line_router, prefix="/line", tags=["LINE"])

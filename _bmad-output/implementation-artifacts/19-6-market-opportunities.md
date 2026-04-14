@@ -1,6 +1,6 @@
 # Story 19.6: Market Opportunities Signal Feed
 
-Status: revised-defer-until-core-stable
+Status: done
 
 ## Story
 
@@ -241,33 +241,33 @@ async def intelligence_market_opportunities(period: str = "90d") -> str:
 
 ## Tasks / Subtasks
 
-- [ ] Task 19.6.1: Add schemas and service function (AC: #1–5)
-  - [ ] Add `OpportunitySignal` and `MarketOpportunities` Pydantic schemas to `schemas.py`
-    - [ ] Implement `get_market_opportunities()` in `service.py` with concentration risk as the required v1 signal and optional category growth once Story 19.2 is stable
-  - [ ] Add `GET /api/v1/intelligence/market-opportunities` route in `routes.py`
-  - [ ] Add `TOOL_SCOPES` entry for `intelligence_market_opportunities` in `mcp_auth.py`
+- [x] Task 19.6.1: Add schemas and service function (AC: #1–5)
+  - [x] Add `OpportunitySignal` and `MarketOpportunities` Pydantic schemas to `schemas.py`
+    - [x] Implement `get_market_opportunities()` in `service.py` with concentration risk as the required v1 signal and optional category growth once Story 19.2 is stable
+  - [x] Add `GET /api/v1/intelligence/market-opportunities` route in `routes.py`
+  - [x] Add `TOOL_SCOPES` entry for `intelligence_market_opportunities` in `mcp_auth.py`
 
-- [ ] Task 19.6.2: Add MCP tool endpoint (AC: #6)
-  - [ ] Implement `intelligence_market_opportunities` MCP tool
-  - [ ] Validate period parameter (`last_30d`, `last_90d`, `last_12m`)
-  - [ ] Handle ToolError for invalid inputs and auth failures
+- [x] Task 19.6.2: Add MCP tool endpoint (AC: #6)
+  - [x] Implement `intelligence_market_opportunities` MCP tool
+  - [x] Validate period parameter (`last_30d`, `last_90d`, `last_12m`)
+  - [x] Handle ToolError for invalid inputs and auth failures
 
-- [ ] Task 19.6.3: Frontend types and hook (AC: #8)
-  - [ ] Add `OpportunitySignal` and `MarketOpportunities` TypeScript interfaces
-  - [ ] Add `useMarketOpportunities(period)` to `useIntelligence.ts`
-  - [ ] Wire to API endpoint with loading/error states
+- [x] Task 19.6.3: Frontend types and hook (AC: #8)
+  - [x] Add `OpportunitySignal` and `MarketOpportunities` TypeScript interfaces
+  - [x] Add `useMarketOpportunities(period)` to `useIntelligence.ts`
+  - [x] Wire to API endpoint with loading/error states
 
-- [ ] Task 19.6.4: OpportunitySignalBanner component (AC: #7)
-  - [ ] Banner with severity-based color coding (alert=red, warning=amber, info=blue)
-  - [ ] Headline, detail, customer count, and recommended action display
-  - [ ] Expand/collapse for full detail on click
-  - [ ] Embed banners at top of Category Trends tab
+- [x] Task 19.6.4: OpportunitySignalBanner component (AC: #7)
+  - [x] Banner with severity-based color coding (alert=red, warning=amber, info=blue)
+  - [x] Headline, detail, customer count, and recommended action display
+  - [x] Expand/collapse for full detail on click
+  - [x] Embed banners at top of Category Trends tab
 
-- [ ] Task 19.6.5: Period validation and edge cases (AC: #1)
-  - [ ] Validate period parameter values
-  - [ ] Handle zero-revenue tenant case
-    - [ ] Omit deferred signals with an explicit note in the response contract or documentation
-  - [ ] Signal ordering by severity then revenue impact
+- [x] Task 19.6.5: Period validation and edge cases (AC: #1)
+  - [x] Validate period parameter values
+  - [x] Handle zero-revenue tenant case
+    - [x] Omit deferred signals with an explicit note in the response contract or documentation
+  - [x] Signal ordering by severity then revenue impact
 
 ---
 
@@ -293,3 +293,15 @@ async def intelligence_market_opportunities(period: str = "90d") -> str:
 - **Prerequisite:** Story 19.7 for access wiring and the shared intelligence module scaffolding
 - **Depends on:** Story 19.2 for optional `category_growth`, plus the shared intelligence contracts stabilized by earlier stories
 - **Enables:** optional later composition work for deferred signals once upstream signal quality is proven trustworthy
+
+## Review Findings
+
+- [x] Tightened `category_growth` emission to positive growing categories that meet the Story 19.2 support floors, preventing weak or declining categories from leaking into the v1 banner feed
+- [x] Aligned market-opportunity tenant resolution and auth precedence with the broader intelligence surface so API-key tenant binding remains enforced while sales bearer access matches the shipped REST/UI contract
+- [x] Exposed `support_counts` and `source_period` in the expanded banner path and added focused regression coverage for the composition-layer filter rules
+
+## Completion Notes
+
+- Implemented the market-opportunity composition layer end to end: schemas, service aggregation, REST endpoint, MCP tool, frontend types/hook, and expandable banner integration in the category trend radar.
+- The v1 response now emits only `concentration_risk` and support-floor-qualified `category_growth` signals, while documenting `new_product_adoption` and `churn_risk` as deferred signal types.
+- Validation: `uv run pytest tests/domains/intelligence/test_service.py tests/domains/intelligence/test_routes.py tests/test_mcp_intelligence.py tests/test_mcp_auth.py -q` (72 passed) and `pnpm --dir /Volumes/2T_SSD_App/Projects/UltrERP exec vitest run src/tests/intelligence/AffinityMatrix.test.tsx src/tests/intelligence/CategoryTrendRadar.test.tsx src/tests/intelligence/OpportunitySignalBanner.test.tsx src/tests/intelligence/ProspectGapTable.test.tsx src/tests/intelligence/RiskSignalFeed.test.tsx src/tests/customers/CustomerAnalyticsTab.test.tsx src/tests/auth/rbac-ui.test.tsx` (40 passed).

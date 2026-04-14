@@ -1,6 +1,6 @@
 # Story 19.1: Product Affinity Map
 
-Status: revised-ready-for-dev
+Status: done
 
 ## Story
 
@@ -228,31 +228,37 @@ Use `recharts` reference bar or custom CSS progress bar inside a `<td>`.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create `backend/domains/intelligence/` module (AC1, AC4)
-  - [ ] Create `__init__.py`
-  - [ ] Add `AffinityPair`, `ProductAffinityMap` Pydantic schemas to `schemas.py`
-  - [ ] Implement `get_product_affinity_map()` in `service.py` with Jaccard co-occurrence query
-  - [ ] Add `GET /api/v1/intelligence/affinity` route in `routes.py` with `min_shared` (default 2) and `limit` (default 50) query params
-  - [ ] Add `intelligence_product_affinity` MCP tool in `mcp.py`
-  - [ ] Register `domains.intelligence.mcp` in `backend/app/mcp_server.py`
+- [x] Task 1: Create `backend/domains/intelligence/` module (AC1, AC4)
+  - [x] Create `__init__.py`
+  - [x] Add `AffinityPair`, `ProductAffinityMap` Pydantic schemas to `schemas.py`
+  - [x] Implement `get_product_affinity_map()` in `service.py` with Jaccard co-occurrence query
+  - [x] Add `GET /api/v1/intelligence/affinity` route in `routes.py` with `min_shared` (default 2) and `limit` (default 50) query params
+  - [x] Add `intelligence_product_affinity` MCP tool in `mcp.py`
+  - [x] Register `domains.intelligence.mcp` in `backend/app/mcp_server.py`
 
-- [ ] Task 2: Add TOOL_SCOPES entry (AC1)
-  - [ ] Add `"intelligence_product_affinity": frozenset({"orders:read"})` to `TOOL_SCOPES` in `backend/app/mcp_auth.py`
+- [x] Task 2: Add TOOL_SCOPES entry (AC1)
+  - [x] Add `"intelligence_product_affinity": frozenset({"orders:read"})` to `TOOL_SCOPES` in `backend/app/mcp_auth.py`
 
-- [ ] Task 3: Create frontend types and hook (AC2)
-  - [ ] Create `src/domain/intelligence/__init__.py`
-  - [ ] Add `AffinityPair`, `ProductAffinityMap` to `types.ts`
-  - [ ] Add `useProductAffinity(minShared, limit)` to `hooks/useIntelligence.ts`
+- [x] Task 3: Create frontend types and hook (AC2)
+  - [x] Create `src/domain/intelligence/__init__.py`
+  - [x] Add `AffinityPair`, `ProductAffinityMap` to `types.ts`
+  - [x] Add `useProductAffinity(minShared, limit)` to `hooks/useIntelligence.ts`
 
-- [ ] Task 4: Create AffinityMatrix component (AC2)
-  - [ ] Create `AffinityMatrix.tsx` with sortable table columns
-  - [ ] Render `overlap_pct` as inline progress bars
-  - [ ] Sort by `affinity_score` descending by default
-  - [ ] Handle loading and error states
+- [x] Task 4: Create AffinityMatrix component (AC2)
+  - [x] Create `AffinityMatrix.tsx` with sortable table columns
+  - [x] Render `overlap_pct` as inline progress bars
+  - [x] Sort by `affinity_score` descending by default
+  - [x] Handle loading and error states
 
-- [ ] Task 5: Register intelligence route (AC2)
-  - [ ] Add `INTELLIGENCE_ROUTE` to `src/lib/routes.ts`
-  - [ ] Wire up protected route in `src/App.tsx`
+- [x] Task 5: Register intelligence route (AC2)
+  - [x] Add `INTELLIGENCE_ROUTE` to `src/lib/routes.ts`
+  - [x] Wire up protected route in `src/App.tsx`
+
+## Completion Notes
+
+- Implemented the customer-level product affinity service, schemas, REST endpoint, MCP tool, TypeScript contract, API helper, hook, and sortable affinity table with inline overlap progress bars.
+- The review cycle closed two contract defects: intelligence MCP tools now require explicit tenant context (`X-Tenant-ID` or a Bearer token with `tenant_id`), and the human read surface is available to sales in line with the story acceptance criteria.
+- Validation: `uv run pytest tests/domains/intelligence/test_service.py tests/domains/intelligence/test_routes.py tests/test_mcp_intelligence.py tests/test_mcp_auth.py -q`, `pnpm --dir /Volumes/2T_SSD_App/Projects/UltrERP exec vitest run src/tests/auth/rbac-ui.test.tsx src/tests/intelligence/AffinityMatrix.test.tsx`.
 
 ## Dev Notes
 

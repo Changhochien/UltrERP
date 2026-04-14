@@ -1,6 +1,6 @@
 # Story 19.8: Intelligence Backend Test Coverage
 
-Status: revised-ready-for-dev
+Status: done
 
 ## Story
 
@@ -270,57 +270,57 @@ Example for risk signals:
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Create test package and conftest** (all ACs)
-  - [ ] Create `backend/tests/domains/intelligence/__init__.py`
-  - [ ] Create `backend/tests/domains/intelligence/conftest.py` with shared fixtures:
+- [x] **Task 1: Create test package and conftest** (all ACs)
+  - [x] Create `backend/tests/domains/intelligence/__init__.py`
+  - [x] Create `backend/tests/domains/intelligence/conftest.py` with shared fixtures:
     - `tenant_fixture` — tenant UUID for all tests
     - `product_fixtures` — 5 products across 3 categories with known IDs
     - `customer_fixtures` — 8 customers with known order history patterns
     - `order_fixture` helper to create orders with order_lines
 
-- [ ] **Task 2: Test `get_product_affinity_map`** (AC1, AC2)
-  - [ ] Test Jaccard formula with 2-product shared customer
-  - [ ] Test Jaccard with no shared customers (score = 0)
-  - [ ] Test sorting is descending by affinity_score
-  - [ ] Test `min_shared` filter excludes pairs below threshold
-  - [ ] Test `limit` caps results
+- [x] **Task 2: Test `get_product_affinity_map`** (AC1, AC2)
+  - [x] Test Jaccard formula with 2-product shared customer
+  - [x] Test Jaccard with no shared customers (score = 0)
+  - [x] Test sorting is descending by affinity_score
+  - [x] Test `min_shared` filter excludes pairs below threshold
+  - [x] Test `limit` caps results
 
-- [ ] **Task 3: Test `get_category_trends`** (AC3, AC4, AC5)
-  - [ ] Test `revenue_delta_pct` formula for growing category (+50%)
-  - [ ] Test `revenue_delta_pct` formula for declining category (-30%)
-    - [ ] Test zero-baseline categories return support metadata rather than fabricated `100%` growth
-  - [ ] Test `new_customer_count` correctly identifies first-time category buyers in current period
-  - [ ] Test `churned_customer_count` correctly identifies prior-period buyers not in current period
-  - [ ] Test `trend` classification: growing (>10%), declining (<-10%), stable
+- [x] **Task 3: Test `get_category_trends`** (AC3, AC4, AC5)
+  - [x] Test `revenue_delta_pct` formula for growing category (+50%)
+  - [x] Test `revenue_delta_pct` formula for declining category (-30%)
+    - [x] Test zero-baseline categories return support metadata rather than fabricated `100%` growth
+  - [x] Test `new_customer_count` correctly identifies first-time category buyers in current period
+  - [x] Test `churned_customer_count` correctly identifies prior-period buyers not in current period
+  - [x] Test `trend` classification: growing (>10%), declining (<-10%), stable
 
-- [ ] **Task 4: Test `get_customer_product_profile`** (AC6–AC11)
-  - [ ] Test `is_dormant = True` when last order 65+ days ago
-  - [ ] Test `is_dormant = False` when last order 30 days ago
-  - [ ] Test `frequency_trend = "increasing"` when 3m orders > prior 3m * 1.20
-  - [ ] Test `frequency_trend = "declining"` when 3m orders < prior 3m * 0.80
-  - [ ] Test `frequency_trend = "stable"` in between
-  - [ ] Test `new_categories` contains only categories first purchased in last 90 days
+- [x] **Task 4: Test `get_customer_product_profile`** (AC6–AC11)
+  - [x] Test `is_dormant = True` when last order 65+ days ago
+  - [x] Test `is_dormant = False` when last order 30 days ago
+  - [x] Test `frequency_trend = "increasing"` when 3m orders > prior 3m * 1.20
+  - [x] Test `frequency_trend = "declining"` when 3m orders < prior 3m * 0.80
+  - [x] Test `frequency_trend = "stable"` in between
+  - [x] Test `new_categories` contains only categories first purchased in last 90 days
 
-- [ ] **Task 5: Test `get_customer_risk_signals`** (AC12–AC16)
-  - [ ] Test `growing` classification when revenue_current > revenue_prior * 1.20
-  - [ ] Test `at_risk` classification when revenue_current < revenue_prior * 0.80
-  - [ ] Test `dormant` classification when no orders in 60+ days
-  - [ ] Test `new` classification when first order in last 90 days
-  - [ ] Test `stable` classification for everything else
-  - [ ] Test `status` filter parameter returns only matching accounts
-  - [ ] Test `limit` parameter caps result count
+- [x] **Task 5: Test `get_customer_risk_signals`** (AC12–AC16)
+  - [x] Test `growing` classification when revenue_current > revenue_prior * 1.20
+  - [x] Test `at_risk` classification when revenue_current < revenue_prior * 0.80
+  - [x] Test `dormant` classification when no orders in 60+ days
+  - [x] Test `new` classification when first order in last 90 days
+  - [x] Test `stable` classification for everything else
+  - [x] Test `status` filter parameter returns only matching accounts
+  - [x] Test `limit` parameter caps result count
 
-- [ ] **Task 6: Test `get_prospect_gaps` and `get_market_opportunities` transparency rules** (AC17, AC18)
-  - [ ] Test `get_prospect_gaps` returns `score_components`, `reason_codes`, and `confidence`
-  - [ ] Test default `get_prospect_gaps` payload omits contact PII
-  - [ ] Test `get_market_opportunities` emits `concentration_risk` when thresholds are met
-  - [ ] Test `get_market_opportunities` omits deferred signals in v1
-  - [ ] Test optional `category_growth` only appears when support floors are satisfied
+- [x] **Task 6: Test `get_prospect_gaps` and `get_market_opportunities` transparency rules** (AC17, AC18)
+  - [x] Test `get_prospect_gaps` returns `score_components`, `reason_codes`, and `confidence`
+  - [x] Test default `get_prospect_gaps` payload omits contact PII
+  - [x] Test `get_market_opportunities` emits `concentration_risk` when thresholds are met
+  - [x] Test `get_market_opportunities` omits deferred signals in v1
+  - [x] Test optional `category_growth` only appears when support floors are satisfied
 
-- [ ] **Task 7: Run and verify all tests pass**
-  - [ ] Run `pytest backend/tests/domains/intelligence/ -v`
-  - [ ] Fix any failures due to API mismatches with actual service implementations
-  - [ ] Verify no warnings about missing fixtures
+- [x] **Task 7: Run and verify all tests pass**
+  - [x] Run `pytest backend/tests/domains/intelligence/ -v`
+  - [x] Fix any failures due to API mismatches with actual service implementations
+  - [x] Verify no warnings about missing fixtures
 
 ## Dev Notes
 
@@ -346,3 +346,13 @@ Example for risk signals:
 - Prerequisite: Story 19.7 for shared access wiring and the intelligence module skeleton
 - Depends on: the concrete service contracts for 19.1–19.6 as they land; this story should be developed alongside those stories, not postponed to the end
 - Enables: ongoing refactoring safety net and contract validation before production use of the intelligence module
+
+## Review Findings
+
+- [x] Expanded the service-suite assertions to verify structured prospect evidence (`score_components`, `reason_codes`, `confidence`) and confirm that machine-facing prospect payloads omit contact PII
+- [x] Added explicit support-count and source-period assertions for market-opportunity signals so narrative copy stays secondary to structured evidence
+
+## Completion Notes
+
+- The intelligence backend test suite now covers affinity, category trends, customer profiles, risk signals, prospect gaps, and market opportunities with tenant isolation, deterministic ordering, zero-baseline handling, and transparency assertions.
+- Validation: `uv run pytest tests/domains/intelligence/test_service.py tests/domains/intelligence/test_routes.py tests/test_mcp_intelligence.py tests/test_mcp_auth.py -q` (72 passed).

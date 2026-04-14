@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { InvoiceList } from "../components/InvoiceList";
 
 afterEach(() => {
@@ -52,7 +53,7 @@ describe("InvoiceList", () => {
 			json: async () => invoiceListResponse,
 		} as Response);
 
-		render(<InvoiceList onSelect={() => {}} />);
+		render(<MemoryRouter><InvoiceList onSelect={() => {}} /></MemoryRouter>);
 
 		await waitFor(() => {
 			expect(screen.getByText("AA00000001")).toBeTruthy();
@@ -75,7 +76,7 @@ describe("InvoiceList", () => {
 			json: async () => invoiceListResponse,
 		} as Response);
 
-		render(<InvoiceList onSelect={() => {}} />);
+		render(<MemoryRouter><InvoiceList onSelect={() => {}} /></MemoryRouter>);
 
 		await waitFor(() => {
 			expect(screen.getByText("AA00000002")).toBeTruthy();
@@ -92,10 +93,11 @@ describe("InvoiceList", () => {
 			json: async () => invoiceListResponse,
 		} as Response);
 
-		render(<InvoiceList onSelect={() => {}} />);
+		render(<MemoryRouter><InvoiceList onSelect={() => {}} /></MemoryRouter>);
 
-		const select = screen.getByLabelText("Payment Status:");
-		expect(select).toBeTruthy();
+		await waitFor(() => {
+			expect(screen.getByLabelText("Status:")).toBeTruthy();
+		});
 	});
 
 	it("toggles sort on column click", async () => {
@@ -104,7 +106,7 @@ describe("InvoiceList", () => {
 			json: async () => invoiceListResponse,
 		} as Response);
 
-		render(<InvoiceList onSelect={() => {}} />);
+		render(<MemoryRouter><InvoiceList onSelect={() => {}} /></MemoryRouter>);
 
 		await waitFor(() => {
 			expect(screen.getByText("AA00000001")).toBeTruthy();
@@ -123,7 +125,7 @@ describe("InvoiceList", () => {
 	it("shows error on fetch failure", async () => {
 		vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Network error"));
 
-		render(<InvoiceList onSelect={() => {}} />);
+		render(<MemoryRouter><InvoiceList onSelect={() => {}} /></MemoryRouter>);
 
 		await waitFor(() => {
 			expect(screen.getByRole("alert")).toBeTruthy();

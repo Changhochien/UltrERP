@@ -1,8 +1,19 @@
-import { cleanup, render, screen, fireEvent } from "@testing-library/react";
+import { cleanup, render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CUSTOMERS_ROUTE } from "../../lib/routes";
 import CreateCustomerPage from "../../pages/customers/CreateCustomerPage";
+
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string) => {
+      // Validation messages from CustomerForm
+      if (key === "customer.form.companyNameRequired") return "Company name is required.";
+      if (key === "customer.form.creditLimitNonNegative") return "Credit limit must be non-negative.";
+      return key; // fallback to key itself for all other keys
+    },
+  }),
+}));
 
 afterEach(() => {
   cleanup();
@@ -81,8 +92,8 @@ describe("CreateCustomerPage", () => {
     fillValidForm();
     fireEvent.click(screen.getByRole("button", { name: "Create Customer" }));
 
-    // Wait for the success view
-    const heading = await screen.findByRole("heading", { name: "Customer Created" });
+    // Wait for the success view — use h1 to avoid ambiguity with h3 in SectionCard
+    const heading = await screen.findByRole("heading", { level: 1, name: "Customer Created" });
     expect(heading).toBeTruthy();
     expect(screen.getByText(/台灣好公司有限公司/)).toBeTruthy();
 

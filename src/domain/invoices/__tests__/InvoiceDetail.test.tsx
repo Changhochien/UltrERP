@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { InvoiceDetail } from "../components/InvoiceDetail";
 import { INVOICE_PRINT_PREVIEW_OPEN_MEASURE } from "../../../lib/print/invoices";
 
@@ -105,7 +106,7 @@ describe("InvoiceDetail", () => {
 	it("renders payment summary section", async () => {
 		mockInvoiceDetailRequests();
 
-		render(<InvoiceDetail invoiceId="inv-1" onBack={() => {}} />);
+		render(<MemoryRouter><InvoiceDetail invoiceId="inv-1" onBack={() => {}} /></MemoryRouter>);
 
 		await waitFor(() => {
 			expect(screen.getByTestId("payment-summary")).toBeTruthy();
@@ -126,7 +127,7 @@ describe("InvoiceDetail", () => {
 
 		mockInvoiceDetailRequests({ invoice: overdue });
 
-		render(<InvoiceDetail invoiceId="inv-1" onBack={() => {}} />);
+		render(<MemoryRouter><InvoiceDetail invoiceId="inv-1" onBack={() => {}} /></MemoryRouter>);
 
 		await waitFor(() => {
 			expect(screen.getByText("15")).toBeTruthy();
@@ -138,7 +139,7 @@ describe("InvoiceDetail", () => {
 	it("renders error state", async () => {
 		vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("fail"));
 
-		render(<InvoiceDetail invoiceId="inv-1" onBack={() => {}} />);
+		render(<MemoryRouter><InvoiceDetail invoiceId="inv-1" onBack={() => {}} /></MemoryRouter>);
 
 		await waitFor(() => {
 			expect(screen.getByText(/Error:/)).toBeTruthy();
@@ -152,7 +153,7 @@ describe("InvoiceDetail", () => {
 			json: async () => ({ detail: "Invoice service unavailable" }),
 		} as Response);
 
-		render(<InvoiceDetail invoiceId="inv-1" onBack={() => {}} />);
+		render(<MemoryRouter><InvoiceDetail invoiceId="inv-1" onBack={() => {}} /></MemoryRouter>);
 
 		await waitFor(() => {
 			expect(screen.getByText("Error: Invoice service unavailable")).toBeTruthy();
@@ -178,7 +179,7 @@ describe("InvoiceDetail", () => {
 			},
 		});
 
-		render(<InvoiceDetail invoiceId="inv-1" onBack={() => {}} />);
+		render(<MemoryRouter><InvoiceDetail invoiceId="inv-1" onBack={() => {}} /></MemoryRouter>);
 
 		await waitFor(() => {
 			expect(screen.getByTestId("egui-status")).toBeTruthy();
@@ -221,7 +222,7 @@ describe("InvoiceDetail", () => {
 			},
 		});
 
-		render(<InvoiceDetail invoiceId="inv-1" onBack={() => {}} />);
+		render(<MemoryRouter><InvoiceDetail invoiceId="inv-1" onBack={() => {}} /></MemoryRouter>);
 
 		await waitFor(() => {
 			expect(screen.getByText("PENDING")).toBeTruthy();
@@ -255,7 +256,7 @@ describe("InvoiceDetail", () => {
 			},
 		});
 
-		render(<InvoiceDetail invoiceId="inv-1" onBack={() => {}} />);
+		render(<MemoryRouter><InvoiceDetail invoiceId="inv-1" onBack={() => {}} /></MemoryRouter>);
 
 		await waitFor(() => {
 			expect(screen.getByText("PENDING")).toBeTruthy();
@@ -274,7 +275,7 @@ describe("InvoiceDetail", () => {
 	it("hides the eGUI surface when tracking is disabled", async () => {
 		mockInvoiceDetailRequests();
 
-		render(<InvoiceDetail invoiceId="inv-1" onBack={() => {}} />);
+		render(<MemoryRouter><InvoiceDetail invoiceId="inv-1" onBack={() => {}} /></MemoryRouter>);
 
 		await waitFor(() => {
 			expect(screen.getByTestId("payment-summary")).toBeTruthy();
@@ -313,7 +314,7 @@ describe("InvoiceDetail", () => {
 			() => ({ duration: 120 } as PerformanceMeasure),
 		);
 
-		render(<InvoiceDetail invoiceId="inv-1" onBack={() => {}} />);
+		render(<MemoryRouter><InvoiceDetail invoiceId="inv-1" onBack={() => {}} /></MemoryRouter>);
 
 		const previewButton = await screen.findByRole("button", { name: "Print Preview" });
 		await waitFor(() => {
@@ -361,7 +362,7 @@ describe("InvoiceDetail", () => {
 			customerFailureCount: 1,
 		});
 
-		render(<InvoiceDetail invoiceId="inv-1" onBack={() => {}} />);
+		render(<MemoryRouter><InvoiceDetail invoiceId="inv-1" onBack={() => {}} /></MemoryRouter>);
 
 		const retryButton = await screen.findByRole("button", { name: "Retry Preview" });
 		expect(screen.getByTestId("print-preview-error").textContent).toContain("Unable to prepare print preview.");

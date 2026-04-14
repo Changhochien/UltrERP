@@ -1,6 +1,6 @@
 # Story 19.2: Category Trend Radar
 
-Status: revised-ready-for-dev
+Status: done
 
 ## Story
 
@@ -317,36 +317,42 @@ Period selector tabs: `<button>30d</button> <button>90d</button> <button>12m</bu
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add schemas for category trends (AC1)
-  - [ ] Add `TopProductByRevenue`, `CategoryTrend`, `CategoryTrends` to `backend/domains/intelligence/schemas.py`
+- [x] Task 1: Add schemas for category trends (AC1)
+  - [x] Add `TopProductByRevenue`, `CategoryTrend`, `CategoryTrends` to `backend/domains/intelligence/schemas.py`
 
-- [ ] Task 2: Implement `get_category_trends()` service (AC1, AC3, AC4)
-  - [ ] Implement `_period_windows()` helper
-  - [ ] Implement current-period and prior-period revenue CTEs
-  - [ ] Implement new_customer_count using first observed `Order.created_at` per customer/category
-  - [ ] Implement churned_customer_count as set difference
-  - [ ] Implement top_products subquery (limit 5)
-  - [ ] Compute revenue_delta_pct, order_delta_pct, trend classification
-  - [ ] Return `CategoryTrends` sorted by revenue_delta_pct desc
+- [x] Task 2: Implement `get_category_trends()` service (AC1, AC3, AC4)
+  - [x] Implement `_period_windows()` helper
+  - [x] Implement current-period and prior-period revenue CTEs
+  - [x] Implement new_customer_count using first observed `Order.created_at` per customer/category
+  - [x] Implement churned_customer_count as set difference
+  - [x] Implement top_products subquery (limit 5)
+  - [x] Compute revenue_delta_pct, order_delta_pct, trend classification
+  - [x] Return `CategoryTrends` sorted by revenue_delta_pct desc
 
-- [ ] Task 3: Add REST route (AC2)
-  - [ ] Add `GET /api/v1/intelligence/category-trends` in `routes.py`
-  - [ ] Query param: `period` with values `last_30d | last_90d | last_12m`
+- [x] Task 3: Add REST route (AC2)
+  - [x] Add `GET /api/v1/intelligence/category-trends` in `routes.py`
+  - [x] Query param: `period` with values `last_30d | last_90d | last_12m`
 
-- [ ] Task 4: Add MCP tool (AC1)
-  - [ ] Add `intelligence_category_trends` tool in `mcp.py`
-  - [ ] Add TOOL_SCOPES: `"intelligence_category_trends": frozenset({"orders:read", "customers:read"})` in `mcp_auth.py`
+- [x] Task 4: Add MCP tool (AC1)
+  - [x] Add `intelligence_category_trends` tool in `mcp.py`
+  - [x] Add TOOL_SCOPES: `"intelligence_category_trends": frozenset({"orders:read", "customers:read"})` in `mcp_auth.py`
 
-- [ ] Task 5: Frontend types and hook (AC2)
-  - [ ] Add `TopProductByRevenue`, `CategoryTrend`, `CategoryTrends` to `types.ts`
-  - [ ] Add `useCategoryTrends(period)` to `hooks/useIntelligence.ts`
+- [x] Task 5: Frontend types and hook (AC2)
+  - [x] Add `TopProductByRevenue`, `CategoryTrend`, `CategoryTrends` to `types.ts`
+  - [x] Add `useCategoryTrends(period)` to `hooks/useIntelligence.ts`
 
-- [ ] Task 6: CategoryTrendRadar component (AC5)
-  - [ ] Create `CategoryTrendRadar.tsx` with recharts `BarChart`
-  - [ ] Two bars per category (current colored by trend, prior gray)
-  - [ ] Period selector tabs (30d / 90d / 12m)
-  - [ ] Sort by `revenue_delta_pct` descending
-  - [ ] Loading and error states
+- [x] Task 6: CategoryTrendRadar component (AC5)
+  - [x] Create `CategoryTrendRadar.tsx` with recharts `BarChart`
+  - [x] Two bars per category (current colored by trend, prior gray)
+  - [x] Period selector tabs (30d / 90d / 12m)
+  - [x] Sort by `revenue_delta_pct` descending
+  - [x] Loading and error states
+
+## Completion Notes
+
+- Implemented the category trend schemas, service, REST route, MCP tool, TypeScript interfaces, hook, and a chart-plus-ranked-list frontend component with rolling 30d / 90d / 12m period toggles.
+- The review cycle tightened the day-window semantics to exclude future rows, ranked nullable-delta categories by current-period impact instead of alphabetically, and added stale-response protection plus coverage for out-of-order period fetches.
+- Validation: `uv run pytest tests/domains/intelligence/test_service.py tests/domains/intelligence/test_routes.py tests/test_mcp_intelligence.py -q`, `pnpm --dir /Volumes/2T_SSD_App/Projects/UltrERP exec vitest run src/tests/intelligence/CategoryTrendRadar.test.tsx src/tests/intelligence/AffinityMatrix.test.tsx src/tests/auth/rbac-ui.test.tsx`.
 
 ## Dev Notes
 

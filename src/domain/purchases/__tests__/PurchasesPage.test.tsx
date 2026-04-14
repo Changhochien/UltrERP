@@ -35,6 +35,7 @@ const listResponse = {
       line_count: 1,
     },
   ],
+  status_totals: { open: 1, paid: 0, voided: 0 },
   total: 1,
   page: 1,
   page_size: 20,

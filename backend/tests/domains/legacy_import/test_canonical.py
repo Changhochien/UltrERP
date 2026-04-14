@@ -161,6 +161,35 @@ class FakeCanonicalConnection:
         self.closed = True
 
 
+def test_build_product_master_snapshot_preserves_category_provenance() -> None:
+    snapshot = canonical._build_product_master_snapshot(
+        {
+            "legacy_code": "PC096",
+            "name": "三角皮帶 C-96",
+            "category": "V-Belts",
+            "legacy_category": None,
+            "stock_kind": "0",
+            "category_source": "derived_from_code_name",
+            "unit": "條",
+            "status": "A",
+            "source_table": "tbsstock",
+            "source_row_number": 12,
+        }
+    )
+
+    assert snapshot == {
+        "legacy_code": "PC096",
+        "name": "三角皮帶 C-96",
+        "category": "V-Belts",
+        "stock_kind": "0",
+        "category_source": "derived_from_code_name",
+        "unit": "條",
+        "status": "A",
+        "source_table": "tbsstock",
+        "source_row_number": 12,
+    }
+
+
 def _find_query_index(execute_calls: list[tuple[str, tuple[object, ...]]], needle: str) -> int:
     for index, (query, _) in enumerate(execute_calls):
         if needle in query:

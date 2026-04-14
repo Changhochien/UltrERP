@@ -288,6 +288,13 @@
       "tags": "Tags",
       "empty": "No whitespace prospects for this category yet.",
       "loadError": "Failed to load prospect gaps."
+    },
+    "marketOpportunities": {
+      "showDetail": "Show detail",
+      "hideDetail": "Hide detail",
+      "affectedCustomers": "{count} customers affected",
+      "action": "Recommended action",
+      "deferred": "Deferred in v1: {value}"
     }
   },
   "customer": {
@@ -441,6 +448,8 @@
       "createTitle": "Create Customer",
       "creating": "Creating…",
       "creditLimit": "Credit Limit",
+      "businessNumberDigits": "Business number must be exactly 8 digits.",
+      "companyNameRequired": "Company name is required.",
       "creditLimitNonNegative": "Credit limit must be non-negative.",
       "invalidBusinessNumber": "Invalid business number.",
       "title": "Create Customer"
@@ -501,6 +510,7 @@
       "description": "Daily revenue overview",
       "noChangeData": "No change",
       "revenueChange": "{change}",
+      "revenueComparison": "Revenue Comparison",
       "title": "Revenue",
       "yesterday": "Yesterday ({date}): {amount}"
     },

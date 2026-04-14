@@ -137,6 +137,50 @@ def test_normalize_party_record_supports_customer_role() -> None:
     assert row[5] == "customer"
 
 
+def test_derive_product_category_prefers_legacy_class_when_present() -> None:
+    category, source = normalization._derive_product_category(
+        "P001",
+        "Widget",
+        legacy_category="Industrial Components",
+        stock_kind="0",
+    )
+
+    assert category == "Industrial Components"
+    assert source == "legacy_class"
+
+
+def test_derive_product_category_flags_non_merchandise_from_stock_kind() -> None:
+    category, source = normalization._derive_product_category(
+        "0013",
+        "郵寄運費",
+        legacy_category=None,
+        stock_kind="6",
+    )
+
+    assert category == "Non-Merchandise"
+    assert source == "legacy_stock_kind"
+
+
+def test_derive_product_category_uses_code_and_name_heuristics() -> None:
+    timing_category, timing_source = normalization._derive_product_category(
+        "RL225*19M/M",
+        "225L*19M/M",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    v_belt_category, v_belt_source = normalization._derive_product_category(
+        "PC096",
+        "三角皮帶 C-96",
+        legacy_category=None,
+        stock_kind="0",
+    )
+
+    assert timing_category == "Timing Belts"
+    assert timing_source == "derived_from_code_name"
+    assert v_belt_category == "V-Belts"
+    assert v_belt_source == "derived_from_code_name"
+
+
 @pytest.mark.asyncio
 async def test_ensure_normalized_tables_use_tenant_scoped_primary_keys() -> None:
     connection = FakeNormalizationConnection({})
@@ -175,12 +219,13 @@ async def test_run_normalization_is_tenant_scoped_and_transactional(monkeypatch)
             ],
             "tbsstock": [
                 {
-                    "legacy_code": "P001",
-                    "name": "Widget",
-                    "category": "BELT",
+                    "legacy_code": "PC096",
+                    "name": "三角皮帶 C-96",
+                    "legacy_category": None,
+                    "stock_kind": "0",
                     "supplier_code": "C001",
                     "origin": "TW",
-                    "unit": "pcs",
+                    "unit": "條",
                     "created_date": "2025-04-07",
                     "last_sale_date": "2025-04-07",
                     "avg_cost": "12.50",
@@ -227,6 +272,9 @@ async def test_run_normalization_is_tenant_scoped_and_transactional(monkeypatch)
     assert result.warehouse_count == 1
     assert result.inventory_count == 1
 
+    product_copy = next(
+        call for call in connection.copy_calls if call["table_name"] == "normalized_products"
+    )
     warehouse_copy = next(
         call for call in connection.copy_calls if call["table_name"] == "normalized_warehouses"
     )
@@ -234,8 +282,14 @@ async def test_run_normalization_is_tenant_scoped_and_transactional(monkeypatch)
         call for call in connection.copy_calls if call["table_name"] == "normalized_inventory_prep"
     )
 
+    product_record = dict(zip(product_copy["columns"], product_copy["rows"][0], strict=False))
     assert warehouse_copy["rows"][0][4] == "A"
     assert inventory_copy["rows"][0][5] == "A"
+    assert product_record["legacy_code"] == "PC096"
+    assert product_record["category"] == "V-Belts"
+    assert product_record["legacy_category"] is None
+    assert product_record["stock_kind"] == "0"
+    assert product_record["category_source"] == "derived_from_code_name"
 
 
 @pytest.mark.asyncio

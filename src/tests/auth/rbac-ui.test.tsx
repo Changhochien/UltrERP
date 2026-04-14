@@ -25,7 +25,18 @@ afterEach(() => {
 
 function PermissionsDisplay() {
   const { canAccess, canWrite } = usePermissions();
-  const features: AppFeature[] = ["dashboard", "inventory", "customers", "invoices", "orders", "payments", "admin", "settings"];
+  const features: AppFeature[] = [
+    "dashboard",
+    "inventory",
+    "customers",
+    "intelligence",
+    "invoices",
+    "orders",
+    "payments",
+    "admin",
+    "owner_dashboard",
+    "settings",
+  ];
   return (
     <ul>
       {features.map((f) => (
@@ -101,11 +112,13 @@ describe("usePermissions", () => {
     expect(screen.getByTestId("dashboard-access").textContent).toContain("yes");
     expect(screen.getByTestId("admin-access").textContent).toContain("yes");
     expect(screen.getByTestId("payments-access").textContent).toContain("yes");
+    expect(screen.getByTestId("intelligence-access").textContent).toContain("yes");
+    expect(screen.getByTestId("owner_dashboard-access").textContent).toContain("yes");
     expect(screen.getByTestId("inventory-access").textContent).toContain("yes");
     expect(screen.getByTestId("inventory-write").textContent).toContain("yes");
   });
 
-  it("admin can access business surfaces but not the owner-only admin dashboard", () => {
+  it("admin can access the current business and dashboard surfaces", () => {
     setTestToken("admin");
     renderWithAuth(<PermissionsDisplay />);
     expect(screen.getByTestId("dashboard-access").textContent).toContain("yes");
@@ -114,8 +127,10 @@ describe("usePermissions", () => {
     expect(screen.getByTestId("invoices-access").textContent).toContain("yes");
     expect(screen.getByTestId("orders-access").textContent).toContain("yes");
     expect(screen.getByTestId("payments-access").textContent).toContain("yes");
+    expect(screen.getByTestId("intelligence-access").textContent).toContain("yes");
     expect(screen.getByTestId("settings-access").textContent).toContain("yes");
-    expect(screen.getByTestId("admin-access").textContent).toContain("no");
+    expect(screen.getByTestId("admin-access").textContent).toContain("yes");
+    expect(screen.getByTestId("owner_dashboard-access").textContent).toContain("yes");
     expect(screen.getByTestId("customers-write").textContent).toContain("yes");
     expect(screen.getByTestId("inventory-write").textContent).toContain("yes");
   });
@@ -128,6 +143,7 @@ describe("usePermissions", () => {
     expect(screen.getByTestId("invoices-access").textContent).toContain("yes");
     expect(screen.getByTestId("payments-access").textContent).toContain("yes");
     expect(screen.getByTestId("settings-access").textContent).toContain("yes");
+    expect(screen.getByTestId("intelligence-access").textContent).toContain("no");
     expect(screen.getByTestId("inventory-access").textContent).toContain("no");
     expect(screen.getByTestId("orders-access").textContent).toContain("no");
     expect(screen.getByTestId("admin-access").textContent).toContain("no");
@@ -141,6 +157,7 @@ describe("usePermissions", () => {
     expect(screen.getByTestId("dashboard-access").textContent).toContain("yes");
     expect(screen.getByTestId("inventory-access").textContent).toContain("yes");
     expect(screen.getByTestId("orders-access").textContent).toContain("yes");
+    expect(screen.getByTestId("intelligence-access").textContent).toContain("no");
     expect(screen.getByTestId("customers-access").textContent).toContain("no");
     expect(screen.getByTestId("invoices-access").textContent).toContain("no");
     expect(screen.getByTestId("payments-access").textContent).toContain("no");
@@ -155,6 +172,7 @@ describe("usePermissions", () => {
     expect(screen.getByTestId("dashboard-access").textContent).toContain("yes");
     expect(screen.getByTestId("inventory-access").textContent).toContain("yes");
     expect(screen.getByTestId("customers-access").textContent).toContain("yes");
+    expect(screen.getByTestId("intelligence-access").textContent).toContain("yes");
     expect(screen.getByTestId("invoices-access").textContent).toContain("yes");
     expect(screen.getByTestId("orders-access").textContent).toContain("yes");
     expect(screen.getByTestId("payments-access").textContent).toContain("no");
@@ -180,9 +198,21 @@ describe("AppNavigation", () => {
     expect(screen.getByRole("link", { name: "Invoices" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Payments" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Settings" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Intelligence" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Inventory" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Orders" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Admin" })).toBeNull();
+  });
+
+  it("shows the intelligence workspace only for authorized roles", () => {
+    setTestToken("admin");
+    renderWithAuth(
+      <SidebarProvider>
+        <AppNavigation />
+      </SidebarProvider>,
+    );
+
+    expect(screen.getByRole("link", { name: "Intelligence" })).toBeTruthy();
   });
 });
 
@@ -255,6 +285,30 @@ describe("ProtectedRoute", () => {
     expect(screen.queryByText("Customers")).toBeNull();
   });
 
+  it("renders intelligence content for authorized sales users", () => {
+    setTestToken("sales");
+    render(
+      <MemoryRouter initialEntries={["/intelligence"]}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<div>Dashboard</div>} />
+            <Route
+              path="/intelligence"
+              element={
+                <ProtectedRoute requiredFeature="intelligence">
+                  <div>Intelligence</div>
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Intelligence")).toBeTruthy();
+    expect(screen.queryByText("Dashboard")).toBeNull();
+  });
+
   it("renders settings content for authorized finance users", () => {
     setTestToken("finance");
     render(
@@ -279,18 +333,18 @@ describe("ProtectedRoute", () => {
     expect(screen.queryByText("Login Page")).toBeNull();
   });
 
-  it("redirects admin users away from the owner-only admin route", () => {
+  it("renders the owner dashboard for admin users under the current role matrix", () => {
     setTestToken("admin");
     render(
-      <MemoryRouter initialEntries={["/admin"]}>
+      <MemoryRouter initialEntries={["/owner-dashboard"]}>
         <AuthProvider>
           <Routes>
             <Route path="/" element={<div>Dashboard</div>} />
             <Route
-              path="/admin"
+              path="/owner-dashboard"
               element={
-                <ProtectedRoute requiredFeature="admin">
-                  <div>Admin Content</div>
+                <ProtectedRoute requiredFeature="owner_dashboard">
+                  <div>Owner Dashboard</div>
                 </ProtectedRoute>
               }
             />
@@ -298,8 +352,8 @@ describe("ProtectedRoute", () => {
         </AuthProvider>
       </MemoryRouter>,
     );
-    expect(screen.getByText("Dashboard")).toBeTruthy();
-    expect(screen.queryByText("Admin Content")).toBeNull();
+    expect(screen.getByText("Owner Dashboard")).toBeTruthy();
+    expect(screen.queryByText("Dashboard")).toBeNull();
   });
 });
 

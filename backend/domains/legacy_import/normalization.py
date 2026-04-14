@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import uuid
 from dataclasses import dataclass
 from datetime import date
@@ -18,6 +19,97 @@ _DEFAULT_WAREHOUSE_NAME = "Legacy Default Warehouse"
 _KNOWN_WAREHOUSE_NAMES = {
     "A": "Legacy General Warehouse (總倉)",
 }
+_NON_MERCHANDISE_CATEGORY = "Non-Merchandise"
+_NON_MERCHANDISE_NAME_TOKENS = (
+    "運費",
+    "郵寄",
+    "到付",
+    "折讓",
+    "寄員客",
+    "出貨單",
+    "帳單本",
+    "信封",
+)
+_VARIABLE_SPEED_NAME_TOKENS = ("變速皮帶",)
+_RIBBED_NAME_TOKENS = ("多溝", "POLY")
+_TIMING_NAME_TOKENS = (
+    "齒帶",
+    "同步帶",
+    "RPP",
+    "HTD",
+    "AT10",
+    "AT5",
+    "T10",
+    "T5",
+    "OPEN",
+)
+_VEHICLE_NAME_TOKENS = ("機車帶", "凌風", "勁風", "豪邁", "歐風")
+_V_BELT_NAME_TOKENS = (
+    "三角皮帶",
+    " SPA",
+    " SPB",
+    " SPC",
+    " SPZ",
+    " XPA",
+    " XPB",
+    " XPZ",
+    "OH A-",
+    "OH B-",
+    "OH C-",
+    "OH D-",
+    "阪東",
+    "德國馬牌",
+    "大山 K-",
+)
+_FLAT_SPECIALTY_NAME_TOKENS = (
+    "牛皮",
+    "平皮帶",
+    "平面帶",
+    "輸送帶",
+    "片基帶",
+    "廣角",
+    "無端皮帶",
+)
+_VARIABLE_SPEED_CODE_PREFIXES = ("VB", "VD", "YM", "YK", "MF")
+_RIBBED_CODE_PREFIXES = ("J4", "J5", "J6", "J8")
+_TIMING_CODE_PREFIXES = (
+    "RL",
+    "RH",
+    "XL",
+    "MXL",
+    "S5M",
+    "S8M",
+    "5GT",
+    "8GT",
+    "3GT",
+    "14MGT",
+    "8YU",
+)
+_VEHICLE_CODE_PREFIXES = ("BMT", "3NW", "3GF", "SRCV")
+_V_BELT_CODE_PREFIXES = (
+    "PA",
+    "PB",
+    "PC",
+    "PD",
+    "AO",
+    "BO",
+    "OB",
+    "PSPA",
+    "PSPB",
+    "PSPC",
+    "PSPZ",
+    "P3V",
+    "P5V",
+    "RB",
+    "LK",
+    "LA",
+    "LF",
+    "LM",
+    "LC",
+    "MO",
+)
+_FLAT_SPECIALTY_CODE_PREFIXES = ("TU", "VT", "LG", "A2LT", "T1", "LLN", "FL", "SE-")
+_V_BELT_SERIES_RE = re.compile(r"^(?:[358]V|[ABCDM]O?\d)")
 
 
 @dataclass(slots=True, frozen=True)
@@ -62,6 +154,11 @@ def _normalize_status(value: object | None) -> bool:
     return raw in {"A", "ACTIVE", "1", "Y", "TRUE"}
 
 
+def _normalize_text(value: object | None) -> str | None:
+    raw = str(value or "").strip()
+    return raw or None
+
+
 def _normalize_decimal(value: object | None) -> Decimal | None:
     if value is None:
         return None
@@ -84,6 +181,79 @@ def _warehouse_name_for_code(code: str) -> str:
     if normalized_code == _DEFAULT_WAREHOUSE_CODE:
         return _DEFAULT_WAREHOUSE_NAME
     return _KNOWN_WAREHOUSE_NAMES.get(normalized_code, f"Legacy Warehouse {normalized_code}")
+
+
+def _contains_any_token(text: str, tokens: tuple[str, ...]) -> bool:
+    return any(token in text for token in tokens)
+
+
+def _starts_with_any_prefix(text: str, prefixes: tuple[str, ...]) -> bool:
+    return any(text.startswith(prefix) for prefix in prefixes)
+
+
+def _derive_product_category(
+    legacy_code: str,
+    name: str,
+    *,
+    legacy_category: str | None,
+    stock_kind: str | None,
+) -> tuple[str | None, str]:
+    normalized_stock_kind = _normalize_text(stock_kind)
+    if normalized_stock_kind == "6":
+        return _NON_MERCHANDISE_CATEGORY, "legacy_stock_kind"
+
+    normalized_legacy_category = _normalize_text(legacy_category)
+    if normalized_legacy_category is not None:
+        return normalized_legacy_category, "legacy_class"
+
+    combined = f"{legacy_code} {name}".upper()
+    normalized_code = legacy_code.upper()
+
+    if _contains_any_token(combined, _NON_MERCHANDISE_NAME_TOKENS):
+        return _NON_MERCHANDISE_CATEGORY, "derived_from_code_name"
+
+    if (
+        _starts_with_any_prefix(normalized_code, _VARIABLE_SPEED_CODE_PREFIXES)
+        or _contains_any_token(combined, _VARIABLE_SPEED_NAME_TOKENS)
+    ):
+        return "Variable-Speed Belts", "derived_from_code_name"
+
+    if (
+        _starts_with_any_prefix(normalized_code, _RIBBED_CODE_PREFIXES)
+        or any(token in combined for token in ("-J4", "-J5", "-J6", "-J8"))
+        or _contains_any_token(combined, _RIBBED_NAME_TOKENS)
+    ):
+        return "Ribbed Belts", "derived_from_code_name"
+
+    if (
+        _starts_with_any_prefix(normalized_code, _TIMING_CODE_PREFIXES)
+        or _contains_any_token(combined, _TIMING_NAME_TOKENS)
+        or any(token in normalized_code for token in ("5GT", "8GT", "3GT", "14MGT", "RPP", "8YU"))
+        or any(token in combined for token in ("5M-", "8M-", "14M-", "3M-"))
+    ):
+        return "Timing Belts", "derived_from_code_name"
+
+    if (
+        _starts_with_any_prefix(normalized_code, _VEHICLE_CODE_PREFIXES)
+        or _contains_any_token(combined, _VEHICLE_NAME_TOKENS)
+    ):
+        return "Vehicle Belts", "derived_from_code_name"
+
+    if (
+        _starts_with_any_prefix(normalized_code, _V_BELT_CODE_PREFIXES)
+        or _V_BELT_SERIES_RE.match(normalized_code) is not None
+        or _contains_any_token(combined, _V_BELT_NAME_TOKENS)
+        or any(token in combined for token in ("3V", "5V", "8V"))
+    ):
+        return "V-Belts", "derived_from_code_name"
+
+    if (
+        _starts_with_any_prefix(normalized_code, _FLAT_SPECIALTY_CODE_PREFIXES)
+        or _contains_any_token(combined, _FLAT_SPECIALTY_NAME_TOKENS)
+    ):
+        return "Flat / Specialty Belts", "derived_from_code_name"
+
+    return "Other Power Transmission", "derived_from_code_name"
 
 
 def normalize_party_record(
@@ -139,7 +309,16 @@ def _normalize_product_record(
     if not legacy_code:
         raise ValueError("Product record missing legacy_code")
 
-    supplier_code = str(record.get("supplier_code") or "").strip() or None
+    name = str(record.get("name") or legacy_code).strip()
+    legacy_category = _normalize_text(record.get("legacy_category"))
+    stock_kind = _normalize_text(record.get("stock_kind"))
+    category, category_source = _derive_product_category(
+        legacy_code,
+        name,
+        legacy_category=legacy_category,
+        stock_kind=stock_kind,
+    )
+    supplier_code = _normalize_text(record.get("supplier_code"))
     supplier_id = (
         deterministic_legacy_uuid("party", "supplier", supplier_code) if supplier_code else None
     )
@@ -148,11 +327,14 @@ def _normalize_product_record(
         tenant_id,
         deterministic_legacy_uuid("product", legacy_code),
         legacy_code,
-        str(record.get("name") or legacy_code).strip(),
-        str(record.get("category") or "").strip() or None,
+        name,
+        category,
+        legacy_category,
+        stock_kind,
+        category_source,
         supplier_code,
         supplier_id,
-        str(record.get("origin") or "").strip() or None,
+        _normalize_text(record.get("origin")),
         str(record.get("unit") or "pcs").strip() or "pcs",
         str(record.get("status") or "A").strip() or "A",
         normalize_legacy_date(record.get("created_date")),
@@ -270,6 +452,9 @@ async def _ensure_normalized_tables(connection, schema_name: str) -> None:
 			legacy_code TEXT NOT NULL,
 			name TEXT NOT NULL,
 			category TEXT,
+			legacy_category TEXT,
+			stock_kind TEXT,
+			category_source TEXT,
 			supplier_legacy_code TEXT,
 			supplier_deterministic_id UUID,
 			origin TEXT,
@@ -403,7 +588,8 @@ async def run_normalization(
                 """
 				col_1 AS legacy_code,
 				col_3 AS name,
-				col_7 AS category,
+				col_5 AS legacy_category,
+				col_7 AS stock_kind,
 				col_8 AS supplier_code,
 				col_9 AS origin,
 				col_16 AS unit,
@@ -484,6 +670,9 @@ async def run_normalization(
                     "legacy_code",
                     "name",
                     "category",
+                    "legacy_category",
+                    "stock_kind",
+                    "category_source",
                     "supplier_legacy_code",
                     "supplier_deterministic_id",
                     "origin",

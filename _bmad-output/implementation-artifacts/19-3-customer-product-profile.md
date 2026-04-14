@@ -1,6 +1,6 @@
 # Story 19.3: Customer Product Profile
 
-Status: revised-ready-for-dev
+Status: done
 
 ## Story
 
@@ -307,45 +307,51 @@ Use recharts `BarChart` with `CartesianGrid`, `XAxis` (categories), `YAxis` (rev
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create `backend/domains/intelligence/__init__.py` and add Pydantic schemas (AC1)
-  - [ ] Subtask 1.1: Create `__init__.py` with module docstring
-  - [ ] Subtask 1.2: Add `CategoryRevenue`, `ProductPurchase`, `CustomerProductProfile` to `schemas.py`
+- [x] Task 1: Create `backend/domains/intelligence/__init__.py` and add Pydantic schemas (AC1)
+  - [x] Subtask 1.1: Create `__init__.py` with module docstring
+  - [x] Subtask 1.2: Add `CategoryRevenue`, `ProductPurchase`, `CustomerProductProfile` to `schemas.py`
 
-- [ ] Task 2: Implement `get_customer_product_profile()` in `service.py` (AC1, AC4)
-  - [ ] Subtask 2.1: Implement date window constants with `relativedelta`
-  - [ ] Subtask 2.2: Query `total_revenue_12m`, `order_count_12m`, `order_count_3m`, `order_count_6m`, `order_count_prior_12m`
-  - [ ] Subtask 2.3: Compute `avg_order_value` and `avg_order_value_prior`, handle division by zero
-  - [ ] Subtask 2.4: Compute `frequency_trend` from 3m vs. prior 3m comparison
-  - [ ] Subtask 2.5: Compute `aov_trend` from current vs. prior AOV
-  - [ ] Subtask 2.6: Query `top_categories` with revenue aggregation and `revenue_pct_of_total`
-  - [ ] Subtask 2.7: Query `top_products` with order_count and revenue aggregation
-  - [ ] Subtask 2.8: Query `last_order_date` using `func.max(Order.created_at)`
-  - [ ] Subtask 2.9: Compute `is_dormant` from 60-day window
-  - [ ] Subtask 2.10: Compute `new_categories` from first-order-per-category in last 90 days
+- [x] Task 2: Implement `get_customer_product_profile()` in `service.py` (AC1, AC4)
+  - [x] Subtask 2.1: Implement date window constants with `relativedelta`
+  - [x] Subtask 2.2: Query `total_revenue_12m`, `order_count_12m`, `order_count_3m`, `order_count_6m`, `order_count_prior_12m`
+  - [x] Subtask 2.3: Compute `avg_order_value` and `avg_order_value_prior`, handle division by zero
+  - [x] Subtask 2.4: Compute `frequency_trend` from 3m vs. prior 3m comparison
+  - [x] Subtask 2.5: Compute `aov_trend` from current vs. prior AOV
+  - [x] Subtask 2.6: Query `top_categories` with revenue aggregation and `revenue_pct_of_total`
+  - [x] Subtask 2.7: Query `top_products` with order_count and revenue aggregation
+  - [x] Subtask 2.8: Query `last_order_date` using `func.max(Order.created_at)`
+  - [x] Subtask 2.9: Compute `is_dormant` from 60-day window
+  - [x] Subtask 2.10: Compute `new_categories` from first-order-per-category in last 90 days
 
-- [ ] Task 3: Add REST route in `routes.py` (AC1)
-  - [ ] Subtask 3.1: Add `GET /api/v1/intelligence/customers/{customer_id}/product-profile`
-  - [ ] Subtask 3.2: Use an intelligence-specific route dependency via the existing `require_role(...)` pattern and tenant-scoped customer lookup
-  - [ ] Subtask 3.3: Return `CustomerProductProfile` response model
+- [x] Task 3: Add REST route in `routes.py` (AC1)
+  - [x] Subtask 3.1: Add `GET /api/v1/intelligence/customers/{customer_id}/product-profile`
+  - [x] Subtask 3.2: Use an intelligence-specific route dependency via the existing `require_role(...)` pattern and tenant-scoped customer lookup
+  - [x] Subtask 3.3: Return `CustomerProductProfile` response model
 
-- [ ] Task 4: Add MCP tool in `mcp.py` and wire `TOOL_SCOPES` (AC4)
-  - [ ] Subtask 4.1: Add `intelligence_customer_product_profile` tool using `AsyncSessionLocal()`
-  - [ ] Subtask 4.2: Add `TOOL_SCOPES` entry: `intelligence_customer_product_profile → customers:read`, `orders:read`
-  - [ ] Subtask 4.3: Register `domains.intelligence.mcp` in `backend/app/mcp_server.py`
+- [x] Task 4: Add MCP tool in `mcp.py` and wire `TOOL_SCOPES` (AC4)
+  - [x] Subtask 4.1: Add `intelligence_customer_product_profile` tool using `AsyncSessionLocal()`
+  - [x] Subtask 4.2: Add `TOOL_SCOPES` entry: `intelligence_customer_product_profile → customers:read`, `orders:read`
+  - [x] Subtask 4.3: Register `domains.intelligence.mcp` in `backend/app/mcp_server.py`
 
-- [ ] Task 5: Frontend TypeScript types and API helper (AC1)
-  - [ ] Subtask 5.1: Add interfaces to `src/domain/intelligence/types.ts`
-  - [ ] Subtask 5.2: Add `fetchCustomerProductProfile(customerId)` to `src/lib/api/intelligence.ts`
+- [x] Task 5: Frontend TypeScript types and API helper (AC1)
+  - [x] Subtask 5.1: Add interfaces to `src/domain/intelligence/types.ts`
+  - [x] Subtask 5.2: Add `fetchCustomerProductProfile(customerId)` to `src/lib/api/intelligence.ts`
 
-- [ ] Task 6: Frontend hook `useCustomerProductProfile` (AC1)
-  - [ ] Subtask 6.1: Add `useCustomerProductProfile(customerId)` to `useIntelligence.ts`
+- [x] Task 6: Frontend hook `useCustomerProductProfile` (AC1)
+  - [x] Subtask 6.1: Add `useCustomerProductProfile(customerId)` to `useIntelligence.ts`
 
-- [ ] Task 7: Frontend component `CustomerProductProfile.tsx` (AC2, AC3)
-  - [ ] Subtask 7.1: Metrics row with total revenue, order count, AOV, last order date
-  - [ ] Subtask 7.2: Red "Dormant" badge when `is_dormant === true`
-  - [ ] Subtask 7.3: Left column — horizontal bar chart of `top_categories`
-  - [ ] Subtask 7.4: Green "New" chip on categories present in `new_categories`
-  - [ ] Subtask 7.5: Right column — table of `top_products` with Name, Category, Count, Revenue columns
+- [x] Task 7: Frontend component `CustomerProductProfile.tsx` (AC2, AC3)
+  - [x] Subtask 7.1: Metrics row with total revenue, order count, AOV, last order date
+  - [x] Subtask 7.2: Red "Dormant" badge when `is_dormant === true`
+  - [x] Subtask 7.3: Left column — horizontal bar chart of `top_categories`
+  - [x] Subtask 7.4: Green "New" chip on categories present in `new_categories`
+  - [x] Subtask 7.5: Right column — table of `top_products` with Name, Category, Count, Revenue columns
+
+## Completion Notes
+
+- Implemented the customer product profile service, REST endpoint, MCP tool, TypeScript types, API helper, hook, and UI component, and embedded the panel in the existing customer analytics experience.
+- Follow-up review work corrected the exposed `activity_basis` contract to `confirmed_or_later_orders`, made missing-customer MCP calls return structured `NOT_FOUND`, and aligned the MCP path with explicit tenant context.
+- Validation: `uv run pytest tests/domains/intelligence/test_service.py tests/domains/intelligence/test_routes.py tests/test_mcp_intelligence.py tests/test_mcp_auth.py -q`, `pnpm --dir /Volumes/2T_SSD_App/Projects/UltrERP exec vitest run src/tests/customers/CustomerAnalyticsTab.test.tsx src/tests/customers/CustomerProductProfile.test.tsx`.
 
 ## Dev Notes
 

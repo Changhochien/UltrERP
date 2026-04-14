@@ -1,6 +1,6 @@
 # Story 19.5: Prospect Gap Analysis
 
-Status: revised-ready-for-dev
+Status: done
 
 ## Story
 
@@ -241,37 +241,43 @@ async def intelligence_prospect_gaps(category: str, limit: int = 20) -> str:
 
 ## Tasks / Subtasks
 
-- [ ] Task 19.5.1: Create `backend/domains/intelligence/` package structure (AC: #1–3)
-  - [ ] Create `__init__.py` with package exports
-  - [ ] Add `ProspectFit` and `ProspectGaps` Pydantic schemas
-  - [ ] Implement `get_prospect_gaps()` in `service.py`
-  - [ ] Add `GET /api/v1/intelligence/prospect-gaps` route in `routes.py`
-  - [ ] Add `TOOL_SCOPES` entry in `mcp_auth.py`
-  - [ ] Register MCP tool in `mcp.py` and import in `mcp_server.py`
+- [x] Task 19.5.1: Create `backend/domains/intelligence/` package structure (AC: #1–3)
+  - [x] Create `__init__.py` with package exports
+  - [x] Add `ProspectFit` and `ProspectGaps` Pydantic schemas
+  - [x] Implement `get_prospect_gaps()` in `service.py`
+  - [x] Add `GET /api/v1/intelligence/prospect-gaps` route in `routes.py`
+  - [x] Add `TOOL_SCOPES` entry in `mcp_auth.py`
+  - [x] Register MCP tool in `mcp.py` and import in `mcp_server.py`
 
-- [ ] Task 19.5.2: Add MCP tool endpoint (AC: #5)
-  - [ ] Implement `intelligence_prospect_gaps` MCP tool with session management
-  - [ ] Handle ToolError for invalid inputs
-  - [ ] Test tool invocation with valid/invalid category
+- [x] Task 19.5.2: Add MCP tool endpoint (AC: #5)
+  - [x] Implement `intelligence_prospect_gaps` MCP tool with session management
+  - [x] Handle ToolError for invalid inputs
+  - [x] Test tool invocation with valid/invalid category
 
-- [ ] Task 19.5.3: Frontend types and hook (AC: #7)
-  - [ ] Add `ProspectFit` and `ProspectGaps` TypeScript interfaces to `types.ts`
-  - [ ] Add `useProspectGaps(category, limit)` to `useIntelligence.ts`
-  - [ ] Wire hook to API endpoint with proper loading/error states
+- [x] Task 19.5.3: Frontend types and hook (AC: #7)
+  - [x] Add `ProspectFit` and `ProspectGaps` TypeScript interfaces to `types.ts`
+  - [x] Add `useProspectGaps(category, limit)` to `useIntelligence.ts`
+  - [x] Wire hook to API endpoint with proper loading/error states
 
-- [ ] Task 19.5.4: ProspectGapTable component (AC: #6)
-  - [ ] Category dropdown selector with current selection state
-  - [ ] Table sorted by affinity_score desc with all specified columns
-  - [ ] Affinity score progress bar with red/yellow/green color coding
-  - [ ] Existing buyer count badge
-  - [ ] Tag chips rendering
+- [x] Task 19.5.4: ProspectGapTable component (AC: #6)
+  - [x] Category dropdown selector with current selection state
+  - [x] Table sorted by affinity_score desc with all specified columns
+  - [x] Affinity score progress bar with red/yellow/green color coding
+  - [x] Existing buyer count badge
+  - [x] Tag chips rendering
 
-- [ ] Task 19.5.5: Integration and edge cases (AC: #4, #6)
-  - [ ] Tag assignment logic (dormant, high_value, adjacent_category, new_customer)
-  - [ ] Return `score_components`, `reason_codes`, and `confidence`
-  - [ ] Exclude zero-order customers from the default active-customer candidate set
-  - [ ] Limit capping at 100
-  - [ ] Tenant isolation verification
+- [x] Task 19.5.5: Integration and edge cases (AC: #4, #6)
+  - [x] Tag assignment logic (dormant, high_value, adjacent_category, new_customer)
+  - [x] Return `score_components`, `reason_codes`, and `confidence`
+  - [x] Exclude zero-order customers from the default active-customer candidate set
+  - [x] Limit capping at 100
+  - [x] Tenant isolation verification
+
+## Completion Notes
+
+- Implemented the whitespace prospect schemas, scoring service, REST/MCP surfaces, TypeScript contract, hook, and dropdown-driven outreach table with affinity progress bars and tag chips.
+- The review cycle fixed bearer-token tenant precedence, used the full adjacent-category set for scoring and tags, excluded excluded-category-only customers from the candidate universe, rejected blank REST categories, and removed the invalid starter request by seeding the selector from category trends.
+- Validation: `uv run pytest tests/domains/intelligence/test_service.py tests/domains/intelligence/test_routes.py tests/test_mcp_intelligence.py -q`, `pnpm --dir /Volumes/2T_SSD_App/Projects/UltrERP exec vitest run src/tests/intelligence/ProspectGapTable.test.tsx src/tests/intelligence/RiskSignalFeed.test.tsx src/tests/intelligence/CategoryTrendRadar.test.tsx src/tests/intelligence/AffinityMatrix.test.tsx src/tests/auth/rbac-ui.test.tsx`.
 
 ---
 

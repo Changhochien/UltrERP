@@ -288,6 +288,13 @@
       "tags": "標籤",
       "empty": "此品類目前沒有可用的空白客戶名單。",
       "loadError": "載入空白品類分析失敗。"
+    },
+    "marketOpportunities": {
+      "showDetail": "展開詳情",
+      "hideDetail": "收合詳情",
+      "affectedCustomers": "影響客戶 {count} 家",
+      "action": "建議動作",
+      "deferred": "v1 暫不提供：{value}"
     }
   },
   "customer": {

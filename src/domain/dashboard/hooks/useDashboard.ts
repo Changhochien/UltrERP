@@ -98,24 +98,46 @@ export function useVisitorStats() {
   const [data, setData] = useState<VisitorStatsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const inFlightControllerRef = useRef<AbortController | null>(null);
 
   const load = useCallback(async () => {
+    if (inFlightControllerRef.current) {
+      return;
+    }
+
+    const controller = new AbortController();
+    inFlightControllerRef.current = controller;
+
     setIsLoading(true);
     setError(null);
+
     try {
-      const res = await fetchVisitorStats();
-      setData(res);
+      const res = await fetchVisitorStats(controller.signal);
+      if (!controller.signal.aborted) {
+        setData(res);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load visitor stats");
+      if (!controller.signal.aborted) {
+        setError(err instanceof Error ? err.message : "Failed to load visitor stats");
+      }
     } finally {
-      setIsLoading(false);
+      if (inFlightControllerRef.current === controller) {
+        inFlightControllerRef.current = null;
+      }
+      if (!controller.signal.aborted) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     void load();
     const id = setInterval(() => void load(), REFRESH_INTERVAL_MS);
-    return () => clearInterval(id);
+    return () => {
+      clearInterval(id);
+      inFlightControllerRef.current?.abort();
+      inFlightControllerRef.current = null;
+    };
   }, [load]);
 
   return { data, isLoading, error };
