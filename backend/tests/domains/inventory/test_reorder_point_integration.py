@@ -852,3 +852,121 @@ async def test_confirm_order_creates_sales_reservation_demand_history(
     finally:
         _registered_handlers.clear()
         _registered_handlers.extend(original_handlers)
+
+
+async def test_confirm_order_persists_product_snapshots_after_product_master_rename(
+    db_session,
+    tenant_id,
+    warehouse,
+):
+    from decimal import Decimal
+
+    from sqlalchemy import select, text
+
+    from common.models.order_line import OrderLine
+    from domains.orders.schemas import OrderCreate, OrderCreateLine, PaymentTermsCode
+    from domains.orders.services import confirm_order, create_order
+
+    await db_session.execute(
+        text(
+            "ALTER TABLE order_lines "
+            "ADD COLUMN IF NOT EXISTS product_name_snapshot VARCHAR(500)"
+        )
+    )
+    await db_session.execute(
+        text(
+            "ALTER TABLE order_lines "
+            "ADD COLUMN IF NOT EXISTS product_category_snapshot VARCHAR(200)"
+        )
+    )
+    await db_session.commit()
+
+    product = Product(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        code=f"PC{uuid.uuid4().hex[:6].upper()}",
+        name="Snapshot Product v1",
+        category="BELT",
+        status="active",
+    )
+    db_session.add(product)
+    await db_session.flush()
+
+    stock = InventoryStock(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        product_id=product.id,
+        warehouse_id=warehouse.id,
+        quantity=100,
+        reorder_point=0,
+    )
+    db_session.add(stock)
+    await db_session.flush()
+
+    customer = Customer(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        company_name="Snapshot Customer",
+        normalized_business_number=str(uuid.uuid4().int % 10**8).zfill(8),
+        billing_address="Taipei",
+        contact_name="Buyer",
+        contact_phone="02-12345678",
+        contact_email="buyer@test.local",
+    )
+    db_session.add(customer)
+    await db_session.flush()
+
+    range_start = 1_000_000 + (uuid.uuid4().int % 8_000_000)
+    number_range = InvoiceNumberRange(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        prefix=uuid.uuid4().hex[:2].upper(),
+        start_number=range_start,
+        end_number=range_start + 999,
+        next_number=range_start,
+        is_active=True,
+    )
+    db_session.add(number_range)
+    await db_session.flush()
+    await db_session.commit()
+
+    order = await create_order(
+        db_session,
+        OrderCreate(
+            customer_id=customer.id,
+            payment_terms_code=PaymentTermsCode.NET_30,
+            lines=[
+                OrderCreateLine(
+                    product_id=product.id,
+                    quantity=Decimal("2"),
+                    unit_price=Decimal("50.00"),
+                    tax_policy_code="standard",
+                    description="Snapshot line",
+                )
+            ],
+        ),
+        tenant_id=tenant_id,
+    )
+
+    await confirm_order(db_session, order.id, tenant_id=tenant_id)
+    await db_session.commit()
+
+    order_id = order.id
+    db_session.expire_all()
+    stored_line = (
+        await db_session.execute(select(OrderLine).where(OrderLine.order_id == order_id))
+    ).scalar_one()
+    assert stored_line.product_name_snapshot == "Snapshot Product v1"
+    assert stored_line.product_category_snapshot == "BELT"
+
+    stored_line_id = stored_line.id
+    product.name = "Snapshot Product v2"
+    product.category = "RENAMED"
+    await db_session.commit()
+
+    db_session.expire_all()
+    reloaded_line = (
+        await db_session.execute(select(OrderLine).where(OrderLine.id == stored_line_id))
+    ).scalar_one()
+    assert reloaded_line.product_name_snapshot == "Snapshot Product v1"
+    assert reloaded_line.product_category_snapshot == "BELT"

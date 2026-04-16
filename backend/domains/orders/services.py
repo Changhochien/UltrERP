@@ -321,9 +321,30 @@ async def confirm_order(
 
         line_product_ids = [line.product_id for line in order.lines]
         result = await session.execute(
-            select(Product.id, Product.code).where(Product.id.in_(line_product_ids))
+            select(Product.id, Product.code, Product.name, Product.category).where(
+                Product.id.in_(line_product_ids),
+                Product.tenant_id == tid,
+            )
         )
-        product_code_map = {row.id: row.code for row in result.all()}
+        product_rows = {row.id: row for row in result.all()}
+        product_code_map = {product_id: row.code for product_id, row in product_rows.items()}
+
+        missing_product_ids: list[str] = []
+        for line in order.lines:
+            product_row = product_rows.get(line.product_id)
+            if product_row is None:
+                missing_product_ids.append(str(line.product_id))
+                continue
+            if getattr(line, "product_name_snapshot", None) is None:
+                line.product_name_snapshot = product_row.name or line.description
+            if getattr(line, "product_category_snapshot", None) is None:
+                line.product_category_snapshot = product_row.category or None
+
+        if missing_product_ids:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Products no longer exist: {', '.join(missing_product_ids)}",
+            )
 
         # Validate customer
         result = await session.execute(

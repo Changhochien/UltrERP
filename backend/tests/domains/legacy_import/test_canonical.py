@@ -51,6 +51,7 @@ class FakeCanonicalConnection:
         self._fake_suppliers: dict[tuple[object, object], dict] = {}
         self._fake_stock_adjustments: dict[uuid.UUID, dict[str, object]] = {}
         self._fake_lineage_rows: dict[tuple[object, ...], dict[str, object]] = {}
+        self._fake_order_lines: dict[uuid.UUID, dict[str, object]] = {}
 
     def transaction(self) -> FakeCanonicalTransaction:
         return FakeCanonicalTransaction(self)
@@ -149,6 +150,58 @@ class FakeCanonicalConnection:
                     "notes": args[7],
                     "created_at": args[9],
                 }
+        elif "INSERT INTO order_lines" in query:
+            order_line_id = cast(uuid.UUID, args[0])
+            existing = self._fake_order_lines.get(order_line_id)
+            if existing is None:
+                self._fake_order_lines[order_line_id] = {
+                    "id": order_line_id,
+                    "tenant_id": args[1],
+                    "order_id": args[2],
+                    "product_id": args[3],
+                    "line_number": args[4],
+                    "quantity": args[5],
+                    "list_unit_price": args[6],
+                    "unit_price": args[7],
+                    "discount_amount": args[8],
+                    "tax_policy_code": args[9],
+                    "tax_type": args[10],
+                    "tax_rate": args[11],
+                    "tax_amount": args[12],
+                    "subtotal_amount": args[13],
+                    "total_amount": args[14],
+                    "description": args[15],
+                    "product_name_snapshot": args[16],
+                    "product_category_snapshot": args[17],
+                    "available_stock_snapshot": args[18],
+                    "backorder_note": args[19],
+                }
+            else:
+                existing.update(
+                    {
+                        "tenant_id": args[1],
+                        "order_id": args[2],
+                        "product_id": args[3],
+                        "line_number": args[4],
+                        "quantity": args[5],
+                        "list_unit_price": args[6],
+                        "unit_price": args[7],
+                        "discount_amount": args[8],
+                        "tax_policy_code": args[9],
+                        "tax_type": args[10],
+                        "tax_rate": args[11],
+                        "tax_amount": args[12],
+                        "subtotal_amount": args[13],
+                        "total_amount": args[14],
+                        "description": args[15],
+                        "available_stock_snapshot": args[18],
+                        "backorder_note": args[19],
+                    }
+                )
+                if existing.get("product_name_snapshot") is None:
+                    existing["product_name_snapshot"] = args[16]
+                if existing.get("product_category_snapshot") is None:
+                    existing["product_category_snapshot"] = args[17]
         elif 'INSERT INTO "raw_legacy".canonical_record_lineage' in query:
             lineage_key = tuple(args[:6])
             self._fake_lineage_rows[lineage_key] = {
@@ -161,6 +214,16 @@ class FakeCanonicalConnection:
         self.closed = True
 
 
+class QueryCaptureConnection:
+    def __init__(self, rows: list[dict[str, object]]) -> None:
+        self.rows = rows
+        self.last_query: str | None = None
+
+    async def fetch(self, query: str, *args: object):
+        self.last_query = query
+        return self.rows
+
+
 def test_build_product_master_snapshot_preserves_category_provenance() -> None:
     snapshot = canonical._build_product_master_snapshot(
         {
@@ -169,7 +232,9 @@ def test_build_product_master_snapshot_preserves_category_provenance() -> None:
             "category": "V-Belts",
             "legacy_category": None,
             "stock_kind": "0",
-            "category_source": "derived_from_code_name",
+            "category_source": "heuristic_rule",
+            "category_rule_id": "code-prefix-v-belts",
+            "category_confidence": "0.98",
             "unit": "條",
             "status": "A",
             "source_table": "tbsstock",
@@ -182,7 +247,9 @@ def test_build_product_master_snapshot_preserves_category_provenance() -> None:
         "name": "三角皮帶 C-96",
         "category": "V-Belts",
         "stock_kind": "0",
-        "category_source": "derived_from_code_name",
+        "category_source": "heuristic_rule",
+        "category_rule_id": "code-prefix-v-belts",
+        "category_confidence": "0.98",
         "unit": "條",
         "status": "A",
         "source_table": "tbsstock",
@@ -195,6 +262,34 @@ def _find_query_index(execute_calls: list[tuple[str, tuple[object, ...]]], needl
         if needle in query:
             return index
     raise AssertionError(f"Query not found: {needle}")
+
+
+@pytest.mark.asyncio
+async def test_iter_normalized_parties_selects_customer_type() -> None:
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000499")
+    connection = QueryCaptureConnection(
+        [
+            {
+                "legacy_code": "C001",
+                "role": "customer",
+                "customer_type": "dealer",
+            }
+        ]
+    )
+
+    rows = [
+        row
+        async for row in canonical._iter_normalized_parties(
+            connection,
+            "raw_legacy",
+            "batch-customer-type",
+            tenant_id,
+        )
+    ]
+
+    assert connection.last_query is not None
+    assert "customer_type" in connection.last_query
+    assert rows == [{"legacy_code": "C001", "role": "customer", "customer_type": "dealer"}]
 
 
 def _args_for_queries(
@@ -335,8 +430,15 @@ async def test_run_canonical_import_orders_dependencies_and_holding(
                     "legacy_code": "P001",
                     "name": "Widget",
                     "category": "BELT",
+                    "legacy_category": "Legacy Belt",
+                    "stock_kind": "0",
+                    "category_source": "manual_override",
+                    "category_rule_id": "manual-override",
+                    "category_confidence": "1.00",
                     "unit": "pcs",
                     "status": "A",
+                    "source_table": "tbsstock",
+                    "source_row_number": 12,
                     "deterministic_id": deterministic_legacy_uuid("product", "P001"),
                 },
                 {
@@ -400,6 +502,7 @@ async def test_run_canonical_import_orders_dependencies_and_holding(
                     "line_number": 1,
                     "product_code": "RB052-6",
                     "product_name": "Variant belt",
+                    "product_category": "Legacy Belt",
                     "unit": "pcs",
                     "qty": "2",
                     "unit_price": "50.00",
@@ -504,7 +607,8 @@ async def test_run_canonical_import_orders_dependencies_and_holding(
     invoice_args = next(
         args for query, args in connection.execute_calls if "INSERT INTO invoices" in query
     )
-    customer_snapshot = json.loads(cast(str, customer_args[10]))
+    assert customer_args[10] == "unknown"
+    customer_snapshot = json.loads(cast(str, customer_args[11]))
     supplier_snapshot = json.loads(cast(str, supplier_args[6]))
     product_snapshot = json.loads(cast(str, product_args[8]))
     assert order_args[4] == "fulfilled"
@@ -514,9 +618,16 @@ async def test_run_canonical_import_orders_dependencies_and_holding(
     assert customer_snapshot["legacy_code"] == "C001"
     assert supplier_snapshot["role"] == "supplier"
     assert product_snapshot["legacy_code"] == "P001"
+    assert product_snapshot["legacy_category"] == "Legacy Belt"
+    assert product_snapshot["category_source"] == "manual_override"
+    assert product_snapshot["category_rule_id"] == "manual-override"
+    assert product_snapshot["category_confidence"] == "1.00"
     assert order_snapshot["source_table"] == "tbsslipx"
     assert order_snapshot["legacy_doc_number"] == "1130826001"
     assert invoice_snapshot["customer_code"] == "C001"
+    assert order_line_args[15] == "Variant belt"
+    assert order_line_args[16] == "Variant belt"
+    assert order_line_args[17] == "Legacy Belt"
     assert (
         canonical._tenant_scoped_uuid(tenant_id, "product", UNKNOWN_PRODUCT_CODE) in order_line_args
     )
@@ -681,6 +792,97 @@ async def test_run_canonical_import_preadjusted_pricing_uses_original_list_price
 
 
 @pytest.mark.asyncio
+async def test_run_canonical_import_stamps_normalized_product_snapshots(monkeypatch) -> None:
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000421")
+    connection = FakeCanonicalConnection(
+        {
+            "normalized_parties": [
+                {
+                    "legacy_code": "C001",
+                    "role": "customer",
+                    "company_name": "Snapshot Co",
+                    "tax_id": "12345675",
+                    "full_address": "Taipei",
+                    "address": "Taipei",
+                    "phone": "02-1234",
+                    "email": "",
+                    "contact_person": "Alice",
+                    "deterministic_id": deterministic_legacy_uuid("party", "customer", "C001"),
+                }
+            ],
+            "normalized_products": [
+                {
+                    "legacy_code": "P001",
+                    "name": "Master Widget",
+                    "category": "BELT",
+                    "unit": "pcs",
+                    "status": "A",
+                    "deterministic_id": deterministic_legacy_uuid("product", "P001"),
+                }
+            ],
+            "normalized_warehouses": [],
+            "normalized_inventory_prep": [],
+            "product_code_mapping": [],
+            "sales_headers": [
+                {
+                    "doc_number": "1130826002",
+                    "invoice_date": "2024-08-26",
+                    "customer_code": "C001",
+                    "customer_name": "Snapshot Co",
+                    "address": "Taipei",
+                    "currency_code": "TWD",
+                    "exchange_rate": "1.0",
+                    "subtotal": "100.00",
+                    "tax_type": "1",
+                    "tax_amount": "5.00",
+                    "total_amount": "105.00",
+                    "remark": "snapshot",
+                    "created_by": "SYSTEM",
+                    "tax_rate": "0.0500",
+                }
+            ],
+            "sales_lines": [
+                {
+                    "doc_number": "1130826002",
+                    "line_number": 1,
+                    "product_code": "P001",
+                    "product_name": "Invoice line widget",
+                    "unit": "pcs",
+                    "qty": "2",
+                    "unit_price": "50.00",
+                    "extended_amount": "100.00",
+                    "tax_amount": "5.00",
+                    "line_tax_amount": "5.00",
+                    "available_stock_snapshot": 7,
+                }
+            ],
+            "purchase_headers": [],
+            "purchase_lines": [],
+        }
+    )
+
+    async def fake_open_raw_connection() -> FakeCanonicalConnection:
+        return connection
+
+    monkeypatch.setattr(canonical, "_open_raw_connection", fake_open_raw_connection)
+
+    result = await canonical.run_canonical_import(
+        batch_id="batch-snapshot",
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+    )
+
+    assert result.order_line_count == 1
+
+    order_line_args = next(
+        args for query, args in connection.execute_calls if "INSERT INTO order_lines" in query
+    )
+    assert order_line_args[15] == "Invoice line widget"
+    assert order_line_args[16] == "Master Widget"
+    assert order_line_args[17] == "BELT"
+
+
+@pytest.mark.asyncio
 async def test_run_canonical_import_uses_upserts_for_replay_safety(monkeypatch) -> None:
     tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000402")
     connection = FakeCanonicalConnection(
@@ -731,8 +933,39 @@ async def test_run_canonical_import_uses_upserts_for_replay_safety(monkeypatch) 
                 }
             ],
             "product_code_mapping": [],
-            "sales_headers": [],
-            "sales_lines": [],
+            "sales_headers": [
+                {
+                    "doc_number": "1130826005",
+                    "invoice_date": "2024-08-26",
+                    "customer_code": "C001",
+                    "customer_name": "Replay Co",
+                    "address": "Taipei",
+                    "currency_code": "TWD",
+                    "exchange_rate": "1.0",
+                    "subtotal": "100.00",
+                    "tax_type": "1",
+                    "tax_amount": "5.00",
+                    "total_amount": "105.00",
+                    "remark": "replay",
+                    "created_by": "SYSTEM",
+                    "tax_rate": "0.0500",
+                }
+            ],
+            "sales_lines": [
+                {
+                    "doc_number": "1130826005",
+                    "line_number": 1,
+                    "product_code": "P001",
+                    "product_name": "Replay Widget",
+                    "unit": "pcs",
+                    "qty": "2",
+                    "unit_price": "50.00",
+                    "extended_amount": "100.00",
+                    "tax_amount": "5.00",
+                    "line_tax_amount": "5.00",
+                    "available_stock_snapshot": 8,
+                }
+            ],
         }
     )
 
@@ -748,11 +981,127 @@ async def test_run_canonical_import_uses_upserts_for_replay_safety(monkeypatch) 
     )
 
     sql = "\n".join(query for query, _ in connection.execute_calls)
+    order_line_query = next(
+        query for query, _ in connection.execute_calls if "INSERT INTO order_lines" in query
+    )
     assert "INSERT INTO customers" in sql and "ON CONFLICT" in sql
+    assert "customer_type" in sql
+    assert "EXCLUDED.customer_type = 'unknown'" in sql
     assert "INSERT INTO product" in sql and "ON CONFLICT" in sql
     assert "INSERT INTO warehouse" in sql and "ON CONFLICT" in sql
     assert "INSERT INTO inventory_stock" in sql and "ON CONFLICT" in sql
+    assert "product_name_snapshot" in order_line_query
+    assert "product_category_snapshot" in order_line_query
+    assert (
+        "product_name_snapshot = COALESCE(order_lines.product_name_snapshot, EXCLUDED.product_name_snapshot)"
+        in order_line_query
+    )
+    assert (
+        "product_category_snapshot = COALESCE(order_lines.product_category_snapshot, EXCLUDED.product_category_snapshot)"
+        in order_line_query
+    )
     assert 'INSERT INTO "raw_legacy".canonical_record_lineage' in sql and "ON CONFLICT" in sql
+
+
+@pytest.mark.asyncio
+async def test_run_canonical_import_replay_preserves_existing_snapshot_values(monkeypatch) -> None:
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000452")
+    doc_number = "1130826010"
+    connection = FakeCanonicalConnection(
+        {
+            "normalized_parties": [
+                {
+                    "legacy_code": "C001",
+                    "role": "customer",
+                    "company_name": "Replay Snapshot Co",
+                    "tax_id": "12345675",
+                    "full_address": "Taipei",
+                    "address": "Taipei",
+                    "phone": "02-1234",
+                    "email": "",
+                    "contact_person": "Alice",
+                    "deterministic_id": deterministic_legacy_uuid("party", "customer", "C001"),
+                }
+            ],
+            "normalized_products": [
+                {
+                    "legacy_code": "P001",
+                    "name": "Replay Master Widget v1",
+                    "category": "BELT",
+                    "unit": "pcs",
+                    "status": "A",
+                    "deterministic_id": deterministic_legacy_uuid("product", "P001"),
+                }
+            ],
+            "normalized_warehouses": [],
+            "normalized_inventory_prep": [],
+            "product_code_mapping": [],
+            "sales_headers": [
+                {
+                    "doc_number": doc_number,
+                    "invoice_date": "2024-08-26",
+                    "customer_code": "C001",
+                    "customer_name": "Replay Snapshot Co",
+                    "address": "Taipei",
+                    "currency_code": "TWD",
+                    "exchange_rate": "1.0",
+                    "subtotal": "100.00",
+                    "tax_type": "1",
+                    "tax_amount": "5.00",
+                    "total_amount": "105.00",
+                    "remark": "replay",
+                    "created_by": "SYSTEM",
+                    "tax_rate": "0.0500",
+                }
+            ],
+            "sales_lines": [
+                {
+                    "doc_number": doc_number,
+                    "line_number": 1,
+                    "product_code": "P001",
+                    "product_name": "Replay Line Widget v1",
+                    "unit": "pcs",
+                    "qty": "2",
+                    "unit_price": "50.00",
+                    "extended_amount": "100.00",
+                    "tax_amount": "5.00",
+                    "line_tax_amount": "5.00",
+                    "available_stock_snapshot": 8,
+                }
+            ],
+        }
+    )
+
+    async def fake_open_raw_connection() -> FakeCanonicalConnection:
+        return connection
+
+    monkeypatch.setattr(canonical, "_open_raw_connection", fake_open_raw_connection)
+
+    await canonical.run_canonical_import(
+        batch_id="batch-replay-snapshot",
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+    )
+
+    order_line_id = canonical._tenant_scoped_uuid(tenant_id, "order-line", doc_number, "1")
+    first_import_row = connection._fake_order_lines[order_line_id]
+    assert first_import_row["product_name_snapshot"] == "Replay Master Widget v1"
+    assert first_import_row["product_category_snapshot"] == "BELT"
+
+    connection.rows_by_key["normalized_products"][0]["name"] = "Replay Master Widget v2"
+    connection.rows_by_key["normalized_products"][0]["category"] = "RENAMED"
+    connection.rows_by_key["sales_lines"][0]["product_name"] = "Replay Line Widget v2"
+
+    await canonical.run_canonical_import(
+        batch_id="batch-replay-snapshot",
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+    )
+
+    replayed_row = connection._fake_order_lines[order_line_id]
+    assert replayed_row["description"] == "Replay Line Widget v2"
+    assert replayed_row["product_name_snapshot"] == "Replay Master Widget v1"
+    assert replayed_row["product_category_snapshot"] == "BELT"
 
 
 @pytest.mark.asyncio

@@ -271,6 +271,8 @@ def _build_product_master_snapshot(row: dict[str, object]) -> dict[str, object]:
             "legacy_category": _as_text(row.get("legacy_category")),
             "stock_kind": _as_text(row.get("stock_kind")),
             "category_source": _as_text(row.get("category_source")),
+            "category_rule_id": _as_text(row.get("category_rule_id")),
+            "category_confidence": _as_text(row.get("category_confidence")),
             "description": _as_text(row.get("description")),
             "unit": _as_text(row.get("unit")),
             "status": _as_text(row.get("status")),
@@ -669,6 +671,7 @@ async def _iter_normalized_parties(
 			phone,
 			email,
 			contact_person,
+            customer_type,
 			source_table,
 			source_row_number
 		FROM {quoted_schema}.normalized_parties
@@ -696,6 +699,8 @@ async def _iter_normalized_products(
 			legacy_category,
 			stock_kind,
 			category_source,
+            category_rule_id,
+            category_confidence,
 			unit,
 			status,
 			source_table,
@@ -1033,12 +1038,13 @@ async def _import_customers(
 				contact_email,
 				credit_limit,
 				status,
+                customer_type,
                 legacy_master_snapshot,
 				version,
 				created_at,
 				updated_at
 			)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::json, 1, NOW(), NOW())
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::json, 1, NOW(), NOW())
 			ON CONFLICT (tenant_id, normalized_business_number) DO UPDATE SET
 				company_name = EXCLUDED.company_name,
 				billing_address = EXCLUDED.billing_address,
@@ -1046,6 +1052,10 @@ async def _import_customers(
 				contact_phone = EXCLUDED.contact_phone,
 				contact_email = EXCLUDED.contact_email,
 				status = EXCLUDED.status,
+                customer_type = CASE
+                    WHEN EXCLUDED.customer_type = 'unknown' THEN customers.customer_type
+                    ELSE EXCLUDED.customer_type
+                END,
                 legacy_master_snapshot = EXCLUDED.legacy_master_snapshot,
 				updated_at = NOW()
 			""",
@@ -1059,6 +1069,7 @@ async def _import_customers(
             contact_email,
             Decimal("0.00"),
             "active",
+            _as_text(row.get("customer_type")) or "unknown",
             json.dumps(legacy_master_snapshot),
         )
         # Resolve actual customer_id: ON CONFLICT may have reused an existing row
@@ -1167,10 +1178,11 @@ async def _import_products(
     tenant_id: uuid.UUID,
     batch_id: str,
     product_rows: AsyncIterable[dict[str, object]],
-) -> tuple[int, int, dict[str, uuid.UUID]]:
+) -> tuple[int, int, dict[str, uuid.UUID], dict[str, dict[str, str | None]]]:
     count = 0
     lineage_count = 0
     product_by_code: dict[str, uuid.UUID] = {}
+    product_snapshot_by_code: dict[str, dict[str, str | None]] = {}
     unknown_product_present = False
 
     async def _upsert_product_row(row: dict[str, object]) -> None:
@@ -1180,6 +1192,8 @@ async def _import_products(
             unknown_product_present = True
         product_id = _tenant_scoped_uuid(tenant_id, "product", legacy_code)
         legacy_master_snapshot = _build_product_master_snapshot(row)
+        product_name = _as_text(row.get("name")) or legacy_code
+        product_category = _as_text(row.get("category")) or None
         status = (
             "inactive"
             if legacy_code == UNKNOWN_PRODUCT_CODE
@@ -1232,8 +1246,8 @@ async def _import_products(
             product_id,
             tenant_id,
             legacy_code,
-            _as_text(row.get("name")) or legacy_code,
-            _as_text(row.get("category")) or None,
+            product_name,
+            product_category,
             _as_text(row.get("description")) if row.get("description") else None,
             _as_text(row.get("unit")) or "pcs",
             status,
@@ -1252,6 +1266,10 @@ async def _import_products(
             _as_int(row.get("source_row_number")),
         )
         product_by_code[legacy_code] = product_id
+        product_snapshot_by_code[legacy_code] = {
+            "name": product_name,
+            "category": product_category,
+        }
         count += 1
         lineage_count += 1
 
@@ -1271,7 +1289,31 @@ async def _import_products(
             }
         )
 
-    return count, lineage_count, product_by_code
+    return count, lineage_count, product_by_code, product_snapshot_by_code
+
+
+def _resolve_order_line_product_snapshots(
+    line: dict[str, object],
+    *,
+    legacy_product_code: str,
+    mapped_product_code: str,
+    product_snapshot_by_code: dict[str, dict[str, str | None]],
+) -> tuple[str, str | None]:
+    product_snapshot = product_snapshot_by_code.get(mapped_product_code, {})
+    fallback_name = _as_text(line.get("product_name")) or legacy_product_code or mapped_product_code
+    fallback_category = (
+        _as_text(line.get("product_category_snapshot"))
+        or _as_text(line.get("product_category"))
+        or _as_text(line.get("legacy_category"))
+        or None
+    )
+    master_name = product_snapshot.get("name")
+    master_category = product_snapshot.get("category")
+
+    if mapped_product_code == UNKNOWN_PRODUCT_CODE:
+        return fallback_name or master_name or mapped_product_code, fallback_category or master_category
+
+    return master_name or fallback_name or mapped_product_code, master_category or fallback_category
 
 
 async def _import_warehouses(
@@ -1525,6 +1567,7 @@ async def _import_sales_history(
     customer_by_code: dict[str, uuid.UUID],
     business_number_by_code: dict[str, str],
     product_by_code: dict[str, uuid.UUID],
+    product_snapshot_by_code: dict[str, dict[str, str | None]],
     product_mappings: dict[str, str],
 ) -> tuple[int, int, int, int, int]:
     lines_by_doc: dict[str, list[dict[str, object]]] = {}
@@ -1742,6 +1785,13 @@ async def _import_sales_history(
                     f"cannot resolve product {legacy_product_code}"
                 )
 
+            product_name_snapshot, product_category_snapshot = _resolve_order_line_product_snapshots(
+                line,
+                legacy_product_code=legacy_product_code,
+                mapped_product_code=mapped_product_code,
+                product_snapshot_by_code=product_snapshot_by_code,
+            )
+
             line_number = _as_int(line.get("line_number"), 1)
             # col_21 = discounted/actual unit price; col_19 = foldprice (may be pre-adjusted)
             list_unit_price = _as_decimal(line.get("list_unit_price"), "0.00")
@@ -1814,6 +1864,8 @@ async def _import_sales_history(
 					subtotal_amount,
 					total_amount,
 					description,
+                    product_name_snapshot,
+                    product_category_snapshot,
 					available_stock_snapshot,
 					backorder_note,
 					created_at
@@ -1837,6 +1889,8 @@ async def _import_sales_history(
                     $16,
                     $17,
                     $18,
+                    $19,
+                    $20,
                     NOW()
                 )
 				ON CONFLICT (id) DO UPDATE SET
@@ -1853,6 +1907,8 @@ async def _import_sales_history(
 					subtotal_amount = EXCLUDED.subtotal_amount,
 					total_amount = EXCLUDED.total_amount,
 					description = EXCLUDED.description,
+                    product_name_snapshot = COALESCE(order_lines.product_name_snapshot, EXCLUDED.product_name_snapshot),
+                    product_category_snapshot = COALESCE(order_lines.product_category_snapshot, EXCLUDED.product_category_snapshot),
 					available_stock_snapshot = EXCLUDED.available_stock_snapshot
 				""",
                 order_line_id,
@@ -1871,6 +1927,8 @@ async def _import_sales_history(
                 subtotal,
                 line_total,
                 _as_text(line.get("product_name")) or legacy_product_code,
+                product_name_snapshot,
+                product_category_snapshot,
                 _as_decimal(line.get("available_stock_snapshot"), "0"),
                 None,  # backorder_note: legacy import does not calculate backorder status
             )
@@ -2400,6 +2458,7 @@ async def run_canonical_import(
                 counts["product_count"],
                 product_lineage_count,
                 product_by_code,
+                product_snapshot_by_code,
             ) = await _import_products(
                 connection,
                 resolved_schema,
@@ -2528,6 +2587,7 @@ async def run_canonical_import(
                 customer_by_code,
                 business_number_by_code,
                 product_by_code,
+                product_snapshot_by_code,
                 product_mappings,
             )
             counts["lineage_count"] += sales_lineage_count
