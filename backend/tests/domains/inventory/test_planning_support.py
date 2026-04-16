@@ -21,6 +21,7 @@ from common.models.order_line import OrderLine
 from common.models.product import Product
 from common.models.warehouse import Warehouse
 from domains.customers.models import Customer
+from domains.inventory import routes as inventory_routes
 from domains.inventory.services import get_planning_support
 from domains.product_analytics.service import refresh_sales_monthly
 from tests.domains.orders._helpers import make_test_token
@@ -412,6 +413,24 @@ async def test_planning_support_endpoint_returns_aggregate_only_window(
         "includes_current_month": False,
         "is_partial": False,
     }
+
+
+@pytest.mark.asyncio
+async def test_planning_support_endpoint_returns_403_when_feature_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+    tenant_id: uuid.UUID,
+) -> None:
+    transport = ASGITransport(app=app)
+    async with HttpxAsyncClient(
+        transport=transport,
+        base_url="http://test",
+        headers=_auth_header(tenant_id),
+    ) as client:
+        monkeypatch.setattr(inventory_routes.settings, "inventory_planning_support_enabled", False)
+        response = await client.get(f"/api/v1/inventory/products/{uuid.uuid4()}/planning-support")
+
+    assert response.status_code == 403
+    assert response.json() == {"detail": "Planning support is disabled"}
 
 
 @pytest.mark.asyncio

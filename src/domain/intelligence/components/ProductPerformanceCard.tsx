@@ -6,6 +6,7 @@ import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayo
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
+import { isFeatureDisabledError } from "../../../lib/featureGates";
 import { buildProductDetailPath } from "../../../lib/routes";
 import { useProductPerformance } from "../hooks/useIntelligence";
 import type { ProductLifecycleStage, ProductPerformanceDataBasis } from "../types";
@@ -72,6 +73,10 @@ export function ProductPerformanceCard() {
     25,
     includeCurrentMonth,
   );
+
+  if (!isLoading && isFeatureDisabledError(error)) {
+    return null;
+  }
 
   return (
     <SectionCard

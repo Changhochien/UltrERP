@@ -423,6 +423,19 @@ class Settings(BaseSettings):
 			"value_type": "bool",
 		},
 	)
+	inventory_planning_support_enabled: bool = Field(
+		default=True,
+		validation_alias=AliasChoices(
+			"INVENTORY_PLANNING_SUPPORT_ENABLED",
+			"inventory_planning_support_enabled",
+		),
+		json_schema_extra={
+			"description": "Enable inventory planning support analytics",
+			"category": "inventory",
+			"is_sensitive": False,
+			"value_type": "bool",
+		},
+	)
 	egui_submission_mode: Literal["mock", "live"] = Field(
 		default="mock",
 		validation_alias=AliasChoices("EGUI_SUBMISSION_MODE", "egui_submission_mode"),

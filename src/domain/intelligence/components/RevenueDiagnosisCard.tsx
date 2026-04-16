@@ -5,6 +5,7 @@ import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayo
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
+import { isFeatureDisabledError } from "../../../lib/featureGates";
 import { useRevenueDiagnosis } from "../hooks/useIntelligence";
 import type { RevenueDiagnosisDataBasis, RevenueDiagnosisPeriod } from "../types";
 
@@ -43,6 +44,10 @@ export function RevenueDiagnosisCard() {
   const [categoryInput, setCategoryInput] = useState("");
   const deferredCategory = useDeferredValue(categoryInput.trim() || undefined);
   const { data, isLoading, error } = useRevenueDiagnosis(period, undefined, deferredCategory, 10);
+
+  if (!isLoading && isFeatureDisabledError(error)) {
+    return null;
+  }
 
   return (
     <SectionCard

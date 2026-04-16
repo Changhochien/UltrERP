@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.auth import require_role
+from common.config import settings
 from common.database import get_db
 from common.models.inventory_stock import InventoryStock
 from common.models.product import Product
@@ -108,6 +109,11 @@ ReadUser = Annotated[dict, Depends(require_role("admin", "warehouse", "sales"))]
 WriteUser = Annotated[dict, Depends(require_role("admin", "warehouse"))]
 
 ACTOR_ID = "system"
+
+
+def _require_feature_enabled(enabled: bool, detail: str) -> None:
+    if not enabled:
+        raise HTTPException(status_code=403, detail=detail)
 
 
 def _api_reason_code(value: str) -> str:
@@ -999,6 +1005,10 @@ async def get_planning_support_endpoint(
     months: int = Query(12, ge=1, le=24),
     include_current_month: bool = Query(True),
 ) -> PlanningSupportResponse:
+    _require_feature_enabled(
+        settings.inventory_planning_support_enabled,
+        "Planning support is disabled",
+    )
     result = await get_planning_support(
         session,
         tenant_id,

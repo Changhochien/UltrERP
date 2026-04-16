@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { RevenueDiagnosisCard } from "../../domain/intelligence/components/RevenueDiagnosisCard";
@@ -126,5 +126,15 @@ describe("RevenueDiagnosisCard", () => {
     render(<RevenueDiagnosisCard />);
 
     expect(await screen.findByText("No qualifying revenue drivers for this comparison window.")).toBeTruthy();
+  });
+
+  it("suppresses the card when the feature is disabled", async () => {
+    vi.mocked(fetchRevenueDiagnosis).mockRejectedValue(new Error("Revenue diagnosis is disabled"));
+
+    render(<RevenueDiagnosisCard />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("Revenue Diagnosis")).toBeNull();
+    });
   });
 });

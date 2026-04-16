@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -114,5 +114,19 @@ describe("ProductPerformanceCard", () => {
     );
 
     expect(await screen.findByText("No qualifying products for this comparison window.")).toBeTruthy();
+  });
+
+  it("suppresses the card when the feature is disabled", async () => {
+    vi.mocked(fetchProductPerformance).mockRejectedValue(new Error("Product performance analysis is disabled"));
+
+    render(
+      <MemoryRouter>
+        <ProductPerformanceCard />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText("Product Performance")).toBeNull();
+    });
   });
 });

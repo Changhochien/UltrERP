@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayout";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
+import { isFeatureDisabledError } from "../../../lib/featureGates";
 import {
   Table,
   TableBody,
@@ -69,6 +70,10 @@ export function CustomerBuyingBehaviorCard() {
   const [period, setPeriod] = useState<CustomerBuyingBehaviorPeriod>("12m");
   const [includeCurrentMonth, setIncludeCurrentMonth] = useState(false);
   const { data, isLoading, error } = useCustomerBuyingBehavior(customerType, period, 20, includeCurrentMonth);
+
+  if (!isLoading && isFeatureDisabledError(error)) {
+    return null;
+  }
 
   return (
     <SectionCard

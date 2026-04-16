@@ -16,6 +16,13 @@ import type {
 } from "../../domain/intelligence/types";
 import { apiFetch } from "../apiFetch";
 
+async function readErrorDetail(resp: Response, fallback: string): Promise<string> {
+  const body = await resp.json().catch(() => ({}));
+  return typeof (body as { detail?: unknown }).detail === "string"
+    ? (body as { detail: string }).detail
+    : fallback;
+}
+
 export async function fetchCustomerProductProfile(customerId: string): Promise<CustomerProductProfile> {
   const resp = await apiFetch(`/api/v1/intelligence/customers/${customerId}/product-profile`);
   if (!resp.ok) {
@@ -41,7 +48,7 @@ export async function fetchCustomerBuyingBehavior(
 
   const resp = await apiFetch(`/api/v1/intelligence/customer-buying-behavior?${params.toString()}`);
   if (!resp.ok) {
-    throw new Error("Failed to fetch customer buying behavior");
+    throw new Error(await readErrorDetail(resp, "Failed to fetch customer buying behavior"));
   }
   return resp.json();
 }
@@ -129,7 +136,7 @@ export async function fetchRevenueDiagnosis(
 
   const resp = await apiFetch(`/api/v1/intelligence/revenue-diagnosis?${params.toString()}`);
   if (!resp.ok) {
-    throw new Error("Failed to fetch revenue diagnosis");
+    throw new Error(await readErrorDetail(resp, "Failed to fetch revenue diagnosis"));
   }
   return resp.json();
 }
@@ -153,7 +160,7 @@ export async function fetchProductPerformance(
 
   const resp = await apiFetch(`/api/v1/intelligence/product-performance?${params.toString()}`);
   if (!resp.ok) {
-    throw new Error("Failed to fetch product performance");
+    throw new Error(await readErrorDetail(resp, "Failed to fetch product performance"));
   }
   return resp.json();
 }

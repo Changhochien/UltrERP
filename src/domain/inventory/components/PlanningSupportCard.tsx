@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { SectionCard } from "@/components/layout/PageLayout";
+import { isFeatureDisabledError } from "@/lib/featureGates";
 import { useTranslation } from "react-i18next";
 
 import { useProductPlanningSupport } from "../hooks/useProductPlanningSupport";
@@ -33,6 +34,10 @@ export function PlanningSupportCard({ productId }: PlanningSupportCardProps) {
     months: 12,
     includeCurrentMonth: true,
   });
+
+  if (!loading && isFeatureDisabledError(error)) {
+    return null;
+  }
 
   const actions = data ? (
     <div className="flex flex-wrap items-center gap-2">

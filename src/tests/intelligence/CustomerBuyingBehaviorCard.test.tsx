@@ -130,4 +130,14 @@ describe("CustomerBuyingBehaviorCard", () => {
 
     expect(await screen.findByText("No qualifying customer buying behavior for this segment yet.")).toBeTruthy();
   });
+
+  it("suppresses the card when the feature is disabled", async () => {
+    vi.mocked(fetchCustomerBuyingBehavior).mockRejectedValue(new Error("Customer buying behavior is disabled"));
+
+    render(<CustomerBuyingBehaviorCard />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("Customer Buying Behavior")).toBeNull();
+    });
+  });
 });

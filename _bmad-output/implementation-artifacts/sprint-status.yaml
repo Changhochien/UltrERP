@@ -944,11 +944,11 @@ development_status:
         validation: "Validated on 2026-04-16 with `cd /Volumes/2T_SSD_App/Projects/UltrERP/backend && uv run pytest tests/domains/intelligence/test_customer_buying_behavior_service.py tests/domains/intelligence/test_routes.py tests/test_mcp_intelligence.py tests/test_mcp_auth.py -q` (`75 passed in 1.80s`) and `pnpm vitest run src/tests/intelligence/CustomerBuyingBehaviorCard.test.tsx` (`3 passed`). Coverage includes Story 19.9 cohort filtering, sale-time snapshot semantics, transactional fallback behavior, deterministic top-category and cross-sell ordering, null lift handling for `customer_type = all`, feature-disabled REST/MCP behavior, and the mounted `IntelligencePage` customer buying behavior card. Final focused review over the Story 20.7 files returned no findings."
         prerequisites: ["19-3-customer-product-profile", "19-9-prospect-gap-customer-type", "20.3"]
       20-8-product-analytics-feature-gate:
-        status: "ready-for-dev"
+        status: "done"
         story_id: "20.8"
         title: "Product Analytics Feature Gate"
         story_file: "20-8-product-analytics-feature-gate.md"
-        validation: "Drafted against the repo's actual gate stack: per-capability settings booleans, route-level auth and 403 helpers, MCP scope and ToolError enforcement, and existing intelligence/inventory frontend features. The validated story deliberately avoids a speculative public product-analytics route or AppFeature in v1."
+        validation: "Validated on 2026-04-16 with `cd /Volumes/2T_SSD_App/Projects/UltrERP/backend && uv run pytest tests/domains/intelligence/test_routes.py tests/test_mcp_intelligence.py tests/test_mcp_auth.py tests/domains/inventory/test_planning_support.py -q` (`77 passed in 1.87s`) and `pnpm --dir /Volumes/2T_SSD_App/Projects/UltrERP exec vitest run src/tests/intelligence/RevenueDiagnosisCard.test.tsx src/tests/intelligence/ProductPerformanceCard.test.tsx src/tests/intelligence/CustomerBuyingBehaviorCard.test.tsx src/domain/inventory/components/AnalyticsTab.test.tsx` (`14 passed`). Story 20.8 now adds the missing inventory planning-support toggle, preserves existing intelligence route/MCP gate semantics, and suppresses disabled Epic 20 cards inside the owning-domain intelligence and inventory surfaces without introducing a speculative shared frontend feature registry."
         prerequisites: ["20.4", "20.5", "20.6", "20.7"]
       20-9-product-analytics-backend-test-coverage:
         status: "ready-for-dev"
