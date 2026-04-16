@@ -44,6 +44,21 @@ function formatDataBasis(
   });
 }
 
+function formatStageReason(
+  reason: string | undefined,
+  t: ReturnType<typeof useTranslation>["t"],
+): string | null {
+  if (!reason) {
+    return null;
+  }
+
+  if (!reason.startsWith("rule:")) {
+    return reason;
+  }
+
+  return t(`reason.${reason.slice(5)}`, { defaultValue: reason });
+}
+
 export function ProductPerformanceCard() {
   const { t, i18n } = useTranslation("common", { keyPrefix: "intelligence.productPerformance" });
   const [categoryInput, setCategoryInput] = useState("");
@@ -195,8 +210,10 @@ export function ProductPerformanceCard() {
                               defaultValue: product.lifecycle_stage,
                             })}
                           </Badge>
-                          {product.stage_reasons[0] ? (
-                            <div className="mt-2 max-w-xs text-xs text-muted-foreground">{product.stage_reasons[0]}</div>
+                          {formatStageReason(product.stage_reasons[0], t) ? (
+                            <div className="mt-2 max-w-xs text-xs text-muted-foreground">
+                              {formatStageReason(product.stage_reasons[0], t)}
+                            </div>
                           ) : null}
                         </td>
                         <td className="px-4 py-3 align-top">{formatTWD(product.current_period.revenue)}</td>

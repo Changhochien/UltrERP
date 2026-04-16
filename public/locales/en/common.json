@@ -278,6 +278,14 @@
         "mature": "Mature",
         "stable": "Stable"
       },
+      "reason": {
+        "new": "First sale landed inside the current comparison window.",
+        "end_of_life": "No current-window revenue and the last sale was at least 6 complete months ago.",
+        "declining": "Current revenue fell below 80% of the prior comparison window.",
+        "growing": "Current revenue is at least 20% above the prior comparison window.",
+        "mature": "More than 24 months on sale with revenue holding near the prior window.",
+        "stable": "Current revenue remained positive without triggering another lifecycle rule."
+      },
       "empty": "No qualifying products for this comparison window.",
       "loadError": "Failed to load product performance."
     },

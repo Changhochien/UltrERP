@@ -7,11 +7,18 @@ from decimal import Decimal
 import pytest
 import pytest_asyncio
 from freezegun import freeze_time
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.database import AsyncSessionLocal, engine
+from common.models.order_line import OrderLine
 from domains.intelligence.service import get_product_performance
 from domains.product_analytics.models import SalesMonthly
+from tests.domains.intelligence.test_service import (
+    _create_customer_for_tenant,
+    _create_order,
+    _create_product_for_tenant,
+)
 
 
 def _month_start(value: date) -> date:
@@ -63,6 +70,25 @@ async def _create_monthly_point(
         )
     )
     await session.flush()
+
+
+async def _apply_line_snapshots(
+    session: AsyncSession,
+    order_id: uuid.UUID,
+    *,
+    product_name_snapshot: str,
+    product_category_snapshot: str,
+) -> None:
+    lines = (
+        await session.execute(
+            select(OrderLine)
+            .where(OrderLine.order_id == order_id)
+            .order_by(OrderLine.line_number)
+        )
+    ).scalars().all()
+    for line in lines:
+        line.product_name_snapshot = product_name_snapshot
+        line.product_category_snapshot = product_category_snapshot
 
 
 @pytest.mark.asyncio
@@ -260,3 +286,164 @@ async def test_get_product_performance_returns_empty_state_without_sales(
     assert result.window_is_partial is False
     assert result.current_window.start_month == date(2025, 4, 1)
     assert result.current_window.end_month == date(2026, 3, 1)
+
+
+@pytest.mark.asyncio
+@freeze_time("2026-04-16T10:00:00Z")
+async def test_get_product_performance_uses_full_history_and_latest_snapshot_timestamp(
+    db_session: AsyncSession,
+    tenant_id: uuid.UUID,
+) -> None:
+    customer = await _create_customer_for_tenant(db_session, "Portfolio Customer", tenant_id)
+    product = await _create_product_for_tenant(db_session, "Portfolio Belt", "Belts", tenant_id)
+
+    historical_order = await _create_order(
+        db_session,
+        customer=customer,
+        created_at=date(2023, 1, 15),
+        status="confirmed",
+        lines=[(product, Decimal("30.00"))],
+        tenant_id=tenant_id,
+    )
+    await _apply_line_snapshots(
+        db_session,
+        historical_order.id,
+        product_name_snapshot="Original Belt",
+        product_category_snapshot="Belts",
+    )
+
+    prior_order = await _create_order(
+        db_session,
+        customer=customer,
+        created_at=date(2025, 3, 10),
+        status="confirmed",
+        lines=[(product, Decimal("100.00"))],
+        tenant_id=tenant_id,
+    )
+    await _apply_line_snapshots(
+        db_session,
+        prior_order.id,
+        product_name_snapshot="Prior Belt",
+        product_category_snapshot="Belts",
+    )
+
+    earlier_current_order = await _create_order(
+        db_session,
+        customer=customer,
+        created_at=date(2026, 3, 5),
+        status="confirmed",
+        lines=[(product, Decimal("55.00"))],
+        tenant_id=tenant_id,
+    )
+    await _apply_line_snapshots(
+        db_session,
+        earlier_current_order.id,
+        product_name_snapshot="Zulu Belt",
+        product_category_snapshot="Zulu Category",
+    )
+
+    latest_current_order = await _create_order(
+        db_session,
+        customer=customer,
+        created_at=date(2026, 3, 20),
+        status="confirmed",
+        lines=[(product, Decimal("55.00"))],
+        tenant_id=tenant_id,
+    )
+    await _apply_line_snapshots(
+        db_session,
+        latest_current_order.id,
+        product_name_snapshot="Alpha Belt",
+        product_category_snapshot="Alpha Category",
+    )
+
+    await _create_monthly_point(
+        db_session,
+        tenant_id,
+        product_id=product.id,
+        month_start=date(2025, 3, 1),
+        product_name_snapshot="Prior Belt",
+        product_category_snapshot="Belts",
+        quantity_sold="10.000",
+        revenue="100.00",
+    )
+    await _create_monthly_point(
+        db_session,
+        tenant_id,
+        product_id=product.id,
+        month_start=date(2026, 3, 1),
+        product_name_snapshot="Zulu Belt",
+        product_category_snapshot="Zulu Category",
+        quantity_sold="5.000",
+        revenue="55.00",
+    )
+    await _create_monthly_point(
+        db_session,
+        tenant_id,
+        product_id=product.id,
+        month_start=date(2026, 3, 1),
+        product_name_snapshot="Alpha Belt",
+        product_category_snapshot="Alpha Category",
+        quantity_sold="5.000",
+        revenue="55.00",
+    )
+    await db_session.commit()
+
+    result = await get_product_performance(db_session, tenant_id, limit=10)
+
+    assert result.total == 1
+    row = result.products[0]
+    assert row.product_id == product.id
+    assert row.product_name == "Alpha Belt"
+    assert row.product_category_snapshot == "Alpha Category"
+    assert row.first_sale_month == date(2023, 1, 1)
+    assert row.last_sale_month == date(2026, 3, 1)
+    assert row.months_on_sale == 39
+    assert row.lifecycle_stage == "mature"
+    assert row.stage_reasons[0] == "rule:mature"
+
+
+@pytest.mark.asyncio
+@freeze_time("2026-04-16T10:00:00Z")
+async def test_get_product_performance_treats_first_closed_month_as_new(
+    db_session: AsyncSession,
+    tenant_id: uuid.UUID,
+) -> None:
+    customer = await _create_customer_for_tenant(db_session, "Launch Customer", tenant_id)
+    product = await _create_product_for_tenant(db_session, "Launch Belt", "Launch", tenant_id)
+
+    launch_order = await _create_order(
+        db_session,
+        customer=customer,
+        created_at=date(2025, 4, 10),
+        status="confirmed",
+        lines=[(product, Decimal("90.00"))],
+        tenant_id=tenant_id,
+    )
+    await _apply_line_snapshots(
+        db_session,
+        launch_order.id,
+        product_name_snapshot="Launch Belt",
+        product_category_snapshot="Launch",
+    )
+
+    await _create_monthly_point(
+        db_session,
+        tenant_id,
+        product_id=product.id,
+        month_start=date(2025, 4, 1),
+        product_name_snapshot="Launch Belt",
+        product_category_snapshot="Launch",
+        quantity_sold="9.000",
+        revenue="90.00",
+    )
+    await db_session.commit()
+
+    result = await get_product_performance(db_session, tenant_id, limit=10)
+
+    assert result.total == 1
+    row = result.products[0]
+    assert row.product_id == product.id
+    assert row.first_sale_month == date(2025, 4, 1)
+    assert row.lifecycle_stage == "new"
+    assert row.stage_reasons[0] == "rule:new"

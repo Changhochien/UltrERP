@@ -72,6 +72,7 @@ async def test_get_customer_buying_behavior_filters_by_customer_type_and_uses_sn
     belts = await _create_product_for_tenant(db_session, "Alpha Belt", "Belts", tenant_id)
     pulleys = await _create_product_for_tenant(db_session, "Pulley Kit", "Pulleys", tenant_id)
     hoses = await _create_product_for_tenant(db_session, "Hydraulic Hose", "Hoses", tenant_id)
+    adapters = await _create_product_for_tenant(db_session, "Adapter Kit", "Adapters", tenant_id)
 
     for customer in dealers[:3]:
         order = await _create_order(
@@ -105,6 +106,15 @@ async def test_get_customer_buying_behavior_filters_by_customer_type_and_uses_sn
     )
     await _apply_line_snapshots(db_session, hose_only_order.id, ["Hoses"])
 
+    await _create_order(
+        db_session,
+        customer=dealers[0],
+        created_at=_month_moment(1),
+        status="confirmed",
+        lines=[(adapters, Decimal("40.00"))],
+        tenant_id=tenant_id,
+    )
+
     end_user_shared = await _create_order(
         db_session,
         customer=end_users[0],
@@ -127,6 +137,7 @@ async def test_get_customer_buying_behavior_filters_by_customer_type_and_uses_sn
 
     belts.category = "Renamed Live Category"
     pulleys.category = "Renamed Live Pulleys"
+    adapters.category = "Renamed Live Adapter"
     await db_session.flush()
     await db_session.commit()
 
@@ -144,6 +155,7 @@ async def test_get_customer_buying_behavior_filters_by_customer_type_and_uses_sn
     assert behavior.avg_order_count_per_customer == Decimal("1.00")
     assert behavior.avg_categories_per_customer == Decimal("1.50")
     assert [category.category for category in behavior.top_categories] == ["Belts", "Pulleys", "Hoses"]
+    assert "Renamed Live Adapter" not in [category.category for category in behavior.top_categories]
     assert behavior.top_categories[0].revenue == Decimal("480.00")
     assert behavior.top_categories[0].customer_count == 5
     assert behavior.cross_sell_opportunities[0].anchor_category == "Belts"

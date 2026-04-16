@@ -26,7 +26,7 @@ describe("ProductPerformanceCard", () => {
           product_name: "Growth Belt",
           product_category_snapshot: "Belts",
           lifecycle_stage: "growing",
-          stage_reasons: ["Current-period revenue is materially above the prior comparison window."],
+          stage_reasons: ["rule:growing"],
           first_sale_month: "2024-01-01",
           last_sale_month: "2026-05-01",
           months_on_sale: 29,
@@ -65,6 +65,7 @@ describe("ProductPerformanceCard", () => {
     );
     expect(screen.getByText("Belts")).toBeTruthy();
     expect(screen.getByText("Growing", { selector: "div" })).toBeTruthy();
+    expect(screen.getByText("Current revenue is at least 20% above the prior comparison window.")).toBeTruthy();
     expect(screen.getByText("+104.5%")).toBeTruthy();
   });
 
