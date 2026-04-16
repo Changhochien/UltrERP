@@ -20,6 +20,7 @@ from domains.intelligence.mcp import (
     intelligence_market_opportunities,
     intelligence_prospect_gaps,
     intelligence_product_affinity,
+    intelligence_product_performance,
     intelligence_revenue_diagnosis,
 )
 from common.config import settings
@@ -30,6 +31,10 @@ from domains.intelligence.schemas import (
     MarketOpportunities,
     ProspectGaps,
     ProductAffinityMap,
+    ProductPerformance,
+    ProductPerformancePeriodMetrics,
+    ProductPerformanceRow,
+    ProductPerformanceWindow,
     RevenueDiagnosis,
     RevenueDiagnosisComponents,
     RevenueDiagnosisDriver,
@@ -39,6 +44,7 @@ from domains.intelligence.schemas import (
 
 _profile_fn = getattr(intelligence_customer_product_profile, "fn", intelligence_customer_product_profile)
 _affinity_fn = getattr(intelligence_product_affinity, "fn", intelligence_product_affinity)
+_product_performance_fn = getattr(intelligence_product_performance, "fn", intelligence_product_performance)
 _category_trends_fn = getattr(intelligence_category_trends, "fn", intelligence_category_trends)
 _risk_signals_fn = getattr(intelligence_customer_risk_signals, "fn", intelligence_customer_risk_signals)
 _market_opportunities_fn = getattr(intelligence_market_opportunities, "fn", intelligence_market_opportunities)
@@ -196,6 +202,45 @@ def _sample_revenue_diagnosis(anchor_month: str = "2026-03-01") -> RevenueDiagno
     )
 
 
+def _sample_product_performance() -> ProductPerformance:
+    return ProductPerformance(
+        current_window=ProductPerformanceWindow(start_month=date(2026, 3, 1), end_month=date(2026, 5, 1)),
+        prior_window=ProductPerformanceWindow(start_month=date(2025, 12, 1), end_month=date(2026, 2, 1)),
+        computed_at=datetime.now(tz=UTC),
+        products=[
+            ProductPerformanceRow(
+                product_id=uuid.UUID("00000000-0000-0000-0000-000000000321"),
+                product_name="Growth Belt",
+                product_category_snapshot="Belts",
+                lifecycle_stage="growing",
+                stage_reasons=["Current-period revenue is materially above the prior comparison window."],
+                first_sale_month=date(2024, 1, 1),
+                last_sale_month=date(2026, 5, 1),
+                months_on_sale=29,
+                current_period=ProductPerformancePeriodMetrics(
+                    revenue=Decimal("450.00"),
+                    quantity=Decimal("30.000"),
+                    order_count=8,
+                    avg_unit_price=Decimal("15.00"),
+                ),
+                prior_period=ProductPerformancePeriodMetrics(
+                    revenue=Decimal("220.00"),
+                    quantity=Decimal("16.000"),
+                    order_count=5,
+                    avg_unit_price=Decimal("13.75"),
+                ),
+                peak_month_revenue=Decimal("190.00"),
+                revenue_delta_pct=104.5455,
+                data_basis="aggregate_plus_live_current_month",
+                window_is_partial=True,
+            )
+        ],
+        total=1,
+        data_basis="aggregate_plus_live_current_month",
+        window_is_partial=True,
+    )
+
+
 @pytest.mark.asyncio
 async def test_market_opportunities_tool_returns_payload() -> None:
     with (
@@ -250,6 +295,34 @@ async def test_revenue_diagnosis_tool_returns_payload() -> None:
         "anchor_month": date(2026, 3, 1),
         "category": "Belts",
         "limit": 5,
+    }
+
+
+@pytest.mark.asyncio
+async def test_product_performance_tool_returns_payload() -> None:
+    with (
+        _patch_session(),
+        patch("domains.intelligence.mcp.get_http_headers", return_value=_tenant_headers()),
+        patch(
+            "domains.intelligence.mcp.get_product_performance",
+            new_callable=AsyncMock,
+            return_value=_sample_product_performance(),
+        ) as performance_mock,
+    ):
+        result = await _product_performance_fn(
+            category="Belts",
+            lifecycle_stage="growing",
+            limit=25,
+            include_current_month=True,
+        )
+
+    assert result["products"][0]["lifecycle_stage"] == "growing"
+    assert performance_mock.await_args.args[1] == uuid.UUID("00000000-0000-0000-0000-000000000001")
+    assert performance_mock.await_args.kwargs == {
+        "category": "Belts",
+        "lifecycle_stage": "growing",
+        "limit": 25,
+        "include_current_month": True,
     }
 
 
@@ -465,6 +538,12 @@ async def test_intelligence_tools_require_tenant_context() -> None:
             _affinity_fn,
             {},
             "Product affinity analysis is disabled",
+        ),
+        (
+            "intelligence_product_performance_enabled",
+            _product_performance_fn,
+            {},
+            "Product performance analysis is disabled",
         ),
         (
             "intelligence_category_trends_enabled",

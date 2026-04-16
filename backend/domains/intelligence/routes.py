@@ -16,6 +16,7 @@ from domains.intelligence.schemas import (
 	CategoryTrends,
 	MarketOpportunities,
 	CustomerProductProfile,
+	ProductPerformance,
 	ProspectGaps,
 	CustomerRiskSignals,
 	ProductAffinityMap,
@@ -28,6 +29,7 @@ from domains.intelligence.service import (
 	get_market_opportunities,
 	get_prospect_gaps,
 	get_product_affinity_map,
+	get_product_performance,
 	get_revenue_diagnosis,
 )
 
@@ -86,6 +88,33 @@ async def revenue_diagnosis(
 		)
 	except ValueError as exc:
 		raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/product-performance", response_model=ProductPerformance)
+async def product_performance(
+	session: DbSession,
+	user: IntelligenceReadUser,
+	category: str | None = Query(default=None),
+	lifecycle_stage: str | None = Query(default=None, pattern="^(new|end_of_life|declining|growing|mature|stable)$"),
+	limit: int = Query(default=50, ge=1, le=200),
+	include_current_month: bool = Query(default=False),
+) -> ProductPerformance:
+	_require_feature_enabled(
+		settings.intelligence_product_performance_enabled,
+		"Product performance analysis is disabled",
+	)
+	normalized_category = category.strip() if category is not None else None
+	if category is not None and not normalized_category:
+		raise HTTPException(status_code=400, detail="category is required")
+	tenant_id = uuid.UUID(user["tenant_id"])
+	return await get_product_performance(
+		session,
+		tenant_id,
+		category=normalized_category,
+		lifecycle_stage=lifecycle_stage,  # type: ignore[arg-type]
+		limit=limit,
+		include_current_month=include_current_month,
+	)
 
 
 @router.get("/prospect-gaps", response_model=ProspectGaps)

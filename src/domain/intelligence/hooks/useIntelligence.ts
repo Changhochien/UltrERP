@@ -7,6 +7,7 @@ import {
   fetchMarketOpportunities,
   fetchProspectGaps,
   fetchProductAffinityMap,
+  fetchProductPerformance,
   fetchRevenueDiagnosis,
 } from "../../../lib/api/intelligence";
 import type {
@@ -17,6 +18,8 @@ import type {
   ProspectGaps,
   ProspectGapCustomerFilter,
   ProductAffinityMap,
+  ProductLifecycleStage,
+  ProductPerformance,
   RevenueDiagnosis,
   RevenueDiagnosisPeriod,
 } from "../types";
@@ -140,6 +143,46 @@ export function useRevenueDiagnosis(
       isActive = false;
     };
   }, [anchorMonth, category, limit, period]);
+
+  return { data, isLoading, error };
+}
+
+export function useProductPerformance(
+  category?: string,
+  lifecycleStage?: ProductLifecycleStage,
+  limit = 25,
+  includeCurrentMonth = false,
+) {
+  const [data, setData] = useState<ProductPerformance | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const load = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const performance = await fetchProductPerformance(category, lifecycleStage, limit, includeCurrentMonth);
+        if (!isActive) return;
+        setData(performance);
+      } catch (err) {
+        if (!isActive) return;
+        setError(err instanceof Error ? err.message : "Failed to load product performance");
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void load();
+
+    return () => {
+      isActive = false;
+    };
+  }, [category, includeCurrentMonth, lifecycleStage, limit]);
 
   return { data, isLoading, error };
 }

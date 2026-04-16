@@ -196,6 +196,47 @@
         "low": "低信心"
       }
     },
+    "productPerformance": {
+      "title": "商品績效",
+      "description": "依本期與前期營收表現及生命週期，排序最值得追蹤的商品。",
+      "categoryPlaceholder": "篩選品類",
+      "lifecycleLabel": "生命週期",
+      "allStages": "全部階段",
+      "includeCurrentMonth": "包含本月即時資料",
+      "generatedAt": "產生時間：{value}",
+      "partial": "包含本月即時資料",
+      "historical": "僅已結束月份",
+      "dataBasis": {
+        "aggregate_only": "僅聚合資料",
+        "aggregate_plus_live_current_month": "聚合資料 + 本月即時資料"
+      },
+      "summary": {
+        "products": "商品數",
+        "currentWindow": "本期區間",
+        "priorWindow": "前期區間",
+        "windowNote": "顯示前 {count} 筆"
+      },
+      "table": {
+        "product": "商品",
+        "category": "品類",
+        "lifecycle": "生命週期",
+        "currentRevenue": "本期營收",
+        "priorRevenue": "前期營收",
+        "delta": "變化",
+        "peakMonth": "單月高峰營收",
+        "monthsOnSale": "已銷售 {count} 個月"
+      },
+      "stage": {
+        "new": "新商品",
+        "end_of_life": "生命末期",
+        "declining": "下滑",
+        "growing": "成長",
+        "mature": "成熟",
+        "stable": "穩定"
+      },
+      "empty": "此比較區間目前沒有符合條件的商品。",
+      "loadError": "載入商品績效失敗。"
+    },
     "affinity": {
       "title": "商品關聯地圖",
       "description": "以客戶層級共購資料計算重疊率與 Jaccard 關聯分數。",

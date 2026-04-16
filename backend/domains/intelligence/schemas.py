@@ -271,3 +271,54 @@ class RevenueDiagnosis(BaseModel):
     drivers: list[RevenueDiagnosisDriver]
     data_basis: Literal["aggregate_only", "aggregate_plus_live_current_month"]
     window_is_partial: bool
+
+
+ProductPerformanceDataBasis = Literal["aggregate_only", "aggregate_plus_live_current_month"]
+ProductLifecycleStage = Literal["new", "end_of_life", "declining", "growing", "mature", "stable"]
+
+
+class ProductPerformanceWindow(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    start_month: date
+    end_month: date
+
+
+class ProductPerformancePeriodMetrics(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    revenue: Decimal
+    quantity: Decimal
+    order_count: int
+    avg_unit_price: Decimal
+
+
+class ProductPerformanceRow(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    product_id: uuid.UUID
+    product_name: str
+    product_category_snapshot: str
+    lifecycle_stage: ProductLifecycleStage
+    stage_reasons: list[str]
+    first_sale_month: date
+    last_sale_month: date
+    months_on_sale: int
+    current_period: ProductPerformancePeriodMetrics
+    prior_period: ProductPerformancePeriodMetrics
+    peak_month_revenue: Decimal
+    revenue_delta_pct: float | None
+    data_basis: ProductPerformanceDataBasis
+    window_is_partial: bool
+
+
+class ProductPerformance(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    current_window: ProductPerformanceWindow
+    prior_window: ProductPerformanceWindow
+    computed_at: datetime
+    products: list[ProductPerformanceRow]
+    total: int
+    data_basis: ProductPerformanceDataBasis
+    window_is_partial: bool

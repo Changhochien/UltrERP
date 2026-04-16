@@ -397,6 +397,19 @@ class Settings(BaseSettings):
 			"value_type": "bool",
 		},
 	)
+	intelligence_product_performance_enabled: bool = Field(
+		default=True,
+		validation_alias=AliasChoices(
+			"INTELLIGENCE_PRODUCT_PERFORMANCE_ENABLED",
+			"intelligence_product_performance_enabled",
+		),
+		json_schema_extra={
+			"description": "Enable product performance analysis",
+			"category": "intelligence",
+			"is_sensitive": False,
+			"value_type": "bool",
+		},
+	)
 	egui_submission_mode: Literal["mock", "live"] = Field(
 		default="mock",
 		validation_alias=AliasChoices("EGUI_SUBMISSION_MODE", "egui_submission_mode"),

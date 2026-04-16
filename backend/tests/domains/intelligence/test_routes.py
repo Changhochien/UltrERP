@@ -20,6 +20,10 @@ from domains.intelligence.schemas import (
     MarketOpportunities,
     ProspectGaps,
     ProductAffinityMap,
+    ProductPerformance,
+    ProductPerformancePeriodMetrics,
+    ProductPerformanceRow,
+    ProductPerformanceWindow,
     RevenueDiagnosis,
     RevenueDiagnosisComponents,
     RevenueDiagnosisDriver,
@@ -158,6 +162,45 @@ def _sample_revenue_diagnosis(anchor_month: str = "2026-03-01") -> RevenueDiagno
     )
 
 
+def _sample_product_performance() -> ProductPerformance:
+    return ProductPerformance(
+        current_window=ProductPerformanceWindow(start_month=date(2026, 3, 1), end_month=date(2026, 5, 1)),
+        prior_window=ProductPerformanceWindow(start_month=date(2025, 12, 1), end_month=date(2026, 2, 1)),
+        computed_at=datetime.now(tz=UTC),
+        products=[
+            ProductPerformanceRow(
+                product_id=uuid.UUID("00000000-0000-0000-0000-000000000321"),
+                product_name="Growth Belt",
+                product_category_snapshot="Belts",
+                lifecycle_stage="growing",
+                stage_reasons=["Current-period revenue is materially above the prior comparison window."],
+                first_sale_month=date(2024, 1, 1),
+                last_sale_month=date(2026, 5, 1),
+                months_on_sale=29,
+                current_period=ProductPerformancePeriodMetrics(
+                    revenue=Decimal("450.00"),
+                    quantity=Decimal("30.000"),
+                    order_count=8,
+                    avg_unit_price=Decimal("15.00"),
+                ),
+                prior_period=ProductPerformancePeriodMetrics(
+                    revenue=Decimal("220.00"),
+                    quantity=Decimal("16.000"),
+                    order_count=5,
+                    avg_unit_price=Decimal("13.75"),
+                ),
+                peak_month_revenue=Decimal("190.00"),
+                revenue_delta_pct=104.5455,
+                data_basis="aggregate_plus_live_current_month",
+                window_is_partial=True,
+            )
+        ],
+        total=1,
+        data_basis="aggregate_plus_live_current_month",
+        window_is_partial=True,
+    )
+
+
 async def test_market_opportunities_route_allows_sales_role() -> None:
     session = FakeAsyncSession()
     prev = setup_session(session)
@@ -204,6 +247,34 @@ async def test_revenue_diagnosis_route_allows_sales_role() -> None:
             "anchor_month": date(2026, 3, 1),
             "category": "Belts",
             "limit": 5,
+        }
+    finally:
+        teardown_session(prev)
+
+
+async def test_product_performance_route_allows_sales_role() -> None:
+    session = FakeAsyncSession()
+    prev = setup_session(session)
+    try:
+        with patch(
+            "domains.intelligence.routes.get_product_performance",
+            new_callable=AsyncMock,
+            return_value=_sample_product_performance(),
+        ) as performance_mock:
+            resp = await http_get(
+                "/api/v1/intelligence/product-performance?category=Belts&lifecycle_stage=growing&limit=25&include_current_month=true",
+                headers=auth_header("sales"),
+            )
+        assert resp.status_code == 200
+        assert resp.json()["products"][0]["lifecycle_stage"] == "growing"
+        performance_mock.assert_awaited_once()
+        assert performance_mock.await_args.args[0] is session
+        assert performance_mock.await_args.args[1] == uuid.UUID("00000000-0000-0000-0000-000000000001")
+        assert performance_mock.await_args.kwargs == {
+            "category": "Belts",
+            "lifecycle_stage": "growing",
+            "limit": 25,
+            "include_current_month": True,
         }
     finally:
         teardown_session(prev)
@@ -472,6 +543,11 @@ async def test_customer_product_profile_route_returns_404_for_missing_customer()
             "intelligence_revenue_diagnosis_enabled",
             "/api/v1/intelligence/revenue-diagnosis",
             "Revenue diagnosis is disabled",
+        ),
+        (
+            "intelligence_product_performance_enabled",
+            "/api/v1/intelligence/product-performance",
+            "Product performance analysis is disabled",
         ),
     ],
 )

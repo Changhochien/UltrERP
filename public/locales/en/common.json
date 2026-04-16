@@ -196,6 +196,47 @@
         "low": "Low confidence"
       }
     },
+    "productPerformance": {
+      "title": "Product Performance",
+      "description": "Rank products by current-versus-prior revenue and lifecycle stage.",
+      "categoryPlaceholder": "Filter category",
+      "lifecycleLabel": "Lifecycle stage",
+      "allStages": "All stages",
+      "includeCurrentMonth": "Include current month",
+      "generatedAt": "Generated {value}",
+      "partial": "Includes live current month",
+      "historical": "Closed months only",
+      "dataBasis": {
+        "aggregate_only": "Aggregate only",
+        "aggregate_plus_live_current_month": "Aggregate + live current month"
+      },
+      "summary": {
+        "products": "Products",
+        "currentWindow": "Current Window",
+        "priorWindow": "Prior Window",
+        "windowNote": "Showing top {count} rows"
+      },
+      "table": {
+        "product": "Product",
+        "category": "Category",
+        "lifecycle": "Lifecycle",
+        "currentRevenue": "Current Revenue",
+        "priorRevenue": "Prior Revenue",
+        "delta": "Delta",
+        "peakMonth": "Peak Month Revenue",
+        "monthsOnSale": "{count} months on sale"
+      },
+      "stage": {
+        "new": "New",
+        "end_of_life": "End of Life",
+        "declining": "Declining",
+        "growing": "Growing",
+        "mature": "Mature",
+        "stable": "Stable"
+      },
+      "empty": "No qualifying products for this comparison window.",
+      "loadError": "Failed to load product performance."
+    },
     "affinity": {
       "title": "Product Affinity Map",
       "description": "Customer-level co-purchase pairs scored by overlap and Jaccard affinity.",

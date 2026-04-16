@@ -6,6 +6,8 @@ import type {
   ProspectGaps,
   ProspectGapCustomerFilter,
   ProductAffinityMap,
+  ProductLifecycleStage,
+  ProductPerformance,
   RevenueDiagnosis,
   RevenueDiagnosisPeriod,
 } from "../../domain/intelligence/types";
@@ -103,6 +105,30 @@ export async function fetchRevenueDiagnosis(
   const resp = await apiFetch(`/api/v1/intelligence/revenue-diagnosis?${params.toString()}`);
   if (!resp.ok) {
     throw new Error("Failed to fetch revenue diagnosis");
+  }
+  return resp.json();
+}
+
+export async function fetchProductPerformance(
+  category?: string,
+  lifecycleStage?: ProductLifecycleStage,
+  limit = 25,
+  includeCurrentMonth = false,
+): Promise<ProductPerformance> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (category) {
+    params.set("category", category);
+  }
+  if (lifecycleStage) {
+    params.set("lifecycle_stage", lifecycleStage);
+  }
+  if (includeCurrentMonth) {
+    params.set("include_current_month", "true");
+  }
+
+  const resp = await apiFetch(`/api/v1/intelligence/product-performance?${params.toString()}`);
+  if (!resp.ok) {
+    throw new Error("Failed to fetch product performance");
   }
   return resp.json();
 }

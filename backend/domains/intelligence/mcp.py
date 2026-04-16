@@ -21,6 +21,7 @@ from domains.intelligence.service import (
 	get_customer_product_profile,
 	get_customer_risk_signals,
 	get_market_opportunities,
+	get_product_performance,
 	get_prospect_gaps,
 	get_revenue_diagnosis,
 )
@@ -75,6 +76,66 @@ async def intelligence_market_opportunities(
 			session,
 			tenant_id,
 			period=period,
+		)
+
+	return result.model_dump(mode="json")
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+async def intelligence_product_performance(
+	category: Annotated[str | None, Field(description="Optional snapshot category filter")] = None,
+	lifecycle_stage: Annotated[
+		str | None,
+		Field(description="Optional lifecycle stage filter: new, end_of_life, declining, growing, mature, or stable"),
+	] = None,
+	limit: Annotated[int, Field(description="Maximum number of products to return", ge=1, le=200)] = 50,
+	include_current_month: Annotated[bool, Field(description="Include the in-progress current month in the comparison window")] = False,
+) -> dict:
+	"""Return ranked product performance with lifecycle stage classification."""
+	_require_feature_enabled(
+		settings.intelligence_product_performance_enabled,
+		"Product performance analysis is disabled",
+	)
+	normalized_category = category.strip() if category is not None else None
+	if category is not None and not normalized_category:
+		raise ToolError(
+			json.dumps(
+				{
+					"code": "VALIDATION_ERROR",
+					"field": "category",
+					"message": "category is required",
+					"retry": False,
+				}
+			)
+		)
+	if lifecycle_stage is not None and lifecycle_stage not in {
+		"new",
+		"end_of_life",
+		"declining",
+		"growing",
+		"mature",
+		"stable",
+	}:
+		raise ToolError(
+			json.dumps(
+				{
+					"code": "VALIDATION_ERROR",
+					"field": "lifecycle_stage",
+					"message": "lifecycle_stage must be one of: new, end_of_life, declining, growing, mature, stable",
+					"retry": False,
+				}
+			)
+		)
+
+	tenant_id = _resolve_tenant_id()
+	async with AsyncSessionLocal() as session:
+		result = await get_product_performance(
+			session,
+			tenant_id,
+			category=normalized_category,
+			lifecycle_stage=lifecycle_stage,  # type: ignore[arg-type]
+			limit=limit,
+			include_current_month=include_current_month,
 		)
 
 	return result.model_dump(mode="json")

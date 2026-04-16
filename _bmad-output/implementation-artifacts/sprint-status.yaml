@@ -930,11 +930,11 @@ development_status:
         validation: "Validated on 2026-04-16 with `cd backend && uv run pytest tests/domains/inventory/test_planning_support.py -q` (`3 passed in 2.19s`) and `pnpm vitest run src/domain/inventory/components/AnalyticsTab.test.tsx` (`1 passed`). Coverage includes aggregate-only windows, mixed closed/live current-month windows, empty-history data-gap behavior, advisory-only provenance, and rendering the planning-support card inside the existing inventory analytics tab. Final focused review over the Story 20.5 files returned no findings."
         prerequisites: ["4-2-view-stock-level", "4-5-supplier-orders", "20.3"]
       20-6-product-performance-api:
-        status: "ready-for-dev"
+        status: "done"
         story_id: "20.6"
         title: "Product Performance API"
         story_file: "20-6-product-performance-api.md"
-        validation: "Drafted to ship through the intelligence domain with explicit lifecycle precedence and thresholds (`new`, `end_of_life`, `declining`, `growing`, `mature`, `stable`), most-recent-in-window snapshot label semantics, Story 20.3 history reuse, and drill-through into the existing inventory product-detail surface."
+        validation: "Validated on 2026-04-16 with `cd /Volumes/2T_SSD_App/Projects/UltrERP/backend && uv run pytest tests/domains/intelligence/test_product_performance_service.py tests/domains/intelligence/test_routes.py tests/test_mcp_intelligence.py tests/test_mcp_auth.py -q` (`71 passed in 1.84s`) and `pnpm vitest run src/tests/intelligence/ProductPerformanceCard.test.tsx` (`3 passed`). Coverage includes lifecycle precedence, deterministic ordering, empty states, partial-window live-current-month behavior, feature-disabled REST/MCP behavior, MCP scope registration, and the mounted `IntelligencePage` product-performance card. Final focused review over the Story 20.6 files returned no findings."
         prerequisites: ["20.1", "20.3"]
       20-7-customer-buying-behavior-extension:
         status: "ready-for-dev"

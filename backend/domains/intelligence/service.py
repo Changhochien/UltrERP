@@ -29,6 +29,12 @@ from domains.intelligence.schemas import (
     MarketOpportunities,
     OpportunitySignal,
     ProductAffinityMap,
+    ProductLifecycleStage,
+    ProductPerformance,
+    ProductPerformanceDataBasis,
+    ProductPerformancePeriodMetrics,
+    ProductPerformanceRow,
+    ProductPerformanceWindow,
     ProductPurchase,
     ProspectFit,
     ProspectGaps,
@@ -74,6 +80,21 @@ class _RevenueDiagnosisWindowMetrics:
     latest_month: date
 
 
+@dataclass(slots=True)
+class _ProductPerformanceWindowMetrics:
+    product_id: uuid.UUID
+    product_name: str
+    product_category_snapshot: str
+    revenue: Decimal
+    quantity: Decimal
+    order_count: int
+    avg_unit_price: Decimal
+    first_sale_month: date
+    last_sale_month: date
+    latest_month: date
+    peak_month_revenue: Decimal
+
+
 def _subtract_months(anchor: datetime, months: int) -> datetime:
     year = anchor.year
     month = anchor.month - months
@@ -92,6 +113,22 @@ def _safe_average(total: Decimal, count: int) -> Decimal:
     if count <= 0:
         return _ZERO
     return (total / Decimal(count)).quantize(_MONEY_QUANT)
+
+
+def _shift_month_start(value: date, months: int) -> date:
+    year = value.year
+    month = value.month + months
+    while month <= 0:
+        year -= 1
+        month += 12
+    while month > 12:
+        year += 1
+        month -= 12
+    return date(year, month, 1)
+
+
+def _months_between_inclusive(start_month: date, end_month: date) -> int:
+    return ((end_month.year - start_month.year) * 12) + (end_month.month - start_month.month) + 1
 
 
 def _frequency_trend(current_count: int, prior_count: int) -> Literal["increasing", "declining", "stable"]:
@@ -1927,6 +1964,251 @@ async def get_revenue_diagnosis(
             mix_effect_total=mix_effect_total,
         ),
         drivers=all_drivers[:limit],
+        data_basis=data_basis,
+        window_is_partial=window_is_partial,
+    )
+
+
+def _product_performance_windows(
+    *,
+    include_current_month: bool,
+    anchor_month: date,
+) -> tuple[date, date, date, date]:
+    if include_current_month:
+        current_end = anchor_month
+    else:
+        current_end = _shift_month_start(anchor_month, -1)
+    current_start = _shift_month_start(current_end, -11)
+    prior_end = _shift_month_start(current_start, -1)
+    prior_start = _shift_month_start(prior_end, -11)
+    return current_start, current_end, prior_start, prior_end
+
+
+def _aggregate_product_performance_window(
+    points: tuple[SalesMonthlyPoint, ...],
+    *,
+    category: str | None = None,
+) -> dict[uuid.UUID, _ProductPerformanceWindowMetrics]:
+    aggregates: dict[uuid.UUID, dict[str, object]] = {}
+
+    for point in points:
+        if category is not None and point.product_category_snapshot != category:
+            continue
+
+        aggregate = aggregates.get(point.product_id)
+        if aggregate is None:
+            aggregates[point.product_id] = {
+                "product_id": point.product_id,
+                "product_name": point.product_name_snapshot,
+                "product_category_snapshot": point.product_category_snapshot,
+                "revenue": point.revenue,
+                "quantity": point.quantity_sold,
+                "order_count": point.order_count,
+                "first_sale_month": point.month_start,
+                "last_sale_month": point.month_start,
+                "latest_month": point.month_start,
+                "peak_month_revenue": point.revenue,
+            }
+            continue
+
+        aggregate["revenue"] = _to_decimal(aggregate["revenue"] + point.revenue)
+        aggregate["quantity"] = _to_decimal(
+            aggregate["quantity"] + point.quantity_sold,
+            quant=_QUANTITY_QUANT,
+        )
+        aggregate["order_count"] = int(aggregate["order_count"]) + point.order_count
+        aggregate["first_sale_month"] = min(aggregate["first_sale_month"], point.month_start)
+        aggregate["last_sale_month"] = max(aggregate["last_sale_month"], point.month_start)
+        aggregate["peak_month_revenue"] = max(aggregate["peak_month_revenue"], point.revenue)
+        if point.month_start >= aggregate["latest_month"]:
+            aggregate["latest_month"] = point.month_start
+            aggregate["product_name"] = point.product_name_snapshot
+            aggregate["product_category_snapshot"] = point.product_category_snapshot
+
+    return {
+        product_id: _ProductPerformanceWindowMetrics(
+            product_id=product_id,
+            product_name=str(values["product_name"]),
+            product_category_snapshot=str(values["product_category_snapshot"]),
+            revenue=_to_decimal(values["revenue"]),
+            quantity=_to_decimal(values["quantity"], quant=_QUANTITY_QUANT),
+            order_count=int(values["order_count"]),
+            avg_unit_price=(
+                (_to_decimal(values["revenue"]) / _to_decimal(values["quantity"], quant=_QUANTITY_QUANT)).quantize(_MONEY_QUANT)
+                if _to_decimal(values["quantity"], quant=_QUANTITY_QUANT) > 0
+                else _ZERO
+            ),
+            first_sale_month=values["first_sale_month"],
+            last_sale_month=values["last_sale_month"],
+            latest_month=values["latest_month"],
+            peak_month_revenue=_to_decimal(values["peak_month_revenue"]),
+        )
+        for product_id, values in aggregates.items()
+    }
+
+
+def _empty_product_performance_period_metrics() -> ProductPerformancePeriodMetrics:
+    return ProductPerformancePeriodMetrics(
+        revenue=_ZERO,
+        quantity=Decimal("0.000"),
+        order_count=0,
+        avg_unit_price=_ZERO,
+    )
+
+
+def _build_product_performance_stage(
+    *,
+    current_revenue: Decimal,
+    prior_revenue: Decimal,
+    first_sale_month: date,
+    last_sale_month: date,
+    months_on_sale: int,
+    anchor_month: date,
+) -> tuple[ProductLifecycleStage, list[str]]:
+    current_window_start = _shift_month_start(anchor_month, -11)
+    six_complete_month_cutoff = _shift_month_start(anchor_month, -6)
+    if current_revenue > _ZERO and prior_revenue == _ZERO and first_sale_month >= current_window_start:
+        return "new", ["rule:new", "prior_revenue_zero", "first_sale_in_current_window"]
+    if current_revenue == _ZERO and prior_revenue > _ZERO and last_sale_month <= six_complete_month_cutoff:
+        return "end_of_life", [
+            "rule:end_of_life",
+            "current_revenue_zero",
+            "last_sale_at_least_6_complete_months_before_anchor",
+        ]
+    if prior_revenue > _ZERO and (
+        current_revenue == _ZERO or current_revenue < (prior_revenue * Decimal("0.80"))
+    ):
+        return "declining", ["rule:declining", "current_revenue_below_0.80x_prior"]
+    if prior_revenue > _ZERO and current_revenue >= (prior_revenue * Decimal("1.20")):
+        return "growing", ["rule:growing", "current_revenue_at_least_1.20x_prior"]
+    if (
+        current_revenue > _ZERO
+        and prior_revenue > _ZERO
+        and months_on_sale >= 24
+        and current_revenue >= (prior_revenue * Decimal("0.80"))
+        and current_revenue <= (prior_revenue * Decimal("1.20"))
+    ):
+        return "mature", ["rule:mature", "months_on_sale_gte_24", "current_revenue_within_0.80x_to_1.20x_prior"]
+    return "stable", ["rule:stable", "current_revenue_positive"]
+
+
+async def get_product_performance(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    *,
+    category: str | None = None,
+    lifecycle_stage: ProductLifecycleStage | None = None,
+    limit: int = 50,
+    include_current_month: bool = False,
+) -> ProductPerformance:
+    anchor_month = normalize_month_start(datetime.now(tz=UTC).date())
+    current_start, current_end, prior_start, prior_end = _product_performance_windows(
+        include_current_month=include_current_month,
+        anchor_month=anchor_month,
+    )
+    window_is_partial = include_current_month
+    data_basis: ProductPerformanceDataBasis = (
+        "aggregate_plus_live_current_month" if include_current_month else "aggregate_only"
+    )
+
+    current_points = await read_sales_monthly_range(
+        session,
+        tenant_id,
+        start_month=current_start,
+        end_month=current_end,
+    )
+    prior_points = await read_sales_monthly_range(
+        session,
+        tenant_id,
+        start_month=prior_start,
+        end_month=prior_end,
+    )
+
+    current_metrics = _aggregate_product_performance_window(current_points.items, category=category)
+    prior_metrics = _aggregate_product_performance_window(prior_points.items, category=category)
+
+    rows: list[ProductPerformanceRow] = []
+    for product_id in set(current_metrics) | set(prior_metrics):
+        current_metric = current_metrics.get(product_id)
+        prior_metric = prior_metrics.get(product_id)
+        display_metric = current_metric or prior_metric
+        if display_metric is None:
+            continue
+
+        first_sale_month = min(
+            metric.first_sale_month for metric in (current_metric, prior_metric) if metric is not None
+        )
+        last_sale_month = max(
+            metric.last_sale_month for metric in (current_metric, prior_metric) if metric is not None
+        )
+        months_on_sale = _months_between_inclusive(first_sale_month, last_sale_month)
+        current_revenue = current_metric.revenue if current_metric is not None else _ZERO
+        prior_revenue = prior_metric.revenue if prior_metric is not None else _ZERO
+        stage, stage_reasons = _build_product_performance_stage(
+            current_revenue=current_revenue,
+            prior_revenue=prior_revenue,
+            first_sale_month=first_sale_month,
+            last_sale_month=last_sale_month,
+            months_on_sale=months_on_sale,
+            anchor_month=anchor_month,
+        )
+        if lifecycle_stage is not None and stage != lifecycle_stage:
+            continue
+
+        rows.append(
+            ProductPerformanceRow(
+                product_id=product_id,
+                product_name=display_metric.product_name,
+                product_category_snapshot=display_metric.product_category_snapshot,
+                lifecycle_stage=stage,
+                stage_reasons=stage_reasons,
+                first_sale_month=first_sale_month,
+                last_sale_month=last_sale_month,
+                months_on_sale=months_on_sale,
+                current_period=(
+                    ProductPerformancePeriodMetrics(
+                        revenue=current_metric.revenue,
+                        quantity=current_metric.quantity,
+                        order_count=current_metric.order_count,
+                        avg_unit_price=current_metric.avg_unit_price,
+                    )
+                    if current_metric is not None
+                    else _empty_product_performance_period_metrics()
+                ),
+                prior_period=(
+                    ProductPerformancePeriodMetrics(
+                        revenue=prior_metric.revenue,
+                        quantity=prior_metric.quantity,
+                        order_count=prior_metric.order_count,
+                        avg_unit_price=prior_metric.avg_unit_price,
+                    )
+                    if prior_metric is not None
+                    else _empty_product_performance_period_metrics()
+                ),
+                peak_month_revenue=max(
+                    metric.peak_month_revenue for metric in (current_metric, prior_metric) if metric is not None
+                ),
+                revenue_delta_pct=_percent_change(current_revenue, prior_revenue),
+                data_basis=data_basis,
+                window_is_partial=window_is_partial,
+            )
+        )
+
+    rows.sort(
+        key=lambda row: (
+            -row.current_period.revenue,
+            -(row.revenue_delta_pct if row.revenue_delta_pct is not None else float("-inf")),
+            row.product_name,
+            str(row.product_id),
+        )
+    )
+
+    return ProductPerformance(
+        current_window=ProductPerformanceWindow(start_month=current_start, end_month=current_end),
+        prior_window=ProductPerformanceWindow(start_month=prior_start, end_month=prior_end),
+        computed_at=datetime.now(tz=UTC),
+        products=rows[:limit],
+        total=len(rows),
         data_basis=data_basis,
         window_is_partial=window_is_partial,
     )

@@ -46,6 +46,7 @@ TOOL_SCOPES: dict[str, frozenset[str]] = {
 	"payments_get": frozenset({"payments:read"}),
 	# intelligence domain (Epic 19)
 	"intelligence_product_affinity": frozenset({"orders:read"}),
+	"intelligence_product_performance": frozenset({"orders:read"}),
 	"intelligence_revenue_diagnosis": frozenset({"orders:read"}),
 	"intelligence_category_trends": frozenset({"orders:read", "customers:read"}),
 	"intelligence_customer_product_profile": frozenset({"customers:read", "orders:read"}),

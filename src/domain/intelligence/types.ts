@@ -203,6 +203,48 @@ export interface RevenueDiagnosis {
   window_is_partial: boolean;
 }
 
+export type ProductPerformanceDataBasis = "aggregate_only" | "aggregate_plus_live_current_month";
+export type ProductLifecycleStage = "new" | "end_of_life" | "declining" | "growing" | "mature" | "stable";
+
+export interface ProductPerformanceWindow {
+  start_month: string;
+  end_month: string;
+}
+
+export interface ProductPerformancePeriodMetrics {
+  revenue: string;
+  quantity: string;
+  order_count: number;
+  avg_unit_price: string;
+}
+
+export interface ProductPerformanceRow {
+  product_id: string;
+  product_name: string;
+  product_category_snapshot: string;
+  lifecycle_stage: ProductLifecycleStage;
+  stage_reasons: string[];
+  first_sale_month: string;
+  last_sale_month: string;
+  months_on_sale: number;
+  current_period: ProductPerformancePeriodMetrics;
+  prior_period: ProductPerformancePeriodMetrics;
+  peak_month_revenue: string;
+  revenue_delta_pct: number | null;
+  data_basis: ProductPerformanceDataBasis;
+  window_is_partial: boolean;
+}
+
+export interface ProductPerformance {
+  current_window: ProductPerformanceWindow;
+  prior_window: ProductPerformanceWindow;
+  computed_at: string;
+  products: ProductPerformanceRow[];
+  total: number;
+  data_basis: ProductPerformanceDataBasis;
+  window_is_partial: boolean;
+}
+
 export interface CustomerProductProfile {
   customer_id: string;
   company_name: string;

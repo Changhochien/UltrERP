@@ -54,6 +54,7 @@ def test_intelligence_tool_scopes_registered():
     """Epic 19 gate registers per-tool scopes matching the spec."""
     assert TOOL_SCOPES["customers_update"] == frozenset({"customers:write"})
     assert TOOL_SCOPES["intelligence_product_affinity"] == frozenset({"orders:read"})
+    assert TOOL_SCOPES["intelligence_product_performance"] == frozenset({"orders:read"})
     assert TOOL_SCOPES["intelligence_revenue_diagnosis"] == frozenset({"orders:read"})
     assert TOOL_SCOPES["intelligence_category_trends"] == frozenset({"customers:read", "orders:read"})
     assert TOOL_SCOPES["intelligence_customer_product_profile"] == frozenset({"customers:read", "orders:read"})
