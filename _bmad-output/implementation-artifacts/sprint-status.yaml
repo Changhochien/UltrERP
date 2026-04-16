@@ -880,7 +880,7 @@ development_status:
   # Epic 20 - Product Sales Analytics
   epic-20:
     status: "in-progress"
-    validation_note: "Story context was created and revalidated on 2026-04-15 against Epic 20, the domain research note, the existing intelligence and inventory ownership split, the current confirmation/import seams, and the repo's access-control and test patterns. On 2026-04-16 Story 20.1 was implemented and validated with focused order-confirmation, canonical-import, and reorder-point integration coverage (`43 passed`), a single-head Alembic check (`6c4d2e1f9a7b (head)`), and a final no-findings review. The remaining Epic 20 stories still follow the validated draft ownership split: backend-only shared `product_analytics` foundation in v1, intelligence-owned diagnosis/performance/behavior, inventory-owned planning support, optional Story 20.2 only if Story 20.3 requires a conformed dimension, and no speculative public product-analytics silo."
+    validation_note: "Story context was created and revalidated on 2026-04-15 against Epic 20, the domain research note, the existing intelligence and inventory ownership split, the current confirmation/import seams, and the repo's access-control and test patterns. On 2026-04-16 Story 20.1 was implemented and validated with focused order-confirmation, canonical-import, and reorder-point integration coverage (`43 passed`), a single-head Alembic check (`6c4d2e1f9a7b (head)`), and a final no-findings review. On 2026-04-16 Story 20.3 added the backend-only `product_analytics` monthly fact foundation, validated with `cd backend && uv run pytest tests/domains/product_analytics/test_service.py -q` (`6 passed in 0.70s`), and finished with a single-head Alembic check (`7a3c2d1e9f4b (head)`) plus a no-findings review. Story 20.3 validation also exposed a clean-upgrade drift in the Story 20.1 snapshot migration for dev schemas that already had snapshot columns, so that earlier migration was hardened with `ADD COLUMN IF NOT EXISTS` before rerunning the upgrade successfully. The remaining Epic 20 stories still follow the validated draft ownership split: backend-only shared `product_analytics` foundation in v1, intelligence-owned diagnosis/performance/behavior, inventory-owned planning support, optional Story 20.2 only if Story 20.3 requires a conformed dimension, and no speculative public product-analytics silo."
     recommended_execution_order:
       - "20.1 Product Snapshot on OrderLine"
       - "20.3 Monthly Aggregation Tables"
@@ -909,11 +909,11 @@ development_status:
         activation_gate_story: "20.3"
         activation_gate_condition: "requires_conformed_product_dimension"
       20-3-monthly-aggregation-tables:
-        status: "ready-for-dev"
+        status: "done"
         story_id: "20.3"
         title: "Monthly Aggregation Tables"
         story_file: "20-3-monthly-aggregation-tables.md"
-        validation: "Drafted around a single-grain `sales_monthly` fact, canonical confirmation-based analytics timestamp semantics, current-month live fallback, and backend-only product_analytics foundation ownership."
+        validation: "Validated on 2026-04-16 with `cd backend && uv run pytest tests/domains/product_analytics/test_service.py -q` (`6 passed in 0.70s`), covering confirmation-month boundary behavior, idempotent reruns, closed-month inclusive-end reads, current-month live fallback, range refresh behavior, and missing-snapshot skip reporting. Follow-up Alembic validation via `cd backend && uv run alembic -c ../migrations/alembic.ini upgrade head` and `cd backend && uv run alembic -c ../migrations/alembic.ini heads` completed successfully with `7a3c2d1e9f4b (head)`, and the final focused review over the Story 20.3 files returned no findings."
         prerequisites: ["20.1"]
       20-4-revenue-diagnosis-api:
         status: "ready-for-dev"

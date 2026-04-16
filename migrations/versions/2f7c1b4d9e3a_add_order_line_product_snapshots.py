@@ -20,13 +20,13 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "order_lines",
-        sa.Column("product_name_snapshot", sa.String(length=500), nullable=True),
+    op.execute(
+        "ALTER TABLE order_lines "
+        "ADD COLUMN IF NOT EXISTS product_name_snapshot VARCHAR(500)"
     )
-    op.add_column(
-        "order_lines",
-        sa.Column("product_category_snapshot", sa.String(length=200), nullable=True),
+    op.execute(
+        "ALTER TABLE order_lines "
+        "ADD COLUMN IF NOT EXISTS product_category_snapshot VARCHAR(200)"
     )
 
 
