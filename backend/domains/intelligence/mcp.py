@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import json
 import uuid
+from datetime import date
 from typing import Annotated
 
-import jwt
 from fastmcp.exceptions import ToolError
 from fastmcp.server.dependencies import get_http_headers
 from pydantic import Field
 
+from app.mcp_identity import parse_uuid, resolve_tenant_id_from_headers
 from app.mcp_server import mcp
 from common.config import settings
 from common.database import AsyncSessionLocal
@@ -21,94 +22,27 @@ from domains.intelligence.service import (
 	get_customer_risk_signals,
 	get_market_opportunities,
 	get_prospect_gaps,
+	get_revenue_diagnosis,
 )
 
 
 def _parse_uuid(value: str, field: str) -> uuid.UUID:
-	try:
-		return uuid.UUID(value)
-	except (ValueError, AttributeError) as exc:
-		raise ToolError(
-			json.dumps(
-				{
-					"code": "VALIDATION_ERROR",
-					"field": field,
-					"message": f"Invalid UUID: {value}",
-					"retry": False,
-				}
-			)
-		) from exc
+	return parse_uuid(value, field)
 
 
 def _resolve_tenant_id() -> uuid.UUID:
-	headers = get_http_headers() or {}
-	if headers.get("x-api-key"):
-		tenant_header = headers.get("x-tenant-id")
-		if tenant_header:
-			return _parse_uuid(tenant_header, "tenant_id")
-		raise ToolError(
-			json.dumps(
-				{
-					"code": "TENANT_REQUIRED",
-					"message": "X-Tenant-ID is required for tenant-bound intelligence API keys",
-					"retry": True,
-				}
-			)
-		)
+	return resolve_tenant_id_from_headers(get_http_headers() or {})
 
-	auth_header = headers.get("authorization", "")
-	if auth_header.startswith("Bearer "):
-		token = auth_header[7:].strip()
-		try:
-			payload = jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
-		except jwt.InvalidTokenError as exc:
-			raise ToolError(
-				json.dumps(
-					{
-						"code": "INVALID_TOKEN",
-						"message": "Invalid or expired Bearer token",
-						"retry": True,
-					}
-				)
-			) from exc
 
-		tenant_id = payload.get("tenant_id")
-		if not isinstance(tenant_id, str) or not tenant_id:
-			raise ToolError(
-				json.dumps(
-					{
-						"code": "INVALID_TOKEN",
-						"message": "Invalid or expired Bearer token",
-						"retry": True,
-					}
-				)
-			)
-		resolved_tenant = _parse_uuid(tenant_id, "tenant_id")
-		tenant_header = headers.get("x-tenant-id")
-		if tenant_header:
-			header_tenant = _parse_uuid(tenant_header, "tenant_id")
-			if header_tenant != resolved_tenant:
-				raise ToolError(
-					json.dumps(
-						{
-							"code": "INVALID_TENANT",
-							"message": "X-Tenant-ID does not match the Bearer token tenant",
-							"retry": False,
-						}
-					)
-				)
-		return resolved_tenant
-
-	tenant_header = headers.get("x-tenant-id")
-	if tenant_header:
-		return _parse_uuid(tenant_header, "tenant_id")
-
+def _require_feature_enabled(enabled: bool, message: str) -> None:
+	if enabled:
+		return
 	raise ToolError(
 		json.dumps(
 			{
-				"code": "TENANT_REQUIRED",
-				"message": "X-Tenant-ID or Authorization: Bearer token with tenant_id is required",
-				"retry": True,
+				"code": "FEATURE_DISABLED",
+				"message": message,
+				"retry": False,
 			}
 		)
 	)
@@ -119,6 +53,10 @@ async def intelligence_market_opportunities(
 	period: Annotated[str, Field(description="Rolling period: last_30d, last_90d, or last_12m")] = "last_90d",
 ) -> dict:
 	"""Return stabilized v1 market opportunity signals."""
+	_require_feature_enabled(
+		settings.intelligence_market_opportunities_enabled,
+		"Market opportunity analysis is disabled",
+	)
 	if period not in {"last_30d", "last_90d", "last_12m"}:
 		raise ToolError(
 			json.dumps(
@@ -143,11 +81,93 @@ async def intelligence_market_opportunities(
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
+async def intelligence_revenue_diagnosis(
+	period: Annotated[str, Field(description="Comparison window length: 1m, 3m, 6m, or 12m")] = "1m",
+	anchor_month: Annotated[str | None, Field(description="Inclusive anchor month in YYYY-MM-DD format")] = None,
+	category: Annotated[str | None, Field(description="Optional snapshot category filter")] = None,
+	limit: Annotated[int, Field(description="Maximum number of drivers to return", ge=1, le=100)] = 20,
+) -> dict:
+	"""Return price, volume, and mix decomposition for a monthly revenue comparison window."""
+	_require_feature_enabled(
+		settings.intelligence_revenue_diagnosis_enabled,
+		"Revenue diagnosis is disabled",
+	)
+	if period not in {"1m", "3m", "6m", "12m"}:
+		raise ToolError(
+			json.dumps(
+				{
+					"code": "VALIDATION_ERROR",
+					"field": "period",
+					"message": "period must be one of: 1m, 3m, 6m, 12m",
+					"retry": False,
+				}
+			)
+		)
+	normalized_category = category.strip() if category is not None else None
+	if category is not None and not normalized_category:
+		raise ToolError(
+			json.dumps(
+				{
+					"code": "VALIDATION_ERROR",
+					"field": "category",
+					"message": "category is required",
+					"retry": False,
+				}
+			)
+		)
+	parsed_anchor_month: date | None = None
+	if anchor_month is not None:
+		try:
+			parsed_anchor_month = date.fromisoformat(anchor_month)
+		except ValueError as exc:
+			raise ToolError(
+				json.dumps(
+					{
+						"code": "VALIDATION_ERROR",
+						"field": "anchor_month",
+						"message": "anchor_month must be an ISO date in YYYY-MM-DD format",
+						"retry": False,
+					}
+				)
+			) from exc
+
+	tenant_id = _resolve_tenant_id()
+	async with AsyncSessionLocal() as session:
+		try:
+			result = await get_revenue_diagnosis(
+				session,
+				tenant_id,
+				period=period,
+				anchor_month=parsed_anchor_month,
+				category=normalized_category,
+				limit=limit,
+			)
+		except ValueError as exc:
+			raise ToolError(
+				json.dumps(
+					{
+						"code": "VALIDATION_ERROR",
+						"field": "anchor_month",
+						"message": str(exc),
+						"retry": False,
+					}
+				)
+			) from exc
+
+	return result.model_dump(mode="json")
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
 async def intelligence_prospect_gaps(
 	category: Annotated[str, Field(description="Target category name")],
+	customer_type: Annotated[str, Field(description="dealer | end_user | unknown | all")] = "dealer",
 	limit: Annotated[int, Field(description="Maximum number of prospects to return", ge=1, le=100)] = 20,
 ) -> dict:
 	"""Return active non-buyers ranked as whitespace prospects for a target category."""
+	_require_feature_enabled(
+		settings.intelligence_prospect_gaps_enabled,
+		"Prospect gap analysis is disabled",
+	)
 	if not category.strip():
 		raise ToolError(
 			json.dumps(
@@ -159,6 +179,17 @@ async def intelligence_prospect_gaps(
 				}
 			)
 		)
+	if customer_type not in {"dealer", "end_user", "unknown", "all"}:
+		raise ToolError(
+			json.dumps(
+				{
+					"code": "VALIDATION_ERROR",
+					"field": "customer_type",
+					"message": "customer_type must be one of: dealer, end_user, unknown, all",
+					"retry": False,
+				}
+			)
+		)
 
 	tenant_id = _resolve_tenant_id()
 	async with AsyncSessionLocal() as session:
@@ -166,6 +197,7 @@ async def intelligence_prospect_gaps(
 			session,
 			tenant_id,
 			category=category,
+			customer_type=customer_type,
 			limit=limit,
 		)
 
@@ -178,6 +210,10 @@ async def intelligence_customer_risk_signals(
 	limit: Annotated[int, Field(description="Maximum number of customers to return", ge=1, le=200)] = 50,
 ) -> dict:
 	"""Return ranked customer risk and growth signals across the tenant."""
+	_require_feature_enabled(
+		settings.intelligence_customer_risk_signals_enabled,
+		"Customer risk signals are disabled",
+	)
 	if status_filter not in {"all", "growing", "at_risk", "dormant", "new", "stable"}:
 		raise ToolError(
 			json.dumps(
@@ -207,6 +243,10 @@ async def intelligence_category_trends(
 	period: Annotated[str, Field(description="Rolling comparison window: last_30d, last_90d, or last_12m")] = "last_90d",
 ) -> dict:
 	"""Return category demand trends across rolling current vs prior periods."""
+	_require_feature_enabled(
+		settings.intelligence_category_trends_enabled,
+		"Category trend analysis is disabled",
+	)
 	if period not in {"last_30d", "last_90d", "last_12m"}:
 		raise ToolError(
 			json.dumps(
@@ -236,6 +276,10 @@ async def intelligence_product_affinity(
 	limit: Annotated[int, Field(description="Maximum number of affinity pairs to return", ge=1, le=200)] = 50,
 ) -> dict:
 	"""Return top product affinity pairs scored by customer-level Jaccard similarity."""
+	_require_feature_enabled(
+		settings.intelligence_product_affinity_enabled,
+		"Product affinity analysis is disabled",
+	)
 	if min_shared < 1 or limit < 1:
 		raise ToolError(
 			json.dumps(

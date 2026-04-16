@@ -4,7 +4,10 @@ import type {
   CustomerProductProfile,
   MarketOpportunities,
   ProspectGaps,
+  ProspectGapCustomerFilter,
   ProductAffinityMap,
+  RevenueDiagnosis,
+  RevenueDiagnosisPeriod,
 } from "../../domain/intelligence/types";
 import { apiFetch } from "../apiFetch";
 
@@ -53,8 +56,16 @@ export async function fetchCustomerRiskSignals(
   return resp.json();
 }
 
-export async function fetchProspectGaps(category: string, limit = 20): Promise<ProspectGaps> {
-  const params = new URLSearchParams({ category, limit: String(limit) });
+export async function fetchProspectGaps(
+  category: string,
+  customerType: ProspectGapCustomerFilter = "dealer",
+  limit = 20,
+): Promise<ProspectGaps> {
+  const params = new URLSearchParams({
+    category,
+    customer_type: customerType,
+    limit: String(limit),
+  });
   const resp = await apiFetch(`/api/v1/intelligence/prospect-gaps?${params.toString()}`);
   if (!resp.ok) {
     throw new Error("Failed to fetch prospect gaps");
@@ -68,6 +79,30 @@ export async function fetchMarketOpportunities(
   const resp = await apiFetch(`/api/v1/intelligence/market-opportunities?period=${period}`);
   if (!resp.ok) {
     throw new Error("Failed to fetch market opportunities");
+  }
+  return resp.json();
+}
+
+export async function fetchRevenueDiagnosis(
+  period: RevenueDiagnosisPeriod = "1m",
+  anchorMonth?: string,
+  category?: string,
+  limit = 10,
+): Promise<RevenueDiagnosis> {
+  const params = new URLSearchParams({
+    period,
+    limit: String(limit),
+  });
+  if (anchorMonth) {
+    params.set("anchor_month", anchorMonth);
+  }
+  if (category) {
+    params.set("category", category);
+  }
+
+  const resp = await apiFetch(`/api/v1/intelligence/revenue-diagnosis?${params.toString()}`);
+  if (!resp.ok) {
+    throw new Error("Failed to fetch revenue diagnosis");
   }
   return resp.json();
 }

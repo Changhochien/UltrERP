@@ -209,3 +209,65 @@ class CustomerProductProfile(BaseModel):
     new_categories: list[str]
     confidence: Literal["high", "medium", "low"]
     activity_basis: Literal["confirmed_or_later_orders"]
+
+
+class RevenueDiagnosisWindow(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    start_month: date
+    end_month: date
+
+
+class RevenueDiagnosisSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    current_revenue: Decimal
+    prior_revenue: Decimal
+    revenue_delta: Decimal
+    revenue_delta_pct: float | None
+
+
+class RevenueDiagnosisComponents(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    price_effect_total: Decimal
+    volume_effect_total: Decimal
+    mix_effect_total: Decimal
+
+
+class RevenueDiagnosisDriver(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    product_id: uuid.UUID
+    product_name: str
+    product_category_snapshot: str
+    current_quantity: Decimal
+    prior_quantity: Decimal
+    current_revenue: Decimal
+    prior_revenue: Decimal
+    current_order_count: int
+    prior_order_count: int
+    current_avg_unit_price: Decimal
+    prior_avg_unit_price: Decimal
+    price_effect: Decimal
+    volume_effect: Decimal
+    mix_effect: Decimal
+    revenue_delta: Decimal
+    revenue_delta_pct: float | None
+    data_basis: Literal["aggregate_only", "aggregate_plus_live_current_month"]
+    window_is_partial: bool
+
+
+class RevenueDiagnosis(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    period: Literal["1m", "3m", "6m", "12m"]
+    anchor_month: date
+    current_window: RevenueDiagnosisWindow
+    prior_window: RevenueDiagnosisWindow
+    computed_at: datetime
+    summary: RevenueDiagnosisSummary
+    components: RevenueDiagnosisComponents
+    drivers: list[RevenueDiagnosisDriver]
+    data_basis: Literal["aggregate_only", "aggregate_plus_live_current_month"]
+    window_is_partial: bool

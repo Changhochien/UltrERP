@@ -102,6 +102,8 @@ export interface ProspectScoreComponents {
   recency_factor: number;
 }
 
+export type ProspectGapCustomerFilter = "dealer" | "end_user" | "unknown" | "all";
+
 export interface ProspectFit {
   customer_id: string;
   company_name: string;
@@ -144,6 +146,61 @@ export interface MarketOpportunities {
   generated_at: string;
   signals: OpportunitySignal[];
   deferred_signal_types: string[];
+}
+
+export type RevenueDiagnosisPeriod = "1m" | "3m" | "6m" | "12m";
+export type RevenueDiagnosisDataBasis = "aggregate_only" | "aggregate_plus_live_current_month";
+
+export interface RevenueDiagnosisWindow {
+  start_month: string;
+  end_month: string;
+}
+
+export interface RevenueDiagnosisSummary {
+  current_revenue: string;
+  prior_revenue: string;
+  revenue_delta: string;
+  revenue_delta_pct: number | null;
+}
+
+export interface RevenueDiagnosisComponents {
+  price_effect_total: string;
+  volume_effect_total: string;
+  mix_effect_total: string;
+}
+
+export interface RevenueDiagnosisDriver {
+  product_id: string;
+  product_name: string;
+  product_category_snapshot: string;
+  current_quantity: string;
+  prior_quantity: string;
+  current_revenue: string;
+  prior_revenue: string;
+  current_order_count: number;
+  prior_order_count: number;
+  current_avg_unit_price: string;
+  prior_avg_unit_price: string;
+  price_effect: string;
+  volume_effect: string;
+  mix_effect: string;
+  revenue_delta: string;
+  revenue_delta_pct: number | null;
+  data_basis: RevenueDiagnosisDataBasis;
+  window_is_partial: boolean;
+}
+
+export interface RevenueDiagnosis {
+  period: RevenueDiagnosisPeriod;
+  anchor_month: string;
+  current_window: RevenueDiagnosisWindow;
+  prior_window: RevenueDiagnosisWindow;
+  computed_at: string;
+  summary: RevenueDiagnosisSummary;
+  components: RevenueDiagnosisComponents;
+  drivers: RevenueDiagnosisDriver[];
+  data_basis: RevenueDiagnosisDataBasis;
+  window_is_partial: boolean;
 }
 
 export interface CustomerProductProfile {

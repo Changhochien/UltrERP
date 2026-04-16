@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import calendar
 import uuid
-from itertools import combinations
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Literal
 
-from sqlalchemy import and_, case, func, select
+from sqlalchemy import Float, Numeric, String, and_, case, cast, func, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.models.order import Order
@@ -17,26 +17,33 @@ from common.models.order_line import OrderLine
 from common.models.product import Product
 from common.tenant import set_tenant
 from domains.customers.models import Customer
+from domains.product_analytics.service import SalesMonthlyPoint, normalize_month_start, read_sales_monthly_range
 from domains.intelligence.schemas import (
     AffinityPair,
+    CategoryRevenue,
     CategoryTrend,
     CategoryTrends,
-    CategoryRevenue,
+    CustomerProductProfile,
     CustomerRiskSignal,
     CustomerRiskSignals,
     MarketOpportunities,
+    OpportunitySignal,
+    ProductAffinityMap,
+    ProductPurchase,
     ProspectFit,
     ProspectGaps,
     ProspectScoreComponents,
-    OpportunitySignal,
-    CustomerProductProfile,
-    ProductAffinityMap,
-    ProductPurchase,
+    RevenueDiagnosis,
+    RevenueDiagnosisComponents,
+    RevenueDiagnosisDriver,
+    RevenueDiagnosisSummary,
+    RevenueDiagnosisWindow,
     TopProductByRevenue,
 )
 
 _COUNTABLE_STATUSES = ("confirmed", "shipped", "fulfilled")
 _MONEY_QUANT = Decimal("0.01")
+_QUANTITY_QUANT = Decimal("0.001")
 _RATIO_QUANT = Decimal("0.0001")
 _PCT_QUANT = Decimal("0.01")
 _ZERO = Decimal("0.00")
@@ -53,6 +60,18 @@ _EXCLUDED_CATEGORIES = {
 }
 _RISK_STATUS_PRIORITY = {"dormant": 0, "at_risk": 1, "growing": 2, "stable": 3, "new": 4}
 _OPPORTUNITY_SEVERITY_PRIORITY = {"alert": 0, "warning": 1, "info": 2}
+_REVENUE_DIAGNOSIS_PERIOD_MONTHS = {"1m": 1, "3m": 3, "6m": 6, "12m": 12}
+
+
+@dataclass(slots=True)
+class _RevenueDiagnosisWindowMetrics:
+    product_id: uuid.UUID
+    product_name: str
+    product_category_snapshot: str
+    quantity: Decimal
+    revenue: Decimal
+    order_count: int
+    latest_month: date
 
 
 def _subtract_months(anchor: datetime, months: int) -> datetime:
@@ -221,13 +240,38 @@ async def get_market_opportunities(
     async with session.begin():
         await set_tenant(session, tenant_id)
 
-        order_rows = (
+        current_order_window = and_(Order.created_at >= current_start_dt, Order.created_at < next_day_dt)
+        prior_order_window = and_(Order.created_at >= prior_start_dt, Order.created_at < current_start_dt)
+
+        customer_revenue_rows = (
             await session.execute(
                 select(
                     Order.customer_id.label("customer_id"),
                     Customer.company_name.label("company_name"),
-                    Order.total_amount.label("total_amount"),
-                    Order.created_at.label("created_at"),
+                    func.count(
+                        func.distinct(case((current_order_window, Order.id), else_=None))
+                    ).label("current_order_count"),
+                    func.count(
+                        func.distinct(case((prior_order_window, Order.id), else_=None))
+                    ).label("prior_order_count"),
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (current_order_window, func.coalesce(Order.total_amount, 0)),
+                                else_=0,
+                            )
+                        ),
+                        0,
+                    ).label("current_revenue"),
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (prior_order_window, func.coalesce(Order.total_amount, 0)),
+                                else_=0,
+                            )
+                        ),
+                        0,
+                    ).label("prior_revenue"),
                 )
                 .join(Customer, Customer.id == Order.customer_id)
                 .where(
@@ -236,6 +280,7 @@ async def get_market_opportunities(
                     Order.created_at >= prior_start_dt,
                     Order.created_at < next_day_dt,
                 )
+                .group_by(Order.customer_id, Customer.company_name)
             )
         ).all()
 
@@ -243,16 +288,24 @@ async def get_market_opportunities(
     prior_revenue_total = _ZERO
     current_customer_revenue: dict[uuid.UUID, tuple[str, Decimal]] = {}
     prior_customer_revenue: dict[uuid.UUID, Decimal] = {}
+    current_customers_considered = 0
+    prior_customers_considered = 0
 
-    for row in order_rows:
-        amount = _to_decimal(row.total_amount)
-        if row.created_at >= current_start_dt:
-            current_revenue_total += amount
-            company_name, existing_amount = current_customer_revenue.get(row.customer_id, (row.company_name, _ZERO))
-            current_customer_revenue[row.customer_id] = (company_name, existing_amount + amount)
-        elif row.created_at >= prior_start_dt:
-            prior_revenue_total += amount
-            prior_customer_revenue[row.customer_id] = prior_customer_revenue.get(row.customer_id, _ZERO) + amount
+    for row in customer_revenue_rows:
+        current_order_count = int(row.current_order_count or 0)
+        prior_order_count = int(row.prior_order_count or 0)
+        current_revenue = _to_decimal(row.current_revenue)
+        prior_revenue = _to_decimal(row.prior_revenue)
+        current_revenue_total += current_revenue
+        prior_revenue_total += prior_revenue
+        if current_order_count > 0:
+            current_customers_considered += 1
+        if prior_order_count > 0:
+            prior_customers_considered += 1
+        if current_revenue > 0:
+            current_customer_revenue[row.customer_id] = (row.company_name, current_revenue)
+        if prior_revenue > 0:
+            prior_customer_revenue[row.customer_id] = prior_revenue
 
     signals: list[OpportunitySignal] = []
     if current_revenue_total > 0:
@@ -281,8 +334,8 @@ async def get_market_opportunities(
                     revenue_impact=revenue,
                     recommended_action="Diversify revenue concentration and review expansion or mitigation actions.",
                     support_counts={
-                        "customers_considered": len(current_customer_revenue),
-                        "prior_customers_considered": len(prior_customer_revenue),
+                        "customers_considered": current_customers_considered,
+                        "prior_customers_considered": prior_customers_considered,
                     },
                     source_period=period,
                 )
@@ -369,6 +422,7 @@ async def get_category_trends(
 ) -> CategoryTrends:
     """Compute period-over-period category demand trends from qualifying order lines."""
     current_start, prior_start, end = _period_windows(period)
+    current_start_dt = datetime.combine(current_start, time.min, tzinfo=UTC)
     prior_start_dt = datetime.combine(prior_start, time.min, tzinfo=UTC)
     next_day_dt = datetime.combine(end + timedelta(days=1), time.min, tzinfo=UTC)
     generated_at = datetime.now(tz=UTC)
@@ -376,35 +430,43 @@ async def get_category_trends(
     async with session.begin():
         await set_tenant(session, tenant_id)
 
-        rows = (
-            await session.execute(
-                select(
-                    Order.customer_id.label("customer_id"),
-                    Order.id.label("order_id"),
-                    Order.created_at.label("created_at"),
-                    Product.category.label("category"),
-                    Product.id.label("product_id"),
-                    Product.name.label("product_name"),
-                    OrderLine.total_amount.label("line_amount"),
-                )
-                .join(OrderLine, OrderLine.order_id == Order.id)
-                .join(Product, Product.id == OrderLine.product_id)
-                .where(
-                    Order.tenant_id == tenant_id,
-                    Product.tenant_id == tenant_id,
-                    Order.status.in_(_COUNTABLE_STATUSES),
-                    Order.created_at >= prior_start_dt,
-                    Order.created_at < next_day_dt,
-                )
-            )
-        ).all()
+        current_order_window = and_(Order.created_at >= current_start_dt, Order.created_at < next_day_dt)
+        prior_order_window = and_(Order.created_at >= prior_start_dt, Order.created_at < current_start_dt)
 
-        first_purchase_rows = (
+        category_metric_rows = (
             await session.execute(
                 select(
-                    Order.customer_id.label("customer_id"),
                     Product.category.label("category"),
-                    func.min(Order.created_at).label("first_purchase_at"),
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (current_order_window, func.coalesce(OrderLine.total_amount, 0)),
+                                else_=0,
+                            )
+                        ),
+                        0,
+                    ).label("current_revenue"),
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (prior_order_window, func.coalesce(OrderLine.total_amount, 0)),
+                                else_=0,
+                            )
+                        ),
+                        0,
+                    ).label("prior_revenue"),
+                    func.count(
+                        func.distinct(case((current_order_window, Order.id), else_=None))
+                    ).label("current_orders"),
+                    func.count(
+                        func.distinct(case((prior_order_window, Order.id), else_=None))
+                    ).label("prior_orders"),
+                    func.count(
+                        func.distinct(case((current_order_window, Order.customer_id), else_=None))
+                    ).label("current_customers"),
+                    func.count(
+                        func.distinct(case((prior_order_window, Order.customer_id), else_=None))
+                    ).label("prior_customers"),
                 )
                 .join(OrderLine, OrderLine.order_id == Order.id)
                 .join(Product, Product.id == OrderLine.product_id)
@@ -413,67 +475,139 @@ async def get_category_trends(
                     Product.tenant_id == tenant_id,
                     Order.status.in_(_COUNTABLE_STATUSES),
                     Product.category.is_not(None),
+                    Order.created_at >= prior_start_dt,
+                    Order.created_at < next_day_dt,
                 )
-                .group_by(Order.customer_id, Product.category)
+                .group_by(Product.category)
             )
         ).all()
 
-    category_metrics: dict[str, dict[str, object]] = {}
-    for row in rows:
-        category = row.category
-        if _is_excluded_category(category):
-            continue
+        top_product_rows = (
+            await session.execute(
+                select(
+                    Product.category.label("category"),
+                    Product.id.label("product_id"),
+                    Product.name.label("product_name"),
+                    func.coalesce(func.sum(OrderLine.total_amount), 0).label("revenue"),
+                )
+                .join(OrderLine, OrderLine.product_id == Product.id)
+                .join(Order, OrderLine.order_id == Order.id)
+                .where(
+                    Order.tenant_id == tenant_id,
+                    Product.tenant_id == tenant_id,
+                    Order.status.in_(_COUNTABLE_STATUSES),
+                    Product.category.is_not(None),
+                    current_order_window,
+                )
+                .group_by(Product.category, Product.id, Product.name)
+                .order_by(Product.category.asc(), func.sum(OrderLine.total_amount).desc(), Product.name.asc())
+            )
+        ).all()
 
-        bucket = category_metrics.setdefault(
-            category,
-            {
-                "current_revenue": _ZERO,
-                "prior_revenue": _ZERO,
-                "current_orders": set(),
-                "prior_orders": set(),
-                "current_customers": set(),
-                "prior_customers": set(),
-                "top_products": {},
-            },
+        customer_category_presence = (
+            select(
+                Order.customer_id.label("customer_id"),
+                Product.category.label("category"),
+                func.max(case((current_order_window, 1), else_=0)).label("in_current"),
+                func.max(case((prior_order_window, 1), else_=0)).label("in_prior"),
+            )
+            .join(OrderLine, OrderLine.order_id == Order.id)
+            .join(Product, Product.id == OrderLine.product_id)
+            .where(
+                Order.tenant_id == tenant_id,
+                Product.tenant_id == tenant_id,
+                Order.status.in_(_COUNTABLE_STATUSES),
+                Product.category.is_not(None),
+                Order.created_at >= prior_start_dt,
+                Order.created_at < next_day_dt,
+            )
+            .group_by(Order.customer_id, Product.category)
+            .subquery()
         )
 
-        line_amount = _to_decimal(row.line_amount)
-        created_at = row.created_at.date()
-        is_current = current_start <= created_at <= end
-        is_prior = prior_start <= created_at < current_start
-        if not is_current and not is_prior:
+        first_purchase_by_category = (
+            select(
+                Order.customer_id.label("customer_id"),
+                Product.category.label("category"),
+                func.min(Order.created_at).label("first_purchase_at"),
+            )
+            .join(OrderLine, OrderLine.order_id == Order.id)
+            .join(Product, Product.id == OrderLine.product_id)
+            .where(
+                Order.tenant_id == tenant_id,
+                Product.tenant_id == tenant_id,
+                Order.status.in_(_COUNTABLE_STATUSES),
+                Product.category.is_not(None),
+            )
+            .group_by(Order.customer_id, Product.category)
+            .subquery()
+        )
+
+        new_customer_rows = (
+            await session.execute(
+                select(
+                    first_purchase_by_category.c.category,
+                    func.count().label("new_customer_count"),
+                )
+                .select_from(first_purchase_by_category)
+                .where(
+                    first_purchase_by_category.c.first_purchase_at >= current_start_dt,
+                    first_purchase_by_category.c.first_purchase_at < next_day_dt,
+                )
+                .group_by(first_purchase_by_category.c.category)
+            )
+        ).all()
+
+        churned_customer_rows = (
+            await session.execute(
+                select(
+                    customer_category_presence.c.category,
+                    func.count().label("churned_customer_count"),
+                )
+                .select_from(customer_category_presence)
+                .where(
+                    customer_category_presence.c.in_prior == 1,
+                    customer_category_presence.c.in_current == 0,
+                )
+                .group_by(customer_category_presence.c.category)
+            )
+        ).all()
+
+    top_products_by_category: dict[str, list[TopProductByRevenue]] = {}
+    for row in top_product_rows:
+        if _is_excluded_category(row.category):
             continue
+        top_products_by_category.setdefault(row.category, []).append(
+            TopProductByRevenue(
+                product_id=row.product_id,
+                product_name=row.product_name,
+                revenue=_to_decimal(row.revenue),
+            )
+        )
 
-        if is_current:
-            bucket["current_revenue"] = bucket["current_revenue"] + line_amount
-            bucket["current_orders"].add(row.order_id)
-            bucket["current_customers"].add(row.customer_id)
-            top_products = bucket["top_products"]
-            product_key = (row.product_id, row.product_name)
-            top_products[product_key] = top_products.get(product_key, _ZERO) + line_amount
-        elif is_prior:
-            bucket["prior_revenue"] = bucket["prior_revenue"] + line_amount
-            bucket["prior_orders"].add(row.order_id)
-            bucket["prior_customers"].add(row.customer_id)
+    new_customer_counts = {
+        row.category: int(row.new_customer_count or 0)
+        for row in new_customer_rows
+        if not _is_excluded_category(row.category)
+    }
+    churned_customer_counts = {
+        row.category: int(row.churned_customer_count or 0)
+        for row in churned_customer_rows
+        if not _is_excluded_category(row.category)
+    }
 
-    first_purchase_by_category: dict[str, set[uuid.UUID]] = {}
-    for row in first_purchase_rows:
+    trends: list[CategoryTrend] = []
+    for row in category_metric_rows:
         category = row.category
         if _is_excluded_category(category):
             continue
-        first_purchase_at = row.first_purchase_at.date()
-        if current_start <= first_purchase_at <= end:
-            first_purchase_by_category.setdefault(category, set()).add(row.customer_id)
 
-    trends: list[CategoryTrend] = []
-    for category, metrics in category_metrics.items():
-        current_revenue = metrics["current_revenue"]
-        prior_revenue = metrics["prior_revenue"]
-        current_orders = metrics["current_orders"]
-        prior_orders = metrics["prior_orders"]
-        current_customers = metrics["current_customers"]
-        prior_customers = metrics["prior_customers"]
-        top_products_map = metrics["top_products"]
+        current_revenue = _to_decimal(row.current_revenue)
+        prior_revenue = _to_decimal(row.prior_revenue)
+        current_order_count = int(row.current_orders or 0)
+        prior_order_count = int(row.prior_orders or 0)
+        current_customer_count = int(row.current_customers or 0)
+        prior_customer_count = int(row.prior_customers or 0)
 
         revenue_delta_pct: float | None
         trend_context: Literal["newly_active", "insufficient_history"] | None = None
@@ -490,11 +624,11 @@ async def get_category_trends(
                 trend_context = "insufficient_history"
 
         order_delta_pct: float | None
-        if len(prior_orders) > 0:
+        if prior_order_count > 0:
             order_delta_pct = _to_ratio(
                 (
-                    (Decimal(len(current_orders)) - Decimal(len(prior_orders)))
-                    / Decimal(len(prior_orders))
+                    (Decimal(current_order_count) - Decimal(prior_order_count))
+                    / Decimal(prior_order_count)
                 )
                 * Decimal("100"),
                 quant=_PCT_QUANT,
@@ -509,32 +643,20 @@ async def get_category_trends(
         else:
             trend = "stable"
 
-        ranked_products = sorted(
-            top_products_map.items(),
-            key=lambda item: (-item[1], item[0][1]),
-        )[:5]
-
         trends.append(
             CategoryTrend(
                 category=category,
                 current_period_revenue=current_revenue,
                 prior_period_revenue=prior_revenue,
                 revenue_delta_pct=revenue_delta_pct,
-                current_period_orders=len(current_orders),
-                prior_period_orders=len(prior_orders),
+                current_period_orders=current_order_count,
+                prior_period_orders=prior_order_count,
                 order_delta_pct=order_delta_pct,
-                customer_count=len(current_customers),
-                prior_customer_count=len(prior_customers),
-                new_customer_count=len(first_purchase_by_category.get(category, set())),
-                churned_customer_count=len(prior_customers - current_customers),
-                top_products=[
-                    TopProductByRevenue(
-                        product_id=product_id,
-                        product_name=product_name,
-                        revenue=revenue,
-                    )
-                    for (product_id, product_name), revenue in ranked_products
-                ],
+                customer_count=current_customer_count,
+                prior_customer_count=prior_customer_count,
+                new_customer_count=new_customer_counts.get(category, 0),
+                churned_customer_count=churned_customer_counts.get(category, 0),
+                top_products=top_products_by_category.get(category, [])[:5],
                 trend=trend,
                 trend_context=trend_context,
                 activity_basis="confirmed_or_later_orders",
@@ -583,26 +705,58 @@ async def get_customer_risk_signals(
             )
         ).all()
 
-        order_rows = (
+        current_order_window = Order.created_at >= window_current_start
+        prior_order_window = and_(
+            Order.created_at >= window_prior_start,
+            Order.created_at < window_current_start,
+        )
+
+        order_metrics_rows = (
             await session.execute(
                 select(
                     Order.customer_id.label("customer_id"),
-                    Order.created_at.label("created_at"),
-                    Order.total_amount.label("total_amount"),
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (current_order_window, func.coalesce(Order.total_amount, 0)),
+                                else_=0,
+                            )
+                        ),
+                        0,
+                    ).label("revenue_current"),
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (prior_order_window, func.coalesce(Order.total_amount, 0)),
+                                else_=0,
+                            )
+                        ),
+                        0,
+                    ).label("revenue_prior"),
+                    func.count(
+                        func.distinct(case((current_order_window, Order.id), else_=None))
+                    ).label("order_count_current"),
+                    func.count(
+                        func.distinct(case((prior_order_window, Order.id), else_=None))
+                    ).label("order_count_prior"),
+                    func.min(Order.created_at).label("first_order_at"),
+                    func.max(Order.created_at).label("last_order_at"),
                 )
                 .where(
                     Order.tenant_id == tenant_id,
                     Order.status.in_(_COUNTABLE_STATUSES),
                 )
+                .group_by(Order.customer_id)
             )
         ).all()
 
-        category_rows = (
+        category_presence_rows = (
             await session.execute(
                 select(
                     Order.customer_id.label("customer_id"),
-                    Order.created_at.label("created_at"),
                     Product.category.label("category"),
+                    func.max(case((current_order_window, 1), else_=0)).label("in_current"),
+                    func.max(case((prior_order_window, 1), else_=0)).label("in_prior"),
                 )
                 .join(OrderLine, OrderLine.order_id == Order.id)
                 .join(Product, Product.id == OrderLine.product_id)
@@ -611,7 +765,9 @@ async def get_customer_risk_signals(
                     Product.tenant_id == tenant_id,
                     Order.status.in_(_COUNTABLE_STATUSES),
                     Product.category.is_not(None),
+                    Order.created_at >= window_prior_start,
                 )
+                .group_by(Order.customer_id, Product.category)
             )
         ).all()
 
@@ -630,34 +786,30 @@ async def get_customer_risk_signals(
         for row in customers
     }
 
-    for row in order_rows:
+    for row in order_metrics_rows:
         metrics = customer_metrics.get(row.customer_id)
         if metrics is None:
             continue
 
-        created_at = row.created_at
-        amount = _to_decimal(row.total_amount)
-        created_date = created_at.date()
-        if metrics["first_order_date"] is None or created_date < metrics["first_order_date"]:
-            metrics["first_order_date"] = created_date
-        if metrics["last_order_date"] is None or created_date > metrics["last_order_date"]:
-            metrics["last_order_date"] = created_date
+        metrics["revenue_current"] = _to_decimal(row.revenue_current)
+        metrics["revenue_prior"] = _to_decimal(row.revenue_prior)
+        metrics["order_count_current"] = int(row.order_count_current or 0)
+        metrics["order_count_prior"] = int(row.order_count_prior or 0)
+        metrics["first_order_date"] = (
+            row.first_order_at.date() if row.first_order_at is not None else None
+        )
+        metrics["last_order_date"] = (
+            row.last_order_at.date() if row.last_order_at is not None else None
+        )
 
-        if created_at >= window_current_start:
-            metrics["revenue_current"] = metrics["revenue_current"] + amount
-            metrics["order_count_current"] += 1
-        elif window_prior_start <= created_at < window_current_start:
-            metrics["revenue_prior"] = metrics["revenue_prior"] + amount
-            metrics["order_count_prior"] += 1
-
-    for row in category_rows:
+    for row in category_presence_rows:
         metrics = customer_metrics.get(row.customer_id)
         if metrics is None or _is_excluded_category(row.category):
             continue
 
-        if row.created_at >= window_current_start:
+        if bool(row.in_current):
             metrics["categories_current"].add(row.category)
-        elif window_prior_start <= row.created_at < window_current_start:
+        if bool(row.in_prior):
             metrics["categories_prior"].add(row.category)
 
     customers_out: list[CustomerRiskSignal] = []
@@ -767,6 +919,7 @@ async def get_prospect_gaps(
     tenant_id: uuid.UUID,
     *,
     category: str,
+    customer_type: str = "dealer",
     limit: int = 20,
 ) -> ProspectGaps:
     """Return active non-buyers ranked as whitespace prospects for a target category."""
@@ -774,60 +927,128 @@ async def get_prospect_gaps(
     normalized_limit = max(1, min(limit, 100))
     now = datetime.now(tz=UTC)
     recent_window_start = _subtract_months(now, 12)
+    customer_type_filter = true() if customer_type == "all" else Customer.customer_type == customer_type
 
     async with session.begin():
         await set_tenant(session, tenant_id)
 
-        customer_rows = (
+        customer_summary_rows = (
             await session.execute(
                 select(Customer.id, Customer.company_name)
+                .add_columns(
+                    func.count(func.distinct(Order.id)).label("order_count_total"),
+                    func.count(
+                        func.distinct(
+                            case((Order.created_at >= recent_window_start, Order.id), else_=None)
+                        )
+                    ).label("order_count_recent"),
+                    func.coalesce(func.sum(func.coalesce(Order.total_amount, 0)), 0).label("total_revenue"),
+                    func.min(Order.created_at).label("first_order_at"),
+                    func.max(Order.created_at).label("last_order_at"),
+                )
                 .join(Order, Order.customer_id == Customer.id)
                 .where(
                     Customer.tenant_id == tenant_id,
+                    customer_type_filter,
                     Order.tenant_id == tenant_id,
                     Order.status.in_(_COUNTABLE_STATUSES),
                 )
-                .distinct()
+                .group_by(Customer.id, Customer.company_name)
                 .order_by(Customer.company_name)
             )
         ).all()
 
-        order_rows = (
+        category_presence_rows = (
             await session.execute(
                 select(
                     Order.customer_id.label("customer_id"),
-                    Order.id.label("order_id"),
-                    Order.created_at.label("created_at"),
-                    Order.total_amount.label("total_amount"),
-                )
-                .where(
-                    Order.tenant_id == tenant_id,
-                    Order.status.in_(_COUNTABLE_STATUSES),
-                )
-            )
-        ).all()
-
-        category_rows = (
-            await session.execute(
-                select(
-                    Order.customer_id.label("customer_id"),
-                    Order.id.label("order_id"),
-                    Order.created_at.label("created_at"),
                     Product.category.label("category"),
-                    OrderLine.total_amount.label("line_amount"),
+                    func.max(case((Order.created_at >= recent_window_start, 1), else_=0)).label("in_recent"),
                 )
+                .join(Customer, Customer.id == Order.customer_id)
                 .join(OrderLine, OrderLine.order_id == Order.id)
                 .join(Product, Product.id == OrderLine.product_id)
                 .where(
+                    Customer.tenant_id == tenant_id,
+                    customer_type_filter,
                     Order.tenant_id == tenant_id,
                     Product.tenant_id == tenant_id,
                     Order.status.in_(_COUNTABLE_STATUSES),
                     Product.category.is_not(None),
                 )
+                .group_by(Order.customer_id, Product.category)
             )
         ).all()
 
-    available_categories = sorted({row.category for row in category_rows if not _is_excluded_category(row.category)})
+        target_category_summary = (
+            await session.execute(
+                select(
+                    func.coalesce(func.sum(OrderLine.total_amount), 0).label("target_category_revenue"),
+                    func.count(func.distinct(Order.customer_id)).label("existing_buyers_count"),
+                )
+                .select_from(Order)
+                .join(Customer, Customer.id == Order.customer_id)
+                .join(OrderLine, OrderLine.order_id == Order.id)
+                .join(Product, Product.id == OrderLine.product_id)
+                .where(
+                    Customer.tenant_id == tenant_id,
+                    customer_type_filter,
+                    Order.tenant_id == tenant_id,
+                    Product.tenant_id == tenant_id,
+                    Order.status.in_(_COUNTABLE_STATUSES),
+                    Product.category == target_category,
+                )
+            )
+        ).one()
+
+        order_categories = (
+            select(
+                Order.id.label("order_id"),
+                Product.category.label("category"),
+            )
+            .join(Customer, Customer.id == Order.customer_id)
+            .join(OrderLine, OrderLine.order_id == Order.id)
+            .join(Product, Product.id == OrderLine.product_id)
+            .where(
+                Customer.tenant_id == tenant_id,
+                customer_type_filter,
+                Order.tenant_id == tenant_id,
+                Product.tenant_id == tenant_id,
+                Order.status.in_(_COUNTABLE_STATUSES),
+                Product.category.is_not(None),
+            )
+            .distinct()
+            .subquery()
+        )
+        target_order_categories = order_categories.alias("target_order_categories")
+        adjacent_order_categories = order_categories.alias("adjacent_order_categories")
+        adjacent_category_rows = (
+            await session.execute(
+                select(
+                    adjacent_order_categories.c.category.label("category"),
+                    func.count().label("pair_count"),
+                )
+                .select_from(
+                    target_order_categories.join(
+                        adjacent_order_categories,
+                        and_(
+                            target_order_categories.c.order_id == adjacent_order_categories.c.order_id,
+                            target_order_categories.c.category != adjacent_order_categories.c.category,
+                        ),
+                    )
+                )
+                .where(target_order_categories.c.category == target_category)
+                .group_by(adjacent_order_categories.c.category)
+            )
+        ).all()
+
+    available_categories = sorted(
+        {
+            row.category
+            for row in category_presence_rows
+            if not _is_excluded_category(row.category)
+        }
+    )
     if not target_category:
         return ProspectGaps(
             target_category="",
@@ -842,49 +1063,31 @@ async def get_prospect_gaps(
     customer_metrics: dict[uuid.UUID, dict[str, object]] = {
         row.id: {
             "company_name": row.company_name,
-            "order_ids": set(),
-            "order_ids_recent": set(),
-            "total_revenue": _ZERO,
-            "first_order_date": None,
-            "last_order_date": None,
+            "order_count_total": int(row.order_count_total or 0),
+            "order_count_recent": int(row.order_count_recent or 0),
+            "total_revenue": _to_decimal(row.total_revenue),
+            "first_order_date": row.first_order_at.date() if row.first_order_at is not None else None,
+            "last_order_date": row.last_order_at.date() if row.last_order_at is not None else None,
             "categories": set(),
             "categories_recent": set(),
         }
-        for row in customer_rows
+        for row in customer_summary_rows
     }
 
-    order_categories: dict[uuid.UUID, set[str]] = {}
     existing_buyers: set[uuid.UUID] = set()
-    target_category_revenue = _ZERO
+    target_category_revenue = _to_decimal(target_category_summary.target_category_revenue)
 
-    for row in order_rows:
-        metrics = customer_metrics.get(row.customer_id)
-        if metrics is None:
-            continue
-        order_total = _to_decimal(row.total_amount)
-        created_date = row.created_at.date()
-        metrics["order_ids"].add(row.order_id)
-        metrics["total_revenue"] = metrics["total_revenue"] + order_total
-        if metrics["first_order_date"] is None or created_date < metrics["first_order_date"]:
-            metrics["first_order_date"] = created_date
-        if metrics["last_order_date"] is None or created_date > metrics["last_order_date"]:
-            metrics["last_order_date"] = created_date
-        if row.created_at >= recent_window_start:
-            metrics["order_ids_recent"].add(row.order_id)
-
-    for row in category_rows:
+    for row in category_presence_rows:
         if _is_excluded_category(row.category):
             continue
         metrics = customer_metrics.get(row.customer_id)
         if metrics is None:
             continue
         metrics["categories"].add(row.category)
-        order_categories.setdefault(row.order_id, set()).add(row.category)
-        if row.created_at >= recent_window_start:
+        if bool(row.in_recent):
             metrics["categories_recent"].add(row.category)
         if row.category == target_category:
             existing_buyers.add(row.customer_id)
-            target_category_revenue += _to_decimal(row.line_amount)
 
     if target_category not in available_categories:
         return ProspectGaps(
@@ -897,15 +1100,11 @@ async def get_prospect_gaps(
             generated_at=now,
         )
 
-    adjacent_category_counts: dict[str, int] = {}
-    for categories in order_categories.values():
-        if target_category not in categories:
-            continue
-        for adjacent in categories:
-            if adjacent == target_category:
-                continue
-            adjacent_category_counts[adjacent] = adjacent_category_counts.get(adjacent, 0) + 1
-    adjacent_categories = set(adjacent_category_counts)
+    adjacent_categories = {
+        row.category
+        for row in adjacent_category_rows
+        if not _is_excluded_category(row.category)
+    }
 
     buyer_frequency_values: list[float] = []
     buyer_breadth_values: list[float] = []
@@ -913,7 +1112,7 @@ async def get_prospect_gaps(
         metrics = customer_metrics.get(customer_id)
         if metrics is None:
             continue
-        buyer_frequency_values.append(float(len(metrics["order_ids_recent"])))
+        buyer_frequency_values.append(float(metrics["order_count_recent"]))
         buyer_breadth_values.append(float(len(metrics["categories_recent"])))
     buyer_frequency_baseline = sum(buyer_frequency_values) / len(buyer_frequency_values) if buyer_frequency_values else 0.0
     buyer_breadth_baseline = sum(buyer_breadth_values) / len(buyer_breadth_values) if buyer_breadth_values else 0.0
@@ -930,13 +1129,13 @@ async def get_prospect_gaps(
         if customer_id in existing_buyers:
             continue
 
-        order_count_total = len(metrics["order_ids"])
+        order_count_total = int(metrics["order_count_total"])
         if order_count_total == 0:
             continue
         if len(metrics["categories"]) == 0:
             continue
 
-        order_count_recent = len(metrics["order_ids_recent"])
+        order_count_recent = int(metrics["order_count_recent"])
         category_count_recent = len(metrics["categories_recent"])
         total_revenue = metrics["total_revenue"]
         avg_order_value = _safe_average(total_revenue, order_count_total)
@@ -1042,109 +1241,184 @@ async def get_product_affinity_map(
         await set_tenant(session, tenant_id)
 
         qualifying_rows = (
+            select(
+                Order.customer_id.label("customer_id"),
+                Order.id.label("order_id"),
+                Product.id.label("product_id"),
+            )
+            .join(OrderLine, OrderLine.order_id == Order.id)
+            .join(Product, Product.id == OrderLine.product_id)
+            .where(
+                Order.tenant_id == tenant_id,
+                Product.tenant_id == tenant_id,
+                Order.status.in_(_COUNTABLE_STATUSES),
+            )
+            .distinct()
+            .cte("qualifying_rows")
+        )
+
+        customer_counts = (
+            select(
+                qualifying_rows.c.product_id.label("product_id"),
+                func.count(func.distinct(qualifying_rows.c.customer_id)).label("customer_count"),
+            )
+            .group_by(qualifying_rows.c.product_id)
+            .cte("customer_counts")
+        )
+
+        customer_rows_a = qualifying_rows.alias("customer_rows_a")
+        customer_rows_b = qualifying_rows.alias("customer_rows_b")
+        pair_customer_counts = (
+            select(
+                customer_rows_a.c.product_id.label("product_a_id"),
+                customer_rows_b.c.product_id.label("product_b_id"),
+                func.count(func.distinct(customer_rows_a.c.customer_id)).label("shared_customer_count"),
+            )
+            .select_from(
+                customer_rows_a.join(
+                    customer_rows_b,
+                    and_(
+                        customer_rows_a.c.customer_id == customer_rows_b.c.customer_id,
+                        cast(customer_rows_a.c.product_id, String) < cast(customer_rows_b.c.product_id, String),
+                    ),
+                )
+            )
+            .group_by(customer_rows_a.c.product_id, customer_rows_b.c.product_id)
+            .having(func.count(func.distinct(customer_rows_a.c.customer_id)) >= min_shared)
+            .cte("pair_customer_counts")
+        )
+
+        order_rows_a = qualifying_rows.alias("order_rows_a")
+        order_rows_b = qualifying_rows.alias("order_rows_b")
+        pair_order_counts = (
+            select(
+                order_rows_a.c.product_id.label("product_a_id"),
+                order_rows_b.c.product_id.label("product_b_id"),
+                func.count(func.distinct(order_rows_a.c.order_id)).label("shared_order_count"),
+            )
+            .select_from(
+                order_rows_a.join(
+                    order_rows_b,
+                    and_(
+                        order_rows_a.c.order_id == order_rows_b.c.order_id,
+                        cast(order_rows_a.c.product_id, String) < cast(order_rows_b.c.product_id, String),
+                    ),
+                )
+            )
+            .group_by(order_rows_a.c.product_id, order_rows_b.c.product_id)
+            .cte("pair_order_counts")
+        )
+
+        customer_count_a = customer_counts.alias("customer_count_a")
+        customer_count_b = customer_counts.alias("customer_count_b")
+        product_a = Product.__table__.alias("product_a")
+        product_b = Product.__table__.alias("product_b")
+
+        total_pairs = int(
+            (
+                await session.execute(
+                    select(func.count()).select_from(pair_customer_counts)
+                )
+            ).scalar_one()
+            or 0
+        )
+
+        if total_pairs <= 0:
+            return ProductAffinityMap(
+                pairs=[],
+                total=0,
+                min_shared=min_shared,
+                limit=normalized_limit,
+                computed_at=computed_at,
+            )
+
+        union_count = (
+            customer_count_a.c.customer_count
+            + customer_count_b.c.customer_count
+            - pair_customer_counts.c.shared_customer_count
+        )
+        affinity_rank = cast(pair_customer_counts.c.shared_customer_count, Float) / func.nullif(
+            cast(union_count, Float),
+            0.0,
+        )
+        rounded_affinity_rank = func.round(cast(affinity_rank, Numeric(18, 8)), 4)
+
+        rows = (
             await session.execute(
                 select(
-                    Order.customer_id.label("customer_id"),
-                    Order.id.label("order_id"),
-                    Product.id.label("product_id"),
-                    Product.name.label("product_name"),
+                    pair_customer_counts.c.product_a_id,
+                    pair_customer_counts.c.product_b_id,
+                    product_a.c.name.label("product_a_name"),
+                    product_b.c.name.label("product_b_name"),
+                    pair_customer_counts.c.shared_customer_count,
+                    customer_count_a.c.customer_count.label("customer_count_a"),
+                    customer_count_b.c.customer_count.label("customer_count_b"),
+                    pair_order_counts.c.shared_order_count,
                 )
-                .join(OrderLine, OrderLine.order_id == Order.id)
-                .join(Product, Product.id == OrderLine.product_id)
-                .where(
-                    Order.tenant_id == tenant_id,
-                    Product.tenant_id == tenant_id,
-                    Order.status.in_(_COUNTABLE_STATUSES),
+                .select_from(
+                    pair_customer_counts
+                    .join(customer_count_a, customer_count_a.c.product_id == pair_customer_counts.c.product_a_id)
+                    .join(customer_count_b, customer_count_b.c.product_id == pair_customer_counts.c.product_b_id)
+                    .join(product_a, product_a.c.id == pair_customer_counts.c.product_a_id)
+                    .join(product_b, product_b.c.id == pair_customer_counts.c.product_b_id)
+                    .outerjoin(
+                        pair_order_counts,
+                        and_(
+                            pair_order_counts.c.product_a_id == pair_customer_counts.c.product_a_id,
+                            pair_order_counts.c.product_b_id == pair_customer_counts.c.product_b_id,
+                        ),
+                    )
                 )
-                .distinct()
+                .order_by(
+                    rounded_affinity_rank.desc(),
+                    pair_customer_counts.c.shared_customer_count.desc(),
+                    product_a.c.name.asc(),
+                    product_b.c.name.asc(),
+                )
+                .limit(normalized_limit)
             )
         ).all()
 
-    if not qualifying_rows:
-        return ProductAffinityMap(
-            pairs=[],
-            total=0,
-            min_shared=min_shared,
-            limit=normalized_limit,
-            computed_at=computed_at,
-        )
-
-    customer_products: dict[uuid.UUID, set[uuid.UUID]] = {}
-    order_products: dict[uuid.UUID, set[uuid.UUID]] = {}
-    product_customers: dict[uuid.UUID, set[uuid.UUID]] = {}
-    product_names: dict[uuid.UUID, str] = {}
-
-    for row in qualifying_rows:
-        customer_products.setdefault(row.customer_id, set()).add(row.product_id)
-        order_products.setdefault(row.order_id, set()).add(row.product_id)
-        product_customers.setdefault(row.product_id, set()).add(row.customer_id)
-        product_names[row.product_id] = row.product_name
-
-    pair_customer_counts: dict[tuple[uuid.UUID, uuid.UUID], int] = {}
-    for products in customer_products.values():
-        for product_a_id, product_b_id in combinations(sorted(products, key=str), 2):
-            key = (product_a_id, product_b_id)
-            pair_customer_counts[key] = pair_customer_counts.get(key, 0) + 1
-
-    pair_order_counts: dict[tuple[uuid.UUID, uuid.UUID], int] = {}
-    for products in order_products.values():
-        for product_a_id, product_b_id in combinations(sorted(products, key=str), 2):
-            key = (product_a_id, product_b_id)
-            pair_order_counts[key] = pair_order_counts.get(key, 0) + 1
-
     pairs: list[AffinityPair] = []
-    for product_pair, shared_customer_count in pair_customer_counts.items():
-        if shared_customer_count < min_shared:
-            continue
-
-        product_a_id, product_b_id = product_pair
-        customer_count_a = len(product_customers.get(product_a_id, ()))
-        customer_count_b = len(product_customers.get(product_b_id, ()))
-        if customer_count_a <= 0 or customer_count_b <= 0:
-            continue
-
-        min_customer_count = min(customer_count_a, customer_count_b)
-        union_count = customer_count_a + customer_count_b - shared_customer_count
-        if min_customer_count <= 0 or union_count <= 0:
+    for row in rows:
+        shared_customer_count = int(row.shared_customer_count or 0)
+        customer_count_a_value = int(row.customer_count_a or 0)
+        customer_count_b_value = int(row.customer_count_b or 0)
+        min_customer_count = min(customer_count_a_value, customer_count_b_value)
+        union_count_value = customer_count_a_value + customer_count_b_value - shared_customer_count
+        if min_customer_count <= 0 or union_count_value <= 0:
             continue
 
         overlap_pct = (
             Decimal(shared_customer_count) * Decimal("100") / Decimal(min_customer_count)
         ).quantize(_PCT_QUANT)
         affinity_score = (
-            Decimal(shared_customer_count) / Decimal(union_count)
-        ).quantize(_RATIO_QUANT)
+            Decimal(shared_customer_count) / Decimal(union_count_value)
+        ).quantize(_RATIO_QUANT, rounding=ROUND_HALF_UP)
 
-        product_a_name = product_names[product_a_id]
-        product_b_name = product_names[product_b_id]
         pairs.append(
             AffinityPair(
-                product_a_id=product_a_id,
-                product_b_id=product_b_id,
-                product_a_name=product_a_name,
-                product_b_name=product_b_name,
+                product_a_id=row.product_a_id,
+                product_b_id=row.product_b_id,
+                product_a_name=row.product_a_name,
+                product_b_name=row.product_b_name,
                 shared_customer_count=shared_customer_count,
-                customer_count_a=customer_count_a,
-                customer_count_b=customer_count_b,
-                shared_order_count=pair_order_counts.get(product_pair),
+                customer_count_a=customer_count_a_value,
+                customer_count_b=customer_count_b_value,
+                shared_order_count=(
+                    int(row.shared_order_count)
+                    if row.shared_order_count is not None
+                    else None
+                ),
                 overlap_pct=_to_ratio(overlap_pct, quant=_PCT_QUANT),
                 affinity_score=_to_ratio(affinity_score),
-                pitch_hint=_make_pitch_hint(product_a_name, product_b_name, affinity_score),
+                pitch_hint=_make_pitch_hint(row.product_a_name, row.product_b_name, affinity_score),
             )
         )
 
-    pairs.sort(
-        key=lambda pair: (
-            -pair.affinity_score,
-            -pair.shared_customer_count,
-            pair.product_a_name,
-            pair.product_b_name,
-        )
-    )
-
     return ProductAffinityMap(
-        pairs=pairs[:normalized_limit],
-        total=len(pairs),
+        pairs=pairs,
+        total=total_pairs,
         min_shared=min_shared,
         limit=normalized_limit,
         computed_at=computed_at,
@@ -1419,4 +1693,240 @@ async def get_customer_product_profile(
         new_categories=new_categories,
         confidence=_confidence(order_count_12m),
         activity_basis="confirmed_or_later_orders",
+    )
+
+
+def _shift_month_start(month_start: date, months: int) -> date:
+    month_index = (month_start.year * 12 + month_start.month - 1) + months
+    year = month_index // 12
+    month = month_index % 12 + 1
+    return date(year, month, 1)
+
+
+def _revenue_diagnosis_windows(
+    period: Literal["1m", "3m", "6m", "12m"],
+    *,
+    anchor_month: date,
+) -> tuple[date, date, date, date]:
+    month_count = _REVENUE_DIAGNOSIS_PERIOD_MONTHS[period]
+    current_end = normalize_month_start(anchor_month)
+    current_start = _shift_month_start(current_end, -(month_count - 1))
+    prior_end = _shift_month_start(current_start, -1)
+    prior_start = _shift_month_start(prior_end, -(month_count - 1))
+    return current_start, current_end, prior_start, prior_end
+
+
+def _safe_unit_price(revenue: Decimal, quantity: Decimal) -> Decimal:
+    if quantity <= 0:
+        return _ZERO
+    return (revenue / quantity).quantize(_MONEY_QUANT)
+
+
+def _percent_change(current_value: Decimal, prior_value: Decimal) -> float | None:
+    if prior_value == 0:
+        return None
+    return float(((current_value - prior_value) / prior_value * Decimal("100")).quantize(_PCT_QUANT))
+
+
+def _aggregate_revenue_window(
+    points: tuple[SalesMonthlyPoint, ...],
+    *,
+    category: str | None,
+) -> dict[uuid.UUID, _RevenueDiagnosisWindowMetrics]:
+    category_filter = category.strip() if category else None
+    metrics: dict[uuid.UUID, _RevenueDiagnosisWindowMetrics] = {}
+
+    for point in points:
+        if category_filter and point.product_category_snapshot != category_filter:
+            continue
+
+        existing = metrics.get(point.product_id)
+        if existing is None:
+            metrics[point.product_id] = _RevenueDiagnosisWindowMetrics(
+                product_id=point.product_id,
+                product_name=point.product_name_snapshot,
+                product_category_snapshot=point.product_category_snapshot,
+                quantity=point.quantity_sold,
+                revenue=point.revenue,
+                order_count=point.order_count,
+                latest_month=point.month_start,
+            )
+            continue
+
+        existing.quantity = (existing.quantity + point.quantity_sold).quantize(_QUANTITY_QUANT)
+        existing.revenue = _to_decimal(existing.revenue + point.revenue)
+        existing.order_count += point.order_count
+        if point.month_start >= existing.latest_month:
+            existing.latest_month = point.month_start
+            existing.product_name = point.product_name_snapshot
+            existing.product_category_snapshot = point.product_category_snapshot
+
+    return metrics
+
+
+def _build_revenue_diagnosis_driver(
+    *,
+    product_id: uuid.UUID,
+    current_metrics: _RevenueDiagnosisWindowMetrics | None,
+    prior_metrics: _RevenueDiagnosisWindowMetrics | None,
+    current_total_quantity: Decimal,
+    prior_total_quantity: Decimal,
+    data_basis: Literal["aggregate_only", "aggregate_plus_live_current_month"],
+    window_is_partial: bool,
+) -> RevenueDiagnosisDriver:
+    product_name = (
+        current_metrics.product_name
+        if current_metrics is not None
+        else prior_metrics.product_name  # type: ignore[union-attr]
+    )
+    product_category_snapshot = (
+        current_metrics.product_category_snapshot
+        if current_metrics is not None
+        else prior_metrics.product_category_snapshot  # type: ignore[union-attr]
+    )
+    current_quantity = current_metrics.quantity if current_metrics is not None else Decimal("0.000")
+    prior_quantity = prior_metrics.quantity if prior_metrics is not None else Decimal("0.000")
+    current_revenue = current_metrics.revenue if current_metrics is not None else _ZERO
+    prior_revenue = prior_metrics.revenue if prior_metrics is not None else _ZERO
+    current_order_count = current_metrics.order_count if current_metrics is not None else 0
+    prior_order_count = prior_metrics.order_count if prior_metrics is not None else 0
+    current_avg_unit_price = _safe_unit_price(current_revenue, current_quantity)
+    prior_avg_unit_price = _safe_unit_price(prior_revenue, prior_quantity)
+    revenue_delta = _to_decimal(current_revenue - prior_revenue)
+
+    if current_quantity > 0 and prior_quantity > 0 and prior_total_quantity > 0:
+        price_effect = _to_decimal((current_avg_unit_price - prior_avg_unit_price) * current_quantity)
+        volume_effect = _to_decimal(
+            (current_total_quantity - prior_total_quantity)
+            * (prior_quantity / prior_total_quantity)
+            * prior_avg_unit_price
+        )
+        mix_effect = _to_decimal(revenue_delta - price_effect - volume_effect)
+    else:
+        price_effect = _ZERO
+        volume_effect = _ZERO
+        mix_effect = revenue_delta
+
+    return RevenueDiagnosisDriver(
+        product_id=product_id,
+        product_name=product_name,
+        product_category_snapshot=product_category_snapshot,
+        current_quantity=current_quantity,
+        prior_quantity=prior_quantity,
+        current_revenue=current_revenue,
+        prior_revenue=prior_revenue,
+        current_order_count=current_order_count,
+        prior_order_count=prior_order_count,
+        current_avg_unit_price=current_avg_unit_price,
+        prior_avg_unit_price=prior_avg_unit_price,
+        price_effect=price_effect,
+        volume_effect=volume_effect,
+        mix_effect=mix_effect,
+        revenue_delta=revenue_delta,
+        revenue_delta_pct=_percent_change(current_revenue, prior_revenue),
+        data_basis=data_basis,
+        window_is_partial=window_is_partial,
+    )
+
+
+async def get_revenue_diagnosis(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    *,
+    period: Literal["1m", "3m", "6m", "12m"] = "1m",
+    anchor_month: date | None = None,
+    category: str | None = None,
+    limit: int = 20,
+) -> RevenueDiagnosis:
+    normalized_anchor_month = normalize_month_start(anchor_month or datetime.now(tz=UTC).date())
+    current_month_start = normalize_month_start(datetime.now(tz=UTC).date())
+    if normalized_anchor_month > current_month_start:
+        raise ValueError("anchor_month cannot be in the future")
+
+    current_start, current_end, prior_start, prior_end = _revenue_diagnosis_windows(
+        period,
+        anchor_month=normalized_anchor_month,
+    )
+    window_is_partial = current_start <= current_month_start <= current_end
+    data_basis: Literal["aggregate_only", "aggregate_plus_live_current_month"] = (
+        "aggregate_plus_live_current_month" if window_is_partial else "aggregate_only"
+    )
+
+    current_window_points = await read_sales_monthly_range(
+        session,
+        tenant_id,
+        start_month=current_start,
+        end_month=current_end,
+    )
+    prior_window_points = await read_sales_monthly_range(
+        session,
+        tenant_id,
+        start_month=prior_start,
+        end_month=prior_end,
+    )
+
+    current_metrics = _aggregate_revenue_window(current_window_points.items, category=category)
+    prior_metrics = _aggregate_revenue_window(prior_window_points.items, category=category)
+    current_total_quantity = sum(
+        (metrics.quantity for metrics in current_metrics.values()),
+        Decimal("0.000"),
+    ).quantize(_QUANTITY_QUANT)
+    prior_total_quantity = sum(
+        (metrics.quantity for metrics in prior_metrics.values()),
+        Decimal("0.000"),
+    ).quantize(_QUANTITY_QUANT)
+
+    all_product_ids = set(current_metrics) | set(prior_metrics)
+    all_drivers = [
+        _build_revenue_diagnosis_driver(
+            product_id=product_id,
+            current_metrics=current_metrics.get(product_id),
+            prior_metrics=prior_metrics.get(product_id),
+            current_total_quantity=current_total_quantity,
+            prior_total_quantity=prior_total_quantity,
+            data_basis=data_basis,
+            window_is_partial=window_is_partial,
+        )
+        for product_id in all_product_ids
+    ]
+    all_drivers.sort(
+        key=lambda driver: (
+            -abs(driver.revenue_delta),
+            -abs(driver.mix_effect),
+            driver.product_name,
+            str(driver.product_id),
+        )
+    )
+
+    current_revenue = _to_decimal(
+        sum((metrics.revenue for metrics in current_metrics.values()), _ZERO)
+    )
+    prior_revenue = _to_decimal(
+        sum((metrics.revenue for metrics in prior_metrics.values()), _ZERO)
+    )
+    revenue_delta = _to_decimal(current_revenue - prior_revenue)
+    price_effect_total = _to_decimal(sum((driver.price_effect for driver in all_drivers), _ZERO))
+    volume_effect_total = _to_decimal(sum((driver.volume_effect for driver in all_drivers), _ZERO))
+    mix_effect_total = _to_decimal(revenue_delta - price_effect_total - volume_effect_total)
+
+    return RevenueDiagnosis(
+        period=period,
+        anchor_month=normalized_anchor_month,
+        current_window=RevenueDiagnosisWindow(start_month=current_start, end_month=current_end),
+        prior_window=RevenueDiagnosisWindow(start_month=prior_start, end_month=prior_end),
+        computed_at=datetime.now(tz=UTC),
+        summary=RevenueDiagnosisSummary(
+            current_revenue=current_revenue,
+            prior_revenue=prior_revenue,
+            revenue_delta=revenue_delta,
+            revenue_delta_pct=_percent_change(current_revenue, prior_revenue),
+        ),
+        components=RevenueDiagnosisComponents(
+            price_effect_total=price_effect_total,
+            volume_effect_total=volume_effect_total,
+            mix_effect_total=mix_effect_total,
+        ),
+        drivers=all_drivers[:limit],
+        data_basis=data_basis,
+        window_is_partial=window_is_partial,
     )

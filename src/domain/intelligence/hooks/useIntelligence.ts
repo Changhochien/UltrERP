@@ -7,6 +7,7 @@ import {
   fetchMarketOpportunities,
   fetchProspectGaps,
   fetchProductAffinityMap,
+  fetchRevenueDiagnosis,
 } from "../../../lib/api/intelligence";
 import type {
   CategoryTrends,
@@ -14,7 +15,10 @@ import type {
   CustomerRiskSignals,
   MarketOpportunities,
   ProspectGaps,
+  ProspectGapCustomerFilter,
   ProductAffinityMap,
+  RevenueDiagnosis,
+  RevenueDiagnosisPeriod,
 } from "../types";
 
 export function useCategoryTrends(period: "last_30d" | "last_90d" | "last_12m" = "last_90d") {
@@ -100,6 +104,46 @@ export function useMarketOpportunities(period: "last_30d" | "last_90d" | "last_1
   return { data, isLoading, error };
 }
 
+export function useRevenueDiagnosis(
+  period: RevenueDiagnosisPeriod = "1m",
+  anchorMonth?: string,
+  category?: string,
+  limit = 10,
+) {
+  const [data, setData] = useState<RevenueDiagnosis | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const load = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const diagnosis = await fetchRevenueDiagnosis(period, anchorMonth, category, limit);
+        if (!isActive) return;
+        setData(diagnosis);
+      } catch (err) {
+        if (!isActive) return;
+        setError(err instanceof Error ? err.message : "Failed to load revenue diagnosis");
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void load();
+
+    return () => {
+      isActive = false;
+    };
+  }, [anchorMonth, category, limit, period]);
+
+  return { data, isLoading, error };
+}
+
 export function useProductAffinity(minShared = 2, limit = 50) {
   const [data, setData] = useState<ProductAffinityMap | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -176,7 +220,11 @@ export function useCustomerRiskSignals(
   return { data, isLoading, error, refetch };
 }
 
-export function useProspectGaps(category: string, limit = 20) {
+export function useProspectGaps(
+  category: string,
+  customerType: ProspectGapCustomerFilter = "dealer",
+  limit = 20,
+) {
   const [data, setData] = useState<ProspectGaps | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -195,7 +243,7 @@ export function useProspectGaps(category: string, limit = 20) {
       setIsLoading(true);
       setError(null);
       try {
-        const gaps = await fetchProspectGaps(category, limit);
+        const gaps = await fetchProspectGaps(category, customerType, limit);
         if (!isActive) return;
         setData(gaps);
       } catch (err) {
@@ -213,7 +261,7 @@ export function useProspectGaps(category: string, limit = 20) {
     return () => {
       isActive = false;
     };
-  }, [category, limit]);
+  }, [category, customerType, limit]);
 
   const refetch = useCallback(async () => {
     if (!category.trim()) {
@@ -225,14 +273,14 @@ export function useProspectGaps(category: string, limit = 20) {
     setIsLoading(true);
     setError(null);
     try {
-      const gaps = await fetchProspectGaps(category, limit);
+      const gaps = await fetchProspectGaps(category, customerType, limit);
       setData(gaps);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load prospect gaps");
     } finally {
       setIsLoading(false);
     }
-  }, [category, limit]);
+  }, [category, customerType, limit]);
 
   return { data, isLoading, error, refetch };
 }

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 
@@ -12,6 +12,7 @@ import jwt
 import pytest
 from fastmcp.exceptions import ToolError
 
+import domains.intelligence.mcp as intelligence_mcp
 from domains.intelligence.mcp import (
     intelligence_category_trends,
     intelligence_customer_product_profile,
@@ -19,6 +20,7 @@ from domains.intelligence.mcp import (
     intelligence_market_opportunities,
     intelligence_prospect_gaps,
     intelligence_product_affinity,
+    intelligence_revenue_diagnosis,
 )
 from common.config import settings
 from domains.intelligence.schemas import (
@@ -28,6 +30,11 @@ from domains.intelligence.schemas import (
     MarketOpportunities,
     ProspectGaps,
     ProductAffinityMap,
+    RevenueDiagnosis,
+    RevenueDiagnosisComponents,
+    RevenueDiagnosisDriver,
+    RevenueDiagnosisSummary,
+    RevenueDiagnosisWindow,
 )
 
 _profile_fn = getattr(intelligence_customer_product_profile, "fn", intelligence_customer_product_profile)
@@ -36,6 +43,7 @@ _category_trends_fn = getattr(intelligence_category_trends, "fn", intelligence_c
 _risk_signals_fn = getattr(intelligence_customer_risk_signals, "fn", intelligence_customer_risk_signals)
 _market_opportunities_fn = getattr(intelligence_market_opportunities, "fn", intelligence_market_opportunities)
 _prospect_gaps_fn = getattr(intelligence_prospect_gaps, "fn", intelligence_prospect_gaps)
+_revenue_diagnosis_fn = getattr(intelligence_revenue_diagnosis, "fn", intelligence_revenue_diagnosis)
 
 
 class FakeSession:
@@ -141,6 +149,53 @@ def _sample_market_opportunities(period: str = "last_90d") -> MarketOpportunitie
     )
 
 
+def _sample_revenue_diagnosis(anchor_month: str = "2026-03-01") -> RevenueDiagnosis:
+    anchor = date.fromisoformat(anchor_month)
+    prior = date(2026, 2, 1)
+    return RevenueDiagnosis(
+        period="1m",
+        anchor_month=anchor,
+        current_window=RevenueDiagnosisWindow(start_month=anchor, end_month=anchor),
+        prior_window=RevenueDiagnosisWindow(start_month=prior, end_month=prior),
+        computed_at=datetime.now(tz=UTC),
+        summary=RevenueDiagnosisSummary(
+            current_revenue=Decimal("120.00"),
+            prior_revenue=Decimal("100.00"),
+            revenue_delta=Decimal("20.00"),
+            revenue_delta_pct=20.0,
+        ),
+        components=RevenueDiagnosisComponents(
+            price_effect_total=Decimal("12.00"),
+            volume_effect_total=Decimal("5.00"),
+            mix_effect_total=Decimal("3.00"),
+        ),
+        drivers=[
+            RevenueDiagnosisDriver(
+                product_id=uuid.UUID("00000000-0000-0000-0000-000000000123"),
+                product_name="Alpha Belt",
+                product_category_snapshot="Belts",
+                current_quantity=Decimal("10.000"),
+                prior_quantity=Decimal("8.000"),
+                current_revenue=Decimal("120.00"),
+                prior_revenue=Decimal("100.00"),
+                current_order_count=2,
+                prior_order_count=2,
+                current_avg_unit_price=Decimal("12.00"),
+                prior_avg_unit_price=Decimal("12.50"),
+                price_effect=Decimal("12.00"),
+                volume_effect=Decimal("5.00"),
+                mix_effect=Decimal("3.00"),
+                revenue_delta=Decimal("20.00"),
+                revenue_delta_pct=20.0,
+                data_basis="aggregate_only",
+                window_is_partial=False,
+            )
+        ],
+        data_basis="aggregate_only",
+        window_is_partial=False,
+    )
+
+
 @pytest.mark.asyncio
 async def test_market_opportunities_tool_returns_payload() -> None:
     with (
@@ -171,6 +226,34 @@ async def test_market_opportunities_tool_validates_period() -> None:
 
 
 @pytest.mark.asyncio
+async def test_revenue_diagnosis_tool_returns_payload() -> None:
+    with (
+        _patch_session(),
+        patch("domains.intelligence.mcp.get_http_headers", return_value=_tenant_headers()),
+        patch(
+            "domains.intelligence.mcp.get_revenue_diagnosis",
+            new_callable=AsyncMock,
+            return_value=_sample_revenue_diagnosis(),
+        ) as diagnosis_mock,
+    ):
+        result = await _revenue_diagnosis_fn(
+            period="1m",
+            anchor_month="2026-03-01",
+            category="Belts",
+            limit=5,
+        )
+
+    assert result["summary"]["revenue_delta"] == "20.00"
+    assert diagnosis_mock.await_args.args[1] == uuid.UUID("00000000-0000-0000-0000-000000000001")
+    assert diagnosis_mock.await_args.kwargs == {
+        "period": "1m",
+        "anchor_month": date(2026, 3, 1),
+        "category": "Belts",
+        "limit": 5,
+    }
+
+
+@pytest.mark.asyncio
 async def test_prospect_gaps_tool_returns_payload() -> None:
     with (
         _patch_session(),
@@ -181,12 +264,16 @@ async def test_prospect_gaps_tool_returns_payload() -> None:
             return_value=_sample_prospect_gaps("Electronics"),
         ) as gaps_mock,
     ):
-        result = await _prospect_gaps_fn(category="Electronics", limit=20)
+        result = await _prospect_gaps_fn(category="Electronics", customer_type="end_user", limit=20)
 
     assert result["target_category"] == "Electronics"
     assert result["existing_buyers_count"] == 2
     assert gaps_mock.await_args.args[1] == uuid.UUID("00000000-0000-0000-0000-000000000001")
-    assert gaps_mock.await_args.kwargs == {"category": "Electronics", "limit": 20}
+    assert gaps_mock.await_args.kwargs == {
+        "category": "Electronics",
+        "customer_type": "end_user",
+        "limit": 20,
+    }
 
 
 @pytest.mark.asyncio
@@ -361,3 +448,62 @@ async def test_intelligence_tools_require_tenant_context() -> None:
 
     error = json.loads(str(exc_info.value))
     assert error["code"] == "TENANT_REQUIRED"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("setting_name", "tool_fn", "kwargs", "message"),
+    [
+        (
+            "intelligence_prospect_gaps_enabled",
+            _prospect_gaps_fn,
+            {"category": "Electronics"},
+            "Prospect gap analysis is disabled",
+        ),
+        (
+            "intelligence_product_affinity_enabled",
+            _affinity_fn,
+            {},
+            "Product affinity analysis is disabled",
+        ),
+        (
+            "intelligence_category_trends_enabled",
+            _category_trends_fn,
+            {},
+            "Category trend analysis is disabled",
+        ),
+        (
+            "intelligence_customer_risk_signals_enabled",
+            _risk_signals_fn,
+            {},
+            "Customer risk signals are disabled",
+        ),
+        (
+            "intelligence_market_opportunities_enabled",
+            _market_opportunities_fn,
+            {},
+            "Market opportunity analysis is disabled",
+        ),
+        (
+            "intelligence_revenue_diagnosis_enabled",
+            _revenue_diagnosis_fn,
+            {},
+            "Revenue diagnosis is disabled",
+        ),
+    ],
+)
+async def test_intelligence_tools_raise_when_feature_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+    setting_name: str,
+    tool_fn,
+    kwargs: dict[str, object],
+    message: str,
+) -> None:
+    monkeypatch.setattr(intelligence_mcp.settings, setting_name, False)
+    with _patch_session(), patch("domains.intelligence.mcp.get_http_headers", return_value=_tenant_headers()):
+        with pytest.raises(ToolError) as exc_info:
+            await tool_fn(**kwargs)
+
+    error = json.loads(str(exc_info.value))
+    assert error["code"] == "FEATURE_DISABLED"
+    assert error["message"] == message

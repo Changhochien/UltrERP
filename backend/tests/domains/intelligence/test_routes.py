@@ -8,8 +8,11 @@ from decimal import Decimal
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
+import pytest
+
+import domains.intelligence.routes as intelligence_routes
 from domains.intelligence.schemas import (
     CategoryTrends,
     CustomerProductProfile,
@@ -17,6 +20,11 @@ from domains.intelligence.schemas import (
     MarketOpportunities,
     ProspectGaps,
     ProductAffinityMap,
+    RevenueDiagnosis,
+    RevenueDiagnosisComponents,
+    RevenueDiagnosisDriver,
+    RevenueDiagnosisSummary,
+    RevenueDiagnosisWindow,
 )
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -103,6 +111,53 @@ def _sample_market_opportunities(period: str = "last_90d") -> MarketOpportunitie
     )
 
 
+def _sample_revenue_diagnosis(anchor_month: str = "2026-03-01") -> RevenueDiagnosis:
+    anchor = date.fromisoformat(anchor_month)
+    prior = date(2026, 2, 1)
+    return RevenueDiagnosis(
+        period="1m",
+        anchor_month=anchor,
+        current_window=RevenueDiagnosisWindow(start_month=anchor, end_month=anchor),
+        prior_window=RevenueDiagnosisWindow(start_month=prior, end_month=prior),
+        computed_at=datetime.now(tz=UTC),
+        summary=RevenueDiagnosisSummary(
+            current_revenue=Decimal("120.00"),
+            prior_revenue=Decimal("100.00"),
+            revenue_delta=Decimal("20.00"),
+            revenue_delta_pct=20.0,
+        ),
+        components=RevenueDiagnosisComponents(
+            price_effect_total=Decimal("12.00"),
+            volume_effect_total=Decimal("5.00"),
+            mix_effect_total=Decimal("3.00"),
+        ),
+        drivers=[
+            RevenueDiagnosisDriver(
+                product_id=uuid.UUID("00000000-0000-0000-0000-000000000123"),
+                product_name="Alpha Belt",
+                product_category_snapshot="Belts",
+                current_quantity=Decimal("10.000"),
+                prior_quantity=Decimal("8.000"),
+                current_revenue=Decimal("120.00"),
+                prior_revenue=Decimal("100.00"),
+                current_order_count=2,
+                prior_order_count=2,
+                current_avg_unit_price=Decimal("12.00"),
+                prior_avg_unit_price=Decimal("12.50"),
+                price_effect=Decimal("12.00"),
+                volume_effect=Decimal("5.00"),
+                mix_effect=Decimal("3.00"),
+                revenue_delta=Decimal("20.00"),
+                revenue_delta_pct=20.0,
+                data_basis="aggregate_only",
+                window_is_partial=False,
+            )
+        ],
+        data_basis="aggregate_only",
+        window_is_partial=False,
+    )
+
+
 async def test_market_opportunities_route_allows_sales_role() -> None:
     session = FakeAsyncSession()
     prev = setup_session(session)
@@ -126,6 +181,34 @@ async def test_market_opportunities_route_allows_sales_role() -> None:
         teardown_session(prev)
 
 
+async def test_revenue_diagnosis_route_allows_sales_role() -> None:
+    session = FakeAsyncSession()
+    prev = setup_session(session)
+    try:
+        with patch(
+            "domains.intelligence.routes.get_revenue_diagnosis",
+            new_callable=AsyncMock,
+            return_value=_sample_revenue_diagnosis(),
+        ) as diagnosis_mock:
+            resp = await http_get(
+                "/api/v1/intelligence/revenue-diagnosis?period=1m&anchor_month=2026-03-01&category=Belts&limit=5",
+                headers=auth_header("sales"),
+            )
+        assert resp.status_code == 200
+        assert resp.json()["summary"]["revenue_delta"] == "20.00"
+        diagnosis_mock.assert_awaited_once()
+        assert diagnosis_mock.await_args.args[0] is session
+        assert diagnosis_mock.await_args.args[1] == uuid.UUID("00000000-0000-0000-0000-000000000001")
+        assert diagnosis_mock.await_args.kwargs == {
+            "period": "1m",
+            "anchor_month": date(2026, 3, 1),
+            "category": "Belts",
+            "limit": 5,
+        }
+    finally:
+        teardown_session(prev)
+
+
 async def test_prospect_gaps_route_allows_sales_role() -> None:
     session = FakeAsyncSession()
     prev = setup_session(session)
@@ -136,7 +219,7 @@ async def test_prospect_gaps_route_allows_sales_role() -> None:
             return_value=_sample_prospect_gaps("Electronics"),
         ) as gaps_mock:
             resp = await http_get(
-                "/api/v1/intelligence/prospect-gaps?category=Electronics&limit=20",
+                "/api/v1/intelligence/prospect-gaps?category=Electronics&customer_type=end_user&limit=20",
                 headers=auth_header("sales"),
             )
         assert resp.status_code == 200
@@ -144,7 +227,11 @@ async def test_prospect_gaps_route_allows_sales_role() -> None:
         gaps_mock.assert_awaited_once()
         assert gaps_mock.await_args.args[0] is session
         assert gaps_mock.await_args.args[1] == uuid.UUID("00000000-0000-0000-0000-000000000001")
-        assert gaps_mock.await_args.kwargs == {"category": "Electronics", "limit": 20}
+        assert gaps_mock.await_args.kwargs == {
+            "category": "Electronics",
+            "customer_type": "end_user",
+            "limit": 20,
+        }
     finally:
         teardown_session(prev)
 
@@ -349,5 +436,57 @@ async def test_customer_product_profile_route_returns_404_for_missing_customer()
             )
         assert resp.status_code == 404
         assert resp.json() == {"detail": "Customer not found."}
+    finally:
+        teardown_session(prev)
+
+
+@pytest.mark.parametrize(
+    ("setting_name", "path", "detail"),
+    [
+        (
+            "intelligence_prospect_gaps_enabled",
+            "/api/v1/intelligence/prospect-gaps?category=Electronics",
+            "Prospect gap analysis is disabled",
+        ),
+        (
+            "intelligence_product_affinity_enabled",
+            "/api/v1/intelligence/affinity",
+            "Product affinity analysis is disabled",
+        ),
+        (
+            "intelligence_category_trends_enabled",
+            "/api/v1/intelligence/category-trends",
+            "Category trend analysis is disabled",
+        ),
+        (
+            "intelligence_customer_risk_signals_enabled",
+            "/api/v1/intelligence/customers/risk-signals",
+            "Customer risk signals are disabled",
+        ),
+        (
+            "intelligence_market_opportunities_enabled",
+            "/api/v1/intelligence/market-opportunities",
+            "Market opportunity analysis is disabled",
+        ),
+        (
+            "intelligence_revenue_diagnosis_enabled",
+            "/api/v1/intelligence/revenue-diagnosis",
+            "Revenue diagnosis is disabled",
+        ),
+    ],
+)
+async def test_intelligence_routes_return_403_when_feature_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+    setting_name: str,
+    path: str,
+    detail: str,
+) -> None:
+    session = FakeAsyncSession()
+    prev = setup_session(session)
+    try:
+        monkeypatch.setattr(intelligence_routes.settings, setting_name, False)
+        resp = await http_get(path, headers=auth_header("sales"))
+        assert resp.status_code == 403
+        assert resp.json() == {"detail": detail}
     finally:
         teardown_session(prev)
