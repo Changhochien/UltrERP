@@ -17,6 +17,7 @@ from common.config import settings
 from common.database import AsyncSessionLocal
 from domains.intelligence.service import (
 	get_category_trends,
+	get_customer_buying_behavior,
 	get_product_affinity_map,
 	get_customer_product_profile,
 	get_customer_risk_signals,
@@ -76,6 +77,55 @@ async def intelligence_market_opportunities(
 			session,
 			tenant_id,
 			period=period,
+		)
+
+	return result.model_dump(mode="json")
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+async def intelligence_customer_buying_behavior(
+	customer_type: Annotated[str, Field(description="dealer | end_user | unknown | all")] = "dealer",
+	period: Annotated[str, Field(description="Window length: 3m, 6m, or 12m")] = "12m",
+	limit: Annotated[int, Field(description="Maximum number of rows to return", ge=1, le=100)] = 20,
+	include_current_month: Annotated[bool, Field(description="Include the in-progress current month in the selected window")] = False,
+) -> dict:
+	"""Return segment-aware customer buying behavior and cross-sell evidence."""
+	_require_feature_enabled(
+		settings.intelligence_customer_buying_behavior_enabled,
+		"Customer buying behavior is disabled",
+	)
+	if customer_type not in {"dealer", "end_user", "unknown", "all"}:
+		raise ToolError(
+			json.dumps(
+				{
+					"code": "VALIDATION_ERROR",
+					"field": "customer_type",
+					"message": "customer_type must be one of: dealer, end_user, unknown, all",
+					"retry": False,
+				}
+			)
+		)
+	if period not in {"3m", "6m", "12m"}:
+		raise ToolError(
+			json.dumps(
+				{
+					"code": "VALIDATION_ERROR",
+					"field": "period",
+					"message": "period must be one of: 3m, 6m, 12m",
+					"retry": False,
+				}
+			)
+		)
+
+	tenant_id = _resolve_tenant_id()
+	async with AsyncSessionLocal() as session:
+		result = await get_customer_buying_behavior(
+			session,
+			tenant_id,
+			customer_type=customer_type,
+			period=period,  # type: ignore[arg-type]
+			limit=limit,
+			include_current_month=include_current_month,
 		)
 
 	return result.model_dump(mode="json")

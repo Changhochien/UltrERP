@@ -410,6 +410,19 @@ class Settings(BaseSettings):
 			"value_type": "bool",
 		},
 	)
+	intelligence_customer_buying_behavior_enabled: bool = Field(
+		default=True,
+		validation_alias=AliasChoices(
+			"INTELLIGENCE_CUSTOMER_BUYING_BEHAVIOR_ENABLED",
+			"intelligence_customer_buying_behavior_enabled",
+		),
+		json_schema_extra={
+			"description": "Enable customer buying behavior analysis",
+			"category": "intelligence",
+			"is_sensitive": False,
+			"value_type": "bool",
+		},
+	)
 	egui_submission_mode: Literal["mock", "live"] = Field(
 		default="mock",
 		validation_alias=AliasChoices("EGUI_SUBMISSION_MODE", "egui_submission_mode"),

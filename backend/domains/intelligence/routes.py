@@ -14,6 +14,7 @@ from common.database import get_db
 
 from domains.intelligence.schemas import (
 	CategoryTrends,
+	CustomerBuyingBehavior,
 	MarketOpportunities,
 	CustomerProductProfile,
 	ProductPerformance,
@@ -24,6 +25,7 @@ from domains.intelligence.schemas import (
 )
 from domains.intelligence.service import (
 	get_category_trends,
+	get_customer_buying_behavior,
 	get_customer_product_profile,
 	get_customer_risk_signals,
 	get_market_opportunities,
@@ -58,6 +60,30 @@ async def customer_risk_signals(
 	)
 	tenant_id = uuid.UUID(user["tenant_id"])
 	return await get_customer_risk_signals(session, tenant_id, status_filter=status, limit=limit)  # type: ignore[arg-type]
+
+
+@router.get("/customer-buying-behavior", response_model=CustomerBuyingBehavior)
+async def customer_buying_behavior(
+	session: DbSession,
+	user: IntelligenceReadUser,
+	customer_type: str = Query(default="dealer", pattern="^(dealer|end_user|unknown|all)$"),
+	period: str = Query(default="12m", pattern="^(3m|6m|12m)$"),
+	limit: int = Query(default=20, ge=1, le=100),
+	include_current_month: bool = Query(default=False),
+) -> CustomerBuyingBehavior:
+	_require_feature_enabled(
+		settings.intelligence_customer_buying_behavior_enabled,
+		"Customer buying behavior is disabled",
+	)
+	tenant_id = uuid.UUID(user["tenant_id"])
+	return await get_customer_buying_behavior(
+		session,
+		tenant_id,
+		customer_type=customer_type,
+		period=period,  # type: ignore[arg-type]
+		limit=limit,
+		include_current_month=include_current_month,
+	)
 
 
 @router.get("/revenue-diagnosis", response_model=RevenueDiagnosis)

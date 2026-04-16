@@ -245,6 +245,58 @@ export interface ProductPerformance {
   window_is_partial: boolean;
 }
 
+export type CustomerBuyingBehaviorCustomerType = "dealer" | "end_user" | "unknown" | "all";
+export type CustomerBuyingBehaviorPeriod = "3m" | "6m" | "12m";
+export type CustomerBuyingBehaviorDataBasis = "transactional_fallback";
+
+export interface CustomerBuyingBehaviorWindow {
+  start_month: string;
+  end_month: string;
+}
+
+export interface CustomerBuyingBehaviorCategory {
+  category: string;
+  revenue: string;
+  order_count: number;
+  customer_count: number;
+  revenue_share: string;
+}
+
+export interface CustomerBuyingBehaviorCrossSell {
+  anchor_category: string;
+  recommended_category: string;
+  anchor_customer_count: number;
+  shared_customer_count: number;
+  outside_segment_anchor_customer_count: number;
+  outside_segment_shared_customer_count: number;
+  segment_penetration: string;
+  outside_segment_penetration: string;
+  lift_score: string | null;
+}
+
+export interface CustomerBuyingBehaviorPattern {
+  month_start: string;
+  revenue: string;
+  order_count: number;
+  customer_count: number;
+}
+
+export interface CustomerBuyingBehavior {
+  customer_type: CustomerBuyingBehaviorCustomerType;
+  period: CustomerBuyingBehaviorPeriod;
+  window: CustomerBuyingBehaviorWindow;
+  computed_at: string;
+  customer_count: number;
+  avg_revenue_per_customer: string;
+  avg_order_count_per_customer: string;
+  avg_categories_per_customer: string;
+  top_categories: CustomerBuyingBehaviorCategory[];
+  cross_sell_opportunities: CustomerBuyingBehaviorCrossSell[];
+  buying_patterns: CustomerBuyingBehaviorPattern[];
+  data_basis: CustomerBuyingBehaviorDataBasis;
+  window_is_partial: boolean;
+}
+
 export interface CustomerProductProfile {
   customer_id: string;
   company_name: string;

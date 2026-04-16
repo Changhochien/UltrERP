@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 
 import { AffinityMatrix } from "../domain/intelligence/components/AffinityMatrix";
 import { CategoryTrendRadar } from "../domain/intelligence/components/CategoryTrendRadar";
+import { CustomerBuyingBehaviorCard } from "../domain/intelligence/components/CustomerBuyingBehaviorCard";
 import { ProspectGapTable } from "../domain/intelligence/components/ProspectGapTable";
 import { ProductPerformanceCard } from "../domain/intelligence/components/ProductPerformanceCard";
 import { RevenueDiagnosisCard } from "../domain/intelligence/components/RevenueDiagnosisCard";
@@ -22,6 +23,8 @@ export function IntelligencePage() {
       <RiskSignalFeed />
 
       <ProspectGapTable />
+
+      <CustomerBuyingBehaviorCard />
 
       <CategoryTrendRadar />
 

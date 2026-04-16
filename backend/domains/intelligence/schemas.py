@@ -275,6 +275,9 @@ class RevenueDiagnosis(BaseModel):
 
 ProductPerformanceDataBasis = Literal["aggregate_only", "aggregate_plus_live_current_month"]
 ProductLifecycleStage = Literal["new", "end_of_life", "declining", "growing", "mature", "stable"]
+CustomerBuyingBehaviorPeriod = Literal["3m", "6m", "12m"]
+CustomerBuyingBehaviorDataBasis = Literal["transactional_fallback"]
+CustomerBuyingBehaviorCustomerType = Literal["dealer", "end_user", "unknown", "all"]
 
 
 class ProductPerformanceWindow(BaseModel):
@@ -321,4 +324,62 @@ class ProductPerformance(BaseModel):
     products: list[ProductPerformanceRow]
     total: int
     data_basis: ProductPerformanceDataBasis
+    window_is_partial: bool
+
+
+class CustomerBuyingBehaviorWindow(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    start_month: date
+    end_month: date
+
+
+class CustomerBuyingBehaviorCategory(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    category: str
+    revenue: Decimal
+    order_count: int
+    customer_count: int
+    revenue_share: Decimal
+
+
+class CustomerBuyingBehaviorCrossSell(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    anchor_category: str
+    recommended_category: str
+    anchor_customer_count: int
+    shared_customer_count: int
+    outside_segment_anchor_customer_count: int
+    outside_segment_shared_customer_count: int
+    segment_penetration: Decimal
+    outside_segment_penetration: Decimal
+    lift_score: Decimal | None
+
+
+class CustomerBuyingBehaviorPattern(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    month_start: date
+    revenue: Decimal
+    order_count: int
+    customer_count: int
+
+
+class CustomerBuyingBehavior(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    customer_type: CustomerBuyingBehaviorCustomerType
+    period: CustomerBuyingBehaviorPeriod
+    window: CustomerBuyingBehaviorWindow
+    computed_at: datetime
+    customer_count: int
+    avg_revenue_per_customer: Decimal
+    avg_order_count_per_customer: Decimal
+    avg_categories_per_customer: Decimal
+    top_categories: list[CustomerBuyingBehaviorCategory]
+    cross_sell_opportunities: list[CustomerBuyingBehaviorCrossSell]
+    buying_patterns: list[CustomerBuyingBehaviorPattern]
+    data_basis: CustomerBuyingBehaviorDataBasis
     window_is_partial: bool

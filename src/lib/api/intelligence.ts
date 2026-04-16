@@ -1,5 +1,8 @@
 import type {
   CategoryTrends,
+  CustomerBuyingBehavior,
+  CustomerBuyingBehaviorCustomerType,
+  CustomerBuyingBehaviorPeriod,
   CustomerRiskSignals,
   CustomerProductProfile,
   MarketOpportunities,
@@ -17,6 +20,28 @@ export async function fetchCustomerProductProfile(customerId: string): Promise<C
   const resp = await apiFetch(`/api/v1/intelligence/customers/${customerId}/product-profile`);
   if (!resp.ok) {
     throw new Error("Failed to fetch customer product profile");
+  }
+  return resp.json();
+}
+
+export async function fetchCustomerBuyingBehavior(
+  customerType: CustomerBuyingBehaviorCustomerType = "dealer",
+  period: CustomerBuyingBehaviorPeriod = "12m",
+  limit = 20,
+  includeCurrentMonth = false,
+): Promise<CustomerBuyingBehavior> {
+  const params = new URLSearchParams({
+    customer_type: customerType,
+    period,
+    limit: String(limit),
+  });
+  if (includeCurrentMonth) {
+    params.set("include_current_month", "true");
+  }
+
+  const resp = await apiFetch(`/api/v1/intelligence/customer-buying-behavior?${params.toString()}`);
+  if (!resp.ok) {
+    throw new Error("Failed to fetch customer buying behavior");
   }
   return resp.json();
 }

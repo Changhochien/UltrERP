@@ -196,6 +196,50 @@
         "low": "Low confidence"
       }
     },
+    "customerBuyingBehavior": {
+      "title": "Customer Buying Behavior",
+      "description": "Compare segment-level category mix, cross-sell lift, and month-by-month buying patterns.",
+      "customerTypeLabel": "Customer Type",
+      "filterDealers": "Dealers",
+      "filterEndUsers": "End Users",
+      "filterUnknown": "Unknown",
+      "filterAll": "All",
+      "includeCurrentMonth": "Include current month",
+      "generatedAt": "Generated {value}",
+      "partial": "Includes live current month",
+      "historical": "Closed months only",
+      "dataBasis": {
+        "transactional_fallback": "Transactional fallback"
+      },
+      "summary": {
+        "customers": "Customers",
+        "avgRevenue": "Avg Revenue / Customer",
+        "avgOrders": "Avg Orders / Customer",
+        "avgCategories": "Avg Categories / Customer"
+      },
+      "topCategoriesTitle": "Top Categories",
+      "crossSellTitle": "Cross-Sell Opportunities",
+      "patternsTitle": "Buying Patterns",
+      "table": {
+        "category": "Category",
+        "revenue": "Revenue",
+        "share": "Share",
+        "customers": "Customers",
+        "anchor": "Anchor",
+        "recommended": "Recommended",
+        "shared": "Shared",
+        "segmentPenetration": "Segment",
+        "lift": "Lift"
+      },
+      "pattern": {
+        "orders": "{count} orders",
+        "customers": "{count} customers"
+      },
+      "empty": "No qualifying customer buying behavior for this segment yet.",
+      "emptyTopCategories": "No category evidence yet.",
+      "emptyCrossSell": "No cross-sell opportunities meet the support threshold yet.",
+      "loadError": "Failed to load customer buying behavior."
+    },
     "productPerformance": {
       "title": "Product Performance",
       "description": "Rank products by current-versus-prior revenue and lifecycle stage.",

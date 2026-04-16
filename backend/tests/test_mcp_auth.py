@@ -57,6 +57,7 @@ def test_intelligence_tool_scopes_registered():
     assert TOOL_SCOPES["intelligence_product_performance"] == frozenset({"orders:read"})
     assert TOOL_SCOPES["intelligence_revenue_diagnosis"] == frozenset({"orders:read"})
     assert TOOL_SCOPES["intelligence_category_trends"] == frozenset({"customers:read", "orders:read"})
+    assert TOOL_SCOPES["intelligence_customer_buying_behavior"] == frozenset({"customers:read", "orders:read"})
     assert TOOL_SCOPES["intelligence_customer_product_profile"] == frozenset({"customers:read", "orders:read"})
     assert TOOL_SCOPES["intelligence_customer_risk_signals"] == frozenset({"customers:read", "orders:read"})
     assert TOOL_SCOPES["intelligence_prospect_gaps"] == frozenset({"customers:read", "orders:read"})

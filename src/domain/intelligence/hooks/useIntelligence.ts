@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import {
   fetchCategoryTrends,
+  fetchCustomerBuyingBehavior,
   fetchCustomerProductProfile,
   fetchCustomerRiskSignals,
   fetchMarketOpportunities,
@@ -12,6 +13,9 @@ import {
 } from "../../../lib/api/intelligence";
 import type {
   CategoryTrends,
+  CustomerBuyingBehavior,
+  CustomerBuyingBehaviorCustomerType,
+  CustomerBuyingBehaviorPeriod,
   CustomerProductProfile,
   CustomerRiskSignals,
   MarketOpportunities,
@@ -261,6 +265,46 @@ export function useCustomerRiskSignals(
   }, [limit, status]);
 
   return { data, isLoading, error, refetch };
+}
+
+export function useCustomerBuyingBehavior(
+  customerType: CustomerBuyingBehaviorCustomerType = "dealer",
+  period: CustomerBuyingBehaviorPeriod = "12m",
+  limit = 20,
+  includeCurrentMonth = false,
+) {
+  const [data, setData] = useState<CustomerBuyingBehavior | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const load = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const behavior = await fetchCustomerBuyingBehavior(customerType, period, limit, includeCurrentMonth);
+        if (!isActive) return;
+        setData(behavior);
+      } catch (err) {
+        if (!isActive) return;
+        setError(err instanceof Error ? err.message : "Failed to load customer buying behavior");
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void load();
+
+    return () => {
+      isActive = false;
+    };
+  }, [customerType, includeCurrentMonth, limit, period]);
+
+  return { data, isLoading, error };
 }
 
 export function useProspectGaps(

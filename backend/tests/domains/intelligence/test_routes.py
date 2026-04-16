@@ -15,6 +15,11 @@ import pytest
 import domains.intelligence.routes as intelligence_routes
 from domains.intelligence.schemas import (
     CategoryTrends,
+    CustomerBuyingBehavior,
+    CustomerBuyingBehaviorCategory,
+    CustomerBuyingBehaviorCrossSell,
+    CustomerBuyingBehaviorPattern,
+    CustomerBuyingBehaviorWindow,
     CustomerProductProfile,
     CustomerRiskSignals,
     MarketOpportunities,
@@ -162,6 +167,62 @@ def _sample_revenue_diagnosis(anchor_month: str = "2026-03-01") -> RevenueDiagno
     )
 
 
+def _sample_customer_buying_behavior(
+    customer_type: str = "dealer",
+    period: str = "3m",
+    *,
+    include_current_month: bool = False,
+) -> CustomerBuyingBehavior:
+    return CustomerBuyingBehavior(
+        customer_type=customer_type,  # type: ignore[arg-type]
+        period=period,  # type: ignore[arg-type]
+        window=CustomerBuyingBehaviorWindow(start_month=date(2026, 1, 1), end_month=date(2026, 3, 1)),
+        computed_at=datetime.now(tz=UTC),
+        customer_count=6,
+        avg_revenue_per_customer=Decimal("116.67"),
+        avg_order_count_per_customer=Decimal("1.00"),
+        avg_categories_per_customer=Decimal("1.50"),
+        top_categories=[
+            CustomerBuyingBehaviorCategory(
+                category="Belts",
+                revenue=Decimal("480.00"),
+                order_count=5,
+                customer_count=5,
+                revenue_share=Decimal("0.6857"),
+            )
+        ],
+        cross_sell_opportunities=[
+            CustomerBuyingBehaviorCrossSell(
+                anchor_category="Belts",
+                recommended_category="Pulleys",
+                anchor_customer_count=5,
+                shared_customer_count=3,
+                outside_segment_anchor_customer_count=2,
+                outside_segment_shared_customer_count=1,
+                segment_penetration=Decimal("0.6000"),
+                outside_segment_penetration=Decimal("0.5000"),
+                lift_score=Decimal("1.2000"),
+            )
+        ],
+        buying_patterns=[
+            CustomerBuyingBehaviorPattern(
+                month_start=date(2026, 1, 1),
+                revenue=Decimal("0.00"),
+                order_count=0,
+                customer_count=0,
+            ),
+            CustomerBuyingBehaviorPattern(
+                month_start=date(2026, 2, 1),
+                revenue=Decimal("250.00"),
+                order_count=2,
+                customer_count=2,
+            ),
+        ],
+        data_basis="transactional_fallback",
+        window_is_partial=include_current_month,
+    )
+
+
 def _sample_product_performance() -> ProductPerformance:
     return ProductPerformance(
         current_window=ProductPerformanceWindow(start_month=date(2026, 3, 1), end_month=date(2026, 5, 1)),
@@ -220,6 +281,34 @@ async def test_market_opportunities_route_allows_sales_role() -> None:
         assert opportunities_mock.await_args.args[0] is session
         assert opportunities_mock.await_args.args[1] == uuid.UUID("00000000-0000-0000-0000-000000000001")
         assert opportunities_mock.await_args.kwargs == {"period": "last_30d"}
+    finally:
+        teardown_session(prev)
+
+
+async def test_customer_buying_behavior_route_allows_sales_role() -> None:
+    session = FakeAsyncSession()
+    prev = setup_session(session)
+    try:
+        with patch(
+            "domains.intelligence.routes.get_customer_buying_behavior",
+            new_callable=AsyncMock,
+            return_value=_sample_customer_buying_behavior(include_current_month=True),
+        ) as behavior_mock:
+            resp = await http_get(
+                "/api/v1/intelligence/customer-buying-behavior?customer_type=dealer&period=3m&limit=10&include_current_month=true",
+                headers=auth_header("sales"),
+            )
+        assert resp.status_code == 200
+        assert resp.json()["customer_type"] == "dealer"
+        behavior_mock.assert_awaited_once()
+        assert behavior_mock.await_args.args[0] is session
+        assert behavior_mock.await_args.args[1] == uuid.UUID("00000000-0000-0000-0000-000000000001")
+        assert behavior_mock.await_args.kwargs == {
+            "customer_type": "dealer",
+            "period": "3m",
+            "limit": 10,
+            "include_current_month": True,
+        }
     finally:
         teardown_session(prev)
 
@@ -523,6 +612,11 @@ async def test_customer_product_profile_route_returns_404_for_missing_customer()
             "intelligence_product_affinity_enabled",
             "/api/v1/intelligence/affinity",
             "Product affinity analysis is disabled",
+        ),
+        (
+            "intelligence_customer_buying_behavior_enabled",
+            "/api/v1/intelligence/customer-buying-behavior",
+            "Customer buying behavior is disabled",
         ),
         (
             "intelligence_category_trends_enabled",

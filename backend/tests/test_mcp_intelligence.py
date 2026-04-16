@@ -15,6 +15,7 @@ from fastmcp.exceptions import ToolError
 import domains.intelligence.mcp as intelligence_mcp
 from domains.intelligence.mcp import (
     intelligence_category_trends,
+    intelligence_customer_buying_behavior,
     intelligence_customer_product_profile,
     intelligence_customer_risk_signals,
     intelligence_market_opportunities,
@@ -26,6 +27,11 @@ from domains.intelligence.mcp import (
 from common.config import settings
 from domains.intelligence.schemas import (
     CategoryTrends,
+    CustomerBuyingBehavior,
+    CustomerBuyingBehaviorCategory,
+    CustomerBuyingBehaviorCrossSell,
+    CustomerBuyingBehaviorPattern,
+    CustomerBuyingBehaviorWindow,
     CustomerProductProfile,
     CustomerRiskSignals,
     MarketOpportunities,
@@ -45,6 +51,7 @@ from domains.intelligence.schemas import (
 _profile_fn = getattr(intelligence_customer_product_profile, "fn", intelligence_customer_product_profile)
 _affinity_fn = getattr(intelligence_product_affinity, "fn", intelligence_product_affinity)
 _product_performance_fn = getattr(intelligence_product_performance, "fn", intelligence_product_performance)
+_customer_buying_behavior_fn = getattr(intelligence_customer_buying_behavior, "fn", intelligence_customer_buying_behavior)
 _category_trends_fn = getattr(intelligence_category_trends, "fn", intelligence_category_trends)
 _risk_signals_fn = getattr(intelligence_customer_risk_signals, "fn", intelligence_customer_risk_signals)
 _market_opportunities_fn = getattr(intelligence_market_opportunities, "fn", intelligence_market_opportunities)
@@ -202,6 +209,56 @@ def _sample_revenue_diagnosis(anchor_month: str = "2026-03-01") -> RevenueDiagno
     )
 
 
+def _sample_customer_buying_behavior(
+    customer_type: str = "dealer",
+    period: str = "3m",
+    *,
+    include_current_month: bool = False,
+) -> CustomerBuyingBehavior:
+    return CustomerBuyingBehavior(
+        customer_type=customer_type,  # type: ignore[arg-type]
+        period=period,  # type: ignore[arg-type]
+        window=CustomerBuyingBehaviorWindow(start_month=date(2026, 1, 1), end_month=date(2026, 3, 1)),
+        computed_at=datetime.now(tz=UTC),
+        customer_count=6,
+        avg_revenue_per_customer=Decimal("116.67"),
+        avg_order_count_per_customer=Decimal("1.00"),
+        avg_categories_per_customer=Decimal("1.50"),
+        top_categories=[
+            CustomerBuyingBehaviorCategory(
+                category="Belts",
+                revenue=Decimal("480.00"),
+                order_count=5,
+                customer_count=5,
+                revenue_share=Decimal("0.6857"),
+            )
+        ],
+        cross_sell_opportunities=[
+            CustomerBuyingBehaviorCrossSell(
+                anchor_category="Belts",
+                recommended_category="Pulleys",
+                anchor_customer_count=5,
+                shared_customer_count=3,
+                outside_segment_anchor_customer_count=2,
+                outside_segment_shared_customer_count=1,
+                segment_penetration=Decimal("0.6000"),
+                outside_segment_penetration=Decimal("0.5000"),
+                lift_score=Decimal("1.2000"),
+            )
+        ],
+        buying_patterns=[
+            CustomerBuyingBehaviorPattern(
+                month_start=date(2026, 1, 1),
+                revenue=Decimal("0.00"),
+                order_count=0,
+                customer_count=0,
+            )
+        ],
+        data_basis="transactional_fallback",
+        window_is_partial=include_current_month,
+    )
+
+
 def _sample_product_performance() -> ProductPerformance:
     return ProductPerformance(
         current_window=ProductPerformanceWindow(start_month=date(2026, 3, 1), end_month=date(2026, 5, 1)),
@@ -295,6 +352,34 @@ async def test_revenue_diagnosis_tool_returns_payload() -> None:
         "anchor_month": date(2026, 3, 1),
         "category": "Belts",
         "limit": 5,
+    }
+
+
+@pytest.mark.asyncio
+async def test_customer_buying_behavior_tool_returns_payload() -> None:
+    with (
+        _patch_session(),
+        patch("domains.intelligence.mcp.get_http_headers", return_value=_tenant_headers()),
+        patch(
+            "domains.intelligence.mcp.get_customer_buying_behavior",
+            new_callable=AsyncMock,
+            return_value=_sample_customer_buying_behavior(include_current_month=True),
+        ) as behavior_mock,
+    ):
+        result = await _customer_buying_behavior_fn(
+            customer_type="dealer",
+            period="3m",
+            limit=10,
+            include_current_month=True,
+        )
+
+    assert result["customer_type"] == "dealer"
+    assert behavior_mock.await_args.args[1] == uuid.UUID("00000000-0000-0000-0000-000000000001")
+    assert behavior_mock.await_args.kwargs == {
+        "customer_type": "dealer",
+        "period": "3m",
+        "limit": 10,
+        "include_current_month": True,
     }
 
 
@@ -538,6 +623,12 @@ async def test_intelligence_tools_require_tenant_context() -> None:
             _affinity_fn,
             {},
             "Product affinity analysis is disabled",
+        ),
+        (
+            "intelligence_customer_buying_behavior_enabled",
+            _customer_buying_behavior_fn,
+            {},
+            "Customer buying behavior is disabled",
         ),
         (
             "intelligence_product_performance_enabled",

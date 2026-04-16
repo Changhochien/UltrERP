@@ -196,6 +196,50 @@
         "low": "低信心"
       }
     },
+    "customerBuyingBehavior": {
+      "title": "客戶購買行為",
+      "description": "比較不同客戶分群的品類組合、交叉銷售提升與逐月購買型態。",
+      "customerTypeLabel": "客戶類型",
+      "filterDealers": "經銷商",
+      "filterEndUsers": "終端客戶",
+      "filterUnknown": "未知",
+      "filterAll": "全部",
+      "includeCurrentMonth": "包含本月即時資料",
+      "generatedAt": "產生時間：{value}",
+      "partial": "包含本月即時資料",
+      "historical": "僅已結束月份",
+      "dataBasis": {
+        "transactional_fallback": "交易即時計算"
+      },
+      "summary": {
+        "customers": "客戶數",
+        "avgRevenue": "平均每客營收",
+        "avgOrders": "平均每客訂單數",
+        "avgCategories": "平均每客品類數"
+      },
+      "topCategoriesTitle": "主要品類",
+      "crossSellTitle": "交叉銷售機會",
+      "patternsTitle": "購買型態",
+      "table": {
+        "category": "品類",
+        "revenue": "營收",
+        "share": "占比",
+        "customers": "客戶數",
+        "anchor": "起始品類",
+        "recommended": "推薦品類",
+        "shared": "共同客戶",
+        "segmentPenetration": "分群滲透率",
+        "lift": "提升倍數"
+      },
+      "pattern": {
+        "orders": "{count} 筆訂單",
+        "customers": "{count} 位客戶"
+      },
+      "empty": "此分群目前沒有符合條件的客戶購買行為。",
+      "emptyTopCategories": "目前尚無品類證據。",
+      "emptyCrossSell": "目前尚無達到門檻的交叉銷售機會。",
+      "loadError": "載入客戶購買行為失敗。"
+    },
     "productPerformance": {
       "title": "商品績效",
       "description": "依本期與前期營收表現及生命週期，排序最值得追蹤的商品。",

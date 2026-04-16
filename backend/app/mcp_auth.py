@@ -49,6 +49,7 @@ TOOL_SCOPES: dict[str, frozenset[str]] = {
 	"intelligence_product_performance": frozenset({"orders:read"}),
 	"intelligence_revenue_diagnosis": frozenset({"orders:read"}),
 	"intelligence_category_trends": frozenset({"orders:read", "customers:read"}),
+	"intelligence_customer_buying_behavior": frozenset({"customers:read", "orders:read"}),
 	"intelligence_customer_product_profile": frozenset({"customers:read", "orders:read"}),
 	"intelligence_customer_risk_signals": frozenset({"customers:read", "orders:read"}),
 	"intelligence_prospect_gaps": frozenset({"customers:read", "orders:read"}),
