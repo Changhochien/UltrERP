@@ -115,6 +115,47 @@ class MonthlyDemandResponse(BaseModel):
     total: int
 
 
+PlanningSupportDataBasis = Literal[
+    "aggregated_only",
+    "aggregated_plus_live_current_month",
+    "live_current_month_only",
+    "no_history",
+]
+
+
+class PlanningSupportItem(BaseModel):
+    month: str
+    quantity: Decimal
+    source: Literal["aggregated", "live"]
+
+
+class PlanningSupportWindow(BaseModel):
+    start_month: str
+    end_month: str
+    includes_current_month: bool
+    is_partial: bool
+
+
+class PlanningSupportResponse(BaseModel):
+    product_id: uuid.UUID
+    items: list[PlanningSupportItem]
+    avg_monthly_quantity: Decimal | None
+    peak_monthly_quantity: Decimal | None
+    low_monthly_quantity: Decimal | None
+    seasonality_index: Decimal | None
+    above_average_months: list[str]
+    history_months_used: int
+    current_month_live_quantity: Decimal | None
+    reorder_point: int
+    on_order_qty: int
+    in_transit_qty: int
+    reserved_qty: int
+    data_basis: PlanningSupportDataBasis
+    advisory_only: bool
+    data_gap: bool
+    window: PlanningSupportWindow
+
+
 # --- Sales history schemas ---
 
 

@@ -33,6 +33,7 @@ from domains.inventory.schemas import (
     DismissAlertResponse,
     InventoryStockResponse,
     MonthlyDemandResponse,
+    PlanningSupportResponse,
     ProductDetailResponse,
     ProductSearchResponse,
     ProductSearchResult,
@@ -78,6 +79,7 @@ from domains.inventory.services import (
     dismiss_alert,
     get_inventory_stocks,
     get_monthly_demand,
+    get_planning_support,
     get_product_audit_log,
     get_product_detail,
     get_product_supplier,
@@ -983,6 +985,33 @@ async def get_monthly_demand_endpoint(
 ) -> MonthlyDemandResponse:
     result = await get_monthly_demand(session, tenant_id, product_id)
     return MonthlyDemandResponse(**result)
+
+
+@router.get(
+    "/products/{product_id}/planning-support",
+    response_model=PlanningSupportResponse,
+)
+async def get_planning_support_endpoint(
+    product_id: uuid.UUID,
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+    months: int = Query(12, ge=1, le=24),
+    include_current_month: bool = Query(True),
+) -> PlanningSupportResponse:
+    result = await get_planning_support(
+        session,
+        tenant_id,
+        product_id,
+        months=months,
+        include_current_month=include_current_month,
+    )
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found",
+        )
+    return PlanningSupportResponse(**result)
 
 
 # ── Sales history endpoint ───────────────────────────────────────

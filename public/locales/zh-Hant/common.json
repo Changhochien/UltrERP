@@ -278,6 +278,10 @@
       "title": "潛在空白品類分析",
       "description": "找出目前未購買目標品類、但相似度高且值得外呼的活躍客戶。",
       "categoryLabel": "目標品類",
+      "customerTypeLabel": "客戶類型",
+      "filterDealers": "經銷商",
+      "filterEndUsers": "終端客戶",
+      "filterAll": "全部",
       "existingBuyers": "既有買家 {count} 家",
       "company": "公司",
       "reason": "原因",
@@ -1300,6 +1304,40 @@
           "title": "每月需求",
           "empty": "沒有需求資料",
           "tooltipUnits": "{count} 單位"
+        },
+        "planningSupport": {
+          "title": "規劃輔助",
+          "description": "共享銷售歷史僅供參考，不會取代倉別補貨規則。",
+          "advisory": "僅供參考",
+          "partial": "本月資料未結束",
+          "emptyTitle": "尚無共享銷售歷史",
+          "emptyBody": "此商品累積確認銷售歷史後，這裡會顯示規劃輔助資訊。",
+          "historySeries": "共享銷售歷史",
+          "aboveAverage": "高於平均月份",
+          "none": "無",
+          "window": "期間：{{start}} 至 {{end}}",
+          "metrics": {
+            "avgMonthly": "月均銷量",
+            "peakMonthly": "最高月份",
+            "lowMonthly": "最低月份",
+            "seasonalityIndex": "季節性指數",
+            "historyMonths": "歷史月份數",
+            "currentMonthLive": "本月即時銷量",
+            "reorderPoint": "補貨點",
+            "onOrder": "在訂量",
+            "inTransit": "途上量",
+            "reserved": "保留量"
+          },
+          "sourceLabels": {
+            "aggregated": "封存月份彙總",
+            "live": "本月即時計算"
+          },
+          "dataBasisLabels": {
+            "aggregated_only": "僅使用彙總",
+            "aggregated_plus_live_current_month": "彙總 + 本月即時",
+            "live_current_month_only": "僅本月即時",
+            "no_history": "沒有共享歷史"
+          }
         },
         "salesHistory": {
           "title": "銷售歷史",

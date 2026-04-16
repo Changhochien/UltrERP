@@ -278,6 +278,10 @@
       "title": "Prospect Gap Analysis",
       "description": "Find active non-buyers who look like strong fits for a target category.",
       "categoryLabel": "Target Category",
+      "customerTypeLabel": "Customer Type",
+      "filterDealers": "Dealers",
+      "filterEndUsers": "End Users",
+      "filterAll": "All",
       "existingBuyers": "{count} existing buyers",
       "company": "Company",
       "reason": "Reason",
@@ -1303,6 +1307,40 @@
           "title": "Monthly Demand",
           "empty": "No demand data available",
           "tooltipUnits": "{count} units"
+        },
+        "planningSupport": {
+          "title": "Planning Support",
+          "description": "Shared sales history is advisory only and does not replace warehouse-level reorder rules.",
+          "advisory": "Advisory only",
+          "partial": "Current month partial",
+          "emptyTitle": "No shared sales history yet",
+          "emptyBody": "Planning support appears after confirmed sales history is available for this product.",
+          "historySeries": "Shared sales history",
+          "aboveAverage": "Above-average months",
+          "none": "None",
+          "window": "Window: {{start}} to {{end}}",
+          "metrics": {
+            "avgMonthly": "Avg monthly qty",
+            "peakMonthly": "Peak month",
+            "lowMonthly": "Low month",
+            "seasonalityIndex": "Seasonality index",
+            "historyMonths": "History months",
+            "currentMonthLive": "Current month live",
+            "reorderPoint": "Reorder point",
+            "onOrder": "On order",
+            "inTransit": "In transit",
+            "reserved": "Reserved"
+          },
+          "sourceLabels": {
+            "aggregated": "Closed month aggregate",
+            "live": "Live current month"
+          },
+          "dataBasisLabels": {
+            "aggregated_only": "Aggregate only",
+            "aggregated_plus_live_current_month": "Aggregate + live current month",
+            "live_current_month_only": "Live current month only",
+            "no_history": "No shared history"
+          }
         },
         "salesHistory": {
           "title": "Sales History",
