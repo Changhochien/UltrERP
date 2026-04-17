@@ -16,6 +16,7 @@
     "revenue": "營收",
     "settings": "設定",
     "admin": "管理",
+    "intelligence": "情報分析",
     "ownerDashboard": "經營者儀表板"
   },
   "common": {
@@ -103,6 +104,10 @@
     "ownerDashboard": {
       "label": "經營者儀表板",
       "description": "業主專屬的經營總覽與關鍵指標。"
+    },
+    "intelligence": {
+      "label": "情報分析",
+      "description": "AI 驅動的商業智慧、客戶洞察及趨勢分析。"
     }
   },
   "app": {
@@ -1144,6 +1149,238 @@
       "statusLabel": "狀態：",
       "title": "訂單",
       "total": "合計"
+    }
+  },
+  "intelligence": {
+    "page": {
+      "eyebrow": "情報分析",
+      "title": "商業智慧",
+      "description": "AI 驅動的信號、趨勢分析，以及跨業務的客戶洞察。",
+      "workspaceTitle": "情報分析工作區",
+      "workspaceDescription": "深入探索完整的情報分析套件。",
+      "placeholder": "選擇上方的卡片以探索詳細的信號與分析。"
+    },
+    "affinity": {
+      "title": "產品關聯圖",
+      "description": "依重疊性與 Jaccard 關聯性評分的客戶層級共同購買組合。",
+      "minShared": "最少共同客戶 {count}",
+      "topPairs": "前 {count} 組配對",
+      "loadError": "無法載入產品關聯圖。",
+      "showing": "顯示 {shown} / {total} 組配對",
+      "computedAt": "計算時間：{value}",
+      "empty": "尚無符合條件的產品關聯。",
+      "sortBy": "以 {label} 排序",
+      "productA": "產品 A",
+      "productB": "產品 B",
+      "sharedCustomers": "共同客戶",
+      "overlap": "重疊率",
+      "affinityScore": "關聯分數",
+      "pitchHint": "推銷提示",
+      "sharedOrders": "共同訂單：{count}"
+    },
+    "categoryTrends": {
+      "title": "類別趨勢雷達",
+      "description": "跨類別的滾動需求信號，含當期與前期比較。",
+      "period30d": "30天",
+      "period90d": "90天",
+      "period12m": "12個月",
+      "loadError": "無法載入類別趨勢。",
+      "generatedAt": "產生時間：{value}",
+      "activityBasis": "以已確認、已出貨及已履約的訂單明細需求為基礎。",
+      "empty": "尚無類別需求信號。",
+      "priorPeriod": "前期",
+      "currentPeriod": "當期",
+      "delta": "營收變化",
+      "newCustomers": "新客戶",
+      "churnedCustomers": "流失客戶",
+      "topProducts": "熱銷產品",
+      "customerFootnote": "{current} / {prior} 客戶",
+      "trend": {
+        "growing": "成長中",
+        "declining": "衰退中",
+        "stable": "穩定"
+      },
+      "trendContext": {
+        "recovering": "復甦中",
+        "slowing": "放緩中"
+      }
+    },
+    "customerBuyingBehavior": {
+      "title": "客戶購買行為",
+      "description": "比較各區隔的類別組合、交叉銷售提升幅度及逐月購買模式。",
+      "customerTypeLabel": "客戶類型",
+      "filterDealers": "經銷商",
+      "filterEndUsers": "終端用戶",
+      "filterUnknown": "未知",
+      "filterAll": "全部",
+      "includeCurrentMonth": "含當月資料",
+      "loadError": "無法載入客戶購買行為。",
+      "generatedAt": "產生時間：{value}",
+      "partial": "含當月即時資料",
+      "historical": "僅含已完成月份",
+      "summary": {
+        "customers": "客戶數",
+        "avgRevenue": "平均客戶營收",
+        "avgOrders": "平均訂單數",
+        "avgCategories": "平均類別數"
+      },
+      "empty": "此區隔尚無符合條件的購買行為資料。",
+      "topCategoriesTitle": "熱門類別",
+      "emptyTopCategories": "尚無類別證據。",
+      "table": {
+        "category": "類別",
+        "revenue": "營收",
+        "share": "占比",
+        "customers": "客戶數",
+        "anchor": "主力",
+        "recommended": "推薦",
+        "shared": "共同",
+        "segmentPenetration": "區隔滲透",
+        "lift": "提升幅度"
+      },
+      "crossSellTitle": "交叉銷售機會",
+      "emptyCrossSell": "尚無符合支援門檻的交叉銷售機會。",
+      "patternsTitle": "購買模式",
+      "pattern": {
+        "orders": "{count} 筆訂單",
+        "customers": "{count} 位客戶"
+      },
+      "dataBasis": {
+        "transactional_fallback": "交易資料備援",
+        "aggregate_only": "僅彙總資料",
+        "aggregate_plus_live_current_month": "彙總加當月即時"
+      }
+    },
+    "prospectGaps": {
+      "title": "潛在客戶缺口分析",
+      "description": "找出看起來適合目標類別但尚未購買的活躍非客戶。",
+      "categoryLabel": "目標類別",
+      "customerTypeLabel": "客戶類型",
+      "filterDealers": "經銷商",
+      "filterEndUsers": "終端用戶",
+      "filterAll": "全部",
+      "existingBuyers": "{count} 位現有買家",
+      "loadError": "無法載入潛在客戶缺口。",
+      "empty": "此類別尚無空白區隔潛在客戶。",
+      "company": "公司",
+      "reason": "原因",
+      "lastOrder": "最近訂單",
+      "categoryCount": "類別數",
+      "aov": "平均訂單金額",
+      "affinityScore": "關聯分數",
+      "tags": "標籤"
+    },
+    "productPerformance": {
+      "title": "產品表現",
+      "description": "依當期與前期營收及生命週期階段排名產品。",
+      "lifecycleLabel": "生命週期階段",
+      "allStages": "全部階段",
+      "stage": {
+        "growing": "成長中",
+        "mature": "成熟期",
+        "stable": "穩定",
+        "declining": "衰退中",
+        "new": "新品",
+        "end_of_life": "停產"
+      },
+      "categoryPlaceholder": "篩選類別",
+      "includeCurrentMonth": "含當月資料",
+      "loadError": "無法載入產品表現。",
+      "generatedAt": "產生時間：{value}",
+      "partial": "含當月即時資料",
+      "historical": "僅含已完成月份",
+      "summary": {
+        "products": "產品數",
+        "windowNote": "顯示前 {count} 列",
+        "currentWindow": "當期區間",
+        "priorWindow": "前期區間"
+      },
+      "empty": "此比較區間尚無符合條件的產品。",
+      "table": {
+        "product": "產品",
+        "category": "類別",
+        "lifecycle": "生命週期",
+        "currentRevenue": "當期營收",
+        "priorRevenue": "前期營收",
+        "delta": "變化",
+        "peakMonth": "高峰月營收",
+        "monthsOnSale": "上架 {count} 個月"
+      },
+      "dataBasis": {
+        "aggregate_only": "僅彙總資料",
+        "aggregate_plus_live_current_month": "彙總加當月即時"
+      },
+      "reason": {
+        "rule_revenue_growth": "營收成長規則",
+        "rule_stability": "穩定性規則",
+        "rule_new_product": "新品規則"
+      }
+    },
+    "revenueDiagnosis": {
+      "title": "營收診斷",
+      "description": "將營收變化拆分為價格、數量及組合效應，並提供快照修正的歷史依據。",
+      "categoryPlaceholder": "篩選類別",
+      "loadError": "無法載入營收診斷。",
+      "generatedAt": "產生時間：{value}",
+      "partial": "含當月即時資料",
+      "historical": "僅含已完成月份",
+      "summary": {
+        "currentRevenue": "當期營收",
+        "priorRevenue": "前期營收",
+        "delta": "營收變化",
+        "currentWindow": "當期區間",
+        "priorWindow": "前期"
+      },
+      "components": {
+        "price": "價格效應",
+        "volume": "數量效應",
+        "mix": "組合效應"
+      },
+      "empty": "此比較區間尚無符合條件的營收驅動因素。",
+      "table": {
+        "product": "產品",
+        "category": "類別",
+        "delta": "變化",
+        "price": "價格",
+        "volume": "數量",
+        "mix": "組合"
+      }
+    },
+    "riskSignals": {
+      "title": "客戶風險信號",
+      "description": "跨休眠、風險、成長、穩定及新帳戶的優先 outreach 排序佇列。",
+      "filters": {
+        "all": "全部",
+        "growing": "成長中",
+        "at_risk": "有風險",
+        "dormant": "休眠",
+        "new": "新客戶",
+        "stable": "穩定"
+      },
+      "loadError": "無法載入客戶風險信號。",
+      "generatedAt": "產生時間：{value}",
+      "empty": "尚無客戶風險信號。",
+      "revenueCurrent": "當期營收",
+      "revenuePrior": "前期營收",
+      "delta": "變化",
+      "daysSinceLastOrder": "距上次訂單 {count} 天",
+      "expanded": "擴展至：{value}",
+      "contracted": "縮減至：{value}",
+      "noSignals": "此帳戶尚無次級信號。",
+      "status": {
+        "growing": "成長中",
+        "at_risk": "有風險",
+        "dormant": "休眠",
+        "new": "新客戶",
+        "stable": "穩定"
+      }
+    },
+    "marketOpportunities": {
+      "affectedCustomers": "影響 {count} 位客戶",
+      "showDetail": "顯示詳情",
+      "hideDetail": "隱藏詳情",
+      "action": "建議行動",
+      "deferred": "v1 延後實作：{value}"
     }
   }
 }

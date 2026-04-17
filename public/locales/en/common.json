@@ -6,6 +6,7 @@
     "language": "Language",
     "overview": "Overview",
     "inventory": "Inventory",
+    "intelligence": "Intelligence",
     "purchases": "Purchases",
     "customers": "Customers",
     "invoices": "Invoices",
@@ -102,6 +103,10 @@
     "ownerDashboard": {
       "label": "Owner Dashboard",
       "description": "Business overview and KPIs for owners."
+    },
+    "intelligence": {
+      "label": "Intelligence",
+      "description": "AI-driven business intelligence, customer insights, and trend analysis."
     }
   },
   "app": {
@@ -1068,6 +1073,238 @@
         "supplierInfo": "Supplier Info",
         "save": "Save"
       }
+    }
+  },
+  "intelligence": {
+    "page": {
+      "eyebrow": "Intelligence",
+      "title": "Business Intelligence",
+      "description": "AI-driven signals, trend analysis, and customer insights across your business.",
+      "workspaceTitle": "Intelligence Workspace",
+      "workspaceDescription": "Deep-dive into the full intelligence suite.",
+      "placeholder": "Select a card above to explore detailed signals and analysis."
+    },
+    "affinity": {
+      "title": "Product Affinity Map",
+      "description": "Customer-level co-purchase pairs scored by overlap and Jaccard affinity.",
+      "minShared": "Min shared {count}",
+      "topPairs": "Top {count} pairs",
+      "loadError": "Failed to load product affinity map.",
+      "showing": "Showing {shown} of {total} pairs",
+      "computedAt": "Computed {value}",
+      "empty": "No qualifying product affinities yet.",
+      "sortBy": "Sort by {label}",
+      "productA": "Product A",
+      "productB": "Product B",
+      "sharedCustomers": "Shared Customers",
+      "overlap": "Overlap",
+      "affinityScore": "Affinity Score",
+      "pitchHint": "Pitch Hint",
+      "sharedOrders": "Shared orders: {count}"
+    },
+    "categoryTrends": {
+      "title": "Category Trend Radar",
+      "description": "Rolling demand signals across categories, with current-vs-prior period comparison.",
+      "period30d": "30d",
+      "period90d": "90d",
+      "period12m": "12m",
+      "loadError": "Failed to load category trends.",
+      "generatedAt": "Generated {value}",
+      "activityBasis": "Based on confirmed, shipped, and fulfilled order-line demand.",
+      "empty": "No category demand signals yet.",
+      "priorPeriod": "Prior",
+      "currentPeriod": "Current",
+      "delta": "Revenue Delta",
+      "newCustomers": "New",
+      "churnedCustomers": "Churned",
+      "topProducts": "Top Products",
+      "customerFootnote": "{current} / {prior} customers",
+      "trend": {
+        "growing": "Growing",
+        "declining": "Declining",
+        "stable": "Stable"
+      },
+      "trendContext": {
+        "recovering": "Recovering",
+        "slowing": "Slowing"
+      }
+    },
+    "customerBuyingBehavior": {
+      "title": "Customer Buying Behavior",
+      "description": "Compare segment-level category mix, cross-sell lift, and month-by-month buying patterns.",
+      "customerTypeLabel": "Customer Type",
+      "filterDealers": "Dealers",
+      "filterEndUsers": "End Users",
+      "filterUnknown": "Unknown",
+      "filterAll": "All",
+      "includeCurrentMonth": "Include current month",
+      "loadError": "Failed to load customer buying behavior.",
+      "generatedAt": "Generated {value}",
+      "partial": "Includes live current month",
+      "historical": "Closed months only",
+      "summary": {
+        "customers": "Customers",
+        "avgRevenue": "Avg Revenue / Customer",
+        "avgOrders": "Avg Orders / Customer",
+        "avgCategories": "Avg Categories / Customer"
+      },
+      "empty": "No qualifying customer buying behavior for this segment yet.",
+      "topCategoriesTitle": "Top Categories",
+      "emptyTopCategories": "No category evidence yet.",
+      "table": {
+        "category": "Category",
+        "revenue": "Revenue",
+        "share": "Share",
+        "customers": "Customers",
+        "anchor": "Anchor",
+        "recommended": "Recommended",
+        "shared": "Shared",
+        "segmentPenetration": "Segment",
+        "lift": "Lift"
+      },
+      "crossSellTitle": "Cross-Sell Opportunities",
+      "emptyCrossSell": "No cross-sell opportunities meet the support threshold yet.",
+      "patternsTitle": "Buying Patterns",
+      "pattern": {
+        "orders": "{count} orders",
+        "customers": "{count} customers"
+      },
+      "dataBasis": {
+        "transactional_fallback": "Transactional fallback",
+        "aggregate_only": "Aggregate only",
+        "aggregate_plus_live_current_month": "Aggregate + live current month"
+      }
+    },
+    "prospectGaps": {
+      "title": "Prospect Gap Analysis",
+      "description": "Find active non-buyers who look like strong fit for a target category.",
+      "categoryLabel": "Target Category",
+      "customerTypeLabel": "Customer Type",
+      "filterDealers": "Dealers",
+      "filterEndUsers": "End Users",
+      "filterAll": "All",
+      "existingBuyers": "{count} existing buyers",
+      "loadError": "Failed to load prospect gaps.",
+      "empty": "No whitespace prospects for this category yet.",
+      "company": "Company",
+      "reason": "Reason",
+      "lastOrder": "Last Order",
+      "categoryCount": "Category Count",
+      "aov": "AOV",
+      "affinityScore": "Affinity Score",
+      "tags": "Tags"
+    },
+    "productPerformance": {
+      "title": "Product Performance",
+      "description": "Rank products by current-versus-prior revenue and lifecycle stage.",
+      "lifecycleLabel": "Lifecycle stage",
+      "allStages": "All stages",
+      "stage": {
+        "growing": "Growing",
+        "mature": "Mature",
+        "stable": "Stable",
+        "declining": "Declining",
+        "new": "New",
+        "end_of_life": "End of Life"
+      },
+      "categoryPlaceholder": "Filter category",
+      "includeCurrentMonth": "Include current month",
+      "loadError": "Failed to load product performance.",
+      "generatedAt": "Generated {value}",
+      "partial": "Includes live current month",
+      "historical": "Closed months only",
+      "summary": {
+        "products": "Products",
+        "windowNote": "Showing top {count} rows",
+        "currentWindow": "Current Window",
+        "priorWindow": "Prior Window"
+      },
+      "empty": "No qualifying products for this comparison window.",
+      "table": {
+        "product": "Product",
+        "category": "Category",
+        "lifecycle": "Lifecycle",
+        "currentRevenue": "Current Revenue",
+        "priorRevenue": "Prior Revenue",
+        "delta": "Delta",
+        "peakMonth": "Peak Month Revenue",
+        "monthsOnSale": "{count} months on sale"
+      },
+      "dataBasis": {
+        "aggregate_only": "Aggregate only",
+        "aggregate_plus_live_current_month": "Aggregate + live current month"
+      },
+      "reason": {
+        "rule_revenue_growth": "Revenue growth rule",
+        "rule_stability": "Stability rule",
+        "rule_new_product": "New product rule"
+      }
+    },
+    "revenueDiagnosis": {
+      "title": "Revenue Diagnosis",
+      "description": "Break revenue change into price, volume, and mix with snapshot-correct historical evidence.",
+      "categoryPlaceholder": "Filter category",
+      "loadError": "Failed to load revenue diagnosis.",
+      "generatedAt": "Generated {value}",
+      "partial": "Includes live current month",
+      "historical": "Closed months only",
+      "summary": {
+        "currentRevenue": "Current Revenue",
+        "priorRevenue": "Prior Revenue",
+        "delta": "Revenue Delta",
+        "currentWindow": "Current Window",
+        "priorWindow": "Prior"
+      },
+      "components": {
+        "price": "Price Effect",
+        "volume": "Volume Effect",
+        "mix": "Mix Effect"
+      },
+      "empty": "No qualifying revenue drivers for this comparison window.",
+      "table": {
+        "product": "Product",
+        "category": "Category",
+        "delta": "Delta",
+        "price": "Price",
+        "volume": "Volume",
+        "mix": "Mix"
+      }
+    },
+    "riskSignals": {
+      "title": "Customer Risk Signals",
+      "description": "A ranked outreach queue across dormant, at-risk, growing, stable, and new accounts.",
+      "filters": {
+        "all": "all",
+        "growing": "growing",
+        "at_risk": "at_risk",
+        "dormant": "dormant",
+        "new": "new",
+        "stable": "stable"
+      },
+      "loadError": "Failed to load customer risk signals.",
+      "generatedAt": "Generated {value}",
+      "empty": "No customer risk signals yet.",
+      "revenueCurrent": "Current Revenue",
+      "revenuePrior": "Prior Revenue",
+      "delta": "Delta",
+      "daysSinceLastOrder": "{count} days since last order",
+      "expanded": "Expanded: {value}",
+      "contracted": "Contracted: {value}",
+      "noSignals": "No secondary signals for this account.",
+      "status": {
+        "growing": "Growing",
+        "at_risk": "At Risk",
+        "dormant": "Dormant",
+        "new": "New",
+        "stable": "Stable"
+      }
+    },
+    "marketOpportunities": {
+      "affectedCustomers": "{count} customers affected",
+      "showDetail": "Show detail",
+      "hideDetail": "Hide detail",
+      "action": "Recommended action",
+      "deferred": "Deferred in v1: {value}"
     }
   },
   "orders": {
