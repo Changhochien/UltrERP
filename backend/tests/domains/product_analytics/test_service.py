@@ -311,6 +311,159 @@ async def test_refresh_sales_monthly_is_idempotent_and_duplicate_free(
 
 
 @pytest.mark.asyncio
+async def test_refresh_sales_monthly_counts_only_commercial_statuses_per_snapshot_grain(
+    db_session: AsyncSession,
+    tenant_id: uuid.UUID,
+) -> None:
+    customer = await _create_customer(db_session, tenant_id, "Status Customer")
+    product = await _create_product(db_session, tenant_id, "Live Belt", "Live Category")
+    month_start = date(2026, 1, 1)
+    order_moment = datetime(2026, 1, 15, 10, 0, tzinfo=UTC)
+
+    for status, quantity, unit_price, product_name_snapshot, product_category_snapshot in (
+        ("confirmed", "2.000", "10.00", "Classic Belt", "Belts"),
+        ("shipped", "1.000", "12.00", "Classic Belt", "Belts"),
+        ("fulfilled", "3.000", "15.00", "Classic Belt XL", "Timing Belts"),
+        ("draft", "9.000", "99.00", "Classic Belt", "Belts"),
+        ("cancelled", "7.000", "77.00", "Classic Belt XL", "Timing Belts"),
+    ):
+        await _create_order(
+            db_session,
+            customer=customer,
+            created_at=order_moment,
+            confirmed_at=order_moment if status in {"confirmed", "shipped", "fulfilled"} else None,
+            status=status,
+            line_specs=[
+                {
+                    "product": product,
+                    "quantity": quantity,
+                    "unit_price": unit_price,
+                    "product_name_snapshot": product_name_snapshot,
+                    "product_category_snapshot": product_category_snapshot,
+                }
+            ],
+        )
+    await db_session.commit()
+
+    first_result = await refresh_sales_monthly(db_session, tenant_id, month_start)
+    second_result = await refresh_sales_monthly(db_session, tenant_id, month_start)
+    rows = (
+        await db_session.execute(
+            select(SalesMonthly)
+            .where(
+                SalesMonthly.tenant_id == tenant_id,
+                SalesMonthly.month_start == month_start,
+            )
+            .order_by(SalesMonthly.product_name_snapshot)
+        )
+    ).scalars().all()
+
+    assert first_result.upserted_row_count == 2
+    assert second_result.upserted_row_count == 2
+    assert len(rows) == 2
+
+    classic_row = next(row for row in rows if row.product_name_snapshot == "Classic Belt")
+    xl_row = next(row for row in rows if row.product_name_snapshot == "Classic Belt XL")
+
+    assert classic_row.product_category_snapshot == "Belts"
+    assert classic_row.quantity_sold == Decimal("3.000")
+    assert classic_row.order_count == 2
+    assert classic_row.revenue == Decimal("32.00")
+    assert classic_row.avg_unit_price == Decimal("10.67")
+
+    assert xl_row.product_category_snapshot == "Timing Belts"
+    assert xl_row.quantity_sold == Decimal("3.000")
+    assert xl_row.order_count == 1
+    assert xl_row.revenue == Decimal("45.00")
+    assert xl_row.avg_unit_price == Decimal("15.00")
+
+
+@pytest.mark.asyncio
+async def test_read_sales_monthly_range_is_tenant_scoped_and_snapshot_immutable(
+    db_session: AsyncSession,
+    tenant_id: uuid.UUID,
+) -> None:
+    other_tenant_id = uuid.uuid4()
+    month_start = date(2026, 2, 1)
+    tenant_customer = await _create_customer(db_session, tenant_id, "Tenant A Customer")
+    other_customer = await _create_customer(db_session, other_tenant_id, "Tenant B Customer")
+    tenant_product = await _create_product(db_session, tenant_id, "Shared Live Belt", "Shared Live Category")
+    other_product = await _create_product(db_session, other_tenant_id, "Shared Live Belt", "Shared Live Category")
+    order_moment = datetime(2026, 2, 20, 12, 0, tzinfo=UTC)
+
+    await _create_order(
+        db_session,
+        customer=tenant_customer,
+        created_at=order_moment,
+        confirmed_at=order_moment,
+        status="confirmed",
+        line_specs=[
+            {
+                "product": tenant_product,
+                "quantity": "1.000",
+                "unit_price": "25.00",
+                "product_name_snapshot": "Tenant A Snapshot",
+                "product_category_snapshot": "Tenant A Category",
+            }
+        ],
+    )
+    await _create_order(
+        db_session,
+        customer=other_customer,
+        created_at=order_moment,
+        confirmed_at=order_moment,
+        status="confirmed",
+        line_specs=[
+            {
+                "product": other_product,
+                "quantity": "4.000",
+                "unit_price": "30.00",
+                "product_name_snapshot": "Tenant B Snapshot",
+                "product_category_snapshot": "Tenant B Category",
+            }
+        ],
+    )
+    await db_session.commit()
+
+    await refresh_sales_monthly(db_session, tenant_id, month_start)
+    await refresh_sales_monthly(db_session, other_tenant_id, month_start)
+
+    tenant_product.name = "Renamed Tenant A Belt"
+    tenant_product.category = "Renamed Tenant A Category"
+    other_product.name = "Renamed Tenant B Belt"
+    other_product.category = "Renamed Tenant B Category"
+    await db_session.commit()
+
+    await refresh_sales_monthly(db_session, tenant_id, month_start)
+    await refresh_sales_monthly(db_session, other_tenant_id, month_start)
+
+    tenant_result = await read_sales_monthly_range(
+        db_session,
+        tenant_id,
+        start_month=month_start,
+        end_month=month_start,
+    )
+    other_result = await read_sales_monthly_range(
+        db_session,
+        other_tenant_id,
+        start_month=month_start,
+        end_month=month_start,
+    )
+
+    assert len(tenant_result.items) == 1
+    assert tenant_result.items[0].product_name_snapshot == "Tenant A Snapshot"
+    assert tenant_result.items[0].product_category_snapshot == "Tenant A Category"
+    assert tenant_result.items[0].quantity_sold == Decimal("1.000")
+    assert tenant_result.items[0].revenue == Decimal("25.00")
+
+    assert len(other_result.items) == 1
+    assert other_result.items[0].product_name_snapshot == "Tenant B Snapshot"
+    assert other_result.items[0].product_category_snapshot == "Tenant B Category"
+    assert other_result.items[0].quantity_sold == Decimal("4.000")
+    assert other_result.items[0].revenue == Decimal("120.00")
+
+
+@pytest.mark.asyncio
 async def test_read_sales_monthly_range_uses_live_current_month_over_stale_aggregate_row(
     db_session: AsyncSession,
     tenant_id: uuid.UUID,

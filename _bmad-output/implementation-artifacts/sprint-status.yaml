@@ -951,11 +951,11 @@ development_status:
         validation: "Validated on 2026-04-16 with `cd /Volumes/2T_SSD_App/Projects/UltrERP/backend && uv run pytest tests/domains/intelligence/test_routes.py tests/test_mcp_intelligence.py tests/test_mcp_auth.py tests/domains/inventory/test_planning_support.py -q` (`77 passed in 1.87s`) and `pnpm --dir /Volumes/2T_SSD_App/Projects/UltrERP exec vitest run src/tests/intelligence/RevenueDiagnosisCard.test.tsx src/tests/intelligence/ProductPerformanceCard.test.tsx src/tests/intelligence/CustomerBuyingBehaviorCard.test.tsx src/domain/inventory/components/AnalyticsTab.test.tsx` (`14 passed`). Story 20.8 now adds the missing inventory planning-support toggle, preserves existing intelligence route/MCP gate semantics, and suppresses disabled Epic 20 cards inside the owning-domain intelligence and inventory surfaces without introducing a speculative shared frontend feature registry."
         prerequisites: ["20.4", "20.5", "20.6", "20.7"]
       20-9-product-analytics-backend-test-coverage:
-        status: "ready-for-dev"
+        status: "done"
         story_id: "20.9"
         title: "Product Analytics Backend Test Coverage"
         story_file: "20-9-product-analytics-backend-test-coverage.md"
-        validation: "Drafted against the repo's real test seams: DB-backed shared-foundation tests, intelligence owner-domain route and MCP tests, inventory planning tests, and centralized TOOL_SCOPES assertions. Optional SCD2 coverage is deferred unless Story 20.2 ships."
+        validation: "Validated on 2026-04-16 with `cd /Volumes/2T_SSD_App/Projects/UltrERP/backend && uv run pytest tests/domains/product_analytics/test_service.py tests/domains/intelligence/test_revenue_diagnosis_service.py tests/domains/intelligence/test_product_performance_service.py tests/domains/intelligence/test_customer_buying_behavior_service.py tests/domains/intelligence/test_routes.py tests/domains/inventory/test_planning_support.py tests/test_mcp_intelligence.py tests/test_mcp_auth.py -q` (`109 passed in 2.78s`). Story 20.9 adds shared-foundation regressions for countable-status filtering, per-snapshot monthly grain aggregation, tenant isolation, and immutable sale-time snapshots; adds Epic 20 route auth and query-validation coverage; and extends centralized MCP auth with explicit insufficient-scope checks for the new revenue diagnosis, product performance, and customer buying behavior tools while reusing the existing owner-domain inventory and intelligence suites."
         prerequisites: ["20.3", "20.4", "20.5", "20.6", "20.7", "20.8"]
 
 last_updated: "2026-04-16"

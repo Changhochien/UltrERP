@@ -179,6 +179,40 @@ async def test_intelligence_tool_requires_both_required_scopes():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("tool_name", "expected_required_scope"),
+    [
+        ("intelligence_revenue_diagnosis", {"orders:read"}),
+        ("intelligence_product_performance", {"orders:read"}),
+        ("intelligence_customer_buying_behavior", {"customers:read", "orders:read"}),
+    ],
+)
+async def test_epic20_tools_return_insufficient_scope_for_under_scoped_keys(
+    tool_name: str,
+    expected_required_scope: set[str],
+):
+    mw = ApiKeyAuth(api_keys=_TEST_KEYS, tool_scopes=TOOL_SCOPES, api_key_tenants=_TEST_KEY_TENANTS)
+    ctx = _make_context(tool_name)
+
+    with patch(
+        "app.mcp_auth.get_http_headers",
+        return_value={
+            "x-api-key": "valid-narrow",
+            "x-tenant-id": "00000000-0000-0000-0000-000000000001",
+        },
+    ):
+        with pytest.raises(ToolError) as exc_info:
+            await mw.on_call_tool(ctx, AsyncMock())
+
+    error = json.loads(str(exc_info.value))
+    required_scope = error["required_scope"]
+    if isinstance(required_scope, str):
+        required_scope = [required_scope]
+    assert error["code"] == "INSUFFICIENT_SCOPE"
+    assert set(required_scope) == expected_required_scope
+
+
+@pytest.mark.asyncio
 async def test_intelligence_tool_allows_combined_scope_key():
     """Epic 19 intelligence tools allow keys with the dedicated intelligence scope."""
     mw = ApiKeyAuth(api_keys=_TEST_KEYS, tool_scopes=TOOL_SCOPES, api_key_tenants=_TEST_KEY_TENANTS)

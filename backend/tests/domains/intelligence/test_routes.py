@@ -11,7 +11,10 @@ from unittest.mock import AsyncMock, patch
 from datetime import UTC, date, datetime
 
 import pytest
+from httpx import ASGITransport
+from httpx import AsyncClient as HttpxAsyncClient
 
+from app.main import app
 import domains.intelligence.routes as intelligence_routes
 from domains.intelligence.schemas import (
     CategoryTrends,
@@ -44,6 +47,12 @@ from tests.domains.orders._helpers import (  # noqa: E402
     setup_session,
     teardown_session,
 )
+
+
+async def _http_get_without_auth(path: str):
+    transport = ASGITransport(app=app)
+    async with HttpxAsyncClient(transport=transport, base_url="http://test") as client:
+        return await client.get(path)
 
 
 def _sample_profile(customer_id: uuid.UUID) -> CustomerProductProfile:
@@ -365,6 +374,93 @@ async def test_product_performance_route_allows_sales_role() -> None:
             "limit": 25,
             "include_current_month": True,
         }
+    finally:
+        teardown_session(prev)
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/intelligence/customer-buying-behavior",
+        "/api/v1/intelligence/revenue-diagnosis",
+        "/api/v1/intelligence/product-performance",
+    ],
+)
+async def test_epic20_intelligence_routes_require_authentication(path: str) -> None:
+    session = FakeAsyncSession()
+    prev = setup_session(session)
+    try:
+        resp = await _http_get_without_auth(path)
+        assert resp.status_code == 401
+    finally:
+        teardown_session(prev)
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/intelligence/customer-buying-behavior",
+        "/api/v1/intelligence/revenue-diagnosis",
+        "/api/v1/intelligence/product-performance",
+    ],
+)
+async def test_epic20_intelligence_routes_reject_finance_role(path: str) -> None:
+    session = FakeAsyncSession()
+    prev = setup_session(session)
+    try:
+        resp = await http_get(path, headers=auth_header("finance"))
+        assert resp.status_code == 403
+    finally:
+        teardown_session(prev)
+
+
+@pytest.mark.parametrize(
+    ("path", "expected_status", "expected_body"),
+    [
+        (
+            "/api/v1/intelligence/customer-buying-behavior?customer_type=reseller",
+            422,
+            None,
+        ),
+        (
+            "/api/v1/intelligence/customer-buying-behavior?period=24m",
+            422,
+            None,
+        ),
+        (
+            "/api/v1/intelligence/revenue-diagnosis?period=24m",
+            422,
+            None,
+        ),
+        (
+            "/api/v1/intelligence/revenue-diagnosis?category=%20%20",
+            400,
+            {"detail": "category is required"},
+        ),
+        (
+            "/api/v1/intelligence/product-performance?lifecycle_stage=seasonal",
+            422,
+            None,
+        ),
+        (
+            "/api/v1/intelligence/product-performance?category=%20%20",
+            400,
+            {"detail": "category is required"},
+        ),
+    ],
+)
+async def test_epic20_intelligence_routes_validate_query_params(
+    path: str,
+    expected_status: int,
+    expected_body: dict[str, str] | None,
+) -> None:
+    session = FakeAsyncSession()
+    prev = setup_session(session)
+    try:
+        resp = await http_get(path, headers=auth_header("sales"))
+        assert resp.status_code == expected_status
+        if expected_body is not None:
+            assert resp.json() == expected_body
     finally:
         teardown_session(prev)
 
