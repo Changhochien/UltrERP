@@ -86,6 +86,8 @@ class FakeOrderLine:
         available_stock_snapshot: int | None = None,
         backorder_note: str | None = None,
         description: str = "Test product",
+        product_name_snapshot: str | None = None,
+        product_category_snapshot: str | None = None,
     ):
         self.id = uuid.uuid4()
         self.tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
@@ -104,6 +106,8 @@ class FakeOrderLine:
         self.subtotal_amount = Decimal("1000.00")
         self.total_amount = Decimal("1050.00")
         self.description = description
+        self.product_name_snapshot = product_name_snapshot
+        self.product_category_snapshot = product_category_snapshot
         self.available_stock_snapshot = available_stock_snapshot
         self.backorder_note = backorder_note
         self.created_at = datetime.now(tz=UTC)
@@ -241,6 +245,7 @@ class FakeAsyncSession:
         self._execute_results: list[object] = []
         self._idx = 0
         self.added: list[object] = []
+        self.executed_statements: list[tuple[object, object | None]] = []
 
     def add(self, obj: object) -> None:
         self.added.append(obj)
@@ -249,6 +254,7 @@ class FakeAsyncSession:
         self.added.extend(objs)
 
     async def execute(self, _stmt: object, _params: object = None) -> object:
+        self.executed_statements.append((_stmt, _params))
         if self._idx < len(self._execute_results):
             result = self._execute_results[self._idx]
             self._idx += 1

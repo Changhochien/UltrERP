@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayout";
 import { Badge } from "../../../components/ui/badge";
+import { Button } from "../../../components/ui/button";
 import {
   Table,
   TableBody,
@@ -11,11 +12,22 @@ import {
   TableHeader,
   TableRow,
 } from "../../../components/ui/table";
+import type { ProspectGapCustomerFilter } from "../types";
 import { useCategoryTrends, useProspectGaps } from "../hooks/useIntelligence";
 
 interface ProspectGapTableProps {
   defaultCategory?: string;
 }
+
+const customerTypeOptions: Array<{
+  value: ProspectGapCustomerFilter;
+  labelKey: "filterDealers" | "filterEndUsers" | "filterAll";
+  defaultValue: string;
+}> = [
+  { value: "dealer", labelKey: "filterDealers", defaultValue: "Dealers" },
+  { value: "end_user", labelKey: "filterEndUsers", defaultValue: "End Users" },
+  { value: "all", labelKey: "filterAll", defaultValue: "All" },
+];
 
 function formatTWD(value: string): string {
   return `NT$ ${Number(value).toLocaleString("en-US", {
@@ -33,9 +45,10 @@ function scoreColor(score: number): string {
 export function ProspectGapTable({ defaultCategory = "Supplies" }: ProspectGapTableProps) {
   const { t } = useTranslation("common", { keyPrefix: "intelligence.prospectGaps" });
   const [category, setCategory] = useState("");
+  const [customerType, setCustomerType] = useState<ProspectGapCustomerFilter>("dealer");
   const { data: categoryTrendData } = useCategoryTrends("last_12m");
   const availableCategories = categoryTrendData?.trends.map((trend) => trend.category) ?? [];
-  const { data, isLoading, error } = useProspectGaps(category, 20);
+  const { data, isLoading, error } = useProspectGaps(category, customerType, 20);
 
   useEffect(() => {
     if (availableCategories.length === 0) {
@@ -72,6 +85,23 @@ export function ProspectGapTable({ defaultCategory = "Supplies" }: ProspectGapTa
               ))}
             </select>
           </label>
+          <div
+            role="group"
+            aria-label={t("customerTypeLabel", { defaultValue: "Customer Type" })}
+            className="flex flex-wrap items-center gap-2"
+          >
+            {customerTypeOptions.map((option) => (
+              <Button
+                key={option.value}
+                type="button"
+                size="sm"
+                variant={customerType === option.value ? "default" : "outline"}
+                onClick={() => setCustomerType(option.value)}
+              >
+                {t(option.labelKey, { defaultValue: option.defaultValue })}
+              </Button>
+            ))}
+          </div>
           {data ? (
             <Badge variant="secondary">
               {t("existingBuyers", {
