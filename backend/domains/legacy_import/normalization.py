@@ -30,7 +30,8 @@ _NON_MERCHANDISE_NAME_TOKENS = (
     "帳單本",
     "信封",
 )
-_VARIABLE_SPEED_NAME_TOKENS = ("變速皮帶",)
+_BELT_SUPPLIES_NAME_TOKENS = ("現場接頭",)
+_VARIABLE_SPEED_NAME_TOKENS = ("變速皮帶", "變速帶")
 _RIBBED_NAME_TOKENS = ("多溝", "POLY")
 _TIMING_NAME_TOKENS = (
     "齒帶",
@@ -38,6 +39,7 @@ _TIMING_NAME_TOKENS = (
     "RPP",
     "HTD",
     "AT10",
+    "AT20",
     "AT5",
     "T10",
     "T5",
@@ -57,9 +59,20 @@ _V_BELT_NAME_TOKENS = (
     "OH B-",
     "OH C-",
     "OH D-",
+    "OH A",
+    "OH B",
+    "OH C",
+    "OH D",
+    "OH M",
     "阪東",
     "德國馬牌",
     "大山 K-",
+    "大山 A",
+    "大山 B",
+    "大山 C",
+    "大山皮帶",
+    "第一 B",
+    "外齒",
 )
 _FLAT_SPECIALTY_NAME_TOKENS = (
     "牛皮",
@@ -69,14 +82,29 @@ _FLAT_SPECIALTY_NAME_TOKENS = (
     "片基帶",
     "廣角",
     "無端皮帶",
+    "鐵氟龍帶",
+    "花紋帶",
+    "圓綠帶",
+    "圓型橘色帶",
+    "圓形橘色帶",
+    "打孔帶",
+    "關結帶",
+    "V-LINK",
 )
 _VARIABLE_SPEED_CODE_PREFIXES = ("VB", "VD", "YM", "YK", "MF")
 _RIBBED_CODE_PREFIXES = ("J4", "J5", "J6", "J8")
+_RIBBED_SERIES_RE = re.compile(
+    r"^(?:\d+(?:PK|PL|PJ)-|PK\d+-|J\d+(?:-|$)|\d+J(?:-|$)|\d+-J\d+)"
+)
 _TIMING_CODE_PREFIXES = (
     "RL",
     "RH",
     "XL",
     "MXL",
+    "XH",
+    "DXL",
+    "DH",
+    "DL",
     "S5M",
     "S8M",
     "5GT",
@@ -85,12 +113,22 @@ _TIMING_CODE_PREFIXES = (
     "14MGT",
     "8YU",
 )
+_TIMING_SERIES_RE = re.compile(
+    r"^(?:\d{1,2}M-|\d+XL(?:[-*]|$)|\d+H(?:[-*]|$)|\d+GT(?:[-* ]|$)|\d+-\d+M(?:[-*]|$))"
+)
 _VEHICLE_CODE_PREFIXES = ("BMT", "3NW", "3GF", "SRCV")
 _V_BELT_CODE_PREFIXES = (
     "PA",
     "PB",
     "PC",
     "PD",
+    "SPA",
+    "SPB",
+    "SPC",
+    "SPZ",
+    "XPA",
+    "XPB",
+    "XPZ",
     "AO",
     "BO",
     "OB",
@@ -108,8 +146,29 @@ _V_BELT_CODE_PREFIXES = (
     "LC",
     "MO",
 )
-_FLAT_SPECIALTY_CODE_PREFIXES = ("TU", "VT", "LG", "A2LT", "T1", "LLN", "FL", "SE-")
+_V_BELT_SPECIAL_CODE_PREFIXES = ("OA", "OM", "OC", "VA", "AA", "BB", "AX", "BR")
+_FLAT_SPECIALTY_CODE_PREFIXES = (
+    "TU",
+    "VT",
+    "LG",
+    "A2LT",
+    "T1",
+    "LLN",
+    "FL",
+    "SE-",
+    "LPS",
+    "NVT",
+    "HS",
+    "PVC",
+    "XVT",
+    "CFL",
+)
+_FLAT_SPECIALTY_SERIES_RE = re.compile(r"^(?:\d+-TU\d+|[AB]-V-LINK|A-[23]LT(?:\s|-))")
+_BELT_SUPPLIES_CODE_PREFIXES = ("PPPP",)
 _V_BELT_SERIES_RE = re.compile(r"^(?:[358]V|[ABCDM]O?\d)")
+_CATEGORY_REVIEW_CONFIDENCE_THRESHOLD = Decimal("0.80")
+_MATCHING_NOISE_TOKENS = ("進口",)
+_MATCHING_TEXT_RE = re.compile(r"[^A-Z0-9\u4E00-\u9FFF]+")
 
 
 @dataclass(slots=True, frozen=True)
@@ -120,6 +179,20 @@ class NormalizationBatchResult:
     product_count: int
     warehouse_count: int
     inventory_count: int
+
+
+@dataclass(slots=True, frozen=True)
+class CategoryDerivation:
+    category: str | None
+    source: str
+    rule_id: str
+    confidence: Decimal
+
+
+def _coerce_mapping(record: Mapping[str, object] | object) -> dict[str, object]:
+    if isinstance(record, dict):
+        return record
+    return dict(record)
 
 
 def deterministic_legacy_uuid(kind: str, *parts: str) -> uuid.UUID:
@@ -191,69 +264,225 @@ def _starts_with_any_prefix(text: str, prefixes: tuple[str, ...]) -> bool:
     return any(text.startswith(prefix) for prefix in prefixes)
 
 
+def _clean_product_text_for_matching(value: str) -> str:
+    cleaned = _MATCHING_TEXT_RE.sub(" ", value.strip().upper())
+    for token in _MATCHING_NOISE_TOKENS:
+        cleaned = cleaned.replace(token, " ")
+    return " ".join(cleaned.split())
+
+
+def _category_derivation(
+    category: str | None,
+    source: str,
+    rule_id: str,
+    confidence: str,
+) -> CategoryDerivation:
+    return CategoryDerivation(
+        category=category,
+        source=source,
+        rule_id=rule_id,
+        confidence=Decimal(confidence),
+    )
+
+
+def _manual_override_derivation(category: str) -> CategoryDerivation:
+    return _category_derivation(category, "manual_override", "manual-override", "1.00")
+
+
 def _derive_product_category(
     legacy_code: str,
     name: str,
     *,
     legacy_category: str | None,
     stock_kind: str | None,
-) -> tuple[str | None, str]:
+) -> CategoryDerivation:
     normalized_stock_kind = _normalize_text(stock_kind)
     if normalized_stock_kind == "6":
-        return _NON_MERCHANDISE_CATEGORY, "legacy_stock_kind"
+        return _category_derivation(
+            _NON_MERCHANDISE_CATEGORY,
+            "exclusion_rule",
+            "stock-kind-non-merchandise",
+            "1.00",
+        )
 
-    normalized_legacy_category = _normalize_text(legacy_category)
-    if normalized_legacy_category is not None:
-        return normalized_legacy_category, "legacy_class"
-
-    combined = f"{legacy_code} {name}".upper()
     normalized_code = legacy_code.upper()
+    cleaned_name = _clean_product_text_for_matching(name)
+    combined = f"{normalized_code} {cleaned_name}".strip()
 
     if _contains_any_token(combined, _NON_MERCHANDISE_NAME_TOKENS):
-        return _NON_MERCHANDISE_CATEGORY, "derived_from_code_name"
+        return _category_derivation(
+            _NON_MERCHANDISE_CATEGORY,
+            "exclusion_rule",
+            "name-token-non-merchandise",
+            "0.95",
+        )
 
-    if (
-        _starts_with_any_prefix(normalized_code, _VARIABLE_SPEED_CODE_PREFIXES)
-        or _contains_any_token(combined, _VARIABLE_SPEED_NAME_TOKENS)
-    ):
-        return "Variable-Speed Belts", "derived_from_code_name"
+    if _starts_with_any_prefix(normalized_code, _BELT_SUPPLIES_CODE_PREFIXES):
+        return _category_derivation(
+            "Belt Supplies",
+            "heuristic_rule",
+            "code-prefix-belt-supplies",
+            "0.98",
+        )
+    if "皮帶" in combined and _contains_any_token(cleaned_name, _BELT_SUPPLIES_NAME_TOKENS):
+        return _category_derivation(
+            "Belt Supplies",
+            "heuristic_rule",
+            "name-token-belt-supplies",
+            "0.90",
+        )
+
+    if _starts_with_any_prefix(normalized_code, _VARIABLE_SPEED_CODE_PREFIXES):
+        return _category_derivation(
+            "Variable-Speed Belts",
+            "heuristic_rule",
+            "code-prefix-variable-speed-belts",
+            "0.98",
+        )
+    if _contains_any_token(combined, _VARIABLE_SPEED_NAME_TOKENS):
+        return _category_derivation(
+            "Variable-Speed Belts",
+            "heuristic_rule",
+            "name-token-variable-speed-belts",
+            "0.90",
+        )
 
     if (
         _starts_with_any_prefix(normalized_code, _RIBBED_CODE_PREFIXES)
+        or _RIBBED_SERIES_RE.match(normalized_code) is not None
         or any(token in combined for token in ("-J4", "-J5", "-J6", "-J8"))
-        or _contains_any_token(combined, _RIBBED_NAME_TOKENS)
     ):
-        return "Ribbed Belts", "derived_from_code_name"
+        return _category_derivation(
+            "Ribbed Belts",
+            "heuristic_rule",
+            "code-prefix-ribbed-belts",
+            "0.98",
+        )
+    if _contains_any_token(combined, _RIBBED_NAME_TOKENS):
+        return _category_derivation(
+            "Ribbed Belts",
+            "heuristic_rule",
+            "name-token-ribbed-belts",
+            "0.90",
+        )
 
     if (
         _starts_with_any_prefix(normalized_code, _TIMING_CODE_PREFIXES)
-        or _contains_any_token(combined, _TIMING_NAME_TOKENS)
+        or _TIMING_SERIES_RE.match(normalized_code) is not None
         or any(token in normalized_code for token in ("5GT", "8GT", "3GT", "14MGT", "RPP", "8YU"))
         or any(token in combined for token in ("5M-", "8M-", "14M-", "3M-"))
     ):
-        return "Timing Belts", "derived_from_code_name"
+        return _category_derivation(
+            "Timing Belts",
+            "heuristic_rule",
+            "code-prefix-timing-belts",
+            "0.98",
+        )
+    if _contains_any_token(combined, _TIMING_NAME_TOKENS):
+        return _category_derivation(
+            "Timing Belts",
+            "heuristic_rule",
+            "name-token-timing-belts",
+            "0.90",
+        )
 
     if (
         _starts_with_any_prefix(normalized_code, _VEHICLE_CODE_PREFIXES)
-        or _contains_any_token(combined, _VEHICLE_NAME_TOKENS)
     ):
-        return "Vehicle Belts", "derived_from_code_name"
+        return _category_derivation(
+            "Vehicle Belts",
+            "heuristic_rule",
+            "code-prefix-vehicle-belts",
+            "0.98",
+        )
+    if _contains_any_token(combined, _VEHICLE_NAME_TOKENS):
+        return _category_derivation(
+            "Vehicle Belts",
+            "heuristic_rule",
+            "name-token-vehicle-belts",
+            "0.90",
+        )
 
     if (
         _starts_with_any_prefix(normalized_code, _V_BELT_CODE_PREFIXES)
+        or _starts_with_any_prefix(normalized_code, _V_BELT_SPECIAL_CODE_PREFIXES)
         or _V_BELT_SERIES_RE.match(normalized_code) is not None
-        or _contains_any_token(combined, _V_BELT_NAME_TOKENS)
-        or any(token in combined for token in ("3V", "5V", "8V"))
     ):
-        return "V-Belts", "derived_from_code_name"
+        return _category_derivation(
+            "V-Belts",
+            "heuristic_rule",
+            "code-prefix-v-belts",
+            "0.98",
+        )
+    if _contains_any_token(combined, _V_BELT_NAME_TOKENS) or any(
+        token in combined for token in ("3V", "5V", "8V")
+    ):
+        return _category_derivation(
+            "V-Belts",
+            "heuristic_rule",
+            "name-token-v-belts",
+            "0.90",
+        )
 
     if (
         _starts_with_any_prefix(normalized_code, _FLAT_SPECIALTY_CODE_PREFIXES)
-        or _contains_any_token(combined, _FLAT_SPECIALTY_NAME_TOKENS)
+        or _FLAT_SPECIALTY_SERIES_RE.match(normalized_code) is not None
     ):
-        return "Flat / Specialty Belts", "derived_from_code_name"
+        return _category_derivation(
+            "Flat / Specialty Belts",
+            "heuristic_rule",
+            "code-prefix-flat-specialty-belts",
+            "0.98",
+        )
+    if _contains_any_token(combined, _FLAT_SPECIALTY_NAME_TOKENS):
+        return _category_derivation(
+            "Flat / Specialty Belts",
+            "heuristic_rule",
+            "name-token-flat-specialty-belts",
+            "0.90",
+        )
 
-    return "Other Power Transmission", "derived_from_code_name"
+    return _category_derivation(
+        "Other Power Transmission",
+        "fallback_rule",
+        "fallback-other-power-transmission",
+        "0.40",
+    )
+
+
+def _resolve_product_category(
+    record: Mapping[str, object],
+    *,
+    category_overrides: Mapping[str, dict[str, object]] | None = None,
+) -> CategoryDerivation:
+    legacy_code = str(record.get("legacy_code") or "").strip()
+    name = str(record.get("name") or legacy_code).strip()
+    override = (category_overrides or {}).get(legacy_code)
+    if override:
+        override_category = _normalize_text(override.get("category"))
+        if override_category:
+            return _manual_override_derivation(override_category)
+
+    legacy_category = _normalize_text(record.get("legacy_category"))
+    stock_kind = _normalize_text(record.get("stock_kind"))
+    return _derive_product_category(
+        legacy_code,
+        name,
+        legacy_category=legacy_category,
+        stock_kind=stock_kind,
+    )
+
+
+def _review_reason_for_derivation(derivation: CategoryDerivation) -> str | None:
+    if derivation.source == "manual_override":
+        return None
+    if derivation.source == "fallback_rule":
+        return "fallback_assignment"
+    if derivation.source == "exclusion_rule":
+        return "excluded_path"
+    if derivation.confidence < _CATEGORY_REVIEW_CONFIDENCE_THRESHOLD:
+        return "low_confidence"
+    return None
 
 
 def normalize_party_record(
@@ -295,6 +524,7 @@ def normalize_party_record(
         _normalize_status(record.get("status_code") or record.get("record_status")),
         normalize_legacy_date(record.get("created_date")),
         normalize_legacy_date(record.get("updated_date")),
+        "unknown",
         "tbscust",
         int(record.get("source_row_number") or 0),
     )
@@ -304,6 +534,8 @@ def _normalize_product_record(
     record: Mapping[str, object],
     batch_id: str,
     tenant_id: uuid.UUID,
+    *,
+    category_derivation: CategoryDerivation | None = None,
 ) -> tuple:
     legacy_code = str(record.get("legacy_code") or "").strip()
     if not legacy_code:
@@ -312,12 +544,8 @@ def _normalize_product_record(
     name = str(record.get("name") or legacy_code).strip()
     legacy_category = _normalize_text(record.get("legacy_category"))
     stock_kind = _normalize_text(record.get("stock_kind"))
-    category, category_source = _derive_product_category(
-        legacy_code,
-        name,
-        legacy_category=legacy_category,
-        stock_kind=stock_kind,
-    )
+    if category_derivation is None:
+        category_derivation = _resolve_product_category(record)
     supplier_code = _normalize_text(record.get("supplier_code"))
     supplier_id = (
         deterministic_legacy_uuid("party", "supplier", supplier_code) if supplier_code else None
@@ -328,10 +556,12 @@ def _normalize_product_record(
         deterministic_legacy_uuid("product", legacy_code),
         legacy_code,
         name,
-        category,
+        category_derivation.category,
         legacy_category,
         stock_kind,
-        category_source,
+        category_derivation.source,
+        category_derivation.rule_id,
+        category_derivation.confidence,
         supplier_code,
         supplier_id,
         _normalize_text(record.get("origin")),
@@ -415,8 +645,76 @@ def _normalize_inventory_record(
     )
 
 
+async def _fetch_category_overrides(
+    connection,
+    schema_name: str,
+    tenant_id: uuid.UUID,
+) -> dict[str, dict[str, object]]:
+    quoted_schema = _quoted_identifier(schema_name)
+    rows = await connection.fetch(
+        f"""
+        SELECT legacy_code, category, review_notes, approval_source, approved_by, approved_at
+        FROM {quoted_schema}.product_category_override
+        WHERE tenant_id = $1
+        """,
+        tenant_id,
+    )
+    return {
+        str(_coerce_mapping(row)["legacy_code"]): _coerce_mapping(row)
+        for row in rows
+        if str(_coerce_mapping(row).get("legacy_code") or "").strip()
+    }
+
+
+async def _replace_product_category_review_candidates(
+    connection,
+    schema_name: str,
+    batch_id: str,
+    tenant_id: uuid.UUID,
+    review_candidates: tuple[tuple[object, ...], ...],
+) -> None:
+    quoted_schema = _quoted_identifier(schema_name)
+    for review_candidate in review_candidates:
+        await connection.execute(
+            f"""
+            INSERT INTO {quoted_schema}.product_category_review_candidates (
+                tenant_id,
+                batch_id,
+                legacy_code,
+                name,
+                legacy_category,
+                stock_kind,
+                current_category,
+                category_source,
+                category_rule_id,
+                category_confidence,
+                review_reason,
+                source_table,
+                source_row_number
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            ON CONFLICT (tenant_id, batch_id, legacy_code) DO UPDATE SET
+                name = EXCLUDED.name,
+                legacy_category = EXCLUDED.legacy_category,
+                stock_kind = EXCLUDED.stock_kind,
+                current_category = EXCLUDED.current_category,
+                category_source = EXCLUDED.category_source,
+                category_rule_id = EXCLUDED.category_rule_id,
+                category_confidence = EXCLUDED.category_confidence,
+                review_reason = EXCLUDED.review_reason,
+                source_table = EXCLUDED.source_table,
+                source_row_number = EXCLUDED.source_row_number,
+                updated_at = NOW()
+            """,
+            tenant_id,
+            batch_id,
+            *review_candidate,
+        )
+
+
 async def _ensure_normalized_tables(connection, schema_name: str) -> None:
     quoted_schema = _quoted_identifier(schema_name)
+    quoted_products = _quoted_identifier("normalized_products")
     await connection.execute(
         f"""
 		CREATE TABLE IF NOT EXISTS {quoted_schema}.normalized_parties (
@@ -437,11 +735,17 @@ async def _ensure_normalized_tables(connection, schema_name: str) -> None:
 			is_active BOOLEAN NOT NULL,
 			created_date DATE,
 			updated_date DATE,
+            customer_type TEXT NOT NULL,
 			source_table TEXT NOT NULL,
 			source_row_number INTEGER NOT NULL,
 			PRIMARY KEY (tenant_id, batch_id, role, legacy_code)
 		)
 		"""
+    )
+    await connection.execute(
+        "ALTER TABLE "
+        f"{quoted_schema}.normalized_parties "
+        "ADD COLUMN IF NOT EXISTS customer_type TEXT NOT NULL DEFAULT 'unknown'"
     )
     await connection.execute(
         f"""
@@ -468,6 +772,31 @@ async def _ensure_normalized_tables(connection, schema_name: str) -> None:
 			PRIMARY KEY (tenant_id, batch_id, legacy_code)
 		)
 		"""
+    )
+    await connection.execute(
+        "ALTER TABLE "
+        f"{quoted_schema}.{quoted_products} "
+        "ADD COLUMN IF NOT EXISTS legacy_category TEXT"
+    )
+    await connection.execute(
+        "ALTER TABLE "
+        f"{quoted_schema}.{quoted_products} "
+        "ADD COLUMN IF NOT EXISTS stock_kind TEXT"
+    )
+    await connection.execute(
+        "ALTER TABLE "
+        f"{quoted_schema}.{quoted_products} "
+        "ADD COLUMN IF NOT EXISTS category_source TEXT"
+    )
+    await connection.execute(
+        "ALTER TABLE "
+        f"{quoted_schema}.{quoted_products} "
+        "ADD COLUMN IF NOT EXISTS category_rule_id TEXT"
+    )
+    await connection.execute(
+        "ALTER TABLE "
+        f"{quoted_schema}.{quoted_products} "
+        "ADD COLUMN IF NOT EXISTS category_confidence NUMERIC(5, 2)"
     )
     await connection.execute(
         f"""
@@ -514,6 +843,7 @@ async def _clear_batch_rows(
 ) -> None:
     quoted_schema = _quoted_identifier(schema_name)
     for table_name in (
+        "product_category_review_candidates",
         "normalized_inventory_prep",
         "normalized_warehouses",
         "normalized_products",
@@ -604,6 +934,12 @@ async def run_normalization(
             if not product_rows:
                 raise ValueError(f"No staged tbsstock rows found for batch {batch_id}")
 
+            category_overrides = await _fetch_category_overrides(
+                connection,
+                resolved_schema,
+                tenant_id,
+            )
+
             inventory_rows = await _fetch_stage_rows(
                 connection,
                 resolved_schema,
@@ -620,9 +956,38 @@ async def run_normalization(
                 raise ValueError(f"No staged tbsstkhouse rows found for batch {batch_id}")
 
             party_records = [normalize_party_record(row, batch_id, tenant_id) for row in party_rows]
-            product_records = [
-                _normalize_product_record(row, batch_id, tenant_id) for row in product_rows
-            ]
+            product_records: list[tuple] = []
+            product_review_candidates: list[tuple[object, ...]] = []
+            for row in product_rows:
+                category_derivation = _resolve_product_category(
+                    row,
+                    category_overrides=category_overrides,
+                )
+                product_records.append(
+                    _normalize_product_record(
+                        row,
+                        batch_id,
+                        tenant_id,
+                        category_derivation=category_derivation,
+                    )
+                )
+                review_reason = _review_reason_for_derivation(category_derivation)
+                if review_reason is not None:
+                    product_review_candidates.append(
+                        (
+                            str(row.get("legacy_code") or "").strip(),
+                            str(row.get("name") or "").strip(),
+                            _normalize_text(row.get("legacy_category")),
+                            _normalize_text(row.get("stock_kind")),
+                            category_derivation.category,
+                            category_derivation.source,
+                            category_derivation.rule_id,
+                            category_derivation.confidence,
+                            review_reason,
+                            "tbsstock",
+                            int(row.get("source_row_number") or 0),
+                        )
+                    )
             warehouse_records = _normalized_warehouse_records(
                 inventory_rows,
                 batch_id,
@@ -633,6 +998,13 @@ async def run_normalization(
             ]
 
             await _clear_batch_rows(connection, resolved_schema, batch_id, tenant_id)
+            await _replace_product_category_review_candidates(
+                connection,
+                resolved_schema,
+                batch_id,
+                tenant_id,
+                tuple(product_review_candidates),
+            )
 
             await connection.copy_records_to_table(
                 "normalized_parties",
@@ -655,6 +1027,7 @@ async def run_normalization(
                     "is_active",
                     "created_date",
                     "updated_date",
+                    "customer_type",
                     "source_table",
                     "source_row_number",
                 ),
@@ -673,6 +1046,8 @@ async def run_normalization(
                     "legacy_category",
                     "stock_kind",
                     "category_source",
+                    "category_rule_id",
+                    "category_confidence",
                     "supplier_legacy_code",
                     "supplier_deterministic_id",
                     "origin",

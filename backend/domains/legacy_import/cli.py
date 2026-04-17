@@ -17,6 +17,12 @@ from domains.legacy_import.ap_payment_import import (
     run_ap_payment_import,
 )
 from domains.legacy_import.canonical import CanonicalImportResult, run_canonical_import
+from domains.legacy_import.category_review import (
+    ProductCategoryReviewExportResult,
+    ProductCategoryReviewImportResult,
+    export_product_category_review,
+    import_product_category_review,
+)
 from domains.legacy_import.currency import CurrencyImportResult, run_currency_import
 from domains.legacy_import.extractor_cleaner import MojibakeCleaner
 from domains.legacy_import.extractor_detector import EncodingDetector
@@ -144,6 +150,56 @@ def build_parser() -> argparse.ArgumentParser:
         type=_parse_tenant_uuid,
         default=DEFAULT_TENANT_ID,
         help="Tenant UUID for review import",
+    )
+    export_category_review_parser = subparsers.add_parser(
+        "export-category-review",
+        help="Export provisional product category assignments to CSV",
+    )
+    export_category_review_parser.add_argument(
+        "--batch-id",
+        required=True,
+        help="Batch identifier to export",
+    )
+    export_category_review_parser.add_argument(
+        "--output",
+        type=Path,
+        required=True,
+        help="CSV path for analyst category review export",
+    )
+    export_category_review_parser.add_argument("--schema", help="Override target raw schema name")
+    export_category_review_parser.add_argument(
+        "--tenant-id",
+        type=_parse_tenant_uuid,
+        default=DEFAULT_TENANT_ID,
+        help="Tenant UUID for category review export",
+    )
+
+    import_category_review_parser = subparsers.add_parser(
+        "import-category-review",
+        help="Import analyst-reviewed category decisions from CSV",
+    )
+    import_category_review_parser.add_argument(
+        "--batch-id",
+        required=True,
+        help="Batch identifier to update",
+    )
+    import_category_review_parser.add_argument(
+        "--input",
+        type=Path,
+        required=True,
+        help="CSV path containing analyst category review decisions",
+    )
+    import_category_review_parser.add_argument(
+        "--approved-by",
+        required=True,
+        help="Operator or analyst identifier recorded on approved overrides",
+    )
+    import_category_review_parser.add_argument("--schema", help="Override target raw schema name")
+    import_category_review_parser.add_argument(
+        "--tenant-id",
+        type=_parse_tenant_uuid,
+        default=DEFAULT_TENANT_ID,
+        help="Tenant UUID for category review import",
     )
     currency_parser = subparsers.add_parser(
         "currency-import",
@@ -295,6 +351,29 @@ async def _run_import_product_review(args: argparse.Namespace) -> int:
         schema_name=args.schema,
     )
     _print_product_mapping_review_import_summary(result)
+    return 0
+
+
+async def _run_export_category_review(args: argparse.Namespace) -> int:
+    result = await export_product_category_review(
+        batch_id=args.batch_id,
+        output_path=args.output,
+        tenant_id=args.tenant_id,
+        schema_name=args.schema,
+    )
+    _print_product_category_review_export_summary(result)
+    return 0
+
+
+async def _run_import_category_review(args: argparse.Namespace) -> int:
+    result = await import_product_category_review(
+        batch_id=args.batch_id,
+        input_path=args.input,
+        approved_by=args.approved_by,
+        tenant_id=args.tenant_id,
+        schema_name=args.schema,
+    )
+    _print_product_category_review_import_summary(result)
     return 0
 
 
@@ -482,6 +561,24 @@ def _print_product_mapping_review_import_summary(
     )
 
 
+def _print_product_category_review_export_summary(
+    result: ProductCategoryReviewExportResult,
+) -> None:
+    print(
+        f"Exported {result.exported_row_count} category review rows for batch "
+        f"{result.batch_id} to {result.output_path}"
+    )
+
+
+def _print_product_category_review_import_summary(
+    result: ProductCategoryReviewImportResult,
+) -> None:
+    print(
+        f"Imported {result.applied_decision_count} category review decisions for batch "
+        f"{result.batch_id} from {result.input_path}"
+    )
+
+
 def _print_currency_import_summary(result: CurrencyImportResult) -> None:
     print(
         f"Imported {result.currency_count} currencies from {result.source_file.name} "
@@ -538,6 +635,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return asyncio.run(_run_export_product_review(args))
     if args.command == "import-product-review":
         return asyncio.run(_run_import_product_review(args))
+    if args.command == "export-category-review":
+        return asyncio.run(_run_export_category_review(args))
+    if args.command == "import-category-review":
+        return asyncio.run(_run_import_category_review(args))
     if args.command == "currency-import":
         return asyncio.run(_run_currency_import(args))
     if args.command == "ap-payment-import":
