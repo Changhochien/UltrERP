@@ -14,36 +14,31 @@ import uuid
 from typing import Annotated, Literal
 
 from fastmcp.exceptions import ToolError
+from fastmcp.server.dependencies import get_http_headers
 from pydantic import Field
 
+from app.mcp_identity import parse_uuid, resolve_tenant_id_from_headers
 from app.mcp_server import mcp
+from common.errors import ValidationError, VersionConflictError
 from common.database import AsyncSessionLocal
-from common.tenant import DEFAULT_TENANT_ID
 from domains.customers.models import Customer
-from domains.customers.schemas import CustomerListParams
+from domains.customers.schemas import CustomerListParams, CustomerUpdate
 from domains.customers.service import (
     get_customer,
     list_customers,
     lookup_customer_by_ban,
+    update_customer,
 )
 from domains.customers.validators import validate_taiwan_business_number
 
 
 def _parse_uuid(value: str, field: str) -> uuid.UUID:
     """Parse a UUID string, raising ToolError with structured JSON on failure."""
-    try:
-        return uuid.UUID(value)
-    except (ValueError, AttributeError):
-        raise ToolError(
-            json.dumps(
-                {
-                    "code": "VALIDATION_ERROR",
-                    "field": field,
-                    "message": f"Invalid UUID: {value}",
-                    "retry": False,
-                }
-            )
-        )
+    return parse_uuid(value, field)
+
+
+def _resolve_tenant_id() -> uuid.UUID:
+    return resolve_tenant_id_from_headers(get_http_headers() or {})
 
 
 def _serialize_customer(c: Customer) -> dict:
@@ -58,6 +53,7 @@ def _serialize_customer(c: Customer) -> dict:
         "contact_email": c.contact_email,
         "credit_limit": str(c.credit_limit),
         "status": c.status,
+        "customer_type": c.customer_type,
         "version": c.version,
         "created_at": c.created_at.isoformat() if c.created_at else None,
         "updated_at": c.updated_at.isoformat() if c.updated_at else None,
@@ -72,6 +68,7 @@ def _serialize_customer_summary(c: Customer) -> dict:
         "business_number": c.normalized_business_number,
         "contact_phone": c.contact_phone,
         "status": c.status,
+        "customer_type": c.customer_type,
     }
 
 
@@ -95,10 +92,11 @@ async def customers_list(
         page=page,
         page_size=page_size,
     )
+    tenant_id = _resolve_tenant_id()
     async with AsyncSessionLocal() as session:
         # NOTE: Do NOT call set_tenant here — list_customers uses session.begin()
         # internally and calls set_tenant itself.
-        customers, total = await list_customers(session, params, DEFAULT_TENANT_ID)
+        customers, total = await list_customers(session, params, tenant_id)
         return {
             "customers": [_serialize_customer_summary(c) for c in customers],
             "total": total,
@@ -113,10 +111,11 @@ async def customers_get(
 ) -> dict:
     """Get full customer details by ID."""
     cid = _parse_uuid(customer_id, "customer_id")
+    tenant_id = _resolve_tenant_id()
     async with AsyncSessionLocal() as session:
         # NOTE: Do NOT call set_tenant here — get_customer uses session.begin()
         # internally and calls set_tenant itself.
-        customer = await get_customer(session, cid, DEFAULT_TENANT_ID)
+        customer = await get_customer(session, cid, tenant_id)
         if customer is None:
             raise ToolError(
                 json.dumps(
@@ -152,13 +151,14 @@ async def customers_lookup_by_ban(
                 }
             )
         )
+    tenant_id = _resolve_tenant_id()
     async with AsyncSessionLocal() as session:
         # NOTE: Do NOT call set_tenant here — lookup_customer_by_ban uses
         # session.begin() internally and calls set_tenant itself.
         customer = await lookup_customer_by_ban(
             session,
             business_number,
-            DEFAULT_TENANT_ID,
+            tenant_id,
         )
         if customer is None:
             raise ToolError(
@@ -173,3 +173,93 @@ async def customers_lookup_by_ban(
                 )
             )
         return _serialize_customer(customer)
+
+
+@mcp.tool()
+async def customers_update(
+    customer_id: Annotated[str, Field(description="Customer UUID")],
+    customer_type: Annotated[str, Field(description="dealer | end_user | unknown")],
+) -> dict:
+    """Update a customer's type classification."""
+    valid_types = {"dealer", "end_user", "unknown"}
+    if customer_type not in valid_types:
+        raise ToolError(
+            json.dumps(
+                {
+                    "code": "VALIDATION_ERROR",
+                    "field": "customer_type",
+                    "message": f"customer_type must be one of: {sorted(valid_types)}",
+                    "retry": False,
+                }
+            )
+        )
+
+    cid = _parse_uuid(customer_id, "customer_id")
+    tenant_id = _resolve_tenant_id()
+
+    async with AsyncSessionLocal() as session:
+        customer = await get_customer(session, cid, tenant_id)
+        if customer is None:
+            raise ToolError(
+                json.dumps(
+                    {
+                        "code": "NOT_FOUND",
+                        "entity_type": "customer",
+                        "entity_id": customer_id,
+                        "message": f"Customer {customer_id} not found",
+                        "retry": False,
+                    }
+                )
+            )
+
+        try:
+            updated = await update_customer(
+                session,
+                cid,
+                CustomerUpdate(customer_type=customer_type, version=customer.version),
+                tenant_id,
+            )
+        except VersionConflictError as exc:
+            raise ToolError(
+                json.dumps(
+                    {
+                        "code": "VERSION_CONFLICT",
+                        "entity_type": "customer",
+                        "entity_id": customer_id,
+                        "message": f"Customer {customer_id} was modified by another request",
+                        "expected_version": exc.expected,
+                        "actual_version": exc.actual,
+                        "retry": True,
+                    }
+                )
+            ) from exc
+        except ValidationError as exc:
+            raise ToolError(
+                json.dumps(
+                    {
+                        "code": "VALIDATION_ERROR",
+                        "entity_type": "customer",
+                        "entity_id": customer_id,
+                        "errors": exc.errors,
+                        "retry": False,
+                    }
+                )
+            ) from exc
+        if updated is None:
+            raise ToolError(
+                json.dumps(
+                    {
+                        "code": "NOT_FOUND",
+                        "entity_type": "customer",
+                        "entity_id": customer_id,
+                        "message": f"Customer {customer_id} not found",
+                        "retry": False,
+                    }
+                )
+            )
+
+    return {
+        "success": True,
+        "customer_id": customer_id,
+        "customer_type": customer_type,
+    }

@@ -39,6 +39,7 @@ def _make_customer(**overrides: object) -> Customer:
         "contact_email": "wang@example.com",
         "credit_limit": "100000.00",
         "status": "active",
+        "customer_type": "unknown",
         "version": 1,
         "created_at": now,
         "updated_at": now,
@@ -139,6 +140,7 @@ async def test_update_customer_success() -> None:
         body = resp.json()
         assert body["company_name"] == "新名稱"
         assert body["version"] == 2
+        assert body["customer_type"] == "unknown"
     finally:
         _teardown(prev)
 

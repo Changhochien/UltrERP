@@ -34,6 +34,7 @@ class Customer(Base):
         Numeric(5, 4), nullable=False, default=Decimal("0.0000")
     )
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
+    customer_type: Mapped[str] = mapped_column(String(20), nullable=False, default="unknown")
     legacy_master_snapshot: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
     version: Mapped[int] = mapped_column(nullable=False, default=1)
 

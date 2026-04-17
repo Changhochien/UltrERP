@@ -20,6 +20,7 @@ class CustomerCreate(BaseModel):
     contact_phone: str = Field(..., min_length=1, max_length=30)
     contact_email: str = Field(..., min_length=1, max_length=254)
     credit_limit: Decimal = Field(default=Decimal("0.00"), ge=0, decimal_places=2)
+    customer_type: Literal["dealer", "end_user", "unknown"] = "unknown"
 
 
 class CustomerUpdate(BaseModel):
@@ -36,6 +37,7 @@ class CustomerUpdate(BaseModel):
     contact_phone: str | None = Field(default=None, min_length=1, max_length=30)
     contact_email: str | None = Field(default=None, min_length=1, max_length=254)
     credit_limit: Decimal | None = Field(default=None, ge=0, decimal_places=2)
+    customer_type: Literal["dealer", "end_user", "unknown"] | None = None
     version: int = Field(..., ge=1)
 
 
@@ -54,6 +56,7 @@ class CustomerResponse(BaseModel):
     contact_email: str
     credit_limit: Decimal
     status: str
+    customer_type: Literal["dealer", "end_user", "unknown"]
     legacy_master_snapshot: dict[str, Any] | None = None
     version: int
     created_at: datetime
@@ -70,6 +73,7 @@ class CustomerSummary(BaseModel):
     normalized_business_number: str
     contact_phone: str
     status: str
+    customer_type: Literal["dealer", "end_user", "unknown"]
 
 
 class CustomerListParams(BaseModel):
