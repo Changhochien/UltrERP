@@ -25,6 +25,7 @@ class SalesMonthly(Base):
             unique=True,
         ),
         Index("ix_sales_monthly_tenant_month", "tenant_id", "month_start"),
+        Index("ix_sales_monthly_tenant_month_category", "tenant_id", "month_start", "product_category_snapshot"),
         Index("ix_sales_monthly_tenant_product_month", "tenant_id", "product_id", "month_start"),
     )
 
@@ -37,7 +38,7 @@ class SalesMonthly(Base):
     quantity_sold: Mapped[Decimal] = mapped_column(Numeric(18, 3), nullable=False)
     order_count: Mapped[int] = mapped_column(Integer, nullable=False)
     revenue: Mapped[Decimal] = mapped_column(Numeric(20, 2), nullable=False)
-    avg_unit_price: Mapped[Decimal] = mapped_column(Numeric(20, 2), nullable=False)
+    avg_unit_price: Mapped[Decimal] = mapped_column(Numeric(14, 4), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

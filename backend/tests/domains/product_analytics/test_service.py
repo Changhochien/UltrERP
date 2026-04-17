@@ -369,13 +369,69 @@ async def test_refresh_sales_monthly_counts_only_commercial_statuses_per_snapsho
     assert classic_row.quantity_sold == Decimal("3.000")
     assert classic_row.order_count == 2
     assert classic_row.revenue == Decimal("32.00")
-    assert classic_row.avg_unit_price == Decimal("10.67")
+    assert classic_row.avg_unit_price == Decimal("10.6667")
 
     assert xl_row.product_category_snapshot == "Timing Belts"
     assert xl_row.quantity_sold == Decimal("3.000")
     assert xl_row.order_count == 1
     assert xl_row.revenue == Decimal("45.00")
     assert xl_row.avg_unit_price == Decimal("15.00")
+
+
+@pytest.mark.asyncio
+async def test_refresh_sales_monthly_persists_four_decimal_avg_unit_price(
+    db_session: AsyncSession,
+    tenant_id: uuid.UUID,
+) -> None:
+    customer = await _create_customer(db_session, tenant_id, "Precision Customer")
+    product = await _create_product(db_session, tenant_id, "Precision Belt", "Belts")
+    month_start = date(2026, 1, 1)
+    order_moment = datetime(2026, 1, 20, 9, 0, tzinfo=UTC)
+
+    await _create_order(
+        db_session,
+        customer=customer,
+        created_at=order_moment,
+        confirmed_at=order_moment,
+        status="confirmed",
+        line_specs=[
+            {
+                "product": product,
+                "quantity": "3.000",
+                "unit_price": "10.00",
+                "line_total": "32.00",
+                "product_name_snapshot": "Precision Belt",
+                "product_category_snapshot": "Belts",
+            }
+        ],
+    )
+    await db_session.commit()
+
+    await refresh_sales_monthly(db_session, tenant_id, month_start)
+
+    row = await db_session.scalar(
+        select(SalesMonthly).where(
+            SalesMonthly.tenant_id == tenant_id,
+            SalesMonthly.month_start == month_start,
+        )
+    )
+
+    assert row is not None
+    assert row.avg_unit_price == Decimal("10.6667")
+
+
+def test_sales_monthly_schema_exposes_category_index_and_four_decimal_avg_unit_price() -> None:
+    indexes = {
+        index.name: tuple(column.name for column in index.columns)
+        for index in SalesMonthly.__table__.indexes
+    }
+
+    assert SalesMonthly.__table__.c.avg_unit_price.type.scale == 4
+    assert indexes["ix_sales_monthly_tenant_month_category"] == (
+        "tenant_id",
+        "month_start",
+        "product_category_snapshot",
+    )
 
 
 @pytest.mark.asyncio

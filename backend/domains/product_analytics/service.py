@@ -19,7 +19,9 @@ from domains.product_analytics.models import SalesMonthly
 COUNTABLE_ORDER_STATUSES = ("confirmed", "shipped", "fulfilled")
 _MONEY_QUANT = Decimal("0.01")
 _QUANTITY_QUANT = Decimal("0.001")
+_UNIT_PRICE_QUANT = Decimal("0.0001")
 _ZERO_MONEY = Decimal("0.00")
+_ZERO_UNIT_PRICE = Decimal("0.0000")
 
 
 @dataclass(slots=True, frozen=True)
@@ -112,10 +114,14 @@ def _to_quantity(value: object | None) -> Decimal:
     return Decimal(str(value or "0")).quantize(_QUANTITY_QUANT, rounding=ROUND_HALF_UP)
 
 
+def _to_unit_price(value: object | None) -> Decimal:
+    return Decimal(str(value or "0")).quantize(_UNIT_PRICE_QUANT, rounding=ROUND_HALF_UP)
+
+
 def _average_unit_price(quantity_sold: Decimal, revenue: Decimal) -> Decimal:
     if quantity_sold == 0:
-        return _ZERO_MONEY
-    return (revenue / quantity_sold).quantize(_MONEY_QUANT, rounding=ROUND_HALF_UP)
+        return _ZERO_UNIT_PRICE
+    return (revenue / quantity_sold).quantize(_UNIT_PRICE_QUANT, rounding=ROUND_HALF_UP)
 
 
 async def _load_aggregate_points(
@@ -387,7 +393,7 @@ async def read_sales_monthly_range(
                     quantity_sold=_to_quantity(row.quantity_sold),
                     order_count=row.order_count,
                     revenue=_to_money(row.revenue),
-                    avg_unit_price=_to_money(row.avg_unit_price),
+                    avg_unit_price=_to_unit_price(row.avg_unit_price),
                     source="aggregated",
                 )
                 for row in table_rows
