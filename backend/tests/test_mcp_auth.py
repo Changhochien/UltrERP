@@ -10,7 +10,7 @@ import jwt
 import pytest
 from fastmcp.exceptions import ToolError
 
-from app.mcp_auth import TOOL_SCOPES, ApiKeyAuth, parse_api_keys
+from app.mcp_auth import TOOL_SCOPES, ApiKeyAuth, parse_api_keys, parse_api_key_tenants
 from common.config import settings
 
 # ── parse_api_keys tests ───────────────────────────────────────
@@ -23,6 +23,13 @@ def test_parse_api_keys_valid_json():
     assert result == {
         "key1": frozenset({"customers:read", "invoices:read"}),
         "key2": frozenset({"admin"}),
+    }
+
+
+def test_parse_api_key_tenants_reads_structured_binding():
+    raw = '{"key1": {"scopes": ["intelligence:read"], "tenant_id": "00000000-0000-0000-0000-000000000001"}}'
+    assert parse_api_key_tenants(raw) == {
+        "key1": "00000000-0000-0000-0000-000000000001",
     }
 
 
@@ -43,13 +50,36 @@ def test_parse_api_keys_invalid_json_returns_empty_dict():
     assert result == {}
 
 
+def test_intelligence_tool_scopes_registered():
+    """Epic 19 gate registers per-tool scopes matching the spec."""
+    assert TOOL_SCOPES["customers_update"] == frozenset({"customers:write"})
+    assert TOOL_SCOPES["intelligence_product_affinity"] == frozenset({"orders:read"})
+    assert TOOL_SCOPES["intelligence_product_performance"] == frozenset({"orders:read"})
+    assert TOOL_SCOPES["intelligence_revenue_diagnosis"] == frozenset({"orders:read"})
+    assert TOOL_SCOPES["intelligence_category_trends"] == frozenset({"customers:read", "orders:read"})
+    assert TOOL_SCOPES["intelligence_customer_buying_behavior"] == frozenset({"customers:read", "orders:read"})
+    assert TOOL_SCOPES["intelligence_customer_product_profile"] == frozenset({"customers:read", "orders:read"})
+    assert TOOL_SCOPES["intelligence_customer_risk_signals"] == frozenset({"customers:read", "orders:read"})
+    assert TOOL_SCOPES["intelligence_prospect_gaps"] == frozenset({"customers:read", "orders:read"})
+    assert TOOL_SCOPES["intelligence_market_opportunities"] == frozenset({"customers:read", "orders:read"})
+
+
 # ── Middleware tests ───────────────────────────────────────────
 
 _TEST_KEYS = {
     "valid-admin": frozenset({"admin"}),
-    "valid-agent": frozenset({"customers:read", "invoices:read", "inventory:read", "orders:read"}),
+    "valid-agent": frozenset({
+        "customers:read", "invoices:read", "inventory:read", "orders:read",
+    }),
     "valid-narrow": frozenset({"customers:read"}),
     "valid-finance": frozenset({"customers:read", "invoices:read", "payments:read", "purchases:read"}),
+}
+
+_TEST_KEY_TENANTS = {
+    "valid-admin": None,
+    "valid-agent": "00000000-0000-0000-0000-000000000001",
+    "valid-narrow": None,
+    "valid-finance": None,
 }
 
 
@@ -131,6 +161,103 @@ async def test_valid_key_with_correct_scope_allows_call():
 
     assert result == "ok"
     call_next.assert_awaited_once_with(ctx)
+
+
+@pytest.mark.asyncio
+async def test_intelligence_tool_requires_both_required_scopes():
+    """Intelligence tools require all their specified scopes; missing any causes INSUFFICIENT_SCOPE."""
+    mw = ApiKeyAuth(api_keys=_TEST_KEYS, tool_scopes=TOOL_SCOPES, api_key_tenants=_TEST_KEY_TENANTS)
+    ctx = _make_context("intelligence_category_trends")
+
+    with patch("app.mcp_auth.get_http_headers", return_value={"x-api-key": "valid-narrow", "x-tenant-id": "00000000-0000-0000-0000-000000000001"}):
+        with pytest.raises(ToolError) as exc_info:
+            await mw.on_call_tool(ctx, AsyncMock())
+
+    error = json.loads(str(exc_info.value))
+    assert error["code"] == "INSUFFICIENT_SCOPE"
+    assert set(error["required_scope"]) == {"customers:read", "orders:read"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("tool_name", "expected_required_scope"),
+    [
+        ("intelligence_revenue_diagnosis", {"orders:read"}),
+        ("intelligence_product_performance", {"orders:read"}),
+        ("intelligence_customer_buying_behavior", {"customers:read", "orders:read"}),
+    ],
+)
+async def test_epic20_tools_return_insufficient_scope_for_under_scoped_keys(
+    tool_name: str,
+    expected_required_scope: set[str],
+):
+    mw = ApiKeyAuth(api_keys=_TEST_KEYS, tool_scopes=TOOL_SCOPES, api_key_tenants=_TEST_KEY_TENANTS)
+    ctx = _make_context(tool_name)
+
+    with patch(
+        "app.mcp_auth.get_http_headers",
+        return_value={
+            "x-api-key": "valid-narrow",
+            "x-tenant-id": "00000000-0000-0000-0000-000000000001",
+        },
+    ):
+        with pytest.raises(ToolError) as exc_info:
+            await mw.on_call_tool(ctx, AsyncMock())
+
+    error = json.loads(str(exc_info.value))
+    required_scope = error["required_scope"]
+    if isinstance(required_scope, str):
+        required_scope = [required_scope]
+    assert error["code"] == "INSUFFICIENT_SCOPE"
+    assert set(required_scope) == expected_required_scope
+
+
+@pytest.mark.asyncio
+async def test_intelligence_tool_allows_combined_scope_key():
+    """Epic 19 intelligence tools allow keys with the dedicated intelligence scope."""
+    mw = ApiKeyAuth(api_keys=_TEST_KEYS, tool_scopes=TOOL_SCOPES, api_key_tenants=_TEST_KEY_TENANTS)
+    ctx = _make_context("intelligence_customer_product_profile")
+    call_next = AsyncMock(return_value="intelligence-ok")
+
+    with patch("app.mcp_auth.get_http_headers", return_value={"x-api-key": "valid-agent", "x-tenant-id": "00000000-0000-0000-0000-000000000001"}):
+        result = await mw.on_call_tool(ctx, call_next)
+
+    assert result == "intelligence-ok"
+    call_next.assert_awaited_once_with(ctx)
+
+
+@pytest.mark.asyncio
+async def test_jwt_sales_can_access_intelligence_tools():
+    """Sales JWTs inherit the same intelligence read surface exposed in REST/UI."""
+    mw = ApiKeyAuth(api_keys=_TEST_KEYS, tool_scopes=TOOL_SCOPES)
+    ctx = _make_context("intelligence_customer_product_profile")
+    jwt_token = _make_jwt("sales")
+    call_next = AsyncMock(return_value="sales-intelligence-ok")
+
+    with patch(
+        "app.mcp_auth.get_http_headers",
+        return_value={"authorization": f"Bearer {jwt_token}"},
+    ):
+        result = await mw.on_call_tool(ctx, call_next)
+
+    assert result == "sales-intelligence-ok"
+    call_next.assert_awaited_once_with(ctx)
+
+
+@pytest.mark.asyncio
+async def test_intelligence_api_key_requires_matching_tenant_binding():
+    mw = ApiKeyAuth(api_keys=_TEST_KEYS, tool_scopes=TOOL_SCOPES, api_key_tenants=_TEST_KEY_TENANTS)
+    ctx = _make_context("intelligence_customer_risk_signals")
+
+    with patch(
+        "app.mcp_auth.get_http_headers",
+        return_value={"x-api-key": "valid-agent", "x-tenant-id": "00000000-0000-0000-0000-000000000999"},
+    ):
+        with pytest.raises(ToolError) as exc_info:
+            await mw.on_call_tool(ctx, AsyncMock())
+
+    error = json.loads(str(exc_info.value))
+    assert error["code"] == "INVALID_TENANT"
 
 
 @pytest.mark.asyncio

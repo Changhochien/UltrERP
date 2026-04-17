@@ -23,6 +23,7 @@ from domains.customers.schemas import (
     CustomerStatementResponse,
     CustomerUpdate,
     RevenueTrendPoint,
+    StatementLine,
 )
 from domains.invoices.enums import InvoiceStatus
 from domains.invoices.models import Invoice
@@ -135,6 +136,7 @@ async def create_customer(
         contact_phone=data.contact_phone.strip(),
         contact_email=data.contact_email.strip(),
         credit_limit=data.credit_limit,
+        customer_type=data.customer_type,
     )
 
     try:
@@ -364,6 +366,8 @@ async def update_customer(
             customer.contact_email = data.contact_email.strip()
         if "credit_limit" in fields and data.credit_limit is not None:
             customer.credit_limit = data.credit_limit
+        if "customer_type" in fields and data.customer_type is not None:
+            customer.customer_type = data.customer_type
 
         customer.version += 1
         customer.updated_at = datetime.now(tz=UTC)

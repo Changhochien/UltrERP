@@ -43,7 +43,7 @@ export function validateTaiwanBusinessNumber(raw: string): ValidationResult {
   if (normalized.length !== 8) {
     return {
       valid: false,
-      error: `Business number must be exactly 8 digits, got ${normalized.length}.`,
+      error: "Business number must be exactly 8 digits.",
     };
   }
 

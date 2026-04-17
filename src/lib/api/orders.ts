@@ -50,14 +50,30 @@ export async function createOrder(
 }
 
 export async function fetchOrders(params?: {
-  status?: string;
+  status?: string | string[];
   customer_id?: string;
+  date_from?: string;
+  date_to?: string;
+  search?: string;
+  sort_by?: string;
+  sort_order?: string;
   page?: number;
   page_size?: number;
 }): Promise<OrderListResponse> {
   const qs = new URLSearchParams();
-  if (params?.status) qs.set("status", params.status);
+  if (params?.status) {
+    if (Array.isArray(params.status)) {
+      params.status.forEach((v) => qs.append("status", v));
+    } else {
+      qs.set("status", params.status);
+    }
+  }
   if (params?.customer_id) qs.set("customer_id", params.customer_id);
+  if (params?.date_from) qs.set("date_from", params.date_from);
+  if (params?.date_to) qs.set("date_to", params.date_to);
+  if (params?.search) qs.set("search", params.search);
+  if (params?.sort_by) qs.set("sort_by", params.sort_by);
+  if (params?.sort_order) qs.set("sort_order", params.sort_order);
   if (params?.page) qs.set("page", String(params.page));
   if (params?.page_size) qs.set("page_size", String(params.page_size));
   const qsStr = qs.toString();

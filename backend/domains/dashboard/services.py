@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, date, datetime, timedelta
-
-from common.time import today as get_today
 from decimal import Decimal
+from datetime import UTC, date, datetime, timedelta
 from typing import Literal
 
-from sqlalchemy import cast, func, select, String
+from sqlalchemy import String, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from common.time import today as get_today
 from common.models.inventory_stock import InventoryStock
 from common.models.order import Order
 from common.models.order_line import OrderLine
@@ -21,6 +20,7 @@ from common.tenant import set_tenant
 from domains.dashboard.schemas import (
     CashFlowItem,
     CashFlowResponse,
+    GrossMarginPeriodResponse,
     GrossMarginResponse,
     KpiSummaryResponse,
     RevenueSummaryResponse,
@@ -372,51 +372,112 @@ async def get_gross_margin(
 
         today = get_today()
         start_of_month = date(today.year, today.month, 1)
-
-        # Revenue: sum of total_amount for non-voided invoices in current month
-        revenue_stmt = (
-            select(func.coalesce(func.sum(Invoice.total_amount), 0)).where(
-                Invoice.invoice_date >= start_of_month,
-                Invoice.invoice_date <= today,
-                Invoice.status != InvoiceStatus.VOIDED,
-            )
+        previous_period_end = start_of_month - timedelta(days=1)
+        previous_period_start = date(previous_period_end.year, previous_period_end.month, 1)
+        previous_compare_day = min(today.day, previous_period_end.day)
+        previous_period_compare_end = date(
+            previous_period_end.year,
+            previous_period_end.month,
+            previous_compare_day,
         )
-        revenue_result = await session.execute(revenue_stmt)
-        revenue = Decimal(str(revenue_result.scalar() or "0"))
 
-        # COGS: sum of unit_cost * quantity for invoice lines in the same invoices
-        cogs_stmt = (
-            select(
-                func.coalesce(
-                    func.sum(InvoiceLine.unit_cost * InvoiceLine.quantity),
-                    0,
-                )
-            )
-            .join(Invoice, Invoice.id == InvoiceLine.invoice_id)
-            .where(
-                Invoice.invoice_date >= start_of_month,
-                Invoice.invoice_date <= today,
-                Invoice.status != InvoiceStatus.VOIDED,
-                InvoiceLine.unit_cost.isnot(None),
-            )
+        current_period = await _get_gross_margin_period(
+            session,
+            start_of_month,
+            today,
         )
-        cogs_result = await session.execute(cogs_stmt)
-        cogs = Decimal(str(cogs_result.scalar() or "0"))
-
-        gross_margin = revenue - cogs
-
-        margin_percent: Decimal | None
-        if revenue == 0:
-            margin_percent = None
-        else:
-            margin_percent = (gross_margin / revenue * 100).quantize(Decimal("0.1"))
+        previous_period = await _get_gross_margin_period(
+            session,
+            previous_period_start,
+            previous_period_compare_end,
+        )
 
         return GrossMarginResponse(
-            gross_margin=gross_margin,
-            revenue=revenue,
-            cogs=cogs,
-            margin_percent=margin_percent,
+            available=current_period["available"],
+            gross_margin=current_period["gross_margin"],
+            gross_margin_percent=current_period["margin_percent"],
+            revenue=current_period["revenue"],
+            cogs=current_period["cogs"],
+            margin_percent=current_period["margin_percent"],
+            previous_period=GrossMarginPeriodResponse(
+                available=previous_period["available"],
+                gross_margin_percent=previous_period["margin_percent"],
+            ),
         )
+
+
+async def _get_gross_margin_period(
+    session: AsyncSession,
+    start_date: date,
+    end_date: date,
+) -> dict[str, Decimal | bool]:
+    revenue_stmt = (
+        select(func.coalesce(func.sum(Invoice.total_amount), 0)).where(
+            Invoice.invoice_date >= start_date,
+            Invoice.invoice_date <= end_date,
+            Invoice.status != InvoiceStatus.VOIDED,
+        )
+    )
+    revenue_result = await session.execute(revenue_stmt)
+    revenue = Decimal(str(revenue_result.scalar() or "0"))
+
+    cogs_stmt = (
+        select(
+            func.coalesce(
+                func.sum(InvoiceLine.unit_cost * InvoiceLine.quantity),
+                0,
+            )
+        )
+        .join(Invoice, Invoice.id == InvoiceLine.invoice_id)
+        .where(
+            Invoice.invoice_date >= start_date,
+            Invoice.invoice_date <= end_date,
+            Invoice.status != InvoiceStatus.VOIDED,
+            InvoiceLine.unit_cost.isnot(None),
+        )
+    )
+    cogs_result = await session.execute(cogs_stmt)
+    cogs = Decimal(str(cogs_result.scalar() or "0"))
+
+    line_count_stmt = (
+        select(func.count(InvoiceLine.id))
+        .join(Invoice, Invoice.id == InvoiceLine.invoice_id)
+        .where(
+            Invoice.invoice_date >= start_date,
+            Invoice.invoice_date <= end_date,
+            Invoice.status != InvoiceStatus.VOIDED,
+        )
+    )
+    line_count_result = await session.execute(line_count_stmt)
+    line_count = int(line_count_result.scalar() or 0)
+
+    priced_line_count_stmt = (
+        select(func.count(InvoiceLine.id))
+        .join(Invoice, Invoice.id == InvoiceLine.invoice_id)
+        .where(
+            Invoice.invoice_date >= start_date,
+            Invoice.invoice_date <= end_date,
+            Invoice.status != InvoiceStatus.VOIDED,
+            InvoiceLine.unit_cost.isnot(None),
+        )
+    )
+    priced_line_count_result = await session.execute(priced_line_count_stmt)
+    priced_line_count = int(priced_line_count_result.scalar() or 0)
+
+    gross_margin = revenue - cogs
+    margin_percent: Decimal | None
+    if revenue == 0:
+        margin_percent = None
+    else:
+        margin_percent = (gross_margin / revenue * 100).quantize(Decimal("0.1"))
+
+    return {
+        "available": line_count > 0 and line_count == priced_line_count,
+        "gross_margin": gross_margin,
+        "revenue": revenue,
+        "cogs": cogs,
+        "margin_percent": margin_percent,
+    }
 
 
 async def get_revenue_trend(

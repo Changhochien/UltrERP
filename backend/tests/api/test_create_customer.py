@@ -49,6 +49,8 @@ class FakeAsyncSession:
             instance.id = uuid.uuid4()  # type: ignore[attr-defined]
         if getattr(instance, "status", None) is None:
             instance.status = "active"  # type: ignore[attr-defined]
+        if getattr(instance, "customer_type", None) is None:
+            instance.customer_type = "unknown"  # type: ignore[attr-defined]
         if getattr(instance, "version", None) is None:
             instance.version = 1  # type: ignore[attr-defined]
         if getattr(instance, "created_at", None) is None:
@@ -114,6 +116,7 @@ async def test_create_customer_success() -> None:
         assert body["normalized_business_number"] == "04595257"
         assert body["version"] == 1
         assert body["status"] == "active"
+        assert body["customer_type"] == "unknown"
         assert "id" in body
     finally:
         _teardown(previous_override)

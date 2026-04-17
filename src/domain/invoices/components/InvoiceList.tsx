@@ -1,17 +1,23 @@
 /** Paginated invoice list with payment status columns, filter, and sort. */
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import { DataTable, DataTableToolbar, type DataTableSortState } from "../../../components/layout/DataTable";
 import { Badge } from "../../../components/ui/badge";
+import { ActiveFilterBar } from "../../../components/filters/ActiveFilterBar";
+import { CustomerCombobox } from "../../../components/customers/CustomerCombobox";
+import type { CustomerSummary } from "../../customers/types";
+import { DateRangeFilter } from "../../../components/filters/DateRangeFilter";
+import { SearchInput } from "../../../components/filters/SearchInput";
+import { StatusMultiSelect } from "../../../components/filters/StatusMultiSelect";
 import { useInvoices, paymentStatusBadgeVariant, paymentStatusLabel } from "../hooks/useInvoices";
 
 interface InvoiceListProps {
   onSelect: (invoiceId: string) => void;
 }
 
-const PAYMENT_STATUS_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: "", label: "All" },
+const PAYMENT_STATUS_OPTIONS = [
   { value: "unpaid", label: "Unpaid" },
   { value: "partial", label: "Partial" },
   { value: "paid", label: "Paid" },
@@ -19,17 +25,100 @@ const PAYMENT_STATUS_OPTIONS: Array<{ value: string; label: string }> = [
 ];
 
 export function InvoiceList({ onSelect }: InvoiceListProps) {
-  const [statusFilter, setStatusFilter] = useState("");
-  const [sortState, setSortState] = useState<DataTableSortState>({
-    columnId: "outstanding_balance",
-    direction: "desc",
-  });
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [customerSummaries, setCustomerSummaries] = useState<CustomerSummary[]>([]);
+
+  // Derive filter state from URL params
+  const statusValues = searchParams.getAll("payment_status") as string[];
+  const customerId = searchParams.get("customer_id") ?? "";
+  const dateFrom = searchParams.get("date_from") ?? "";
+  const dateTo = searchParams.get("date_to") ?? "";
+  const search = searchParams.get("search") ?? "";
+  const sortBy = searchParams.get("sort_by") ?? "outstanding_balance";
+  const sortOrder = (searchParams.get("sort_order") as "asc" | "desc") ?? "desc";
+
+  // Build sort state for DataTable
+  const sortState: DataTableSortState = {
+    columnId: sortBy,
+    direction: sortOrder,
+  };
+
+  // Build active filter list for ActiveFilterBar
+  const activeFilters: { key: string; label: string }[] = [
+    ...statusValues.map((v) => ({
+      key: `payment_status:${v}`,
+      label: `${PAYMENT_STATUS_OPTIONS.find((o) => o.value === v)?.label ?? v}`,
+    })),
+    ...(customerId
+      ? [
+          {
+            key: "customer_id",
+            label: `Customer: ${customerSummaries.find((c) => c.id === customerId)?.company_name ?? customerId}`,
+          },
+        ]
+      : []),
+    ...(dateFrom ? [{ key: "date_from", label: `From: ${dateFrom}` }] : []),
+    ...(dateTo ? [{ key: "date_to", label: `To: ${dateTo}` }] : []),
+    ...(search ? [{ key: "search", label: `Search: ${search}` }] : []),
+  ];
 
   const { items, total, page, pageSize, loading, error, reload } = useInvoices({
-    payment_status: statusFilter || undefined,
-    sort_by: sortState.columnId,
-    sort_order: sortState.direction,
+    customer_id: customerId || undefined,
+    payment_status: statusValues.length > 0 ? statusValues : undefined,
+    date_from: dateFrom || undefined,
+    date_to: dateTo || undefined,
+    search: search || undefined,
+    sort_by: sortBy,
+    sort_order: sortOrder,
   });
+
+  function updateParam(key: string, value: string) {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (value) {
+        next.set(key, value);
+      } else {
+        next.delete(key);
+      }
+      return next;
+    });
+  }
+
+  function updateStatusParam(values: string[]) {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("payment_status");
+      values.forEach((v) => next.append("payment_status", v));
+      return next;
+    });
+  }
+
+  function dismissFilter(key: string) {
+    if (key.startsWith("payment_status:")) {
+      const value = key.replace("payment_status:", "");
+      updateStatusParam(statusValues.filter((v) => v !== value));
+    } else if (key === "customer_id") {
+      updateParam("customer_id", "");
+    } else if (key === "date_from") {
+      updateParam("date_from", "");
+    } else if (key === "date_to") {
+      updateParam("date_to", "");
+    } else if (key === "search") {
+      updateParam("search", "");
+    }
+  }
+
+  function clearAllFilters() {
+    setSearchParams(() => new URLSearchParams());
+  }
+
+  const handleSortChange = useCallback(
+    (newSortState: DataTableSortState) => {
+      updateParam("sort_by", newSortState.columnId);
+      updateParam("sort_order", newSortState.direction);
+    },
+    [],
+  );
 
   return (
     <section aria-label="Invoice list">
@@ -91,24 +180,41 @@ export function InvoiceList({ onSelect }: InvoiceListProps) {
               <h2 className="text-lg font-semibold tracking-tight">Invoices</h2>
               <p className="text-sm text-muted-foreground">Browse invoice status and payment progress.</p>
             </div>
-            <label className="flex flex-col items-start gap-2 text-sm font-medium text-foreground sm:flex-row sm:items-center sm:gap-3">
-              <span>Payment Status:</span>
-              <select
-                id="inv-payment-status"
-                aria-label="Payment Status:"
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
-                className="w-full sm:w-44"
-              >
-                {PAYMENT_STATUS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="flex flex-wrap items-center gap-2">
+              <SearchInput
+                value={search}
+                onChange={(v) => updateParam("search", v)}
+                placeholder="Search invoice #…"
+              />
+              <CustomerCombobox
+                value={customerId}
+                onChange={(id) => updateParam("customer_id", id)}
+                onClear={() => updateParam("customer_id", "")}
+                onCustomersLoaded={setCustomerSummaries}
+              />
+              <DateRangeFilter
+                dateFrom={dateFrom}
+                dateTo={dateTo}
+                onDateFromChange={(v) => updateParam("date_from", v)}
+                onDateToChange={(v) => updateParam("date_to", v)}
+              />
+              <StatusMultiSelect
+                options={PAYMENT_STATUS_OPTIONS}
+                selected={statusValues}
+                onChange={updateStatusParam}
+              />
+            </div>
           </DataTableToolbar>
         )}
+        filterBar={
+          activeFilters.length > 0 ? (
+            <ActiveFilterBar
+              filters={activeFilters}
+              onDismiss={dismissFilter}
+              onClearAll={clearAllFilters}
+            />
+          ) : undefined
+        }
         summary={items.length > 0 ? `Showing ${items.length} invoices on this page.` : undefined}
         page={page}
         pageSize={pageSize}
@@ -117,7 +223,7 @@ export function InvoiceList({ onSelect }: InvoiceListProps) {
           void reload(nextPage);
         }}
         sortState={sortState}
-        onSortChange={setSortState}
+        onSortChange={handleSortChange}
         getRowId={(item) => item.id}
         rowLabel={(item) => `Invoice ${item.invoice_number}`}
         onRowClick={(item) => onSelect(item.id)}

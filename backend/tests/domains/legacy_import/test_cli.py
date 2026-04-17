@@ -6,6 +6,10 @@ import pytest
 
 from domains.legacy_import import cli
 from domains.legacy_import.ap_payment_import import SupplierPaymentImportResult
+from domains.legacy_import.category_review import (
+    ProductCategoryReviewExportResult,
+    ProductCategoryReviewImportResult,
+)
 from domains.legacy_import.currency import CurrencyImportResult
 from domains.legacy_import.mapping import (
     ProductMappingBatchResult,
@@ -147,6 +151,75 @@ def test_import_product_review_cli_invokes_import(monkeypatch, capsys, tmp_path:
 
     assert result == 0
     assert "Imported 2 review decisions" in output
+
+
+def test_export_category_review_cli_invokes_export(monkeypatch, capsys, tmp_path: Path) -> None:
+    output_path = tmp_path / "category-review.csv"
+
+    async def fake_export_product_category_review(**kwargs):
+        assert kwargs["batch_id"] == "batch-003"
+        assert kwargs["output_path"] == output_path
+        assert kwargs["schema_name"] is None
+        return ProductCategoryReviewExportResult(
+            batch_id="batch-003",
+            schema_name="raw_legacy",
+            output_path=output_path,
+            exported_row_count=3,
+        )
+
+    monkeypatch.setattr(
+        cli,
+        "export_product_category_review",
+        fake_export_product_category_review,
+        raising=False,
+    )
+
+    result = cli.main(
+        ["export-category-review", "--batch-id", "batch-003", "--output", str(output_path)]
+    )
+    output = capsys.readouterr().out
+
+    assert result == 0
+    assert "Exported 3 category review rows" in output
+
+
+def test_import_category_review_cli_invokes_import(monkeypatch, capsys, tmp_path: Path) -> None:
+    input_path = tmp_path / "category-review.csv"
+
+    async def fake_import_product_category_review(**kwargs):
+        assert kwargs["batch_id"] == "batch-003"
+        assert kwargs["input_path"] == input_path
+        assert kwargs["approved_by"] == "analyst@example.com"
+        assert kwargs["schema_name"] is None
+        return ProductCategoryReviewImportResult(
+            batch_id="batch-003",
+            schema_name="raw_legacy",
+            input_path=input_path,
+            applied_decision_count=2,
+        )
+
+    monkeypatch.setattr(
+        cli,
+        "import_product_category_review",
+        fake_import_product_category_review,
+        raising=False,
+    )
+
+    result = cli.main(
+        [
+            "import-category-review",
+            "--batch-id",
+            "batch-003",
+            "--input",
+            str(input_path),
+            "--approved-by",
+            "analyst@example.com",
+        ]
+    )
+    output = capsys.readouterr().out
+
+    assert result == 0
+    assert "Imported 2 category review decisions" in output
 
 
 def test_currency_import_cli_invokes_import(monkeypatch, capsys, tmp_path: Path) -> None:

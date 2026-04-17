@@ -90,11 +90,19 @@ class CashFlowResponse(BaseModel):
     running_balance_by_date: list[RunningBalanceItem]
 
 
+class GrossMarginPeriodResponse(BaseModel):
+    available: bool
+    gross_margin_percent: Decimal | None
+
+
 class GrossMarginResponse(BaseModel):
+    available: bool
     gross_margin: Decimal
+    gross_margin_percent: Decimal | None
     revenue: Decimal
     cogs: Decimal
     margin_percent: Decimal | None  # None when revenue is 0
+    previous_period: GrossMarginPeriodResponse
 
 
 class RevenueTrendItem(BaseModel):

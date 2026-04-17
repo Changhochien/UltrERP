@@ -1,10 +1,12 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, ArrowRightLeft, ExternalLink, ShoppingCart, SlidersHorizontal } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import "../inventory.css";
 
 import { Badge } from "@/components/ui/badge";
+import { buildProductDetailPath } from "@/lib/routes";
 import { useProductDetail } from "../hooks/useProductDetail";
 import { useWarehouseContext } from "../context/WarehouseContext";
 import type { AdjustmentHistoryItem, WarehouseStockInfo } from "../types";
@@ -172,6 +174,7 @@ export function ProductDetailDrawer({
 }: ProductDetailDrawerProps) {
   const { product, loading, error } = useProductDetail(productId ?? "");
   const navigate = useNavigate();
+  const { t } = useTranslation("common", { keyPrefix: "inventory.productDetail" });
   const { selectedWarehouse } = useWarehouseContext();
 
   // Close on Escape
@@ -409,10 +412,10 @@ export function ProductDetailDrawer({
             <button
               type="button"
               className="drawer-action-btn"
-              onClick={() => navigate(`/inventory/${product.id}`)}
+              onClick={() => navigate(buildProductDetailPath(product.id, "settings"))}
             >
               <ExternalLink size={14} />
-              Open Full Page
+              {t("openSettings")}
             </button>
           </div>
         )}

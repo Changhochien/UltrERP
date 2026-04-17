@@ -141,16 +141,16 @@
       "type": "directory"
     },
     {
+      "path": "",
+      "accessCount": 27,
+      "lastAccessed": 1776041445197,
+      "type": "directory"
+    },
+    {
       "path": "scripts/backfill_sales_reservations.py",
       "accessCount": 25,
       "lastAccessed": 1775889999503,
       "type": "file"
-    },
-    {
-      "path": "",
-      "accessCount": 22,
-      "lastAccessed": 1775891426703,
-      "type": "directory"
     },
     {
       "path": "app/main.py",
@@ -166,8 +166,8 @@
     },
     {
       "path": "domains/inventory/services.py",
-      "accessCount": 12,
-      "lastAccessed": 1775893202000,
+      "accessCount": 13,
+      "lastAccessed": 1775965059823,
       "type": "directory"
     },
     {
@@ -193,6 +193,12 @@
       "accessCount": 6,
       "lastAccessed": 1775749986985,
       "type": "directory"
+    },
+    {
+      "path": "domains/invoices/service.py",
+      "accessCount": 6,
+      "lastAccessed": 1776076587852,
+      "type": "file"
     },
     {
       "path": "domains/inventory/routes.py",
@@ -223,6 +229,12 @@
       "accessCount": 3,
       "lastAccessed": 1775787118753,
       "type": "file"
+    },
+    {
+      "path": "common",
+      "accessCount": 3,
+      "lastAccessed": 1776041217234,
+      "type": "directory"
     },
     {
       "path": "domains",
@@ -261,12 +273,6 @@
       "type": "file"
     },
     {
-      "path": "common",
-      "accessCount": 2,
-      "lastAccessed": 1775752211222,
-      "type": "directory"
-    },
-    {
       "path": "common/auth.py",
       "accessCount": 2,
       "lastAccessed": 1775752214161,
@@ -295,6 +301,12 @@
       "accessCount": 2,
       "lastAccessed": 1775893160964,
       "type": "directory"
+    },
+    {
+      "path": "domains/invoices/models.py",
+      "accessCount": 2,
+      "lastAccessed": 1776041057939,
+      "type": "file"
     },
     {
       "path": "test_join.py",
@@ -420,18 +432,6 @@
       "path": "domains/audit/routes.py",
       "accessCount": 1,
       "lastAccessed": 1775752233635,
-      "type": "file"
-    },
-    {
-      "path": "domains/invoices/models.py",
-      "accessCount": 1,
-      "lastAccessed": 1775786198941,
-      "type": "file"
-    },
-    {
-      "path": "domains/invoices/service.py",
-      "accessCount": 1,
-      "lastAccessed": 1775786227511,
       "type": "file"
     }
   ],

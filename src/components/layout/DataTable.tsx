@@ -15,7 +15,7 @@ export interface DataTableSortState {
 
 export interface DataTableColumn<TData> {
   id: string;
-  header: string;
+  header: ReactNode;
   cell: (row: TData) => ReactNode;
   sortable?: boolean;
   getSortValue?: (row: TData) => string | number | null | undefined;
@@ -28,6 +28,7 @@ interface DataTableProps<TData> {
   columns: DataTableColumn<TData>[];
   data: TData[];
   toolbar?: ReactNode;
+  filterBar?: ReactNode;
   summary?: ReactNode;
   tableClassName?: string;
   loading?: boolean;
@@ -78,6 +79,7 @@ export function DataTable<TData>({
   columns,
   data,
   toolbar,
+  filterBar,
   summary,
   tableClassName,
   loading = false,
@@ -161,6 +163,8 @@ export function DataTable<TData>({
   return (
     <div className="min-w-0 space-y-4">
       {toolbar}
+
+      {filterBar ?? null}
 
       {summary ? <div className="text-sm text-muted-foreground">{summary}</div> : null}
 

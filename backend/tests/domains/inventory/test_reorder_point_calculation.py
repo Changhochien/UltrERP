@@ -6,8 +6,10 @@ import uuid
 from datetime import date, datetime, timedelta
 
 import pytest
+import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from common.database import AsyncSessionLocal, engine
 from common.models.inventory_stock import InventoryStock
 from common.models.product import Product
 from common.models.stock_adjustment import ReasonCode, StockAdjustment
@@ -21,24 +23,20 @@ from domains.inventory.reorder_point import (
     SOURCE_UNRESOLVED,
     apply_reorder_points,
     compute_reorder_point_preview_row,
-    compute_reorder_points_preview,
     get_average_daily_usage,
     get_lead_time_days,
     resolve_replenishment_source,
 )
-from common.database import Base, engine
-
 
 # ── Fixtures ──────────────────────────────────────────────────────
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def db_session():
-    """Create a fresh in-memory database session for each test."""
-    async with AsyncSession(engine) as session:
-        async with session.begin():
-            pass
-    # The above is a placeholder; real tests use a proper async session fixture
+    """Provide a real async session for reorder point calculation tests."""
+    async with AsyncSessionLocal() as session:
+        yield session
+    await engine.dispose()
 
 
 @pytest.fixture
@@ -46,7 +44,7 @@ def tenant_id() -> uuid.UUID:
     return DEFAULT_TENANT_ID
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def warehouse(db_session: AsyncSession, tenant_id: uuid.UUID) -> Warehouse:
     w = Warehouse(
         id=uuid.uuid4(),
@@ -60,7 +58,7 @@ async def warehouse(db_session: AsyncSession, tenant_id: uuid.UUID) -> Warehouse
     return w
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def product(db_session: AsyncSession, tenant_id: uuid.UUID) -> Product:
     p = Product(
         id=uuid.uuid4(),
@@ -75,7 +73,7 @@ async def product(db_session: AsyncSession, tenant_id: uuid.UUID) -> Product:
     return p
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def inventory_stock(
     db_session: AsyncSession,
     tenant_id: uuid.UUID,
@@ -95,7 +93,7 @@ async def inventory_stock(
     return stock
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def supplier(db_session: AsyncSession, tenant_id: uuid.UUID) -> Supplier:
     s = Supplier(
         id=uuid.uuid4(),
@@ -385,19 +383,19 @@ class TestLeadTimeFallbackChain:
         assert lead_time == supplier.default_lead_time_days
 
     @pytest.mark.asyncio
-    async def test_fallback_to_7_days(
+    async def test_fallback_to_business_default_days(
         self,
         db_session: AsyncSession,
         tenant_id: uuid.UUID,
         product: Product,
         warehouse: Warehouse,
     ):
-        """When no supplier history exists and no default, 7-day fallback is used."""
+        """When no supplier history exists and no default, the business default is used."""
         lead_time, source = await get_lead_time_days(
             db_session, tenant_id, product.id, warehouse.id,
         )
 
-        assert source == "fallback"
+        assert source == "business_default"
         assert lead_time == DEFAULT_LEAD_TIME_DAYS
 
 
@@ -493,6 +491,7 @@ class TestApplyReorderPoints:
         product: Product,
         warehouse: Warehouse,
         inventory_stock: InventoryStock,
+        supplier: Supplier,
     ):
         """Only rows in selected_rows are updated; unselected rows stay unchanged."""
         # Set up demand so computation succeeds
@@ -504,9 +503,7 @@ class TestApplyReorderPoints:
                 days_ago=i,
             )
         await _make_received_order(
-            db_session, tenant_id, (await (db_session.execute(
-                select(Supplier).where(Supplier.tenant_id == tenant_id)
-            ))).scalar_one().id, product.id, warehouse.id,
+            db_session, tenant_id, supplier.id, product.id, warehouse.id,
             order_date=date.today() - timedelta(days=20),
             received_date=date.today() - timedelta(days=10),
         )
@@ -607,6 +604,8 @@ class TestOrderConfirmationDemandHistory:
             session.queue_scalar(customer)  # customer lookup (confirm_order)
             session.queue_scalar(customer)  # customer lookup (_create_invoice_core)
             session.queue_scalar(FakeInvoiceNumberRange())  # number_range
+            for _line in order.lines:
+                session.queue_scalar(None)  # supplier invoice unit_cost lookup
             session.queue_scalar(uuid.uuid4())  # warehouse_id lookup
             for _line in order.lines:
                 # InventoryStock per line (for _create_invoice_core stock update)
@@ -641,7 +640,8 @@ class TestOrderConfirmationDemandHistory:
                 if isinstance(o, StockAdjustment) and o.reason_code == ReasonCode.SALES_RESERVATION
             ]
             assert len(sales_reservation_adjustments) == 2, (
-                f"Expected 2 sales_reservation adjustments, got {len(sales_reservation_adjustments)}"
+                "Expected 2 sales_reservation adjustments, got "
+                f"{len(sales_reservation_adjustments)}"
             )
 
             adjustment_product_ids = {adj.product_id for adj in sales_reservation_adjustments}
@@ -682,6 +682,7 @@ class TestOrderConfirmationDemandHistory:
         session.queue_scalar(customer)
         session.queue_scalar(customer)
         session.queue_scalar(FakeInvoiceNumberRange())
+        session.queue_scalar(None)
         session.queue_scalar(uuid.uuid4())
         from tests.domains.orders._helpers import FakeInventoryStock
         session.queue_scalar(FakeInventoryStock(quantity=100))

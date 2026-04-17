@@ -74,14 +74,22 @@ export function GrossMarginCard({ data, isLoading, error }: GrossMarginCardProps
     );
   }
 
-  const marginPercent = Number(data.gross_margin_percent);
-  const prevMarginPercent = Number(data.previous_period.gross_margin_percent);
-  const marginDelta = marginPercent - prevMarginPercent;
+  const marginPercent =
+    data.gross_margin_percent != null ? Number(data.gross_margin_percent) : null;
+  const hasMarginPercent = marginPercent != null && !Number.isNaN(marginPercent);
+  const previousMarginPercent =
+    data.previous_period.available && data.previous_period.gross_margin_percent != null
+      ? Number(data.previous_period.gross_margin_percent)
+      : null;
+  const marginDelta =
+    !hasMarginPercent || previousMarginPercent == null || Number.isNaN(previousMarginPercent)
+      ? null
+      : marginPercent - previousMarginPercent;
 
   let trendDisplay: string;
   let trendDirection: "up" | "down" | "flat" = "flat";
 
-  if (!isNaN(marginDelta)) {
+  if (marginDelta != null && !isNaN(marginDelta)) {
     if (marginDelta > 0) {
       trendDisplay = `+${marginDelta.toFixed(1)}pp`;
       trendDirection = "up";
@@ -95,15 +103,27 @@ export function GrossMarginCard({ data, isLoading, error }: GrossMarginCardProps
     trendDisplay = "—";
   }
 
+  const sparkPoints =
+    !hasMarginPercent
+      ? [0, 0, 0, 0]
+      : previousMarginPercent == null
+      ? [marginPercent * 0.9, marginPercent, marginPercent, marginPercent]
+      : [
+          marginPercent * 0.9,
+          marginPercent,
+          (marginPercent + previousMarginPercent) / 2,
+          marginPercent,
+        ];
+
   return (
     <div data-testid="gross-margin-card">
       <MetricCard
         title={t("dashboard.grossMargin.title")}
-        value={`${marginPercent.toFixed(1)}%`}
+        value={hasMarginPercent ? `${marginPercent.toFixed(1)}%` : "—"}
         description={t("dashboard.grossMargin.vsPreviousPeriod")}
         trendLabel={trendDisplay !== "—" ? trendDisplay : undefined}
         trendDirection={trendDisplay !== "—" ? trendDirection : undefined}
-        points={[marginPercent * 0.9, marginPercent, (marginPercent + prevMarginPercent) / 2, marginPercent]}
+        points={sparkPoints}
       />
       <div className="mt-3 grid grid-cols-2 gap-4">
         <div>

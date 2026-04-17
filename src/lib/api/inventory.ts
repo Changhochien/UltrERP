@@ -2,6 +2,7 @@ import { apiFetch } from "../apiFetch";
 import type {
   AcknowledgeAlertResponse,
   DismissAlertResponse,
+  PlanningSupportResponse,
   ProductSearchResponse,
   ProductDetail,
   ReorderAlertListResponse,
@@ -58,6 +59,38 @@ export async function fetchProductDetail(
     const resp = await apiFetch(url);
     if (!resp.ok) return { ok: false, error: "Failed to fetch product detail" };
     return { ok: true, data: (await resp.json()) as ProductDetail };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+export async function fetchPlanningSupport(
+  productId: string,
+  options?: {
+    months?: number;
+    includeCurrentMonth?: boolean;
+    signal?: AbortSignal;
+  },
+): Promise<{ ok: true; data: PlanningSupportResponse } | { ok: false; error: string }> {
+  try {
+    const params = new URLSearchParams();
+    if (options?.months != null) params.set("months", String(options.months));
+    if (options?.includeCurrentMonth != null) {
+      params.set("include_current_month", String(options.includeCurrentMonth));
+    }
+    const qs = params.toString();
+    const resp = await apiFetch(
+      `/api/v1/inventory/products/${encodeURIComponent(productId)}/planning-support${qs ? `?${qs}` : ""}`,
+      { signal: options?.signal },
+    );
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({}));
+      return {
+        ok: false,
+        error: (body as { detail?: string }).detail ?? "Failed to fetch planning support",
+      };
+    }
+    return { ok: true, data: (await resp.json()) as PlanningSupportResponse };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
   }

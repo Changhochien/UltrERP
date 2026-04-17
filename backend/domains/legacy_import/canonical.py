@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 import uuid
 import zlib
@@ -12,12 +13,14 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any, AsyncIterable, AsyncIterator, Mapping, cast
 
 from common.config import settings
+from common.models.stock_adjustment import ReasonCode
 from common.tenant import DEFAULT_TENANT_ID
 from domains.legacy_import.mapping import UNKNOWN_PRODUCT_CODE
 from domains.legacy_import.normalization import deterministic_legacy_uuid, normalize_legacy_date
 from domains.legacy_import.staging import _open_raw_connection, _quoted_identifier
 
 _DIGITS_ONLY_RE = re.compile(r"\D+")
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(slots=True, frozen=True)
@@ -68,6 +71,30 @@ def _as_decimal(value: object | None, default: str | None = "0") -> Decimal | No
         return Decimal(text)
     except InvalidOperation as exc:
         raise ValueError(f"Invalid decimal value: {text}") from exc
+
+
+def _as_integral_quantity(value: object | None, *, field_name: str) -> int:
+    quantity = _as_decimal(value, "0")
+    if quantity is None:
+        return 0
+    if quantity != quantity.to_integral_value():
+        raise ValueError(f"{field_name} must be integral, got {quantity}")
+    return int(quantity)
+
+
+def _coerce_quantity_for_integer_schema(
+    value: object | None,
+    *,
+    field_name: str,
+) -> tuple[int, str | None]:
+    quantity = _as_decimal(value, "0")
+    if quantity is None:
+        return 0, None
+    if quantity == quantity.to_integral_value():
+        return int(quantity), None
+
+    coerced = int(quantity)
+    return coerced, f"{field_name} coerced from {quantity.normalize()} to {coerced}"
 
 
 def _as_money(value: Decimal) -> Decimal:
@@ -161,7 +188,11 @@ def _map_legacy_order_status(source_status: str) -> str:
     invoices in the legacy system, so non-void documents should land as fulfilled
     rather than remaining on the active-order dashboard.
     """
-    return "cancelled" if _map_legacy_status_to_canonical(source_status) == "voided" else "fulfilled"
+    return (
+        "cancelled"
+        if _map_legacy_status_to_canonical(source_status) == "voided"
+        else "fulfilled"
+    )
 
 
 def _map_purchase_invoice_status(must_pay_amount: object | None) -> str:
@@ -200,7 +231,9 @@ def _build_purchase_header_snapshot(header: dict[str, object]) -> dict[str, obje
             "must_pay_amount": _as_text(header.get("must_pay_amount")),
             "raw_invoice_number": raw_invoice_number,
             "resolved_invoice_number": _as_text(header.get("invoice_number")),
-            "invoice_number_source": "legacy_invoice_number" if raw_invoice_number else "doc_number",
+            "invoice_number_source": (
+                "legacy_invoice_number" if raw_invoice_number else "doc_number"
+            ),
             "raw_invoice_date": raw_invoice_date,
             "resolved_invoice_date": _as_text(header.get("invoice_date")),
             "invoice_date_source": "legacy_invoice_date" if raw_invoice_date else "slip_date",
@@ -235,6 +268,11 @@ def _build_product_master_snapshot(row: dict[str, object]) -> dict[str, object]:
             "legacy_code": _as_text(row.get("legacy_code")),
             "name": _as_text(row.get("name")),
             "category": _as_text(row.get("category")),
+            "legacy_category": _as_text(row.get("legacy_category")),
+            "stock_kind": _as_text(row.get("stock_kind")),
+            "category_source": _as_text(row.get("category_source")),
+            "category_rule_id": _as_text(row.get("category_rule_id")),
+            "category_confidence": _as_text(row.get("category_confidence")),
             "description": _as_text(row.get("description")),
             "unit": _as_text(row.get("unit")),
             "status": _as_text(row.get("status")),
@@ -261,6 +299,8 @@ def _step_row_count(step_name: str, counts: Mapping[str, int]) -> int:
         return counts.get("supplier_invoice_count", 0) + counts.get(
             "supplier_invoice_line_count", 0
         )
+    if step_name == "receiving_audit":
+        return counts.get("receiving_audit_count", 0)
     if step_name == "unsupported_history":
         return counts.get("holding_count", 0)
 
@@ -631,6 +671,7 @@ async def _iter_normalized_parties(
 			phone,
 			email,
 			contact_person,
+            customer_type,
 			source_table,
 			source_row_number
 		FROM {quoted_schema}.normalized_parties
@@ -655,6 +696,11 @@ async def _iter_normalized_products(
 			legacy_code,
 			name,
 			category,
+			legacy_category,
+			stock_kind,
+			category_source,
+            category_rule_id,
+            category_confidence,
 			unit,
 			status,
 			source_table,
@@ -856,7 +902,7 @@ async def _fetch_purchase_headers(
             END AS total_amount,
 			_source_row_number AS source_row_number
 		FROM {quoted_schema}.tbsslipj
-		WHERE _batch_id = $1
+        WHERE _batch_id = $1 AND COALESCE(col_1, '') = '4'
 		ORDER BY col_2
 		""",
         batch_id,
@@ -873,20 +919,79 @@ async def _fetch_purchase_lines(
 		SELECT
 			col_2 AS doc_number,
 			col_3 AS line_number,
+            col_4 AS receipt_date,
 			col_6 AS product_code,
-			col_19 AS unit_price,
+			col_7 AS product_name,
+			col_16 AS warehouse_code,
+			col_18 AS unit,
+			col_19 AS foldprice,
 			col_20 AS discount_multiplier,
-			col_21 AS foldprice,
+			col_21 AS unit_price,
 			col_22 AS qty,
-			(col_19::numeric * col_20::numeric * col_22::numeric) AS extended_amount,
+			col_25 AS taxable,
+			col_26 AS line_total,
+			(col_21::numeric * col_22::numeric) AS extended_amount,
 			_source_row_number AS source_row_number
 		FROM {quoted_schema}.tbsslipdtj
-		WHERE _batch_id = $1
+		WHERE _batch_id = $1 AND COALESCE(col_1, '') = '4'
 		ORDER BY col_2, col_3
 		""",
         batch_id,
     )
     return [_coerce_row(row) for row in rows]
+
+
+def _derive_legacy_receiving_batch_fallback_day(
+    headers: list[dict[str, object]],
+    lines: list[dict[str, object]],
+) -> date | None:
+    candidates = [
+        candidate
+        for candidate in (
+            *(_as_legacy_date(header.get("invoice_date")) for header in headers),
+            *(_as_legacy_date(line.get("receipt_date")) for line in lines),
+        )
+        if candidate is not None
+    ]
+    return max(candidates) if candidates else None
+
+
+def _resolve_legacy_receiving_created_at(
+    line: dict[str, object],
+    header: dict[str, object] | None,
+    batch_fallback_day: date | None,
+) -> datetime:
+    source_identifier = (
+        f"{_as_text(line.get('doc_number'))}:{_as_int(line.get('line_number'), 1)}"
+    )
+    line_day = _as_legacy_date(line.get("receipt_date"))
+    if line_day is not None:
+        return _as_timestamp(line_day)
+
+    header_day = _as_legacy_date(header.get("invoice_date")) if header is not None else None
+    if header_day is not None:
+        _LOGGER.warning(
+            "Legacy receiving line %s has sentinel/missing receipt_date; "
+            "falling back to header invoice_date",
+            source_identifier,
+        )
+        return _as_timestamp(header_day)
+
+    if batch_fallback_day is not None:
+        _LOGGER.warning(
+            "Legacy receiving line %s has no usable row/header date; "
+            "falling back to batch-scoped legacy date %s",
+            source_identifier,
+            batch_fallback_day.isoformat(),
+        )
+        return _as_timestamp(batch_fallback_day)
+
+    _LOGGER.warning(
+        "Legacy receiving line %s has sentinel/missing receipt_date and no "
+        "header fallback; using import-day timestamp",
+        source_identifier,
+    )
+    return _as_timestamp(None)
 
 
 async def _import_customers(
@@ -933,12 +1038,13 @@ async def _import_customers(
 				contact_email,
 				credit_limit,
 				status,
+                customer_type,
                 legacy_master_snapshot,
 				version,
 				created_at,
 				updated_at
 			)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::json, 1, NOW(), NOW())
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::json, 1, NOW(), NOW())
 			ON CONFLICT (tenant_id, normalized_business_number) DO UPDATE SET
 				company_name = EXCLUDED.company_name,
 				billing_address = EXCLUDED.billing_address,
@@ -946,6 +1052,10 @@ async def _import_customers(
 				contact_phone = EXCLUDED.contact_phone,
 				contact_email = EXCLUDED.contact_email,
 				status = EXCLUDED.status,
+                customer_type = CASE
+                    WHEN EXCLUDED.customer_type = 'unknown' THEN customers.customer_type
+                    ELSE EXCLUDED.customer_type
+                END,
                 legacy_master_snapshot = EXCLUDED.legacy_master_snapshot,
 				updated_at = NOW()
 			""",
@@ -959,6 +1069,7 @@ async def _import_customers(
             contact_email,
             Decimal("0.00"),
             "active",
+            _as_text(row.get("customer_type")) or "unknown",
             json.dumps(legacy_master_snapshot),
         )
         # Resolve actual customer_id: ON CONFLICT may have reused an existing row
@@ -1067,10 +1178,11 @@ async def _import_products(
     tenant_id: uuid.UUID,
     batch_id: str,
     product_rows: AsyncIterable[dict[str, object]],
-) -> tuple[int, int, dict[str, uuid.UUID]]:
+) -> tuple[int, int, dict[str, uuid.UUID], dict[str, dict[str, str | None]]]:
     count = 0
     lineage_count = 0
     product_by_code: dict[str, uuid.UUID] = {}
+    product_snapshot_by_code: dict[str, dict[str, str | None]] = {}
     unknown_product_present = False
 
     async def _upsert_product_row(row: dict[str, object]) -> None:
@@ -1080,6 +1192,8 @@ async def _import_products(
             unknown_product_present = True
         product_id = _tenant_scoped_uuid(tenant_id, "product", legacy_code)
         legacy_master_snapshot = _build_product_master_snapshot(row)
+        product_name = _as_text(row.get("name")) or legacy_code
+        product_category = _as_text(row.get("category")) or None
         status = (
             "inactive"
             if legacy_code == UNKNOWN_PRODUCT_CODE
@@ -1132,8 +1246,8 @@ async def _import_products(
             product_id,
             tenant_id,
             legacy_code,
-            _as_text(row.get("name")) or legacy_code,
-            _as_text(row.get("category")) or None,
+            product_name,
+            product_category,
             _as_text(row.get("description")) if row.get("description") else None,
             _as_text(row.get("unit")) or "pcs",
             status,
@@ -1152,6 +1266,10 @@ async def _import_products(
             _as_int(row.get("source_row_number")),
         )
         product_by_code[legacy_code] = product_id
+        product_snapshot_by_code[legacy_code] = {
+            "name": product_name,
+            "category": product_category,
+        }
         count += 1
         lineage_count += 1
 
@@ -1171,7 +1289,31 @@ async def _import_products(
             }
         )
 
-    return count, lineage_count, product_by_code
+    return count, lineage_count, product_by_code, product_snapshot_by_code
+
+
+def _resolve_order_line_product_snapshots(
+    line: dict[str, object],
+    *,
+    legacy_product_code: str,
+    mapped_product_code: str,
+    product_snapshot_by_code: dict[str, dict[str, str | None]],
+) -> tuple[str, str | None]:
+    product_snapshot = product_snapshot_by_code.get(mapped_product_code, {})
+    fallback_name = _as_text(line.get("product_name")) or legacy_product_code or mapped_product_code
+    fallback_category = (
+        _as_text(line.get("product_category_snapshot"))
+        or _as_text(line.get("product_category"))
+        or _as_text(line.get("legacy_category"))
+        or None
+    )
+    master_name = product_snapshot.get("name")
+    master_category = product_snapshot.get("category")
+
+    if mapped_product_code == UNKNOWN_PRODUCT_CODE:
+        return fallback_name or master_name or mapped_product_code, fallback_category or master_category
+
+    return master_name or fallback_name or mapped_product_code, master_category or fallback_category
 
 
 async def _import_warehouses(
@@ -1305,6 +1447,115 @@ async def _import_inventory(
     return count, lineage_count
 
 
+async def _import_legacy_receiving_audit(
+    connection,
+    schema_name: str,
+    run_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    batch_id: str,
+    headers: list[dict[str, object]],
+    lines: list[dict[str, object]],
+    product_by_code: dict[str, uuid.UUID],
+    warehouse_by_code: dict[str, uuid.UUID],
+    product_mappings: dict[str, str],
+) -> tuple[int, int]:
+    count = 0
+    lineage_count = 0
+    headers_by_doc = {
+        _as_text(header.get("doc_number")): header
+        for header in headers
+        if _as_text(header.get("doc_number"))
+    }
+    batch_fallback_day = _derive_legacy_receiving_batch_fallback_day(headers, lines)
+
+    for line in lines:
+        doc_number = _as_text(line.get("doc_number"))
+        line_number = _as_int(line.get("line_number"), 1)
+        source_identifier = f"{doc_number}:{line_number}"
+
+        legacy_product_code = _as_text(line.get("product_code"))
+        mapped_product_code = product_mappings.get(legacy_product_code) or legacy_product_code
+        if mapped_product_code not in product_by_code:
+            mapped_product_code = UNKNOWN_PRODUCT_CODE
+        product_id = product_by_code.get(mapped_product_code)
+        if product_id is None:
+            raise ValueError(
+                "Receiving audit line "
+                f"{source_identifier} cannot resolve product {legacy_product_code}"
+            )
+
+        warehouse_code = _as_text(line.get("warehouse_code"))
+        warehouse_id = warehouse_by_code.get(warehouse_code)
+        if warehouse_id is None:
+            raise ValueError(
+                "Receiving audit line "
+                f"{source_identifier} cannot resolve warehouse {warehouse_code}"
+            )
+
+        stock_adjustment_id = _tenant_scoped_uuid(
+            tenant_id,
+            "legacy-receiving-adjustment",
+            source_identifier,
+        )
+        created_at = _resolve_legacy_receiving_created_at(
+            line,
+            headers_by_doc.get(doc_number),
+            batch_fallback_day,
+        )
+        quantity_change, quantity_note = _coerce_quantity_for_integer_schema(
+            line.get("qty"),
+            field_name=f"Receiving audit line {source_identifier} quantity",
+        )
+        notes = f"Legacy import: invoice {doc_number}"
+        if quantity_note:
+            notes = f"{notes}; {quantity_note}"
+
+        await connection.execute(
+            """
+			INSERT INTO stock_adjustment (
+				id,
+				tenant_id,
+				product_id,
+				warehouse_id,
+				quantity_change,
+				reason_code,
+				actor_id,
+				notes,
+				transfer_id,
+				created_at
+			)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            ON CONFLICT (id) DO NOTHING
+			""",
+            stock_adjustment_id,
+            tenant_id,
+            product_id,
+            warehouse_id,
+            quantity_change,
+            ReasonCode.SUPPLIER_DELIVERY.value,
+            "legacy_import",
+            notes,
+            None,
+            created_at,
+        )
+        await _upsert_lineage(
+            connection,
+            schema_name,
+            run_id,
+            tenant_id,
+            batch_id,
+            "stock_adjustment",
+            stock_adjustment_id,
+            "tbsslipdtj",
+            source_identifier,
+            _as_int(line.get("source_row_number")),
+        )
+        count += 1
+        lineage_count += 1
+
+    return count, lineage_count
+
+
 async def _import_sales_history(
     connection,
     schema_name: str,
@@ -1316,6 +1567,7 @@ async def _import_sales_history(
     customer_by_code: dict[str, uuid.UUID],
     business_number_by_code: dict[str, str],
     product_by_code: dict[str, uuid.UUID],
+    product_snapshot_by_code: dict[str, dict[str, str | None]],
     product_mappings: dict[str, str],
 ) -> tuple[int, int, int, int, int]:
     lines_by_doc: dict[str, list[dict[str, object]]] = {}
@@ -1444,7 +1696,25 @@ async def _import_sales_history(
 				created_at,
 				updated_at
 			)
-            VALUES ($1, $2, $3, $4, $5, 'b2b', $6, $7, $8, $9, $10, $11, 1, $12::json, $13, $14, $14)
+            VALUES (
+                $1,
+                $2,
+                $3,
+                $4,
+                $5,
+                'b2b',
+                $6,
+                $7,
+                $8,
+                $9,
+                $10,
+                $11,
+                1,
+                $12::json,
+                $13,
+                $14,
+                $14
+            )
 			ON CONFLICT (id) DO UPDATE SET
 				invoice_number = EXCLUDED.invoice_number,
 				invoice_date = EXCLUDED.invoice_date,
@@ -1514,6 +1784,13 @@ async def _import_sales_history(
                     f"{doc_number}:{_as_int(line.get('line_number'))} "
                     f"cannot resolve product {legacy_product_code}"
                 )
+
+            product_name_snapshot, product_category_snapshot = _resolve_order_line_product_snapshots(
+                line,
+                legacy_product_code=legacy_product_code,
+                mapped_product_code=mapped_product_code,
+                product_snapshot_by_code=product_snapshot_by_code,
+            )
 
             line_number = _as_int(line.get("line_number"), 1)
             # col_21 = discounted/actual unit price; col_19 = foldprice (may be pre-adjusted)
@@ -1587,6 +1864,8 @@ async def _import_sales_history(
 					subtotal_amount,
 					total_amount,
 					description,
+                    product_name_snapshot,
+                    product_category_snapshot,
 					available_stock_snapshot,
 					backorder_note,
 					created_at
@@ -1610,6 +1889,8 @@ async def _import_sales_history(
                     $16,
                     $17,
                     $18,
+                    $19,
+                    $20,
                     NOW()
                 )
 				ON CONFLICT (id) DO UPDATE SET
@@ -1626,6 +1907,8 @@ async def _import_sales_history(
 					subtotal_amount = EXCLUDED.subtotal_amount,
 					total_amount = EXCLUDED.total_amount,
 					description = EXCLUDED.description,
+                    product_name_snapshot = COALESCE(order_lines.product_name_snapshot, EXCLUDED.product_name_snapshot),
+                    product_category_snapshot = COALESCE(order_lines.product_category_snapshot, EXCLUDED.product_category_snapshot),
 					available_stock_snapshot = EXCLUDED.available_stock_snapshot
 				""",
                 order_line_id,
@@ -1644,6 +1927,8 @@ async def _import_sales_history(
                 subtotal,
                 line_total,
                 _as_text(line.get("product_name")) or legacy_product_code,
+                product_name_snapshot,
+                product_category_snapshot,
                 _as_decimal(line.get("available_stock_snapshot"), "0"),
                 None,  # backorder_note: legacy import does not calculate backorder status
             )
@@ -1997,7 +2282,7 @@ async def _import_purchase_history(
                 line_number,
                 product_id,
                 legacy_product_code,
-                legacy_product_code,
+                _as_text(line.get("product_name")) or legacy_product_code,
                 quantity,
                 unit_price,
                 subtotal,
@@ -2087,6 +2372,7 @@ async def run_canonical_import(
         "product_count": 0,
         "warehouse_count": 0,
         "inventory_count": 0,
+        "receiving_audit_count": 0,
         "order_count": 0,
         "order_line_count": 0,
         "invoice_count": 0,
@@ -2172,6 +2458,7 @@ async def run_canonical_import(
                 counts["product_count"],
                 product_lineage_count,
                 product_by_code,
+                product_snapshot_by_code,
             ) = await _import_products(
                 connection,
                 resolved_schema,
@@ -2237,6 +2524,51 @@ async def run_canonical_import(
                 "completed",
             )
 
+            purchase_headers = (
+                await _fetch_purchase_headers(connection, resolved_schema, batch_id)
+                if await _table_exists(connection, resolved_schema, "tbsslipj")
+                else []
+            )
+            purchase_lines = (
+                await _fetch_purchase_lines(connection, resolved_schema, batch_id)
+                if await _table_exists(connection, resolved_schema, "tbsslipdtj")
+                else []
+            )
+
+            current_step = "receiving_audit"
+            (
+                counts["receiving_audit_count"],
+                receiving_audit_lineage_count,
+            ) = await _import_legacy_receiving_audit(
+                connection,
+                resolved_schema,
+                run_id,
+                tenant_id,
+                batch_id,
+                purchase_headers,
+                purchase_lines,
+                product_by_code,
+                warehouse_by_code,
+                product_mappings,
+            )
+            counts["lineage_count"] += receiving_audit_lineage_count
+            step_outcomes.append(
+                (
+                    "receiving_audit",
+                    counts["receiving_audit_count"],
+                    "completed",
+                    None,
+                )
+            )
+            await _upsert_step_row(
+                connection,
+                resolved_schema,
+                run_id,
+                "receiving_audit",
+                counts["receiving_audit_count"],
+                "completed",
+            )
+
             current_step = "sales_history"
             (
                 counts["order_count"],
@@ -2255,6 +2587,7 @@ async def run_canonical_import(
                 customer_by_code,
                 business_number_by_code,
                 product_by_code,
+                product_snapshot_by_code,
                 product_mappings,
             )
             counts["lineage_count"] += sales_lineage_count
@@ -2286,16 +2619,8 @@ async def run_canonical_import(
                 run_id,
                 tenant_id,
                 batch_id,
-                (
-                    await _fetch_purchase_headers(connection, resolved_schema, batch_id)
-                    if await _table_exists(connection, resolved_schema, "tbsslipj")
-                    else []
-                ),
-                (
-                    await _fetch_purchase_lines(connection, resolved_schema, batch_id)
-                    if await _table_exists(connection, resolved_schema, "tbsslipdtj")
-                    else []
-                ),
+                purchase_headers,
+                purchase_lines,
                 supplier_by_code,
                 product_by_code,
                 product_mappings,

@@ -7,14 +7,16 @@ against the real FastAPI app. Each test is fully independent.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, UTC, date
+from datetime import UTC, date, datetime, timedelta
 
 import jwt
 import pytest
 import pytest_asyncio
-from httpx import ASGITransport, AsyncClient as HttpxAsyncClient
+from httpx import ASGITransport
+from httpx import AsyncClient as HttpxAsyncClient
 
-from common.database import AsyncSessionLocal
+from app.main import create_app
+from common.database import AsyncSessionLocal, engine
 from common.models.inventory_stock import InventoryStock
 from common.models.product import Product
 from common.models.stock_adjustment import ReasonCode, StockAdjustment
@@ -26,13 +28,11 @@ from common.models.supplier_order import (
 )
 from common.models.warehouse import Warehouse
 from common.tenant import DEFAULT_TENANT_ID
+from domains.customers.models import Customer
 from domains.inventory.reorder_point import (
-    apply_reorder_points,
     compute_reorder_points_preview,
-    get_average_daily_usage,
-    get_lead_time_days,
 )
-from app.main import create_app
+from domains.invoices.models import InvoiceNumberRange
 
 TENANT = DEFAULT_TENANT_ID
 
@@ -116,6 +116,7 @@ def tenant_id():
 async def db_session():
     async with AsyncSessionLocal() as session:
         yield session
+    await engine.dispose()
 
 
 @pytest_asyncio.fixture
@@ -156,6 +157,26 @@ async def product_with_history(db_session, tenant_id, warehouse):
     )
     db_session.add(stock)
     await db_session.flush()
+
+    supplier = Supplier(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        name="History Supplier",
+        is_active=True,
+        default_lead_time_days=12,
+    )
+    db_session.add(supplier)
+    await db_session.flush()
+
+    await _make_received_order(
+        db_session,
+        supplier.id,
+        p.id,
+        warehouse.id,
+        date.today() - timedelta(days=24),
+        date.today() - timedelta(days=15),
+        quantity=30,
+    )
 
     for days in [10, 20, 30]:
         await _make_adjustment(
@@ -244,8 +265,22 @@ async def test_compute_endpoint_returns_candidate_and_skipped(
         r for r in body["skipped_rows"]
         if str(r["product_id"]) == str(product_without_history.id)
     )
-    assert skipped_row["skip_reason"] in ("insufficient_history", "source_unresolved", None)
+    assert skipped_row["skip_reason"] in (
+        "insufficient_history",
+        "source_unresolved",
+        "lead_time_unconfigured",
+        None,
+    )
     assert skipped_row["computed_reorder_point"] is None
+    assert skipped_row["policy_type"] == "continuous"
+    assert skipped_row["target_stock_qty"] == 0
+    assert skipped_row["on_order_qty"] == 0
+    assert skipped_row["in_transit_qty"] == 0
+    assert skipped_row["reserved_qty"] == 0
+    assert skipped_row["planning_horizon_days"] == 0
+    assert skipped_row["effective_horizon_days"] == 0
+    assert skipped_row["lead_time_sample_count"] is None
+    assert skipped_row["lead_time_confidence"] is None
 
     candidate_row = next(
         r for r in body["candidate_rows"]
@@ -253,6 +288,17 @@ async def test_compute_endpoint_returns_candidate_and_skipped(
     )
     assert candidate_row["computed_reorder_point"] is not None
     assert candidate_row["computed_reorder_point"] >= 0
+    assert candidate_row["policy_type"] == "continuous"
+    assert candidate_row["target_stock_qty"] == 0
+    assert candidate_row["inventory_position"] == 100
+    assert candidate_row["on_order_qty"] == 0
+    assert candidate_row["in_transit_qty"] == 0
+    assert candidate_row["reserved_qty"] == 0
+    assert candidate_row["planning_horizon_days"] == 0
+    assert candidate_row["effective_horizon_days"] == 0
+    assert candidate_row["lead_time_source"] == "actual"
+    assert candidate_row["lead_time_sample_count"] == 1
+    assert candidate_row["lead_time_confidence"] == "low"
 
 
 @pytest.mark.asyncio
@@ -306,7 +352,9 @@ async def test_apply_endpoint_only_updates_selected_rows(
             },
         )
 
-    assert apply_resp.status_code == 200, f"Expected 200, got {apply_resp.status_code}: {apply_resp.text}"
+    assert apply_resp.status_code == 200, (
+        f"Expected 200, got {apply_resp.status_code}: {apply_resp.text}"
+    )
     apply_body = apply_resp.json()
 
     assert "updated_count" in apply_body
@@ -503,10 +551,11 @@ async def test_source_unresolved_skips_row(
     warehouse,
     product_multi_supplier,
 ):
-    """AC3: Two suppliers with equal counts → skip_reason = 'source_unresolved'.
+    """AC3: Ambiguous supplier history falls back to business-default lead time.
 
     When a product has received orders from two suppliers at equal counts (50/50),
-    the preview row must appear in skipped_rows with skip_reason 'source_unresolved'.
+    the preview should still include the row, but supplier resolution stays unresolved
+    and lead time falls back to the business default.
     """
     app = create_app()
     transport = ASGITransport(app=app)
@@ -526,15 +575,17 @@ async def test_source_unresolved_skips_row(
     assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
     body = resp.json()
 
-    skipped_ids = {str(r["product_id"]) for r in body["skipped_rows"]}
-    assert str(product_multi_supplier.id) in skipped_ids, \
-        "Product with ambiguous source should be skipped"
+    candidate_ids = {str(r["product_id"]) for r in body["candidate_rows"]}
+    assert str(product_multi_supplier.id) in candidate_ids, \
+        "Product with ambiguous source should still appear in candidate rows"
 
-    skipped_row = next(
-        r for r in body["skipped_rows"]
+    candidate_row = next(
+        r for r in body["candidate_rows"]
         if str(r["product_id"]) == str(product_multi_supplier.id)
     )
-    assert skipped_row["skip_reason"] == "source_unresolved"
+    assert candidate_row["skip_reason"] is None
+    assert candidate_row["lead_time_source"] == "business_default"
+    assert candidate_row["lead_time_days"] == 80
 
 
 @pytest.mark.asyncio
@@ -543,12 +594,7 @@ async def test_lead_time_fallback_chain(
     tenant_id,
     warehouse,
 ):
-    """AC3: No supplier order history → lead_time_source = 'fallback', lead_time = 7.
-
-    Given a product with demand history but no supplier order history,
-    the lead_time_source must be 'fallback' and lead_time_days must be 7.
-    """
-    from sqlalchemy import select
+    """Rows without configured lead time are skipped from auto-calculation preview."""
 
     p = Product(
         id=uuid.uuid4(),
@@ -582,21 +628,6 @@ async def test_lead_time_fallback_chain(
         )
     await _commit(db_session)
 
-    # Query via service directly to check lead_time_source
-    from sqlalchemy import select
-
-    stmt = select(
-        InventoryStock.id,
-        InventoryStock.product_id,
-        InventoryStock.warehouse_id,
-    ).where(
-        InventoryStock.product_id == p.id,
-        InventoryStock.warehouse_id == warehouse.id,
-    )
-    result = await db_session.execute(stmt)
-    row = result.one()
-
-    # Use reorder_point service directly
     preview_rows, skipped_rows = await compute_reorder_points_preview(
         db_session, tenant_id,
         safety_factor=0.5,
@@ -605,10 +636,11 @@ async def test_lead_time_fallback_chain(
     )
 
     candidate = next((c for c in preview_rows if c["product_id"] == p.id), None)
-    assert candidate is not None, "Product with history should be a candidate"
-
-    assert candidate["lead_time_source"] == "fallback_7d"
-    assert candidate["lead_time_days"] == 7
+    assert candidate is not None, (
+        "Product without lead-time history should use the business default"
+    )
+    assert candidate["lead_time_source"] == "business_default"
+    assert candidate["lead_time_days"] == 80
 
 
 @pytest.mark.asyncio
@@ -618,10 +650,7 @@ async def test_lead_time_supplier_default_fallback(
     warehouse,
     product_supplier_default_fallback,
 ):
-    """AC3: Supplier with default_lead_time_days=14 but no received orders.
-
-    The lead_time_source must be 'supplier_default' and lead_time_days must be 14.
-    """
+    """Rows without a resolved replenishment source are skipped before using a guessed lead time."""
     product = product_supplier_default_fallback
 
     preview_rows, skipped_rows = await compute_reorder_points_preview(
@@ -632,10 +661,11 @@ async def test_lead_time_supplier_default_fallback(
     )
 
     candidate = next((c for c in preview_rows if c["product_id"] == product.id), None)
-    assert candidate is not None, "Product with demand history should be a candidate"
-
-    assert candidate["lead_time_source"] == "fallback_7d"
-    assert candidate["lead_time_days"] == 7
+    assert candidate is not None, (
+        "Product without a resolved lead-time source should use the business default"
+    )
+    assert candidate["lead_time_source"] == "business_default"
+    assert candidate["lead_time_days"] == 80
 
 
 @pytest.mark.asyncio
@@ -706,11 +736,13 @@ async def test_confirm_order_creates_sales_reservation_demand_history(
     NOTE: This test will fail until Task 1 (confirm_order event emission)
     is complete. It is included here to validate the full AC1 requirement.
     """
-    from sqlalchemy import select, text
-    from common.events import _registered_handlers
     from decimal import Decimal
+
+    from sqlalchemy import text
+
+    from common.events import _registered_handlers
     from domains.orders.schemas import OrderCreate, OrderCreateLine, PaymentTermsCode
-    from domains.orders.services import confirm_order
+    from domains.orders.services import confirm_order, create_order
 
     # Set up: product + stock + pending order
     product = Product(
@@ -735,8 +767,34 @@ async def test_confirm_order_creates_sales_reservation_demand_history(
     db_session.add(stock)
     await db_session.flush()
 
+    customer = Customer(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        company_name="Confirm Test Customer",
+        normalized_business_number=str(uuid.uuid4().int % 10**8).zfill(8),
+        billing_address="Taipei",
+        contact_name="Buyer",
+        contact_phone="02-12345678",
+        contact_email="buyer@test.local",
+    )
+    db_session.add(customer)
+    await db_session.flush()
+
+    number_range = InvoiceNumberRange(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        prefix=uuid.uuid4().hex[:2].upper(),
+        start_number=1,
+        end_number=99999999,
+        next_number=1,
+        is_active=True,
+    )
+    db_session.add(number_range)
+    await db_session.flush()
+    await db_session.commit()
+
     order_data = OrderCreate(
-        customer_id=uuid.uuid4(),
+        customer_id=customer.id,
         payment_terms_code=PaymentTermsCode.NET_30,
         lines=[
             OrderCreateLine(
@@ -794,3 +852,121 @@ async def test_confirm_order_creates_sales_reservation_demand_history(
     finally:
         _registered_handlers.clear()
         _registered_handlers.extend(original_handlers)
+
+
+async def test_confirm_order_persists_product_snapshots_after_product_master_rename(
+    db_session,
+    tenant_id,
+    warehouse,
+):
+    from decimal import Decimal
+
+    from sqlalchemy import select, text
+
+    from common.models.order_line import OrderLine
+    from domains.orders.schemas import OrderCreate, OrderCreateLine, PaymentTermsCode
+    from domains.orders.services import confirm_order, create_order
+
+    await db_session.execute(
+        text(
+            "ALTER TABLE order_lines "
+            "ADD COLUMN IF NOT EXISTS product_name_snapshot VARCHAR(500)"
+        )
+    )
+    await db_session.execute(
+        text(
+            "ALTER TABLE order_lines "
+            "ADD COLUMN IF NOT EXISTS product_category_snapshot VARCHAR(200)"
+        )
+    )
+    await db_session.commit()
+
+    product = Product(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        code=f"PC{uuid.uuid4().hex[:6].upper()}",
+        name="Snapshot Product v1",
+        category="BELT",
+        status="active",
+    )
+    db_session.add(product)
+    await db_session.flush()
+
+    stock = InventoryStock(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        product_id=product.id,
+        warehouse_id=warehouse.id,
+        quantity=100,
+        reorder_point=0,
+    )
+    db_session.add(stock)
+    await db_session.flush()
+
+    customer = Customer(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        company_name="Snapshot Customer",
+        normalized_business_number=str(uuid.uuid4().int % 10**8).zfill(8),
+        billing_address="Taipei",
+        contact_name="Buyer",
+        contact_phone="02-12345678",
+        contact_email="buyer@test.local",
+    )
+    db_session.add(customer)
+    await db_session.flush()
+
+    range_start = 1_000_000 + (uuid.uuid4().int % 8_000_000)
+    number_range = InvoiceNumberRange(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        prefix=uuid.uuid4().hex[:2].upper(),
+        start_number=range_start,
+        end_number=range_start + 999,
+        next_number=range_start,
+        is_active=True,
+    )
+    db_session.add(number_range)
+    await db_session.flush()
+    await db_session.commit()
+
+    order = await create_order(
+        db_session,
+        OrderCreate(
+            customer_id=customer.id,
+            payment_terms_code=PaymentTermsCode.NET_30,
+            lines=[
+                OrderCreateLine(
+                    product_id=product.id,
+                    quantity=Decimal("2"),
+                    unit_price=Decimal("50.00"),
+                    tax_policy_code="standard",
+                    description="Snapshot line",
+                )
+            ],
+        ),
+        tenant_id=tenant_id,
+    )
+
+    await confirm_order(db_session, order.id, tenant_id=tenant_id)
+    await db_session.commit()
+
+    order_id = order.id
+    db_session.expire_all()
+    stored_line = (
+        await db_session.execute(select(OrderLine).where(OrderLine.order_id == order_id))
+    ).scalar_one()
+    assert stored_line.product_name_snapshot == "Snapshot Product v1"
+    assert stored_line.product_category_snapshot == "BELT"
+
+    stored_line_id = stored_line.id
+    product.name = "Snapshot Product v2"
+    product.category = "RENAMED"
+    await db_session.commit()
+
+    db_session.expire_all()
+    reloaded_line = (
+        await db_session.execute(select(OrderLine).where(OrderLine.id == stored_line_id))
+    ).scalar_one()
+    assert reloaded_line.product_name_snapshot == "Snapshot Product v1"
+    assert reloaded_line.product_category_snapshot == "BELT"

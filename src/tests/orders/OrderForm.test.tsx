@@ -55,9 +55,9 @@ describe("OrderForm", () => {
       </MemoryRouter>,
     );
     await waitFor(() => {
-      expect(screen.getByLabelText("Customer ID:")).toBeTruthy();
-      expect(screen.getByLabelText("Payment terms:")).toBeTruthy();
-      expect(screen.getByLabelText("Notes:")).toBeTruthy();
+      expect(screen.getByLabelText("Customer ID")).toBeTruthy();
+      expect(screen.getByLabelText("Payment Terms")).toBeTruthy();
+      expect(screen.getByLabelText("Notes")).toBeTruthy();
     });
   });
 
@@ -94,7 +94,7 @@ describe("OrderForm", () => {
       </MemoryRouter>,
     );
     await waitFor(() => {
-      const select = screen.getByLabelText("Payment terms:") as HTMLSelectElement;
+      const select = screen.getByLabelText("Payment Terms") as HTMLSelectElement;
       expect(select.value).toBe("NET_30");
       const options = select.querySelectorAll("option");
       expect(options.length).toBe(3);
@@ -148,7 +148,10 @@ describe("OrderForm", () => {
     await waitFor(() => expect(screen.getByText("New Order")).toBeTruthy());
 
     // Fill required fields
-    fireEvent.change(screen.getByLabelText("Customer ID:"), {
+    await waitFor(() => {
+      screen.getByLabelText("Customer ID");
+    });
+    fireEvent.change(screen.getByLabelText("Customer ID"), {
       target: { value: "00000000-0000-0000-0000-000000000001" },
     });
     fireEvent.change(screen.getByLabelText("Line 1 product"), {

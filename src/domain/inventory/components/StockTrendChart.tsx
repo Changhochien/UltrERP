@@ -75,11 +75,11 @@ function ChartInner({
     useTooltip<TooltipData>();
 
   const margin = { top: 10, right: 10, left: 40, bottom: 40 };
-  const innerWidth = width - margin.left - margin.right;
-  const innerHeight = height - margin.top - margin.bottom;
+  const innerWidth = Math.max(0, width - margin.left - margin.right);
+  const innerHeight = Math.max(0, height - margin.top - margin.bottom);
 
   const allPoints = [...filtered, ...projectedLine];
-  if (allPoints.length === 0) return null;
+  if (allPoints.length === 0 || innerWidth <= 0 || innerHeight <= 0) return null;
 
   const parsedActual = filtered.map((d) => ({
     date: parseBackendDate(d.date),
@@ -119,9 +119,9 @@ function ChartInner({
           {safetyStock != null && safetyStockY1 != null && (
             <rect
               x={0}
-              y={safetyStockY1}
-              width={innerWidth}
-              height={(safetyStockY2 ?? 0) - safetyStockY1}
+              y={Math.min(safetyStockY1, safetyStockY2 ?? 0)}
+              width={Math.max(0, innerWidth)}
+              height={Math.max(0, Math.abs((safetyStockY2 ?? 0) - safetyStockY1))}
               fill="#f97316"
               fillOpacity={0.1}
             />

@@ -18,12 +18,17 @@ class FakeAsyncSession:
 
     def __init__(self) -> None:
         self._results: list[object] = []
+        self._last_rows: list[tuple] = []
 
     def queue_rows(self, rows: list[tuple]) -> None:
         self._results.append(rows)
 
     async def execute(self, _stmt: object) -> object:  # noqa: ANN401
-        data = self._results.pop(0) if self._results else []
+        if self._results:
+            data = self._results.pop(0)
+            self._last_rows = list(data)
+        else:
+            data = list(self._last_rows)
 
         class FakeResult:
             def __init__(self, rows: list[tuple]) -> None:
@@ -31,6 +36,9 @@ class FakeAsyncSession:
 
             def all(self) -> list[tuple]:
                 return self._rows
+
+            def scalar(self) -> int:
+                return len(self._rows)
 
         return FakeResult(data)
 

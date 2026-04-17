@@ -14,6 +14,8 @@ import {
 
 import { MetricCard, SectionCard, SurfaceMessage } from "@/components/layout/PageLayout";
 import { Badge } from "@/components/ui/badge";
+import { CustomerProductProfile } from "@/domain/intelligence/components/CustomerProductProfile";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
   getCustomerAnalyticsSummary,
   getCustomerRevenueTrend,
@@ -61,6 +63,7 @@ function buildTrendChartData(trend: CustomerRevenueTrend | null, months: number)
 
 export function CustomerAnalyticsTab({ customerId }: CustomerAnalyticsTabProps) {
   const { t } = useTranslation("common", { keyPrefix: "customer.detail.analytics" });
+  const { canAccess } = usePermissions();
 
   const [summary, setSummary] = useState<CustomerAnalyticsSummary | null>(null);
   const [trend, setTrend] = useState<CustomerRevenueTrend | null>(null);
@@ -229,6 +232,8 @@ export function CustomerAnalyticsTab({ customerId }: CustomerAnalyticsTabProps) 
           />
         </div>
       )}
+
+      {canAccess("intelligence") ? <CustomerProductProfile customerId={customerId} /> : null}
     </div>
   );
 }

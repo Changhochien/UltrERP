@@ -27,8 +27,8 @@ function ChartInner({
     useTooltip<{ month: string; total_qty: number }>();
 
   const margin = { top: 10, right: 10, left: 40, bottom: 40 };
-  const innerWidth = width - margin.left - margin.right;
-  const innerHeight = height - margin.top - margin.bottom;
+  const innerWidth = Math.max(0, width - margin.left - margin.right);
+  const innerHeight = Math.max(0, height - margin.top - margin.bottom);
 
   const xScale = scaleBand({
     domain: data.map((d) => d.month),
@@ -72,15 +72,17 @@ function ChartInner({
             stroke="var(--border)"
           />
           {data.map((d, i) => {
-            const barHeight = innerHeight - (yScale(d.total_qty) ?? 0);
+            const rawBarHeight = innerHeight - (yScale(d.total_qty) ?? 0);
+            const barHeight = Math.max(0, rawBarHeight);
             const barX = xScale(d.month) ?? 0;
             const barY = yScale(d.total_qty) ?? 0;
+            const barWidth = Math.max(0, xScale.bandwidth());
             return (
               <Bar
                 key={i}
                 x={barX}
                 y={barY}
-                width={xScale.bandwidth()}
+                width={barWidth}
                 height={barHeight}
                 fill="#3b82f6"
                 rx={4}

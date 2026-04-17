@@ -105,7 +105,7 @@ export default function CustomerForm({
       contact_email: initialValues?.contact_email ?? "",
       credit_limit: initialValues?.credit_limit ?? "0.00",
     },
-    mode: "onBlur",
+    mode: "onSubmit",
   });
 
   // Map server errors onto the correct form fields

@@ -43,6 +43,26 @@ class ProductMappingValidationSummary:
 
 
 @dataclass(slots=True, frozen=True)
+class ProductCategoryReviewCandidate:
+    legacy_code: str
+    name: str
+    current_category: str
+    category_source: str
+    category_rule_id: str
+    category_confidence: str
+    review_reason: str
+
+
+@dataclass(slots=True, frozen=True)
+class ProductCategoryReviewSummary:
+    candidate_count: int
+    fallback_count: int
+    low_confidence_count: int
+    excluded_count: int
+    candidates: tuple[ProductCategoryReviewCandidate, ...]
+
+
+@dataclass(slots=True, frozen=True)
 class ValidationStageFailure:
     stage_name: str
     row_count: int
@@ -123,6 +143,7 @@ class MigrationValidationReport:
     epic13_handoff: dict[str, object]
     counts: dict[str, int] | None = None
     snapshot_coverage: LegacyHeaderSnapshotCoverage | None = None
+    category_review_summary: ProductCategoryReviewSummary | None = None
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -138,6 +159,11 @@ class MigrationValidationReport:
             "failed_stages": [asdict(stage) for stage in self.failed_stages],
             "snapshot_coverage": (
                 asdict(self.snapshot_coverage) if self.snapshot_coverage is not None else None
+            ),
+            "category_review_summary": (
+                asdict(self.category_review_summary)
+                if self.category_review_summary is not None
+                else None
             ),
             "issues": [
                 {
@@ -184,6 +210,35 @@ def _as_text(value: object | None) -> str:
     return str(value or "").strip()
 
 
+async def _fetch_customer_type_counts(
+    connection,
+    tenant_id: uuid.UUID,
+) -> dict[str, int]:
+    rows = await connection.fetch(
+        """
+        SELECT customer_type, COUNT(*) AS customer_count
+        FROM customers
+        WHERE tenant_id = $1
+        GROUP BY customer_type
+        """,
+        tenant_id,
+    )
+    counts = {
+        "customer_type_dealer_count": 0,
+        "customer_type_end_user_count": 0,
+        "customer_type_unknown_count": 0,
+    }
+    for row in rows:
+        payload = _coerce_row(row)
+        customer_type = _as_text(payload.get("customer_type")) or "unknown"
+        if customer_type not in {"dealer", "end_user", "unknown"}:
+            continue
+        counts[f"customer_type_{customer_type}_count"] = _as_int(
+            payload.get("customer_count")
+        )
+    return counts
+
+
 def _derive_scope_key(
     *,
     tenant_id: uuid.UUID,
@@ -193,6 +248,7 @@ def _derive_scope_key(
     mapping_summary: ProductMappingValidationSummary,
     failed_stages: tuple[ValidationStageFailure, ...],
     counts: Mapping[str, int],
+    category_review_summary: ProductCategoryReviewSummary | None,
 ) -> str:
     payload = {
         "tenant_id": str(tenant_id),
@@ -207,6 +263,24 @@ def _derive_scope_key(
             for row in stage_rows
         ],
         "mapping_summary": asdict(mapping_summary),
+        "category_review_summary": (
+            {
+                "candidate_count": category_review_summary.candidate_count,
+                "fallback_count": category_review_summary.fallback_count,
+                "low_confidence_count": category_review_summary.low_confidence_count,
+                "excluded_count": category_review_summary.excluded_count,
+                "candidates": [
+                    {
+                        "legacy_code": candidate.legacy_code,
+                        "current_category": candidate.current_category,
+                        "review_reason": candidate.review_reason,
+                    }
+                    for candidate in category_review_summary.candidates
+                ],
+            }
+            if category_review_summary is not None
+            else None
+        ),
         "failed_stages": [asdict(stage) for stage in failed_stages],
         "counts": dict(sorted(counts.items())),
     }
@@ -227,6 +301,7 @@ def build_validation_report(
     cutoff_date: str | None,
     previous_scope_run: Mapping[str, object] | None,
     snapshot_coverage: LegacyHeaderSnapshotCoverage | None = None,
+    category_review_summary: ProductCategoryReviewSummary | None = None,
 ) -> MigrationValidationReport:
     issues: list[MigrationValidationIssue] = []
     for row in stage_rows:
@@ -315,6 +390,24 @@ def build_validation_report(
             )
         )
 
+    if category_review_summary is not None and category_review_summary.candidate_count > 0:
+        issues.append(
+            MigrationValidationIssue(
+                code="provisional-category-assignments",
+                severity=2,
+                message=(
+                    f"{category_review_summary.candidate_count} products still carry provisional "
+                    "family categories pending review."
+                ),
+                details={
+                    "candidate_count": category_review_summary.candidate_count,
+                    "fallback_count": category_review_summary.fallback_count,
+                    "low_confidence_count": category_review_summary.low_confidence_count,
+                    "excluded_count": category_review_summary.excluded_count,
+                },
+            )
+        )
+
     issues.sort(key=lambda issue: (issue.severity, issue.code, issue.message))
     blocking_issue_count = sum(1 for issue in issues if issue.blocking)
     status = "blocked" if blocking_issue_count else ("warning" if issues else "clean")
@@ -326,6 +419,7 @@ def build_validation_report(
         mapping_summary=mapping_summary,
         failed_stages=failed_stages,
         counts=counts,
+        category_review_summary=category_review_summary,
     )
     previous_scope_payload = _coerce_row(previous_scope_run)
     if previous_scope_payload:
@@ -390,6 +484,7 @@ def build_validation_report(
         epic13_handoff=epic13_handoff,
         counts=dict(counts),
         snapshot_coverage=snapshot_coverage,
+        category_review_summary=category_review_summary,
     )
 
 
@@ -436,6 +531,24 @@ def render_validation_markdown(report: MigrationValidationReport) -> str:
             f"{report.snapshot_coverage.supplier_invoice_count}, "
             f"missing={report.snapshot_coverage.missing_snapshot_count}"
         )
+    lines.extend(["", "## Category Review", ""])
+    if report.category_review_summary is None or report.category_review_summary.candidate_count == 0:
+        lines.append("- No provisional category assignments detected.")
+    else:
+        lines.append(
+            "- "
+            f"candidates={report.category_review_summary.candidate_count}, "
+            f"fallback={report.category_review_summary.fallback_count}, "
+            f"low_confidence={report.category_review_summary.low_confidence_count}, "
+            f"excluded={report.category_review_summary.excluded_count}"
+        )
+        for candidate in report.category_review_summary.candidates:
+            lines.append(
+                "- "
+                f"{candidate.legacy_code}: {candidate.current_category} "
+                f"({candidate.review_reason}, source={candidate.category_source}, "
+                f"rule={candidate.category_rule_id}, confidence={candidate.category_confidence})"
+            )
     lines.extend(["", "## Discrepancies", ""])
     if not report.issues:
         lines.append("- No discrepancies detected.")
@@ -647,6 +760,51 @@ async def _fetch_product_mapping_summary(
     )
 
 
+async def _fetch_product_category_review_summary(
+    connection,
+    schema_name: str,
+    tenant_id: uuid.UUID,
+    batch_id: str,
+) -> ProductCategoryReviewSummary:
+    quoted_schema = _quoted_identifier(schema_name)
+    rows = await connection.fetch(
+        f"""
+		SELECT
+			legacy_code,
+			name,
+			current_category,
+			category_source,
+			category_rule_id,
+			category_confidence,
+			review_reason
+		FROM {quoted_schema}.product_category_review_candidates
+		WHERE tenant_id = $1 AND batch_id = $2
+		ORDER BY review_reason, legacy_code
+		""",
+        tenant_id,
+        batch_id,
+    )
+    candidates = tuple(
+        ProductCategoryReviewCandidate(
+            legacy_code=_as_text(payload.get("legacy_code")),
+            name=_as_text(payload.get("name")),
+            current_category=_as_text(payload.get("current_category")),
+            category_source=_as_text(payload.get("category_source")),
+            category_rule_id=_as_text(payload.get("category_rule_id")),
+            category_confidence=_as_text(payload.get("category_confidence")),
+            review_reason=_as_text(payload.get("review_reason")),
+        )
+        for payload in (_coerce_row(row) for row in rows)
+    )
+    return ProductCategoryReviewSummary(
+        candidate_count=len(candidates),
+        fallback_count=sum(1 for candidate in candidates if candidate.review_reason == "fallback_assignment"),
+        low_confidence_count=sum(1 for candidate in candidates if candidate.review_reason == "low_confidence"),
+        excluded_count=sum(1 for candidate in candidates if candidate.review_reason == "excluded_path"),
+        candidates=candidates,
+    )
+
+
 async def _fetch_cutoff_date(connection, schema_name: str, batch_id: str) -> str | None:
     quoted_schema = _quoted_identifier(schema_name)
     rows = await connection.fetch(
@@ -740,6 +898,8 @@ def _merge_summary_payload(
     merged["epic13_handoff"] = report.epic13_handoff
     if report.snapshot_coverage is not None:
         merged["legacy_header_snapshot_coverage"] = asdict(report.snapshot_coverage)
+    if report.category_review_summary is not None:
+        merged["category_review_summary"] = asdict(report.category_review_summary)
     return merged
 
 
@@ -850,6 +1010,7 @@ async def validate_import_batch(
             tenant_id,
             batch_id,
         )
+        customer_type_counts = await _fetch_customer_type_counts(connection, tenant_id)
         canonical_status = _as_text(canonical_run.get("status")) or "unknown"
         if canonical_status != "completed" and not failed_stages:
             failed_stages = (
@@ -865,6 +1026,12 @@ async def validate_import_batch(
             tenant_id,
             batch_id,
         )
+        category_review_summary = await _fetch_product_category_review_summary(
+            connection,
+            resolved_schema,
+            tenant_id,
+            batch_id,
+        )
         cutoff_date = await _fetch_cutoff_date(connection, resolved_schema, batch_id)
         scope_key = _derive_scope_key(
             tenant_id=tenant_id,
@@ -874,6 +1041,7 @@ async def validate_import_batch(
             mapping_summary=mapping_summary,
             failed_stages=failed_stages,
             counts=counts,
+            category_review_summary=category_review_summary,
         )
         previous_scope_run = await _fetch_previous_scope_run(
             connection,
@@ -890,10 +1058,21 @@ async def validate_import_batch(
             stage_rows=stage_rows,
             mapping_summary=mapping_summary,
             failed_stages=failed_stages,
-            counts={**counts, **snapshot_coverage.to_counts()},
+            counts={
+                **counts,
+                **snapshot_coverage.to_counts(),
+                **customer_type_counts,
+                "category_review_candidate_count": category_review_summary.candidate_count,
+                "category_review_fallback_count": category_review_summary.fallback_count,
+                "category_review_low_confidence_count": (
+                    category_review_summary.low_confidence_count
+                ),
+                "category_review_excluded_count": category_review_summary.excluded_count,
+            },
             cutoff_date=cutoff_date,
             previous_scope_run=previous_scope_run,
             snapshot_coverage=snapshot_coverage,
+            category_review_summary=category_review_summary,
         )
         json_path, markdown_path = _artifact_paths_for_report(report, output_dir=output_dir)
         temp_json_path = json_path.with_suffix(f"{json_path.suffix}.tmp")

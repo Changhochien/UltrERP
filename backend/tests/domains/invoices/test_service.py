@@ -10,7 +10,9 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from types import SimpleNamespace
 from typing import Any
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -22,9 +24,11 @@ from domains.invoices.models import Invoice, InvoiceLine, InvoiceNumberRange
 from domains.invoices.schemas import InvoiceCreate, InvoiceCreateLine
 from domains.invoices.service import (
     BuyerType,
+    _resolve_latest_unit_cost,
     compute_void_deadline,
     create_invoice,
     get_invoice,
+    list_invoices,
     normalize_buyer_identifier,
     void_invoice,
 )
@@ -142,14 +146,41 @@ class TestBuyerNormalization:
 
 
 class FakeResult:
-    def __init__(self, obj: object | None = None) -> None:
+    def __init__(
+        self,
+        obj: object | None = None,
+        rows: list[object] | None = None,
+        count: int | None = None,
+    ) -> None:
         self._obj = obj
+        self._rows = rows or []
+        self._count = count
 
     def scalar_one_or_none(self) -> object | None:
         return self._obj
 
     def scalar(self) -> object | None:
+        if self._count is not None:
+            return self._count
         return self._obj
+
+    def scalars(self) -> FakeScalarsResult:
+        return FakeScalarsResult(self._rows)
+
+    def all(self) -> list[object]:
+        return list(self._rows)
+
+
+class FakeScalarsResult:
+    def __init__(self, rows: list[object]) -> None:
+        self._rows = rows
+
+    def all(self) -> list[object]:
+        return list(self._rows)
+
+    def unique(self) -> FakeScalarsResult:
+        """Return self — FakeAsyncSession doesn't produce duplicates anyway."""
+        return self
 
 
 class FakeAsyncSession:
@@ -166,6 +197,12 @@ class FakeAsyncSession:
 
     def queue_result(self, obj: object | None) -> None:
         self._execute_results.append(FakeResult(obj))
+
+    def queue_count(self, value: int) -> None:
+        self._execute_results.append(FakeResult(count=value))
+
+    def queue_rows(self, rows: list[object]) -> None:
+        self._execute_results.append(FakeResult(rows=rows))
 
     async def execute(self, statement: object, params: object = None) -> FakeResult:
         # ``set_tenant`` issues a TextClause that should not consume queued select results.
@@ -197,6 +234,17 @@ class FakeAsyncSession:
 
     async def __aexit__(self, *args: object) -> None:
         return None
+
+
+class CapturingAsyncSession(FakeAsyncSession):
+    def __init__(self) -> None:
+        super().__init__()
+        self.statements: list[str] = []
+
+    async def execute(self, statement: object, params: object = None) -> FakeResult:
+        if type(statement).__name__ != "TextClause":
+            self.statements.append(str(statement))
+        return await super().execute(statement, params)
 
 
 def _customer(*, business_number: str = "04595257") -> Customer:
@@ -254,7 +302,13 @@ class TestCreateInvoice:
         session.queue_result(customer)
         session.queue_result(range_record)
 
-        invoice = await create_invoice(session, payload)
+        # _resolve_latest_unit_cost now uses dense_rank queries internally;
+        # patch it directly to avoid复杂的 fake session queueing.
+        with patch(
+            "domains.invoices.service._resolve_latest_unit_cost",
+            new=AsyncMock(return_value=Decimal("60.00")),
+        ):
+            invoice = await create_invoice(session, payload)
 
         assert invoice.invoice_number == "AZ12345678"
         assert invoice.customer_id == customer.id
@@ -266,6 +320,61 @@ class TestCreateInvoice:
         assert len(invoice.lines) == 1
         assert invoice.lines[0].description == "測試商品"
         assert invoice.lines[0].product_code_snapshot == "P-100"
+        assert invoice.lines[0].unit_cost == Decimal("60.00")
+
+    @pytest.mark.asyncio
+    async def test_resolve_latest_unit_cost_uses_invoice_date_cutoff_and_priority(self) -> None:
+        session = CapturingAsyncSession()
+        session.queue_rows(
+            [
+                SimpleNamespace(
+                    effective_date=date(2025, 3, 31),
+                    unit_cost=Decimal("42.00"),
+                    source_priority=1,
+                )
+            ]
+        )
+
+        result = await _resolve_latest_unit_cost(
+            session,
+            uuid.UUID("00000000-0000-0000-0000-000000000001"),
+            uuid.uuid4(),
+            as_of_date=date(2025, 3, 31),
+        )
+
+        assert result == Decimal("42.00")
+        sql = "\n".join(session.statements)
+        assert "source_priority" in sql
+        assert "received_date" in sql
+        assert "invoice_date" in sql
+        assert "<= :received_date_1" in sql or "<= :invoice_date_1" in sql
+
+    @pytest.mark.asyncio
+    async def test_create_invoice_leaves_unit_cost_null_when_latest_purchase_tier_is_ambiguous(
+        self,
+    ) -> None:
+        customer = _customer()
+        session = FakeAsyncSession()
+        session.queue_result(customer)
+        session.queue_result(_range())
+        session.queue_rows(
+            [
+                SimpleNamespace(
+                    effective_date=date(2025, 3, 31),
+                    unit_cost=Decimal("42.00"),
+                    source_priority=1,
+                ),
+                SimpleNamespace(
+                    effective_date=date(2025, 3, 31),
+                    unit_cost=Decimal("43.00"),
+                    source_priority=1,
+                ),
+            ]
+        )
+
+        invoice = await create_invoice(session, _invoice_create(customer_id=customer.id))
+
+        assert invoice.lines[0].unit_cost is None
 
     @pytest.mark.asyncio
     async def test_normalizes_b2c_identifier_in_persisted_invoice(self) -> None:
@@ -273,6 +382,7 @@ class TestCreateInvoice:
         session = FakeAsyncSession()
         session.queue_result(customer)
         session.queue_result(_range())
+        session.queue_result(None)
 
         invoice = await create_invoice(
             session,
@@ -347,6 +457,7 @@ class TestCreateInvoice:
         session = FakeAsyncSession()
         session.queue_result(customer)
         session.queue_result(range_record)
+        session.queue_result(None)
         store = InMemoryObjectStore()
 
         invoice = await create_invoice(
@@ -587,3 +698,106 @@ class TestGetInvoice:
 
         result = await get_invoice(session, uuid.uuid4())
         assert result is None
+
+
+class TestListInvoicesDateRange:
+    """Tests for date range filtering on list_invoices (AC3)."""
+
+    def _issued_invoice(
+        self,
+        invoice_date: date = date(2026, 1, 15),
+    ) -> Invoice:
+        tid = uuid.UUID("00000000-0000-0000-0000-000000000001")
+        inv = Invoice(
+            id=uuid.uuid4(),
+            tenant_id=tid,
+            invoice_number="IV-20260115-ABCD1234",
+            status="issued",
+            customer_id=uuid.uuid4(),
+            invoice_date=invoice_date,
+            buyer_type="b2b",
+            buyer_identifier_snapshot="04595257",
+            currency_code="TWD",
+            subtotal_amount=Decimal("1000.00"),
+            tax_amount=Decimal("50.00"),
+            total_amount=Decimal("1050.00"),
+            version=1,
+        )
+        inv.lines = []
+        return inv
+
+    def _queue_list_invoice_calls(self, session: FakeAsyncSession, invoices: list[Invoice], total: int) -> None:
+        """Queue the sequence of execute() results that list_invoices() produces.
+
+        Sequence per list_invoices():
+          1. set_tenant (TextClause) → TextClause type check skips queueing
+          2. count subquery → FakeResult(total) via scalar()
+          3. main invoice query → FakeResult(invoices) via scalars().all()
+          4. payment grouped query → FakeResult(rows) via all()
+          5. order terms query → FakeResult(rows) via all()
+        """
+        # 1. set_tenant TextClause skips queue
+        session.queue_count(total)  # count
+        session.queue_rows(list(invoices))  # main invoice query
+        # 3. payment grouped query — no payments found, empty rows
+        session.queue_rows([])
+        # 4. order terms query — no order_ids, empty rows
+        session.queue_rows([])
+
+    @pytest.mark.asyncio
+    async def test_list_invoices_date_from_only(self) -> None:
+        inv = self._issued_invoice()
+        session = FakeAsyncSession()
+        self._queue_list_invoice_calls(session, [inv], 1)
+
+        result = await list_invoices(
+            session,
+            tenant_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
+            date_from=date(2026, 1, 1),
+        )
+        assert result[1] == 1  # total count
+        assert len(result[0]) == 1
+
+    @pytest.mark.asyncio
+    async def test_list_invoices_date_to_only(self) -> None:
+        inv = self._issued_invoice()
+        session = FakeAsyncSession()
+        self._queue_list_invoice_calls(session, [inv], 1)
+
+        result = await list_invoices(
+            session,
+            tenant_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
+            date_to=date(2026, 3, 31),
+        )
+        assert result[1] == 1
+
+    @pytest.mark.asyncio
+    async def test_list_invoices_date_range_both(self) -> None:
+        inv = self._issued_invoice(invoice_date=date(2026, 2, 15))
+        session = FakeAsyncSession()
+        self._queue_list_invoice_calls(session, [inv], 1)
+
+        result = await list_invoices(
+            session,
+            tenant_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
+            date_from=date(2026, 1, 1),
+            date_to=date(2026, 3, 31),
+        )
+        assert result[1] == 1
+
+    @pytest.mark.asyncio
+    async def test_list_invoices_no_date_filter(self) -> None:
+        inv1 = self._issued_invoice(invoice_date=date(2026, 1, 15))
+        inv2 = self._issued_invoice(invoice_date=date(2026, 3, 20))
+        session = FakeAsyncSession()
+        session.queue_count(2)
+        session.queue_rows([inv1, inv2])  # main invoice query
+        session.queue_rows([])  # payment grouped query
+        session.queue_rows([])  # order terms query
+
+        result = await list_invoices(
+            session,
+            tenant_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
+        )
+        assert result[1] == 2
+        assert len(result[0]) == 2

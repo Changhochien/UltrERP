@@ -46,6 +46,8 @@ async def get_current_user(
 	if not isinstance(role, str) or role not in _API_ROLES:
 		raise HTTPException(status_code=401, detail="Invalid token")
 	try:
+		UUID(sub)
+		request.state.user_id = UUID(sub)
 		request.state.tenant_id = UUID(tenant_id)
 	except (TypeError, ValueError):
 		raise HTTPException(status_code=401, detail="Invalid token")

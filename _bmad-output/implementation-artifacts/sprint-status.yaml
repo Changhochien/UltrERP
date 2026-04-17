@@ -1,10 +1,10 @@
 # Sprint Status
-# Generated: 2026-03-31
+# Generated: 2026-04-15
 
 sprint:
-  name: "Sprint 1 - Project Foundation"
+  name: "Project-Wide Delivery Tracker"
   start_date: "2026-03-31"
-  goal: "Establish complete development foundation for UltrERP"
+  goal: "Track cross-epic implementation and validation status for UltrERP"
 
 development_status:
 
@@ -101,6 +101,13 @@ development_status:
         story_id: "2.7"
         validation: "updated with explicit immutable field inventory and mandatory DB enforcement"
         prerequisites: ["2.1", "2.3"]
+      2-8-advanced-filter-ui:
+        title: "Advanced Invoice & Order List Filter UI"
+        status: "ready-for-dev"
+        story_id: "2.8"
+        validation: "none"
+        prerequisites: []
+        cross_epic: "Epic 2 (Invoice) and Epic 5 (Order) — filter UX serves both"
 
   # Epic 3 - Customer Management
   epic-3:
@@ -583,6 +590,7 @@ development_status:
       - "15.6 Agent-Invocable Legacy Import Skill"
       - "15.7 Unified Extract + Import CLI"
       - "15.8 Interactive ERP Onboarding Setup Skill"
+      - "15.9 Legacy Product Family Categorization Hardening"
     stories:
       15-0-unified-extract-and-import-cli:
         status: "done"
@@ -640,6 +648,13 @@ development_status:
         story_file: "15-8-erp-onboarding-setup-skill.md"
         validation: ""
         prerequisites: []
+      15-9-legacy-product-family-categorization-hardening:
+        status: "ready-for-review"
+        story_id: "15.9"
+        title: "Legacy Product Family Categorization Hardening"
+        story_file: "15-9-legacy-product-family-categorization-hardening.md"
+        validation: "Validated on 2026-04-14 with focused legacy-import and intelligence coverage: `uv run pytest tests/domains/legacy_import/test_normalization.py tests/domains/legacy_import/test_category_review.py tests/domains/legacy_import/test_cli.py tests/domains/legacy_import/test_canonical.py tests/domains/legacy_import/test_validation.py tests/domains/intelligence/test_service.py -q` (`85 passed`). Canonical/validation contract rerun also passed with `uv run pytest tests/domains/legacy_import/test_canonical.py tests/domains/legacy_import/test_validation.py -q` (`30 passed`), the final heuristic/intelligence rerun passed with `uv run pytest tests/domains/legacy_import/test_normalization.py tests/domains/intelligence/test_service.py -q` (`38 passed`), BMAD post-review regressions passed with `uv run pytest tests/domains/legacy_import/test_normalization.py tests/domains/legacy_import/test_category_review.py -q` (`19 passed`), targeted Ruff on the touched review-fix files passed, and Alembic smoke validation advanced the dev database cleanly from `1c2d3e4f5a6b` to `9b2f3c4d5e6f` via `uv run alembic -c ../migrations/alembic.ini upgrade head`."
+        prerequisites: ["15.2", "15.3", "15.4", "15.5"]
 
   # Epic 16 - Extended Legacy Import: Purchase Transactions and Payments
   epic-16:
@@ -744,4 +759,203 @@ development_status:
         validation: "Validated on 2026-04-06: focused pytest for `test_ap_payment_import.py` + `test_cli.py`, the broader Epic 16 legacy-import regression slice (`test_ap_payment_import.py`, `test_cli.py`, `test_canonical.py`, `test_staging.py`, `test_validation.py`), and targeted Ruff over the AP payment import slice all passed. Current dump evidence keeps unverified rows on holding and only imports strictly verified AP-special-payment rows."
         prerequisites: ["16.5", "16.10", "16.11"]
 
-last_updated: "2026-04-06"
+  # Epic 19 - Customer Product Intelligence
+  epic-19:
+    status: "completed"
+    validation_note: "Revalidated on 2026-04-15. Epic 19 is complete: Stories 19.1-19.9 are implemented, the 19.6 composition-layer review fixes landed, 19.8 asserts structured prospect evidence plus market-opportunity support metadata, and 19.9 now persists customer_type, exposes cohort-aware prospect-gap filtering, and hardens the customer MCP update path. Focused backend intelligence/auth validation passed 72 tests, the focused frontend intelligence/customer-analytics/RBAC slice passed 40 tests, and the Story 19.9 review-fix rerun passed 95 focused backend tests."
+    recommended_execution_order:
+      - "19.7 Intelligence Feature Gate"
+      - "19.3 Customer Product Profile"
+      - "19.1 Product Affinity Map"
+      - "19.2 Category Trend Radar"
+      - "19.4 Customer Risk Signals"
+      - "19.5 Prospect Gap Analysis"
+      - "19.6 Market Opportunities Signal Feed"
+      - "19.8 Intelligence Backend Test Coverage"
+      - "19.9 Prospect Gap Customer Type Filter"
+    stories:
+      19-1-product-affinity-map:
+        status: "done"
+        story_id: "19.1"
+        title: "Product Affinity Map"
+        story_file: "19-1-product-affinity-map.md"
+        validation: "Customer-level Jaccard affinity service, REST endpoint, tenant-aware MCP tool, and sortable affinity UI are implemented; focused backend intelligence tests and frontend affinity/RBAC tests pass"
+        prerequisites: []
+      19-2-category-trend-radar:
+        status: "done"
+        story_id: "19.2"
+        title: "Category Trend Radar"
+        story_file: "19-2-category-trend-radar.md"
+        validation: "Category trend schemas, service, REST/MCP surfaces, and chart-plus-ranked-list UI are implemented; review fixes bounded day windows, excluded future rows, ranked nullable deltas by current-period impact, and guarded stale period responses; focused backend/frontend tests pass"
+        prerequisites: []
+      19-3-customer-product-profile:
+        status: "done"
+        story_id: "19.3"
+        title: "Customer Product Profile"
+        story_file: "19-3-customer-product-profile.md"
+        validation: "Customer product profile service, REST/MCP surfaces, and customer analytics embed are implemented; follow-up review aligned activity_basis and tenant-aware MCP handling; focused backend/frontend tests pass"
+        prerequisites: []
+      19-4-customer-risk-signals:
+        status: "done"
+        story_id: "19.4"
+        title: "Customer Risk Signals"
+        story_file: "19-4-customer-risk-signals.md"
+        validation: "Customer risk signal schemas, tenant-wide ranking service, REST/MCP surfaces, and filtered feed UI are implemented; review fixes tenant-bound intelligence API keys, no-order dormancy, and sparse-baseline category expansion suppression; focused backend/frontend tests pass"
+        prerequisites: ["19-3-customer-product-profile"]
+      19-5-prospect-gap-analysis:
+        status: "done"
+        story_id: "19.5"
+        title: "Prospect Gap Analysis"
+        story_file: "19-5-prospect-gap-analysis.md"
+        validation: "Whitespace prospect schemas, scoring service, REST/MCP surfaces, and dropdown-driven outreach table are implemented; review fixes bearer/header tenant precedence, full adjacency support, excluded-category-only candidate filtering, blank REST category rejection, and category bootstrap behavior; focused backend/frontend tests pass"
+        prerequisites: ["19-1-product-affinity-map", "19-2-category-trend-radar", "19-3-customer-product-profile"]
+      19-6-market-opportunities:
+        status: "done"
+        story_id: "19.6"
+        title: "Market Opportunities Signal Feed"
+        story_file: "19-6-market-opportunities.md"
+        validation: "Market opportunity schemas, composition service, REST/MCP surfaces, and expandable banner integration are implemented; review fixes tightened growth support filtering, aligned tenant/auth precedence, and exposed support/source metadata; focused backend/frontend validation passes"
+        prerequisites: ["19-2-category-trend-radar", "19-4-customer-risk-signals"]
+      19-7-intelligence-feature-gate:
+        status: "done"
+        story_id: "19.7"
+        title: "Intelligence Feature Gate"
+        story_file: "19-7-intelligence-feature-gate.md"
+        validation: "Feature gate, route/nav scaffold, backend router wiring, and MCP scope registration implemented. Code review fixed: per-tool TOOL_SCOPES per spec, added owner to REST route dependency, updated tests. All 19 tests passing."
+        prerequisites: []
+      19-8-intelligence-backend-tests:
+        status: "done"
+        story_id: "19.8"
+        title: "Intelligence Backend Test Coverage"
+        story_file: "19-8-intelligence-backend-tests.md"
+        validation: "Intelligence backend coverage now exercises affinity, trends, profiles, risk signals, prospect transparency, and market opportunities; added assertions for score_components/PII omission and support/source metadata; focused backend intelligence/auth validation passes"
+        prerequisites: ["19-1-product-affinity-map", "19-2-category-trend-radar", "19-3-customer-product-profile", "19-4-customer-risk-signals"]
+      19-9-prospect-gap-customer-type:
+        status: "done"
+        story_id: "19.9"
+        title: "Prospect Gap Customer Type Filter"
+        story_file: "19-9-prospect-gap-customer-type.md"
+        validation: "Validated on 2026-04-15 with focused backend coverage via `uv run pytest -q tests/domains/intelligence/test_service.py tests/domains/intelligence/test_routes.py tests/test_mcp_intelligence.py tests/test_mcp_customers.py tests/test_mcp_auth.py tests/api/test_create_customer.py tests/api/test_update_customer.py tests/domains/legacy_import/test_normalization.py tests/domains/legacy_import/test_canonical.py tests/domains/legacy_import/test_validation.py` (`164 passed`), focused frontend coverage via `pnpm exec vitest run src/tests/intelligence/ProspectGapTable.test.tsx` (`5 passed`), and a BMAD review-fix rerun via `uv run pytest -q tests/domains/intelligence/test_service.py tests/domains/intelligence/test_routes.py tests/test_mcp_intelligence.py tests/domains/legacy_import/test_canonical.py tests/test_mcp_customers.py` (`95 passed`). Story 19.9 now persists `customer_type`, preserves non-unknown classifications on legacy replay, gates intelligence widgets per feature, fixes customer MCP tenant resolution, adds `customers_update`, and keeps prospect-gap scoring fully cohort-consistent for Dealers / End Users / All filtering."
+        prerequisites: ["19-5-prospect-gap-analysis", "19-7-intelligence-feature-gate"]
+
+  # Epic 18 - Legacy Inventory Receiving Audit Trail
+  epic-18:
+    status: "in-progress"
+    validation_note: ""
+    recommended_execution_order:
+      - "18.1 Legacy Receiving Audit Trail Import"
+      - "18.3 Purchase Price Mapping and Margin Calculation"
+      - "18.4 Historical Invoice Unit Cost Backfill"
+      - "18.5 Forward Invoice Unit Cost Ambiguity Guard"
+    stories:
+      18-1-legacy-receiving-audit-trail-import:
+        status: "review"
+        story_id: "18.1"
+        title: "Legacy Receiving Audit Trail Import"
+        story_file: "18-1-legacy-receiving-audit-trail-import.md"
+        validation: "Validated on 2026-04-12: focused pytest for `tests/domains/legacy_import/test_canonical.py` (`15 passed` after review fixes), the full `tests/domains/legacy_import` suite (`79 passed`), and targeted Ruff over `domains/legacy_import/canonical.py` plus `tests/domains/legacy_import/test_canonical.py` all passed. Full backend pytest remains blocked by unrelated MCP customer collection and other pre-existing non-legacy failures outside this story."
+        prerequisites: ["15.2", "15.4", "16.4"]
+      18-3-purchase-price-mapping-and-margin-calculation:
+        status: "review"
+        story_id: "18.3"
+        title: "Purchase Price Mapping and Margin Calculation"
+        story_file: "18-3-purchase-price-mapping-and-margin-calculation.md"
+        validation: "Validated on 2026-04-12: focused pytest for `tests/domains/dashboard/test_gross_margin.py`, `tests/domains/invoices/test_service.py`, `tests/domains/orders/test_order_confirmation.py`, and `tests/domains/inventory/test_supplier_orders.py` all passed on the targeted gross-margin/cost path; an additional focused pytest for `test_resolve_latest_unit_cost_uses_invoice_date_cutoff_and_priority` passed after review-driven fixes; frontend Vitest for `src/domain/dashboard/components/GrossMarginCard.test.tsx` and `src/domain/inventory/components/SupplierOrderForm.test.tsx` passed; Alembic upgraded the local DB from `a4d1c8e7b2f3` to `1c2d3e4f5a6b` and `alembic current` now reports `1c2d3e4f5a6b (head)`. Historical invoice-line backfill remains a separate follow-up task."
+        prerequisites: []
+      18-4-historical-invoice-unit-cost-backfill:
+        status: "review"
+        story_id: "18.4"
+        title: "Historical Invoice Unit Cost Backfill"
+        story_file: "18-4-historical-invoice-unit-cost-backfill.md"
+        validation: "Validated on 2026-04-12: focused pytest for `tests/domains/invoices/test_unit_cost_backfill.py` passed (`5 passed` after the BMAD code-review follow-up added a per-batch commit regression), targeted Ruff for `domains/invoices/service.py`, `scripts/backfill_invoice_unit_cost.py`, and `tests/domains/invoices/test_unit_cost_backfill.py` passed, invalid CLI control values are now rejected (`cd backend && uv run python -m scripts.backfill_invoice_unit_cost --limit 0` exits with `value must be a positive integer`), and bounded dry-run validation with `cd backend && uv run python -m scripts.backfill_invoice_unit_cost --batch-size 250 --limit 1000` reported `1000` candidates, `976` resolvable updates, `23` unmatched rows, and `1` ambiguous row before any live mutation."
+        prerequisites: ["18.3", "16.7"]
+      18-5-forward-invoice-unit-cost-ambiguity-guard:
+        status: "review"
+        story_id: "18.5"
+        title: "Forward Invoice Unit Cost Ambiguity Guard"
+        story_file: "18-5-forward-unit-cost-ambiguity-guard.md"
+        validation: "Validated on 2026-04-12: focused pytest for `tests/domains/invoices/test_unit_cost_backfill.py::test_forward_resolver_returns_none_for_ambiguous_top_ranked_prices`, `tests/domains/invoices/test_unit_cost_backfill.py::test_forward_resolver_prefers_same_day_supplier_invoice_when_unique`, `tests/domains/invoices/test_unit_cost_backfill.py::test_forward_resolver_ignores_future_purchase_costs`, `tests/domains/invoices/test_service.py::TestCreateInvoice::test_resolve_latest_unit_cost_uses_invoice_date_cutoff_and_priority`, and `tests/domains/invoices/test_service.py::TestCreateInvoice::test_create_invoice_leaves_unit_cost_null_when_latest_purchase_tier_is_ambiguous` passed (`5 passed`); targeted Ruff for `domains/invoices/service.py`, `tests/domains/invoices/test_service.py`, and `tests/domains/invoices/test_unit_cost_backfill.py` passed."
+        prerequisites: ["18.3", "18.4"]
+
+  # Epic 20 - Product Sales Analytics
+  epic-20:
+    status: "in-progress"
+    validation_note: "Story context was created and revalidated on 2026-04-15 against Epic 20, the domain research note, the existing intelligence and inventory ownership split, the current confirmation/import seams, and the repo's access-control and test patterns. On 2026-04-16 Story 20.1 was implemented and validated with focused order-confirmation, canonical-import, and reorder-point integration coverage (`43 passed`), a single-head Alembic check (`6c4d2e1f9a7b (head)`), and a final no-findings review. On 2026-04-16 Story 20.3 added the backend-only `product_analytics` monthly fact foundation, validated with `cd backend && uv run pytest tests/domains/product_analytics/test_service.py -q` (`6 passed in 0.70s`), and finished with a single-head Alembic check (`7a3c2d1e9f4b (head)`) plus a no-findings review. Story 20.3 validation also exposed a clean-upgrade drift in the Story 20.1 snapshot migration for dev schemas that already had snapshot columns, so that earlier migration was hardened with `ADD COLUMN IF NOT EXISTS` before rerunning the upgrade successfully. On 2026-04-16 Story 20.4 reused the Story 20.3 foundation from the existing intelligence surface, shipped backend revenue-diagnosis service/route/MCP coverage plus the `IntelligencePage` card, and validated with `cd backend && uv run pytest tests/domains/intelligence/test_revenue_diagnosis_service.py tests/domains/intelligence/test_routes.py tests/test_mcp_intelligence.py tests/test_mcp_auth.py -q` (`68 passed in 1.96s`) together with `pnpm vitest run src/tests/intelligence/RevenueDiagnosisCard.test.tsx` (`3 passed`). On 2026-04-16 Story 20.5 added an inventory-owned planning-support endpoint plus an analytics-tab planning card that reuses Story 20.3 monthly sales history for advisory demand context without replacing warehouse-aware reorder math, and validated with `cd backend && uv run pytest tests/domains/inventory/test_planning_support.py -q` (`3 passed in 2.19s`) together with `pnpm vitest run src/domain/inventory/components/AnalyticsTab.test.tsx` (`1 passed`). The remaining Epic 20 stories still follow the validated draft ownership split: backend-only shared `product_analytics` foundation in v1, intelligence-owned diagnosis/performance/behavior, inventory-owned planning support, optional Story 20.2 only if Story 20.3 requires a conformed dimension, and no speculative public product-analytics silo."
+    recommended_execution_order:
+      - "20.1 Product Snapshot on OrderLine"
+      - "20.3 Monthly Aggregation Tables"
+      - "20.4 Revenue Diagnosis API"
+      - "20.6 Product Performance API"
+      - "20.5 Inventory Planning Support from Shared Sales History"
+      - "20.7 Customer Buying Behavior Extension"
+      - "20.8 Product Analytics Feature Gate"
+      - "20.9 Product Analytics Backend Test Coverage"
+      - "20.2 Optional Product Dimension SCD Type 2 only if Story 20.3 requires a conformed dimension"
+    stories:
+      20-1-product-snapshot-on-order-line:
+        status: "done"
+        story_id: "20.1"
+        title: "Product Snapshot on OrderLine"
+        story_file: "20-1-product-snapshot-on-order-line.md"
+        validation: "Validated on 2026-04-16 with `cd backend && uv run pytest tests/domains/orders/test_order_confirmation.py tests/domains/legacy_import/test_canonical.py tests/domains/inventory/test_reorder_point_integration.py -q` (`43 passed in 36.99s`), including the persisted rename regression for reorder-point integration after shared-schema bootstrap and async-session fixes. Follow-up Alembic topology validation via `cd backend && uv run alembic -c ../migrations/alembic.ini heads` reported `6c4d2e1f9a7b (head)`, and the final focused review over the Story 20.1 files returned no findings."
+        prerequisites: []
+      20-2-optional-product-dimension-scd-type-2:
+        status: "deferred"
+        story_id: "20.2"
+        title: "Optional Product Dimension SCD Type 2"
+        story_file: "20-2-optional-product-dimension-scd-type-2.md"
+        validation: "Drafted as optional and v1-deferred by default. Activate only after Story 20.3 makes an explicit modeling decision that a conformed product dimension is required instead of inline snapshot text."
+        prerequisites: ["20.1"]
+        activation_gate_story: "20.3"
+        activation_gate_condition: "requires_conformed_product_dimension"
+      20-3-monthly-aggregation-tables:
+        status: "done"
+        story_id: "20.3"
+        title: "Monthly Aggregation Tables"
+        story_file: "20-3-monthly-aggregation-tables.md"
+        validation: "Validated on 2026-04-16 with `cd backend && uv run pytest tests/domains/product_analytics/test_service.py -q` (`6 passed in 0.70s`), covering confirmation-month boundary behavior, idempotent reruns, closed-month inclusive-end reads, current-month live fallback, range refresh behavior, and missing-snapshot skip reporting. Follow-up Alembic validation via `cd backend && uv run alembic -c ../migrations/alembic.ini upgrade head` and `cd backend && uv run alembic -c ../migrations/alembic.ini heads` completed successfully with `7a3c2d1e9f4b (head)`, and the final focused review over the Story 20.3 files returned no findings."
+        prerequisites: ["20.1"]
+      20-4-revenue-diagnosis-api:
+        status: "done"
+        story_id: "20.4"
+        title: "Revenue Diagnosis API"
+        story_file: "20-4-revenue-diagnosis-api.md"
+        validation: "Validated on 2026-04-16 with `cd backend && uv run pytest tests/domains/intelligence/test_revenue_diagnosis_service.py tests/domains/intelligence/test_routes.py tests/test_mcp_intelligence.py tests/test_mcp_auth.py -q` (`68 passed in 1.96s`) and `pnpm vitest run src/tests/intelligence/RevenueDiagnosisCard.test.tsx` (`3 passed`). Coverage includes aggregate-only history, mixed live current-month windows, empty states, feature-disabled REST/MCP behavior, MCP scope registration, and the mounted `IntelligencePage` card. Final focused review over the Story 20.4 files returned no findings."
+        prerequisites: ["20.1", "20.3"]
+      20-5-inventory-planning-support-from-shared-sales-history:
+        status: "done"
+        story_id: "20.5"
+        title: "Inventory Planning Support from Shared Sales History"
+        story_file: "20-5-inventory-planning-support-from-shared-sales-history.md"
+        validation: "Validated on 2026-04-16 with `cd backend && uv run pytest tests/domains/inventory/test_planning_support.py -q` (`3 passed in 2.19s`) and `pnpm vitest run src/domain/inventory/components/AnalyticsTab.test.tsx` (`1 passed`). Coverage includes aggregate-only windows, mixed closed/live current-month windows, empty-history data-gap behavior, advisory-only provenance, and rendering the planning-support card inside the existing inventory analytics tab. Final focused review over the Story 20.5 files returned no findings."
+        prerequisites: ["4-2-view-stock-level", "4-5-supplier-orders", "20.3"]
+      20-6-product-performance-api:
+        status: "done"
+        story_id: "20.6"
+        title: "Product Performance API"
+        story_file: "20-6-product-performance-api.md"
+        validation: "Validated on 2026-04-16 with `cd /Volumes/2T_SSD_App/Projects/UltrERP/backend && uv run pytest tests/domains/intelligence/test_product_performance_service.py tests/domains/intelligence/test_routes.py tests/test_mcp_intelligence.py tests/test_mcp_auth.py -q` (`71 passed in 1.84s`) and `pnpm vitest run src/tests/intelligence/ProductPerformanceCard.test.tsx` (`3 passed`). Coverage includes lifecycle precedence, deterministic ordering, empty states, partial-window live-current-month behavior, feature-disabled REST/MCP behavior, MCP scope registration, and the mounted `IntelligencePage` product-performance card. Final focused review over the Story 20.6 files returned no findings."
+        prerequisites: ["20.1", "20.3"]
+      20-7-customer-buying-behavior-extension:
+        status: "done"
+        story_id: "20.7"
+        title: "Customer Buying Behavior Extension"
+        story_file: "20-7-customer-buying-behavior-extension.md"
+        validation: "Validated on 2026-04-16 with `cd /Volumes/2T_SSD_App/Projects/UltrERP/backend && uv run pytest tests/domains/intelligence/test_customer_buying_behavior_service.py tests/domains/intelligence/test_routes.py tests/test_mcp_intelligence.py tests/test_mcp_auth.py -q` (`75 passed in 1.80s`) and `pnpm vitest run src/tests/intelligence/CustomerBuyingBehaviorCard.test.tsx` (`3 passed`). Coverage includes Story 19.9 cohort filtering, sale-time snapshot semantics, transactional fallback behavior, deterministic top-category and cross-sell ordering, null lift handling for `customer_type = all`, feature-disabled REST/MCP behavior, and the mounted `IntelligencePage` customer buying behavior card. Final focused review over the Story 20.7 files returned no findings."
+        prerequisites: ["19-3-customer-product-profile", "19-9-prospect-gap-customer-type", "20.3"]
+      20-8-product-analytics-feature-gate:
+        status: "done"
+        story_id: "20.8"
+        title: "Product Analytics Feature Gate"
+        story_file: "20-8-product-analytics-feature-gate.md"
+        validation: "Validated on 2026-04-16 with `cd /Volumes/2T_SSD_App/Projects/UltrERP/backend && uv run pytest tests/domains/intelligence/test_routes.py tests/test_mcp_intelligence.py tests/test_mcp_auth.py tests/domains/inventory/test_planning_support.py -q` (`77 passed in 1.87s`) and `pnpm --dir /Volumes/2T_SSD_App/Projects/UltrERP exec vitest run src/tests/intelligence/RevenueDiagnosisCard.test.tsx src/tests/intelligence/ProductPerformanceCard.test.tsx src/tests/intelligence/CustomerBuyingBehaviorCard.test.tsx src/domain/inventory/components/AnalyticsTab.test.tsx` (`14 passed`). Story 20.8 now adds the missing inventory planning-support toggle, preserves existing intelligence route/MCP gate semantics, and suppresses disabled Epic 20 cards inside the owning-domain intelligence and inventory surfaces without introducing a speculative shared frontend feature registry."
+        prerequisites: ["20.4", "20.5", "20.6", "20.7"]
+      20-9-product-analytics-backend-test-coverage:
+        status: "done"
+        story_id: "20.9"
+        title: "Product Analytics Backend Test Coverage"
+        story_file: "20-9-product-analytics-backend-test-coverage.md"
+        validation: "Validated on 2026-04-16 with `cd /Volumes/2T_SSD_App/Projects/UltrERP/backend && uv run pytest tests/domains/product_analytics/test_service.py tests/domains/intelligence/test_revenue_diagnosis_service.py tests/domains/intelligence/test_product_performance_service.py tests/domains/intelligence/test_customer_buying_behavior_service.py tests/domains/intelligence/test_routes.py tests/domains/inventory/test_planning_support.py tests/test_mcp_intelligence.py tests/test_mcp_auth.py -q` (`109 passed in 2.78s`). Story 20.9 adds shared-foundation regressions for countable-status filtering, per-snapshot monthly grain aggregation, tenant isolation, and immutable sale-time snapshots; adds Epic 20 route auth and query-validation coverage; and extends centralized MCP auth with explicit insufficient-scope checks for the new revenue diagnosis, product performance, and customer buying behavior tools while reusing the existing owner-domain inventory and intelligence suites."
+        prerequisites: ["20.3", "20.4", "20.5", "20.6", "20.7", "20.8"]
+
+last_updated: "2026-04-16"

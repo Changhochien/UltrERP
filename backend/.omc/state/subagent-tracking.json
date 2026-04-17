@@ -516,10 +516,71 @@
       "started_at": "2026-04-09T04:31:42.256Z",
       "parent_mode": "none",
       "status": "running"
+    },
+    {
+      "agent_id": "aea67504a67729379",
+      "agent_type": "worker-1",
+      "started_at": "2026-04-13T09:39:57.555Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-04-13T09:40:23.203Z",
+      "duration_ms": 25648
+    },
+    {
+      "agent_id": "a5b2550be81d33eda",
+      "agent_type": "worker-1",
+      "started_at": "2026-04-13T09:40:23.378Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-04-13T09:40:58.810Z",
+      "duration_ms": 35432
+    },
+    {
+      "agent_id": "ab18b05b8f2ffb8fb",
+      "agent_type": "oh-my-claudecode:executor",
+      "started_at": "2026-04-14T03:44:59.264Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-04-14T03:52:26.595Z",
+      "duration_ms": 447331
+    },
+    {
+      "agent_id": "ae801d75869a151da",
+      "agent_type": "oh-my-claudecode:executor",
+      "started_at": "2026-04-14T03:45:06.672Z",
+      "parent_mode": "none",
+      "status": "running"
+    },
+    {
+      "agent_id": "a6e0463f149add311",
+      "agent_type": "oh-my-claudecode:executor",
+      "started_at": "2026-04-14T03:45:11.680Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-04-14T03:48:01.877Z",
+      "duration_ms": 170197
+    },
+    {
+      "agent_id": "aad581e1f50f0bd5a",
+      "agent_type": "oh-my-claudecode:executor",
+      "started_at": "2026-04-14T03:45:16.097Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-04-14T03:45:59.007Z",
+      "duration_ms": 42910
+    },
+    {
+      "agent_id": "a7fd79d576fd4c170",
+      "agent_type": "oh-my-claudecode:executor",
+      "started_at": "2026-04-14T03:45:22.066Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-04-14T03:49:57.725Z",
+      "duration_ms": 275659
     }
   ],
-  "total_spawned": 61,
-  "total_completed": 38,
+  "total_spawned": 68,
+  "total_completed": 44,
   "total_failed": 0,
-  "last_updated": "2026-04-09T04:31:42.358Z"
+  "last_updated": "2026-04-14T03:52:26.696Z"
 }

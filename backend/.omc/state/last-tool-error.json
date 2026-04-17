@@ -1,7 +1,7 @@
 {
-  "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"sed -n '1520,1540p' /Volumes/2T_SSD_App/Projects/UltrERP/backend/domains/inventory/services.py | cat -A\"}",
-  "error": "Exit code 1\ncat: illegal option -- A\nusage: cat [-belnstuv] [file ...]",
-  "timestamp": "2026-04-11T07:39:51.092Z",
+  "tool_name": "mcp__plugin_oh-my-claudecode_t__lsp_diagnostics",
+  "tool_input_preview": "{\"file\":\"/Volumes/2T_SSD_App/Projects/UltrERP/src/tests/orders/OrderForm.test.tsx\"}",
+  "error": "Language server 'typescript-language-server' not found.\nInstall with: npm install -g typescript-language-server typescript",
+  "timestamp": "2026-04-14T03:52:08.645Z",
   "retry_count": 3
 }

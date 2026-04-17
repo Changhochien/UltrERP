@@ -23,7 +23,7 @@ export function RevenueCard({ data, isLoading, error }: RevenueCardProps) {
 
   if (isLoading) {
     return (
-      <SectionCard title={t("dashboard.revenue.title")} description={t("dashboard.revenue.description")} className="h-full" contentClassName="space-y-4">
+      <SectionCard title={t("dashboard.revenue.revenueComparison")} description={t("dashboard.revenue.description")} className="h-full" contentClassName="space-y-4">
         <div data-testid="revenue-card-loading" className="space-y-3">
           <Skeleton className="h-10 w-32" />
           <Skeleton className="h-20 w-full" />
@@ -34,7 +34,7 @@ export function RevenueCard({ data, isLoading, error }: RevenueCardProps) {
 
   if (error) {
     return (
-      <SectionCard title={t("dashboard.revenue.title")} description={t("dashboard.revenue.description")} className="h-full" contentClassName="space-y-4">
+      <SectionCard title={t("dashboard.revenue.revenueComparison")} description={t("dashboard.revenue.description")} className="h-full" contentClassName="space-y-4">
         <div data-testid="revenue-card-error">
           <SurfaceMessage tone="danger">{error}</SurfaceMessage>
         </div>

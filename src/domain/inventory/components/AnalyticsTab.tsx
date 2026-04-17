@@ -3,6 +3,7 @@
 import { useTranslation } from "react-i18next";
 
 import { SectionCard } from "@/components/layout/PageLayout";
+import { PlanningSupportCard } from "../components/PlanningSupportCard";
 import { useProductMonthlyDemand } from "../hooks/useProductMonthlyDemand";
 import { useProductSalesHistory } from "../hooks/useProductSalesHistory";
 import { useProductTopCustomer } from "../hooks/useProductTopCustomer";
@@ -57,6 +58,8 @@ export function AnalyticsTab({ productId, warehouses }: AnalyticsTabProps) {
         safetyStock={safetyStock}
         loading={loading}
       />
+
+      <PlanningSupportCard productId={productId} />
 
       {/* Monthly demand chart */}
       <SectionCard title={t("monthlyDemand.title")}>

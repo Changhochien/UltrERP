@@ -20,6 +20,7 @@ from common.models.warehouse import Warehouse
 from domains.customers.models import Customer
 from domains.invoices.models import EguiSubmission, Invoice, InvoiceLine, InvoiceNumberRange
 from domains.payments.models import Payment
+from domains.product_analytics.models import SalesMonthly
 from domains.settings.models import AppSetting
 
 __all__ = [
@@ -41,6 +42,7 @@ __all__ = [
 	"Product",
 	"ReasonCode",
 	"ReorderAlert",
+	"SalesMonthly",
 	"StockAdjustment",
 	"StockTransferHistory",
 	"Supplier",

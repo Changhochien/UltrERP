@@ -50,6 +50,8 @@ class OrderLine(Base):
 	subtotal_amount: Mapped[Decimal] = mapped_column(Numeric(20, 2), nullable=False)
 	total_amount: Mapped[Decimal] = mapped_column(Numeric(20, 2), nullable=False)
 	description: Mapped[str] = mapped_column(String(500), nullable=False)
+	product_name_snapshot: Mapped[str | None] = mapped_column(String(500))
+	product_category_snapshot: Mapped[str | None] = mapped_column(String(200))
 	available_stock_snapshot: Mapped[int | None] = mapped_column(Integer)
 	backorder_note: Mapped[str | None] = mapped_column(String(255))
 	created_at: Mapped[datetime] = mapped_column(

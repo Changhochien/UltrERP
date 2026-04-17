@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ArrowRightLeft, ArrowLeft, ShoppingCart, SlidersHorizontal } from "lucide-react";
 
@@ -156,8 +156,15 @@ function AuditLogTabContent({ productId }: { productId: string }) {
 function ProductDetailContent({ productId }: { productId: string }) {
   const { t } = useTranslation("common", { keyPrefix: "inventory.productDetail" });
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { product, loading, error } = useProductDetail(productId);
   const { selectedWarehouse } = useWarehouseContext();
+  const requestedTab = searchParams.get("tab");
+  const defaultTab = requestedTab === "analytics"
+    || requestedTab === "settings"
+    || requestedTab === "audit"
+    ? requestedTab
+    : "overview";
 
   const stockId = selectedWarehouse?.id
     ? product?.warehouses.find((w) => w.warehouse_id === selectedWarehouse.id)?.stock_id
@@ -238,7 +245,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
         </div>
       </div>
 
-      <Tabs defaultValue="overview">
+      <Tabs defaultValue={defaultTab}>
         <TabsList>
           <TabsTrigger value="overview">{t("overview")}</TabsTrigger>
           <TabsTrigger value="analytics">{t("analytics")}</TabsTrigger>

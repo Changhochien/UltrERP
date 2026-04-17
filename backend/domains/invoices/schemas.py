@@ -19,6 +19,7 @@ class InvoiceCreateLine(BaseModel):
     description: str = Field(..., min_length=1, max_length=500)
     quantity: Decimal
     unit_price: Decimal
+    unit_cost: Decimal | None = None
     tax_policy_code: TaxPolicyCode
 
 

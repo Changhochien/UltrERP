@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
 
 import CreateInvoicePage from "../../../pages/invoices/CreateInvoicePage";
 
@@ -78,7 +79,7 @@ describe("CreateInvoicePage", () => {
 			throw new Error(`Unexpected fetch: ${url}`);
 		});
 
-		render(<CreateInvoicePage />);
+		render(<MemoryRouter><CreateInvoicePage /></MemoryRouter>);
 
 		await waitFor(() => {
 			expect(screen.getByText("Acme Corp (12345678)")).toBeTruthy();
@@ -103,7 +104,7 @@ describe("CreateInvoicePage", () => {
 	it("submits the create-invoice payload and shows the created state", async () => {
 		const readPayload = mockInvoiceCreateFlow();
 
-		render(<CreateInvoicePage />);
+		render(<MemoryRouter><CreateInvoicePage /></MemoryRouter>);
 
 		await waitFor(() => {
 			expect(screen.getByText("Acme Corp (12345678)")).toBeTruthy();

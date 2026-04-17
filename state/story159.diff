@@ -1,0 +1,1768 @@
+diff --git a/_bmad-output/implementation-artifacts/sprint-status.yaml b/_bmad-output/implementation-artifacts/sprint-status.yaml
+index 438cacb..8b85cb0 100644
+--- a/_bmad-output/implementation-artifacts/sprint-status.yaml
++++ b/_bmad-output/implementation-artifacts/sprint-status.yaml
+@@ -590,6 +590,7 @@ development_status:
+       - "15.6 Agent-Invocable Legacy Import Skill"
+       - "15.7 Unified Extract + Import CLI"
+       - "15.8 Interactive ERP Onboarding Setup Skill"
++      - "15.9 Legacy Product Family Categorization Hardening"
+     stories:
+       15-0-unified-extract-and-import-cli:
+         status: "done"
+@@ -647,6 +648,13 @@ development_status:
+         story_file: "15-8-erp-onboarding-setup-skill.md"
+         validation: ""
+         prerequisites: []
++      15-9-legacy-product-family-categorization-hardening:
++        status: "ready-for-review"
++        story_id: "15.9"
++        title: "Legacy Product Family Categorization Hardening"
++        story_file: "15-9-legacy-product-family-categorization-hardening.md"
++        validation: "Validated on 2026-04-14 with focused legacy-import and intelligence coverage: `uv run pytest tests/domains/legacy_import/test_normalization.py tests/domains/legacy_import/test_category_review.py tests/domains/legacy_import/test_cli.py tests/domains/legacy_import/test_canonical.py tests/domains/legacy_import/test_validation.py tests/domains/intelligence/test_service.py -q` (`82 passed`). Canonical/validation contract rerun also passed with `uv run pytest tests/domains/legacy_import/test_canonical.py tests/domains/legacy_import/test_validation.py -q` (`30 passed`), the final heuristic/intelligence rerun passed with `uv run pytest tests/domains/legacy_import/test_normalization.py tests/domains/intelligence/test_service.py -q` (`38 passed`), and Alembic smoke validation advanced the dev database cleanly from `1c2d3e4f5a6b` to `9b2f3c4d5e6f` via `uv run alembic -c ../migrations/alembic.ini upgrade head`."
++        prerequisites: ["15.2", "15.3", "15.4", "15.5"]
+ 
+   # Epic 16 - Extended Legacy Import: Purchase Transactions and Payments
+   epic-16:
+@@ -861,4 +869,4 @@ development_status:
+         validation: "Validated on 2026-04-12: focused pytest for `tests/domains/invoices/test_unit_cost_backfill.py::test_forward_resolver_returns_none_for_ambiguous_top_ranked_prices`, `tests/domains/invoices/test_unit_cost_backfill.py::test_forward_resolver_prefers_same_day_supplier_invoice_when_unique`, `tests/domains/invoices/test_unit_cost_backfill.py::test_forward_resolver_ignores_future_purchase_costs`, `tests/domains/invoices/test_service.py::TestCreateInvoice::test_resolve_latest_unit_cost_uses_invoice_date_cutoff_and_priority`, and `tests/domains/invoices/test_service.py::TestCreateInvoice::test_create_invoice_leaves_unit_cost_null_when_latest_purchase_tier_is_ambiguous` passed (`5 passed`); targeted Ruff for `domains/invoices/service.py`, `tests/domains/invoices/test_service.py`, and `tests/domains/invoices/test_unit_cost_backfill.py` passed."
+         prerequisites: ["18.3", "18.4"]
+ 
+-last_updated: "2026-04-12"
++last_updated: "2026-04-14"
+diff --git a/backend/domains/legacy_import/canonical.py b/backend/domains/legacy_import/canonical.py
+index d9dc4a7..abc2b92 100644
+--- a/backend/domains/legacy_import/canonical.py
++++ b/backend/domains/legacy_import/canonical.py
+@@ -271,6 +271,8 @@ def _build_product_master_snapshot(row: dict[str, object]) -> dict[str, object]:
+             "legacy_category": _as_text(row.get("legacy_category")),
+             "stock_kind": _as_text(row.get("stock_kind")),
+             "category_source": _as_text(row.get("category_source")),
++            "category_rule_id": _as_text(row.get("category_rule_id")),
++            "category_confidence": _as_text(row.get("category_confidence")),
+             "description": _as_text(row.get("description")),
+             "unit": _as_text(row.get("unit")),
+             "status": _as_text(row.get("status")),
+@@ -696,6 +698,8 @@ async def _iter_normalized_products(
+ 			legacy_category,
+ 			stock_kind,
+ 			category_source,
++            category_rule_id,
++            category_confidence,
+ 			unit,
+ 			status,
+ 			source_table,
+diff --git a/backend/domains/legacy_import/cli.py b/backend/domains/legacy_import/cli.py
+index 5e5750b..0c05311 100644
+--- a/backend/domains/legacy_import/cli.py
++++ b/backend/domains/legacy_import/cli.py
+@@ -17,6 +17,12 @@ from domains.legacy_import.ap_payment_import import (
+     run_ap_payment_import,
+ )
+ from domains.legacy_import.canonical import CanonicalImportResult, run_canonical_import
++from domains.legacy_import.category_review import (
++    ProductCategoryReviewExportResult,
++    ProductCategoryReviewImportResult,
++    export_product_category_review,
++    import_product_category_review,
++)
+ from domains.legacy_import.currency import CurrencyImportResult, run_currency_import
+ from domains.legacy_import.extractor_cleaner import MojibakeCleaner
+ from domains.legacy_import.extractor_detector import EncodingDetector
+@@ -145,6 +151,56 @@ def build_parser() -> argparse.ArgumentParser:
+         default=DEFAULT_TENANT_ID,
+         help="Tenant UUID for review import",
+     )
++    export_category_review_parser = subparsers.add_parser(
++        "export-category-review",
++        help="Export provisional product category assignments to CSV",
++    )
++    export_category_review_parser.add_argument(
++        "--batch-id",
++        required=True,
++        help="Batch identifier to export",
++    )
++    export_category_review_parser.add_argument(
++        "--output",
++        type=Path,
++        required=True,
++        help="CSV path for analyst category review export",
++    )
++    export_category_review_parser.add_argument("--schema", help="Override target raw schema name")
++    export_category_review_parser.add_argument(
++        "--tenant-id",
++        type=_parse_tenant_uuid,
++        default=DEFAULT_TENANT_ID,
++        help="Tenant UUID for category review export",
++    )
++
++    import_category_review_parser = subparsers.add_parser(
++        "import-category-review",
++        help="Import analyst-reviewed category decisions from CSV",
++    )
++    import_category_review_parser.add_argument(
++        "--batch-id",
++        required=True,
++        help="Batch identifier to update",
++    )
++    import_category_review_parser.add_argument(
++        "--input",
++        type=Path,
++        required=True,
++        help="CSV path containing analyst category review decisions",
++    )
++    import_category_review_parser.add_argument(
++        "--approved-by",
++        required=True,
++        help="Operator or analyst identifier recorded on approved overrides",
++    )
++    import_category_review_parser.add_argument("--schema", help="Override target raw schema name")
++    import_category_review_parser.add_argument(
++        "--tenant-id",
++        type=_parse_tenant_uuid,
++        default=DEFAULT_TENANT_ID,
++        help="Tenant UUID for category review import",
++    )
+     currency_parser = subparsers.add_parser(
+         "currency-import",
+         help="Import tbscurrency reference data into app_settings",
+@@ -298,6 +354,29 @@ async def _run_import_product_review(args: argparse.Namespace) -> int:
+     return 0
+ 
+ 
++async def _run_export_category_review(args: argparse.Namespace) -> int:
++    result = await export_product_category_review(
++        batch_id=args.batch_id,
++        output_path=args.output,
++        tenant_id=args.tenant_id,
++        schema_name=args.schema,
++    )
++    _print_product_category_review_export_summary(result)
++    return 0
++
++
++async def _run_import_category_review(args: argparse.Namespace) -> int:
++    result = await import_product_category_review(
++        batch_id=args.batch_id,
++        input_path=args.input,
++        approved_by=args.approved_by,
++        tenant_id=args.tenant_id,
++        schema_name=args.schema,
++    )
++    _print_product_category_review_import_summary(result)
++    return 0
++
++
+ async def _run_currency_import(args: argparse.Namespace) -> int:
+     result = await run_currency_import(
+         batch_id=args.batch_id,
+@@ -482,6 +561,24 @@ def _print_product_mapping_review_import_summary(
+     )
+ 
+ 
++def _print_product_category_review_export_summary(
++    result: ProductCategoryReviewExportResult,
++) -> None:
++    print(
++        f"Exported {result.exported_row_count} category review rows for batch "
++        f"{result.batch_id} to {result.output_path}"
++    )
++
++
++def _print_product_category_review_import_summary(
++    result: ProductCategoryReviewImportResult,
++) -> None:
++    print(
++        f"Imported {result.applied_decision_count} category review decisions for batch "
++        f"{result.batch_id} from {result.input_path}"
++    )
++
++
+ def _print_currency_import_summary(result: CurrencyImportResult) -> None:
+     print(
+         f"Imported {result.currency_count} currencies from {result.source_file.name} "
+@@ -538,6 +635,10 @@ def main(argv: Sequence[str] | None = None) -> int:
+         return asyncio.run(_run_export_product_review(args))
+     if args.command == "import-product-review":
+         return asyncio.run(_run_import_product_review(args))
++    if args.command == "export-category-review":
++        return asyncio.run(_run_export_category_review(args))
++    if args.command == "import-category-review":
++        return asyncio.run(_run_import_category_review(args))
+     if args.command == "currency-import":
+         return asyncio.run(_run_currency_import(args))
+     if args.command == "ap-payment-import":
+diff --git a/backend/domains/legacy_import/normalization.py b/backend/domains/legacy_import/normalization.py
+index 66624b9..7aefd9b 100644
+--- a/backend/domains/legacy_import/normalization.py
++++ b/backend/domains/legacy_import/normalization.py
+@@ -30,6 +30,7 @@ _NON_MERCHANDISE_NAME_TOKENS = (
+     "帳單本",
+     "信封",
+ )
++_BELT_SUPPLIES_NAME_TOKENS = ("現場接頭",)
+ _VARIABLE_SPEED_NAME_TOKENS = ("變速皮帶",)
+ _RIBBED_NAME_TOKENS = ("多溝", "POLY")
+ _TIMING_NAME_TOKENS = (
+@@ -109,7 +110,11 @@ _V_BELT_CODE_PREFIXES = (
+     "MO",
+ )
+ _FLAT_SPECIALTY_CODE_PREFIXES = ("TU", "VT", "LG", "A2LT", "T1", "LLN", "FL", "SE-")
++_BELT_SUPPLIES_CODE_PREFIXES = ("PPPP",)
+ _V_BELT_SERIES_RE = re.compile(r"^(?:[358]V|[ABCDM]O?\d)")
++_CATEGORY_REVIEW_CONFIDENCE_THRESHOLD = Decimal("0.80")
++_MATCHING_NOISE_TOKENS = ("進口",)
++_MATCHING_TEXT_RE = re.compile(r"[^A-Z0-9\u4E00-\u9FFF]+")
+ 
+ 
+ @dataclass(slots=True, frozen=True)
+@@ -122,6 +127,20 @@ class NormalizationBatchResult:
+     inventory_count: int
+ 
+ 
++@dataclass(slots=True, frozen=True)
++class CategoryDerivation:
++    category: str | None
++    source: str
++    rule_id: str
++    confidence: Decimal
++
++
++def _coerce_mapping(record: Mapping[str, object] | object) -> dict[str, object]:
++    if isinstance(record, dict):
++        return record
++    return dict(record)
++
++
+ def deterministic_legacy_uuid(kind: str, *parts: str) -> uuid.UUID:
+     joined = ":".join(part.strip() for part in parts if part and part.strip())
+     if not joined:
+@@ -191,69 +210,221 @@ def _starts_with_any_prefix(text: str, prefixes: tuple[str, ...]) -> bool:
+     return any(text.startswith(prefix) for prefix in prefixes)
+ 
+ 
++def _clean_product_text_for_matching(value: str) -> str:
++    cleaned = _MATCHING_TEXT_RE.sub(" ", value.strip().upper())
++    for token in _MATCHING_NOISE_TOKENS:
++        cleaned = cleaned.replace(token, " ")
++    return " ".join(cleaned.split())
++
++
++def _category_derivation(
++    category: str | None,
++    source: str,
++    rule_id: str,
++    confidence: str,
++) -> CategoryDerivation:
++    return CategoryDerivation(
++        category=category,
++        source=source,
++        rule_id=rule_id,
++        confidence=Decimal(confidence),
++    )
++
++
++def _manual_override_derivation(category: str) -> CategoryDerivation:
++    return _category_derivation(category, "manual_override", "manual-override", "1.00")
++
++
+ def _derive_product_category(
+     legacy_code: str,
+     name: str,
+     *,
+     legacy_category: str | None,
+     stock_kind: str | None,
+-) -> tuple[str | None, str]:
++) -> CategoryDerivation:
+     normalized_stock_kind = _normalize_text(stock_kind)
+     if normalized_stock_kind == "6":
+-        return _NON_MERCHANDISE_CATEGORY, "legacy_stock_kind"
+-
+-    normalized_legacy_category = _normalize_text(legacy_category)
+-    if normalized_legacy_category is not None:
+-        return normalized_legacy_category, "legacy_class"
++        return _category_derivation(
++            _NON_MERCHANDISE_CATEGORY,
++            "exclusion_rule",
++            "stock-kind-non-merchandise",
++            "1.00",
++        )
+ 
+-    combined = f"{legacy_code} {name}".upper()
+     normalized_code = legacy_code.upper()
++    cleaned_name = _clean_product_text_for_matching(name)
++    combined = f"{normalized_code} {cleaned_name}".strip()
+ 
+     if _contains_any_token(combined, _NON_MERCHANDISE_NAME_TOKENS):
+-        return _NON_MERCHANDISE_CATEGORY, "derived_from_code_name"
++        return _category_derivation(
++            _NON_MERCHANDISE_CATEGORY,
++            "exclusion_rule",
++            "name-token-non-merchandise",
++            "0.95",
++        )
+ 
+-    if (
+-        _starts_with_any_prefix(normalized_code, _VARIABLE_SPEED_CODE_PREFIXES)
+-        or _contains_any_token(combined, _VARIABLE_SPEED_NAME_TOKENS)
+-    ):
+-        return "Variable-Speed Belts", "derived_from_code_name"
++    if _starts_with_any_prefix(normalized_code, _BELT_SUPPLIES_CODE_PREFIXES):
++        return _category_derivation(
++            "Belt Supplies",
++            "heuristic_rule",
++            "code-prefix-belt-supplies",
++            "0.98",
++        )
++    if "皮帶" in combined and _contains_any_token(cleaned_name, _BELT_SUPPLIES_NAME_TOKENS):
++        return _category_derivation(
++            "Belt Supplies",
++            "heuristic_rule",
++            "name-token-belt-supplies",
++            "0.90",
++        )
++
++    if _starts_with_any_prefix(normalized_code, _VARIABLE_SPEED_CODE_PREFIXES):
++        return _category_derivation(
++            "Variable-Speed Belts",
++            "heuristic_rule",
++            "code-prefix-variable-speed-belts",
++            "0.98",
++        )
++    if _contains_any_token(combined, _VARIABLE_SPEED_NAME_TOKENS):
++        return _category_derivation(
++            "Variable-Speed Belts",
++            "heuristic_rule",
++            "name-token-variable-speed-belts",
++            "0.90",
++        )
+ 
+     if (
+         _starts_with_any_prefix(normalized_code, _RIBBED_CODE_PREFIXES)
+         or any(token in combined for token in ("-J4", "-J5", "-J6", "-J8"))
+-        or _contains_any_token(combined, _RIBBED_NAME_TOKENS)
+     ):
+-        return "Ribbed Belts", "derived_from_code_name"
++        return _category_derivation(
++            "Ribbed Belts",
++            "heuristic_rule",
++            "code-prefix-ribbed-belts",
++            "0.98",
++        )
++    if _contains_any_token(combined, _RIBBED_NAME_TOKENS):
++        return _category_derivation(
++            "Ribbed Belts",
++            "heuristic_rule",
++            "name-token-ribbed-belts",
++            "0.90",
++        )
+ 
+     if (
+         _starts_with_any_prefix(normalized_code, _TIMING_CODE_PREFIXES)
+-        or _contains_any_token(combined, _TIMING_NAME_TOKENS)
+         or any(token in normalized_code for token in ("5GT", "8GT", "3GT", "14MGT", "RPP", "8YU"))
+         or any(token in combined for token in ("5M-", "8M-", "14M-", "3M-"))
+     ):
+-        return "Timing Belts", "derived_from_code_name"
++        return _category_derivation(
++            "Timing Belts",
++            "heuristic_rule",
++            "code-prefix-timing-belts",
++            "0.98",
++        )
++    if _contains_any_token(combined, _TIMING_NAME_TOKENS):
++        return _category_derivation(
++            "Timing Belts",
++            "heuristic_rule",
++            "name-token-timing-belts",
++            "0.90",
++        )
+ 
+     if (
+         _starts_with_any_prefix(normalized_code, _VEHICLE_CODE_PREFIXES)
+-        or _contains_any_token(combined, _VEHICLE_NAME_TOKENS)
+     ):
+-        return "Vehicle Belts", "derived_from_code_name"
++        return _category_derivation(
++            "Vehicle Belts",
++            "heuristic_rule",
++            "code-prefix-vehicle-belts",
++            "0.98",
++        )
++    if _contains_any_token(combined, _VEHICLE_NAME_TOKENS):
++        return _category_derivation(
++            "Vehicle Belts",
++            "heuristic_rule",
++            "name-token-vehicle-belts",
++            "0.90",
++        )
+ 
+     if (
+         _starts_with_any_prefix(normalized_code, _V_BELT_CODE_PREFIXES)
+         or _V_BELT_SERIES_RE.match(normalized_code) is not None
+-        or _contains_any_token(combined, _V_BELT_NAME_TOKENS)
+-        or any(token in combined for token in ("3V", "5V", "8V"))
+     ):
+-        return "V-Belts", "derived_from_code_name"
++        return _category_derivation(
++            "V-Belts",
++            "heuristic_rule",
++            "code-prefix-v-belts",
++            "0.98",
++        )
++    if _contains_any_token(combined, _V_BELT_NAME_TOKENS) or any(
++        token in combined for token in ("3V", "5V", "8V")
++    ):
++        return _category_derivation(
++            "V-Belts",
++            "heuristic_rule",
++            "name-token-v-belts",
++            "0.90",
++        )
+ 
+     if (
+         _starts_with_any_prefix(normalized_code, _FLAT_SPECIALTY_CODE_PREFIXES)
+-        or _contains_any_token(combined, _FLAT_SPECIALTY_NAME_TOKENS)
+     ):
+-        return "Flat / Specialty Belts", "derived_from_code_name"
++        return _category_derivation(
++            "Flat / Specialty Belts",
++            "heuristic_rule",
++            "code-prefix-flat-specialty-belts",
++            "0.98",
++        )
++    if _contains_any_token(combined, _FLAT_SPECIALTY_NAME_TOKENS):
++        return _category_derivation(
++            "Flat / Specialty Belts",
++            "heuristic_rule",
++            "name-token-flat-specialty-belts",
++            "0.90",
++        )
++
++    return _category_derivation(
++        "Other Power Transmission",
++        "fallback_rule",
++        "fallback-other-power-transmission",
++        "0.40",
++    )
++
++
++def _resolve_product_category(
++    record: Mapping[str, object],
++    *,
++    category_overrides: Mapping[str, dict[str, object]] | None = None,
++) -> CategoryDerivation:
++    legacy_code = str(record.get("legacy_code") or "").strip()
++    name = str(record.get("name") or legacy_code).strip()
++    override = (category_overrides or {}).get(legacy_code)
++    if override:
++        override_category = _normalize_text(override.get("category"))
++        if override_category:
++            return _manual_override_derivation(override_category)
++
++    legacy_category = _normalize_text(record.get("legacy_category"))
++    stock_kind = _normalize_text(record.get("stock_kind"))
++    return _derive_product_category(
++        legacy_code,
++        name,
++        legacy_category=legacy_category,
++        stock_kind=stock_kind,
++    )
+ 
+-    return "Other Power Transmission", "derived_from_code_name"
++
++def _review_reason_for_derivation(derivation: CategoryDerivation) -> str | None:
++    if derivation.source == "manual_override":
++        return None
++    if derivation.source == "fallback_rule":
++        return "fallback_assignment"
++    if derivation.source == "exclusion_rule":
++        return "excluded_path"
++    if derivation.confidence < _CATEGORY_REVIEW_CONFIDENCE_THRESHOLD:
++        return "low_confidence"
++    return None
+ 
+ 
+ def normalize_party_record(
+@@ -304,6 +475,8 @@ def _normalize_product_record(
+     record: Mapping[str, object],
+     batch_id: str,
+     tenant_id: uuid.UUID,
++    *,
++    category_derivation: CategoryDerivation | None = None,
+ ) -> tuple:
+     legacy_code = str(record.get("legacy_code") or "").strip()
+     if not legacy_code:
+@@ -312,12 +485,8 @@ def _normalize_product_record(
+     name = str(record.get("name") or legacy_code).strip()
+     legacy_category = _normalize_text(record.get("legacy_category"))
+     stock_kind = _normalize_text(record.get("stock_kind"))
+-    category, category_source = _derive_product_category(
+-        legacy_code,
+-        name,
+-        legacy_category=legacy_category,
+-        stock_kind=stock_kind,
+-    )
++    if category_derivation is None:
++        category_derivation = _resolve_product_category(record)
+     supplier_code = _normalize_text(record.get("supplier_code"))
+     supplier_id = (
+         deterministic_legacy_uuid("party", "supplier", supplier_code) if supplier_code else None
+@@ -328,10 +497,12 @@ def _normalize_product_record(
+         deterministic_legacy_uuid("product", legacy_code),
+         legacy_code,
+         name,
+-        category,
++        category_derivation.category,
+         legacy_category,
+         stock_kind,
+-        category_source,
++        category_derivation.source,
++        category_derivation.rule_id,
++        category_derivation.confidence,
+         supplier_code,
+         supplier_id,
+         _normalize_text(record.get("origin")),
+@@ -415,8 +586,76 @@ def _normalize_inventory_record(
+     )
+ 
+ 
++async def _fetch_category_overrides(
++    connection,
++    schema_name: str,
++    tenant_id: uuid.UUID,
++) -> dict[str, dict[str, object]]:
++    quoted_schema = _quoted_identifier(schema_name)
++    rows = await connection.fetch(
++        f"""
++        SELECT legacy_code, category, review_notes, approval_source, approved_by, approved_at
++        FROM {quoted_schema}.product_category_override
++        WHERE tenant_id = $1
++        """,
++        tenant_id,
++    )
++    return {
++        str(_coerce_mapping(row)["legacy_code"]): _coerce_mapping(row)
++        for row in rows
++        if str(_coerce_mapping(row).get("legacy_code") or "").strip()
++    }
++
++
++async def _replace_product_category_review_candidates(
++    connection,
++    schema_name: str,
++    batch_id: str,
++    tenant_id: uuid.UUID,
++    review_candidates: tuple[tuple[object, ...], ...],
++) -> None:
++    quoted_schema = _quoted_identifier(schema_name)
++    for review_candidate in review_candidates:
++        await connection.execute(
++            f"""
++            INSERT INTO {quoted_schema}.product_category_review_candidates (
++                tenant_id,
++                batch_id,
++                legacy_code,
++                name,
++                legacy_category,
++                stock_kind,
++                current_category,
++                category_source,
++                category_rule_id,
++                category_confidence,
++                review_reason,
++                source_table,
++                source_row_number
++            )
++            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
++            ON CONFLICT (tenant_id, batch_id, legacy_code) DO UPDATE SET
++                name = EXCLUDED.name,
++                legacy_category = EXCLUDED.legacy_category,
++                stock_kind = EXCLUDED.stock_kind,
++                current_category = EXCLUDED.current_category,
++                category_source = EXCLUDED.category_source,
++                category_rule_id = EXCLUDED.category_rule_id,
++                category_confidence = EXCLUDED.category_confidence,
++                review_reason = EXCLUDED.review_reason,
++                source_table = EXCLUDED.source_table,
++                source_row_number = EXCLUDED.source_row_number,
++                updated_at = NOW()
++            """,
++            tenant_id,
++            batch_id,
++            *review_candidate,
++        )
++
++
+ async def _ensure_normalized_tables(connection, schema_name: str) -> None:
+     quoted_schema = _quoted_identifier(schema_name)
++    quoted_products = _quoted_identifier("normalized_products")
+     await connection.execute(
+         f"""
+ 		CREATE TABLE IF NOT EXISTS {quoted_schema}.normalized_parties (
+@@ -469,6 +708,12 @@ async def _ensure_normalized_tables(connection, schema_name: str) -> None:
+ 		)
+ 		"""
+     )
++    await connection.execute(
++        f"ALTER TABLE {quoted_schema}.{quoted_products} ADD COLUMN IF NOT EXISTS category_rule_id TEXT"
++    )
++    await connection.execute(
++        f"ALTER TABLE {quoted_schema}.{quoted_products} ADD COLUMN IF NOT EXISTS category_confidence NUMERIC(5, 2)"
++    )
+     await connection.execute(
+         f"""
+ 		CREATE TABLE IF NOT EXISTS {quoted_schema}.normalized_warehouses (
+@@ -514,6 +759,7 @@ async def _clear_batch_rows(
+ ) -> None:
+     quoted_schema = _quoted_identifier(schema_name)
+     for table_name in (
++        "product_category_review_candidates",
+         "normalized_inventory_prep",
+         "normalized_warehouses",
+         "normalized_products",
+@@ -604,6 +850,12 @@ async def run_normalization(
+             if not product_rows:
+                 raise ValueError(f"No staged tbsstock rows found for batch {batch_id}")
+ 
++            category_overrides = await _fetch_category_overrides(
++                connection,
++                resolved_schema,
++                tenant_id,
++            )
++
+             inventory_rows = await _fetch_stage_rows(
+                 connection,
+                 resolved_schema,
+@@ -620,9 +872,38 @@ async def run_normalization(
+                 raise ValueError(f"No staged tbsstkhouse rows found for batch {batch_id}")
+ 
+             party_records = [normalize_party_record(row, batch_id, tenant_id) for row in party_rows]
+-            product_records = [
+-                _normalize_product_record(row, batch_id, tenant_id) for row in product_rows
+-            ]
++            product_records: list[tuple] = []
++            product_review_candidates: list[tuple[object, ...]] = []
++            for row in product_rows:
++                category_derivation = _resolve_product_category(
++                    row,
++                    category_overrides=category_overrides,
++                )
++                product_records.append(
++                    _normalize_product_record(
++                        row,
++                        batch_id,
++                        tenant_id,
++                        category_derivation=category_derivation,
++                    )
++                )
++                review_reason = _review_reason_for_derivation(category_derivation)
++                if review_reason is not None:
++                    product_review_candidates.append(
++                        (
++                            str(row.get("legacy_code") or "").strip(),
++                            str(row.get("name") or "").strip(),
++                            _normalize_text(row.get("legacy_category")),
++                            _normalize_text(row.get("stock_kind")),
++                            category_derivation.category,
++                            category_derivation.source,
++                            category_derivation.rule_id,
++                            category_derivation.confidence,
++                            review_reason,
++                            "tbsstock",
++                            int(row.get("source_row_number") or 0),
++                        )
++                    )
+             warehouse_records = _normalized_warehouse_records(
+                 inventory_rows,
+                 batch_id,
+@@ -633,6 +914,13 @@ async def run_normalization(
+             ]
+ 
+             await _clear_batch_rows(connection, resolved_schema, batch_id, tenant_id)
++            await _replace_product_category_review_candidates(
++                connection,
++                resolved_schema,
++                batch_id,
++                tenant_id,
++                tuple(product_review_candidates),
++            )
+ 
+             await connection.copy_records_to_table(
+                 "normalized_parties",
+@@ -673,6 +961,8 @@ async def run_normalization(
+                     "legacy_category",
+                     "stock_kind",
+                     "category_source",
++                    "category_rule_id",
++                    "category_confidence",
+                     "supplier_legacy_code",
+                     "supplier_deterministic_id",
+                     "origin",
+diff --git a/backend/domains/legacy_import/validation.py b/backend/domains/legacy_import/validation.py
+index a9a8f5d..b1b0494 100644
+--- a/backend/domains/legacy_import/validation.py
++++ b/backend/domains/legacy_import/validation.py
+@@ -42,6 +42,26 @@ class ProductMappingValidationSummary:
+     orphan_row_count: int
+ 
+ 
++@dataclass(slots=True, frozen=True)
++class ProductCategoryReviewCandidate:
++    legacy_code: str
++    name: str
++    current_category: str
++    category_source: str
++    category_rule_id: str
++    category_confidence: str
++    review_reason: str
++
++
++@dataclass(slots=True, frozen=True)
++class ProductCategoryReviewSummary:
++    candidate_count: int
++    fallback_count: int
++    low_confidence_count: int
++    excluded_count: int
++    candidates: tuple[ProductCategoryReviewCandidate, ...]
++
++
+ @dataclass(slots=True, frozen=True)
+ class ValidationStageFailure:
+     stage_name: str
+@@ -123,6 +143,7 @@ class MigrationValidationReport:
+     epic13_handoff: dict[str, object]
+     counts: dict[str, int] | None = None
+     snapshot_coverage: LegacyHeaderSnapshotCoverage | None = None
++    category_review_summary: ProductCategoryReviewSummary | None = None
+ 
+     def to_dict(self) -> dict[str, object]:
+         return {
+@@ -139,6 +160,11 @@ class MigrationValidationReport:
+             "snapshot_coverage": (
+                 asdict(self.snapshot_coverage) if self.snapshot_coverage is not None else None
+             ),
++            "category_review_summary": (
++                asdict(self.category_review_summary)
++                if self.category_review_summary is not None
++                else None
++            ),
+             "issues": [
+                 {
+                     "code": issue.code,
+@@ -193,6 +219,7 @@ def _derive_scope_key(
+     mapping_summary: ProductMappingValidationSummary,
+     failed_stages: tuple[ValidationStageFailure, ...],
+     counts: Mapping[str, int],
++    category_review_summary: ProductCategoryReviewSummary | None,
+ ) -> str:
+     payload = {
+         "tenant_id": str(tenant_id),
+@@ -207,6 +234,24 @@ def _derive_scope_key(
+             for row in stage_rows
+         ],
+         "mapping_summary": asdict(mapping_summary),
++        "category_review_summary": (
++            {
++                "candidate_count": category_review_summary.candidate_count,
++                "fallback_count": category_review_summary.fallback_count,
++                "low_confidence_count": category_review_summary.low_confidence_count,
++                "excluded_count": category_review_summary.excluded_count,
++                "candidates": [
++                    {
++                        "legacy_code": candidate.legacy_code,
++                        "current_category": candidate.current_category,
++                        "review_reason": candidate.review_reason,
++                    }
++                    for candidate in category_review_summary.candidates
++                ],
++            }
++            if category_review_summary is not None
++            else None
++        ),
+         "failed_stages": [asdict(stage) for stage in failed_stages],
+         "counts": dict(sorted(counts.items())),
+     }
+@@ -227,6 +272,7 @@ def build_validation_report(
+     cutoff_date: str | None,
+     previous_scope_run: Mapping[str, object] | None,
+     snapshot_coverage: LegacyHeaderSnapshotCoverage | None = None,
++    category_review_summary: ProductCategoryReviewSummary | None = None,
+ ) -> MigrationValidationReport:
+     issues: list[MigrationValidationIssue] = []
+     for row in stage_rows:
+@@ -315,6 +361,24 @@ def build_validation_report(
+             )
+         )
+ 
++    if category_review_summary is not None and category_review_summary.candidate_count > 0:
++        issues.append(
++            MigrationValidationIssue(
++                code="provisional-category-assignments",
++                severity=2,
++                message=(
++                    f"{category_review_summary.candidate_count} products still carry provisional "
++                    "family categories pending review."
++                ),
++                details={
++                    "candidate_count": category_review_summary.candidate_count,
++                    "fallback_count": category_review_summary.fallback_count,
++                    "low_confidence_count": category_review_summary.low_confidence_count,
++                    "excluded_count": category_review_summary.excluded_count,
++                },
++            )
++        )
++
+     issues.sort(key=lambda issue: (issue.severity, issue.code, issue.message))
+     blocking_issue_count = sum(1 for issue in issues if issue.blocking)
+     status = "blocked" if blocking_issue_count else ("warning" if issues else "clean")
+@@ -326,6 +390,7 @@ def build_validation_report(
+         mapping_summary=mapping_summary,
+         failed_stages=failed_stages,
+         counts=counts,
++        category_review_summary=category_review_summary,
+     )
+     previous_scope_payload = _coerce_row(previous_scope_run)
+     if previous_scope_payload:
+@@ -390,6 +455,7 @@ def build_validation_report(
+         epic13_handoff=epic13_handoff,
+         counts=dict(counts),
+         snapshot_coverage=snapshot_coverage,
++        category_review_summary=category_review_summary,
+     )
+ 
+ 
+@@ -436,6 +502,24 @@ def render_validation_markdown(report: MigrationValidationReport) -> str:
+             f"{report.snapshot_coverage.supplier_invoice_count}, "
+             f"missing={report.snapshot_coverage.missing_snapshot_count}"
+         )
++    lines.extend(["", "## Category Review", ""])
++    if report.category_review_summary is None or report.category_review_summary.candidate_count == 0:
++        lines.append("- No provisional category assignments detected.")
++    else:
++        lines.append(
++            "- "
++            f"candidates={report.category_review_summary.candidate_count}, "
++            f"fallback={report.category_review_summary.fallback_count}, "
++            f"low_confidence={report.category_review_summary.low_confidence_count}, "
++            f"excluded={report.category_review_summary.excluded_count}"
++        )
++        for candidate in report.category_review_summary.candidates:
++            lines.append(
++                "- "
++                f"{candidate.legacy_code}: {candidate.current_category} "
++                f"({candidate.review_reason}, source={candidate.category_source}, "
++                f"rule={candidate.category_rule_id}, confidence={candidate.category_confidence})"
++            )
+     lines.extend(["", "## Discrepancies", ""])
+     if not report.issues:
+         lines.append("- No discrepancies detected.")
+@@ -647,6 +731,51 @@ async def _fetch_product_mapping_summary(
+     )
+ 
+ 
++async def _fetch_product_category_review_summary(
++    connection,
++    schema_name: str,
++    tenant_id: uuid.UUID,
++    batch_id: str,
++) -> ProductCategoryReviewSummary:
++    quoted_schema = _quoted_identifier(schema_name)
++    rows = await connection.fetch(
++        f"""
++		SELECT
++			legacy_code,
++			name,
++			current_category,
++			category_source,
++			category_rule_id,
++			category_confidence,
++			review_reason
++		FROM {quoted_schema}.product_category_review_candidates
++		WHERE tenant_id = $1 AND batch_id = $2
++		ORDER BY review_reason, legacy_code
++		""",
++        tenant_id,
++        batch_id,
++    )
++    candidates = tuple(
++        ProductCategoryReviewCandidate(
++            legacy_code=_as_text(payload.get("legacy_code")),
++            name=_as_text(payload.get("name")),
++            current_category=_as_text(payload.get("current_category")),
++            category_source=_as_text(payload.get("category_source")),
++            category_rule_id=_as_text(payload.get("category_rule_id")),
++            category_confidence=_as_text(payload.get("category_confidence")),
++            review_reason=_as_text(payload.get("review_reason")),
++        )
++        for payload in (_coerce_row(row) for row in rows)
++    )
++    return ProductCategoryReviewSummary(
++        candidate_count=len(candidates),
++        fallback_count=sum(1 for candidate in candidates if candidate.review_reason == "fallback_assignment"),
++        low_confidence_count=sum(1 for candidate in candidates if candidate.review_reason == "low_confidence"),
++        excluded_count=sum(1 for candidate in candidates if candidate.review_reason == "excluded_path"),
++        candidates=candidates,
++    )
++
++
+ async def _fetch_cutoff_date(connection, schema_name: str, batch_id: str) -> str | None:
+     quoted_schema = _quoted_identifier(schema_name)
+     rows = await connection.fetch(
+@@ -740,6 +869,8 @@ def _merge_summary_payload(
+     merged["epic13_handoff"] = report.epic13_handoff
+     if report.snapshot_coverage is not None:
+         merged["legacy_header_snapshot_coverage"] = asdict(report.snapshot_coverage)
++    if report.category_review_summary is not None:
++        merged["category_review_summary"] = asdict(report.category_review_summary)
+     return merged
+ 
+ 
+@@ -865,6 +996,12 @@ async def validate_import_batch(
+             tenant_id,
+             batch_id,
+         )
++        category_review_summary = await _fetch_product_category_review_summary(
++            connection,
++            resolved_schema,
++            tenant_id,
++            batch_id,
++        )
+         cutoff_date = await _fetch_cutoff_date(connection, resolved_schema, batch_id)
+         scope_key = _derive_scope_key(
+             tenant_id=tenant_id,
+@@ -874,6 +1011,7 @@ async def validate_import_batch(
+             mapping_summary=mapping_summary,
+             failed_stages=failed_stages,
+             counts=counts,
++            category_review_summary=category_review_summary,
+         )
+         previous_scope_run = await _fetch_previous_scope_run(
+             connection,
+@@ -890,10 +1028,20 @@ async def validate_import_batch(
+             stage_rows=stage_rows,
+             mapping_summary=mapping_summary,
+             failed_stages=failed_stages,
+-            counts={**counts, **snapshot_coverage.to_counts()},
++            counts={
++                **counts,
++                **snapshot_coverage.to_counts(),
++                "category_review_candidate_count": category_review_summary.candidate_count,
++                "category_review_fallback_count": category_review_summary.fallback_count,
++                "category_review_low_confidence_count": (
++                    category_review_summary.low_confidence_count
++                ),
++                "category_review_excluded_count": category_review_summary.excluded_count,
++            },
+             cutoff_date=cutoff_date,
+             previous_scope_run=previous_scope_run,
+             snapshot_coverage=snapshot_coverage,
++            category_review_summary=category_review_summary,
+         )
+         json_path, markdown_path = _artifact_paths_for_report(report, output_dir=output_dir)
+         temp_json_path = json_path.with_suffix(f"{json_path.suffix}.tmp")
+diff --git a/backend/tests/domains/intelligence/test_service.py b/backend/tests/domains/intelligence/test_service.py
+index 4deaa4a..860647a 100644
+--- a/backend/tests/domains/intelligence/test_service.py
++++ b/backend/tests/domains/intelligence/test_service.py
+@@ -5,10 +5,12 @@ from __future__ import annotations
+ import uuid
+ from datetime import UTC, datetime, timedelta
+ from decimal import Decimal
++from itertools import count
+ from unittest.mock import AsyncMock, patch
+ 
+ import pytest
+ import pytest_asyncio
++from sqlalchemy import select
+ from sqlalchemy.ext.asyncio import AsyncSession
+ 
+ from common.database import AsyncSessionLocal, engine
+@@ -21,13 +23,29 @@ from domains.intelligence.schemas import CategoryTrend, CategoryTrends
+ from domains.intelligence.service import (
+     get_category_trends,
+     get_customer_product_profile,
+-    get_market_opportunities,
+     get_customer_risk_signals,
+-    get_prospect_gaps,
++    get_market_opportunities,
+     get_product_affinity_map,
++    get_prospect_gaps,
+ )
+ 
+ TENANT = DEFAULT_TENANT_ID
++_BUSINESS_NUMBER_COUNTER = count(10_000_000)
++
++
++async def _next_business_number(session: AsyncSession, tenant_id: uuid.UUID) -> str:
++    while True:
++        candidate = f"{next(_BUSINESS_NUMBER_COUNTER):08d}"
++        existing_customer_id = await session.scalar(
++            select(Customer.id)
++            .where(
++                Customer.tenant_id == tenant_id,
++                Customer.normalized_business_number == candidate,
++            )
++            .limit(1)
++        )
++        if existing_customer_id is None:
++            return candidate
+ 
+ 
+ @pytest_asyncio.fixture
+@@ -51,7 +69,7 @@ async def _create_customer_for_tenant(
+         id=uuid.uuid4(),
+         tenant_id=tenant_id,
+         company_name=company_name,
+-        normalized_business_number=f"{uuid.uuid4().int % 10**8:08d}",
++        normalized_business_number=await _next_business_number(session, tenant_id),
+         billing_address="Taipei",
+         contact_name="Owner",
+         contact_phone="0912345678",
+@@ -337,11 +355,12 @@ async def test_get_product_affinity_map_is_tenant_isolated(db_session: AsyncSess
+         tenant_id=tenant_id,
+     )
+ 
++    tenant_b_business_number = await _next_business_number(db_session, other_tenant)
+     tenant_b_customer = Customer(
+         id=uuid.uuid4(),
+         tenant_id=other_tenant,
+         company_name="Tenant B",
+-        normalized_business_number=f"{uuid.uuid4().int % 10**8:08d}",
++        normalized_business_number=tenant_b_business_number,
+         billing_address="Kaohsiung",
+         contact_name="Owner",
+         contact_phone="0911222333",
+@@ -455,6 +474,134 @@ async def test_get_product_affinity_map_returns_empty_without_orders(db_session:
+     assert affinity_map.limit == 5
+ 
+ 
++@pytest.mark.asyncio
++async def test_get_product_affinity_map_orders_near_ties_by_rounded_score_then_shared_customers(
++    db_session: AsyncSession,
++) -> None:
++    tenant_id = uuid.uuid4()
++    now = datetime.now(tz=UTC)
++    pair_one_a = await _create_product_for_tenant(db_session, "Pair One A", "Office", tenant_id)
++    pair_one_b = await _create_product_for_tenant(db_session, "Pair One B", "Office", tenant_id)
++    pair_two_a = await _create_product_for_tenant(db_session, "Pair Two A", "Office", tenant_id)
++    pair_two_b = await _create_product_for_tenant(db_session, "Pair Two B", "Office", tenant_id)
++
++    async def seed_pair(
++        prefix: str,
++        product_a: Product,
++        product_b: Product,
++        *,
++        shared_count: int,
++        a_only_count: int,
++        b_only_count: int,
++    ) -> None:
++        for index in range(shared_count):
++            customer = await _create_customer_for_tenant(db_session, f"{prefix} Shared {index}", tenant_id)
++            await _create_order(
++                db_session,
++                customer=customer,
++                created_at=now - timedelta(days=10),
++                status="confirmed",
++                lines=[(product_a, Decimal("10.00")), (product_b, Decimal("10.00"))],
++                tenant_id=tenant_id,
++            )
++        for index in range(a_only_count):
++            customer = await _create_customer_for_tenant(db_session, f"{prefix} A Only {index}", tenant_id)
++            await _create_order(
++                db_session,
++                customer=customer,
++                created_at=now - timedelta(days=9),
++                status="confirmed",
++                lines=[(product_a, Decimal("10.00"))],
++                tenant_id=tenant_id,
++            )
++        for index in range(b_only_count):
++            customer = await _create_customer_for_tenant(db_session, f"{prefix} B Only {index}", tenant_id)
++            await _create_order(
++                db_session,
++                customer=customer,
++                created_at=now - timedelta(days=8),
++                status="confirmed",
++                lines=[(product_b, Decimal("10.00"))],
++                tenant_id=tenant_id,
++            )
++
++    await seed_pair(
++        "Pair One",
++        pair_one_a,
++        pair_one_b,
++        shared_count=100,
++        a_only_count=98,
++        b_only_count=99,
++    )
++    await seed_pair(
++        "Pair Two",
++        pair_two_a,
++        pair_two_b,
++        shared_count=101,
++        a_only_count=99,
++        b_only_count=100,
++    )
++    await db_session.commit()
++
++    affinity_map = await get_product_affinity_map(db_session, tenant_id, min_shared=1, limit=1)
++
++    assert affinity_map.total == 2
++    assert len(affinity_map.pairs) == 1
++    top_pair = affinity_map.pairs[0]
++    assert {top_pair.product_a_name, top_pair.product_b_name} == {"Pair Two A", "Pair Two B"}
++    assert top_pair.shared_customer_count == 101
++    assert top_pair.affinity_score == pytest.approx(0.3367, abs=0.0001)
++
++
++@pytest.mark.asyncio
++async def test_get_product_affinity_map_emits_half_up_affinity_scores_at_rounding_boundaries(
++    db_session: AsyncSession,
++) -> None:
++    tenant_id = uuid.uuid4()
++    now = datetime.now(tz=UTC)
++    product_a = await _create_product_for_tenant(db_session, "Boundary A", "Office", tenant_id)
++    product_b = await _create_product_for_tenant(db_session, "Boundary B", "Office", tenant_id)
++
++    for index in range(1333):
++        customer = await _create_customer_for_tenant(db_session, f"Boundary Shared {index}", tenant_id)
++        await _create_order(
++            db_session,
++            customer=customer,
++            created_at=now - timedelta(days=10),
++            status="confirmed",
++            lines=[(product_a, Decimal("10.00")), (product_b, Decimal("10.00"))],
++            tenant_id=tenant_id,
++        )
++    for index in range(1333):
++        customer = await _create_customer_for_tenant(db_session, f"Boundary A Only {index}", tenant_id)
++        await _create_order(
++            db_session,
++            customer=customer,
++            created_at=now - timedelta(days=9),
++            status="confirmed",
++            lines=[(product_a, Decimal("10.00"))],
++            tenant_id=tenant_id,
++        )
++    for index in range(1334):
++        customer = await _create_customer_for_tenant(db_session, f"Boundary B Only {index}", tenant_id)
++        await _create_order(
++            db_session,
++            customer=customer,
++            created_at=now - timedelta(days=8),
++            status="confirmed",
++            lines=[(product_b, Decimal("10.00"))],
++            tenant_id=tenant_id,
++        )
++    await db_session.commit()
++
++    affinity_map = await get_product_affinity_map(db_session, tenant_id, min_shared=1, limit=10)
++
++    assert affinity_map.total == 1
++    assert len(affinity_map.pairs) == 1
++    assert affinity_map.pairs[0].shared_customer_count == 1333
++    assert affinity_map.pairs[0].affinity_score == pytest.approx(0.3333, abs=0.0001)
++
++
+ @pytest.mark.asyncio
+ async def test_get_category_trends_returns_ranked_period_metrics(db_session: AsyncSession) -> None:
+     tenant_id = uuid.uuid4()
+@@ -543,6 +690,38 @@ async def test_get_category_trends_returns_ranked_period_metrics(db_session: Asy
+     assert displays.trend == "stable"
+ 
+ 
++@pytest.mark.asyncio
++async def test_get_category_trends_excludes_non_merchandise_rows(db_session: AsyncSession) -> None:
++    tenant_id = uuid.uuid4()
++    now = datetime.now(tz=UTC)
++    customer = await _create_customer_for_tenant(db_session, "Belt Buyer", tenant_id)
++    belt_product = await _create_product_for_tenant(db_session, "Drive Belt", "V-Belts", tenant_id)
++    freight_product = await _create_product_for_tenant(
++        db_session,
++        "Freight Charge",
++        "Non-Merchandise",
++        tenant_id,
++    )
++
++    await _create_order(
++        db_session,
++        customer=customer,
++        created_at=now - timedelta(days=7),
++        status="confirmed",
++        lines=[
++            (belt_product, Decimal("120.00")),
++            (freight_product, Decimal("15.00")),
++        ],
++        tenant_id=tenant_id,
++    )
++    await db_session.commit()
++
++    trends = await get_category_trends(db_session, tenant_id, period="last_30d")
++
++    assert [trend.category for trend in trends.trends] == ["V-Belts"]
++    assert trends.trends[0].current_period_revenue == Decimal("120.00")
++
++
+ @pytest.mark.asyncio
+ async def test_get_category_trends_excludes_future_rows_and_ranks_newly_active_by_current_revenue(
+     db_session: AsyncSession,
+@@ -1139,6 +1318,61 @@ async def test_get_market_opportunities_emits_concentration_and_growth_signals(d
+     assert opportunities.signals[2].source_period == "last_90d"
+ 
+ 
++@pytest.mark.asyncio
++async def test_get_market_opportunities_counts_zero_value_customers_in_support_counts(
++    db_session: AsyncSession,
++) -> None:
++    tenant_id = uuid.uuid4()
++    now = datetime.now(tz=UTC)
++    major = await _create_customer_for_tenant(db_session, "Anchor Account", tenant_id)
++    zero_value = await _create_customer_for_tenant(db_session, "Discounted Account", tenant_id)
++    electronics = await _create_product_for_tenant(db_session, "LED Panel", "Electronics", tenant_id)
++
++    await _create_order(
++        db_session,
++        customer=major,
++        created_at=now - timedelta(days=12),
++        status="confirmed",
++        lines=[(electronics, Decimal("600.00"))],
++        tenant_id=tenant_id,
++    )
++    await _create_order(
++        db_session,
++        customer=zero_value,
++        created_at=now - timedelta(days=11),
++        status="confirmed",
++        lines=[(electronics, Decimal("0.00"))],
++        tenant_id=tenant_id,
++    )
++    await _create_order(
++        db_session,
++        customer=major,
++        created_at=now - timedelta(days=120),
++        status="confirmed",
++        lines=[(electronics, Decimal("200.00"))],
++        tenant_id=tenant_id,
++    )
++    await _create_order(
++        db_session,
++        customer=zero_value,
++        created_at=now - timedelta(days=118),
++        status="confirmed",
++        lines=[(electronics, Decimal("0.00"))],
++        tenant_id=tenant_id,
++    )
++    await db_session.commit()
++
++    opportunities = await get_market_opportunities(db_session, tenant_id, period="last_90d")
++
++    concentration_signal = next(
++        signal for signal in opportunities.signals if signal.signal_type == "concentration_risk"
++    )
++    assert concentration_signal.support_counts == {
++        "customers_considered": 2,
++        "prior_customers_considered": 2,
++    }
++
++
+ @pytest.mark.asyncio
+ async def test_get_market_opportunities_returns_empty_for_zero_revenue_tenant(db_session: AsyncSession) -> None:
+     tenant_id = uuid.uuid4()
+diff --git a/backend/tests/domains/legacy_import/test_canonical.py b/backend/tests/domains/legacy_import/test_canonical.py
+index f16d50c..ca0a349 100644
+--- a/backend/tests/domains/legacy_import/test_canonical.py
++++ b/backend/tests/domains/legacy_import/test_canonical.py
+@@ -169,7 +169,9 @@ def test_build_product_master_snapshot_preserves_category_provenance() -> None:
+             "category": "V-Belts",
+             "legacy_category": None,
+             "stock_kind": "0",
+-            "category_source": "derived_from_code_name",
++            "category_source": "heuristic_rule",
++            "category_rule_id": "code-prefix-v-belts",
++            "category_confidence": "0.98",
+             "unit": "條",
+             "status": "A",
+             "source_table": "tbsstock",
+@@ -182,7 +184,9 @@ def test_build_product_master_snapshot_preserves_category_provenance() -> None:
+         "name": "三角皮帶 C-96",
+         "category": "V-Belts",
+         "stock_kind": "0",
+-        "category_source": "derived_from_code_name",
++        "category_source": "heuristic_rule",
++        "category_rule_id": "code-prefix-v-belts",
++        "category_confidence": "0.98",
+         "unit": "條",
+         "status": "A",
+         "source_table": "tbsstock",
+@@ -335,8 +339,15 @@ async def test_run_canonical_import_orders_dependencies_and_holding(
+                     "legacy_code": "P001",
+                     "name": "Widget",
+                     "category": "BELT",
++                    "legacy_category": "Legacy Belt",
++                    "stock_kind": "0",
++                    "category_source": "manual_override",
++                    "category_rule_id": "manual-override",
++                    "category_confidence": "1.00",
+                     "unit": "pcs",
+                     "status": "A",
++                    "source_table": "tbsstock",
++                    "source_row_number": 12,
+                     "deterministic_id": deterministic_legacy_uuid("product", "P001"),
+                 },
+                 {
+@@ -514,6 +525,10 @@ async def test_run_canonical_import_orders_dependencies_and_holding(
+     assert customer_snapshot["legacy_code"] == "C001"
+     assert supplier_snapshot["role"] == "supplier"
+     assert product_snapshot["legacy_code"] == "P001"
++    assert product_snapshot["legacy_category"] == "Legacy Belt"
++    assert product_snapshot["category_source"] == "manual_override"
++    assert product_snapshot["category_rule_id"] == "manual-override"
++    assert product_snapshot["category_confidence"] == "1.00"
+     assert order_snapshot["source_table"] == "tbsslipx"
+     assert order_snapshot["legacy_doc_number"] == "1130826001"
+     assert invoice_snapshot["customer_code"] == "C001"
+diff --git a/backend/tests/domains/legacy_import/test_cli.py b/backend/tests/domains/legacy_import/test_cli.py
+index ab81d72..084b3e8 100644
+--- a/backend/tests/domains/legacy_import/test_cli.py
++++ b/backend/tests/domains/legacy_import/test_cli.py
+@@ -6,6 +6,10 @@ import pytest
+ 
+ from domains.legacy_import import cli
+ from domains.legacy_import.ap_payment_import import SupplierPaymentImportResult
++from domains.legacy_import.category_review import (
++    ProductCategoryReviewExportResult,
++    ProductCategoryReviewImportResult,
++)
+ from domains.legacy_import.currency import CurrencyImportResult
+ from domains.legacy_import.mapping import (
+     ProductMappingBatchResult,
+@@ -149,6 +153,75 @@ def test_import_product_review_cli_invokes_import(monkeypatch, capsys, tmp_path:
+     assert "Imported 2 review decisions" in output
+ 
+ 
++def test_export_category_review_cli_invokes_export(monkeypatch, capsys, tmp_path: Path) -> None:
++    output_path = tmp_path / "category-review.csv"
++
++    async def fake_export_product_category_review(**kwargs):
++        assert kwargs["batch_id"] == "batch-003"
++        assert kwargs["output_path"] == output_path
++        assert kwargs["schema_name"] is None
++        return ProductCategoryReviewExportResult(
++            batch_id="batch-003",
++            schema_name="raw_legacy",
++            output_path=output_path,
++            exported_row_count=3,
++        )
++
++    monkeypatch.setattr(
++        cli,
++        "export_product_category_review",
++        fake_export_product_category_review,
++        raising=False,
++    )
++
++    result = cli.main(
++        ["export-category-review", "--batch-id", "batch-003", "--output", str(output_path)]
++    )
++    output = capsys.readouterr().out
++
++    assert result == 0
++    assert "Exported 3 category review rows" in output
++
++
++def test_import_category_review_cli_invokes_import(monkeypatch, capsys, tmp_path: Path) -> None:
++    input_path = tmp_path / "category-review.csv"
++
++    async def fake_import_product_category_review(**kwargs):
++        assert kwargs["batch_id"] == "batch-003"
++        assert kwargs["input_path"] == input_path
++        assert kwargs["approved_by"] == "analyst@example.com"
++        assert kwargs["schema_name"] is None
++        return ProductCategoryReviewImportResult(
++            batch_id="batch-003",
++            schema_name="raw_legacy",
++            input_path=input_path,
++            applied_decision_count=2,
++        )
++
++    monkeypatch.setattr(
++        cli,
++        "import_product_category_review",
++        fake_import_product_category_review,
++        raising=False,
++    )
++
++    result = cli.main(
++        [
++            "import-category-review",
++            "--batch-id",
++            "batch-003",
++            "--input",
++            str(input_path),
++            "--approved-by",
++            "analyst@example.com",
++        ]
++    )
++    output = capsys.readouterr().out
++
++    assert result == 0
++    assert "Imported 2 category review decisions" in output
++
++
+ def test_currency_import_cli_invokes_import(monkeypatch, capsys, tmp_path: Path) -> None:
+     async def fake_run_currency_import(**kwargs):
+         assert kwargs["batch_id"] == "currency-settings"
+diff --git a/backend/tests/domains/legacy_import/test_normalization.py b/backend/tests/domains/legacy_import/test_normalization.py
+index 74521d2..943c9db 100644
+--- a/backend/tests/domains/legacy_import/test_normalization.py
++++ b/backend/tests/domains/legacy_import/test_normalization.py
+@@ -2,6 +2,7 @@ from __future__ import annotations
+ 
+ import uuid
+ from datetime import date
++from decimal import Decimal
+ 
+ import pytest
+ 
+@@ -47,10 +48,12 @@ class FakeNormalizationConnection:
+         self.execute_calls.append((query, args))
+         return "OK"
+ 
+-    async def fetch(self, query: str, batch_id: str):
++    async def fetch(self, query: str, *args: object):
+         for table_name, rows in self.staged_rows.items():
+             if f'FROM "raw_legacy"."{table_name}"' in query:
+                 return rows
++        if 'FROM "raw_legacy".product_category_override' in query:
++            return self.staged_rows.get("product_category_override", [])
+         return []
+ 
+     async def copy_records_to_table(
+@@ -137,48 +140,70 @@ def test_normalize_party_record_supports_customer_role() -> None:
+     assert row[5] == "customer"
+ 
+ 
+-def test_derive_product_category_prefers_legacy_class_when_present() -> None:
+-    category, source = normalization._derive_product_category(
++def test_derive_product_category_prefers_family_rules_over_legacy_class() -> None:
++    derivation = normalization._derive_product_category(
+         "P001",
+-        "Widget",
++        "三角皮帶 C-240",
+         legacy_category="Industrial Components",
+         stock_kind="0",
+     )
+ 
+-    assert category == "Industrial Components"
+-    assert source == "legacy_class"
++    assert derivation.category == "V-Belts"
++    assert derivation.source == "heuristic_rule"
++    assert derivation.rule_id == "name-token-v-belts"
++    assert derivation.confidence == Decimal("0.90")
+ 
+ 
+ def test_derive_product_category_flags_non_merchandise_from_stock_kind() -> None:
+-    category, source = normalization._derive_product_category(
++    derivation = normalization._derive_product_category(
+         "0013",
+         "郵寄運費",
+         legacy_category=None,
+         stock_kind="6",
+     )
+ 
+-    assert category == "Non-Merchandise"
+-    assert source == "legacy_stock_kind"
++    assert derivation.category == "Non-Merchandise"
++    assert derivation.source == "exclusion_rule"
++    assert derivation.rule_id == "stock-kind-non-merchandise"
++    assert derivation.confidence == Decimal("1.00")
+ 
+ 
+ def test_derive_product_category_uses_code_and_name_heuristics() -> None:
+-    timing_category, timing_source = normalization._derive_product_category(
++    timing_derivation = normalization._derive_product_category(
+         "RL225*19M/M",
+         "225L*19M/M",
+         legacy_category=None,
+         stock_kind="0",
+     )
+-    v_belt_category, v_belt_source = normalization._derive_product_category(
++    v_belt_derivation = normalization._derive_product_category(
+         "PC096",
+         "三角皮帶 C-96",
+         legacy_category=None,
+         stock_kind="0",
+     )
+ 
+-    assert timing_category == "Timing Belts"
+-    assert timing_source == "derived_from_code_name"
+-    assert v_belt_category == "V-Belts"
+-    assert v_belt_source == "derived_from_code_name"
++    assert timing_derivation.category == "Timing Belts"
++    assert timing_derivation.source == "heuristic_rule"
++    assert timing_derivation.rule_id == "code-prefix-timing-belts"
++    assert timing_derivation.confidence == Decimal("0.98")
++    assert v_belt_derivation.category == "V-Belts"
++    assert v_belt_derivation.source == "heuristic_rule"
++    assert v_belt_derivation.rule_id == "code-prefix-v-belts"
++    assert v_belt_derivation.confidence == Decimal("0.98")
++
++
++def test_derive_product_category_routes_belt_joint_supplies_to_belt_supplies() -> None:
++    derivation = normalization._derive_product_category(
++        "PPPP0",
++        "皮帶現場接頭",
++        legacy_category=None,
++        stock_kind="0",
++    )
++
++    assert derivation.category == "Belt Supplies"
++    assert derivation.source == "heuristic_rule"
++    assert derivation.rule_id == "code-prefix-belt-supplies"
++    assert derivation.confidence == Decimal("0.98")
+ 
+ 
+ @pytest.mark.asyncio
+@@ -188,6 +213,8 @@ async def test_ensure_normalized_tables_use_tenant_scoped_primary_keys() -> None
+     await normalization._ensure_normalized_tables(connection, "raw_legacy")
+ 
+     ddl = "\n".join(query for query, _ in connection.execute_calls)
++    assert 'ALTER TABLE "raw_legacy"."normalized_products" ADD COLUMN IF NOT EXISTS category_rule_id TEXT' in ddl
++    assert 'ALTER TABLE "raw_legacy"."normalized_products" ADD COLUMN IF NOT EXISTS category_confidence NUMERIC(5, 2)' in ddl
+     assert "PRIMARY KEY (tenant_id, batch_id, role, legacy_code)" in ddl
+     assert "PRIMARY KEY (tenant_id, batch_id, legacy_code)" in ddl
+     assert "PRIMARY KEY (tenant_id, batch_id, code)" in ddl
+@@ -289,7 +316,116 @@ async def test_run_normalization_is_tenant_scoped_and_transactional(monkeypatch)
+     assert product_record["category"] == "V-Belts"
+     assert product_record["legacy_category"] is None
+     assert product_record["stock_kind"] == "0"
+-    assert product_record["category_source"] == "derived_from_code_name"
++    assert product_record["category_source"] == "heuristic_rule"
++    assert product_record["category_rule_id"] == "code-prefix-v-belts"
++    assert product_record["category_confidence"] == Decimal("0.98")
++
++
++@pytest.mark.asyncio
++async def test_run_normalization_applies_category_overrides_and_records_review_candidates(
++    monkeypatch,
++) -> None:
++    connection = FakeNormalizationConnection(
++        {
++            "tbscust": [
++                {
++                    "legacy_code": "S001",
++                    "legacy_type": "1",
++                    "company_name": "Supplier One",
++                    "status_code": "A",
++                    "record_status": "A",
++                    "source_row_number": 1,
++                }
++            ],
++            "tbsstock": [
++                {
++                    "legacy_code": "PC096",
++                    "name": "三角皮帶 C-96",
++                    "legacy_category": "Industrial Components",
++                    "stock_kind": "0",
++                    "supplier_code": "S001",
++                    "origin": "TW",
++                    "unit": "條",
++                    "created_date": "2025-04-07",
++                    "last_sale_date": "2025-04-07",
++                    "avg_cost": "12.50",
++                    "status": "A",
++                    "source_row_number": 2,
++                },
++                {
++                    "legacy_code": "SHIP01",
++                    "name": "郵寄運費",
++                    "legacy_category": None,
++                    "stock_kind": "6",
++                    "supplier_code": "S001",
++                    "origin": "TW",
++                    "unit": "式",
++                    "created_date": "2025-04-07",
++                    "last_sale_date": "2025-04-07",
++                    "avg_cost": "0",
++                    "status": "A",
++                    "source_row_number": 3,
++                },
++            ],
++            "tbsstkhouse": [
++                {
++                    "product_code": "PC096",
++                    "warehouse_code": "A",
++                    "qty_on_hand": "8.0000",
++                    "source_row_number": 4,
++                }
++            ],
++            "product_category_override": [
++                {
++                    "legacy_code": "PC096",
++                    "category": "Timing Belts",
++                    "review_notes": "Legacy catalog corrected by analyst.",
++                    "approval_source": "review-import",
++                    "approved_by": "analyst@example.com",
++                }
++            ],
++        }
++    )
++
++    async def fake_open_raw_connection() -> FakeNormalizationConnection:
++        return connection
++
++    monkeypatch.setattr(normalization, "_open_raw_connection", fake_open_raw_connection)
++
++    await normalization.run_normalization(
++        batch_id="batch-override",
++        tenant_id=uuid.UUID("00000000-0000-0000-0000-000000000321"),
++        schema_name="raw_legacy",
++    )
++
++    product_copy = next(
++        call for call in connection.copy_calls if call["table_name"] == "normalized_products"
++    )
++    product_records = [
++        dict(zip(product_copy["columns"], row, strict=False)) for row in product_copy["rows"]
++    ]
++    overridden_record = next(
++        record for record in product_records if record["legacy_code"] == "PC096"
++    )
++    excluded_record = next(
++        record for record in product_records if record["legacy_code"] == "SHIP01"
++    )
++
++    assert overridden_record["category"] == "Timing Belts"
++    assert overridden_record["category_source"] == "manual_override"
++    assert overridden_record["category_rule_id"] == "manual-override"
++    assert overridden_record["category_confidence"] == Decimal("1.00")
++    assert excluded_record["category"] == "Non-Merchandise"
++
++    review_candidate_inserts = [
++        args
++        for query, args in connection.execute_calls
++        if 'INSERT INTO "raw_legacy".product_category_review_candidates' in query
++    ]
++    assert review_candidate_inserts
++    assert any("SHIP01" in args for args in review_candidate_inserts)
++    assert any("excluded_path" in args for args in review_candidate_inserts)
++    assert not any("PC096" in args for args in review_candidate_inserts)
+ 
+ 
+ @pytest.mark.asyncio
+diff --git a/backend/tests/domains/legacy_import/test_validation.py b/backend/tests/domains/legacy_import/test_validation.py
+index 051474d..2958418 100644
+--- a/backend/tests/domains/legacy_import/test_validation.py
++++ b/backend/tests/domains/legacy_import/test_validation.py
+@@ -671,6 +671,110 @@ def test_write_validation_report_scopes_artifact_names_by_schema_and_tenant(
+     assert markdown_path.name.endswith(".md")
+ 
+ 
++@pytest.mark.asyncio
++async def test_validate_import_batch_includes_provisional_category_review_artifacts(
++    monkeypatch,
++    tmp_path: Path,
++) -> None:
++    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000001559")
++    connection = FakeValidationConnection(
++        {
++            "stage_run": {"id": uuid.uuid4(), "attempt_number": 1, "status": "completed"},
++            "stage_tables": [
++                {
++                    "table_name": "tbsstock",
++                    "source_file": "tbsstock.csv",
++                    "expected_row_count": 2,
++                    "loaded_row_count": 2,
++                    "status": "completed",
++                    "error_message": None,
++                }
++            ],
++            "canonical_run": {
++                "id": uuid.uuid4(),
++                "attempt_number": 2,
++                "status": "completed",
++                "summary": {
++                    "customer_count": 1,
++                    "product_count": 2,
++                    "warehouse_count": 1,
++                    "inventory_count": 1,
++                    "holding_count": 0,
++                    "lineage_count": 4,
++                },
++            },
++            "canonical_steps": [],
++            "snapshot_coverage": {
++                "order_count": 0,
++                "order_snapshot_count": 0,
++                "invoice_count": 0,
++                "invoice_snapshot_count": 0,
++                "supplier_invoice_count": 0,
++                "supplier_invoice_snapshot_count": 0,
++            },
++            "cutoff_date": date(2024, 8, 31),
++        }
++    )
++
++    async def fake_open_raw_connection() -> FakeValidationConnection:
++        return connection
++
++    async def fake_fetch_mapping_summary(*args, **kwargs):
++        return validation.ProductMappingValidationSummary(
++            mapping_count=1,
++            candidate_count=0,
++            unknown_count=0,
++            orphan_code_count=0,
++            orphan_row_count=0,
++        )
++
++    async def fake_fetch_product_category_review_summary(*args, **kwargs):
++        return validation.ProductCategoryReviewSummary(
++            candidate_count=1,
++            fallback_count=1,
++            low_confidence_count=0,
++            excluded_count=0,
++            candidates=(
++                validation.ProductCategoryReviewCandidate(
++                    legacy_code="MISC001",
++                    name="Unclassified Belt Item",
++                    current_category="Other Power Transmission",
++                    category_source="fallback_rule",
++                    category_rule_id="fallback-other-power-transmission",
++                    category_confidence="0.40",
++                    review_reason="fallback_assignment",
++                ),
++            ),
++        )
++
++    monkeypatch.setattr(validation, "_open_raw_connection", fake_open_raw_connection)
++    monkeypatch.setattr(validation, "_fetch_product_mapping_summary", fake_fetch_mapping_summary)
++    monkeypatch.setattr(
++        validation,
++        "_fetch_product_category_review_summary",
++        fake_fetch_product_category_review_summary,
++    )
++
++    result = await validation.validate_import_batch(
++        batch_id="batch-155-category-review",
++        tenant_id=tenant_id,
++        schema_name="raw_legacy",
++        output_dir=tmp_path,
++    )
++
++    assert result.report.status == "warning"
++    assert result.report.category_review_summary is not None
++    assert result.report.category_review_summary.candidate_count == 1
++    assert any(issue.code == "provisional-category-assignments" for issue in result.report.issues)
++
++    report_payload = json.loads(result.json_path.read_text(encoding="utf-8"))
++    assert report_payload["category_review_summary"]["candidate_count"] == 1
++    assert report_payload["category_review_summary"]["candidates"][0]["legacy_code"] == "MISC001"
++    assert report_payload["counts"]["category_review_candidate_count"] == 1
++    assert "## Category Review" in result.markdown_path.read_text(encoding="utf-8")
++    assert "fallback_assignment" in result.markdown_path.read_text(encoding="utf-8")
++
++
+ @pytest.mark.asyncio
+ async def test_fetch_cutoff_date_normalizes_legacy_numeric_dates() -> None:
+     connection = FakeValidationConnection(

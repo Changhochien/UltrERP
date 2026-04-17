@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import UTC, date, datetime
+from typing import Literal
 
 from fastapi import HTTPException
 from sqlalchemy import func, select
@@ -17,6 +18,7 @@ from common.models.audit_log import AuditLog
 from common.models.inventory_stock import InventoryStock
 from common.models.order import Order
 from common.models.order_line import OrderLine
+from common.models.stock_adjustment import ReasonCode
 from common.models.warehouse import Warehouse
 from common.tenant import DEFAULT_TENANT_ID, set_tenant
 from domains.invoices.tax import TaxPolicyCode, aggregate_invoice_totals, calculate_line_amounts
@@ -246,6 +248,7 @@ async def confirm_order(
 ) -> Order:
     """Confirm an order and auto-generate an invoice atomically."""
     from domains.customers.models import Customer
+    from domains.inventory.services import create_stock_adjustment
     from domains.invoices.enums import BuyerType
     from domains.invoices.schemas import InvoiceCreate, InvoiceCreateLine
     from domains.invoices.service import _create_invoice_core, normalize_buyer_identifier
@@ -254,6 +257,38 @@ async def confirm_order(
 
     async with session.begin():
         await set_tenant(session, tid)
+
+        async def _get_default_warehouse_id(product_ids: list[uuid.UUID]) -> uuid.UUID:
+            if product_ids:
+                stocked_result = await session.execute(
+                    select(InventoryStock.warehouse_id)
+                    .join(Warehouse, Warehouse.id == InventoryStock.warehouse_id)
+                    .where(
+                        InventoryStock.tenant_id == tid,
+                        InventoryStock.product_id.in_(product_ids),
+                        InventoryStock.quantity > 0,
+                        Warehouse.is_active.is_(True),
+                    )
+                    .order_by(InventoryStock.quantity.desc(), InventoryStock.warehouse_id.asc())
+                    .limit(1)
+                )
+                stocked_warehouse_id = stocked_result.scalar_one_or_none()
+                if stocked_warehouse_id is not None:
+                    return stocked_warehouse_id
+
+            warehouse_result = await session.execute(
+                select(Warehouse.id)
+                .where(
+                    Warehouse.tenant_id == tid,
+                    Warehouse.is_active.is_(True),
+                )
+                .order_by(Warehouse.created_at.asc(), Warehouse.id.asc())
+                .limit(1)
+            )
+            warehouse_id = warehouse_result.scalar_one_or_none()
+            if warehouse_id is None:
+                raise HTTPException(status_code=409, detail="No active warehouse configured")
+            return warehouse_id
 
         # Fetch order with lines + FOR UPDATE lock
         result = await session.execute(
@@ -286,9 +321,30 @@ async def confirm_order(
 
         line_product_ids = [line.product_id for line in order.lines]
         result = await session.execute(
-            select(Product.id, Product.code).where(Product.id.in_(line_product_ids))
+            select(Product.id, Product.code, Product.name, Product.category).where(
+                Product.id.in_(line_product_ids),
+                Product.tenant_id == tid,
+            )
         )
-        product_code_map = {row.id: row.code for row in result.all()}
+        product_rows = {row.id: row for row in result.all()}
+        product_code_map = {product_id: row.code for product_id, row in product_rows.items()}
+
+        missing_product_ids: list[str] = []
+        for line in order.lines:
+            product_row = product_rows.get(line.product_id)
+            if product_row is None:
+                missing_product_ids.append(str(line.product_id))
+                continue
+            if getattr(line, "product_name_snapshot", None) is None:
+                line.product_name_snapshot = product_row.name or line.description
+            if getattr(line, "product_category_snapshot", None) is None:
+                line.product_category_snapshot = product_row.category or None
+
+        if missing_product_ids:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Products no longer exist: {', '.join(missing_product_ids)}",
+            )
 
         # Validate customer
         result = await session.execute(
@@ -332,6 +388,7 @@ async def confirm_order(
                     description=line.description,
                     quantity=line.quantity,
                     unit_price=line.unit_price,
+                    unit_cost=getattr(line, "unit_cost", None),
                     tax_policy_code=TaxPolicyCode(line.tax_policy_code),
                 )
                 for line in order.lines
@@ -346,6 +403,19 @@ async def confirm_order(
         except ServiceValidationError as e:
             raise HTTPException(status_code=409, detail=e.errors)
         invoice.order_id = order.id
+
+        warehouse_id = await _get_default_warehouse_id(line_product_ids)
+        for line in order.lines:
+            await create_stock_adjustment(
+                session,
+                tid,
+                product_id=line.product_id,
+                warehouse_id=warehouse_id,
+                quantity_change=-int(line.quantity),
+                reason_code=ReasonCode.SALES_RESERVATION,
+                actor_id=actor_id,
+                notes=f"Sales reservation for order {order.order_number}",
+            )
 
         # Update order
         now = datetime.now(tz=UTC)
@@ -457,6 +527,11 @@ async def list_orders(
     *,
     status: str | None = None,
     customer_id: uuid.UUID | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    search: str | None = None,
+    sort_by: Literal["created_at", "order_number", "total_amount", "status"] | None = None,
+    sort_order: str = "desc",
     page: int = 1,
     page_size: int = 20,
 ) -> tuple[list[Order], int]:
@@ -467,6 +542,24 @@ async def list_orders(
         filters.append(Order.status == status)
     if customer_id:
         filters.append(Order.customer_id == customer_id)
+    if date_from:
+        filters.append(Order.created_at >= datetime.combine(date_from, datetime.min.time(), tzinfo=UTC))
+    if date_to:
+        filters.append(Order.created_at <= datetime.combine(date_to, datetime.max.time(), tzinfo=UTC))
+    if search:
+        filters.append(Order.order_number.ilike(f"%{search}%"))
+
+    # Sorting
+    sort_column = {
+        "created_at": Order.created_at,
+        "order_number": Order.order_number,
+        "total_amount": Order.total_amount,
+        "status": Order.status,
+    }.get(sort_by, Order.created_at)
+    if sort_order == "asc":
+        sort_column = sort_column.asc()
+    else:
+        sort_column = sort_column.desc()
 
     # Count
     count_stmt = select(func.count()).select_from(Order).where(*filters)
@@ -476,7 +569,7 @@ async def list_orders(
     stmt = (
         select(Order)
         .where(*filters)
-        .order_by(Order.created_at.desc())
+        .order_by(sort_column)
         .offset(offset)
         .limit(page_size)
     )

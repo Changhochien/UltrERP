@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, status
@@ -62,7 +63,10 @@ async def list_all(
     session: DbSession,
     current_user: Annotated[dict, Depends(require_role("admin", "finance", "sales"))],
     customer_id: uuid.UUID | None = Query(default=None),
-    payment_status: Literal["paid", "unpaid", "partial", "overdue"] | None = Query(default=None),
+    payment_status: list[Literal["paid", "unpaid", "partial", "overdue"]] | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    search: str | None = Query(default=None),
     sort_by: Literal["created_at", "invoice_date", "outstanding_balance"] = Query(
         default="created_at"
     ),
@@ -78,6 +82,9 @@ async def list_all(
         page=page,
         page_size=page_size,
         payment_status=payment_status or None,
+        date_from=date_from,
+        date_to=date_to,
+        search=search,
         sort_by=sort_by,
         sort_order=sort_order,
     )

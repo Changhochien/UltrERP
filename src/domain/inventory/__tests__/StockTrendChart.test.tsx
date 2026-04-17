@@ -1,5 +1,17 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render } from "@testing-library/react";
+
+vi.mock("@visx/responsive", () => ({
+  useParentSize: () => [{ width: 600, height: 300 }, vi.fn()],
+  ParentSize: ({ children }: { children: (dims: { width: number; height: number }) => React.ReactNode }) =>
+    children({ width: 600, height: 300 }),
+}));
+
+global.ResizeObserver = class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
 
 import { StockTrendChart } from "../components/StockTrendChart";
 
@@ -55,7 +67,7 @@ describe("StockTrendChart", () => {
   it("renders custom dots without emitting React key warnings", () => {
     const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
-    render(
+    const { container } = render(
       <StockTrendChart
         points={mockPoints}
         reorderPoint={10}
@@ -64,7 +76,7 @@ describe("StockTrendChart", () => {
       />,
     );
 
-    expect(screen.getByTestId("responsive-container")).toBeTruthy();
+    expect(container.querySelector("svg")).toBeTruthy();
     expect(
       consoleErrorSpy.mock.calls.filter(
         ([message]) =>

@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Boxes,
+  BrainCircuit,
   CircleDollarSign,
   LayoutDashboard,
   ReceiptText,
@@ -19,6 +20,7 @@ import {
   CUSTOMERS_ROUTE,
   HOME_ROUTE,
   INVENTORY_ROUTE,
+  INTELLIGENCE_ROUTE,
   INVOICES_ROUTE,
   INVOICE_CREATE_ROUTE,
   LOGIN_ROUTE,
@@ -88,6 +90,13 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
         icon: Users,
       },
       {
+        feature: "intelligence",
+        label: "nav.intelligence",
+        to: INTELLIGENCE_ROUTE,
+        description: "routes.intelligence.description",
+        icon: BrainCircuit,
+      },
+      {
         feature: "invoices",
         label: "nav.invoices",
         to: INVOICES_ROUTE,
@@ -136,6 +145,7 @@ export const ROUTE_CONTEXT_KEYS = [
   { match: HOME_ROUTE, labelKey: "routes.dashboard.label", descriptionKey: "routes.dashboard.description" },
   { match: CUSTOMERS_ROUTE, labelKey: "routes.customers.label", descriptionKey: "routes.customers.description" },
   { match: CUSTOMER_CREATE_ROUTE, labelKey: "routes.createCustomer.label", descriptionKey: "routes.createCustomer.description" },
+  { match: INTELLIGENCE_ROUTE, labelKey: "routes.intelligence.label", descriptionKey: "routes.intelligence.description" },
   { match: INVOICES_ROUTE, labelKey: "routes.invoices.label", descriptionKey: "routes.invoices.description" },
   { match: INVOICE_CREATE_ROUTE, labelKey: "routes.createInvoice.label", descriptionKey: "routes.createInvoice.description" },
   { match: ORDERS_ROUTE, labelKey: "routes.orders.label", descriptionKey: "routes.orders.description" },

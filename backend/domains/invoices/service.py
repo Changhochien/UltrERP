@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
-from typing import TYPE_CHECKING, TypedDict, cast
+from typing import TYPE_CHECKING, Literal, TypedDict, cast
 
-from sqlalchemy import case, func, or_, select
+from sqlalchemy import and_, case, func, literal, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -16,6 +17,8 @@ from common.errors import ValidationError
 from common.events import DomainEvent
 from common.models.audit_log import AuditLog
 from common.models.order import Order
+from common.models.supplier_invoice import SupplierInvoice, SupplierInvoiceLine
+from common.models.supplier_order import SupplierOrder, SupplierOrderLine
 from common.tenant import DEFAULT_TENANT_ID, set_tenant
 from domains.customers.models import Customer
 from domains.customers.validators import validate_taiwan_business_number
@@ -36,6 +39,33 @@ if TYPE_CHECKING:
 _B2C_SENTINEL = "0000000000"
 _EGUI_LIVE_MODE = "live"
 _EGUI_MOCK_MODE = "mock"
+
+
+@dataclass(frozen=True)
+class _UnitCostSourceRow:
+    effective_date: date
+    unit_cost: Decimal
+    source_priority: int
+
+
+@dataclass(frozen=True)
+class InvoiceUnitCostBackfillPreview:
+    invoice_line_id: uuid.UUID
+    invoice_number: str
+    invoice_date: date
+    line_number: int
+    status: Literal["updated", "unmatched", "ambiguous"]
+    unit_cost: Decimal | None = None
+
+
+@dataclass(frozen=True)
+class InvoiceUnitCostBackfillSummary:
+    candidate_count: int
+    updated_count: int
+    skipped_count: int
+    unmatched_count: int
+    ambiguous_count: int
+    previews: list[InvoiceUnitCostBackfillPreview]
 
 
 def _format_invoice_number(prefix: str, number: int) -> str:
@@ -117,9 +147,358 @@ async def _get_active_number_range(
             InvoiceNumberRange.is_active.is_(True),
         )
         .order_by(InvoiceNumberRange.prefix, InvoiceNumberRange.start_number)
+        .limit(1)
         .with_for_update()
     )
     return cast(InvoiceNumberRange | None, result.scalar_one_or_none())
+
+
+def _build_unit_cost_sources_query(
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+    *,
+    as_of_date: date,
+):
+    supplier_order_costs = (
+        select(
+            SupplierOrder.received_date.label("effective_date"),
+            SupplierOrderLine.unit_price.label("unit_cost"),
+            literal(0).label("source_priority"),
+        )
+        .join(SupplierOrder, SupplierOrder.id == SupplierOrderLine.order_id)
+        .where(
+            SupplierOrder.tenant_id == tenant_id,
+            SupplierOrderLine.product_id == product_id,
+            SupplierOrder.received_date.isnot(None),
+            SupplierOrder.received_date <= as_of_date,
+            SupplierOrderLine.unit_price.isnot(None),
+        )
+    )
+    supplier_invoice_costs = (
+        select(
+            SupplierInvoice.invoice_date.label("effective_date"),
+            SupplierInvoiceLine.unit_price.label("unit_cost"),
+            literal(1).label("source_priority"),
+        )
+        .join(
+            SupplierInvoice,
+            SupplierInvoice.id == SupplierInvoiceLine.supplier_invoice_id,
+        )
+        .where(
+            SupplierInvoice.tenant_id == tenant_id,
+            SupplierInvoiceLine.product_id == product_id,
+            SupplierInvoice.invoice_date <= as_of_date,
+            SupplierInvoiceLine.unit_price.isnot(None),
+        )
+    )
+    return supplier_order_costs.union_all(supplier_invoice_costs).subquery()
+
+
+async def _fetch_ranked_unit_cost_sources(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+    *,
+    as_of_date: date,
+) -> list[_UnitCostSourceRow]:
+    cost_sources = _build_unit_cost_sources_query(
+        tenant_id,
+        product_id,
+        as_of_date=as_of_date,
+    )
+    ranked_cost_sources = select(
+        cost_sources.c.effective_date,
+        cost_sources.c.unit_cost,
+        cost_sources.c.source_priority,
+        func.dense_rank()
+        .over(
+            order_by=(
+                cost_sources.c.effective_date.desc(),
+                cost_sources.c.source_priority.desc(),
+            )
+        )
+        .label("source_rank"),
+    ).subquery()
+    result = await session.execute(
+        select(
+            ranked_cost_sources.c.effective_date,
+            ranked_cost_sources.c.unit_cost,
+            ranked_cost_sources.c.source_priority,
+        ).where(
+            ranked_cost_sources.c.source_rank == 1,
+        ).order_by(
+            ranked_cost_sources.c.effective_date.desc(),
+            ranked_cost_sources.c.source_priority.desc(),
+        )
+    )
+    return [
+        _UnitCostSourceRow(
+            effective_date=row.effective_date,
+            unit_cost=row.unit_cost,
+            source_priority=row.source_priority,
+        )
+        for row in result.all()
+    ]
+
+
+async def _resolve_latest_unit_cost(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+    *,
+    as_of_date: date,
+) -> Decimal | None:
+    ranked_sources = await _fetch_ranked_unit_cost_sources(
+        session,
+        tenant_id,
+        product_id,
+        as_of_date=as_of_date,
+    )
+    if not ranked_sources:
+        return None
+
+    winning_effective_date = ranked_sources[0].effective_date
+    winning_source_priority = ranked_sources[0].source_priority
+    winning_costs = {
+        source.unit_cost
+        for source in ranked_sources
+        if source.effective_date == winning_effective_date
+        and source.source_priority == winning_source_priority
+    }
+    if len(winning_costs) != 1:
+        return None
+
+    return next(iter(winning_costs))
+
+
+def _invoice_unit_cost_backfill_decisions_cte(
+    *,
+    scoped_to_tenant: bool,
+    seek_after_invoice_line_id: bool,
+) -> str:
+    tenant_filter = "AND il.tenant_id = :tenant_id" if scoped_to_tenant else ""
+    seek_filter = "AND il.id > :after_invoice_line_id" if seek_after_invoice_line_id else ""
+    return f"""
+        WITH candidates AS (
+            SELECT
+                il.id AS invoice_line_id,
+                il.tenant_id,
+                il.product_id,
+                i.invoice_number,
+                i.invoice_date,
+                il.line_number
+            FROM invoice_lines il
+            JOIN invoices i ON i.id = il.invoice_id
+            WHERE il.unit_cost IS NULL
+              AND il.product_id IS NOT NULL
+              {tenant_filter}
+                            {seek_filter}
+                        ORDER BY il.id ASC
+                        LIMIT :candidate_limit
+        ),
+        source_rows AS (
+            SELECT
+                c.invoice_line_id,
+                src.effective_date,
+                src.source_priority,
+                src.unit_cost,
+                DENSE_RANK() OVER (
+                    PARTITION BY c.invoice_line_id
+                    ORDER BY src.effective_date DESC, src.source_priority DESC
+                ) AS source_rank
+            FROM candidates c
+            JOIN LATERAL (
+                SELECT
+                    so.received_date AS effective_date,
+                    0 AS source_priority,
+                    sol.unit_price AS unit_cost
+                FROM supplier_order_line sol
+                JOIN supplier_order so ON so.id = sol.order_id
+                WHERE so.tenant_id = c.tenant_id
+                  AND sol.product_id = c.product_id
+                  AND so.received_date IS NOT NULL
+                  AND so.received_date <= c.invoice_date
+                  AND sol.unit_price IS NOT NULL
+
+                UNION ALL
+
+                SELECT
+                    si.invoice_date AS effective_date,
+                    1 AS source_priority,
+                    sil.unit_price AS unit_cost
+                FROM supplier_invoice_lines sil
+                JOIN supplier_invoices si ON si.id = sil.supplier_invoice_id
+                WHERE si.tenant_id = c.tenant_id
+                  AND sil.product_id = c.product_id
+                  AND si.invoice_date <= c.invoice_date
+                  AND sil.unit_price IS NOT NULL
+            ) src ON TRUE
+        ),
+        winning_costs AS (
+            SELECT
+                sr.invoice_line_id,
+                COUNT(DISTINCT sr.unit_cost)
+                    FILTER (WHERE sr.source_rank = 1) AS winning_cost_count,
+                MIN(sr.unit_cost) FILTER (WHERE sr.source_rank = 1) AS resolved_unit_cost
+            FROM source_rows sr
+            GROUP BY sr.invoice_line_id
+        ),
+        decisions AS (
+            SELECT
+                c.invoice_line_id,
+                c.invoice_number,
+                c.invoice_date,
+                c.line_number,
+                CASE
+                    WHEN wc.winning_cost_count IS NULL OR wc.winning_cost_count = 0 THEN 'unmatched'
+                    WHEN wc.winning_cost_count = 1 THEN 'updated'
+                    ELSE 'ambiguous'
+                END AS status,
+                wc.resolved_unit_cost AS unit_cost
+            FROM candidates c
+            LEFT JOIN winning_costs wc ON wc.invoice_line_id = c.invoice_line_id
+        )
+    """
+
+
+async def backfill_missing_invoice_line_unit_costs(
+    session: AsyncSession,
+    *,
+    tenant_id: uuid.UUID | None = None,
+    dry_run: bool = True,
+    preview_limit: int = 20,
+    batch_size: int = 1000,
+    max_candidates: int | None = None,
+    commit_per_batch: bool = False,
+) -> InvoiceUnitCostBackfillSummary:
+    params_base: dict[str, object] = {}
+    if tenant_id is not None:
+        params_base["tenant_id"] = tenant_id
+
+    candidate_count = 0
+    updated_count = 0
+    unmatched_count = 0
+    ambiguous_count = 0
+    previews: list[InvoiceUnitCostBackfillPreview] = []
+    after_invoice_line_id: uuid.UUID | None = None
+    processed_candidates = 0
+
+    while True:
+        current_batch_size = batch_size
+        if max_candidates is not None:
+            remaining_candidates = max_candidates - processed_candidates
+            if remaining_candidates <= 0:
+                break
+            current_batch_size = min(current_batch_size, remaining_candidates)
+
+        params = {
+            **params_base,
+            "candidate_limit": current_batch_size,
+        }
+        if after_invoice_line_id is not None:
+            params["after_invoice_line_id"] = after_invoice_line_id
+
+        decisions_cte = _invoice_unit_cost_backfill_decisions_cte(
+            scoped_to_tenant=tenant_id is not None,
+            seek_after_invoice_line_id=after_invoice_line_id is not None,
+        )
+        summary_result = await session.execute(
+            text(
+                decisions_cte
+                + """
+                SELECT
+                    COUNT(*) AS candidate_count,
+                    COUNT(*) FILTER (WHERE status = 'updated') AS updated_count,
+                    COUNT(*) FILTER (WHERE status = 'unmatched') AS unmatched_count,
+                    COUNT(*) FILTER (WHERE status = 'ambiguous') AS ambiguous_count,
+                    MAX(invoice_line_id::text)::uuid AS last_invoice_line_id
+                FROM decisions
+                """
+            ),
+            params,
+        )
+        summary_row = summary_result.one()
+
+        batch_candidate_count = int(summary_row.candidate_count or 0)
+        if batch_candidate_count == 0:
+            break
+
+        batch_unmatched_count = int(summary_row.unmatched_count or 0)
+        batch_ambiguous_count = int(summary_row.ambiguous_count or 0)
+        batch_resolved_count = int(summary_row.updated_count or 0)
+        candidate_count += batch_candidate_count
+        unmatched_count += batch_unmatched_count
+        ambiguous_count += batch_ambiguous_count
+
+        remaining_preview_slots = max(preview_limit - len(previews), 0)
+        if remaining_preview_slots:
+            preview_result = await session.execute(
+                text(
+                    decisions_cte
+                    + """
+                    SELECT
+                        invoice_line_id,
+                        invoice_number,
+                        invoice_date,
+                        line_number,
+                        status,
+                        unit_cost
+                    FROM decisions
+                    ORDER BY invoice_line_id ASC
+                    LIMIT :preview_limit
+                    """
+                ),
+                {
+                    **params,
+                    "preview_limit": remaining_preview_slots,
+                },
+            )
+            previews.extend(
+                InvoiceUnitCostBackfillPreview(
+                    invoice_line_id=row.invoice_line_id,
+                    invoice_number=row.invoice_number,
+                    invoice_date=row.invoice_date,
+                    line_number=row.line_number,
+                    status=row.status,
+                    unit_cost=row.unit_cost,
+                )
+                for row in preview_result.all()
+            )
+
+        if dry_run:
+            updated_count += batch_resolved_count
+        elif batch_resolved_count:
+            update_result = await session.execute(
+                text(
+                    decisions_cte
+                    + """
+                    UPDATE invoice_lines il
+                    SET unit_cost = decisions.unit_cost
+                    FROM decisions
+                    WHERE decisions.status = 'updated'
+                      AND il.id = decisions.invoice_line_id
+                      AND il.unit_cost IS NULL
+                    RETURNING il.id
+                    """
+                ),
+                params,
+            )
+            updated_count += len(update_result.all())
+            if commit_per_batch:
+                await session.commit()
+
+        processed_candidates += batch_candidate_count
+        after_invoice_line_id = summary_row.last_invoice_line_id
+
+    skipped_count = unmatched_count + ambiguous_count
+    return InvoiceUnitCostBackfillSummary(
+        candidate_count=candidate_count,
+        updated_count=updated_count,
+        skipped_count=skipped_count,
+        unmatched_count=unmatched_count,
+        ambiguous_count=ambiguous_count,
+        previews=previews,
+    )
 
 
 async def _create_invoice_core(
@@ -178,10 +557,12 @@ async def _create_invoice_core(
     ]
     totals = aggregate_invoice_totals(calculated_lines)
 
+    invoice_date = data.invoice_date or date.today()
+
     invoice = Invoice(
         tenant_id=tenant_id,
         invoice_number=_format_invoice_number(number_range.prefix, number_range.next_number),
-        invoice_date=data.invoice_date or date.today(),
+        invoice_date=invoice_date,
         customer_id=customer.id,
         buyer_type=data.buyer_type.value,
         buyer_identifier_snapshot=buyer_identifier,
@@ -194,27 +575,41 @@ async def _create_invoice_core(
         order_id=data.order_id,
     )
 
-    invoice.lines = [
-        InvoiceLine(
-            tenant_id=tenant_id,
-            line_number=index,
-            product_id=line.product_id,
-            product_code_snapshot=line.product_code,
-            description=line.description,
-            quantity=line.quantity,
-            unit_price=line.unit_price,
-            subtotal_amount=amounts.subtotal,
-            tax_type=amounts.tax_type,
-            tax_rate=amounts.tax_rate,
-            tax_amount=amounts.tax_amount,
-            total_amount=amounts.total_amount,
-            zero_tax_rate_reason=amounts.zero_tax_rate_reason,
+    unit_cost_cache: dict[uuid.UUID, Decimal | None] = {}
+    invoice.lines = []
+    for index, (line, amounts) in enumerate(
+        zip(data.lines, calculated_lines, strict=True),
+        start=1,
+    ):
+        resolved_unit_cost = line.unit_cost
+        if resolved_unit_cost is None and line.product_id is not None:
+            if line.product_id not in unit_cost_cache:
+                unit_cost_cache[line.product_id] = await _resolve_latest_unit_cost(
+                    session,
+                    tenant_id,
+                    line.product_id,
+                    as_of_date=invoice_date,
+                )
+            resolved_unit_cost = unit_cost_cache[line.product_id]
+
+        invoice.lines.append(
+            InvoiceLine(
+                tenant_id=tenant_id,
+                line_number=index,
+                product_id=line.product_id,
+                product_code_snapshot=line.product_code,
+                description=line.description,
+                quantity=line.quantity,
+                unit_price=line.unit_price,
+                unit_cost=resolved_unit_cost,
+                subtotal_amount=amounts.subtotal,
+                tax_type=amounts.tax_type,
+                tax_rate=amounts.tax_rate,
+                tax_amount=amounts.tax_amount,
+                total_amount=amounts.total_amount,
+                zero_tax_rate_reason=amounts.zero_tax_rate_reason,
+            )
         )
-        for index, (line, amounts) in enumerate(
-            zip(data.lines, calculated_lines, strict=True),
-            start=1,
-        )
-    ]
 
     number_range.next_number += 1
     number_range.updated_at = datetime.now(tz=UTC)
@@ -767,6 +1162,9 @@ async def list_invoices(
     page: int = 1,
     page_size: int = 20,
     payment_status: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    search: str | None = None,
     sort_by: str = "created_at",
     sort_order: str = "desc",
 ) -> tuple[list[dict], int]:
@@ -797,6 +1195,46 @@ async def list_invoices(
         base = select(Invoice).where(Invoice.tenant_id == tid)
         if customer_id:
             base = base.where(Invoice.customer_id == customer_id)
+        if date_from:
+            base = base.where(
+                Invoice.invoice_date >= datetime.combine(date_from, datetime.min.time(), tzinfo=UTC)
+            )
+        if date_to:
+            base = base.where(
+                Invoice.invoice_date <= datetime.combine(date_to, datetime.max.time(), tzinfo=UTC)
+            )
+        if search:
+            base = base.where(Invoice.invoice_number.ilike(f"%{search}%"))
+
+        # outstanding subquery
+        paid_subq = (
+            select(func.coalesce(func.sum(Payment.amount), Decimal("0")))
+            .where(
+                Payment.invoice_id == Invoice.id,
+                Payment.tenant_id == tid,
+                Payment.match_status == "matched",
+            )
+            .correlate(Invoice)
+            .scalar_subquery()
+        )
+        raw_outstanding_expr = Invoice.total_amount - paid_subq
+        outstanding_expr = case(
+            (raw_outstanding_expr <= Decimal("0"), Decimal("0")),
+            else_=raw_outstanding_expr,
+        )
+        non_paid_statuses = ("voided", "paid")
+
+        base = select(Invoice).where(Invoice.tenant_id == tid)
+        if customer_id:
+            base = base.where(Invoice.customer_id == customer_id)
+        if date_from:
+            base = base.where(
+                Invoice.invoice_date >= datetime.combine(date_from, datetime.min.time(), tzinfo=UTC)
+            )
+        if date_to:
+            base = base.where(
+                Invoice.invoice_date <= datetime.combine(date_to, datetime.max.time(), tzinfo=UTC)
+            )
 
         # Due date expression (computed in SQL to enable correct overdue pagination)
         order_terms_subq = (
@@ -812,33 +1250,47 @@ async def list_invoices(
             order_terms_subq, _DEFAULT_PAYMENT_TERMS_DAYS
         )
 
-        # Payment status filtering
+        # Payment status filtering — one OR'd clause per selected status
         # Must match _compute_payment_status priority: voided → paid → overdue → partial → unpaid
-        if payment_status == "paid":
-            base = base.where(
-                Invoice.status != "voided",
-                or_(Invoice.status == "paid", outstanding_expr == 0),
-            )
-        elif payment_status == "unpaid":
-            base = base.where(
-                outstanding_expr > 0,
-                paid_subq == 0,
-                Invoice.status.notin_(non_paid_statuses),
-                due_date_expr >= func.current_date(),
-            )
-        elif payment_status == "partial":
-            base = base.where(
-                outstanding_expr > 0,
-                paid_subq > 0,
-                Invoice.status.notin_(non_paid_statuses),
-                due_date_expr >= func.current_date(),
-            )
-        elif payment_status == "overdue":
-            base = base.where(
-                outstanding_expr > 0,
-                Invoice.status.notin_(non_paid_statuses),
-                due_date_expr < func.current_date(),
-            )
+        if payment_status:
+            statuses = [payment_status] if isinstance(payment_status, str) else list(payment_status)
+            clauses = []
+            for s in statuses:
+                if s == "paid":
+                    clauses.append(
+                        and_(
+                            Invoice.status != "voided",
+                            or_(Invoice.status == "paid", outstanding_expr == 0),
+                        )
+                    )
+                elif s == "unpaid":
+                    clauses.append(
+                        and_(
+                            outstanding_expr > 0,
+                            paid_subq == 0,
+                            Invoice.status.notin_(non_paid_statuses),
+                            due_date_expr >= func.current_date(),
+                        )
+                    )
+                elif s == "partial":
+                    clauses.append(
+                        and_(
+                            outstanding_expr > 0,
+                            paid_subq > 0,
+                            Invoice.status.notin_(non_paid_statuses),
+                            due_date_expr >= func.current_date(),
+                        )
+                    )
+                elif s == "overdue":
+                    clauses.append(
+                        and_(
+                            outstanding_expr > 0,
+                            Invoice.status.notin_(non_paid_statuses),
+                            due_date_expr < func.current_date(),
+                        )
+                    )
+            if clauses:
+                base = base.where(or_(*clauses))
 
         # Count
         from sqlalchemy import func as sqlfunc

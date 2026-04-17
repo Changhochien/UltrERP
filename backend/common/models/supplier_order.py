@@ -5,8 +5,9 @@ from __future__ import annotations
 import enum
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, Index, Integer, String, Text, func
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, Index, Integer, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -86,6 +87,7 @@ class SupplierOrderLine(Base):
 		UUID(as_uuid=True), ForeignKey("warehouse.id"), nullable=False,
 	)
 	quantity_ordered: Mapped[int] = mapped_column(Integer, nullable=False)
+	unit_price: Mapped["Decimal | None"] = mapped_column(Numeric(20, 2), nullable=True)
 	quantity_received: Mapped[int] = mapped_column(
 		Integer, default=0, nullable=False,
 	)

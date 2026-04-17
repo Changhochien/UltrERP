@@ -34,6 +34,8 @@ class FakeValidationConnection:
             return self.rows_by_key.get("stage_tables", [])
         if 'FROM "raw_legacy".canonical_import_step_runs' in query:
             return self.rows_by_key.get("canonical_steps", [])
+        if "FROM customers" in query and "GROUP BY customer_type" in query:
+            return self.rows_by_key.get("customer_type_counts", [])
         if "SELECT col_3 AS invoice_date_raw" in query:
             cutoff_rows = self.rows_by_key.get("cutoff_rows")
             if cutoff_rows is not None:
@@ -237,6 +239,10 @@ async def test_validate_import_batch_marks_clean_replayed_scope_success(
                     "lineage_count": 3,
                 },
             },
+            "customer_type_counts": [
+                {"customer_type": "dealer", "customer_count": 2},
+                {"customer_type": "unknown", "customer_count": 1},
+            ],
             "canonical_steps": [
                 {
                     "step_name": "customers",
@@ -289,8 +295,13 @@ async def test_validate_import_batch_marks_clean_replayed_scope_success(
     assert result.report.replay.disposition == "replayed-scope"
     assert result.report.blocking_issue_count == 0
     assert result.report.epic13_handoff["lineage_count"] == 3
+    assert result.report.counts["customer_type_dealer_count"] == 2
+    assert result.report.counts["customer_type_unknown_count"] == 1
     assert result.json_path.exists()
     assert result.markdown_path.exists()
+
+    report_payload = json.loads(result.json_path.read_text(encoding="utf-8"))
+    assert report_payload["counts"]["customer_type_dealer_count"] == 2
 
 
 @pytest.mark.asyncio
@@ -669,6 +680,110 @@ def test_write_validation_report_scopes_artifact_names_by_schema_and_tenant(
         "raw_legacy-00000000-0000-0000-0000-000000001553-batch-155-attempt-2-validation"
     )
     assert markdown_path.name.endswith(".md")
+
+
+@pytest.mark.asyncio
+async def test_validate_import_batch_includes_provisional_category_review_artifacts(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000001559")
+    connection = FakeValidationConnection(
+        {
+            "stage_run": {"id": uuid.uuid4(), "attempt_number": 1, "status": "completed"},
+            "stage_tables": [
+                {
+                    "table_name": "tbsstock",
+                    "source_file": "tbsstock.csv",
+                    "expected_row_count": 2,
+                    "loaded_row_count": 2,
+                    "status": "completed",
+                    "error_message": None,
+                }
+            ],
+            "canonical_run": {
+                "id": uuid.uuid4(),
+                "attempt_number": 2,
+                "status": "completed",
+                "summary": {
+                    "customer_count": 1,
+                    "product_count": 2,
+                    "warehouse_count": 1,
+                    "inventory_count": 1,
+                    "holding_count": 0,
+                    "lineage_count": 4,
+                },
+            },
+            "canonical_steps": [],
+            "snapshot_coverage": {
+                "order_count": 0,
+                "order_snapshot_count": 0,
+                "invoice_count": 0,
+                "invoice_snapshot_count": 0,
+                "supplier_invoice_count": 0,
+                "supplier_invoice_snapshot_count": 0,
+            },
+            "cutoff_date": date(2024, 8, 31),
+        }
+    )
+
+    async def fake_open_raw_connection() -> FakeValidationConnection:
+        return connection
+
+    async def fake_fetch_mapping_summary(*args, **kwargs):
+        return validation.ProductMappingValidationSummary(
+            mapping_count=1,
+            candidate_count=0,
+            unknown_count=0,
+            orphan_code_count=0,
+            orphan_row_count=0,
+        )
+
+    async def fake_fetch_product_category_review_summary(*args, **kwargs):
+        return validation.ProductCategoryReviewSummary(
+            candidate_count=1,
+            fallback_count=1,
+            low_confidence_count=0,
+            excluded_count=0,
+            candidates=(
+                validation.ProductCategoryReviewCandidate(
+                    legacy_code="MISC001",
+                    name="Unclassified Belt Item",
+                    current_category="Other Power Transmission",
+                    category_source="fallback_rule",
+                    category_rule_id="fallback-other-power-transmission",
+                    category_confidence="0.40",
+                    review_reason="fallback_assignment",
+                ),
+            ),
+        )
+
+    monkeypatch.setattr(validation, "_open_raw_connection", fake_open_raw_connection)
+    monkeypatch.setattr(validation, "_fetch_product_mapping_summary", fake_fetch_mapping_summary)
+    monkeypatch.setattr(
+        validation,
+        "_fetch_product_category_review_summary",
+        fake_fetch_product_category_review_summary,
+    )
+
+    result = await validation.validate_import_batch(
+        batch_id="batch-155-category-review",
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+        output_dir=tmp_path,
+    )
+
+    assert result.report.status == "warning"
+    assert result.report.category_review_summary is not None
+    assert result.report.category_review_summary.candidate_count == 1
+    assert any(issue.code == "provisional-category-assignments" for issue in result.report.issues)
+
+    report_payload = json.loads(result.json_path.read_text(encoding="utf-8"))
+    assert report_payload["category_review_summary"]["candidate_count"] == 1
+    assert report_payload["category_review_summary"]["candidates"][0]["legacy_code"] == "MISC001"
+    assert report_payload["counts"]["category_review_candidate_count"] == 1
+    assert "## Category Review" in result.markdown_path.read_text(encoding="utf-8")
+    assert "fallback_assignment" in result.markdown_path.read_text(encoding="utf-8")
 
 
 @pytest.mark.asyncio

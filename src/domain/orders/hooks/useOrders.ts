@@ -39,8 +39,13 @@ export function usePaymentTerms() {
 /* ── Order list hook ───────────────────────────────────────── */
 
 export function useOrders(options?: {
-  status?: string;
+  status?: string | string[];
   customerId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: string;
 }) {
   const [items, setItems] = useState<OrderListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -56,6 +61,11 @@ export function useOrders(options?: {
       const res = await fetchOrders({
         status: options?.status,
         customer_id: options?.customerId,
+        date_from: options?.dateFrom,
+        date_to: options?.dateTo,
+        search: options?.search,
+        sort_by: options?.sortBy,
+        sort_order: options?.sortOrder,
         page: pageNum,
       });
       setItems(res.items);
@@ -67,7 +77,7 @@ export function useOrders(options?: {
     } finally {
       setLoading(false);
     }
-  }, [options?.status, options?.customerId]);
+  }, [options?.status, options?.customerId, options?.dateFrom, options?.dateTo, options?.search, options?.sortBy, options?.sortOrder]);
 
   useEffect(() => {
     void reload();

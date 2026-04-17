@@ -372,6 +372,6 @@ async def test_stock_adjustment_record_created() -> None:
         adjustments = [o for o in session.added if isinstance(o, StockAdjustment)]
         assert len(adjustments) == 1
         assert adjustments[0].quantity_change == 10
-        assert adjustments[0].reason_code.value == "received"
+        assert adjustments[0].reason_code.value == "RECEIVED"
     finally:
         _teardown(prev)
