@@ -5,10 +5,12 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from itertools import count
 from unittest.mock import AsyncMock, patch
 
 import pytest
 import pytest_asyncio
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.database import AsyncSessionLocal, engine
@@ -21,13 +23,29 @@ from domains.intelligence.schemas import CategoryTrend, CategoryTrends
 from domains.intelligence.service import (
     get_category_trends,
     get_customer_product_profile,
-    get_market_opportunities,
     get_customer_risk_signals,
-    get_prospect_gaps,
+    get_market_opportunities,
     get_product_affinity_map,
+    get_prospect_gaps,
 )
 
 TENANT = DEFAULT_TENANT_ID
+_BUSINESS_NUMBER_COUNTER = count(10_000_000)
+
+
+async def _next_business_number(session: AsyncSession, tenant_id: uuid.UUID) -> str:
+    while True:
+        candidate = f"{next(_BUSINESS_NUMBER_COUNTER):08d}"
+        existing_customer_id = await session.scalar(
+            select(Customer.id)
+            .where(
+                Customer.tenant_id == tenant_id,
+                Customer.normalized_business_number == candidate,
+            )
+            .limit(1)
+        )
+        if existing_customer_id is None:
+            return candidate
 
 
 @pytest_asyncio.fixture
@@ -46,17 +64,20 @@ async def _create_customer_for_tenant(
     session: AsyncSession,
     company_name: str,
     tenant_id: uuid.UUID,
+    *,
+    customer_type: str = "dealer",
 ) -> Customer:
     customer = Customer(
         id=uuid.uuid4(),
         tenant_id=tenant_id,
         company_name=company_name,
-        normalized_business_number=f"{uuid.uuid4().int % 10**8:08d}",
+        normalized_business_number=await _next_business_number(session, tenant_id),
         billing_address="Taipei",
         contact_name="Owner",
         contact_phone="0912345678",
         contact_email=f"{uuid.uuid4().hex[:8]}@example.com",
         credit_limit=Decimal("100000.00"),
+        customer_type=customer_type,
         status="active",
         version=1,
     )
@@ -337,11 +358,12 @@ async def test_get_product_affinity_map_is_tenant_isolated(db_session: AsyncSess
         tenant_id=tenant_id,
     )
 
+    tenant_b_business_number = await _next_business_number(db_session, other_tenant)
     tenant_b_customer = Customer(
         id=uuid.uuid4(),
         tenant_id=other_tenant,
         company_name="Tenant B",
-        normalized_business_number=f"{uuid.uuid4().int % 10**8:08d}",
+        normalized_business_number=tenant_b_business_number,
         billing_address="Kaohsiung",
         contact_name="Owner",
         contact_phone="0911222333",
@@ -456,6 +478,134 @@ async def test_get_product_affinity_map_returns_empty_without_orders(db_session:
 
 
 @pytest.mark.asyncio
+async def test_get_product_affinity_map_orders_near_ties_by_rounded_score_then_shared_customers(
+    db_session: AsyncSession,
+) -> None:
+    tenant_id = uuid.uuid4()
+    now = datetime.now(tz=UTC)
+    pair_one_a = await _create_product_for_tenant(db_session, "Pair One A", "Office", tenant_id)
+    pair_one_b = await _create_product_for_tenant(db_session, "Pair One B", "Office", tenant_id)
+    pair_two_a = await _create_product_for_tenant(db_session, "Pair Two A", "Office", tenant_id)
+    pair_two_b = await _create_product_for_tenant(db_session, "Pair Two B", "Office", tenant_id)
+
+    async def seed_pair(
+        prefix: str,
+        product_a: Product,
+        product_b: Product,
+        *,
+        shared_count: int,
+        a_only_count: int,
+        b_only_count: int,
+    ) -> None:
+        for index in range(shared_count):
+            customer = await _create_customer_for_tenant(db_session, f"{prefix} Shared {index}", tenant_id)
+            await _create_order(
+                db_session,
+                customer=customer,
+                created_at=now - timedelta(days=10),
+                status="confirmed",
+                lines=[(product_a, Decimal("10.00")), (product_b, Decimal("10.00"))],
+                tenant_id=tenant_id,
+            )
+        for index in range(a_only_count):
+            customer = await _create_customer_for_tenant(db_session, f"{prefix} A Only {index}", tenant_id)
+            await _create_order(
+                db_session,
+                customer=customer,
+                created_at=now - timedelta(days=9),
+                status="confirmed",
+                lines=[(product_a, Decimal("10.00"))],
+                tenant_id=tenant_id,
+            )
+        for index in range(b_only_count):
+            customer = await _create_customer_for_tenant(db_session, f"{prefix} B Only {index}", tenant_id)
+            await _create_order(
+                db_session,
+                customer=customer,
+                created_at=now - timedelta(days=8),
+                status="confirmed",
+                lines=[(product_b, Decimal("10.00"))],
+                tenant_id=tenant_id,
+            )
+
+    await seed_pair(
+        "Pair One",
+        pair_one_a,
+        pair_one_b,
+        shared_count=100,
+        a_only_count=98,
+        b_only_count=99,
+    )
+    await seed_pair(
+        "Pair Two",
+        pair_two_a,
+        pair_two_b,
+        shared_count=101,
+        a_only_count=99,
+        b_only_count=100,
+    )
+    await db_session.commit()
+
+    affinity_map = await get_product_affinity_map(db_session, tenant_id, min_shared=1, limit=1)
+
+    assert affinity_map.total == 2
+    assert len(affinity_map.pairs) == 1
+    top_pair = affinity_map.pairs[0]
+    assert {top_pair.product_a_name, top_pair.product_b_name} == {"Pair Two A", "Pair Two B"}
+    assert top_pair.shared_customer_count == 101
+    assert top_pair.affinity_score == pytest.approx(0.3367, abs=0.0001)
+
+
+@pytest.mark.asyncio
+async def test_get_product_affinity_map_emits_half_up_affinity_scores_at_rounding_boundaries(
+    db_session: AsyncSession,
+) -> None:
+    tenant_id = uuid.uuid4()
+    now = datetime.now(tz=UTC)
+    product_a = await _create_product_for_tenant(db_session, "Boundary A", "Office", tenant_id)
+    product_b = await _create_product_for_tenant(db_session, "Boundary B", "Office", tenant_id)
+
+    for index in range(1333):
+        customer = await _create_customer_for_tenant(db_session, f"Boundary Shared {index}", tenant_id)
+        await _create_order(
+            db_session,
+            customer=customer,
+            created_at=now - timedelta(days=10),
+            status="confirmed",
+            lines=[(product_a, Decimal("10.00")), (product_b, Decimal("10.00"))],
+            tenant_id=tenant_id,
+        )
+    for index in range(1333):
+        customer = await _create_customer_for_tenant(db_session, f"Boundary A Only {index}", tenant_id)
+        await _create_order(
+            db_session,
+            customer=customer,
+            created_at=now - timedelta(days=9),
+            status="confirmed",
+            lines=[(product_a, Decimal("10.00"))],
+            tenant_id=tenant_id,
+        )
+    for index in range(1334):
+        customer = await _create_customer_for_tenant(db_session, f"Boundary B Only {index}", tenant_id)
+        await _create_order(
+            db_session,
+            customer=customer,
+            created_at=now - timedelta(days=8),
+            status="confirmed",
+            lines=[(product_b, Decimal("10.00"))],
+            tenant_id=tenant_id,
+        )
+    await db_session.commit()
+
+    affinity_map = await get_product_affinity_map(db_session, tenant_id, min_shared=1, limit=10)
+
+    assert affinity_map.total == 1
+    assert len(affinity_map.pairs) == 1
+    assert affinity_map.pairs[0].shared_customer_count == 1333
+    assert affinity_map.pairs[0].affinity_score == pytest.approx(0.3333, abs=0.0001)
+
+
+@pytest.mark.asyncio
 async def test_get_category_trends_returns_ranked_period_metrics(db_session: AsyncSession) -> None:
     tenant_id = uuid.uuid4()
     now = datetime.now(tz=UTC)
@@ -541,6 +691,38 @@ async def test_get_category_trends_returns_ranked_period_metrics(db_session: Asy
     assert displays.trend_context == "newly_active"
     assert displays.new_customer_count == 1
     assert displays.trend == "stable"
+
+
+@pytest.mark.asyncio
+async def test_get_category_trends_excludes_non_merchandise_rows(db_session: AsyncSession) -> None:
+    tenant_id = uuid.uuid4()
+    now = datetime.now(tz=UTC)
+    customer = await _create_customer_for_tenant(db_session, "Belt Buyer", tenant_id)
+    belt_product = await _create_product_for_tenant(db_session, "Drive Belt", "V-Belts", tenant_id)
+    freight_product = await _create_product_for_tenant(
+        db_session,
+        "Freight Charge",
+        "Non-Merchandise",
+        tenant_id,
+    )
+
+    await _create_order(
+        db_session,
+        customer=customer,
+        created_at=now - timedelta(days=7),
+        status="confirmed",
+        lines=[
+            (belt_product, Decimal("120.00")),
+            (freight_product, Decimal("15.00")),
+        ],
+        tenant_id=tenant_id,
+    )
+    await db_session.commit()
+
+    trends = await get_category_trends(db_session, tenant_id, period="last_30d")
+
+    assert [trend.category for trend in trends.trends] == ["V-Belts"]
+    assert trends.trends[0].current_period_revenue == Decimal("120.00")
 
 
 @pytest.mark.asyncio
@@ -1069,6 +1251,244 @@ async def test_get_prospect_gaps_uses_all_adjacent_categories_and_skips_excluded
 
 
 @pytest.mark.asyncio
+async def test_get_prospect_gaps_filters_by_customer_type(db_session: AsyncSession) -> None:
+    tenant_id = uuid.uuid4()
+    now = datetime.now(tz=UTC)
+    dealer_buyer = await _create_customer_for_tenant(
+        db_session,
+        "Dealer Buyer",
+        tenant_id,
+        customer_type="dealer",
+    )
+    dealer_prospect = await _create_customer_for_tenant(
+        db_session,
+        "Dealer Prospect",
+        tenant_id,
+        customer_type="dealer",
+    )
+    end_user_buyer = await _create_customer_for_tenant(
+        db_session,
+        "End User Buyer",
+        tenant_id,
+        customer_type="end_user",
+    )
+    end_user_prospect = await _create_customer_for_tenant(
+        db_session,
+        "End User Prospect",
+        tenant_id,
+        customer_type="end_user",
+    )
+
+    target_category = await _create_product_for_tenant(db_session, "Target Belt", "Supplies", tenant_id)
+    adjacent_category = await _create_product_for_tenant(db_session, "Adjacent Belt", "V-Belts", tenant_id)
+
+    await _create_order(
+        db_session,
+        customer=dealer_buyer,
+        created_at=now - timedelta(days=10),
+        status="confirmed",
+        lines=[(target_category, Decimal("250.00")), (adjacent_category, Decimal("120.00"))],
+        tenant_id=tenant_id,
+    )
+    await _create_order(
+        db_session,
+        customer=dealer_prospect,
+        created_at=now - timedelta(days=15),
+        status="confirmed",
+        lines=[(adjacent_category, Decimal("180.00"))],
+        tenant_id=tenant_id,
+    )
+    await _create_order(
+        db_session,
+        customer=end_user_buyer,
+        created_at=now - timedelta(days=12),
+        status="confirmed",
+        lines=[(target_category, Decimal("90.00")), (adjacent_category, Decimal("50.00"))],
+        tenant_id=tenant_id,
+    )
+    await _create_order(
+        db_session,
+        customer=end_user_prospect,
+        created_at=now - timedelta(days=18),
+        status="confirmed",
+        lines=[(adjacent_category, Decimal("70.00"))],
+        tenant_id=tenant_id,
+    )
+    await db_session.commit()
+
+    dealer_gaps = await get_prospect_gaps(
+        db_session,
+        tenant_id,
+        category="Supplies",
+        customer_type="dealer",
+        limit=20,
+    )
+    end_user_gaps = await get_prospect_gaps(
+        db_session,
+        tenant_id,
+        category="Supplies",
+        customer_type="end_user",
+        limit=20,
+    )
+
+    assert dealer_gaps.existing_buyers_count == 1
+    assert [prospect.company_name for prospect in dealer_gaps.prospects] == ["Dealer Prospect"]
+    assert end_user_gaps.existing_buyers_count == 1
+    assert [prospect.company_name for prospect in end_user_gaps.prospects] == ["End User Prospect"]
+
+
+@pytest.mark.asyncio
+async def test_get_prospect_gaps_allows_all_customer_types(db_session: AsyncSession) -> None:
+    tenant_id = uuid.uuid4()
+    now = datetime.now(tz=UTC)
+    dealer_buyer = await _create_customer_for_tenant(
+        db_session,
+        "Dealer Buyer",
+        tenant_id,
+        customer_type="dealer",
+    )
+    dealer_prospect = await _create_customer_for_tenant(
+        db_session,
+        "Dealer Prospect",
+        tenant_id,
+        customer_type="dealer",
+    )
+    end_user_buyer = await _create_customer_for_tenant(
+        db_session,
+        "End User Buyer",
+        tenant_id,
+        customer_type="end_user",
+    )
+    end_user_prospect = await _create_customer_for_tenant(
+        db_session,
+        "End User Prospect",
+        tenant_id,
+        customer_type="end_user",
+    )
+
+    target_category = await _create_product_for_tenant(db_session, "Target Belt", "Supplies", tenant_id)
+    adjacent_category = await _create_product_for_tenant(db_session, "Adjacent Belt", "V-Belts", tenant_id)
+
+    await _create_order(
+        db_session,
+        customer=dealer_buyer,
+        created_at=now - timedelta(days=10),
+        status="confirmed",
+        lines=[(target_category, Decimal("250.00")), (adjacent_category, Decimal("120.00"))],
+        tenant_id=tenant_id,
+    )
+    await _create_order(
+        db_session,
+        customer=dealer_prospect,
+        created_at=now - timedelta(days=15),
+        status="confirmed",
+        lines=[(adjacent_category, Decimal("180.00"))],
+        tenant_id=tenant_id,
+    )
+    await _create_order(
+        db_session,
+        customer=end_user_buyer,
+        created_at=now - timedelta(days=12),
+        status="confirmed",
+        lines=[(target_category, Decimal("90.00")), (adjacent_category, Decimal("50.00"))],
+        tenant_id=tenant_id,
+    )
+    await _create_order(
+        db_session,
+        customer=end_user_prospect,
+        created_at=now - timedelta(days=18),
+        status="confirmed",
+        lines=[(adjacent_category, Decimal("70.00"))],
+        tenant_id=tenant_id,
+    )
+    await db_session.commit()
+
+    all_gaps = await get_prospect_gaps(
+        db_session,
+        tenant_id,
+        category="Supplies",
+        customer_type="all",
+        limit=20,
+    )
+
+    assert all_gaps.existing_buyers_count == 2
+    assert [prospect.company_name for prospect in all_gaps.prospects] == [
+        "Dealer Prospect",
+        "End User Prospect",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_get_prospect_gaps_filters_target_revenue_and_adjacency_by_customer_type(
+    db_session: AsyncSession,
+) -> None:
+    tenant_id = uuid.uuid4()
+    now = datetime.now(tz=UTC)
+    dealer_buyer = await _create_customer_for_tenant(
+        db_session,
+        "Dealer Buyer",
+        tenant_id,
+        customer_type="dealer",
+    )
+    dealer_prospect = await _create_customer_for_tenant(
+        db_session,
+        "Dealer Prospect",
+        tenant_id,
+        customer_type="dealer",
+    )
+    end_user_buyer = await _create_customer_for_tenant(
+        db_session,
+        "End User Buyer",
+        tenant_id,
+        customer_type="end_user",
+    )
+
+    supplies = await _create_product_for_tenant(db_session, "Target Belt", "Supplies", tenant_id)
+    v_belts = await _create_product_for_tenant(db_session, "Dealer Adjacent", "V-Belts", tenant_id)
+    hoses = await _create_product_for_tenant(db_session, "End User Adjacent", "Hoses", tenant_id)
+
+    await _create_order(
+        db_session,
+        customer=dealer_buyer,
+        created_at=now - timedelta(days=10),
+        status="confirmed",
+        lines=[(supplies, Decimal("250.00")), (v_belts, Decimal("100.00"))],
+        tenant_id=tenant_id,
+    )
+    await _create_order(
+        db_session,
+        customer=dealer_prospect,
+        created_at=now - timedelta(days=15),
+        status="confirmed",
+        lines=[(hoses, Decimal("180.00"))],
+        tenant_id=tenant_id,
+    )
+    await _create_order(
+        db_session,
+        customer=end_user_buyer,
+        created_at=now - timedelta(days=12),
+        status="confirmed",
+        lines=[(supplies, Decimal("90.00")), (hoses, Decimal("50.00"))],
+        tenant_id=tenant_id,
+    )
+    await db_session.commit()
+
+    dealer_gaps = await get_prospect_gaps(
+        db_session,
+        tenant_id,
+        category="Supplies",
+        customer_type="dealer",
+        limit=20,
+    )
+
+    assert dealer_gaps.target_category_revenue == Decimal("250.00")
+    assert dealer_gaps.existing_buyers_count == 1
+    assert [prospect.company_name for prospect in dealer_gaps.prospects] == ["Dealer Prospect"]
+    assert dealer_gaps.prospects[0].score_components.adjacent_category_support == 0
+    assert "adjacent_category_support" not in dealer_gaps.prospects[0].reason_codes
+
+
+@pytest.mark.asyncio
 async def test_get_market_opportunities_emits_concentration_and_growth_signals(db_session: AsyncSession) -> None:
     tenant_id = uuid.uuid4()
     now = datetime.now(tz=UTC)
@@ -1137,6 +1557,61 @@ async def test_get_market_opportunities_emits_concentration_and_growth_signals(d
         "prior_customer_count": 2,
     }
     assert opportunities.signals[2].source_period == "last_90d"
+
+
+@pytest.mark.asyncio
+async def test_get_market_opportunities_counts_zero_value_customers_in_support_counts(
+    db_session: AsyncSession,
+) -> None:
+    tenant_id = uuid.uuid4()
+    now = datetime.now(tz=UTC)
+    major = await _create_customer_for_tenant(db_session, "Anchor Account", tenant_id)
+    zero_value = await _create_customer_for_tenant(db_session, "Discounted Account", tenant_id)
+    electronics = await _create_product_for_tenant(db_session, "LED Panel", "Electronics", tenant_id)
+
+    await _create_order(
+        db_session,
+        customer=major,
+        created_at=now - timedelta(days=12),
+        status="confirmed",
+        lines=[(electronics, Decimal("600.00"))],
+        tenant_id=tenant_id,
+    )
+    await _create_order(
+        db_session,
+        customer=zero_value,
+        created_at=now - timedelta(days=11),
+        status="confirmed",
+        lines=[(electronics, Decimal("0.00"))],
+        tenant_id=tenant_id,
+    )
+    await _create_order(
+        db_session,
+        customer=major,
+        created_at=now - timedelta(days=120),
+        status="confirmed",
+        lines=[(electronics, Decimal("200.00"))],
+        tenant_id=tenant_id,
+    )
+    await _create_order(
+        db_session,
+        customer=zero_value,
+        created_at=now - timedelta(days=118),
+        status="confirmed",
+        lines=[(electronics, Decimal("0.00"))],
+        tenant_id=tenant_id,
+    )
+    await db_session.commit()
+
+    opportunities = await get_market_opportunities(db_session, tenant_id, period="last_90d")
+
+    concentration_signal = next(
+        signal for signal in opportunities.signals if signal.signal_type == "concentration_risk"
+    )
+    assert concentration_signal.support_counts == {
+        "customers_considered": 2,
+        "prior_customers_considered": 2,
+    }
 
 
 @pytest.mark.asyncio
