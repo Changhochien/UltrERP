@@ -30,6 +30,7 @@ from common.models.warehouse import Warehouse
 from common.tenant import DEFAULT_TENANT_ID
 from domains.customers.models import Customer
 from domains.inventory.reorder_point import (
+    DEFAULT_LEAD_TIME_DAYS,
     compute_reorder_points_preview,
 )
 from domains.invoices.models import InvoiceNumberRange
@@ -545,17 +546,17 @@ async def product_supplier_default_fallback(db_session, tenant_id, warehouse):
 
 
 @pytest.mark.asyncio
-async def test_source_unresolved_skips_row(
+async def test_source_unresolved_uses_fallback_lead_time(
     db_session,
     tenant_id,
     warehouse,
     product_multi_supplier,
 ):
-    """AC3: Ambiguous supplier history falls back to business-default lead time.
+    """AC3: Ambiguous supplier history falls back to the default lead time.
 
     When a product has received orders from two suppliers at equal counts (50/50),
     the preview should still include the row, but supplier resolution stays unresolved
-    and lead time falls back to the business default.
+    and lead time falls back to the configured default contract.
     """
     app = create_app()
     transport = ASGITransport(app=app)
@@ -584,8 +585,8 @@ async def test_source_unresolved_skips_row(
         if str(r["product_id"]) == str(product_multi_supplier.id)
     )
     assert candidate_row["skip_reason"] is None
-    assert candidate_row["lead_time_source"] == "business_default"
-    assert candidate_row["lead_time_days"] == 80
+    assert candidate_row["lead_time_source"] == "fallback_7d"
+    assert candidate_row["lead_time_days"] == DEFAULT_LEAD_TIME_DAYS
 
 
 @pytest.mark.asyncio
@@ -594,7 +595,7 @@ async def test_lead_time_fallback_chain(
     tenant_id,
     warehouse,
 ):
-    """Rows without configured lead time are skipped from auto-calculation preview."""
+    """Rows without configured lead time fall back to the shared default lead time."""
 
     p = Product(
         id=uuid.uuid4(),
@@ -637,10 +638,10 @@ async def test_lead_time_fallback_chain(
 
     candidate = next((c for c in preview_rows if c["product_id"] == p.id), None)
     assert candidate is not None, (
-        "Product without lead-time history should use the business default"
+        "Product without lead-time history should use the default fallback"
     )
-    assert candidate["lead_time_source"] == "business_default"
-    assert candidate["lead_time_days"] == 80
+    assert candidate["lead_time_source"] == "fallback_7d"
+    assert candidate["lead_time_days"] == DEFAULT_LEAD_TIME_DAYS
 
 
 @pytest.mark.asyncio
@@ -650,7 +651,7 @@ async def test_lead_time_supplier_default_fallback(
     warehouse,
     product_supplier_default_fallback,
 ):
-    """Rows without a resolved replenishment source are skipped before using a guessed lead time."""
+    """Rows without a resolved replenishment source fall back to the shared default lead time."""
     product = product_supplier_default_fallback
 
     preview_rows, skipped_rows = await compute_reorder_points_preview(
@@ -662,10 +663,10 @@ async def test_lead_time_supplier_default_fallback(
 
     candidate = next((c for c in preview_rows if c["product_id"] == product.id), None)
     assert candidate is not None, (
-        "Product without a resolved lead-time source should use the business default"
+        "Product without a resolved lead-time source should use the default fallback"
     )
-    assert candidate["lead_time_source"] == "business_default"
-    assert candidate["lead_time_days"] == 80
+    assert candidate["lead_time_source"] == "fallback_7d"
+    assert candidate["lead_time_days"] == DEFAULT_LEAD_TIME_DAYS
 
 
 @pytest.mark.asyncio

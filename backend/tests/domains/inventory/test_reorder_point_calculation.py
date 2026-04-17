@@ -383,19 +383,19 @@ class TestLeadTimeFallbackChain:
         assert lead_time == supplier.default_lead_time_days
 
     @pytest.mark.asyncio
-    async def test_fallback_to_business_default_days(
+    async def test_fallback_to_default_lead_time_days(
         self,
         db_session: AsyncSession,
         tenant_id: uuid.UUID,
         product: Product,
         warehouse: Warehouse,
     ):
-        """When no supplier history exists and no default, the business default is used."""
+        """When no supplier history exists and no default, the shared fallback is used."""
         lead_time, source = await get_lead_time_days(
             db_session, tenant_id, product.id, warehouse.id,
         )
 
-        assert source == "business_default"
+        assert source == "fallback_7d"
         assert lead_time == DEFAULT_LEAD_TIME_DAYS
 
 
