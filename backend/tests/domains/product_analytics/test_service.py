@@ -653,6 +653,50 @@ async def test_read_sales_monthly_range_includes_last_closed_month_when_no_live_
 
 
 @pytest.mark.asyncio
+async def test_read_sales_monthly_range_reuses_existing_transaction(
+    db_session: AsyncSession,
+    tenant_id: uuid.UUID,
+) -> None:
+    customer = await _create_customer(db_session, tenant_id, "Nested Transaction Customer")
+    product = await _create_product(db_session, tenant_id, "Nested Belt", "Belts")
+    previous_month = _shift_months(_month_start(datetime.now(tz=UTC).date()), -1)
+
+    await _create_order(
+        db_session,
+        customer=customer,
+        created_at=datetime.combine(previous_month, datetime.min.time(), tzinfo=UTC),
+        confirmed_at=datetime.combine(previous_month, datetime.min.time(), tzinfo=UTC),
+        status="confirmed",
+        line_specs=[
+            {
+                "product": product,
+                "quantity": "2.000",
+                "unit_price": "18.00",
+                "product_name_snapshot": "Nested Belt",
+                "product_category_snapshot": "Belts",
+            }
+        ],
+    )
+    await db_session.commit()
+
+    await refresh_sales_monthly(db_session, tenant_id, previous_month)
+
+    async with db_session.begin():
+        result = await read_sales_monthly_range(
+            db_session,
+            tenant_id,
+            start_month=previous_month,
+            end_month=previous_month,
+        )
+
+    assert len(result.items) == 1
+    assert result.items[0].month_start == previous_month
+    assert result.items[0].quantity_sold == Decimal("2.000")
+    assert result.items[0].revenue == Decimal("36.00")
+    assert result.items[0].source == "aggregated"
+
+
+@pytest.mark.asyncio
 async def test_refresh_sales_monthly_reports_missing_snapshot_lines_without_live_product_fallback(
     db_session: AsyncSession,
     tenant_id: uuid.UUID,

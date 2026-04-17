@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, timedelta
+from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal, ROUND_HALF_UP
 
 from sqlalchemy import and_, asc, case, desc, distinct, func, literal, or_, select, text
 from sqlalchemy.exc import IntegrityError
@@ -20,6 +21,7 @@ from common.models.supplier import Supplier
 from common.models.supplier_order import SupplierOrder, SupplierOrderLine, SupplierOrderStatus
 from common.models.warehouse import Warehouse
 from common.time import today, utc_now
+from domains.product_analytics.service import read_sales_monthly_range
 
 
 class InsufficientStockError(Exception):
@@ -35,6 +37,39 @@ class InsufficientStockError(Exception):
 
 class TransferValidationError(Exception):
     """Raised for invalid transfer parameters."""
+
+
+_PLANNING_QUANTITY_QUANT = Decimal("0.001")
+_PLANNING_INDEX_QUANT = Decimal("0.001")
+_ZERO_QUANTITY = Decimal("0.000")
+
+
+def _shift_months(value: date, months: int) -> date:
+    month_index = (value.year * 12 + value.month - 1) + months
+    year = month_index // 12
+    month = month_index % 12 + 1
+    return date(year, month, 1)
+
+
+def _iter_month_starts(start_month: date, end_month: date) -> list[date]:
+    month_starts: list[date] = []
+    cursor = start_month
+    while cursor <= end_month:
+        month_starts.append(cursor)
+        cursor = _shift_months(cursor, 1)
+    return month_starts
+
+
+def _format_month(month_start: date) -> str:
+    return month_start.strftime("%Y-%m")
+
+
+def _quantize_quantity(value: Decimal | int | float | None) -> Decimal:
+    return Decimal(str(value or "0")).quantize(_PLANNING_QUANTITY_QUANT, rounding=ROUND_HALF_UP)
+
+
+def _quantize_index(value: Decimal) -> Decimal:
+    return value.quantize(_PLANNING_INDEX_QUANT, rounding=ROUND_HALF_UP)
 
 
 # ── Warehouse queries ──────────────────────────────────────────
@@ -1709,6 +1744,151 @@ async def get_monthly_demand(
     ]
     total = sum(item["total_qty"] for item in items)
     return {"items": items, "total": total}
+
+
+async def get_planning_support(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+    *,
+    months: int = 12,
+    include_current_month: bool = True,
+) -> dict | None:
+    current_month_start = utc_now().date().replace(day=1)
+    end_month = current_month_start if include_current_month else _shift_months(current_month_start, -1)
+    start_month = _shift_months(end_month, -(months - 1))
+    requested_months = _iter_month_starts(start_month, end_month)
+    includes_current_month = include_current_month and current_month_start in requested_months
+
+    monthly_result = await read_sales_monthly_range(
+        session,
+        tenant_id,
+        start_month=start_month,
+        end_month=end_month,
+    )
+
+    monthly_quantities: dict[date, Decimal] = {}
+    for item in monthly_result.items:
+        if item.product_id != product_id:
+            continue
+        monthly_quantities[item.month_start] = monthly_quantities.get(item.month_start, _ZERO_QUANTITY) + item.quantity_sold
+    monthly_quantities = {
+        month_start: _quantize_quantity(quantity)
+        for month_start, quantity in monthly_quantities.items()
+    }
+
+    product_exists = await session.scalar(
+        select(Product.id).where(
+            Product.id == product_id,
+            Product.tenant_id == tenant_id,
+        )
+    )
+    if product_exists is None:
+        return None
+
+    stock_context_row = (
+        await session.execute(
+            select(
+                func.coalesce(func.sum(InventoryStock.reorder_point), 0).label("reorder_point"),
+                func.coalesce(func.sum(InventoryStock.on_order_qty), 0).label("on_order_qty"),
+                func.coalesce(func.sum(InventoryStock.in_transit_qty), 0).label("in_transit_qty"),
+                func.coalesce(func.sum(InventoryStock.reserved_qty), 0).label("reserved_qty"),
+            ).where(
+                InventoryStock.tenant_id == tenant_id,
+                InventoryStock.product_id == product_id,
+            )
+        )
+    ).one()
+
+    current_month_live_quantity = None
+    if includes_current_month:
+        current_month_live_quantity = _quantize_quantity(
+            monthly_quantities.get(current_month_start, _ZERO_QUANTITY),
+        )
+
+    if not monthly_quantities:
+        return {
+            "product_id": product_id,
+            "items": [],
+            "avg_monthly_quantity": None,
+            "peak_monthly_quantity": None,
+            "low_monthly_quantity": None,
+            "seasonality_index": None,
+            "above_average_months": [],
+            "history_months_used": 0,
+            "current_month_live_quantity": current_month_live_quantity,
+            "reorder_point": int(stock_context_row.reorder_point or 0),
+            "on_order_qty": int(stock_context_row.on_order_qty or 0),
+            "in_transit_qty": int(stock_context_row.in_transit_qty or 0),
+            "reserved_qty": int(stock_context_row.reserved_qty or 0),
+            "data_basis": "no_history",
+            "advisory_only": True,
+            "data_gap": True,
+            "window": {
+                "start_month": _format_month(start_month),
+                "end_month": _format_month(end_month),
+                "includes_current_month": includes_current_month,
+                "is_partial": includes_current_month,
+            },
+        }
+
+    items: list[dict[str, object]] = []
+    for month_start in requested_months:
+        items.append(
+            {
+                "month": _format_month(month_start),
+                "quantity": _quantize_quantity(monthly_quantities.get(month_start, _ZERO_QUANTITY)),
+                "source": "live" if month_start == current_month_start and includes_current_month else "aggregated",
+            }
+        )
+
+    quantities = [item["quantity"] for item in items]
+    total_quantity = sum(quantities, start=_ZERO_QUANTITY)
+    avg_monthly_quantity = _quantize_quantity(total_quantity / Decimal(len(items)))
+    peak_monthly_quantity = max(quantities)
+    low_monthly_quantity = min(quantities)
+    seasonality_index = (
+        _quantize_index(peak_monthly_quantity / avg_monthly_quantity)
+        if avg_monthly_quantity > 0
+        else Decimal("0.000")
+    )
+    above_average_months = [
+        str(item["month"])
+        for item in items
+        if item["quantity"] > avg_monthly_quantity
+    ]
+
+    if includes_current_month and start_month == current_month_start:
+        data_basis = "live_current_month_only"
+    elif includes_current_month:
+        data_basis = "aggregated_plus_live_current_month"
+    else:
+        data_basis = "aggregated_only"
+
+    return {
+        "product_id": product_id,
+        "items": items,
+        "avg_monthly_quantity": avg_monthly_quantity,
+        "peak_monthly_quantity": peak_monthly_quantity,
+        "low_monthly_quantity": low_monthly_quantity,
+        "seasonality_index": seasonality_index,
+        "above_average_months": above_average_months,
+        "history_months_used": len(items),
+        "current_month_live_quantity": current_month_live_quantity,
+        "reorder_point": int(stock_context_row.reorder_point or 0),
+        "on_order_qty": int(stock_context_row.on_order_qty or 0),
+        "in_transit_qty": int(stock_context_row.in_transit_qty or 0),
+        "reserved_qty": int(stock_context_row.reserved_qty or 0),
+        "data_basis": data_basis,
+        "advisory_only": True,
+        "data_gap": False,
+        "window": {
+            "start_month": _format_month(start_month),
+            "end_month": _format_month(end_month),
+            "includes_current_month": includes_current_month,
+            "is_partial": includes_current_month,
+        },
+    }
 
 
 # ── Sales history ────────────────────────────────────────────────

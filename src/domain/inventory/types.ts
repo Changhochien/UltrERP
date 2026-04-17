@@ -9,6 +9,8 @@ export type ReorderAlertStatus =
   | "dismissed"
   | "resolved";
 
+export type ReplenishmentPolicy = "continuous" | "periodic" | "manual";
+
 export interface Warehouse {
   id: string;
   tenant_id: string;
@@ -55,6 +57,12 @@ export interface InventoryStock {
   reorder_point: number;
   safety_factor: number;
   lead_time_days: number;
+  policy_type: ReplenishmentPolicy;
+  target_stock_qty: number;
+  on_order_qty: number;
+  in_transit_qty: number;
+  reserved_qty: number;
+  planning_horizon_days: number;
   review_cycle_days: number;
   updated_at: string;
 }
@@ -82,6 +90,12 @@ export interface WarehouseStockInfo {
   reorder_point: number;
   safety_factor: number;
   lead_time_days: number;
+  policy_type: ReplenishmentPolicy;
+  target_stock_qty: number;
+  on_order_qty: number;
+  in_transit_qty: number;
+  reserved_qty: number;
+  planning_horizon_days: number;
   review_cycle_days: number;
   is_below_reorder: boolean;
   last_adjusted: string | null;
@@ -102,6 +116,7 @@ export interface ProductDetail {
   name: string;
   category: string | null;
   status: string;
+  legacy_master_snapshot?: Record<string, unknown> | null;
   total_stock: number;
   warehouses: WarehouseStockInfo[];
   adjustment_history: AdjustmentHistoryItem[];
@@ -305,6 +320,54 @@ export interface StockSnapshotPoint {
   change: number;
 }
 
+export type PlanningSupportDataBasis =
+  | "aggregated_only"
+  | "aggregated_plus_live_current_month"
+  | "live_current_month_only"
+  | "no_history";
+
+export interface PlanningSupportItem {
+  month: string;
+  quantity: string;
+  source: "aggregated" | "live";
+}
+
+export interface PlanningSupportWindow {
+  start_month: string;
+  end_month: string;
+  includes_current_month: boolean;
+  is_partial: boolean;
+}
+
+export interface SharedHistoryAdvisoryContext {
+  advisory_only: boolean;
+  data_basis: PlanningSupportDataBasis;
+  history_months_used: number;
+  avg_monthly_quantity: number | null;
+  seasonality_index: number | null;
+  current_month_live_quantity: number | null;
+}
+
+export interface PlanningSupportResponse {
+  product_id: string;
+  items: PlanningSupportItem[];
+  avg_monthly_quantity: string | null;
+  peak_monthly_quantity: string | null;
+  low_monthly_quantity: string | null;
+  seasonality_index: string | null;
+  above_average_months: string[];
+  history_months_used: number;
+  current_month_live_quantity: string | null;
+  reorder_point: number;
+  on_order_qty: number;
+  in_transit_qty: number;
+  reserved_qty: number;
+  data_basis: PlanningSupportDataBasis;
+  advisory_only: boolean;
+  data_gap: boolean;
+  window: PlanningSupportWindow;
+}
+
 // --- Reorder point types ---
 
 export interface ReorderPointPreviewRow {
@@ -314,10 +377,20 @@ export interface ReorderPointPreviewRow {
   warehouse_id: string;
   warehouse_name: string;
   current_quantity: number;
+  inventory_position: number | null;
+  on_order_qty: number | null;
+  in_transit_qty: number | null;
+  reserved_qty: number | null;
   current_reorder_point: number;
+  policy_type: ReplenishmentPolicy | null;
+  target_stock_qty: number | null;
+  planning_horizon_days: number | null;
+  effective_horizon_days: number | null;
   computed_reorder_point: number | null;
   avg_daily_usage: number | null;
   lead_time_days: number | null;
+  lead_time_sample_count: number | null;
+  lead_time_confidence: "high" | "medium" | "low" | null;
   review_cycle_days: number | null;
   safety_stock: number | null;
   target_stock_level: number | null;
@@ -326,6 +399,7 @@ export interface ReorderPointPreviewRow {
   lead_time_source: string | null;
   quality_note: string | null;
   skip_reason: string | null;
+  shared_history_context?: SharedHistoryAdvisoryContext | null;
   is_selected: boolean;
   suggested_order_qty: number | null;
 }

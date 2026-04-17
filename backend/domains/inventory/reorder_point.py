@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime, timedelta
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import and_, func, select
@@ -29,6 +30,52 @@ SOURCE_UNRESOLVED = "source_unresolved"
 MIN_DEMAND_EVENTS = 2
 # Default lead time fallback when no history exists
 DEFAULT_LEAD_TIME_DAYS = 7
+
+
+async def _build_shared_history_context(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+) -> dict[str, Any] | None:
+    from domains.inventory.services import get_planning_support
+
+    planning_support = await get_planning_support(
+        session,
+        tenant_id,
+        product_id,
+        months=12,
+        include_current_month=True,
+    )
+    if planning_support is None or planning_support["data_gap"]:
+        return None
+
+    history_months_used = int(planning_support["history_months_used"])
+    avg_monthly_quantity = None
+    if history_months_used > 0:
+        total_quantity = sum(
+            Decimal(str(item["quantity"]))
+            for item in planning_support["items"]
+        )
+        avg_monthly_quantity = float(total_quantity / Decimal(history_months_used))
+    elif planning_support["avg_monthly_quantity"] is not None:
+        avg_monthly_quantity = float(planning_support["avg_monthly_quantity"])
+
+    return {
+        "advisory_only": bool(planning_support["advisory_only"]),
+        "data_basis": planning_support["data_basis"],
+        "history_months_used": history_months_used,
+        "avg_monthly_quantity": avg_monthly_quantity,
+        "seasonality_index": (
+            float(planning_support["seasonality_index"])
+            if planning_support["seasonality_index"] is not None
+            else None
+        ),
+        "current_month_live_quantity": (
+            float(planning_support["current_month_live_quantity"])
+            if planning_support["current_month_live_quantity"] is not None
+            else None
+        ),
+    }
 
 
 # ── Average daily usage ─────────────────────────────────────────
@@ -165,10 +212,54 @@ async def get_actual_lead_time_days(
     result = await session.execute(stmt)
     row = result.scalar_one_or_none()
 
-    if row is None or row < 0:
+    if row is None:
         return None
 
-    return max(1, round(float(row)))
+    if isinstance(row, timedelta):
+        average_days = row.total_seconds() / 86_400
+    else:
+        average_days = float(row)
+
+    if average_days < 0:
+        return None
+
+    return max(1, round(average_days))
+
+
+async def get_actual_lead_time_sample_count(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+    warehouse_id: uuid.UUID,
+    supplier_id: uuid.UUID,
+    lookback_days: int = 180,
+) -> int:
+    cutoff = utc_now() - timedelta(days=lookback_days)
+
+    stmt = (
+        select(func.count(SupplierOrder.id))
+        .join(SupplierOrderLine, SupplierOrderLine.order_id == SupplierOrder.id)
+        .where(
+            SupplierOrder.tenant_id == tenant_id,
+            SupplierOrder.supplier_id == supplier_id,
+            SupplierOrderLine.product_id == product_id,
+            SupplierOrderLine.warehouse_id == warehouse_id,
+            SupplierOrder.status == SupplierOrderStatus.RECEIVED,
+            SupplierOrder.received_date >= cutoff,
+        )
+    )
+    result = await session.execute(stmt)
+    return int(result.scalar_one_or_none() or 0)
+
+
+def _lead_time_confidence(sample_count: int | None) -> str | None:
+    if sample_count is None or sample_count <= 0:
+        return None
+    if sample_count >= 5:
+        return "high"
+    if sample_count >= 2:
+        return "medium"
+    return "low"
 
 
 async def get_lead_time_days(
@@ -291,6 +382,27 @@ async def compute_reorder_point_preview_row(
             session, tenant_id, product_id, warehouse_id, lead_time_lookback_days
         )
 
+    lead_time_sample_count: int | None = None
+    lead_time_confidence: str | None = None
+    if lt_source == "actual":
+        supplier_id = await resolve_replenishment_source(
+            session,
+            tenant_id,
+            product_id,
+            warehouse_id,
+            lead_time_lookback_days,
+        )
+        if supplier_id != SOURCE_UNRESOLVED:
+            lead_time_sample_count = await get_actual_lead_time_sample_count(
+                session,
+                tenant_id,
+                product_id,
+                warehouse_id,
+                supplier_id,
+                lead_time_lookback_days,
+            )
+            lead_time_confidence = _lead_time_confidence(lead_time_sample_count)
+
     # Compute ROP
     safety_stock = round(avg_daily_usage * safety_factor * lead_time_days, 2)
     reorder_point = round((lead_time_days * avg_daily_usage) + safety_stock)
@@ -306,6 +418,8 @@ async def compute_reorder_point_preview_row(
         "lead_time_days": lead_time_days,
         "review_cycle_days": review_cycle_days,
         "lead_time_source": lt_source,
+        "lead_time_sample_count": lead_time_sample_count,
+        "lead_time_confidence": lead_time_confidence,
         "safety_factor": safety_factor,
         "demand_lookback_days": demand_lookback_days,
         "demand_reason": [r.value for r in allowed_reasons],
@@ -363,6 +477,12 @@ async def compute_reorder_points_preview(
             InventoryStock.reorder_point.label("current_reorder_point"),
             InventoryStock.safety_factor.label("stored_safety_factor"),
             InventoryStock.lead_time_days.label("stored_lead_time_days"),
+            InventoryStock.policy_type.label("policy_type"),
+            InventoryStock.target_stock_qty.label("target_stock_qty"),
+            InventoryStock.on_order_qty.label("on_order_qty"),
+            InventoryStock.in_transit_qty.label("in_transit_qty"),
+            InventoryStock.reserved_qty.label("reserved_qty"),
+            InventoryStock.planning_horizon_days.label("planning_horizon_days"),
             InventoryStock.review_cycle_days.label("review_cycle_days"),
             Warehouse.name.label("warehouse_name"),
         )
@@ -375,6 +495,7 @@ async def compute_reorder_points_preview(
 
     candidates: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
+    shared_history_contexts: dict[uuid.UUID, dict[str, Any] | None] = {}
 
     for row in rows:
         effective_safety_factor = (
@@ -400,8 +521,31 @@ async def compute_reorder_points_preview(
         preview["category"] = row.category
         preview["current_quantity"] = row.current_quantity
         preview["current_reorder_point"] = row.current_reorder_point
+        preview["inventory_position"] = int(
+            (row.current_quantity or 0)
+            + (row.on_order_qty or 0)
+            + (row.in_transit_qty or 0)
+            - (row.reserved_qty or 0)
+        )
+        preview["on_order_qty"] = int(row.on_order_qty or 0)
+        preview["in_transit_qty"] = int(row.in_transit_qty or 0)
+        preview["reserved_qty"] = int(row.reserved_qty or 0)
+        preview["policy_type"] = row.policy_type or "continuous"
+        preview["target_stock_qty"] = int(row.target_stock_qty or 0)
+        preview["planning_horizon_days"] = int(row.planning_horizon_days or 0)
+        preview["effective_horizon_days"] = max(
+            int(row.planning_horizon_days or 0),
+            int(row.review_cycle_days or 0),
+        )
         preview["stock_id"] = row.stock_id
         preview["warehouse_name"] = row.warehouse_name
+        if row.product_id not in shared_history_contexts:
+            shared_history_contexts[row.product_id] = await _build_shared_history_context(
+                session,
+                tenant_id,
+                row.product_id,
+            )
+        preview["shared_history_context"] = shared_history_contexts[row.product_id]
 
         if preview["skipped_reason"] is not None:
             skipped.append(preview)

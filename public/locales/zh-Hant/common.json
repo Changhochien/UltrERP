@@ -1311,9 +1311,12 @@
         "aggregate_plus_live_current_month": "彙總加當月即時"
       },
       "reason": {
-        "rule_revenue_growth": "營收成長規則",
-        "rule_stability": "穩定性規則",
-        "rule_new_product": "新品規則"
+        "growing": "當期營收至少比前一期比較區間高出 20%。",
+        "mature": "當期營收落在成熟期比較區間內，且產品已銷售至少 24 個月。",
+        "stable": "當期營收仍為正值，且未觸發其他生命週期規則。",
+        "declining": "當期營收低於前一期比較區間的 80%。",
+        "new": "首次銷售月份落在當期比較區間內，且前一期沒有營收。",
+        "end_of_life": "當期沒有營收，且最近一次銷售距今至少六個完整月份。"
       }
     },
     "revenueDiagnosis": {

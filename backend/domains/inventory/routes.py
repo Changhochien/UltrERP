@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.auth import require_role
+from common.config import settings
 from common.database import get_db
 from common.models.inventory_stock import InventoryStock
 from common.models.product import Product
@@ -33,6 +34,7 @@ from domains.inventory.schemas import (
     DismissAlertResponse,
     InventoryStockResponse,
     MonthlyDemandResponse,
+    PlanningSupportResponse,
     ProductDetailResponse,
     ProductSearchResponse,
     ProductSearchResult,
@@ -78,6 +80,7 @@ from domains.inventory.services import (
     dismiss_alert,
     get_inventory_stocks,
     get_monthly_demand,
+    get_planning_support,
     get_product_audit_log,
     get_product_detail,
     get_product_supplier,
@@ -106,6 +109,11 @@ ReadUser = Annotated[dict, Depends(require_role("admin", "warehouse", "sales"))]
 WriteUser = Annotated[dict, Depends(require_role("admin", "warehouse"))]
 
 ACTOR_ID = "system"
+
+
+def _require_feature_enabled(enabled: bool, detail: str) -> None:
+    if not enabled:
+        raise HTTPException(status_code=403, detail=detail)
 
 
 # ── Warehouse endpoints ───────────────────────────────────────
@@ -240,10 +248,20 @@ async def compute_reorder_points_endpoint(
             warehouse_id=d["warehouse_id"],
             warehouse_name=d.get("warehouse_name", ""),
             current_quantity=d.get("current_quantity", 0.0),
+            inventory_position=d.get("inventory_position"),
+            on_order_qty=d.get("on_order_qty"),
+            in_transit_qty=d.get("in_transit_qty"),
+            reserved_qty=d.get("reserved_qty"),
             current_reorder_point=d.get("current_reorder_point", 0.0),
+            policy_type=d.get("policy_type"),
+            target_stock_qty=d.get("target_stock_qty"),
+            planning_horizon_days=d.get("planning_horizon_days"),
+            effective_horizon_days=d.get("effective_horizon_days"),
             computed_reorder_point=None if d.get("skipped_reason") else float(d["reorder_point"]),
             avg_daily_usage=d.get("avg_daily_usage"),
             lead_time_days=d.get("lead_time_days"),
+            lead_time_sample_count=d.get("lead_time_sample_count"),
+            lead_time_confidence=d.get("lead_time_confidence"),
             review_cycle_days=d.get("review_cycle_days"),
             safety_stock=d.get("safety_stock"),
             target_stock_level=d.get("target_stock_level"),
@@ -252,6 +270,7 @@ async def compute_reorder_points_endpoint(
             lead_time_source=d.get("lead_time_source"),
             quality_note=d.get("quality_note"),
             skip_reason=d.get("skipped_reason"),
+            shared_history_context=d.get("shared_history_context"),
             is_selected=False,
             suggested_order_qty=d.get("suggested_order_qty"),
         )
@@ -945,6 +964,37 @@ async def get_monthly_demand_endpoint(
 ) -> MonthlyDemandResponse:
     result = await get_monthly_demand(session, tenant_id, product_id)
     return MonthlyDemandResponse(**result)
+
+
+@router.get(
+    "/products/{product_id}/planning-support",
+    response_model=PlanningSupportResponse,
+)
+async def get_planning_support_endpoint(
+    product_id: uuid.UUID,
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+    months: int = Query(12, ge=1, le=24),
+    include_current_month: bool = Query(True),
+) -> PlanningSupportResponse:
+    _require_feature_enabled(
+        settings.inventory_planning_support_enabled,
+        "Planning support is disabled",
+    )
+    result = await get_planning_support(
+        session,
+        tenant_id,
+        product_id,
+        months=months,
+        include_current_month=include_current_month,
+    )
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found",
+        )
+    return PlanningSupportResponse(**result)
 
 
 # ── Sales history endpoint ───────────────────────────────────────

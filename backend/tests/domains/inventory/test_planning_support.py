@@ -21,6 +21,7 @@ from common.models.order_line import OrderLine
 from common.models.product import Product
 from common.models.warehouse import Warehouse
 from domains.customers.models import Customer
+from domains.inventory.reorder_point import compute_reorder_points_preview
 from domains.inventory import routes as inventory_routes
 from domains.inventory.services import get_planning_support
 from domains.product_analytics.service import refresh_sales_monthly
@@ -332,6 +333,184 @@ async def test_get_planning_support_blends_closed_aggregate_with_live_current_mo
         "end_month": "2026-04",
         "includes_current_month": True,
         "is_partial": True,
+    }
+
+
+@pytest.mark.asyncio
+@freeze_time("2026-04-15T09:00:00Z")
+async def test_get_planning_support_sums_snapshot_grain_rows_within_each_month(
+    db_session: AsyncSession,
+    tenant_id: uuid.UUID,
+) -> None:
+    customer = await _create_customer(db_session, tenant_id, "Snapshot Customer")
+    product = await _create_product(
+        db_session,
+        tenant_id,
+        code="PLAN-SNAPSHOT",
+        name="Planning Belt",
+        category="Belts",
+    )
+    warehouse = await _create_warehouse(
+        db_session,
+        tenant_id,
+        code="MAIN",
+        name="Main Warehouse",
+    )
+    await _create_inventory_stock(
+        db_session,
+        tenant_id,
+        product.id,
+        warehouse.id,
+        quantity=24,
+        reorder_point=10,
+        on_order_qty=2,
+        in_transit_qty=1,
+        reserved_qty=3,
+    )
+
+    previous_month = _shift_months(_month_start(datetime.now(tz=UTC).date()), -1)
+
+    await _create_order(
+        db_session,
+        customer=customer,
+        product=product,
+        confirmed_at=datetime(2026, 3, 5, 9, 0, tzinfo=UTC),
+        status="confirmed",
+        quantity="7.000",
+        unit_price="22.00",
+    )
+
+    product.name = "Planning Strap"
+    product.category = "Accessories"
+    await db_session.flush()
+
+    await _create_order(
+        db_session,
+        customer=customer,
+        product=product,
+        confirmed_at=datetime(2026, 3, 18, 15, 0, tzinfo=UTC),
+        status="shipped",
+        quantity="4.000",
+        unit_price="25.00",
+    )
+    await _create_order(
+        db_session,
+        customer=customer,
+        product=product,
+        confirmed_at=datetime(2026, 4, 3, 11, 0, tzinfo=UTC),
+        status="fulfilled",
+        quantity="2.000",
+        unit_price="27.00",
+    )
+
+    product.name = "Planning Strap v2"
+    product.category = "Straps"
+    await db_session.flush()
+
+    await _create_order(
+        db_session,
+        customer=customer,
+        product=product,
+        confirmed_at=datetime(2026, 4, 11, 13, 0, tzinfo=UTC),
+        status="confirmed",
+        quantity="3.000",
+        unit_price="29.00",
+    )
+    await db_session.commit()
+
+    await refresh_sales_monthly(db_session, tenant_id, previous_month)
+
+    result = await get_planning_support(
+        db_session,
+        tenant_id,
+        product.id,
+        months=2,
+        include_current_month=True,
+    )
+
+    assert result is not None
+    assert [item["month"] for item in result["items"]] == ["2026-03", "2026-04"]
+    assert [item["quantity"] for item in result["items"]] == [Decimal("11.000"), Decimal("5.000")]
+    assert [item["source"] for item in result["items"]] == ["aggregated", "live"]
+    assert result["avg_monthly_quantity"] == Decimal("8.000")
+    assert result["peak_monthly_quantity"] == Decimal("11.000")
+    assert result["low_monthly_quantity"] == Decimal("5.000")
+    assert result["seasonality_index"] == Decimal("1.375")
+    assert result["above_average_months"] == ["2026-03"]
+    assert result["current_month_live_quantity"] == Decimal("5.000")
+
+
+@pytest.mark.asyncio
+@freeze_time("2026-04-15T09:00:00Z")
+async def test_reorder_preview_surfaces_shared_history_as_advisory_context(
+    db_session: AsyncSession,
+    tenant_id: uuid.UUID,
+) -> None:
+    customer = await _create_customer(db_session, tenant_id, "Preview Customer")
+    product = await _create_product(
+        db_session,
+        tenant_id,
+        code="PLAN-PREVIEW",
+        name="Preview Belt",
+        category="Belts",
+    )
+    warehouse = await _create_warehouse(
+        db_session,
+        tenant_id,
+        code="MAIN",
+        name="Main Warehouse",
+    )
+    await _create_inventory_stock(
+        db_session,
+        tenant_id,
+        product.id,
+        warehouse.id,
+        quantity=10,
+        reorder_point=8,
+        on_order_qty=2,
+        in_transit_qty=0,
+        reserved_qty=1,
+    )
+
+    previous_month = _shift_months(_month_start(datetime.now(tz=UTC).date()), -1)
+    await _create_order(
+        db_session,
+        customer=customer,
+        product=product,
+        confirmed_at=datetime(2026, 3, 7, 10, 0, tzinfo=UTC),
+        status="confirmed",
+        quantity="7.000",
+        unit_price="30.00",
+    )
+    await _create_order(
+        db_session,
+        customer=customer,
+        product=product,
+        confirmed_at=datetime(2026, 4, 8, 14, 0, tzinfo=UTC),
+        status="shipped",
+        quantity="3.000",
+        unit_price="30.00",
+    )
+    await db_session.commit()
+
+    await refresh_sales_monthly(db_session, tenant_id, previous_month)
+
+    preview_rows, skipped_rows = await compute_reorder_points_preview(
+        db_session,
+        tenant_id,
+    )
+
+    assert not any(row["product_id"] == product.id for row in preview_rows)
+
+    skipped_row = next(row for row in skipped_rows if row["product_id"] == product.id)
+    assert skipped_row["skipped_reason"] == "insufficient_history"
+    assert skipped_row["shared_history_context"] == {
+        "advisory_only": True,
+        "data_basis": "aggregated_plus_live_current_month",
+        "history_months_used": 12,
+        "avg_monthly_quantity": pytest.approx(0.8333333333, rel=1e-6),
+        "seasonality_index": pytest.approx(8.403, rel=1e-6),
+        "current_month_live_quantity": 3.0,
     }
 
 

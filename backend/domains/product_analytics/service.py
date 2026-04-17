@@ -358,11 +358,9 @@ async def read_sales_monthly_range(
     if normalized_end_month < normalized_start_month:
         raise ValueError("end_month must be on or after start_month")
 
-    current_month_start = _current_month_start()
-    items: list[SalesMonthlyPoint] = []
-
-    async with session.begin():
-        await set_tenant(session, tenant_id)
+    async def _load_points() -> SalesMonthlyReadResult:
+        current_month_start = _current_month_start()
+        items: list[SalesMonthlyPoint] = []
 
         if normalized_start_month < current_month_start:
             if normalized_end_month >= current_month_start:
@@ -409,15 +407,23 @@ async def read_sales_monthly_range(
                 )
             )
 
-    return SalesMonthlyReadResult(
-        items=tuple(
-            sorted(
-                items,
-                key=lambda item: (
-                    item.month_start,
-                    item.product_name_snapshot,
-                    str(item.product_id),
-                ),
+        return SalesMonthlyReadResult(
+            items=tuple(
+                sorted(
+                    items,
+                    key=lambda item: (
+                        item.month_start,
+                        item.product_name_snapshot,
+                        str(item.product_id),
+                    ),
+                )
             )
         )
-    )
+
+    if session.in_transaction():
+        await set_tenant(session, tenant_id)
+        return await _load_points()
+
+    async with session.begin():
+        await set_tenant(session, tenant_id)
+        return await _load_points()
