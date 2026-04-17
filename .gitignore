@@ -16,3 +16,4 @@ __pycache__/
 legacy data/
 
 .gstack/
+legacy-migration-pipeline/extracted_data/
