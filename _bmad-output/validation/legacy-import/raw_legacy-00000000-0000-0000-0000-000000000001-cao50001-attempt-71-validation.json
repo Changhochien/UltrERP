@@ -1,0 +1,3475 @@
+{
+  "attempt_number": 71,
+  "batch_id": "cao50001",
+  "blocking_issue_count": 0,
+  "category_review_summary": {
+    "candidate_count": 372,
+    "candidates": [
+      {
+        "category_confidence": "0.95",
+        "category_rule_id": "name-token-non-merchandise",
+        "category_source": "exclusion_rule",
+        "current_category": "Non-Merchandise",
+        "legacy_code": "\u5217\u8868\u7d19",
+        "name": "\u6298\u8b93",
+        "review_reason": "excluded_path"
+      },
+      {
+        "category_confidence": "1.00",
+        "category_rule_id": "stock-kind-non-merchandise",
+        "category_source": "exclusion_rule",
+        "current_category": "Non-Merchandise",
+        "legacy_code": "*****",
+        "name": "***************",
+        "review_reason": "excluded_path"
+      },
+      {
+        "category_confidence": "1.00",
+        "category_rule_id": "stock-kind-non-merchandise",
+        "category_source": "exclusion_rule",
+        "current_category": "Non-Merchandise",
+        "legacy_code": "0000",
+        "name": "\u6298\u8b93",
+        "review_reason": "excluded_path"
+      },
+      {
+        "category_confidence": "1.00",
+        "category_rule_id": "stock-kind-non-merchandise",
+        "category_source": "exclusion_rule",
+        "current_category": "Non-Merchandise",
+        "legacy_code": "0001",
+        "name": "30CC \u85e5\u6c34",
+        "review_reason": "excluded_path"
+      },
+      {
+        "category_confidence": "1.00",
+        "category_rule_id": "stock-kind-non-merchandise",
+        "category_source": "exclusion_rule",
+        "current_category": "Non-Merchandise",
+        "legacy_code": "0005",
+        "name": "\u85e5\u6c34 5C.C",
+        "review_reason": "excluded_path"
+      },
+      {
+        "category_confidence": "1.00",
+        "category_rule_id": "stock-kind-non-merchandise",
+        "category_source": "exclusion_rule",
+        "current_category": "Non-Merchandise",
+        "legacy_code": "0006",
+        "name": "\u7ce2\u5177",
+        "review_reason": "excluded_path"
+      },
+      {
+        "category_confidence": "1.00",
+        "category_rule_id": "stock-kind-non-merchandise",
+        "category_source": "exclusion_rule",
+        "current_category": "Non-Merchandise",
+        "legacy_code": "001",
+        "name": "\u904b\u8cbb",
+        "review_reason": "excluded_path"
+      },
+      {
+        "category_confidence": "1.00",
+        "category_rule_id": "stock-kind-non-merchandise",
+        "category_source": "exclusion_rule",
+        "current_category": "Non-Merchandise",
+        "legacy_code": "0011",
+        "name": "\u5bc4\u54e1\u5ba2",
+        "review_reason": "excluded_path"
+      },
+      {
+        "category_confidence": "1.00",
+        "category_rule_id": "stock-kind-non-merchandise",
+        "category_source": "exclusion_rule",
+        "current_category": "Non-Merchandise",
+        "legacy_code": "0012",
+        "name": "\u904b\u8cbb \u7ad9\u6b62",
+        "review_reason": "excluded_path"
+      },
+      {
+        "category_confidence": "1.00",
+        "category_rule_id": "stock-kind-non-merchandise",
+        "category_source": "exclusion_rule",
+        "current_category": "Non-Merchandise",
+        "legacy_code": "0013",
+        "name": "\u90f5\u5bc4\u904b\u8cbb",
+        "review_reason": "excluded_path"
+      },
+      {
+        "category_confidence": "1.00",
+        "category_rule_id": "stock-kind-non-merchandise",
+        "category_source": "exclusion_rule",
+        "current_category": "Non-Merchandise",
+        "legacy_code": "0014",
+        "name": "\u5230\u4ed8",
+        "review_reason": "excluded_path"
+      },
+      {
+        "category_confidence": "1.00",
+        "category_rule_id": "stock-kind-non-merchandise",
+        "category_source": "exclusion_rule",
+        "current_category": "Non-Merchandise",
+        "legacy_code": "002",
+        "name": "165*164*99 \u7d19\u7bb1",
+        "review_reason": "excluded_path"
+      },
+      {
+        "category_confidence": "1.00",
+        "category_rule_id": "stock-kind-non-merchandise",
+        "category_source": "exclusion_rule",
+        "current_category": "Non-Merchandise",
+        "legacy_code": "0022",
+        "name": "\u5230\u4ed8",
+        "review_reason": "excluded_path"
+      },
+      {
+        "category_confidence": "1.00",
+        "category_rule_id": "stock-kind-non-merchandise",
+        "category_source": "exclusion_rule",
+        "current_category": "Non-Merchandise",
+        "legacy_code": "004",
+        "name": "\u5305\u88dd\u5e36(\u4e00\u822c\u7528)",
+        "review_reason": "excluded_path"
+      },
+      {
+        "category_confidence": "1.00",
+        "category_rule_id": "stock-kind-non-merchandise",
+        "category_source": "exclusion_rule",
+        "current_category": "Non-Merchandise",
+        "legacy_code": "005",
+        "name": "\u5305\u88dd\u5e36(\u6728\u6750\u7528)",
+        "review_reason": "excluded_path"
+      },
+      {
+        "category_confidence": "0.95",
+        "category_rule_id": "name-token-non-merchandise",
+        "category_source": "exclusion_rule",
+        "current_category": "Non-Merchandise",
+        "legacy_code": "007",
+        "name": "\u4e00\u822c\u4fe1\u5c01(\u767d\u8272)",
+        "review_reason": "excluded_path"
+      },
+      {
+        "category_confidence": "0.95",
+        "category_rule_id": "name-token-non-merchandise",
+        "category_source": "exclusion_rule",
+        "current_category": "Non-Merchandise",
+        "legacy_code": "008",
+        "name": "\u56de\u90f5\u4fe1\u5c01(\u9ec3\u8272)",
+        "review_reason": "excluded_path"
+      },
+      {
+        "category_confidence": "0.95",
+        "category_rule_id": "name-token-non-merchandise",
+        "category_source": "exclusion_rule",
+        "current_category": "Non-Merchandise",
+        "legacy_code": "009",
+        "name": "\u806f\u6cf0\u8208 \u4e09\u806f\u5f0f\u51fa\u8ca8\u55ae",
+        "review_reason": "excluded_path"
+      },
+      {
+        "category_confidence": "0.95",
+        "category_rule_id": "name-token-non-merchandise",
+        "category_source": "exclusion_rule",
+        "current_category": "Non-Merchandise",
+        "legacy_code": "010",
+        "name": "\u806f\u6cf0\u8208 \u5e33\u55ae\u672c",
+        "review_reason": "excluded_path"
+      },
+      {
+        "category_confidence": "1.00",
+        "category_rule_id": "stock-kind-non-merchandise",
+        "category_source": "exclusion_rule",
+        "current_category": "Non-Merchandise",
+        "legacy_code": "097",
+        "name": "\u900f\u660e\u81a0\u5e36(\u5927)",
+        "review_reason": "excluded_path"
+      },
+      {
+        "category_confidence": "1.00",
+        "category_rule_id": "stock-kind-non-merchandise",
+        "category_source": "exclusion_rule",
+        "current_category": "Non-Merchandise",
+        "legacy_code": "098",
+        "name": "\u5c01\u53e3\u5e36 \u5927",
+        "review_reason": "excluded_path"
+      },
+      {
+        "category_confidence": "1.00",
+        "category_rule_id": "stock-kind-non-merchandise",
+        "category_source": "exclusion_rule",
+        "current_category": "Non-Merchandise",
+        "legacy_code": "099",
+        "name": "\u6253\u5305\u5e36",
+        "review_reason": "excluded_path"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "\u6a21\u5177",
+        "name": "240L\u52a0\u539a\u6a21\u5177",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "0015",
+        "name": "\u6cb9\u5c01",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "003",
+        "name": "\u76ae\u5e36\u52fe",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "006",
+        "name": "PP\u5e36 S15mm*2000M \u9ec3\u8272",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "12*2*1/8*1/16",
+        "name": "12*2*1/8*1/16*12.15M \u767d\u8272",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "12*2*1/8*1/16*11M",
+        "name": "12*2*1/8*1/16*11M \u767d\u8272\u958b\u653e",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "12*2*1/8*1/16*7.15M",
+        "name": "12*2*1/8*1/16*7.15M \u767d\u8272",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "12*3*3*2*2.2M",
+        "name": "12*3*3*2*2.2M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "1330K*45M/M",
+        "name": "1330K*45M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "15*2P*6M",
+        "name": "15*2P*1/8*1/16*6M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "150CXF-N",
+        "name": "PU 450*5985",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "151/2*1/8*",
+        "name": "15.5*2P*1/16*15.2M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "1562L-47M/M",
+        "name": "1562L-47M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "16*703",
+        "name": "16*703",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "17641-00 \u515c\u98a8",
+        "name": "23Y-\u515c\u98a8",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "17641-00 \u8fc5\u5149",
+        "name": "4CW- \u8fc5\u5149",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "18*2*1/8*1/16",
+        "name": "18*2*1/8*1/16*6.1M \u767d\u8272",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "18*2*1/8*1/16*5.7M",
+        "name": "18*2*1/8*1/16*5.7M \u767d\u8272",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "18*2*1/8/1/16*5.95M",
+        "name": "18*2*1/8/1/16*5.95M \u767d\u8272\u63a5\u5713",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "1926V427",
+        "name": "1926V427",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "220*3*6940M/M",
+        "name": "220*3*1/8*6940M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "225L*13M/M PU",
+        "name": "\u92fc\u7d72 225L*13M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "240L*30M/M PU",
+        "name": "\u92fc\u7d72 240L*30M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "2EL 50*1360",
+        "name": "2EL 50*1360",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "2M12U50*2830",
+        "name": "2M12UOV15S50*2830",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "3.5'*1M",
+        "name": "3.5'*1M \u6a61\u81a0\u677f",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "3100 GW3-L9H",
+        "name": "GW3-\u5927\u8def\u6613 90",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "346 139*193",
+        "name": "X-346 139*1930",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "400M/M*2P*2.1",
+        "name": "400M/M*2P*2.1M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "4F 0.5*40\"\"",
+        "name": "4F 0.5*40\"\"",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "4L*200",
+        "name": "4L*200",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "4L*420",
+        "name": "4L*420",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "600*4*4.5M",
+        "name": "600*4*4.5M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "600*4*6.5M",
+        "name": "600*4*6.5M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "60000",
+        "name": "\u5927\u5c0f\u901a\u7528\u7d19\u5957",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "7*3*1/8*11140",
+        "name": "7*3*1/8*11140M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "800*7P*6.2M",
+        "name": "800*7P*6.2M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "8Q30M\u7da0\u8272",
+        "name": "8Q30\u7da0\u8272",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "9*3*1/16*7500",
+        "name": "9*3*1*16*7500M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "A-2 25*1100",
+        "name": "A-2 25*1100M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "A-2 30*1092",
+        "name": "A-2 30*1092M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "AVX-10*625M/M",
+        "name": "AVX-10*625M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "BANDO 6*600",
+        "name": "BANDO 6*600",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "DP034",
+        "name": "DP034 19*3630",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "EAB400*3000",
+        "name": "\u6253\u5b54 400*3000",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "ENU 45*5985",
+        "name": "ENU-50A 450*5985",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "ENU 450*5970",
+        "name": "ENU-50A 450*5970",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "F-0 5.5*3110",
+        "name": "F-0 5.5*3110M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "F-0 5*1505M/M",
+        "name": "F-0 5*1505M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "F-0 5*2112M/M",
+        "name": "F-0 5*2112M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "F-0 5*2145M/M",
+        "name": "F-0 5*2145M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "F-0 5*2190M/M",
+        "name": "F-0 5*2190M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "F-1 12*1005",
+        "name": "F-1 12*1005MM",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "F-1 15*10000",
+        "name": "F-1 15*10000MM",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "F-1 15*1375MM",
+        "name": "F-1 15*1375MM",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "F-1 18*880M/M",
+        "name": "F-1 18*880M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "F-1 25*20M",
+        "name": "F-1 25*20M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "F-1 25*30M",
+        "name": "F-1 25*30M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "F-1 25*50M",
+        "name": "F-1 25*50M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "F-1 30*10000",
+        "name": "F-1 30*10000MM",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "F-1 35*1200",
+        "name": "F-1 35*1200MM",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "F-1 40*838M/M",
+        "name": "F-1 40*838M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "F-1 5*2120M/M",
+        "name": "F-1 5*2120M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "F-1 5*2150M/M",
+        "name": "F-1 5*2150M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "FK 120*2195",
+        "name": "\u5e73\u9762 120*2195 \u76f4\u5207",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "FO037",
+        "name": "OH FM-37",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "FON 5*435",
+        "name": "FON 5*435",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "FON 8*630",
+        "name": "FON 8*630",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "FOZ 8*560",
+        "name": "FOZ 8*560",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "G-1 30*3000",
+        "name": "G-1 30*3000M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "G-1 36*1700",
+        "name": "G-1 36*1700",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "G-1 40*2040",
+        "name": "G-1 40*2040",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "H16-170",
+        "name": "H16-170",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "H16-190",
+        "name": "H16-190",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "H16-450",
+        "name": "H16-450",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "H3-2030",
+        "name": "H3-2030",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "H4-2030",
+        "name": "H4-2030",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "H4-2069",
+        "name": "H4-2069",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "H4-814",
+        "name": "H4-814 BANDO",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "H6-190",
+        "name": "H6-190",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "HA1000 16*1368",
+        "name": "\u4fdd\u529b\u76ae\u5e36 16*1368",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "HAM-25*5425MM",
+        "name": "HAM-25*5425M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "HAM-70*1305MM",
+        "name": "HAM-70*1305M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "HL694*17M/M",
+        "name": "694HL*17M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "JBX024",
+        "name": "JBX-24",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "JBX025",
+        "name": "JBX-25",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "L-500 180*600",
+        "name": "L-500 180*600",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "L-500 190*620",
+        "name": "L-500 190*620",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "L-500 190*670",
+        "name": "L-500 190*670",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "L-500 70*800",
+        "name": "L-500 70*800",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "L10 50*1810",
+        "name": "L10F 50*1810",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "L10 50*706",
+        "name": "L10F 50*1810",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "L10F 50*1790",
+        "name": "L10F 50*1790",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "L10F 50*1815",
+        "name": "L10F 50*1815",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "L10F 50*363",
+        "name": "L10F 50*363",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "L10F 50*805",
+        "name": "L10F 50*805",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "L10F 50*855",
+        "name": "L10F 50*855",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "L10R 130*2370",
+        "name": "L10R 130*2370",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "L3-520",
+        "name": "520-L3",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "L8-530 \u6e9d\u69fd\u76ae\u5e36",
+        "name": "PL8-1346 \u6e9d\u69fd\u76ae\u5e36",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LB065-5",
+        "name": "\u4e09\u4e94\u76ae\u5e36 B-65",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LB069-5",
+        "name": "\u4e09\u4e94 B-69",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LB098-5",
+        "name": "\u4e09\u4e94 B098",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LB103-5",
+        "name": "\u4e09\u4e94 B-103",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LB125-P",
+        "name": "\u76ae\u5e36 B-125",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LE139-3",
+        "name": "\u5927\u5c71 E-139",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LINK-A",
+        "name": "\u9c57\u7247\u5e36 A \u578b",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LINK-A-\u9ed1\u8272\u9c57\u7247\u76ae\u5e36",
+        "name": "LINK-A-\u9ed1\u8272\u9c57\u7247\u76ae\u5e36",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LINK-A-R",
+        "name": "\u7d05\u8272\u9c57\u7247\u76ae\u5e36 A\u578b",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LINK-B",
+        "name": "\u9c57\u7247\u5e36 B \u578b",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LINK-M",
+        "name": "\u9c57\u7247\u5e36 M \u578b",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LP0703",
+        "name": "\u6728\u68c9\u5e36 7*3P",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LS-2 12*530",
+        "name": "LS-2 12*530",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LS-2 18*2337",
+        "name": "LS-2 18*2337",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LS-2 18*2575",
+        "name": "LS-2 18*2575",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LS-2 18*2813",
+        "name": "LS-2 18*2813",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LS-2 18*3051",
+        "name": "LS-2 18*3051",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LS-2 18*3289",
+        "name": "LS-2 18*3289",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LS-2 18*3527",
+        "name": "LS-2 18*3527",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LS-2 18*3765",
+        "name": "LS-2 18*3765",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LS-2 18*4003",
+        "name": "LS-2 18*4003",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LS-2 18*4241",
+        "name": "LS-2 18*4241",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LS-2 18*4479",
+        "name": "LS-2 18*4479",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LS-2 20*310",
+        "name": "LS-2 20*310",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LS-2 6*300",
+        "name": "LS-2 6*300",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LS-2 80*1200",
+        "name": "LS-2 80*1200",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "LT-2 10*2210",
+        "name": "LT-2 102210M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MAM-04H 25*975",
+        "name": "MAM-04H 25*975",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MB-1180",
+        "name": "MB-1180[PU]",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MB-250",
+        "name": "MB-250 [PU]",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MB-260",
+        "name": "MB-260 [PU]",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MB-270",
+        "name": "MB-270 [PU]",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MB-280",
+        "name": "MB-280 [PU]",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MB-290",
+        "name": "MB-290 [PU]",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MB-300",
+        "name": "MB-300 [PU]",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MB-310",
+        "name": "MB-310 [PU]",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MB-320",
+        "name": "MB-320 [PU]",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MB-330",
+        "name": "MB-330 [PU]",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MB-350",
+        "name": "MB-350 [PU]",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MB-360",
+        "name": "MB-360 [PU]",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MB-380",
+        "name": "MB-380 [PU]",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MB-400",
+        "name": "MB-400 [PU]",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MB-420",
+        "name": "MB-420 [PU]",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MB-430",
+        "name": "MB-430 [PU]",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MB-460",
+        "name": "MB-460 [PU]",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MB-470",
+        "name": "MB-470 [PU]",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MBT-678*17.7",
+        "name": "GAKA-678*17.7",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MBT-778*21.9",
+        "name": "4CW-778*21.9",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MBT-792*16.6",
+        "name": "3GF-792*16.6",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MIT-OA88",
+        "name": "\u4e09\u661f\u8010\u6cb9A-88",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MX-22",
+        "name": "MX-22",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MX-23",
+        "name": "MX-23",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MX024",
+        "name": "MX-24",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MX033",
+        "name": "MX-33",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MX036",
+        "name": "MX-36",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "MX044",
+        "name": "MX-44",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "N4 M019.5",
+        "name": "M-19.5",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "NA 88*405",
+        "name": "NA 88*405",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "OLA065-3",
+        "name": "\u4e09\u661f \u8010\u71b1 LA-65",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "OLA073-3",
+        "name": "\u4e09\u661f \u8010\u71b1 LA-73",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "P6A 78*1590",
+        "name": "P6A 78*1590",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "PK-59",
+        "name": "\u5316\u5b78\u85e5\u54c1 PK-59",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "PK-91",
+        "name": "\u5316\u5b78\u85e5\u54c1 PK-91",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "PK-92",
+        "name": "\u5316\u5b78\u85e5\u54c1 PK-92",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "PK-FILM-20U",
+        "name": "FILM-20U",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "PK-FILM-30U",
+        "name": "FILM-30U",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "PK-HISHIRON",
+        "name": "HISHIRON",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "PPP10",
+        "name": "\u4eba\u5b57\u767d\u74b0\u5e36 24\"\"*10M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "PPP12",
+        "name": "\u9ed1\u9762\u677f 300*300*10",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "PRLB042",
+        "name": "\u5207\u908a\u76ae\u5e36 B-42",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "PU140XL*10M/M",
+        "name": "140XL*10M/M-PU",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "PU150XL*13M/M",
+        "name": "150XL*13M/M-PU",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "PU187L*21M/M",
+        "name": "187L*13M/M(PU)",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "PU210L*13M/M",
+        "name": "210L*1325M/M-PU",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "PU210XL*25M/M",
+        "name": "210XL*25M/M-PU",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "PV10 100*1622",
+        "name": "PV10 100*1622",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "PV10 185*1865",
+        "name": "PV10 185*1865",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "PV10 185*2250",
+        "name": "PV10 185*2250",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "PV10 490*720",
+        "name": "PV10 490*720",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "PV10 490*725",
+        "name": "PV10 490*725",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "PV10 70*1622",
+        "name": "PV10 70*1622",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "PV10 75*1880",
+        "name": "PV10 75*1880",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "Q30\u7da0\u8272",
+        "name": "8Q\u7d05\u8272\u5e36",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "QQQQ",
+        "name": "5.7*15\"\"\u6a61\u81a0\u5708",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "R240L*18R",
+        "name": "240L*23MM \u88c1\u5de5",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "R240L*23R",
+        "name": "240L*23M/M \u7d05(\u539a)",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "RA083",
+        "name": "\u9f52\u578b\u76ae\u5e36 A-83",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "RA086-P",
+        "name": "\u9f52\u578b\u76ae\u5e36 A-86",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "RM-TYPR",
+        "name": "\u6253\u5b54\u9396\u7247\u76ae\u5e36 M TYPE",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-1 10*1275",
+        "name": "S-1 10*1275M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-1 12*618M/M",
+        "name": "S-1 12*618M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-1 15*780M/M",
+        "name": "S-1 15*780M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-1 15*810M/M",
+        "name": "S-1 15*810M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-1 16*695M/M",
+        "name": "S-1 16*695M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-1 16*920M/M",
+        "name": "S-1 16*920M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-1 16*950M/M",
+        "name": "S-1 16*950M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-1 16*970M/M",
+        "name": "S-1 16*970M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-1 18*920M/M",
+        "name": "S-1 18*920M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-1 18*970M/M",
+        "name": "S-1 18*970M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-1 30*1645",
+        "name": "S-1 30*1645M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-1 30*676M/M",
+        "name": "S-1 30*676M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-1 38*1040",
+        "name": "S-1 38*1040M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-1 38*1500",
+        "name": "S-1 38*1500M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-1 38*1600",
+        "name": "S-1 38*1600M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-1 38*1650",
+        "name": "S-1 38*1650M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-1 38*1700",
+        "name": "S-1 38*1700M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-1 38*1750",
+        "name": "S-1 38*1750M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-1 40*2200MM",
+        "name": "S-1 40*2200M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-1 40*3300MM",
+        "name": "S-1 40*3300M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-1 50*610M/M",
+        "name": "S-1 50*610M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-1 50*985",
+        "name": "S-1 50*985",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-1 7*2115M/M",
+        "name": "S-1 7*2115M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-1 75*1250MM",
+        "name": "S-1 75*1250MM",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-1 75*700MM",
+        "name": "S-1 75*700M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-140 25*1520",
+        "name": "S-140*1520M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-140 40*1105",
+        "name": "S-140 40-1105M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-140 40*2100",
+        "name": "S-140 40*2100M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-140 8*2235",
+        "name": "S-140 8*2235M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-2 10*700M/M",
+        "name": "S-2 10*700M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-2 10*730M/M",
+        "name": "S-2 10*730M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-2 12*530M/M",
+        "name": "S-2 12*530M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-2 12*965M/M",
+        "name": "S-2 12*965M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-2 14*900M/M",
+        "name": "S-2 14*900M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-2 16*900M/M",
+        "name": "S-2 16*900M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-2 18*900M/M",
+        "name": "S-2 18*900M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-2 18*965M/M",
+        "name": "S-2 18*965M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-2 20*1630MM",
+        "name": "S-2 20*1630MM",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-2 20*410M/M",
+        "name": "S-2 20*410M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-2 20*630MM",
+        "name": "S-2 20*630M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-2 22*3755MM",
+        "name": "S-2 22*3755M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-2 25*1200MM",
+        "name": "S-2 25*1200M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-2 25*1453MM",
+        "name": "S-2 25*1453M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-2 25*1460",
+        "name": "S-2 25*1460",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-2 25*750MM",
+        "name": "S-2 25*750M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-2 28*1200",
+        "name": "S-2 28*1200M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-2 28*2000",
+        "name": "S-2 28*2000",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-2 30*2260",
+        "name": "S-2 30*2260",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-2 37*1350",
+        "name": "S-2 37*1350M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-2 45*1300",
+        "name": "S-2 45*1300M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-2 45*1651MM",
+        "name": "S-2 45*1651MM",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-2 60*2280M/M",
+        "name": "S-2 60*2280M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-2 9*2230MM",
+        "name": "S-2 9*2230M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-250 25*1778",
+        "name": "S-250 25*1778MM",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-250 25*890",
+        "name": "S-250 25*890M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-250 30*1160",
+        "name": "S-250 30*1160M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-250 32*910",
+        "name": "S-250 32*910M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-250 50*2400",
+        "name": "S-250 50*2400M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-250 80*1900",
+        "name": "S-250 80*1900MM",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-251 40*2345",
+        "name": "S-251 40*2345{8*5]",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-251 50*2108",
+        "name": "S-251 50*2108M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-3 50*1651",
+        "name": "S-3 50*1651M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-3 50*1905",
+        "name": "S-3 50*1905",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-3 50*640MM",
+        "name": "S-3 50*640M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-3 70*1930",
+        "name": "S-3 70*1930",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-4 100*2108",
+        "name": "S-4 100*2108",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-4 40*3795MM",
+        "name": "S-4 40*3795MM",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S-4 52*1285",
+        "name": "S-4 52*1285MM",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S1-11X1210",
+        "name": "S1-11X1210",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S2 15*525M/M",
+        "name": "S2-15*525M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S250 130*2950",
+        "name": "S250 130*2950",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S250 25*1778",
+        "name": "S250 25*1778",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S250 28*1320",
+        "name": "S250 28*1320",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S250 30*1160",
+        "name": "S250530*1160M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S250 34*1320",
+        "name": "S250 34*1320",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S250 64*620",
+        "name": "S250 64*620",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S2M-144*4M/M",
+        "name": "S2M-144*4M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S2M-180*15M/M",
+        "name": "S2M-180*15M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S2M-180*6.3MM",
+        "name": "S2M-180*6.3MM",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S2M-220*15M/M",
+        "name": "S2M-220*15M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S2M-220*4M/M",
+        "name": "S2M-220*4M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S2M-220*8M/M",
+        "name": "S2M-220*8M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S2M-340*6M/M",
+        "name": "S2M-340*6M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S321-60*2145",
+        "name": "S321 60*2145",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "S4.5-450*11",
+        "name": "04.5M-450*11M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SB-180 20*1755",
+        "name": "SB-180 20*1755",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SE15LL 15*1630",
+        "name": "\u50b3\u52d5\u76ae\u5e36 15*1630",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SE15LL 7*2690",
+        "name": "\u50b3\u52d5\u76ae\u5e36 7*2690",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SE15LL10*1680",
+        "name": "\u50b3\u52d5\u76ae\u5e36 10*1680",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SE15LL25*1425",
+        "name": "\u50b3\u52d5\u76ae\u5e36 25*1425",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SE15LL38*3300",
+        "name": "\u50b3\u52d5\u76ae\u5e36 38*3300",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SE15LL50*1180",
+        "name": "\u50b3\u52d5\u76ae\u5e36 50*1180",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SE15LL60*935",
+        "name": "\u50b3\u52d5\u76ae\u5e36 60*935",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SL237*10M/M",
+        "name": "SL237*10M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SLV1344-14*50",
+        "name": "SLV-1344-14*50M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SNT 22*1455",
+        "name": "SNT-12 22*1455",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SP100 50*625",
+        "name": "SP100 50*625",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SP100 58*2160",
+        "name": "SP100 58*2160",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SP100 7*2115",
+        "name": "SP100 7*2115",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SP100/15 50*610",
+        "name": "SP100/15 50*610",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SP180 11*530",
+        "name": "SP180 11.5*530",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SP180 12*530",
+        "name": "SP180 12*530",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SP180 15*410",
+        "name": "SP180 15*410",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SP180 15*510",
+        "name": "SP180 15*510",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SP180 15*525",
+        "name": "SP180 15*525",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SP180 15*582",
+        "name": "SP180 15*582",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SP180 15*607",
+        "name": "SP180 15*607",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SP180 18*1200",
+        "name": "SP180 18*1200",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SP180 18*4003",
+        "name": "SP180 18*4003",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SP180 20*405",
+        "name": "SP180 20*405",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SP180 20*410",
+        "name": "SP180 20*410",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SP180 20*810",
+        "name": "SP180 20*810",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SP180/23 20*1105",
+        "name": "SP180/23 20*1105",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "SP250 25*1460",
+        "name": "SP250 25*1460",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "STOP01",
+        "name": "1\"\"\u715e\u8eca\u5e36",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "T*8*600",
+        "name": "T*8*600",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "T2.5*145*10M/M",
+        "name": "T2.5*145*10M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "T2.5*160*4M/M",
+        "name": "T2.5*160*4M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "T2.5*245*4M/M",
+        "name": "T2.5*245*4M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "T2.5*330*4M/M",
+        "name": "T2.5*330*4M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "TC20 25*1253",
+        "name": "TC20/25EF 25*1253",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "TC20 50*795",
+        "name": "TC20EF 50*795M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "TE80 200*6500",
+        "name": "TE80 200*6500",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "TR04 18*965",
+        "name": "TR04 18*965",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "TR04 6*1220",
+        "name": "TR04 6*1220",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "TR04 6*760",
+        "name": "TR04 6*760",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "TR04 6*910",
+        "name": "TR04 6*910",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "TS-1 18*950",
+        "name": "TS-1 18*950M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "TS-1 20*950",
+        "name": "TS-1 20*950M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "TS-1 22*1218",
+        "name": "TS-1 22*1218MM",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "TS-1 22*950",
+        "name": "TS-1 22*950M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "TS-1 24*950",
+        "name": "TS-1 24*950M/M",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "TS-5 16*950MM",
+        "name": "TS-5 16*950MM",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "TS-5 20*885MM",
+        "name": "TS-5 20*885MM",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "TS-5 20*910MM",
+        "name": "TS-5 20*910MM",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "TS-55 25*780",
+        "name": "TS-55 25*780",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "TS-55 40*550",
+        "name": "TS-55 40*550",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "TS-55 7*967",
+        "name": "TS-55 7*967",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "TS210 30*2650",
+        "name": "TS-210 30*2650",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "TV10*4*20FT",
+        "name": "TV10*4*20FT",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "U10AG140*770",
+        "name": "140*2*770",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "U10AG370*1370",
+        "name": "370*1370",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "U10AG400*1260",
+        "name": "400*1260",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "U10AG60*3040",
+        "name": "60*3040\u4e0aT30*60(8*5)",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "U210.5/0.5",
+        "name": "U210.5/0.5 700*2100",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "UI0AG1200*5M",
+        "name": "UI0AG 1200*5000",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "UV 1180*4160",
+        "name": "UV-59 1180*4160",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "VC12504130",
+        "name": "1250VC 41-30",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "VC1320-4726",
+        "name": "1320VC 47-26",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "VC1450-38-28",
+        "name": "1450VC 38-28",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "VC900 38-30",
+        "name": "900VC 38-30",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "VS-16*573",
+        "name": "VS-16*573",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "VS-16*628",
+        "name": "VS-16*628",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "X346 100*1643",
+        "name": "X-346 100*1643",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "X346 139*1840",
+        "name": "X-346 139*1840",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "X346 139*1890",
+        "name": "X-346 139*1890",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "X346 139*1930",
+        "name": "X-346 139*1930",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "X346 140*1880",
+        "name": "X-346 140*1880",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "XPC-2500-LJ",
+        "name": "XPC-2500 \u9032\u53e3",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "XPC-2800-3",
+        "name": "XPC-2800",
+        "review_reason": "fallback_assignment"
+      },
+      {
+        "category_confidence": "0.40",
+        "category_rule_id": "fallback-other-power-transmission",
+        "category_source": "fallback_rule",
+        "current_category": "Other Power Transmission",
+        "legacy_code": "YU145-22",
+        "name": "145YU-22",
+        "review_reason": "fallback_assignment"
+      }
+    ],
+    "excluded_count": 22,
+    "fallback_count": 350,
+    "low_confidence_count": 0
+  },
+  "counts": {
+    "category_review_candidate_count": 372,
+    "category_review_excluded_count": 22,
+    "category_review_fallback_count": 350,
+    "category_review_low_confidence_count": 0,
+    "customer_count": 931,
+    "customer_type_dealer_count": 10,
+    "customer_type_end_user_count": 0,
+    "customer_type_unknown_count": 1005,
+    "holding_count": 514,
+    "inventory_count": 6588,
+    "invoice_count": 133389,
+    "invoice_line_count": 596647,
+    "invoice_snapshot_count": 132659,
+    "legacy_header_snapshot_count": 274563,
+    "legacy_header_snapshot_document_count": 274563,
+    "legacy_header_snapshot_missing_count": 0,
+    "lineage_count": 1606957,
+    "order_count": 133389,
+    "order_line_count": 596647,
+    "order_snapshot_count": 132659,
+    "product_count": 6612,
+    "receiving_audit_count": 61712,
+    "supplier_count": 91,
+    "supplier_invoice_count": 9238,
+    "supplier_invoice_line_count": 61712,
+    "supplier_invoice_snapshot_count": 9245,
+    "warehouse_count": 1
+  },
+  "epic13_handoff": {
+    "boundary": "Story 15.5 emits batch-scoped import evidence only. Epic 13 owns longer-horizon shadow-mode reconciliation.",
+    "comparison_inputs": [
+      "stage_reconciliation",
+      "mapping_summary",
+      "failed_stages",
+      "counts",
+      "snapshot_coverage"
+    ],
+    "holding_count": 514,
+    "legacy_header_snapshot_count": 274563,
+    "legacy_header_snapshot_missing_count": 0,
+    "lineage_count": 1606957,
+    "scope_cutoff_date": "2025-06-10",
+    "scope_key": "85c3a755b01c769e"
+  },
+  "failed_stages": [],
+  "issues": [
+    {
+      "code": "provisional-category-assignments",
+      "details": {
+        "candidate_count": 372,
+        "excluded_count": 22,
+        "fallback_count": 350,
+        "low_confidence_count": 0
+      },
+      "message": "372 products still carry provisional family categories pending review.",
+      "severity": 2
+    },
+    {
+      "code": "unresolved-product-mappings",
+      "details": {
+        "candidate_count": 100,
+        "orphan_code_count": 190,
+        "orphan_row_count": 523,
+        "unknown_count": 190
+      },
+      "message": "190 product codes remain routed to UNKNOWN across 523 sales-detail rows.",
+      "severity": 2
+    }
+  ],
+  "mapping_summary": {
+    "candidate_count": 100,
+    "mapping_count": 6111,
+    "orphan_code_count": 190,
+    "orphan_row_count": 523,
+    "unknown_count": 190
+  },
+  "replay": {
+    "disposition": "new-scope",
+    "previous_attempt_number": null,
+    "previous_batch_id": null,
+    "previous_status": null,
+    "scope_cutoff_date": "2025-06-10",
+    "scope_key": "85c3a755b01c769e"
+  },
+  "schema_name": "raw_legacy",
+  "snapshot_coverage": {
+    "invoice_count": 132659,
+    "invoice_snapshot_count": 132659,
+    "order_count": 132659,
+    "order_snapshot_count": 132659,
+    "supplier_invoice_count": 9245,
+    "supplier_invoice_snapshot_count": 9245
+  },
+  "stage_reconciliation": [
+    {
+      "error_message": null,
+      "expected_row_count": 508,
+      "loaded_row_count": 508,
+      "source_file": "raw_legacy.tbsprepay",
+      "status": "completed",
+      "table_name": "tbsprepay"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": 6,
+      "loaded_row_count": 6,
+      "source_file": "raw_legacy.tbsspay",
+      "status": "completed",
+      "table_name": "tbsspay"
+    }
+  ],
+  "status": "warning",
+  "tenant_id": "00000000-0000-0000-0000-000000000001"
+}

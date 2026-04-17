@@ -319,3 +319,71 @@ So that I can refactor safely and verify correctness of the aggregation logic.
 **Given** market opportunities are computed for v1
 **When** `get_market_opportunities` is called
 **Then** `concentration_risk` is the required signal, `category_growth` is optional when support floors are met, and deferred signals remain omitted until validated upstream
+
+---
+
+## Story 19.9: Prospect Gap — Customer Type Filter & AI Classification Write-Back
+
+**Context:** The Prospect Gap Analysis (Story 19.5) returns meaningless results for the belt industry because it treats all customers uniformly. Dealers/distributors are excellent cross-sell targets (they stock multiple categories); end-users/industrial customers are not. Cross-sell scoring only makes sense for dealers. Additionally, AI research agents need a scoped write-back mechanism to persist customer classifications.
+
+**R1 — Add `customer_type` field to `Customer` model**
+- File: `backend/domains/customers/models.py`
+- Add `customer_type: Mapped[str] = mapped_column(String(20), nullable=False, default="unknown")` after `status`
+- Valid values: `dealer`, `end_user`, `unknown`
+- File: `backend/domains/customers/schemas.py` — add to `CustomerCreate`/`CustomerUpdate`
+
+**R2 — Migration**
+- File: `migrations/versions/<new_revision>.py`
+- `op.add_column("customers", sa.Column("customer_type", sa.String(20), nullable=False, server_default="unknown"))`
+- All existing customers default to `unknown` — sentinel meaning "not yet classified"
+- No backfill required
+
+**R3 — Canonical import classifies `customer_type`**
+- File: `backend/domains/legacy_import/canonical.py` — in `_import_customers`, include `customer_type` in the upsert dict from the normalized row (defaulting to `"unknown"` if no signal in legacy data)
+- File: `backend/domains/legacy_import/normalization.py` — `normalize_party_record` passes through `customer_type` if a dealer/end-user signal exists in `tbscust`; otherwise emits `"unknown"`
+- File: `backend/domains/legacy_import/validation.py` — add `customer_type` distribution to the validation report
+
+**R4 — Prospect Gap filters to `customer_type = "dealer"`**
+- File: `backend/domains/intelligence/service.py` — `get_prospect_gaps` adds `customer_type: str = "dealer"` parameter; filter in customer summary query: `.where(Customer.customer_type == customer_type)`
+- File: `backend/domains/intelligence/routes.py` — `GET /prospect-gaps` adds `customer_type: str = Query(default="dealer")`; passes through to service
+- File: `backend/domains/intelligence/mcp.py` — `intelligence_prospect_gaps` adds `customer_type: str = "dealer"` parameter
+
+**R5 — Feature-level intelligence toggles**
+- File: `backend/common/config.py` — add 5 toggle fields (pattern of `egui_tracking_enabled`): `intelligence_prospect_gaps_enabled: bool = True`, `intelligence_product_affinity_enabled: bool = True`, `intelligence_category_trends_enabled: bool = True`, `intelligence_customer_risk_signals_enabled: bool = True`, `intelligence_market_opportunities_enabled: bool = True`
+- File: `backend/domains/intelligence/routes.py` — each route checks `if not settings.intelligence_<feature>_enabled: raise HTTPException(403)`
+- File: `backend/domains/intelligence/mcp.py` — each `@mcp.tool()` checks the setting before delegating
+
+**R6 — MCP write tool for AI agent classification**
+- File: `backend/domains/customers/mcp.py` — add `customers_update(customer_id, customer_type)` tool: validates `customer_type in {"dealer","end_user","unknown"}`, updates via `CustomerUpdate` schema, returns `{"success": true, "customer_id": ..., "customer_type": ...}`
+- Fix tenant resolution: replace `DEFAULT_TENANT_ID` with `_resolve_tenant_id()` pattern from intelligence domain
+- File: `backend/app/mcp_auth.py` — add `customers_update` to `TOOL_SCOPES` with `customers:write`; existing read tools keep `customers:read`
+
+**Acceptance Criteria:**
+
+**Given** an existing customer record in the database
+**When** the migration runs
+**Then** `customer_type` is set to `"unknown"` for all existing customers
+**And** no data loss occurs
+
+**Given** a new customer imported via `canonical-import`
+**When** the normalized row has no dealer/end-user signal
+**Then** `customer_type` is set to `"unknown"`
+
+**Given** a dealer customer with `customer_type = "dealer"`
+**When** `GET /api/v1/intelligence/prospect-gaps?category=Supplies` is called with default params
+**Then** only customers with `customer_type = "dealer"` appear in the prospects list
+**And** `existing_buyers_count` reflects only dealer buyers of the target category
+
+**Given** `intelligence_prospect_gaps_enabled = false`
+**When** the REST or MCP endpoint is called
+**Then** a 403 response is returned
+**And** the feature is hidden in the frontend (if toggle is read from settings API)
+
+**Given** an AI agent with `customers:write` scope
+**When** the agent calls `customers_update(customer_id=<uuid>, customer_type="dealer")`
+**Then** the customer's `customer_type` is updated to `"dealer"` immediately
+**And** the agent receives `{"success": true, "customer_id": ..., "customer_type": "dealer"}`
+
+**Given** the tenant isolation fix in customers MCP
+**When** an agent with `X-Tenant-ID: tenant-A` calls `customers_update` on a customer belonging to `tenant-B`
+**Then** the update is rejected with a 403

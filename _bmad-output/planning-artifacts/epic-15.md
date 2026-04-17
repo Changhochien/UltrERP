@@ -101,5 +101,36 @@ So that the workflow is reusable, guided, and safe across VS Code, Copilot CLI, 
 **Then** shell execution is left unapproved by default or tightly scoped to the reviewed CLI path
 **And** destructive or high-impact import scopes still require explicit operator confirmation
 
+### Story 15.9: Legacy Product Family Categorization Hardening
+
+As a migration operator and intelligence owner,
+I want legacy product families derived from code + cleaned name + stock_kind with auditable overrides,
+So that imported products land in stable, sales-meaningful categories for downstream analytics instead of inheriting noisy source classifications.
+
+**Acceptance Criteria:**
+
+**Given** staged `tbsstock` rows expose raw `legacy_code`, raw `name`, `legacy_category`, and `stock_kind`
+**When** the normalization step runs
+**Then** `raw_legacy.normalized_products` preserves those raw fields separately
+**And** derives a backend-owned low-cardinality product family using this priority: manual override, non-merchandise/accessory rules, code-prefix family rules, cleaned-name fallback, final fallback
+**And** `legacy_category` remains provenance only instead of the canonical live category
+
+**Given** a product family is derived or overridden
+**When** normalized product rows are written
+**Then** the system stores explicit provenance such as `category_source`, `category_rule_id`, and `category_confidence`
+**And** low-confidence or fallback assignments can be surfaced for analyst review rather than silently treated as authoritative
+
+**Given** a product family needs correction
+**When** an operator reviews category assignments
+**Then** the workflow uses an auditable override table keyed by `tenant_id + legacy_code`
+**And** records approval source, approver, notes, and timestamp
+**And** applies the override before any heuristic rule on rerun
+
+**Given** normalized products are canonically imported
+**When** `legacy-import canonical-import` runs
+**Then** live `product.category` receives the derived low-cardinality family
+**And** the product `legacy_master_snapshot` preserves raw provenance plus rule/confidence metadata
+**And** existing Story 19 category analytics continue to read `Product.category` without requiring a new category table or foreign key contract
+
 ---
 

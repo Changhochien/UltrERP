@@ -14,3 +14,7 @@
 - **Warehouse race condition in `_get_default_warehouse_id`** [`backend/domains/orders/services.py:566`]: Two concurrent `confirm_order` calls can select the same warehouse without locking, causing double-reservation of stock. Pre-existing issue outside the scope of story 2-8.
 - **No `date_from <= date_to` cross-validation** [`backend/domains/invoices/routes.py`, `backend/domains/orders/routes.py`]: If user passes `?date_from=2026-12-31&date_to=2026-01-01`, both filters apply independently yielding empty set with no error. Pre-existing gap.
 - **`updated_count=0` in dry_run when batch_resolved_count=0** [`backend/domains/invoices/service.py:413`]: Conditional `if batch_resolved_count` could silently skip batches with zero candidates. Pre-existing.
+
+## Deferred from: code review of 19-9-prospect-gap-customer-type.md (2026-04-15)
+
+- **Validation flags expected `excluded_path` category rows as provisional assignments** [`backend/domains/legacy_import/validation.py:291`]: `candidate_count > 0` currently raises `provisional-category-assignments` even when the only rows are expected non-merchandise `excluded_path` candidates. Pre-existing validation noise outside Story 19.9's scoped changes.

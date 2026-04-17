@@ -280,6 +280,10 @@ Complete the inventory audit trail for all historical goods received before Ultr
 Enable AI agents and sales staff to understand what customers are buying, how purchasing behavior is changing, and where market opportunities exist — so agents can prospect intelligently and staff can manage accounts proactively.
 **FRs covered:** (see epic-19.md for full story list)
 
+### Epic 20: Product Sales Analytics
+Provide multi-dimensional sales analytics covering revenue diagnosis, inventory planning, product performance, and customer buying behavior — with accurate historical attribution via product snapshots on order lines, SCD Type 2 product dimension, and pre-computed monthly aggregation tables.
+**FRs covered:** (see epic-20.md for full story list)
+
 
 ---
 
