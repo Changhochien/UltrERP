@@ -70,6 +70,10 @@
       "description": "Standardize product category master data used in forms and search filters.",
       "label": "Product Categories"
     },
+    "belowReorderReport": {
+      "description": "Preview and export warehouse-scoped below-reorder inventory rows.",
+      "label": "Below-Reorder Report"
+    },
     "reorderSuggestions": {
       "description": "Review low-stock replenishment suggestions and create draft supplier orders.",
       "label": "Reorder Suggestions"
@@ -1064,6 +1068,7 @@
       "description": "Manage your product catalog and stock levels.",
       "eyebrow": "Inventory",
       "title": "Inventory",
+      "belowReorderReport": "Below-Reorder Report",
       "reviewSuggestions": "Review Suggestions",
       "manageCategories": "Manage Categories",
       "addProduct": "Add Product",
@@ -1318,6 +1323,33 @@
         "suggestedQty": "Suggested Qty",
         "supplier": "Supplier Hint",
         "actions": "Actions"
+      }
+    },
+    "belowReorderReportPage": {
+      "eyebrow": "Inventory Reports",
+      "title": "Below-Reorder Report",
+      "description": "Preview and export stock rows that are currently below their warehouse reorder point.",
+      "backToInventory": "Back to inventory",
+      "exportCsv": "Export CSV",
+      "exporting": "Exporting…",
+      "previewTitle": "Below-Reorder Preview",
+      "previewDescription": "The table preview and the CSV export use the same warehouse-filtered dataset.",
+      "totalRows": "{count} rows",
+      "totalShortage": "{count} units short",
+      "loading": "Loading report…",
+      "empty": "No below-reorder rows found",
+      "emptyDescription": "No products in the current warehouse scope are currently below their reorder point.",
+      "col": {
+        "productCode": "Product Code",
+        "productName": "Product Name",
+        "category": "Category",
+        "warehouse": "Warehouse",
+        "currentStock": "Current Stock",
+        "reorderPoint": "Reorder Point",
+        "shortageQty": "Shortage Qty",
+        "onOrderQty": "On Order Qty",
+        "inTransitQty": "In Transit Qty",
+        "defaultSupplier": "Default Supplier"
       }
     },
     "productGrid": {

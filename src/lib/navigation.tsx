@@ -19,6 +19,7 @@ import {
   CUSTOMER_CREATE_ROUTE,
   CUSTOMERS_ROUTE,
   HOME_ROUTE,
+  INVENTORY_BELOW_REORDER_REPORT_ROUTE,
   INVENTORY_CATEGORIES_ROUTE,
   INVENTORY_REORDER_SUGGESTIONS_ROUTE,
   INVENTORY_ROUTE,
@@ -155,6 +156,7 @@ export const ROUTE_CONTEXT_KEYS = [
   { match: PAYMENTS_ROUTE, labelKey: "routes.payments.label", descriptionKey: "routes.payments.description" },
   { match: INVENTORY_ROUTE, labelKey: "routes.inventory.label", descriptionKey: "routes.inventory.description" },
   { match: INVENTORY_CATEGORIES_ROUTE, labelKey: "routes.inventoryCategories.label", descriptionKey: "routes.inventoryCategories.description" },
+  { match: INVENTORY_BELOW_REORDER_REPORT_ROUTE, labelKey: "routes.belowReorderReport.label", descriptionKey: "routes.belowReorderReport.description" },
   { match: INVENTORY_REORDER_SUGGESTIONS_ROUTE, labelKey: "routes.reorderSuggestions.label", descriptionKey: "routes.reorderSuggestions.description" },
   { match: PURCHASES_ROUTE, labelKey: "routes.purchases.label", descriptionKey: "routes.purchases.description" },
   { match: ADMIN_ROUTE, labelKey: "routes.admin.label", descriptionKey: "routes.admin.description" },
@@ -168,6 +170,14 @@ export function getRouteContext(pathname: string) {
     return {
       labelKey: "routes.inventoryCategories.label",
       descriptionKey: "routes.inventoryCategories.description",
+      sectionKey: "nav.operations",
+    };
+  }
+
+  if (pathname === INVENTORY_BELOW_REORDER_REPORT_ROUTE) {
+    return {
+      labelKey: "routes.belowReorderReport.label",
+      descriptionKey: "routes.belowReorderReport.description",
       sectionKey: "nav.operations",
     };
   }

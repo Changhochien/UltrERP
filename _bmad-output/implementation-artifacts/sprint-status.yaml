@@ -275,10 +275,10 @@ development_status:
         prerequisites: []
       4-15-below-reorder-report:
         title: "Below-Reorder-Point Reporting (CSV Export)"
-        status: "backlog"
+        status: "completed"
         story_id: "4.15"
         story_file: "4-15-below-reorder-report.md"
-        validation: "none"
+        validation: "Below-reorder preview/export reporting is implemented with a shared warehouse-scoped query, BOM-prefixed CSV export, lightweight report UI, and focused backend/frontend validations passing (2 backend tests and 1 frontend test)."
         prerequisites: []
       4-16-inventory-valuation:
         title: "Inventory Valuation and Cost Tracking"

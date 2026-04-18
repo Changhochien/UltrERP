@@ -71,6 +71,10 @@
       "description": "管理商品表單與搜尋篩選所使用的類別主檔。",
       "label": "產品類別"
     },
+    "belowReorderReport": {
+      "description": "預覽並匯出依倉庫範圍篩選的低於補貨點報表。",
+      "label": "低於補貨點報表"
+    },
     "reorderSuggestions": {
       "description": "檢視低庫存補貨建議並直接建立供應商草稿訂單。",
       "label": "補貨建議"
@@ -1061,6 +1065,7 @@
       "description": "管理您的產品目錄與庫存水準。",
       "eyebrow": "庫存",
       "title": "庫存",
+      "belowReorderReport": "低於補貨點報表",
       "reviewSuggestions": "查看補貨建議",
       "manageCategories": "管理類別",
       "addProduct": "新增產品",
@@ -1315,6 +1320,33 @@
         "suggestedQty": "建議數量",
         "supplier": "供應商提示",
         "actions": "操作"
+      }
+    },
+    "belowReorderReportPage": {
+      "eyebrow": "庫存報表",
+      "title": "低於補貨點報表",
+      "description": "預覽並匯出目前低於各倉庫補貨點的庫存列。",
+      "backToInventory": "返回庫存",
+      "exportCsv": "匯出 CSV",
+      "exporting": "匯出中…",
+      "previewTitle": "低於補貨點預覽",
+      "previewDescription": "畫面預覽與 CSV 匯出會共用同一份倉庫篩選資料集。",
+      "totalRows": "共 {count} 列",
+      "totalShortage": "短缺 {count} 單位",
+      "loading": "載入報表中…",
+      "empty": "目前沒有低於補貨點的列",
+      "emptyDescription": "目前倉庫範圍內沒有產品低於補貨點。",
+      "col": {
+        "productCode": "產品編號",
+        "productName": "產品名稱",
+        "category": "類別",
+        "warehouse": "倉庫",
+        "currentStock": "目前庫存",
+        "reorderPoint": "補貨點",
+        "shortageQty": "短缺數量",
+        "onOrderQty": "在訂量",
+        "inTransitQty": "途上量",
+        "defaultSupplier": "預設供應商"
       }
     },
     "productGrid": {

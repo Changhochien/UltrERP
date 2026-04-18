@@ -258,6 +258,26 @@ export interface CreateReorderSuggestionOrdersResponse {
   unresolved_rows: ReorderSuggestionItem[];
 }
 
+export interface BelowReorderReportItem {
+  product_id: string;
+  product_code: string;
+  product_name: string;
+  category: string | null;
+  warehouse_id: string;
+  warehouse_name: string;
+  current_stock: number;
+  reorder_point: number;
+  shortage_qty: number;
+  on_order_qty: number;
+  in_transit_qty: number;
+  default_supplier: string | null;
+}
+
+export interface BelowReorderReportResponse {
+  items: BelowReorderReportItem[];
+  total: number;
+}
+
 export interface AcknowledgeAlertResponse {
   id: string;
   status: ReorderAlertStatus;

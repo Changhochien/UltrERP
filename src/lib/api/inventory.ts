@@ -1,6 +1,7 @@
 import { apiFetch } from "../apiFetch";
 import type {
   AcknowledgeAlertResponse,
+  BelowReorderReportResponse,
   Category,
   CategoryCreate,
   CategoryListResponse,
@@ -288,6 +289,61 @@ export async function fetchReorderAlerts(options?: {
   }
 }
 
+export async function fetchBelowReorderReport(options?: {
+  warehouseId?: string;
+}): Promise<{ ok: true; data: BelowReorderReportResponse } | { ok: false; error: string }> {
+  try {
+    const params = new URLSearchParams();
+    if (options?.warehouseId) params.set("warehouse_id", options.warehouseId);
+    const qs = params.toString();
+    const resp = await apiFetch(`/api/v1/inventory/reports/below-reorder${qs ? `?${qs}` : ""}`);
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({}));
+      return {
+        ok: false,
+        error: (body as { detail?: string }).detail ?? "Failed to load below-reorder report",
+      };
+    }
+    return { ok: true, data: (await resp.json()) as BelowReorderReportResponse };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+export async function exportBelowReorderReport(options?: {
+  warehouseId?: string;
+}): Promise<{ ok: true; filename: string } | { ok: false; status: number; message: string }> {
+  const params = new URLSearchParams();
+  if (options?.warehouseId) params.set("warehouse_id", options.warehouseId);
+  const qs = params.toString();
+  const resp = await apiFetch(`/api/v1/inventory/reports/below-reorder/export${qs ? `?${qs}` : ""}`);
+
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({ detail: "CSV export failed" }));
+    return {
+      ok: false,
+      status: resp.status,
+      message: (body as { detail?: string }).detail ?? "CSV export failed",
+    };
+  }
+
+  const disposition = resp.headers.get("Content-Disposition") ?? "";
+  const match = disposition.match(/filename="?([^\"]+)"?/);
+  const filename = match?.[1] ?? "below-reorder-report.csv";
+
+  const blob = await resp.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+
+  return { ok: true, filename };
+}
+
 export async function fetchReorderSuggestions(options?: {
   warehouseId?: string;
   limit?: number;
@@ -508,9 +564,12 @@ export async function fetchSuppliers(
 
 export async function fetchSupplier(
   supplierId: string,
+  options?: { signal?: AbortSignal },
 ): Promise<{ ok: true; data: Supplier } | { ok: false; error: string }> {
   try {
-    const resp = await apiFetch(`/api/v1/inventory/suppliers/${encodeURIComponent(supplierId)}`);
+    const resp = await apiFetch(`/api/v1/inventory/suppliers/${encodeURIComponent(supplierId)}`, {
+      signal: options?.signal,
+    });
     const body = await resp.json().catch(() => ({}));
     if (!resp.ok) {
       return {

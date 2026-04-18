@@ -1,6 +1,6 @@
 # Story 4.15: Below-Reorder-Point Reporting
 
-**Status:** backlog
+**Status:** done
 
 **Story ID:** 4.15
 
@@ -32,29 +32,29 @@ so that I can share actionable low-stock data with procurement and management.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Add a shared below-reorder report query** (AC: 1, 2, 3, 5)
-  - [ ] Add `list_below_reorder_products(session, tenant_id, warehouse_id=None)` to `backend/domains/inventory/services.py`.
-  - [ ] Reuse the same warehouse-aware low-stock logic used by inventory detail and alert views.
-  - [ ] Join product, warehouse, and stock-setting data and enrich with default-supplier display when available.
+- [x] **Task 1: Add a shared below-reorder report query** (AC: 1, 2, 3, 5)
+  - [x] Add `list_below_reorder_products(session, tenant_id, warehouse_id=None)` to `backend/domains/inventory/services.py`.
+  - [x] Reuse the same warehouse-aware low-stock logic used by inventory detail and alert views.
+  - [x] Join product, warehouse, and stock-setting data and enrich with default-supplier display when available.
 
-- [ ] **Task 2: Add JSON and CSV routes over the shared query** (AC: 1, 2, 3, 4, 5)
-  - [ ] Add `GET /api/v1/inventory/reports/below-reorder` for preview JSON.
-  - [ ] Add `GET /api/v1/inventory/reports/below-reorder/export` for CSV download.
-  - [ ] Keep query params aligned across both endpoints.
-  - [ ] Prefix the CSV body with `\ufeff` and return a download-friendly filename.
+- [x] **Task 2: Add JSON and CSV routes over the shared query** (AC: 1, 2, 3, 4, 5)
+  - [x] Add `GET /api/v1/inventory/reports/below-reorder` for preview JSON.
+  - [x] Add `GET /api/v1/inventory/reports/below-reorder/export` for CSV download.
+  - [x] Keep query params aligned across both endpoints.
+  - [x] Prefix the CSV body with `\ufeff` and return a download-friendly filename.
 
-- [ ] **Task 3: Add frontend types and API helpers** (AC: 1, 2, 3)
-  - [ ] Add below-reorder report types to `src/domain/inventory/types.ts`.
-  - [ ] Add preview/export helpers to `src/lib/api/inventory.ts`.
+- [x] **Task 3: Add frontend types and API helpers** (AC: 1, 2, 3)
+  - [x] Add below-reorder report types to `src/domain/inventory/types.ts`.
+  - [x] Add preview/export helpers to `src/lib/api/inventory.ts`.
 
-- [ ] **Task 4: Build the report page** (AC: 1, 2, 3, 4, 5)
-  - [ ] Create `src/pages/inventory/BelowReorderReportPage.tsx`.
-  - [ ] Show warehouse filter, preview table, shortage summary, and `Export CSV` action.
-  - [ ] Add an inventory reports navigation entry.
+- [x] **Task 4: Build the report page** (AC: 1, 2, 3, 4, 5)
+  - [x] Create `src/pages/inventory/BelowReorderReportPage.tsx`.
+  - [x] Show warehouse filter, preview table, shortage summary, and `Export CSV` action.
+  - [x] Add an inventory reports navigation entry.
 
-- [ ] **Task 5: Add focused regression tests** (AC: 1, 2, 3, 4, 5)
-  - [ ] Backend tests for the filtered query, CSV headers, BOM prefix, and blank-supplier behavior.
-  - [ ] Frontend tests for filter state, preview rendering, and export action wiring.
+- [x] **Task 5: Add focused regression tests** (AC: 1, 2, 3, 4, 5)
+  - [x] Backend tests for the filtered query, CSV headers, BOM prefix, and blank-supplier behavior.
+  - [x] Frontend tests for filter state, preview rendering, and export action wiring.
 
 ## Dev Notes
 
@@ -90,3 +90,41 @@ so that I can share actionable low-stock data with procurement and management.
 - `backend/domains/inventory/services.py`
 - `backend/domains/inventory/routes.py`
 - `src/domain/inventory/context/WarehouseContext.tsx`
+
+---
+
+## Dev Agent Record
+
+**Status:** done
+**Last Updated:** 2026-04-18
+
+### Completion Notes List
+
+- Added a shared below-reorder report query over warehouse-scoped inventory stock so preview JSON and CSV export both reuse the same strict-below-threshold dataset and supplier-resolution helper.
+- Shipped JSON and CSV report endpoints with stable column order, a UTF-8 BOM for Excel compatibility, and blank default-supplier cells when no supplier hint exists.
+- Added a lightweight inventory report page with warehouse filtering, shortage summary, preview table, CSV export action, and a direct entry point from the inventory workspace.
+
+### Validation
+
+- `cd backend && . .venv/bin/activate && pytest -q tests/domains/inventory/test_below_reorder_report.py tests/api/test_below_reorder_report.py`
+- `pnpm vitest run src/pages/inventory/BelowReorderReportPage.test.tsx`
+- VS Code diagnostics: no new errors in the touched frontend files; existing unrelated inventory type issues remain elsewhere in `backend/domains/inventory/services.py` and `backend/domains/inventory/routes.py`
+
+### File List
+
+- `backend/domains/inventory/schemas.py`
+- `backend/domains/inventory/services.py`
+- `backend/domains/inventory/routes.py`
+- `backend/tests/domains/inventory/test_below_reorder_report.py`
+- `backend/tests/api/test_below_reorder_report.py`
+- `src/domain/inventory/types.ts`
+- `src/lib/api/inventory.ts`
+- `src/domain/inventory/hooks/useBelowReorderReport.ts`
+- `src/pages/inventory/BelowReorderReportPage.tsx`
+- `src/pages/inventory/BelowReorderReportPage.test.tsx`
+- `src/pages/InventoryPage.tsx`
+- `src/lib/routes.ts`
+- `src/lib/navigation.tsx`
+- `src/App.tsx`
+- `public/locales/en/common.json`
+- `public/locales/zh-Hant/common.json`

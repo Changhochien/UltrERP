@@ -427,6 +427,7 @@ class ReorderSuggestionSupplierHint(BaseModel):
 
 class ReorderSuggestionItem(BaseModel):
     product_id: uuid.UUID
+    product_code: str
     product_name: str
     warehouse_id: uuid.UUID
     warehouse_name: str
@@ -464,6 +465,26 @@ class ReorderSuggestionCreatedOrder(BaseModel):
 class CreateReorderSuggestionOrdersResponse(BaseModel):
     created_orders: list[ReorderSuggestionCreatedOrder]
     unresolved_rows: list[ReorderSuggestionItem]
+
+
+class BelowReorderReportItem(BaseModel):
+    product_id: uuid.UUID
+    product_code: str
+    product_name: str
+    category: str | None = None
+    warehouse_id: uuid.UUID
+    warehouse_name: str
+    current_stock: int
+    reorder_point: int
+    shortage_qty: int
+    on_order_qty: int
+    in_transit_qty: int
+    default_supplier: str | None = None
+
+
+class BelowReorderReportResponse(BaseModel):
+    items: list[BelowReorderReportItem]
+    total: int
 
 
 class AcknowledgeAlertResponse(BaseModel):

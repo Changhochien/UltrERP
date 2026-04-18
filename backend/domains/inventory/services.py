@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
@@ -994,6 +995,7 @@ async def _load_reorder_suggestion_source(
         select(
             InventoryStock.product_id,
             Product.name.label("product_name"),
+            Product.code.label("product_code"),
             InventoryStock.warehouse_id,
             Warehouse.name.label("warehouse_name"),
             InventoryStock.quantity.label("current_stock"),
@@ -1017,18 +1019,22 @@ async def _load_reorder_suggestion_source(
     return result.first()
 
 
+def _int_field(row: object, name: str) -> int:
+    return int(getattr(row, name, 0) or 0)
+
+
 def _serialize_reorder_suggestion_row(
     row: object,
     *,
     supplier_hint: dict | None,
     suggested_qty_override: int | None = None,
 ) -> dict:
-    current_stock = int(getattr(row, "current_stock", 0) or 0)
-    reorder_point = int(getattr(row, "reorder_point", 0) or 0)
-    on_order_qty = int(getattr(row, "on_order_qty", 0) or 0)
-    in_transit_qty = int(getattr(row, "in_transit_qty", 0) or 0)
-    reserved_qty = int(getattr(row, "reserved_qty", 0) or 0)
-    raw_target_stock_qty = int(getattr(row, "target_stock_qty", 0) or 0)
+    current_stock = _int_field(row, "current_stock")
+    reorder_point = _int_field(row, "reorder_point")
+    on_order_qty = _int_field(row, "on_order_qty")
+    in_transit_qty = _int_field(row, "in_transit_qty")
+    reserved_qty = _int_field(row, "reserved_qty")
+    raw_target_stock_qty = _int_field(row, "target_stock_qty")
     target_stock_qty = raw_target_stock_qty if raw_target_stock_qty > 0 else None
     inventory_position = current_stock + on_order_qty + in_transit_qty - reserved_qty
     base_target = target_stock_qty if target_stock_qty is not None else reorder_point
@@ -1039,6 +1045,7 @@ def _serialize_reorder_suggestion_row(
     return {
         "product_id": getattr(row, "product_id"),
         "product_name": getattr(row, "product_name"),
+        "product_code": getattr(row, "product_code", None),
         "warehouse_id": getattr(row, "warehouse_id"),
         "warehouse_name": getattr(row, "warehouse_name"),
         "current_stock": current_stock,
@@ -1048,6 +1055,19 @@ def _serialize_reorder_suggestion_row(
         "suggested_qty": suggested_qty,
         "supplier_hint": supplier_hint,
     }
+
+
+async def _batch_get_product_suppliers(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_ids: list[uuid.UUID],
+) -> dict[uuid.UUID, dict | None]:
+    if not product_ids:
+        return {}
+    results_list = await asyncio.gather(
+        *(get_product_supplier(session, tenant_id, pid) for pid in product_ids)
+    )
+    return dict(zip(product_ids, results_list))
 
 
 async def list_reorder_suggestions(
@@ -1060,6 +1080,7 @@ async def list_reorder_suggestions(
         select(
             InventoryStock.product_id,
             Product.name.label("product_name"),
+            Product.code.label("product_code"),
             InventoryStock.warehouse_id,
             Warehouse.name.label("warehouse_name"),
             InventoryStock.quantity.label("current_stock"),
@@ -1086,13 +1107,15 @@ async def list_reorder_suggestions(
     result = await session.execute(stmt)
     rows = result.all()
 
+    product_ids = [row.product_id for row in rows]
+    supplier_map = await _batch_get_product_suppliers(session, tenant_id, product_ids)
+
     items: list[dict] = []
     for row in rows:
-        supplier_hint = await get_product_supplier(session, tenant_id, row.product_id)
         items.append(
             _serialize_reorder_suggestion_row(
                 row,
-                supplier_hint=supplier_hint,
+                supplier_hint=supplier_map.get(row.product_id),
             )
         )
 
@@ -1110,29 +1133,30 @@ async def create_reorder_suggestion_orders(
     unresolved_rows: list[dict] = []
     order_date = today()
 
+    product_ids = [item["product_id"] for item in items]
+    supplier_map = await _batch_get_product_suppliers(session, tenant_id, product_ids)
+
     for item in items:
         product_id = item["product_id"]
         warehouse_id = item["warehouse_id"]
         suggested_qty = int(item["suggested_qty"])
 
-        row = await _load_reorder_suggestion_source(
-            session,
-            tenant_id,
-            product_id=product_id,
-            warehouse_id=warehouse_id,
-        )
-        if row is None:
-            continue
-
-        supplier_hint = await get_product_supplier(session, tenant_id, product_id)
+        supplier_hint = supplier_map.get(product_id)
         if supplier_hint is None:
-            unresolved_rows.append(
-                _serialize_reorder_suggestion_row(
-                    row,
-                    supplier_hint=None,
-                    suggested_qty_override=suggested_qty,
-                )
+            row = await _load_reorder_suggestion_source(
+                session,
+                tenant_id,
+                product_id=product_id,
+                warehouse_id=warehouse_id,
             )
+            if row is not None:
+                unresolved_rows.append(
+                    _serialize_reorder_suggestion_row(
+                        row,
+                        supplier_hint=None,
+                        suggested_qty_override=suggested_qty,
+                    )
+                )
             continue
 
         supplier_id = supplier_hint["supplier_id"]
@@ -1185,6 +1209,84 @@ async def create_reorder_suggestion_orders(
         "created_orders": created_orders,
         "unresolved_rows": unresolved_rows,
     }
+
+
+def _serialize_below_reorder_report_row(
+    row: object,
+    *,
+    default_supplier: str | None,
+) -> dict:
+    current_stock = int(getattr(row, "current_stock", 0) or 0)
+    reorder_point = int(getattr(row, "reorder_point", 0) or 0)
+
+    return {
+        "product_id": getattr(row, "product_id"),
+        "product_code": getattr(row, "product_code"),
+        "product_name": getattr(row, "product_name"),
+        "category": getattr(row, "category", None),
+        "warehouse_id": getattr(row, "warehouse_id"),
+        "warehouse_name": getattr(row, "warehouse_name"),
+        "current_stock": current_stock,
+        "reorder_point": reorder_point,
+        "shortage_qty": max(0, reorder_point - current_stock),
+        "on_order_qty": int(getattr(row, "on_order_qty", 0) or 0),
+        "in_transit_qty": int(getattr(row, "in_transit_qty", 0) or 0),
+        "default_supplier": default_supplier,
+    }
+
+
+async def list_below_reorder_products(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    *,
+    warehouse_id: uuid.UUID | None = None,
+) -> tuple[list[dict], int]:
+    stmt = (
+        select(
+            InventoryStock.product_id,
+            Product.code.label("product_code"),
+            Product.name.label("product_name"),
+            Product.category,
+            InventoryStock.warehouse_id,
+            Warehouse.name.label("warehouse_name"),
+            InventoryStock.quantity.label("current_stock"),
+            InventoryStock.reorder_point,
+            InventoryStock.on_order_qty,
+            InventoryStock.in_transit_qty,
+        )
+        .join(Product, Product.id == InventoryStock.product_id)
+        .join(Warehouse, Warehouse.id == InventoryStock.warehouse_id)
+        .where(
+            InventoryStock.tenant_id == tenant_id,
+            Product.tenant_id == tenant_id,
+            Warehouse.tenant_id == tenant_id,
+            Product.status == "active",
+            InventoryStock.reorder_point > 0,
+            InventoryStock.quantity < InventoryStock.reorder_point,
+        )
+        .order_by(Warehouse.name, Product.code)
+    )
+    if warehouse_id is not None:
+        stmt = stmt.where(InventoryStock.warehouse_id == warehouse_id)
+
+    result = await session.execute(stmt)
+    rows = result.all()
+
+    items: list[dict] = []
+    for row in rows:
+        supplier_hint = await get_product_supplier(session, tenant_id, row.product_id)
+        items.append(
+            _serialize_below_reorder_report_row(
+                row,
+                default_supplier=(
+                    str(supplier_hint.get("name"))
+                    if supplier_hint is not None and supplier_hint.get("name")
+                    else None
+                ),
+            )
+        )
+
+    return items, len(items)
 
 
 # ── Stock queries ──────────────────────────────────────────────

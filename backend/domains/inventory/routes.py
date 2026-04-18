@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import csv
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
+from io import StringIO
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -39,6 +41,8 @@ from domains.inventory.schemas import (
     USER_SELECTABLE_REASON_CODES,
     AcknowledgeAlertResponse,
     AuditLogListResponse,
+    BelowReorderReportItem,
+    BelowReorderReportResponse,
     CategoryCreate,
     CategoryListResponse,
     CategoryResponse,
@@ -103,6 +107,7 @@ from domains.inventory.services import (
     create_stock_adjustment,
     create_supplier_order,
     create_warehouse,
+    list_below_reorder_products,
     create_reorder_suggestion_orders,
     dismiss_alert,
     create_supplier,
@@ -141,6 +146,19 @@ from domains.inventory.services import (
 
 router = APIRouter()
 
+_BELOW_REORDER_CSV_HEADERS = [
+    "Product Code",
+    "Product Name",
+    "Category",
+    "Warehouse",
+    "Current Stock",
+    "Reorder Point",
+    "Shortage Qty",
+    "On Order Qty",
+    "In Transit Qty",
+    "Default Supplier",
+]
+
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 CurrentTenant = Annotated[uuid.UUID, Depends(get_tenant_id)]
@@ -161,6 +179,30 @@ def _api_reason_code(value: str) -> str:
 
 def _enum_reason_code(value: str) -> ReasonCode:
     return ReasonCode(value.upper())
+
+
+def _build_below_reorder_csv(items: list[dict]) -> bytes:
+    output = StringIO(newline="")
+    writer = csv.writer(output)
+    writer.writerow(_BELOW_REORDER_CSV_HEADERS)
+    for item in items:
+        writer.writerow(
+            [
+                item["product_code"],
+                item["product_name"],
+                item.get("category") or "",
+                item["warehouse_name"],
+                item["current_stock"],
+                item["reorder_point"],
+                item["shortage_qty"],
+                item["on_order_qty"],
+                item["in_transit_qty"],
+                item.get("default_supplier") or "",
+            ]
+        )
+    return ("\ufeff" + output.getvalue()).encode("utf-8")
+
+
 # ── Warehouse endpoints ───────────────────────────────────────
 
 
@@ -1082,6 +1124,47 @@ async def create_reorder_suggestion_orders_endpoint(
     return CreateReorderSuggestionOrdersResponse(
         created_orders=result["created_orders"],
         unresolved_rows=result["unresolved_rows"],
+    )
+
+
+@router.get(
+    "/reports/below-reorder",
+    response_model=BelowReorderReportResponse,
+)
+async def list_below_reorder_report_endpoint(
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+    warehouse_id: uuid.UUID | None = Query(None),
+) -> BelowReorderReportResponse:
+    items, total = await list_below_reorder_products(
+        session,
+        tenant_id,
+        warehouse_id=warehouse_id,
+    )
+    return BelowReorderReportResponse(
+        items=[BelowReorderReportItem(**item) for item in items],
+        total=total,
+    )
+
+
+@router.get("/reports/below-reorder/export")
+async def export_below_reorder_report_endpoint(
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+    warehouse_id: uuid.UUID | None = Query(None),
+) -> Response:
+    items, _total = await list_below_reorder_products(
+        session,
+        tenant_id,
+        warehouse_id=warehouse_id,
+    )
+    filename = f'below-reorder-report-{datetime.now(UTC):%Y%m%d}.csv'
+    return Response(
+        content=_build_below_reorder_csv(items),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

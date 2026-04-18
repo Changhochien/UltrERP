@@ -16,6 +16,7 @@ import { StockTransferForm } from "../domain/inventory/components/StockTransferF
 import { Button } from "../components/ui/button";
 import { usePermissions } from "../hooks/usePermissions";
 import {
+  INVENTORY_BELOW_REORDER_REPORT_ROUTE,
   INVENTORY_CATEGORIES_ROUTE,
   INVENTORY_REORDER_SUGGESTIONS_ROUTE,
 } from "../lib/routes";
@@ -45,6 +46,13 @@ function InventoryWorkspace() {
             />
             {canWrite("inventory") && (
               <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate(INVENTORY_BELOW_REORDER_REPORT_ROUTE)}
+                >
+                  {t("inventory.page.belowReorderReport")}
+                </Button>
                 <Button
                   type="button"
                   variant="outline"

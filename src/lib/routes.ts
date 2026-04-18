@@ -3,6 +3,7 @@ export const LOGIN_ROUTE = "/login";
 export const OWNER_DASHBOARD_ROUTE = "/owner-dashboard";
 export const INVENTORY_ROUTE = "/inventory";
 export const INVENTORY_CATEGORIES_ROUTE = "/inventory/categories";
+export const INVENTORY_BELOW_REORDER_REPORT_ROUTE = "/inventory/reports/below-reorder";
 export const INVENTORY_REORDER_SUGGESTIONS_ROUTE = "/inventory/reorder-suggestions";
 export const PRODUCT_DETAIL_ROUTE = "/inventory/:productId";
 export const PURCHASES_ROUTE = "/purchases";
@@ -25,6 +26,7 @@ export type AppRoute =
   | typeof LOGIN_ROUTE
   | typeof INVENTORY_ROUTE
   | typeof INVENTORY_CATEGORIES_ROUTE
+  | typeof INVENTORY_BELOW_REORDER_REPORT_ROUTE
   | typeof INVENTORY_REORDER_SUGGESTIONS_ROUTE
   | typeof PRODUCT_DETAIL_ROUTE
   | typeof PURCHASES_ROUTE

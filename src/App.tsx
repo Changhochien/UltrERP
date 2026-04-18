@@ -23,6 +23,7 @@ import {
   CUSTOMER_DETAIL_ROUTE,
   CUSTOMERS_ROUTE,
   HOME_ROUTE,
+  INVENTORY_BELOW_REORDER_REPORT_ROUTE,
   INVENTORY_CATEGORIES_ROUTE,
   INVENTORY_REORDER_SUGGESTIONS_ROUTE,
   INVENTORY_ROUTE,
@@ -47,6 +48,7 @@ import { DashboardPage } from "./pages/dashboard/DashboardPage";
 import { OwnerDashboardPage } from "./domain/owner-dashboard/OwnerDashboardPage";
 import { InventoryPage } from "./pages/InventoryPage";
 import { IntelligencePage } from "./pages/IntelligencePage";
+import { BelowReorderReportPage } from "./pages/inventory/BelowReorderReportPage";
 import { CategoriesPage } from "./pages/inventory/CategoriesPage";
 import { ProductDetailPage } from "./pages/inventory/ProductDetailPage";
 import { ReorderSuggestionsPage } from "./pages/inventory/ReorderSuggestionsPage";
@@ -204,6 +206,16 @@ export default function App() {
               <ProtectedAppRoute requiredFeature="inventory">
                 <RoutedPage>
                   <CategoriesPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={INVENTORY_BELOW_REORDER_REPORT_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="inventory">
+                <RoutedPage>
+                  <BelowReorderReportPage />
                 </RoutedPage>
               </ProtectedAppRoute>
             }
