@@ -30,6 +30,10 @@ function ChartInner({
   const innerWidth = Math.max(0, width - margin.left - margin.right);
   const innerHeight = Math.max(0, height - margin.top - margin.bottom);
 
+  if (!data.length || innerWidth <= 0 || innerHeight <= 0) {
+    return null;
+  }
+
   const xScale = scaleBand({
     domain: data.map((d) => d.month),
     range: [0, innerWidth],
@@ -89,8 +93,8 @@ function ChartInner({
                 onMouseEnter={(e) => {
                   showTooltip({
                     tooltipData: d,
-                    tooltipLeft: e.clientX,
-                    tooltipTop: e.clientY,
+                    tooltipLeft: e.pageX,
+                    tooltipTop: e.pageY,
                   });
                 }}
                 onMouseLeave={hideTooltip}
