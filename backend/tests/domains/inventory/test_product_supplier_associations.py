@@ -154,6 +154,57 @@ async def test_get_product_supplier_falls_back_to_heuristic_when_needed() -> Non
 
 
 @pytest.mark.asyncio
+async def test_batch_get_product_suppliers_maps_rows_and_preserves_missing_products() -> None:
+    product_a = uuid.uuid4()
+    product_b = uuid.uuid4()
+    missing_product = uuid.uuid4()
+    supplier_a = uuid.uuid4()
+    supplier_b = uuid.uuid4()
+    session = FakeAsyncSession()
+    session.queue_scalar("product_supplier")
+    session.queue_all(
+        [
+            SimpleNamespace(
+                product_id=product_a,
+                supplier_id=supplier_a,
+                name="Alpha Supply",
+                unit_cost=Decimal("4.2500"),
+                default_lead_time_days=3,
+            ),
+            SimpleNamespace(
+                product_id=product_b,
+                supplier_id=supplier_b,
+                name="Beta Supply",
+                unit_cost=Decimal("6.5000"),
+                default_lead_time_days=8,
+            ),
+        ]
+    )
+
+    result = await inventory_services._batch_get_product_suppliers(
+        session,
+        uuid.uuid4(),
+        [product_a, product_a, product_b, missing_product],
+    )
+
+    assert result == {
+        product_a: {
+            "supplier_id": supplier_a,
+            "name": "Alpha Supply",
+            "unit_cost": 4.25,
+            "default_lead_time_days": 3,
+        },
+        product_b: {
+            "supplier_id": supplier_b,
+            "name": "Beta Supply",
+            "unit_cost": 6.5,
+            "default_lead_time_days": 8,
+        },
+        missing_product: None,
+    }
+
+
+@pytest.mark.asyncio
 async def test_list_product_suppliers_serializes_associations() -> None:
     association = SimpleNamespace(
         id=uuid.uuid4(),

@@ -7,10 +7,13 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.database import AsyncSessionLocal, engine
+from common.model_registry import register_all_models
 from common.models.inventory_stock import InventoryStock
 from common.models.product import Product
 from common.models.warehouse import Warehouse
 from domains.inventory import services as inventory_services
+
+register_all_models()
 
 
 @pytest_asyncio.fixture
@@ -156,16 +159,20 @@ async def test_list_below_reorder_products_filters_strictly_and_honors_warehouse
         reorder_point=4,
     )
 
-    async def fake_get_product_supplier(
+    async def fake_batch_get_product_suppliers(
         _session: AsyncSession,
         _tenant_id: uuid.UUID,
-        product_id: uuid.UUID,
-    ) -> dict | None:
-        if product_id == below_product.id:
-            return {"name": "北聯供應"}
-        return None
+        product_ids: list[uuid.UUID],
+    ) -> dict[uuid.UUID, dict | None]:
+        mapping: dict[uuid.UUID, dict | None] = {product_id: None for product_id in product_ids}
+        mapping[below_product.id] = {"name": "北聯供應"}
+        return mapping
 
-    monkeypatch.setattr(inventory_services, "get_product_supplier", fake_get_product_supplier)
+    monkeypatch.setattr(
+        inventory_services,
+        "_batch_get_product_suppliers",
+        fake_batch_get_product_suppliers,
+    )
 
     items, total = await inventory_services.list_below_reorder_products(db_session, tenant_id)
 
