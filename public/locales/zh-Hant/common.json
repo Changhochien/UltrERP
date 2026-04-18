@@ -71,6 +71,10 @@
       "description": "管理商品表單與搜尋篩選所使用的類別主檔。",
       "label": "產品類別"
     },
+    "reorderSuggestions": {
+      "description": "檢視低庫存補貨建議並直接建立供應商草稿訂單。",
+      "label": "補貨建議"
+    },
     "intelligence": {
       "description": "檢視可供 AI 與業務使用的客戶與商品洞察訊號。",
       "label": "商業洞察"
@@ -1057,6 +1061,7 @@
       "description": "管理您的產品目錄與庫存水準。",
       "eyebrow": "庫存",
       "title": "庫存",
+      "reviewSuggestions": "查看補貨建議",
       "manageCategories": "管理類別",
       "addProduct": "新增產品",
       "warehouseScope": "倉庫範圍",
@@ -1262,6 +1267,7 @@
       "title": "補貨警示",
       "description": "目前倉庫範圍內的庫存過低異常。",
       "total": "共 {count} 筆",
+      "reviewSuggestions": "補貨建議",
       "status": "狀態",
       "allStatuses": "所有狀態",
       "pending": "待處理",
@@ -1274,6 +1280,42 @@
       "noAlertsFound": "查無警示",
       "criticalStockAlertsAppearHere": "危急庫存警示會在此顯示",
       "ack": "確認"
+    },
+    "reorderSuggestionsPage": {
+      "eyebrow": "採購規劃",
+      "title": "補貨建議",
+      "description": "依倉庫範圍檢視補貨建議，並快速轉成供應商草稿訂單。",
+      "backToInventory": "返回庫存",
+      "listTitle": "建議補貨列",
+      "listDescription": "這些建議直接重用補貨警示背後的倉庫庫存訊號與供應商提示。",
+      "total": "共 {count} 列",
+      "selectedCount": "已選 {count} 列",
+      "selectAll": "選取全部建議",
+      "selectRow": "選取 {product}",
+      "loading": "載入建議中…",
+      "empty": "目前沒有補貨建議",
+      "emptyDescription": "目前倉庫範圍內沒有產品低於補貨門檻。",
+      "createSelected": "建立草稿訂單",
+      "creating": "建立中…",
+      "createDraft": "建立草稿",
+      "supplierMissing": "需人工選擇供應商",
+      "leadTimeDays": "前置時間 {{count}} 天",
+      "createdOrdersSummary": "已建立 {count} 筆草稿訂單。",
+      "unresolvedTitle": "仍需人工指定供應商",
+      "unresolvedDescription": "這些列目前無法自動分組成草稿訂單，因為供應商提示尚未解析完成。",
+      "openManualDraft": "開啟人工草稿",
+      "manualDraftDescription": "草稿訂單表單已預先帶入未解析列的產品、倉庫與建議數量，請先手動選擇供應商再儲存。",
+      "col": {
+        "product": "產品",
+        "warehouse": "倉庫",
+        "currentStock": "目前庫存",
+        "inventoryPosition": "庫存部位",
+        "reorderPoint": "補貨點",
+        "targetStock": "目標庫存",
+        "suggestedQty": "建議數量",
+        "supplier": "供應商提示",
+        "actions": "操作"
+      }
     },
     "productGrid": {
       "searchPlaceholder": "依編號或名稱搜尋…",

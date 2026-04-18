@@ -70,6 +70,10 @@
       "description": "Standardize product category master data used in forms and search filters.",
       "label": "Product Categories"
     },
+    "reorderSuggestions": {
+      "description": "Review low-stock replenishment suggestions and create draft supplier orders.",
+      "label": "Reorder Suggestions"
+    },
     "intelligence": {
       "description": "Review AI-ready customer and product intelligence signals.",
       "label": "Intelligence"
@@ -1060,6 +1064,7 @@
       "description": "Manage your product catalog and stock levels.",
       "eyebrow": "Inventory",
       "title": "Inventory",
+      "reviewSuggestions": "Review Suggestions",
       "manageCategories": "Manage Categories",
       "addProduct": "Add Product",
       "warehouseScope": "Warehouse Scope",
@@ -1265,6 +1270,7 @@
       "title": "Reorder Alerts",
       "description": "Low-stock exceptions for the current warehouse scope.",
       "total": "{count} total",
+      "reviewSuggestions": "Suggestions",
       "status": "Status",
       "allStatuses": "All statuses",
       "pending": "Pending",
@@ -1277,6 +1283,42 @@
       "noAlertsFound": "No alerts found",
       "criticalStockAlertsAppearHere": "Critical stock alerts appear here",
       "ack": "Ack"
+    },
+    "reorderSuggestionsPage": {
+      "eyebrow": "Procurement Planning",
+      "title": "Reorder Suggestions",
+      "description": "Review warehouse-aware replenishment recommendations and turn them into draft supplier orders.",
+      "backToInventory": "Back to inventory",
+      "listTitle": "Suggested Replenishment Rows",
+      "listDescription": "Suggestions reuse the same warehouse stock signals and supplier hints behind reorder alerts.",
+      "total": "{count} rows",
+      "selectedCount": "{count} selected",
+      "selectAll": "Select all suggestions",
+      "selectRow": "Select {product}",
+      "loading": "Loading suggestions…",
+      "empty": "No reorder suggestions found",
+      "emptyDescription": "The current warehouse scope does not have any products below their reorder threshold.",
+      "createSelected": "Create Drafts",
+      "creating": "Creating…",
+      "createDraft": "Create Draft",
+      "supplierMissing": "Manual supplier review",
+      "leadTimeDays": "Lead time {{count}}d",
+      "createdOrdersSummary": "Created {count} draft orders.",
+      "unresolvedTitle": "Needs Manual Supplier Selection",
+      "unresolvedDescription": "These rows could not be grouped into draft orders automatically because the supplier hint is still unresolved.",
+      "openManualDraft": "Open Manual Draft",
+      "manualDraftDescription": "The draft order form is prefilled with the unresolved product, warehouse, and suggested quantity. Choose the supplier manually before saving.",
+      "col": {
+        "product": "Product",
+        "warehouse": "Warehouse",
+        "currentStock": "Current Stock",
+        "inventoryPosition": "Inventory Position",
+        "reorderPoint": "Reorder Point",
+        "targetStock": "Target Stock",
+        "suggestedQty": "Suggested Qty",
+        "supplier": "Supplier Hint",
+        "actions": "Actions"
+      }
     },
     "productGrid": {
       "searchPlaceholder": "Search by code or name…",

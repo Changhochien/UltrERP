@@ -77,4 +77,28 @@ describe("SupplierOrderForm", () => {
       ],
     });
   });
+
+  it("hydrates prefilled supplier draft values", () => {
+    render(
+      <SupplierOrderForm
+        initialSupplierId="sup-9"
+        initialLines={[
+          {
+            product_id: "prod-9",
+            warehouse_id: "wh-1",
+            quantity: 6,
+            unit_cost: "12.50",
+          },
+        ]}
+        onCreated={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect((screen.getByLabelText("Supplier") as HTMLInputElement).value).toBe("sup-9");
+    expect((screen.getByLabelText("Line 1 product") as HTMLInputElement).value).toBe("prod-9");
+    expect((screen.getByLabelText("Line 1 warehouse") as HTMLSelectElement).value).toBe("wh-1");
+    expect((screen.getByLabelText("Line 1 quantity") as HTMLInputElement).value).toBe("6");
+    expect((screen.getByLabelText("Line 1 unit cost") as HTMLInputElement).value).toBe("12.50");
+  });
 });

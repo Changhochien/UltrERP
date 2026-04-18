@@ -48,6 +48,8 @@ from domains.inventory.schemas import (
     InventoryStockResponse,
     MonthlyDemandResponse,
     PlanningSupportResponse,
+    CreateReorderSuggestionOrdersRequest,
+    CreateReorderSuggestionOrdersResponse,
     ProductCreate,
     ProductDetailResponse,
     ProductResponse,
@@ -61,6 +63,8 @@ from domains.inventory.schemas import (
     ReceiveOrderRequest,
     ReorderAlertItem,
     ReorderAlertListResponse,
+    ReorderSuggestionItem,
+    ReorderSuggestionListResponse,
     ReorderPointApplyRequest,
     ReorderPointApplyResponse,
     ReorderPointComputeRequest,
@@ -99,6 +103,7 @@ from domains.inventory.services import (
     create_stock_adjustment,
     create_supplier_order,
     create_warehouse,
+    create_reorder_suggestion_orders,
     dismiss_alert,
     create_supplier,
     get_category,
@@ -116,6 +121,7 @@ from domains.inventory.services import (
     get_warehouse,
     list_categories,
     list_reorder_alerts,
+    list_reorder_suggestions,
     list_supplier_orders,
     list_suppliers,
     list_warehouses,
@@ -1033,6 +1039,50 @@ async def dismiss_alert_endpoint(
         )
     await session.commit()
     return DismissAlertResponse(**result)
+
+
+@router.get(
+    "/reorder-suggestions",
+    response_model=ReorderSuggestionListResponse,
+)
+async def list_reorder_suggestions_endpoint(
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+    warehouse_id: uuid.UUID | None = Query(None),
+) -> ReorderSuggestionListResponse:
+    items, total = await list_reorder_suggestions(
+        session,
+        tenant_id,
+        warehouse_id=warehouse_id,
+    )
+    return ReorderSuggestionListResponse(
+        items=[ReorderSuggestionItem(**item) for item in items],
+        total=total,
+    )
+
+
+@router.post(
+    "/reorder-suggestions/orders",
+    response_model=CreateReorderSuggestionOrdersResponse,
+)
+async def create_reorder_suggestion_orders_endpoint(
+    data: CreateReorderSuggestionOrdersRequest,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> CreateReorderSuggestionOrdersResponse:
+    result = await create_reorder_suggestion_orders(
+        session,
+        tenant_id,
+        items=[item.model_dump() for item in data.items],
+        actor_id=ACTOR_ID,
+    )
+    await session.commit()
+    return CreateReorderSuggestionOrdersResponse(
+        created_orders=result["created_orders"],
+        unresolved_rows=result["unresolved_rows"],
+    )
 
 
 # ── Supplier endpoints ────────────────────────────────────────

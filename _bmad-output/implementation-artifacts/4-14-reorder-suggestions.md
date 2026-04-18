@@ -1,6 +1,6 @@
 # Story 4.14: Reorder Suggestions Generation
 
-**Status:** backlog
+**Status:** done
 
 **Story ID:** 4.14
 
@@ -32,38 +32,38 @@ so that I can turn low-stock signals into draft supplier orders quickly.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Add a derived suggestion service** (AC: 1, 2, 5)
-  - [ ] Add `list_reorder_suggestions(session, tenant_id, warehouse_id=None)` to `backend/domains/inventory/services.py`.
-  - [ ] Reuse existing `InventoryStock` fields such as `quantity`, `reorder_point`, `target_stock_qty`, `on_order_qty`, `in_transit_qty`, and `reserved_qty`.
-  - [ ] Compute `inventory_position = current_stock + on_order_qty + in_transit_qty - reserved_qty`.
-  - [ ] Resolve supplier hints through the current product-supplier helper and leave the hint empty when none is known.
+- [x] **Task 1: Add a derived suggestion service** (AC: 1, 2, 5)
+  - [x] Add `list_reorder_suggestions(session, tenant_id, warehouse_id=None)` to `backend/domains/inventory/services.py`.
+  - [x] Reuse existing `InventoryStock` fields such as `quantity`, `reorder_point`, `target_stock_qty`, `on_order_qty`, `in_transit_qty`, and `reserved_qty`.
+  - [x] Compute `inventory_position = current_stock + on_order_qty + in_transit_qty - reserved_qty`.
+  - [x] Resolve supplier hints through the current product-supplier helper and leave the hint empty when none is known.
 
-- [ ] **Task 2: Add suggestion read and draft-order endpoints** (AC: 1, 3, 4)
-  - [ ] Add `GET /api/v1/inventory/reorder-suggestions`.
-  - [ ] Add `POST /api/v1/inventory/reorder-suggestions/orders` that accepts selected suggestion rows, groups them by supplier, and returns created draft-order IDs plus unresolved rows.
-  - [ ] Do not introduce a `suggestion_id` route unless suggestions become persisted entities in a later design change.
+- [x] **Task 2: Add suggestion read and draft-order endpoints** (AC: 1, 3, 4)
+  - [x] Add `GET /api/v1/inventory/reorder-suggestions`.
+  - [x] Add `POST /api/v1/inventory/reorder-suggestions/orders` that accepts selected suggestion rows, groups them by supplier, and returns created draft-order IDs plus unresolved rows.
+  - [x] Do not introduce a `suggestion_id` route unless suggestions become persisted entities in a later design change.
 
-- [ ] **Task 3: Reuse supplier-order infrastructure** (AC: 3, 4)
-  - [ ] Reuse `create_supplier_order()` for draft creation rather than forking a second purchase-order write path.
-  - [ ] If supplier resolution fails, return a payload the frontend can hand off to `SupplierOrderForm` with prefilled lines and a blank supplier selection.
+- [x] **Task 3: Reuse supplier-order infrastructure** (AC: 3, 4)
+  - [x] Reuse `create_supplier_order()` for draft creation rather than forking a second purchase-order write path.
+  - [x] If supplier resolution fails, return a payload the frontend can hand off to `SupplierOrderForm` with prefilled lines and a blank supplier selection.
 
-- [ ] **Task 4: Add frontend types, API helpers, and hook** (AC: 1, 3, 4)
-  - [ ] Add reorder-suggestion types to `src/domain/inventory/types.ts`.
-  - [ ] Add reorder-suggestion API helpers to `src/lib/api/inventory.ts`.
-  - [ ] Add `useReorderSuggestions` under `src/domain/inventory/hooks/`.
+- [x] **Task 4: Add frontend types, API helpers, and hook** (AC: 1, 3, 4)
+  - [x] Add reorder-suggestion types to `src/domain/inventory/types.ts`.
+  - [x] Add reorder-suggestion API helpers to `src/lib/api/inventory.ts`.
+  - [x] Add `useReorderSuggestions` under `src/domain/inventory/hooks/`.
 
-- [ ] **Task 5: Build the reorder suggestions page** (AC: 1, 3, 4)
-  - [ ] Create `src/pages/inventory/ReorderSuggestionsPage.tsx`.
-  - [ ] Show warehouse filter, row selection, supplier hint, and single/bulk action buttons.
-  - [ ] Make unresolved rows visible in the UI instead of failing silently.
+- [x] **Task 5: Build the reorder suggestions page** (AC: 1, 3, 4)
+  - [x] Create `src/pages/inventory/ReorderSuggestionsPage.tsx`.
+  - [x] Show warehouse filter, row selection, supplier hint, and single/bulk action buttons.
+  - [x] Make unresolved rows visible in the UI instead of failing silently.
 
-- [ ] **Task 6: Link suggestions from existing inventory signals** (AC: 5)
-  - [ ] Add a navigation path from reorder alerts or inventory admin surfaces into the suggestions page.
-  - [ ] Reuse the same warehouse filter context already used by the inventory module.
+- [x] **Task 6: Link suggestions from existing inventory signals** (AC: 5)
+  - [x] Add a navigation path from reorder alerts or inventory admin surfaces into the suggestions page.
+  - [x] Reuse the same warehouse filter context already used by the inventory module.
 
-- [ ] **Task 7: Add focused regression tests** (AC: 1, 2, 3, 4, 5)
-  - [ ] Backend tests for quantity calculation, supplier grouping, and unresolved-row handling.
-  - [ ] Frontend tests for page rendering, bulk selection, draft-order handoff, and unresolved-state UX.
+- [x] **Task 7: Add focused regression tests** (AC: 1, 2, 3, 4, 5)
+  - [x] Backend tests for quantity calculation, supplier grouping, and unresolved-row handling.
+  - [x] Frontend tests for page rendering, bulk selection, draft-order handoff, and unresolved-state UX.
 
 ## Dev Notes
 
@@ -102,3 +102,44 @@ so that I can turn low-stock signals into draft supplier orders quickly.
 - `backend/domains/inventory/routes.py`
 - `src/domain/inventory/components/SupplierOrderForm.tsx`
 - `src/domain/inventory/context/WarehouseContext.tsx`
+
+---
+
+## Dev Agent Record
+
+**Status:** done
+**Last Updated:** 2026-04-18
+
+### Completion Notes List
+
+- Added a derived reorder-suggestions backend read model over existing `InventoryStock` fields, including the deterministic inventory-position formula, supplier-hint reuse, and grouped draft-order creation through the current supplier-order service.
+- Shipped a warehouse-aware reorder suggestions page with row selection, single-row and bulk draft actions, created-order feedback, and explicit unresolved-row handling that hands prefilled lines into `SupplierOrderForm` instead of guessing a supplier.
+- Linked the new suggestions flow from existing inventory entry points so planners can jump from alerts or the inventory workspace into the same warehouse-scoped recommendation surface.
+
+### Validation
+
+- `cd backend && . .venv/bin/activate && pytest -q tests/domains/inventory/test_reorder_suggestions.py tests/api/test_reorder_suggestions.py`
+- `pnpm vitest run src/pages/inventory/ReorderSuggestionsPage.test.tsx src/domain/inventory/components/SupplierOrderForm.test.tsx`
+- VS Code diagnostics: no new errors in the touched backend/frontend files for the 4.14 slice
+
+### File List
+
+- `backend/domains/inventory/schemas.py`
+- `backend/domains/inventory/services.py`
+- `backend/domains/inventory/routes.py`
+- `backend/tests/domains/inventory/test_reorder_suggestions.py`
+- `backend/tests/api/test_reorder_suggestions.py`
+- `src/domain/inventory/types.ts`
+- `src/lib/api/inventory.ts`
+- `src/domain/inventory/hooks/useReorderSuggestions.ts`
+- `src/domain/inventory/components/SupplierOrderForm.tsx`
+- `src/domain/inventory/components/SupplierOrderForm.test.tsx`
+- `src/domain/inventory/components/AlertPanel.tsx`
+- `src/pages/InventoryPage.tsx`
+- `src/pages/inventory/ReorderSuggestionsPage.tsx`
+- `src/pages/inventory/ReorderSuggestionsPage.test.tsx`
+- `src/lib/routes.ts`
+- `src/lib/navigation.tsx`
+- `src/App.tsx`
+- `public/locales/en/common.json`
+- `public/locales/zh-Hant/common.json`

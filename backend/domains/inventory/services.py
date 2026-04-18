@@ -983,6 +983,210 @@ async def dismiss_alert(
     }
 
 
+async def _load_reorder_suggestion_source(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    *,
+    product_id: uuid.UUID,
+    warehouse_id: uuid.UUID,
+):
+    stmt = (
+        select(
+            InventoryStock.product_id,
+            Product.name.label("product_name"),
+            InventoryStock.warehouse_id,
+            Warehouse.name.label("warehouse_name"),
+            InventoryStock.quantity.label("current_stock"),
+            InventoryStock.reorder_point,
+            InventoryStock.target_stock_qty,
+            InventoryStock.on_order_qty,
+            InventoryStock.in_transit_qty,
+            InventoryStock.reserved_qty,
+        )
+        .join(Product, Product.id == InventoryStock.product_id)
+        .join(Warehouse, Warehouse.id == InventoryStock.warehouse_id)
+        .where(
+            InventoryStock.tenant_id == tenant_id,
+            Product.tenant_id == tenant_id,
+            Warehouse.tenant_id == tenant_id,
+            Product.id == product_id,
+            Warehouse.id == warehouse_id,
+        )
+    )
+    result = await session.execute(stmt)
+    return result.first()
+
+
+def _serialize_reorder_suggestion_row(
+    row: object,
+    *,
+    supplier_hint: dict | None,
+    suggested_qty_override: int | None = None,
+) -> dict:
+    current_stock = int(getattr(row, "current_stock", 0) or 0)
+    reorder_point = int(getattr(row, "reorder_point", 0) or 0)
+    on_order_qty = int(getattr(row, "on_order_qty", 0) or 0)
+    in_transit_qty = int(getattr(row, "in_transit_qty", 0) or 0)
+    reserved_qty = int(getattr(row, "reserved_qty", 0) or 0)
+    raw_target_stock_qty = int(getattr(row, "target_stock_qty", 0) or 0)
+    target_stock_qty = raw_target_stock_qty if raw_target_stock_qty > 0 else None
+    inventory_position = current_stock + on_order_qty + in_transit_qty - reserved_qty
+    base_target = target_stock_qty if target_stock_qty is not None else reorder_point
+    suggested_qty = max(0, base_target - inventory_position)
+    if suggested_qty_override is not None:
+        suggested_qty = suggested_qty_override
+
+    return {
+        "product_id": getattr(row, "product_id"),
+        "product_name": getattr(row, "product_name"),
+        "warehouse_id": getattr(row, "warehouse_id"),
+        "warehouse_name": getattr(row, "warehouse_name"),
+        "current_stock": current_stock,
+        "reorder_point": reorder_point,
+        "inventory_position": inventory_position,
+        "target_stock_qty": target_stock_qty,
+        "suggested_qty": suggested_qty,
+        "supplier_hint": supplier_hint,
+    }
+
+
+async def list_reorder_suggestions(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    *,
+    warehouse_id: uuid.UUID | None = None,
+) -> tuple[list[dict], int]:
+    stmt = (
+        select(
+            InventoryStock.product_id,
+            Product.name.label("product_name"),
+            InventoryStock.warehouse_id,
+            Warehouse.name.label("warehouse_name"),
+            InventoryStock.quantity.label("current_stock"),
+            InventoryStock.reorder_point,
+            InventoryStock.target_stock_qty,
+            InventoryStock.on_order_qty,
+            InventoryStock.in_transit_qty,
+            InventoryStock.reserved_qty,
+        )
+        .join(Product, Product.id == InventoryStock.product_id)
+        .join(Warehouse, Warehouse.id == InventoryStock.warehouse_id)
+        .where(
+            InventoryStock.tenant_id == tenant_id,
+            Product.tenant_id == tenant_id,
+            Warehouse.tenant_id == tenant_id,
+            Product.status == "active",
+            InventoryStock.quantity <= InventoryStock.reorder_point,
+        )
+        .order_by(Warehouse.name, Product.name)
+    )
+    if warehouse_id is not None:
+        stmt = stmt.where(InventoryStock.warehouse_id == warehouse_id)
+
+    result = await session.execute(stmt)
+    rows = result.all()
+
+    items: list[dict] = []
+    for row in rows:
+        supplier_hint = await get_product_supplier(session, tenant_id, row.product_id)
+        items.append(
+            _serialize_reorder_suggestion_row(
+                row,
+                supplier_hint=supplier_hint,
+            )
+        )
+
+    return items, len(items)
+
+
+async def create_reorder_suggestion_orders(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    *,
+    items: list[dict],
+    actor_id: str,
+) -> dict:
+    grouped_lines: dict[uuid.UUID, dict[str, object]] = {}
+    unresolved_rows: list[dict] = []
+    order_date = today()
+
+    for item in items:
+        product_id = item["product_id"]
+        warehouse_id = item["warehouse_id"]
+        suggested_qty = int(item["suggested_qty"])
+
+        row = await _load_reorder_suggestion_source(
+            session,
+            tenant_id,
+            product_id=product_id,
+            warehouse_id=warehouse_id,
+        )
+        if row is None:
+            continue
+
+        supplier_hint = await get_product_supplier(session, tenant_id, product_id)
+        if supplier_hint is None:
+            unresolved_rows.append(
+                _serialize_reorder_suggestion_row(
+                    row,
+                    supplier_hint=None,
+                    suggested_qty_override=suggested_qty,
+                )
+            )
+            continue
+
+        supplier_id = supplier_hint["supplier_id"]
+        group = grouped_lines.setdefault(
+            supplier_id,
+            {
+                "supplier_hint": supplier_hint,
+                "lines": [],
+            },
+        )
+        cast(list[dict], group["lines"]).append(
+            {
+                "product_id": product_id,
+                "warehouse_id": warehouse_id,
+                "quantity_ordered": suggested_qty,
+                "unit_price": supplier_hint.get("unit_cost"),
+            }
+        )
+
+    created_orders: list[dict] = []
+    for supplier_id, group in grouped_lines.items():
+        supplier_hint = cast(dict[str, object], group["supplier_hint"])
+        lines = cast(list[dict], group["lines"])
+        lead_time_days = supplier_hint.get("default_lead_time_days")
+        expected_arrival_date = (
+            order_date + timedelta(days=int(lead_time_days))
+            if lead_time_days is not None
+            else None
+        )
+        created_order = await create_supplier_order(
+            session,
+            tenant_id,
+            supplier_id=supplier_id,
+            order_date=order_date,
+            expected_arrival_date=expected_arrival_date,
+            lines=lines,
+            actor_id=actor_id,
+        )
+        created_orders.append(
+            {
+                "order_id": created_order["id"],
+                "order_number": created_order["order_number"],
+                "supplier_id": created_order["supplier_id"],
+                "supplier_name": created_order["supplier_name"],
+                "line_count": len(lines),
+            }
+        )
+
+    return {
+        "created_orders": created_orders,
+        "unresolved_rows": unresolved_rows,
+    }
+
+
 # ── Stock queries ──────────────────────────────────────────────
 
 

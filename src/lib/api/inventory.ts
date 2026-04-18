@@ -4,6 +4,8 @@ import type {
   Category,
   CategoryCreate,
   CategoryListResponse,
+  CreateReorderSuggestionOrdersRequest,
+  CreateReorderSuggestionOrdersResponse,
   CategoryUpdate,
   DismissAlertResponse,
   PlanningSupportResponse,
@@ -13,6 +15,7 @@ import type {
   ProductResponse,
   ProductUpdate,
   ReorderAlertListResponse,
+  ReorderSuggestionListResponse,
   SnoozeAlertResponse,
   Supplier,
   SupplierCreate,
@@ -280,6 +283,49 @@ export async function fetchReorderAlerts(options?: {
     const resp = await apiFetch(`/api/v1/inventory/alerts/reorder${qs ? `?${qs}` : ""}`);
     if (!resp.ok) return { ok: false, error: "Failed to fetch reorder alerts" };
     return { ok: true, data: (await resp.json()) as ReorderAlertListResponse };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+export async function fetchReorderSuggestions(options?: {
+  warehouseId?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{ ok: true; data: ReorderSuggestionListResponse } | { ok: false; error: string }> {
+  try {
+    const params = new URLSearchParams();
+    if (options?.warehouseId) params.set("warehouse_id", options.warehouseId);
+    if (options?.limit != null) params.set("limit", String(options.limit));
+    if (options?.offset != null) params.set("offset", String(options.offset));
+    const qs = params.toString();
+    const resp = await apiFetch(`/api/v1/inventory/reorder-suggestions${qs ? `?${qs}` : ""}`);
+    if (!resp.ok) return { ok: false, error: "Failed to fetch reorder suggestions" };
+    return { ok: true, data: (await resp.json()) as ReorderSuggestionListResponse };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+export async function createReorderSuggestionOrders(
+  data: CreateReorderSuggestionOrdersRequest,
+): Promise<{ ok: true; data: CreateReorderSuggestionOrdersResponse } | { ok: false; error: string }> {
+  try {
+    const resp = await apiFetch("/api/v1/inventory/reorder-suggestions/orders", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({}));
+      return {
+        ok: false,
+        error: (body as { detail?: string }).detail ?? "Failed to create reorder drafts",
+      };
+    }
+    return {
+      ok: true,
+      data: (await resp.json()) as CreateReorderSuggestionOrdersResponse,
+    };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
   }

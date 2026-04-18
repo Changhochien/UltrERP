@@ -1,6 +1,7 @@
 import { Package, RefreshCw } from "lucide-react";
 import { parseBackendDate } from "@/lib/time";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import {
 } from "../hooks/useReorderAlerts";
 import { useWarehouseContext } from "../context/WarehouseContext";
 import { useTranslation } from "react-i18next";
+import { INVENTORY_REORDER_SUGGESTIONS_ROUTE } from "@/lib/routes";
 
 function formatDate(dateStr: string): string {
   return parseBackendDate(dateStr).toLocaleDateString("zh-TW", {
@@ -22,6 +24,7 @@ function formatDate(dateStr: string): string {
 
 export function AlertPanel() {
   const { t } = useTranslation("common", { keyPrefix: "inventory.alertPanel" });
+  const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState("");
   const { selectedWarehouse } = useWarehouseContext();
   const { alerts, total, loading, error, reload } = useReorderAlerts({
@@ -65,9 +68,19 @@ export function AlertPanel() {
       title={t("title")}
       description={t("description")}
       actions={
-        <Badge variant="outline" className="normal-case tracking-normal">
-          {t("total", { count: total })}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="normal-case tracking-normal">
+            {t("total", { count: total })}
+          </Badge>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(INVENTORY_REORDER_SUGGESTIONS_ROUTE)}
+          >
+            {t("reviewSuggestions")}
+          </Button>
+        </div>
       }
     >
       {/* Filters */}

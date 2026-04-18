@@ -208,6 +208,56 @@ export interface ReorderAlertListResponse {
   total: number;
 }
 
+export interface ReorderSuggestionSupplierHint {
+  supplier_id: string;
+  supplier_name: string;
+  unit_cost: string | null;
+  default_lead_time_days: number | null;
+}
+
+export interface ReorderSuggestionItem {
+  product_id: string;
+  product_code: string;
+  product_name: string;
+  warehouse_id: string;
+  warehouse_name: string;
+  current_stock: number;
+  reorder_point: number;
+  target_stock_qty: number;
+  on_order_qty: number;
+  in_transit_qty: number;
+  reserved_qty: number;
+  inventory_position: number;
+  suggested_qty: number;
+  supplier_hint: ReorderSuggestionSupplierHint | null;
+}
+
+export interface ReorderSuggestionListResponse {
+  items: ReorderSuggestionItem[];
+  total: number;
+}
+
+export interface CreateReorderSuggestionOrdersRequest {
+  items: Array<{
+    product_id: string;
+    warehouse_id: string;
+    suggested_qty: number;
+  }>;
+}
+
+export interface ReorderSuggestionCreatedOrder {
+  supplier_id: string;
+  supplier_name: string;
+  order_id: string;
+  order_number: string;
+  line_count: number;
+}
+
+export interface CreateReorderSuggestionOrdersResponse {
+  created_orders: ReorderSuggestionCreatedOrder[];
+  unresolved_rows: ReorderSuggestionItem[];
+}
+
 export interface AcknowledgeAlertResponse {
   id: string;
   status: ReorderAlertStatus;

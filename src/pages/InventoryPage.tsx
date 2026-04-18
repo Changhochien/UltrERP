@@ -15,7 +15,10 @@ import { StockAdjustmentForm } from "../domain/inventory/components/StockAdjustm
 import { StockTransferForm } from "../domain/inventory/components/StockTransferForm";
 import { Button } from "../components/ui/button";
 import { usePermissions } from "../hooks/usePermissions";
-import { INVENTORY_CATEGORIES_ROUTE } from "../lib/routes";
+import {
+  INVENTORY_CATEGORIES_ROUTE,
+  INVENTORY_REORDER_SUGGESTIONS_ROUTE,
+} from "../lib/routes";
 
 function InventoryWorkspace() {
   const { t } = useTranslation("common");
@@ -42,6 +45,13 @@ function InventoryWorkspace() {
             />
             {canWrite("inventory") && (
               <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate(INVENTORY_REORDER_SUGGESTIONS_ROUTE)}
+                >
+                  {t("inventory.page.reviewSuggestions")}
+                </Button>
                 <Button
                   type="button"
                   variant="outline"

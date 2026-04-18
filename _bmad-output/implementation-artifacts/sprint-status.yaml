@@ -268,10 +268,10 @@ development_status:
         prerequisites: []
       4-14-reorder-suggestions:
         title: "Reorder Suggestions Generation"
-        status: "backlog"
+        status: "completed"
         story_id: "4.14"
         story_file: "4-14-reorder-suggestions.md"
-        validation: "none"
+        validation: "Derived reorder suggestions, grouped draft-order creation, unresolved-row handoff, warehouse-aware UI route linking, and focused backend/frontend validations are implemented and passing (5 backend tests and 4 frontend tests)."
         prerequisites: []
       4-15-below-reorder-report:
         title: "Below-Reorder-Point Reporting (CSV Export)"

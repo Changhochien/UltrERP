@@ -1,6 +1,6 @@
 /** Form to create a new supplier order with dynamic line items. */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayout";
 import { Button } from "../../../components/ui/button";
@@ -20,28 +20,61 @@ interface OrderLine {
   unit_cost: string;
 }
 
+export interface SupplierOrderDraftLine {
+  product_id: string;
+  warehouse_id: string;
+  quantity: number;
+  unit_cost?: string;
+}
+
 interface SupplierOrderFormProps {
   onCreated: (orderId: string) => void;
   onCancel: () => void;
+  initialSupplierId?: string;
+  initialOrderDate?: string;
+  initialExpectedArrivalDate?: string;
+  initialLines?: SupplierOrderDraftLine[];
 }
 
 function emptyLine(): OrderLine {
   return { product_id: "", warehouse_id: "", quantity: 1, unit_cost: "" };
 }
 
+function hydrateLine(line: SupplierOrderDraftLine): OrderLine {
+  return {
+    product_id: line.product_id,
+    warehouse_id: line.warehouse_id,
+    quantity: line.quantity,
+    unit_cost: line.unit_cost ?? "",
+  };
+}
+
 export function SupplierOrderForm({
   onCreated,
   onCancel,
+  initialSupplierId = "",
+  initialOrderDate,
+  initialExpectedArrivalDate = "",
+  initialLines,
 }: SupplierOrderFormProps) {
   const { warehouses, loading: whLoading } = useWarehouses();
   const { create, submitting, error } = useCreateSupplierOrder();
 
-  const [supplierId, setSupplierId] = useState("");
+  const [supplierId, setSupplierId] = useState(initialSupplierId);
   const [orderDate, setOrderDate] = useState(
-    () => new Date().toISOString().slice(0, 10),
+    () => initialOrderDate ?? new Date().toISOString().slice(0, 10),
   );
-  const [expectedArrival, setExpectedArrival] = useState("");
-  const [lines, setLines] = useState<OrderLine[]>([emptyLine()]);
+  const [expectedArrival, setExpectedArrival] = useState(initialExpectedArrivalDate);
+  const [lines, setLines] = useState<OrderLine[]>(
+    () => initialLines?.length ? initialLines.map(hydrateLine) : [emptyLine()],
+  );
+
+  useEffect(() => {
+    setSupplierId(initialSupplierId);
+    setOrderDate(initialOrderDate ?? new Date().toISOString().slice(0, 10));
+    setExpectedArrival(initialExpectedArrivalDate);
+    setLines(initialLines?.length ? initialLines.map(hydrateLine) : [emptyLine()]);
+  }, [initialExpectedArrivalDate, initialLines, initialOrderDate, initialSupplierId]);
 
   if (whLoading) return <p aria-busy="true">Loading…</p>;
 

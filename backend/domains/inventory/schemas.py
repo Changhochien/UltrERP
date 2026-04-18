@@ -418,6 +418,54 @@ class ReorderAlertListResponse(BaseModel):
     total: int
 
 
+class ReorderSuggestionSupplierHint(BaseModel):
+    supplier_id: uuid.UUID
+    name: str
+    unit_cost: float | None = None
+    default_lead_time_days: int | None = None
+
+
+class ReorderSuggestionItem(BaseModel):
+    product_id: uuid.UUID
+    product_name: str
+    warehouse_id: uuid.UUID
+    warehouse_name: str
+    current_stock: int
+    reorder_point: int
+    inventory_position: int
+    target_stock_qty: int | None
+    suggested_qty: int
+    supplier_hint: ReorderSuggestionSupplierHint | None = None
+
+
+class ReorderSuggestionListResponse(BaseModel):
+    items: list[ReorderSuggestionItem]
+    total: int
+
+
+class ReorderSuggestionOrderRequestItem(BaseModel):
+    product_id: uuid.UUID
+    warehouse_id: uuid.UUID
+    suggested_qty: int = Field(..., gt=0)
+
+
+class CreateReorderSuggestionOrdersRequest(BaseModel):
+    items: list[ReorderSuggestionOrderRequestItem] = Field(..., min_length=1)
+
+
+class ReorderSuggestionCreatedOrder(BaseModel):
+    order_id: uuid.UUID
+    order_number: str
+    supplier_id: uuid.UUID
+    supplier_name: str
+    line_count: int
+
+
+class CreateReorderSuggestionOrdersResponse(BaseModel):
+    created_orders: list[ReorderSuggestionCreatedOrder]
+    unresolved_rows: list[ReorderSuggestionItem]
+
+
 class AcknowledgeAlertResponse(BaseModel):
     id: uuid.UUID
     status: str
