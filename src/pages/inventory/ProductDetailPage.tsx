@@ -25,7 +25,7 @@ import { SettingsTab } from "@/domain/inventory/components/SettingsTab";
 import { AuditLogTable } from "@/domain/inventory/components/AuditLogTable";
 import { useProductAuditLog } from "@/domain/inventory/hooks/useProductAuditLog";
 import { setProductStatus } from "@/lib/api/inventory";
-import { INVENTORY_ROUTE } from "@/lib/routes";
+import { buildInventoryTransfersPath, INVENTORY_ROUTE } from "@/lib/routes";
 import { parseBackendDate } from "@/lib/time";
 import type { WarehouseStockInfo } from "@/domain/inventory/types";
 
@@ -485,7 +485,16 @@ function ProductDetailContent({ productId }: { productId: string }) {
                     <SlidersHorizontal size={14} />
                     {t("adjustStock")}
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(
+                      buildInventoryTransfersPath(
+                        product.id,
+                        selectedWarehouse?.id ?? product.warehouses[0]?.warehouse_id,
+                      ),
+                    )}
+                  >
                     <ArrowRightLeft size={14} />
                     {t("transfer")}
                   </Button>

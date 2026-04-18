@@ -12,13 +12,14 @@ import { ProductDetailDrawer } from "../domain/inventory/components/ProductDetai
 import { CreateProductForm } from "../domain/inventory/components/CreateProductForm";
 import { ReorderPointAdmin } from "../domain/inventory/components/ReorderPointAdmin";
 import { StockAdjustmentForm } from "../domain/inventory/components/StockAdjustmentForm";
-import { StockTransferForm } from "../domain/inventory/components/StockTransferForm";
 import { Button } from "../components/ui/button";
 import { usePermissions } from "../hooks/usePermissions";
 import {
+  buildInventoryTransfersPath,
   INVENTORY_BELOW_REORDER_REPORT_ROUTE,
   INVENTORY_CATEGORIES_ROUTE,
   INVENTORY_COUNT_SESSIONS_ROUTE,
+  INVENTORY_TRANSFERS_ROUTE,
   INVENTORY_REORDER_SUGGESTIONS_ROUTE,
   INVENTORY_UNITS_ROUTE,
   INVENTORY_VALUATION_ROUTE,
@@ -31,7 +32,6 @@ function InventoryWorkspace() {
   const { canWrite } = usePermissions();
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [adjustProductId, setAdjustProductId] = useState<string | null>(null);
-  const [transferProductId, setTransferProductId] = useState<string | null>(null);
   const [showCreateProduct, setShowCreateProduct] = useState(false);
   const [createdProductKey, setCreatedProductKey] = useState(0);
 
@@ -87,6 +87,13 @@ function InventoryWorkspace() {
                 <Button
                   type="button"
                   variant="outline"
+                  onClick={() => navigate(INVENTORY_TRANSFERS_ROUTE)}
+                >
+                  {t("inventory.page.manageTransfers")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => navigate(INVENTORY_CATEGORIES_ROUTE)}
                 >
                   {t("inventory.page.manageCategories")}
@@ -120,9 +127,9 @@ function InventoryWorkspace() {
           setSelectedProductId(null);
           setAdjustProductId(productId);
         }}
-        onTransfer={(productId) => {
+        onTransfer={(productId, warehouseId) => {
           setSelectedProductId(null);
-          setTransferProductId(productId);
+          navigate(buildInventoryTransfersPath(productId, warehouseId || selectedWarehouse?.id));
         }}
         onNewOrder={(_productId) => {
           // TODO: wire up supplier order form
@@ -141,21 +148,6 @@ function InventoryWorkspace() {
               type="button"
               className="mt-4 text-sm text-muted-foreground underline"
               onClick={() => setAdjustProductId(null)}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-
-      {transferProductId && (
-        <div className="fixed inset-0 z-[9002] flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-lg rounded-xl border border-border bg-background p-6 shadow-lg">
-            <StockTransferForm defaultProductId={transferProductId} />
-            <button
-              type="button"
-              className="mt-4 text-sm text-muted-foreground underline"
-              onClick={() => setTransferProductId(null)}
             >
               Close
             </button>

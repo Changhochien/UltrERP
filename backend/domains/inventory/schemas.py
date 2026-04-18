@@ -64,6 +64,27 @@ class TransferResponse(BaseModel):
     notes: str | None
     created_at: datetime
 
+class TransferHistoryItem(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    product_id: uuid.UUID
+    product_code: str
+    product_name: str
+    from_warehouse_id: uuid.UUID
+    from_warehouse_name: str
+    from_warehouse_code: str
+    to_warehouse_id: uuid.UUID
+    to_warehouse_name: str
+    to_warehouse_code: str
+    quantity: int
+    actor_id: str
+    notes: str | None
+    created_at: datetime
+
+class TransferHistoryListResponse(BaseModel):
+    items: list[TransferHistoryItem]
+    total: int
+
 
 # --- Inventory stock schemas ---
 

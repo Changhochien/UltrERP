@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 
 const permissionMock = vi.hoisted(() => ({
   canWrite: vi.fn<(feature: string) => boolean>(),
@@ -71,7 +72,11 @@ describe("InventoryPage", () => {
     permissionMock.canWrite.mockImplementation((feature) => feature === "inventory");
     const { InventoryPage } = await import("./InventoryPage");
 
-    render(<InventoryPage />);
+    render(
+      <MemoryRouter>
+        <InventoryPage />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByText("reorder-point-admin")).toBeTruthy();
   });
@@ -80,7 +85,11 @@ describe("InventoryPage", () => {
     permissionMock.canWrite.mockReturnValue(false);
     const { InventoryPage } = await import("./InventoryPage");
 
-    render(<InventoryPage />);
+    render(
+      <MemoryRouter>
+        <InventoryPage />
+      </MemoryRouter>,
+    );
 
     expect(screen.queryByText("reorder-point-admin")).toBeNull();
   });

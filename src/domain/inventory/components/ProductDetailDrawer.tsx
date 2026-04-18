@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import "../inventory.css";
 
 import { Badge } from "@/components/ui/badge";
-import { buildProductDetailPath } from "@/lib/routes";
+import { buildInventoryTransfersPath, buildProductDetailPath } from "@/lib/routes";
 import { useProductDetail } from "../hooks/useProductDetail";
 import { useWarehouseContext } from "../context/WarehouseContext";
 import type { AdjustmentHistoryItem, WarehouseStockInfo } from "../types";
@@ -15,7 +15,7 @@ interface ProductDetailDrawerProps {
   productId: string | null;
   onClose: () => void;
   onAdjustStock?: (productId: string, warehouseId: string) => void;
-  onTransfer?: (productId: string) => void;
+  onTransfer?: (productId: string, warehouseId: string) => void;
   onNewOrder?: (productId: string) => void;
 }
 
@@ -396,7 +396,14 @@ export function ProductDetailDrawer({
             <button
               type="button"
               className="drawer-action-btn"
-              onClick={() => onTransfer?.(product.id)}
+              onClick={() => {
+                const nextWarehouseId = selectedWarehouse?.id ?? product.warehouses[0]?.warehouse_id ?? "";
+                if (onTransfer) {
+                  onTransfer(product.id, nextWarehouseId);
+                  return;
+                }
+                navigate(buildInventoryTransfersPath(product.id, nextWarehouseId));
+              }}
             >
               <ArrowRightLeft size={14} />
               Transfer

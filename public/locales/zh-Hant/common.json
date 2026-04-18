@@ -75,6 +75,10 @@
       "description": "管理商品表單與庫存主檔共用的租戶專屬單位代碼。",
       "label": "計量單位"
     },
+    "inventoryTransfers": {
+      "description": "建立倉間調撥並檢視完整的調撥歷史。",
+      "label": "庫存調撥"
+    },
     "inventoryCountSessions": {
       "description": "啟動、複核並核准倉庫盤點作業。",
       "label": "盤點作業"
@@ -1086,10 +1090,80 @@
       "reviewSuggestions": "查看補貨建議",
       "manageCountSessions": "盤點作業",
       "manageUnits": "管理單位",
+      "manageTransfers": "庫存調撥",
       "manageCategories": "管理類別",
       "addProduct": "新增產品",
       "warehouseScope": "倉庫範圍",
       "warehouseScopeDescription": "依倉庫篩選庫存檢視。"
+    },
+    "transferForm": {
+      "loadingWarehouses": "載入倉庫中…",
+      "fromWarehouse": "來源倉庫",
+      "toWarehouse": "目的倉庫",
+      "selectWarehouse": "選擇倉庫…",
+      "product": "產品",
+      "productPlaceholder": "搜尋產品…",
+      "quantity": "數量",
+      "quantityInteger": "數量必須是整數。",
+      "notes": "備註",
+      "notesPlaceholder": "說明此次調撥原因",
+      "submit": "執行調撥",
+      "submitting": "調撥中…",
+      "cancel": "取消",
+      "confirm": "確認調撥",
+      "confirmTitle": "確認庫存調撥",
+      "confirmDescription": "確定要把 {{quantity}} 單位從 {{fromWarehouse}} 調撥到 {{toWarehouse}} 嗎？",
+      "success": "調撥 {{transferId}} 已完成，已將 {{quantity}} 單位從 {{fromWarehouse}} 移至 {{toWarehouse}}。",
+      "networkError": "網路錯誤，請稍後再試。",
+      "unknownWarehouse": "未知倉庫"
+    },
+    "transfersPage": {
+      "eyebrow": "庫存",
+      "title": "庫存調撥",
+      "description": "在倉庫間立即移動庫存，並檢視完整調撥稽核紀錄。",
+      "backToInventory": "返回庫存",
+      "formTitle": "建立調撥",
+      "formDescription": "沿用現有調撥流程，立即在倉庫間移動庫存。",
+      "readOnly": "您可以查看調撥歷史，但只有可編輯庫存的使用者能建立調撥。",
+      "historyTitle": "調撥歷史",
+      "historyDescription": "檢視每筆調撥的產品、倉庫路徑、數量、操作者、備註與時間。",
+      "historyCount": "共 {{count}} 筆調撥",
+      "loading": "載入調撥歷史中…",
+      "empty": "找不到調撥紀錄",
+      "emptyDescription": "建立新調撥，或放寬篩選條件以查看歷史紀錄。",
+      "emptyNote": "無備註",
+      "viewDetails": "查看詳情",
+      "filters": {
+        "product": "產品",
+        "productPlaceholder": "依產品篩選…",
+        "warehouse": "倉庫",
+        "allWarehouses": "所有倉庫",
+        "clear": "清除篩選"
+      },
+      "columns": {
+        "product": "產品",
+        "route": "調撥路徑",
+        "quantity": "數量",
+        "actor": "操作者",
+        "notes": "備註",
+        "createdAt": "建立時間",
+        "actions": "操作"
+      },
+      "detail": {
+        "title": "調撥詳情",
+        "description": "直接在畫面中檢視完整的調撥資訊。",
+        "loading": "載入調撥詳情中…",
+        "fields": {
+          "transferId": "調撥編號",
+          "product": "產品",
+          "fromWarehouse": "來源倉庫",
+          "toWarehouse": "目的倉庫",
+          "quantity": "數量",
+          "actor": "操作者",
+          "notes": "備註",
+          "createdAt": "建立時間"
+        }
+      }
     },
     "metricCards": {
       "totalSkus": "SKU總數",

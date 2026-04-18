@@ -32,6 +32,8 @@ import type {
   SupplierOrderListResponse,
   SupplierOrder,
   SupplierUpdate,
+  TransferHistoryItem,
+  TransferHistoryListResponse,
   UnitOfMeasure,
   UnitOfMeasureCreate,
   UnitOfMeasureListResponse,
@@ -651,11 +653,80 @@ export async function createTransfer(data: {
       method: "POST",
       body: JSON.stringify(data),
     });
+    const body = await resp.json().catch(() => ({}));
     if (!resp.ok) {
-      const body = await resp.json().catch(() => ({}));
-      return { ok: false, error: (body as { detail?: string }).detail ?? "Failed to create transfer" };
+      const errors = normalizeInventoryFieldErrors((body as { detail?: unknown }).detail);
+      if (errors.length > 0) {
+        return { ok: false, error: errors[0]?.message ?? "Failed to create transfer" };
+      }
+
+      return {
+        ok: false,
+        error: readInventoryErrorMessage(
+          (body as { detail?: unknown }).detail,
+          "Failed to create transfer",
+        ),
+      };
     }
-    return { ok: true, data: (await resp.json()) as TransferResponse };
+    return { ok: true, data: body as TransferResponse };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+export async function fetchTransferHistory(options?: {
+  productId?: string;
+  warehouseId?: string;
+  limit?: number;
+  offset?: number;
+  signal?: AbortSignal;
+}): Promise<{ ok: true; data: TransferHistoryListResponse } | { ok: false; error: string }> {
+  try {
+    const params = new URLSearchParams();
+    if (options?.productId) params.set("product_id", options.productId);
+    if (options?.warehouseId) params.set("warehouse_id", options.warehouseId);
+    if (options?.limit != null) params.set("limit", String(options.limit));
+    if (options?.offset != null) params.set("offset", String(options.offset));
+
+    const qs = params.toString();
+    const resp = await apiFetch(`/api/v1/inventory/transfers${qs ? `?${qs}` : ""}`, {
+      signal: options?.signal,
+    });
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      return {
+        ok: false,
+        error: readInventoryErrorMessage(
+          (body as { detail?: unknown }).detail,
+          "Failed to fetch transfer history",
+        ),
+      };
+    }
+    return { ok: true, data: body as TransferHistoryListResponse };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+export async function fetchTransferDetail(
+  transferId: string,
+  options?: { signal?: AbortSignal },
+): Promise<{ ok: true; data: TransferHistoryItem } | { ok: false; error: string }> {
+  try {
+    const resp = await apiFetch(`/api/v1/inventory/transfers/${encodeURIComponent(transferId)}`, {
+      signal: options?.signal,
+    });
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      return {
+        ok: false,
+        error: readInventoryErrorMessage(
+          (body as { detail?: unknown }).detail,
+          "Failed to fetch transfer details",
+        ),
+      };
+    }
+    return { ok: true, data: body as TransferHistoryItem };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
   }
@@ -1101,6 +1172,31 @@ function normalizeInventoryFieldErrors(detail: unknown): InventoryFieldError[] {
         : "Invalid value";
     return { field, message };
   });
+}
+
+function readInventoryErrorMessage(detail: unknown, fallback: string): string {
+  if (typeof detail === "string") {
+    return detail;
+  }
+
+  if (detail && typeof detail === "object") {
+    const message = (detail as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) {
+      return message;
+    }
+
+    const error = (detail as { error?: unknown }).error;
+    if (typeof error === "string" && error.trim()) {
+      return error;
+    }
+
+    const nestedDetail = (detail as { detail?: unknown }).detail;
+    if (typeof nestedDetail === "string" && nestedDetail.trim()) {
+      return nestedDetail;
+    }
+  }
+
+  return fallback;
 }
 
 export async function updateProduct(

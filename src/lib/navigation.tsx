@@ -22,6 +22,7 @@ import {
   INVENTORY_BELOW_REORDER_REPORT_ROUTE,
   INVENTORY_CATEGORIES_ROUTE,
   INVENTORY_COUNT_SESSIONS_ROUTE,
+  INVENTORY_TRANSFERS_ROUTE,
   INVENTORY_UNITS_ROUTE,
   INVENTORY_REORDER_SUGGESTIONS_ROUTE,
   INVENTORY_VALUATION_ROUTE,
@@ -160,6 +161,7 @@ export const ROUTE_CONTEXT_KEYS = [
   { match: INVENTORY_ROUTE, labelKey: "routes.inventory.label", descriptionKey: "routes.inventory.description" },
   { match: INVENTORY_CATEGORIES_ROUTE, labelKey: "routes.inventoryCategories.label", descriptionKey: "routes.inventoryCategories.description" },
   { match: INVENTORY_UNITS_ROUTE, labelKey: "routes.inventoryUnits.label", descriptionKey: "routes.inventoryUnits.description" },
+  { match: INVENTORY_TRANSFERS_ROUTE, labelKey: "routes.inventoryTransfers.label", descriptionKey: "routes.inventoryTransfers.description" },
   { match: INVENTORY_COUNT_SESSIONS_ROUTE, labelKey: "routes.inventoryCountSessions.label", descriptionKey: "routes.inventoryCountSessions.description" },
   { match: INVENTORY_BELOW_REORDER_REPORT_ROUTE, labelKey: "routes.belowReorderReport.label", descriptionKey: "routes.belowReorderReport.description" },
   { match: INVENTORY_VALUATION_ROUTE, labelKey: "routes.inventoryValuation.label", descriptionKey: "routes.inventoryValuation.description" },
@@ -184,6 +186,14 @@ export function getRouteContext(pathname: string) {
     return {
       labelKey: "routes.inventoryUnits.label",
       descriptionKey: "routes.inventoryUnits.description",
+      sectionKey: "nav.operations",
+    };
+  }
+
+  if (pathname === INVENTORY_TRANSFERS_ROUTE) {
+    return {
+      labelKey: "routes.inventoryTransfers.label",
+      descriptionKey: "routes.inventoryTransfers.description",
       sectionKey: "nav.operations",
     };
   }
@@ -240,6 +250,7 @@ export function getRouteContext(pathname: string) {
     pathname.startsWith(`${INVENTORY_ROUTE}/`) &&
     pathname !== INVENTORY_ROUTE &&
     !pathname.startsWith(INVENTORY_CATEGORIES_ROUTE) &&
+    !pathname.startsWith(INVENTORY_TRANSFERS_ROUTE) &&
     !pathname.startsWith(INVENTORY_COUNT_SESSIONS_ROUTE)
   ) {
     return {

@@ -103,6 +103,8 @@ from domains.inventory.schemas import (
     TopCustomerResponse,
     TransferRequest,
     TransferResponse,
+    TransferHistoryItem,
+    TransferHistoryListResponse,
     UnitOfMeasureCreate,
     UnitOfMeasureListResponse,
     UnitOfMeasureResponse,
@@ -137,6 +139,7 @@ from domains.inventory.services import (
     get_inventory_stocks,
     get_monthly_demand,
     get_unit,
+    get_transfer,
     get_planning_support,
     get_product_audit_log,
     get_product_detail,
@@ -153,6 +156,7 @@ from domains.inventory.services import (
     list_reorder_suggestions,
     list_supplier_orders,
     list_suppliers,
+    list_transfers,
     list_units,
     list_warehouses,
     receive_supplier_order,
@@ -315,7 +319,7 @@ async def create_warehouse_endpoint(
 async def create_transfer_endpoint(
     data: TransferRequest,
     session: DbSession,
-    _user: WriteUser,
+    user: WriteUser,
     tenant_id: CurrentTenant,
 ) -> TransferResponse:
     try:
@@ -326,7 +330,7 @@ async def create_transfer_endpoint(
             to_warehouse_id=data.to_warehouse_id,
             product_id=data.product_id,
             quantity=data.quantity,
-            actor_id=ACTOR_ID,
+            actor_id=_current_actor_id(user),
             notes=data.notes,
         )
         await session.commit()
@@ -345,6 +349,49 @@ async def create_transfer_endpoint(
                 "requested": exc.requested,
             },
         ) from exc
+
+
+@router.get(
+    "/transfers",
+    response_model=TransferHistoryListResponse,
+)
+async def list_transfers_endpoint(
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+    product_id: uuid.UUID | None = Query(default=None),
+    warehouse_id: uuid.UUID | None = Query(default=None),
+    limit: int = Query(100, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+) -> TransferHistoryListResponse:
+    items, total = await list_transfers(
+        session,
+        tenant_id,
+        product_id=product_id,
+        warehouse_id=warehouse_id,
+        limit=limit,
+        offset=offset,
+    )
+    return TransferHistoryListResponse(
+        items=[TransferHistoryItem(**item) for item in items],
+        total=total,
+    )
+
+
+@router.get(
+    "/transfers/{transfer_id}",
+    response_model=TransferHistoryItem,
+)
+async def get_transfer_endpoint(
+    transfer_id: uuid.UUID,
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+) -> TransferHistoryItem:
+    transfer = await get_transfer(session, tenant_id, transfer_id)
+    if transfer is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transfer not found")
+    return TransferHistoryItem(**transfer)
 
 
 # ── Physical count endpoints ──────────────────────────────────

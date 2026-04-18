@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 const mocks = vi.hoisted(() => ({
+  navigate: vi.fn(),
   product: {
     id: "product-1",
     code: "SKU-1",
@@ -56,6 +57,14 @@ vi.mock("react-i18next", () => ({
     t: (key: string) => (options?.keyPrefix ? `${options.keyPrefix}.${key}` : key),
   }),
 }));
+
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
+  return {
+    ...actual,
+    useNavigate: () => mocks.navigate,
+  };
+});
 
 vi.mock("recharts", async () => {
   const actual = await vi.importActual<typeof import("recharts")>("recharts");
@@ -173,6 +182,7 @@ afterEach(() => {
   mocks.reload.mockReset();
   mocks.applyLocalUpdate.mockReset();
   mocks.setProductStatus.mockReset();
+  mocks.navigate.mockReset();
   vi.restoreAllMocks();
 });
 
@@ -274,5 +284,21 @@ describe("ProductDetailPage", () => {
     await waitFor(() => {
       expect(mocks.reload).toHaveBeenCalled();
     });
+  });
+
+  it("routes transfer actions to the transfers page with the current product", async () => {
+    const { ProductDetailPage } = await import("./ProductDetailPage");
+
+    render(
+      <MemoryRouter initialEntries={["/inventory/product-1"]}>
+        <Routes>
+          <Route path="/inventory/:productId" element={<ProductDetailPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "inventory.productDetail.transfer" }));
+
+    expect(mocks.navigate).toHaveBeenCalledWith("/inventory/transfers?productId=product-1&warehouseId=warehouse-1");
   });
 });

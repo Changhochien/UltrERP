@@ -48,6 +48,29 @@ export interface TransferResponse {
   created_at: string;
 }
 
+export interface TransferHistoryItem {
+  id: string;
+  tenant_id: string;
+  product_id: string;
+  product_code: string;
+  product_name: string;
+  from_warehouse_id: string;
+  from_warehouse_name: string;
+  from_warehouse_code: string;
+  to_warehouse_id: string;
+  to_warehouse_name: string;
+  to_warehouse_code: string;
+  quantity: number;
+  actor_id: string;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface TransferHistoryListResponse {
+  items: TransferHistoryItem[];
+  total: number;
+}
+
 export type PhysicalCountSessionStatus = "in_progress" | "submitted" | "approved";
 
 export interface PhysicalCountLine {

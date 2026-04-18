@@ -6,12 +6,12 @@ import asyncio
 import uuid
 from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from sqlalchemy import and_, asc, case, desc, distinct, func, literal, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased, selectinload
 
 from common.errors import (
     DuplicateCategoryNameError,
@@ -940,6 +940,101 @@ def _serialize_physical_count_line(line: PhysicalCountLine) -> dict[str, object 
         "created_at": line.created_at,
         "updated_at": line.updated_at,
     }
+
+
+async def list_transfers(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    *,
+    product_id: uuid.UUID | None = None,
+    warehouse_id: uuid.UUID | None = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> tuple[list[dict[str, Any]], int]:
+    source_warehouse = aliased(Warehouse)
+    destination_warehouse = aliased(Warehouse)
+
+    where_conditions = [StockTransferHistory.tenant_id == tenant_id]
+    if product_id is not None:
+        where_conditions.append(StockTransferHistory.product_id == product_id)
+    if warehouse_id is not None:
+        where_conditions.append(
+            or_(
+                StockTransferHistory.from_warehouse_id == warehouse_id,
+                StockTransferHistory.to_warehouse_id == warehouse_id,
+            )
+        )
+
+    count_stmt = select(func.count(StockTransferHistory.id)).where(*where_conditions)
+    count_result = await session.execute(count_stmt)
+    total = count_result.scalar() or 0
+
+    stmt = (
+        select(
+            StockTransferHistory.id.label("id"),
+            StockTransferHistory.tenant_id.label("tenant_id"),
+            StockTransferHistory.product_id.label("product_id"),
+            Product.code.label("product_code"),
+            Product.name.label("product_name"),
+            StockTransferHistory.from_warehouse_id.label("from_warehouse_id"),
+            source_warehouse.name.label("from_warehouse_name"),
+            source_warehouse.code.label("from_warehouse_code"),
+            StockTransferHistory.to_warehouse_id.label("to_warehouse_id"),
+            destination_warehouse.name.label("to_warehouse_name"),
+            destination_warehouse.code.label("to_warehouse_code"),
+            StockTransferHistory.quantity.label("quantity"),
+            StockTransferHistory.actor_id.label("actor_id"),
+            StockTransferHistory.notes.label("notes"),
+            StockTransferHistory.created_at.label("created_at"),
+        )
+        .join(Product, Product.id == StockTransferHistory.product_id)
+        .join(source_warehouse, source_warehouse.id == StockTransferHistory.from_warehouse_id)
+        .join(destination_warehouse, destination_warehouse.id == StockTransferHistory.to_warehouse_id)
+        .where(*where_conditions)
+        .order_by(desc(StockTransferHistory.created_at), desc(StockTransferHistory.id))
+        .offset(offset)
+        .limit(limit)
+    )
+    result = await session.execute(stmt)
+    return [dict(row) for row in result.mappings().all()], total
+
+
+async def get_transfer(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    transfer_id: uuid.UUID,
+) -> dict[str, Any] | None:
+    source_warehouse = aliased(Warehouse)
+    destination_warehouse = aliased(Warehouse)
+    stmt = (
+        select(
+            StockTransferHistory.id.label("id"),
+            StockTransferHistory.tenant_id.label("tenant_id"),
+            StockTransferHistory.product_id.label("product_id"),
+            Product.code.label("product_code"),
+            Product.name.label("product_name"),
+            StockTransferHistory.from_warehouse_id.label("from_warehouse_id"),
+            source_warehouse.name.label("from_warehouse_name"),
+            source_warehouse.code.label("from_warehouse_code"),
+            StockTransferHistory.to_warehouse_id.label("to_warehouse_id"),
+            destination_warehouse.name.label("to_warehouse_name"),
+            destination_warehouse.code.label("to_warehouse_code"),
+            StockTransferHistory.quantity.label("quantity"),
+            StockTransferHistory.actor_id.label("actor_id"),
+            StockTransferHistory.notes.label("notes"),
+            StockTransferHistory.created_at.label("created_at"),
+        )
+        .join(Product, Product.id == StockTransferHistory.product_id)
+        .join(source_warehouse, source_warehouse.id == StockTransferHistory.from_warehouse_id)
+        .join(destination_warehouse, destination_warehouse.id == StockTransferHistory.to_warehouse_id)
+        .where(
+            StockTransferHistory.id == transfer_id,
+            StockTransferHistory.tenant_id == tenant_id,
+        )
+    )
+    result = await session.execute(stmt)
+    row = result.mappings().one_or_none()
+    return dict(row) if row is not None else None
 
 
 def _serialize_physical_count_session(

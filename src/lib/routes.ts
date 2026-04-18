@@ -4,6 +4,7 @@ export const OWNER_DASHBOARD_ROUTE = "/owner-dashboard";
 export const INVENTORY_ROUTE = "/inventory";
 export const INVENTORY_CATEGORIES_ROUTE = "/inventory/categories";
 export const INVENTORY_UNITS_ROUTE = "/inventory/units";
+export const INVENTORY_TRANSFERS_ROUTE = "/inventory/transfers";
 export const INVENTORY_COUNT_SESSIONS_ROUTE = "/inventory/count-sessions";
 export const COUNT_SESSION_DETAIL_ROUTE = "/inventory/count-sessions/:sessionId";
 export const INVENTORY_BELOW_REORDER_REPORT_ROUTE = "/inventory/reports/below-reorder";
@@ -32,6 +33,7 @@ export type AppRoute =
   | typeof INVENTORY_ROUTE
   | typeof INVENTORY_CATEGORIES_ROUTE
   | typeof INVENTORY_UNITS_ROUTE
+  | typeof INVENTORY_TRANSFERS_ROUTE
   | typeof INVENTORY_COUNT_SESSIONS_ROUTE
   | typeof COUNT_SESSION_DETAIL_ROUTE
   | typeof INVENTORY_BELOW_REORDER_REPORT_ROUTE
@@ -68,4 +70,16 @@ export function buildProductDetailPath(productId: string, tab?: string): string 
     return basePath;
   }
   return `${basePath}?tab=${encodeURIComponent(tab)}`;
+}
+
+export function buildInventoryTransfersPath(productId?: string, warehouseId?: string): string {
+  const params = new URLSearchParams();
+  if (productId) {
+    params.set("productId", productId);
+  }
+  if (warehouseId) {
+    params.set("warehouseId", warehouseId);
+  }
+  const query = params.toString();
+  return `${INVENTORY_TRANSFERS_ROUTE}${query ? `?${query}` : ""}`;
 }
