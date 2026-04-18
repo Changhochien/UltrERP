@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1776413925011,
-  "projectRoot": "/Users/changtom/Downloads/UltrERP",
+  "lastScanned": 1776503205259,
+  "projectRoot": "/Volumes/2T_SSD_App/Projects/UltrERP",
   "techStack": {
     "languages": [
       {
@@ -96,7 +96,7 @@
       "path": "_bmad",
       "purpose": null,
       "fileCount": 2,
-      "lastAccessed": 1776413924995,
+      "lastAccessed": 1776503205187,
       "keyFiles": [
         "00-design-log.md",
         "wds-project-outline.yaml"
@@ -105,8 +105,8 @@
     "_bmad-output": {
       "path": "_bmad-output",
       "purpose": null,
-      "fileCount": 1,
-      "lastAccessed": 1776413924995,
+      "fileCount": 2,
+      "lastAccessed": 1776503205188,
       "keyFiles": [
         "README.md"
       ]
@@ -115,7 +115,7 @@
       "path": "backend",
       "purpose": null,
       "fileCount": 5,
-      "lastAccessed": 1776413924998,
+      "lastAccessed": 1776503205204,
       "keyFiles": [
         "compute_rop.py",
         "compute_rop_sql.py",
@@ -126,17 +126,26 @@
     "design-artifacts": {
       "path": "design-artifacts",
       "purpose": null,
-      "fileCount": 1,
-      "lastAccessed": 1776413924998,
+      "fileCount": 2,
+      "lastAccessed": 1776503205210,
       "keyFiles": [
         "architecture-v1.md"
+      ]
+    },
+    "dist": {
+      "path": "dist",
+      "purpose": "Distribution/build output",
+      "fileCount": 1,
+      "lastAccessed": 1776503205212,
+      "keyFiles": [
+        "index.html"
       ]
     },
     "docs": {
       "path": "docs",
       "purpose": "Documentation",
-      "fileCount": 9,
-      "lastAccessed": 1776413925000,
+      "fileCount": 10,
+      "lastAccessed": 1776503205216,
       "keyFiles": [
         "README.md",
         "low-stock-alert-business-requirements.md",
@@ -149,16 +158,25 @@
       "path": "erp-skills",
       "purpose": null,
       "fileCount": 1,
-      "lastAccessed": 1776413925000,
+      "lastAccessed": 1776503205217,
       "keyFiles": [
         "SKILL.md"
+      ]
+    },
+    "legacy data": {
+      "path": "legacy data",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1776503205220,
+      "keyFiles": [
+        "cao50001.sql"
       ]
     },
     "legacy-migration-pipeline": {
       "path": "legacy-migration-pipeline",
       "purpose": null,
-      "fileCount": 3,
-      "lastAccessed": 1776413925000,
+      "fileCount": 4,
+      "lastAccessed": 1776503205223,
       "keyFiles": [
         "COLUMN_ANALYSIS.md",
         "FK_VALIDATION.md",
@@ -169,7 +187,7 @@
       "path": "migrations",
       "purpose": "Database migrations",
       "fileCount": 3,
-      "lastAccessed": 1776413925001,
+      "lastAccessed": 1776503205225,
       "keyFiles": [
         "alembic.ini",
         "env.py",
@@ -180,21 +198,21 @@
       "path": "public",
       "purpose": "Public files",
       "fileCount": 0,
-      "lastAccessed": 1776413925001,
+      "lastAccessed": 1776503205225,
       "keyFiles": []
     },
     "research": {
       "path": "research",
       "purpose": null,
-      "fileCount": 0,
-      "lastAccessed": 1776413925001,
+      "fileCount": 1,
+      "lastAccessed": 1776503205227,
       "keyFiles": []
     },
     "scripts": {
       "path": "scripts",
       "purpose": "Build/utility scripts",
       "fileCount": 4,
-      "lastAccessed": 1776413925002,
+      "lastAccessed": 1776503205229,
       "keyFiles": [
         "benchmark_api.py",
         "benchmark_frontend.py",
@@ -206,7 +224,7 @@
       "path": "src",
       "purpose": "Source code",
       "fileCount": 5,
-      "lastAccessed": 1776413925002,
+      "lastAccessed": 1776503205231,
       "keyFiles": [
         "App.tsx",
         "i18n.ts",
@@ -219,7 +237,7 @@
       "path": "src-tauri",
       "purpose": null,
       "fileCount": 4,
-      "lastAccessed": 1776413925002,
+      "lastAccessed": 1776503205233,
       "keyFiles": [
         "Cargo.lock",
         "Cargo.toml",
@@ -231,7 +249,7 @@
       "path": "state",
       "purpose": null,
       "fileCount": 2,
-      "lastAccessed": 1776413925002,
+      "lastAccessed": 1776503205235,
       "keyFiles": [
         "cancel-signal-state.json",
         "story159.diff"
@@ -241,29 +259,38 @@
       "path": "backend/app",
       "purpose": "Application code",
       "fileCount": 6,
-      "lastAccessed": 1776413925003,
+      "lastAccessed": 1776503205240,
       "keyFiles": [
         "__init__.py",
         "main.py",
         "mcp_auth.py"
       ]
     },
-    "backend/scripts": {
-      "path": "backend/scripts",
-      "purpose": "Build/utility scripts",
-      "fileCount": 10,
-      "lastAccessed": 1776413925004,
+    "backend/docs": {
+      "path": "backend/docs",
+      "purpose": "Documentation",
+      "fileCount": 1,
+      "lastAccessed": 1776503205242,
       "keyFiles": [
-        "_legacy_stock_adjustments.py",
-        "apply_reconciliation_corrections.py",
-        "backfill_invoice_unit_cost.py"
+        "SPEC-dual-source-staging.md"
+      ]
+    },
+    "dist/assets": {
+      "path": "dist/assets",
+      "purpose": "Static assets",
+      "fileCount": 10,
+      "lastAccessed": 1776503205245,
+      "keyFiles": [
+        "InvoicePrintPreviewModal-B1g7Oz2Z.js",
+        "InvoicePrintPreviewModal-CowwUBY4.css",
+        "dist-js-COrLtWRn.js"
       ]
     },
     "legacy-migration-pipeline/src": {
       "path": "legacy-migration-pipeline/src",
       "purpose": "Source code",
       "fileCount": 5,
-      "lastAccessed": 1776413925004,
+      "lastAccessed": 1776503205249,
       "keyFiles": [
         "__init__.py",
         "cleaner.py",
@@ -274,7 +301,7 @@
       "path": "src/components",
       "purpose": "UI components",
       "fileCount": 4,
-      "lastAccessed": 1776413925005,
+      "lastAccessed": 1776503205253,
       "keyFiles": [
         "AppNavigation.tsx",
         "LanguageSwitcher.tsx",
@@ -285,7 +312,7 @@
       "path": "src/lib",
       "purpose": "Library code",
       "fileCount": 14,
-      "lastAccessed": 1776413925005,
+      "lastAccessed": 1776503205253,
       "keyFiles": [
         "alertSeverity.ts",
         "analytics.ts",
@@ -296,7 +323,7 @@
       "path": "src/pages",
       "purpose": "Page components",
       "fileCount": 10,
-      "lastAccessed": 1776413925005,
+      "lastAccessed": 1776503205256,
       "keyFiles": [
         "AdminPage.test.tsx",
         "AdminPage.tsx",
@@ -307,7 +334,7 @@
       "path": "src-tauri/src",
       "purpose": "Source code",
       "fileCount": 2,
-      "lastAccessed": 1776413925006,
+      "lastAccessed": 1776503205259,
       "keyFiles": [
         "lib.rs",
         "main.rs"
@@ -316,303 +343,159 @@
   },
   "hotPaths": [
     {
-      "path": "src/domain/inventory/components/StockTrendChart.tsx",
-      "accessCount": 48,
-      "lastAccessed": 1776421990330,
+      "path": "backend/domains/legacy_import/source_resolution.py",
+      "accessCount": 15,
+      "lastAccessed": 1776504150875,
       "type": "file"
     },
     {
-      "path": "src/domain/orders/components/OrderForm.tsx",
-      "accessCount": 31,
-      "lastAccessed": 1776421243720,
+      "path": "backend/domains/legacy_import/canonical.py",
+      "accessCount": 14,
+      "lastAccessed": 1776504145519,
       "type": "file"
     },
     {
-      "path": "src",
-      "accessCount": 31,
-      "lastAccessed": 1776421291298,
+      "path": "backend/scripts/run_legacy_promotion.py",
+      "accessCount": 14,
+      "lastAccessed": 1776525309162,
+      "type": "file"
+    },
+    {
+      "path": "backend",
+      "accessCount": 12,
+      "lastAccessed": 1776524958892,
       "type": "directory"
     },
     {
-      "path": "src/components/customers/CustomerCombobox.tsx",
-      "accessCount": 26,
-      "lastAccessed": 1776421142435,
+      "path": "backend/domains/legacy_import/promotion.py",
+      "accessCount": 12,
+      "lastAccessed": 1776525192862,
       "type": "file"
     },
     {
-      "path": "src/pages/InventoryPage.tsx",
-      "accessCount": 19,
-      "lastAccessed": 1776423896371,
+      "path": "backend/scripts/run_legacy_refresh.py",
+      "accessCount": 11,
+      "lastAccessed": 1776504027149,
       "type": "file"
     },
     {
-      "path": "src/lib/api/inventory.ts",
-      "accessCount": 17,
-      "lastAccessed": 1776421009856,
+      "path": "migrations/versions/f3b4c5d6e7f8_add_source_row_resolution_tables.py",
+      "accessCount": 9,
+      "lastAccessed": 1776503965870,
       "type": "file"
     },
     {
-      "path": "backend/domains/inventory/services.py",
-      "accessCount": 17,
-      "lastAccessed": 1776423902060,
+      "path": "backend/domains/legacy_import/validation.py",
+      "accessCount": 7,
+      "lastAccessed": 1776503992406,
+      "type": "file"
+    },
+    {
+      "path": "backend/domains/legacy_import/ap_payment_import.py",
+      "accessCount": 7,
+      "lastAccessed": 1776504145934,
       "type": "file"
     },
     {
       "path": "",
-      "accessCount": 16,
-      "lastAccessed": 1776421234253,
-      "type": "directory"
-    },
-    {
-      "path": "backend",
-      "accessCount": 15,
-      "lastAccessed": 1776423826559,
-      "type": "directory"
-    },
-    {
-      "path": "src/components/invoices/InvoiceLineEditor.tsx",
-      "accessCount": 11,
-      "lastAccessed": 1776421244184,
-      "type": "file"
-    },
-    {
-      "path": "backend/domains/inventory",
-      "accessCount": 11,
-      "lastAccessed": 1776423133794,
-      "type": "directory"
-    },
-    {
-      "path": "src/domain/inventory/components/ProductTable.tsx",
-      "accessCount": 9,
-      "lastAccessed": 1776423897147,
-      "type": "file"
-    },
-    {
-      "path": "src/pages/inventory/ProductDetailPage.tsx",
-      "accessCount": 8,
-      "lastAccessed": 1776417755217,
-      "type": "directory"
-    },
-    {
-      "path": "src/lib/api/customers.ts",
-      "accessCount": 8,
-      "lastAccessed": 1776420411022,
-      "type": "file"
-    },
-    {
-      "path": "src/pages/invoices/CreateInvoicePage.tsx",
-      "accessCount": 8,
-      "lastAccessed": 1776421244544,
-      "type": "file"
-    },
-    {
-      "path": "src/domain/inventory/components/MonthlyDemandChart.tsx",
-      "accessCount": 6,
-      "lastAccessed": 1776416451734,
-      "type": "file"
-    },
-    {
-      "path": "_bmad-output/planning-artifacts/epic-4.md",
       "accessCount": 5,
-      "lastAccessed": 1776423085385,
-      "type": "file"
-    },
-    {
-      "path": "src/domain/inventory/hooks/useProductSearch.ts",
-      "accessCount": 4,
-      "lastAccessed": 1776419513706,
-      "type": "file"
-    },
-    {
-      "path": "src/lib/api",
-      "accessCount": 4,
-      "lastAccessed": 1776419924751,
+      "lastAccessed": 1776505691093,
       "type": "directory"
     },
     {
-      "path": "src/domain/inventory",
-      "accessCount": 4,
-      "lastAccessed": 1776423126073,
-      "type": "directory"
+      "path": "backend/scripts/legacy_refresh_state.py",
+      "accessCount": 5,
+      "lastAccessed": 1776525335286,
+      "type": "file"
     },
     {
-      "path": "src/domain/invoices/components/InvoiceList.tsx",
+      "path": "backend/tests/test_run_legacy_refresh.py",
       "accessCount": 3,
-      "lastAccessed": 1776417566257,
+      "lastAccessed": 1776503896913,
       "type": "file"
     },
     {
-      "path": "src/domain/orders/components/OrderList.tsx",
+      "path": "backend/domains/legacy_import",
       "accessCount": 3,
-      "lastAccessed": 1776417566917,
-      "type": "file"
-    },
-    {
-      "path": "src/domain/orders/hooks/useStockCheck.ts",
-      "accessCount": 3,
-      "lastAccessed": 1776419739993,
-      "type": "file"
-    },
-    {
-      "path": "src/tests",
-      "accessCount": 3,
-      "lastAccessed": 1776421032073,
+      "lastAccessed": 1776503982472,
       "type": "directory"
     },
     {
-      "path": "src/domain/inventory/components/StockHistoryModal.tsx",
+      "path": "backend/scripts/reset_legacy_import_batch.py",
       "accessCount": 2,
-      "lastAccessed": 1776416638261,
+      "lastAccessed": 1776503948885,
       "type": "file"
     },
     {
-      "path": "src/lib/api/orders.ts",
+      "path": "backend/scripts/repair_inventory_snapshot_warehouses.py",
       "accessCount": 2,
-      "lastAccessed": 1776417477561,
-      "type": "file"
-    },
-    {
-      "path": "src/domain/inventory/components/ProductSearch.tsx",
-      "accessCount": 2,
-      "lastAccessed": 1776417559301,
-      "type": "file"
-    },
-    {
-      "path": ".claude/skills/bmad-create-story/workflow.md",
-      "accessCount": 2,
-      "lastAccessed": 1776422899836,
-      "type": "file"
-    },
-    {
-      "path": "_bmad-output/planning-artifacts/epics.md",
-      "accessCount": 2,
-      "lastAccessed": 1776422932609,
-      "type": "file"
-    },
-    {
-      "path": "src/domain/inventory/components/AnalyticsTab.tsx",
-      "accessCount": 1,
-      "lastAccessed": 1776414790344,
-      "type": "file"
-    },
-    {
-      "path": "src/domain/inventory/hooks/useProductMonthlyDemand.ts",
-      "accessCount": 1,
-      "lastAccessed": 1776414916887,
-      "type": "file"
-    },
-    {
-      "path": "src/domain/inventory/__tests__/StockTrendChart.test.tsx",
-      "accessCount": 1,
-      "lastAccessed": 1776416233169,
-      "type": "file"
-    },
-    {
-      "path": "src/lib",
-      "accessCount": 1,
-      "lastAccessed": 1776416242825,
-      "type": "directory"
-    },
-    {
-      "path": "src/lib/time.ts",
-      "accessCount": 1,
-      "lastAccessed": 1776416246462,
-      "type": "file"
-    },
-    {
-      "path": "src/domain/dashboard/components/RevenueTrendChart.tsx",
-      "accessCount": 1,
-      "lastAccessed": 1776416472577,
-      "type": "directory"
-    },
-    {
-      "path": "src/domain/inventory/hooks/useStockHistory.ts",
-      "accessCount": 1,
-      "lastAccessed": 1776416522674,
-      "type": "file"
-    },
-    {
-      "path": "src/pages/orders/OrdersPage.tsx",
-      "accessCount": 1,
-      "lastAccessed": 1776417196819,
-      "type": "file"
-    },
-    {
-      "path": "src/domain/orders/hooks/useOrders.ts",
-      "accessCount": 1,
-      "lastAccessed": 1776417204979,
-      "type": "file"
-    },
-    {
-      "path": "src/components/filters/StatusMultiSelect.tsx",
-      "accessCount": 1,
-      "lastAccessed": 1776417208481,
-      "type": "file"
-    },
-    {
-      "path": "src/components/filters/SearchInput.tsx",
-      "accessCount": 1,
-      "lastAccessed": 1776417208534,
-      "type": "file"
-    },
-    {
-      "path": "src/domain/orders/types.ts",
-      "accessCount": 1,
-      "lastAccessed": 1776417208955,
-      "type": "file"
-    },
-    {
-      "path": "src/components/filters/DateRangeFilter.tsx",
-      "accessCount": 1,
-      "lastAccessed": 1776417218690,
-      "type": "file"
-    },
-    {
-      "path": "src/lib/routes.ts",
-      "accessCount": 1,
-      "lastAccessed": 1776417219371,
-      "type": "file"
-    },
-    {
-      "path": "src/domain/inventory/components/ProductDetailDrawer.tsx",
-      "accessCount": 1,
-      "lastAccessed": 1776417365690,
-      "type": "file"
-    },
-    {
-      "path": "src/domain/inventory/components/ProductDetail.tsx",
-      "accessCount": 1,
-      "lastAccessed": 1776417372984,
-      "type": "file"
-    },
-    {
-      "path": "src/domain/inventory/components/ProductGrid.tsx",
-      "accessCount": 1,
-      "lastAccessed": 1776417496765,
-      "type": "file"
-    },
-    {
-      "path": "src/domain/invoices/__tests__/InvoiceList.test.tsx",
-      "accessCount": 1,
-      "lastAccessed": 1776417522951,
+      "lastAccessed": 1776504054003,
       "type": "file"
     },
     {
       "path": "_bmad-output",
       "accessCount": 1,
-      "lastAccessed": 1776417763928,
+      "lastAccessed": 1776503839730,
       "type": "directory"
     },
     {
-      "path": ".claude/skills/bmad-create-story/template.md",
+      "path": "_bmad-output/implementation-artifacts/15-15-legacy-refresh-orchestrator.md",
       "accessCount": 1,
-      "lastAccessed": 1776417796394,
+      "lastAccessed": 1776503845214,
       "type": "file"
     },
     {
-      "path": ".claude/skills/bmad-create-story/discover-inputs.md",
+      "path": "_bmad-output/implementation-artifacts/15-21-canonical-source-resolution-state-model-refactor.md",
       "accessCount": 1,
-      "lastAccessed": 1776417796993,
+      "lastAccessed": 1776503849106,
+      "type": "file"
+    },
+    {
+      "path": "backend/domains/legacy_import/cli.py",
+      "accessCount": 1,
+      "lastAccessed": 1776503911918,
+      "type": "file"
+    },
+    {
+      "path": "backend/common/time.py",
+      "accessCount": 1,
+      "lastAccessed": 1776503916521,
+      "type": "file"
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/epic-15.md",
+      "accessCount": 1,
+      "lastAccessed": 1776504972690,
+      "type": "file"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/sprint-status.yaml",
+      "accessCount": 1,
+      "lastAccessed": 1776504974171,
+      "type": "file"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/15-17-gated-automatic-promotion-to-the-working-lane.md",
+      "accessCount": 1,
+      "lastAccessed": 1776524853600,
+      "type": "file"
+    },
+    {
+      "path": "backend/tests/domains/legacy_import/test_promotion.py",
+      "accessCount": 1,
+      "lastAccessed": 1776524883199,
+      "type": "file"
+    },
+    {
+      "path": "backend/tests/test_run_legacy_promotion.py",
+      "accessCount": 1,
+      "lastAccessed": 1776524883669,
+      "type": "file"
+    },
+    {
+      "path": "backend/scripts/run_scheduled_legacy_shadow_refresh.py",
+      "accessCount": 1,
+      "lastAccessed": 1776524884463,
       "type": "file"
     }
   ],

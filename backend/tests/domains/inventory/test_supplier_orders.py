@@ -154,6 +154,7 @@ class FakeAsyncSession:
         self._execute_results: list[object] = []
         self._idx = 0
         self.added: list[object] = []
+        self._objects: dict[type, dict[uuid.UUID, object]] = {}
 
     def add(self, obj: object) -> None:
         self.added.append(obj)
@@ -168,10 +169,26 @@ class FakeAsyncSession:
             return result
         return FakeResult()
 
+    def get(self, model: type, ident: uuid.UUID) -> object | None:
+        """Return a pre-seeded object by type and id, or None."""
+        return self._objects.get(model, {}).get(ident)
+
+    def seed(self, model: type, ident: uuid.UUID, obj: object) -> None:
+        """Store a pre-seeded object for retrieval via get()."""
+        if model not in self._objects:
+            self._objects[model] = {}
+        self._objects[model][ident] = obj
+
     async def flush(self) -> None:
         pass
 
     async def commit(self) -> None:
+        pass
+
+    async def refresh(self, obj: object) -> None:
+        pass
+
+    async def close(self) -> None:
         pass
 
     def queue_scalar(self, obj: object | None) -> None:
@@ -515,13 +532,12 @@ async def test_receive_order_full() -> None:
     )
 
     session = FakeAsyncSession()
-    # receive_supplier_order queries:
-    session.queue_scalar(order)  # 1. Lock & fetch order with lines
-    session.queue_scalar(stock)  # 2. Lock inventory stock for line
-    session.queue_scalar(None)  # 3. Reorder alert check
-    # Service modifies order/line in-place, then _serialize_order re-fetches:
-    session.queue_scalar(order)  # 4. _serialize_order (same ref, now modified)
-    session.queue_scalar("TestSupplier")  # 5. _serialize_order supplier name
+    # receive_supplier_order makes 2 queries (order, stock).
+    # Then _serialize_order makes 2 queries (order, supplier name).
+    session.queue_scalar(order)  # 1. receive_supplier_order: lock & fetch order with lines
+    session.queue_scalar(stock)  # 2. receive_supplier_order: lock inventory stock
+    session.queue_scalar(order)  # 3. _serialize_order: re-fetch order
+    session.queue_scalar("TestSupplier")  # 4. _serialize_order: supplier name
 
     prev = _setup(session)
     try:
@@ -556,12 +572,10 @@ async def test_receive_order_partial() -> None:
     )
 
     session = FakeAsyncSession()
-    session.queue_scalar(order)  # Lock & fetch order
-    session.queue_scalar(stock)  # Lock inventory stock
-    session.queue_scalar(None)  # Reorder alert check
-    # Service modifies line.quantity_received to 40 and order.status
-    session.queue_scalar(order)  # _serialize_order (same ref, now modified)
-    session.queue_scalar("TestSupplier")  # _serialize_order supplier name
+    session.queue_scalar(order)  # 1. receive_supplier_order: lock & fetch order
+    session.queue_scalar(stock)  # 2. receive_supplier_order: lock inventory stock
+    session.queue_scalar(order)  # 3. _serialize_order: re-fetch order
+    session.queue_scalar("TestSupplier")  # 4. _serialize_order: supplier name
 
     prev = _setup(session)
     try:

@@ -183,11 +183,26 @@ class FakeScalarsResult:
         return self
 
 
+class _FakeBegin:
+    """Async context manager returned by FakeAsyncSession.begin() to manage transaction depth."""
+
+    def __init__(self, session: FakeAsyncSession) -> None:
+        self._session = session
+
+    async def __aenter__(self) -> FakeAsyncSession:
+        self._session._transaction_depth += 1
+        return self._session
+
+    async def __aexit__(self, *args: object) -> None:
+        self._session._transaction_depth -= 1
+
+
 class FakeAsyncSession:
     def __init__(self) -> None:
         self.added: list[Any] = []
         self._execute_results: list[FakeResult] = []
         self._execute_index = 0
+        self._transaction_depth = 0
 
     def add(self, instance: object) -> None:
         self.added.append(instance)
@@ -226,8 +241,11 @@ class FakeAsyncSession:
         if getattr(instance, "updated_at", None) is None:
             instance.updated_at = None  # type: ignore[attr-defined]
 
-    def begin(self) -> FakeAsyncSession:
-        return self
+    def begin(self) -> _FakeBegin:
+        return _FakeBegin(self)
+
+    def in_transaction(self) -> bool:
+        return self._transaction_depth > 0
 
     async def __aenter__(self) -> FakeAsyncSession:
         return self
