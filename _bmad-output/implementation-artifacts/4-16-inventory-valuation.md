@@ -1,6 +1,6 @@
 # Story 4.16: Inventory Valuation and Cost Tracking
 
-**Status:** backlog
+**Status:** done
 
 **Story ID:** 4.16
 
@@ -32,36 +32,36 @@ so that per-product and per-warehouse inventory values are explainable and audit
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Add `standard_cost` to the product model and contracts** (AC: 1)
-  - [ ] Add an Alembic migration for `product.standard_cost NUMERIC(19,4) NULL`.
-  - [ ] Extend `backend/common/models/product.py` with `standard_cost`.
-  - [ ] Extend `ProductCreate`, `ProductUpdate`, `ProductResponse`, and `ProductDetailResponse` in `backend/domains/inventory/schemas.py`.
-  - [ ] Extend the matching TypeScript product types in `src/domain/inventory/types.ts`.
+- [x] **Task 1: Add `standard_cost` to the product model and contracts** (AC: 1)
+  - [x] Add an Alembic migration for `product.standard_cost NUMERIC(19,4) NULL`.
+  - [x] Extend `backend/common/models/product.py` with `standard_cost`.
+  - [x] Extend `ProductCreate`, `ProductUpdate`, `ProductResponse`, and `ProductDetailResponse` in `backend/domains/inventory/schemas.py`.
+  - [x] Extend the matching TypeScript product types in `src/domain/inventory/types.ts`.
 
-- [ ] **Task 2: Add product-form support for standard cost** (AC: 1)
-  - [ ] Add `standard_cost` to `CreateProductForm.tsx` and `EditProductForm.tsx`.
-  - [ ] Display the value in the product detail/settings experience.
-  - [ ] Validate `standard_cost >= 0`.
+- [x] **Task 2: Add product-form support for standard cost** (AC: 1)
+  - [x] Add `standard_cost` to `CreateProductForm.tsx` and `EditProductForm.tsx`.
+  - [x] Display the value in the product detail/settings experience.
+  - [x] Validate `standard_cost >= 0`.
 
-- [ ] **Task 3: Add a valuation read model** (AC: 2, 3, 4, 5)
-  - [ ] Add `get_inventory_valuation(session, tenant_id, warehouse_id=None)` to `backend/domains/inventory/services.py`.
-  - [ ] Compute value per stock row as `resolved_unit_cost * quantity`.
-  - [ ] Add a helper that resolves `cost_source` in this order: `standard_cost` -> latest received purchase cost -> missing.
-  - [ ] Keep numeric precision in Python `Decimal` until serialization.
+- [x] **Task 3: Add a valuation read model** (AC: 2, 3, 4, 5)
+  - [x] Add `get_inventory_valuation(session, tenant_id, warehouse_id=None)` to `backend/domains/inventory/services.py`.
+  - [x] Compute value per stock row as `resolved_unit_cost * quantity`.
+  - [x] Add a helper that resolves `cost_source` in this order: `standard_cost` -> latest received purchase cost -> missing.
+  - [x] Keep numeric precision in Python `Decimal` until serialization.
 
-- [ ] **Task 4: Add the valuation route** (AC: 2, 3, 4, 5)
-  - [ ] Add `GET /api/v1/inventory/reports/valuation` to `backend/domains/inventory/routes.py`.
-  - [ ] Support optional `warehouse_id`.
-  - [ ] Return per-row detail, warehouse subtotals, and grand total.
+- [x] **Task 4: Add the valuation route** (AC: 2, 3, 4, 5)
+  - [x] Add `GET /api/v1/inventory/reports/valuation` to `backend/domains/inventory/routes.py`.
+  - [x] Support optional `warehouse_id`.
+  - [x] Return per-row detail, warehouse subtotals, and grand total.
 
-- [ ] **Task 5: Build the valuation page** (AC: 2, 3, 4, 5)
-  - [ ] Create `src/pages/inventory/InventoryValuationPage.tsx`.
-  - [ ] Show warehouse filter, row-level cost source badges, subtotal cards, and a grand total.
-  - [ ] Keep missing-cost rows visible rather than filtering them out.
+- [x] **Task 5: Build the valuation page** (AC: 2, 3, 4, 5)
+  - [x] Create `src/pages/inventory/InventoryValuationPage.tsx`.
+  - [x] Show warehouse filter, row-level cost source badges, subtotal cards, and a grand total.
+  - [x] Keep missing-cost rows visible rather than filtering them out.
 
-- [ ] **Task 6: Add focused regression tests** (AC: 1, 2, 3, 4, 5)
-  - [ ] Backend tests for `standard_cost`, latest-purchase fallback, missing-cost rows, and subtotal math.
-  - [ ] Frontend tests for product forms and valuation-page rendering.
+- [x] **Task 6: Add focused regression tests** (AC: 1, 2, 3, 4, 5)
+  - [x] Backend tests for `standard_cost`, latest-purchase fallback, missing-cost rows, and subtotal math.
+  - [x] Frontend tests for product forms and valuation-page rendering.
 
 ## Dev Notes
 
@@ -99,3 +99,54 @@ so that per-product and per-warehouse inventory values are explainable and audit
 - `backend/domains/inventory/services.py`
 - `backend/domains/inventory/routes.py`
 - `src/domain/inventory/components/CreateProductForm.tsx`
+
+---
+
+## Dev Agent Record
+
+**Status:** done
+**Last Updated:** 2026-04-18
+
+### Completion Notes List
+
+- Added `standard_cost` to the product model, API contracts, migration, and shared product form flow so product create, edit, and detail read models persist decimal-safe cost data end to end.
+- Shipped a read-only inventory valuation report that resolves cost source in order `standard_cost -> latest_purchase -> missing`, preserves `Decimal` math through warehouse subtotals and grand total, and exposes `cost_source` metadata to the client.
+- Added an inventory valuation page with warehouse filtering, subtotal cards, grand total, explicit cost-source badges, and visible missing-cost rows alongside the new product detail cost display.
+
+### Validation
+
+- `cd backend && . .venv/bin/activate && pytest -q tests/api/test_create_product.py tests/api/test_update_product.py tests/domains/inventory/test_product_detail.py tests/domains/inventory/test_inventory_valuation.py tests/api/test_inventory_valuation.py`
+- `pnpm vitest run src/tests/inventory/CreateProductForm.test.tsx src/tests/inventory/EditProductForm.test.tsx src/pages/inventory/InventoryValuationPage.test.tsx src/pages/inventory/ProductDetailPage.test.tsx`
+- VS Code diagnostics: no new errors in touched frontend files, schemas, or new valuation tests; existing unrelated inventory typing issues remain elsewhere in `backend/domains/inventory/services.py` and `backend/domains/inventory/routes.py`
+
+### File List
+
+- `backend/common/models/product.py`
+- `backend/domains/inventory/schemas.py`
+- `backend/domains/inventory/services.py`
+- `backend/domains/inventory/routes.py`
+- `backend/tests/api/test_create_product.py`
+- `backend/tests/api/test_update_product.py`
+- `backend/tests/domains/inventory/test_product_detail.py`
+- `backend/tests/domains/inventory/test_inventory_valuation.py`
+- `backend/tests/api/test_inventory_valuation.py`
+- `migrations/versions/d7c1e4b9a2f6_add_product_standard_cost.py`
+- `src/domain/inventory/types.ts`
+- `src/lib/api/inventory.ts`
+- `src/domain/inventory/hooks/useProductDetail.ts`
+- `src/domain/inventory/hooks/useInventoryValuation.ts`
+- `src/domain/inventory/components/ProductForm.tsx`
+- `src/domain/inventory/components/EditProductForm.tsx`
+- `src/domain/inventory/components/ProductDetail.tsx`
+- `src/pages/inventory/ProductDetailPage.tsx`
+- `src/pages/inventory/ProductDetailPage.test.tsx`
+- `src/pages/inventory/InventoryValuationPage.tsx`
+- `src/pages/inventory/InventoryValuationPage.test.tsx`
+- `src/pages/InventoryPage.tsx`
+- `src/lib/routes.ts`
+- `src/lib/navigation.tsx`
+- `src/App.tsx`
+- `src/tests/inventory/CreateProductForm.test.tsx`
+- `src/tests/inventory/EditProductForm.test.tsx`
+- `public/locales/en/common.json`
+- `public/locales/zh-Hant/common.json`

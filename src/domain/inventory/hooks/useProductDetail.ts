@@ -48,6 +48,7 @@ export function useProductDetail(productId: string | null) {
         category: updated.category,
         description: updated.description,
         unit: updated.unit,
+        standard_cost: updated.standard_cost,
         status: updated.status,
       };
     });

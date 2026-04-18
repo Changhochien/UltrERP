@@ -17,6 +17,7 @@ export function EditProductForm({ product, onSuccess, onCancel }: EditProductFor
         category: product.category ?? "",
         description: product.description ?? "",
         unit: product.unit,
+        standard_cost: product.standard_cost ?? "",
       }}
       submitLabel="Save Changes"
       submittingLabel="Saving…"

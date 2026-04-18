@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
     category: "Hardware",
     description: "Original description",
     unit: "pcs",
+    standard_cost: "5.2500",
     status: "active",
     total_stock: 12,
     warehouses: [
@@ -41,6 +42,7 @@ const mocks = vi.hoisted(() => ({
     category: "Hardware",
     description: "Updated description",
     unit: "box",
+    standard_cost: "7.1250",
     status: "active",
     created_at: "2026-04-01T00:00:00Z",
   },
@@ -213,7 +215,7 @@ describe("ProductDetailPage", () => {
     );
 
     expect(screen.getByText("inventory.productDetail.settingsTab.reorderPoint")).toBeTruthy();
-    expect(screen.getByText("inventory.productDetail.settingsTab.planningHorizon")).toBeTruthy();
+    expect(screen.getByText("inventory.productDetail.settingsTab.reviewCycle")).toBeTruthy();
   });
 
   it("opens the edit dialog and refreshes the product detail after save", async () => {

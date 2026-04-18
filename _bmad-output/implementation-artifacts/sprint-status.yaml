@@ -282,10 +282,10 @@ development_status:
         prerequisites: []
       4-16-inventory-valuation:
         title: "Inventory Valuation and Cost Tracking"
-        status: "backlog"
+        status: "completed"
         story_id: "4.16"
         story_file: "4-16-inventory-valuation.md"
-        validation: "none"
+        validation: "Inventory valuation is implemented with decimal-safe standard cost persistence, latest-purchase fallback metadata, warehouse subtotals, a valuation report page, and focused backend/frontend validations passing (27 backend assertions and 15 frontend assertions)."
         prerequisites: []
       4-17-inventory-audit:
         title: "Physical Count / Inventory Audit"

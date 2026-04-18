@@ -280,6 +280,18 @@ function ProductDetailContent({ productId }: { productId: string }) {
                 >
                   {t(`statuses.${product.status}`, { defaultValue: product.status })}
                 </Badge>
+                <Badge
+                  variant="outline"
+                  style={{
+                    borderColor: "var(--inv-border)",
+                    color: "var(--inv-muted)",
+                    background: "transparent",
+                  }}
+                >
+                  {product.standard_cost
+                    ? t("standardCost", { amount: product.standard_cost })
+                    : t("missingStandardCost")}
+                </Badge>
               </div>
               {product.description && (
                 <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
@@ -367,6 +379,14 @@ function ProductDetailContent({ productId }: { productId: string }) {
                       {t("unitLabel")}
                     </dt>
                     <dd className="mt-1 text-sm font-medium text-foreground">{product.unit}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      {t("standardCostLabel")}
+                    </dt>
+                    <dd className="mt-1 text-sm font-medium text-foreground">
+                      {product.standard_cost ?? t("missingStandardCost")}
+                    </dd>
                   </div>
                   <div className="sm:col-span-2">
                     <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">

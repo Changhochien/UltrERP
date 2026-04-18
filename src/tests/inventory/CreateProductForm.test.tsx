@@ -33,6 +33,7 @@ const mockProduct: ProductResponse = {
   category: null,
   description: null,
   unit: "pcs",
+  standard_cost: null,
   status: "active",
   created_at: "2026-04-01T00:00:00Z",
 };
@@ -78,6 +79,7 @@ describe("CreateProductForm", () => {
         category: "Hardware",
         description: "",
         unit: "pcs",
+        standard_cost: null,
       });
     });
   });
@@ -110,9 +112,40 @@ describe("CreateProductForm", () => {
         category: "",
         description: "",
         unit: "pcs",
+        standard_cost: null,
       });
     });
     expect(onSuccess).toHaveBeenCalledWith(mockProduct);
+  });
+
+  it("submits standard cost when provided and blocks negative values", async () => {
+    const onSuccess = vi.fn();
+    (createProduct as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ...mockProduct,
+      standard_cost: "12.5000",
+    });
+
+    render(<CreateProductForm onSuccess={onSuccess} />);
+    fillValidForm();
+    fireEvent.change(screen.getByLabelText(/Standard Cost/i), { target: { value: "-1" } });
+    fireEvent.click(screen.getByRole("button", { name: /Create Product/i }));
+
+    expect(await screen.findByText("Standard cost must be greater than or equal to 0")).toBeTruthy();
+    expect(createProduct).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText(/Standard Cost/i), { target: { value: "12.5000" } });
+    fireEvent.click(screen.getByRole("button", { name: /Create Product/i }));
+
+    await waitFor(() => {
+      expect(createProduct).toHaveBeenCalledWith({
+        code: "WIDGET-001",
+        name: "Test Widget",
+        category: "",
+        description: "",
+        unit: "pcs",
+        standard_cost: "12.5000",
+      });
+    });
   });
 
   it("shows friendly message on duplicate code error", async () => {
@@ -157,6 +190,7 @@ describe("CreateProductForm", () => {
     expect(screen.getByRole("combobox", { name: /Category/i })).toBeTruthy();
     expect(screen.getByLabelText(/Description/i)).toBeTruthy();
     expect(screen.getByLabelText(/Unit/i)).toBeTruthy();
+    expect(screen.getByLabelText(/Standard Cost/i)).toBeTruthy();
     expect(screen.getByRole("button", { name: /Create Product/i })).toBeTruthy();
   });
 });

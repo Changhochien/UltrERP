@@ -25,6 +25,7 @@ import {
   HOME_ROUTE,
   INVENTORY_BELOW_REORDER_REPORT_ROUTE,
   INVENTORY_CATEGORIES_ROUTE,
+  INVENTORY_VALUATION_ROUTE,
   INVENTORY_REORDER_SUGGESTIONS_ROUTE,
   INVENTORY_ROUTE,
   INTELLIGENCE_ROUTE,
@@ -50,6 +51,7 @@ import { InventoryPage } from "./pages/InventoryPage";
 import { IntelligencePage } from "./pages/IntelligencePage";
 import { BelowReorderReportPage } from "./pages/inventory/BelowReorderReportPage";
 import { CategoriesPage } from "./pages/inventory/CategoriesPage";
+import { InventoryValuationPage } from "./pages/inventory/InventoryValuationPage";
 import { ProductDetailPage } from "./pages/inventory/ProductDetailPage";
 import { ReorderSuggestionsPage } from "./pages/inventory/ReorderSuggestionsPage";
 import CreateInvoicePage from "./pages/invoices/CreateInvoicePage";
@@ -216,6 +218,16 @@ export default function App() {
               <ProtectedAppRoute requiredFeature="inventory">
                 <RoutedPage>
                   <BelowReorderReportPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={INVENTORY_VALUATION_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="inventory">
+                <RoutedPage>
+                  <InventoryValuationPage />
                 </RoutedPage>
               </ProtectedAppRoute>
             }

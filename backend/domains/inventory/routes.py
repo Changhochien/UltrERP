@@ -43,6 +43,9 @@ from domains.inventory.schemas import (
     AuditLogListResponse,
     BelowReorderReportItem,
     BelowReorderReportResponse,
+    InventoryValuationItem,
+    InventoryValuationResponse,
+    InventoryValuationWarehouseTotal,
     CategoryCreate,
     CategoryListResponse,
     CategoryResponse,
@@ -107,6 +110,7 @@ from domains.inventory.services import (
     create_stock_adjustment,
     create_supplier_order,
     create_warehouse,
+    get_inventory_valuation,
     list_below_reorder_products,
     create_reorder_suggestion_orders,
     dismiss_alert,
@@ -1165,6 +1169,33 @@ async def export_below_reorder_report_endpoint(
         content=_build_below_reorder_csv(items),
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get(
+    "/reports/valuation",
+    response_model=InventoryValuationResponse,
+)
+async def get_inventory_valuation_report_endpoint(
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+    warehouse_id: uuid.UUID | None = Query(None),
+) -> InventoryValuationResponse:
+    report = await get_inventory_valuation(
+        session,
+        tenant_id,
+        warehouse_id=warehouse_id,
+    )
+    return InventoryValuationResponse(
+        items=[InventoryValuationItem(**item) for item in report["items"]],
+        warehouse_totals=[
+            InventoryValuationWarehouseTotal(**item)
+            for item in report["warehouse_totals"]
+        ],
+        grand_total_value=report["grand_total_value"],
+        grand_total_quantity=report["grand_total_quantity"],
+        total_rows=report["total_rows"],
     )
 
 

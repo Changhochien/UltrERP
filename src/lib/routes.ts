@@ -4,6 +4,7 @@ export const OWNER_DASHBOARD_ROUTE = "/owner-dashboard";
 export const INVENTORY_ROUTE = "/inventory";
 export const INVENTORY_CATEGORIES_ROUTE = "/inventory/categories";
 export const INVENTORY_BELOW_REORDER_REPORT_ROUTE = "/inventory/reports/below-reorder";
+export const INVENTORY_VALUATION_ROUTE = "/inventory/reports/valuation";
 export const INVENTORY_REORDER_SUGGESTIONS_ROUTE = "/inventory/reorder-suggestions";
 export const INVENTORY_SUPPLIERS_ROUTE = "/inventory/suppliers";
 export const PRODUCT_DETAIL_ROUTE = "/inventory/:productId";
@@ -28,6 +29,7 @@ export type AppRoute =
   | typeof INVENTORY_ROUTE
   | typeof INVENTORY_CATEGORIES_ROUTE
   | typeof INVENTORY_BELOW_REORDER_REPORT_ROUTE
+  | typeof INVENTORY_VALUATION_ROUTE
   | typeof INVENTORY_REORDER_SUGGESTIONS_ROUTE
   | typeof PRODUCT_DETAIL_ROUTE
   | typeof PURCHASES_ROUTE

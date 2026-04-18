@@ -143,6 +143,7 @@ export interface ProductDetail {
   category: string | null;
   description: string | null;
   unit: string;
+  standard_cost: string | null;
   status: string;
   legacy_master_snapshot?: Record<string, unknown> | null;
   total_stock: number;
@@ -276,6 +277,35 @@ export interface BelowReorderReportItem {
 export interface BelowReorderReportResponse {
   items: BelowReorderReportItem[];
   total: number;
+}
+
+export interface InventoryValuationItem {
+  product_id: string;
+  product_code: string;
+  product_name: string;
+  category: string | null;
+  warehouse_id: string;
+  warehouse_name: string;
+  quantity: number;
+  unit_cost: string | null;
+  extended_value: string;
+  cost_source: "standard_cost" | "latest_purchase" | "missing";
+}
+
+export interface InventoryValuationWarehouseTotal {
+  warehouse_id: string;
+  warehouse_name: string;
+  total_quantity: number;
+  total_value: string;
+  row_count: number;
+}
+
+export interface InventoryValuationResponse {
+  items: InventoryValuationItem[];
+  warehouse_totals: InventoryValuationWarehouseTotal[];
+  grand_total_value: string;
+  grand_total_quantity: number;
+  total_rows: number;
 }
 
 export interface AcknowledgeAlertResponse {
@@ -545,6 +575,7 @@ export interface ProductCreate {
   category?: string;
   description?: string;
   unit?: string;
+  standard_cost?: string | null;
 }
 
 export interface ProductUpdate {
@@ -553,6 +584,7 @@ export interface ProductUpdate {
   category?: string;
   description?: string;
   unit: string;
+  standard_cost?: string | null;
 }
 
 export interface ProductResponse {
@@ -562,6 +594,7 @@ export interface ProductResponse {
   category: string | null;
   description: string | null;
   unit: string;
+  standard_cost: string | null;
   status: string;
   created_at: string;
 }

@@ -19,6 +19,7 @@ import {
   INVENTORY_BELOW_REORDER_REPORT_ROUTE,
   INVENTORY_CATEGORIES_ROUTE,
   INVENTORY_REORDER_SUGGESTIONS_ROUTE,
+  INVENTORY_VALUATION_ROUTE,
 } from "../lib/routes";
 
 function InventoryWorkspace() {
@@ -52,6 +53,13 @@ function InventoryWorkspace() {
                   onClick={() => navigate(INVENTORY_BELOW_REORDER_REPORT_ROUTE)}
                 >
                   {t("inventory.page.belowReorderReport")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate(INVENTORY_VALUATION_ROUTE)}
+                >
+                  {t("inventory.page.inventoryValuation")}
                 </Button>
                 <Button
                   type="button"

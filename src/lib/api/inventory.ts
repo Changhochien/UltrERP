@@ -9,6 +9,7 @@ import type {
   CreateReorderSuggestionOrdersResponse,
   CategoryUpdate,
   DismissAlertResponse,
+  InventoryValuationResponse,
   PlanningSupportResponse,
   ProductSearchResponse,
   ProductDetail,
@@ -305,6 +306,27 @@ export async function fetchBelowReorderReport(options?: {
       };
     }
     return { ok: true, data: (await resp.json()) as BelowReorderReportResponse };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+export async function fetchInventoryValuation(options?: {
+  warehouseId?: string;
+}): Promise<{ ok: true; data: InventoryValuationResponse } | { ok: false; error: string }> {
+  try {
+    const params = new URLSearchParams();
+    if (options?.warehouseId) params.set("warehouse_id", options.warehouseId);
+    const qs = params.toString();
+    const resp = await apiFetch(`/api/v1/inventory/reports/valuation${qs ? `?${qs}` : ""}`);
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({}));
+      return {
+        ok: false,
+        error: (body as { detail?: string }).detail ?? "Failed to load inventory valuation",
+      };
+    }
+    return { ok: true, data: (await resp.json()) as InventoryValuationResponse };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
   }

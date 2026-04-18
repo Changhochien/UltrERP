@@ -75,6 +75,10 @@
       "description": "預覽並匯出依倉庫範圍篩選的低於補貨點報表。",
       "label": "低於補貨點報表"
     },
+    "inventoryValuation": {
+      "description": "依倉庫檢視庫存價值，並清楚標示標準成本或最近採購成本來源。",
+      "label": "庫存估值"
+    },
     "reorderSuggestions": {
       "description": "檢視低庫存補貨建議並直接建立供應商草稿訂單。",
       "label": "補貨建議"
@@ -1066,6 +1070,7 @@
       "eyebrow": "庫存",
       "title": "庫存",
       "belowReorderReport": "低於補貨點報表",
+      "inventoryValuation": "庫存估值",
       "reviewSuggestions": "查看補貨建議",
       "manageCategories": "管理類別",
       "addProduct": "新增產品",
@@ -1349,6 +1354,44 @@
         "defaultSupplier": "預設供應商"
       }
     },
+    "inventoryValuationPage": {
+      "eyebrow": "庫存報表",
+      "title": "庫存估值",
+      "description": "依倉庫檢視庫存價值，並明確顯示成本來源。",
+      "backToInventory": "返回庫存",
+      "summaryTitle": "估值摘要",
+      "summaryDescription": "產品列、倉庫小計與總計會分開呈現，避免不同倉庫的數量被默默混在一起。",
+      "grandTotalValueLabel": "總估值",
+      "grandTotalQuantityLabel": "總數量",
+      "rowCountLabel": "估值列數",
+      "warehouseTotalsTitle": "倉庫小計",
+      "warehouseTotalsDescription": "每個倉庫的小計都直接來自下方相同的估值列資料集。",
+      "tableTitle": "估值明細列",
+      "tableDescription": "缺少成本的列會保留在報表中，延伸價值為 0，方便明確補資料。",
+      "totalRows": "共 {count} 列",
+      "grandTotalValue": "估值 {value}",
+      "grandTotalQuantity": "共 {count} 單位",
+      "subtotalQuantity": "{count} 單位",
+      "subtotalRows": "{count} 列",
+      "loading": "載入估值中…",
+      "empty": "目前沒有庫存估值列",
+      "emptyDescription": "目前倉庫範圍內沒有任何庫存列。",
+      "costSource": {
+        "standard_cost": "標準成本",
+        "latest_purchase": "最近採購",
+        "missing": "缺少成本"
+      },
+      "col": {
+        "productCode": "產品編號",
+        "productName": "產品名稱",
+        "category": "類別",
+        "warehouse": "倉庫",
+        "quantity": "數量",
+        "unitCost": "單位成本",
+        "extendedValue": "延伸價值",
+        "costSource": "成本來源"
+      }
+    },
     "productGrid": {
       "searchPlaceholder": "依編號或名稱搜尋…",
       "filterCategory": "依類別篩選",
@@ -1444,8 +1487,11 @@
       "error": "錯誤：{message}",
       "loading": "載入中…",
       "masterData": "主檔資料",
+      "missingStandardCost": "尚未設定標準成本",
       "productDescription": "產品說明",
       "retry": "重試",
+      "standardCost": "標準成本：{amount}",
+      "standardCostLabel": "標準成本",
       "stockByWarehouse": {
         "allWarehouses": "所有倉庫",
         "description": "各倉庫目前的庫存水準。",

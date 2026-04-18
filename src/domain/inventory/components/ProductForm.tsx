@@ -21,6 +21,7 @@ export interface ProductFormValues {
   category: string;
   description: string;
   unit: string;
+  standard_cost: string;
 }
 
 interface ProductFormProps {
@@ -38,6 +39,7 @@ const DEFAULT_VALUES: ProductFormValues = {
   category: "",
   description: "",
   unit: "pcs",
+  standard_cost: "",
 };
 
 function toErrorMap(errors: ProductFormFieldError[]): Record<string, string> {
@@ -69,6 +71,7 @@ export function ProductForm({
       category: initialValues?.category ?? DEFAULT_VALUES.category,
       description: initialValues?.description ?? DEFAULT_VALUES.description,
       unit: initialValues?.unit ?? DEFAULT_VALUES.unit,
+      standard_cost: initialValues?.standard_cost ?? DEFAULT_VALUES.standard_cost,
     });
     setErrors({});
     setServerError(null);
@@ -77,6 +80,7 @@ export function ProductForm({
     initialValues?.code,
     initialValues?.description,
     initialValues?.name,
+    initialValues?.standard_cost,
     initialValues?.unit,
   ]);
 
@@ -90,6 +94,15 @@ export function ProductForm({
     }
     if (!values.unit.trim()) {
       nextErrors.unit = "Unit is required";
+    }
+    const standardCost = values.standard_cost.trim();
+    if (standardCost) {
+      const parsedValue = Number(standardCost);
+      if (!Number.isFinite(parsedValue)) {
+        nextErrors.standard_cost = "Standard cost must be a valid number";
+      } else if (parsedValue < 0) {
+        nextErrors.standard_cost = "Standard cost must be greater than or equal to 0";
+      }
     }
     return nextErrors;
   }
@@ -112,6 +125,7 @@ export function ProductForm({
         category: formData.category.trim(),
         description: formData.description.trim(),
         unit: formData.unit.trim(),
+        standard_cost: formData.standard_cost.trim() ? formData.standard_cost.trim() : null,
       });
 
       if (result.ok) {
@@ -210,6 +224,22 @@ export function ProductForm({
           disabled={isSubmitting}
         />
         {errors.unit && <p className="mt-1 text-sm text-destructive">{errors.unit}</p>}
+      </div>
+
+      <div>
+        <label htmlFor="product-standard-cost" className="block text-sm font-medium">
+          Standard Cost
+        </label>
+        <Input
+          id="product-standard-cost"
+          type="text"
+          inputMode="decimal"
+          value={formData.standard_cost}
+          onChange={(event) => setFormData((current) => ({ ...current, standard_cost: event.target.value }))}
+          aria-invalid={Boolean(errors.standard_cost)}
+          disabled={isSubmitting}
+        />
+        {errors.standard_cost && <p className="mt-1 text-sm text-destructive">{errors.standard_cost}</p>}
       </div>
 
       <div className="flex gap-2">

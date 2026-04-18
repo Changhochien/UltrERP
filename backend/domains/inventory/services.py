@@ -61,6 +61,7 @@ class TransferValidationError(Exception):
 _PLANNING_QUANTITY_QUANT = Decimal("0.001")
 _PLANNING_INDEX_QUANT = Decimal("0.001")
 _STANDARD_COST_QUANT = Decimal("0.0001")
+_VALUATION_AMOUNT_QUANT = Decimal("0.0001")
 _ZERO_QUANTITY = Decimal("0.000")
 
 
@@ -90,6 +91,10 @@ def _quantize_quantity(value: Decimal | int | float | None) -> Decimal:
 
 def _quantize_index(value: Decimal) -> Decimal:
     return value.quantize(_PLANNING_INDEX_QUANT, rounding=ROUND_HALF_UP)
+
+
+def _quantize_valuation_amount(value: Decimal | int | float | None) -> Decimal:
+    return Decimal(str(value or "0")).quantize(_VALUATION_AMOUNT_QUANT, rounding=ROUND_HALF_UP)
 
 
 def _normalize_standard_cost(value: object | None) -> Decimal | None:
@@ -1308,6 +1313,145 @@ async def list_below_reorder_products(
         )
 
     return items, len(items)
+
+
+def _resolve_inventory_valuation_cost(
+    row: object,
+) -> tuple[Decimal | None, str]:
+    standard_cost = _normalize_standard_cost(getattr(row, "standard_cost", None))
+    if standard_cost is not None:
+        return standard_cost, "standard_cost"
+
+    latest_purchase_cost = _normalize_standard_cost(getattr(row, "latest_purchase_unit_cost", None))
+    if latest_purchase_cost is not None:
+        return latest_purchase_cost, "latest_purchase"
+
+    return None, "missing"
+
+
+def _serialize_inventory_valuation_row(row: object) -> dict:
+    quantity = int(getattr(row, "quantity", 0) or 0)
+    unit_cost, cost_source = _resolve_inventory_valuation_cost(row)
+    extended_value = _quantize_valuation_amount(
+        Decimal(quantity) * (unit_cost or Decimal("0"))
+    )
+
+    return {
+        "product_id": getattr(row, "product_id"),
+        "product_code": getattr(row, "product_code"),
+        "product_name": getattr(row, "product_name"),
+        "category": getattr(row, "category", None),
+        "warehouse_id": getattr(row, "warehouse_id"),
+        "warehouse_name": getattr(row, "warehouse_name"),
+        "quantity": quantity,
+        "unit_cost": unit_cost,
+        "extended_value": extended_value,
+        "cost_source": cost_source,
+    }
+
+
+async def get_inventory_valuation(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    *,
+    warehouse_id: uuid.UUID | None = None,
+) -> dict:
+    latest_purchase_ranked = (
+        select(
+            SupplierOrderLine.product_id.label("product_id"),
+            SupplierOrderLine.unit_price.label("unit_cost"),
+            SupplierOrder.received_date.label("received_date"),
+            func.row_number().over(
+                partition_by=SupplierOrderLine.product_id,
+                order_by=(
+                    SupplierOrder.received_date.desc(),
+                    SupplierOrder.created_at.desc(),
+                    SupplierOrderLine.id.desc(),
+                ),
+            ).label("row_number"),
+        )
+        .join(SupplierOrder, SupplierOrder.id == SupplierOrderLine.order_id)
+        .where(
+            SupplierOrder.tenant_id == tenant_id,
+            SupplierOrder.received_date.isnot(None),
+            SupplierOrderLine.unit_price.isnot(None),
+        )
+        .subquery()
+    )
+
+    latest_purchase = (
+        select(
+            latest_purchase_ranked.c.product_id,
+            latest_purchase_ranked.c.unit_cost,
+            latest_purchase_ranked.c.received_date,
+        )
+        .where(latest_purchase_ranked.c.row_number == 1)
+        .subquery()
+    )
+
+    stmt = (
+        select(
+            InventoryStock.product_id,
+            Product.code.label("product_code"),
+            Product.name.label("product_name"),
+            Product.category,
+            Product.standard_cost,
+            InventoryStock.warehouse_id,
+            Warehouse.name.label("warehouse_name"),
+            InventoryStock.quantity.label("quantity"),
+            latest_purchase.c.unit_cost.label("latest_purchase_unit_cost"),
+        )
+        .join(Product, Product.id == InventoryStock.product_id)
+        .join(Warehouse, Warehouse.id == InventoryStock.warehouse_id)
+        .outerjoin(latest_purchase, latest_purchase.c.product_id == InventoryStock.product_id)
+        .where(
+            InventoryStock.tenant_id == tenant_id,
+            Product.tenant_id == tenant_id,
+            Warehouse.tenant_id == tenant_id,
+        )
+        .order_by(Warehouse.name, Product.code)
+    )
+    if warehouse_id is not None:
+        stmt = stmt.where(InventoryStock.warehouse_id == warehouse_id)
+
+    result = await session.execute(stmt)
+    rows = result.all()
+
+    items: list[dict] = []
+    warehouse_totals: dict[uuid.UUID, dict] = {}
+    grand_total_value = Decimal("0")
+    grand_total_quantity = 0
+
+    for row in rows:
+        item = _serialize_inventory_valuation_row(row)
+        items.append(item)
+
+        warehouse_total = warehouse_totals.setdefault(
+            item["warehouse_id"],
+            {
+                "warehouse_id": item["warehouse_id"],
+                "warehouse_name": item["warehouse_name"],
+                "total_quantity": 0,
+                "total_value": Decimal("0"),
+                "row_count": 0,
+            },
+        )
+        warehouse_total["total_quantity"] = int(warehouse_total["total_quantity"]) + item["quantity"]
+        warehouse_total["total_value"] = _quantize_valuation_amount(
+            Decimal(str(warehouse_total["total_value"])) + item["extended_value"]
+        )
+        warehouse_total["row_count"] = int(warehouse_total["row_count"]) + 1
+
+        grand_total_quantity += item["quantity"]
+        grand_total_value = _quantize_valuation_amount(grand_total_value + item["extended_value"])
+
+    return {
+        "items": items,
+        "warehouse_totals": list(warehouse_totals.values()),
+        "grand_total_value": grand_total_value,
+        "grand_total_quantity": grand_total_quantity,
+        "total_rows": len(items),
+    }
 
 
 # ── Stock queries ──────────────────────────────────────────────

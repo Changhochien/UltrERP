@@ -23,6 +23,7 @@ const product: ProductDetail = {
   category: "Hardware",
   description: "Original description",
   unit: "pcs",
+  standard_cost: "5.2500",
   status: "active",
   total_stock: 12,
   warehouses: [],
@@ -36,6 +37,7 @@ const updatedProduct: ProductResponse = {
   category: "Hardware",
   description: "Updated description",
   unit: "box",
+  standard_cost: "7.1250",
   status: "active",
   created_at: "2026-04-01T00:00:00Z",
 };
@@ -57,6 +59,7 @@ describe("EditProductForm", () => {
     expect(screen.getByRole("combobox", { name: /Category/i }).textContent).toContain("Hardware");
     expect(screen.getByDisplayValue("Original description")).toBeTruthy();
     expect(screen.getByDisplayValue("pcs")).toBeTruthy();
+    expect(screen.getByDisplayValue("5.2500")).toBeTruthy();
   });
 
   it("submits the full editable payload and calls onSuccess", async () => {
@@ -70,6 +73,7 @@ describe("EditProductForm", () => {
     fireEvent.change(screen.getByLabelText(/Name/i), { target: { value: "Widget Pro" } });
     fireEvent.change(screen.getByLabelText(/Description/i), { target: { value: "Updated description" } });
     fireEvent.change(screen.getByLabelText(/Unit/i), { target: { value: "box" } });
+    fireEvent.change(screen.getByLabelText(/Standard Cost/i), { target: { value: "7.1250" } });
     fireEvent.click(screen.getByRole("button", { name: /Save Changes/i }));
 
     await waitFor(() => {
@@ -79,6 +83,7 @@ describe("EditProductForm", () => {
         category: "Hardware",
         description: "Updated description",
         unit: "box",
+        standard_cost: "7.1250",
       });
     });
     expect(onSuccess).toHaveBeenCalledWith(updatedProduct);

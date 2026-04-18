@@ -491,6 +491,35 @@ class BelowReorderReportResponse(BaseModel):
     total: int
 
 
+class InventoryValuationItem(BaseModel):
+    product_id: uuid.UUID
+    product_code: str
+    product_name: str
+    category: str | None = None
+    warehouse_id: uuid.UUID
+    warehouse_name: str
+    quantity: int
+    unit_cost: Decimal | None = None
+    extended_value: Decimal
+    cost_source: Literal["standard_cost", "latest_purchase", "missing"]
+
+
+class InventoryValuationWarehouseTotal(BaseModel):
+    warehouse_id: uuid.UUID
+    warehouse_name: str
+    total_quantity: int
+    total_value: Decimal
+    row_count: int
+
+
+class InventoryValuationResponse(BaseModel):
+    items: list[InventoryValuationItem]
+    warehouse_totals: list[InventoryValuationWarehouseTotal]
+    grand_total_value: Decimal
+    grand_total_quantity: int
+    total_rows: int
+
+
 class AcknowledgeAlertResponse(BaseModel):
     id: uuid.UUID
     status: str

@@ -74,6 +74,10 @@
       "description": "Preview and export warehouse-scoped below-reorder inventory rows.",
       "label": "Below-Reorder Report"
     },
+    "inventoryValuation": {
+      "description": "Review warehouse-scoped inventory value using standard cost or latest purchase fallback.",
+      "label": "Inventory Valuation"
+    },
     "reorderSuggestions": {
       "description": "Review low-stock replenishment suggestions and create draft supplier orders.",
       "label": "Reorder Suggestions"
@@ -1069,6 +1073,7 @@
       "eyebrow": "Inventory",
       "title": "Inventory",
       "belowReorderReport": "Below-Reorder Report",
+      "inventoryValuation": "Inventory Valuation",
       "reviewSuggestions": "Review Suggestions",
       "manageCategories": "Manage Categories",
       "addProduct": "Add Product",
@@ -1352,6 +1357,44 @@
         "defaultSupplier": "Default Supplier"
       }
     },
+    "inventoryValuationPage": {
+      "eyebrow": "Inventory Reports",
+      "title": "Inventory Valuation",
+      "description": "Review warehouse-level inventory value with explicit cost-source metadata.",
+      "backToInventory": "Back to inventory",
+      "summaryTitle": "Valuation Summary",
+      "summaryDescription": "The report keeps product rows, warehouse subtotals, and the grand total separate so warehouse balances stay explainable.",
+      "grandTotalValueLabel": "Grand Total Value",
+      "grandTotalQuantityLabel": "Grand Total Quantity",
+      "rowCountLabel": "Valuation Rows",
+      "warehouseTotalsTitle": "Warehouse Subtotals",
+      "warehouseTotalsDescription": "Each warehouse subtotal is calculated from the same row set shown below.",
+      "tableTitle": "Valuation Rows",
+      "tableDescription": "Missing-cost rows remain visible with zero extended value so cost gaps can be reviewed explicitly.",
+      "totalRows": "{count} rows",
+      "grandTotalValue": "Value {value}",
+      "grandTotalQuantity": "{count} units",
+      "subtotalQuantity": "{count} units",
+      "subtotalRows": "{count} rows",
+      "loading": "Loading valuation…",
+      "empty": "No inventory valuation rows found",
+      "emptyDescription": "No inventory rows exist in the current warehouse scope.",
+      "costSource": {
+        "standard_cost": "Standard Cost",
+        "latest_purchase": "Latest Purchase",
+        "missing": "Missing Cost"
+      },
+      "col": {
+        "productCode": "Product Code",
+        "productName": "Product Name",
+        "category": "Category",
+        "warehouse": "Warehouse",
+        "quantity": "Quantity",
+        "unitCost": "Unit Cost",
+        "extendedValue": "Extended Value",
+        "costSource": "Cost Source"
+      }
+    },
     "productGrid": {
       "searchPlaceholder": "Search by code or name…",
       "filterCategory": "Filter by category",
@@ -1447,8 +1490,11 @@
       "error": "Error: {message}",
       "loading": "Loading…",
       "masterData": "Master Data",
+      "missingStandardCost": "Standard cost missing",
       "productDescription": "Product description",
       "retry": "Retry",
+      "standardCost": "Standard Cost: {amount}",
+      "standardCostLabel": "Standard Cost",
       "stockByWarehouse": {
         "allWarehouses": "All Warehouses",
         "description": "Current stock levels by warehouse.",

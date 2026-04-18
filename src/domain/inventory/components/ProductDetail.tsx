@@ -63,6 +63,11 @@ export function ProductDetail({ productId }: ProductDetailProps) {
           <Badge variant="outline" className="normal-case tracking-normal">
             {t("inventory.productDetail.totalStock", { stock: product.total_stock })}
           </Badge>
+          <Badge variant="outline" className="normal-case tracking-normal">
+            {product.standard_cost
+              ? t("inventory.productDetail.standardCost", { amount: product.standard_cost })
+              : t("inventory.productDetail.missingStandardCost")}
+          </Badge>
         </div>
       </SectionCard>
 

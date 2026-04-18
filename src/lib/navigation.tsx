@@ -22,6 +22,7 @@ import {
   INVENTORY_BELOW_REORDER_REPORT_ROUTE,
   INVENTORY_CATEGORIES_ROUTE,
   INVENTORY_REORDER_SUGGESTIONS_ROUTE,
+  INVENTORY_VALUATION_ROUTE,
   INVENTORY_ROUTE,
   INTELLIGENCE_ROUTE,
   INVOICES_ROUTE,
@@ -157,6 +158,7 @@ export const ROUTE_CONTEXT_KEYS = [
   { match: INVENTORY_ROUTE, labelKey: "routes.inventory.label", descriptionKey: "routes.inventory.description" },
   { match: INVENTORY_CATEGORIES_ROUTE, labelKey: "routes.inventoryCategories.label", descriptionKey: "routes.inventoryCategories.description" },
   { match: INVENTORY_BELOW_REORDER_REPORT_ROUTE, labelKey: "routes.belowReorderReport.label", descriptionKey: "routes.belowReorderReport.description" },
+  { match: INVENTORY_VALUATION_ROUTE, labelKey: "routes.inventoryValuation.label", descriptionKey: "routes.inventoryValuation.description" },
   { match: INVENTORY_REORDER_SUGGESTIONS_ROUTE, labelKey: "routes.reorderSuggestions.label", descriptionKey: "routes.reorderSuggestions.description" },
   { match: PURCHASES_ROUTE, labelKey: "routes.purchases.label", descriptionKey: "routes.purchases.description" },
   { match: ADMIN_ROUTE, labelKey: "routes.admin.label", descriptionKey: "routes.admin.description" },
@@ -178,6 +180,14 @@ export function getRouteContext(pathname: string) {
     return {
       labelKey: "routes.belowReorderReport.label",
       descriptionKey: "routes.belowReorderReport.description",
+      sectionKey: "nav.operations",
+    };
+  }
+
+  if (pathname === INVENTORY_VALUATION_ROUTE) {
+    return {
+      labelKey: "routes.inventoryValuation.label",
+      descriptionKey: "routes.inventoryValuation.description",
       sectionKey: "nav.operations",
     };
   }
