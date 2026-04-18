@@ -11,6 +11,7 @@ The VS Code and Copilot CLI docs warn that pre-approving `shell` or `bash` remov
 Require explicit operator confirmation before running any command that writes data or files:
 
 - `stage`
+- `live-stage`
 - `normalize`
 - `map-products`
 - `export-product-review`
@@ -27,6 +28,8 @@ Before asking for confirmation, summarize:
 - schema
 - tenant id
 - source directory, export path, or import path when applicable
+- source schema when `live-stage` is used
+- which `LEGACY_DB_*` variables must be configured, without echoing secret values
 - approved-by identity for review imports
 - why the command is being run now
 
@@ -78,6 +81,7 @@ Use this checklist to prove the skill documentation matches the reviewed CLI sur
 
 ```bash
 cd backend && uv run python -m domains.legacy_import.cli --help
+cd backend && uv run python -m domains.legacy_import.cli live-stage --help
 cd backend && uv run python -m domains.legacy_import.cli validate-import --help
 ```
 
