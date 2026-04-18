@@ -194,4 +194,205 @@ So that I can run the migration pipeline without generating a SQL dump or extrac
 **Then** the operator receives clear diagnostics that distinguish the failure type
 **And** no partial committed stage snapshot is left behind for that batch attempt
 
+### Story 15.13: Batch Rerun Idempotency At The Lineage Layer
+
+As a migration operator,
+I want rerunning the same batch to remain idempotent at the lineage layer,
+So that repeat imports do not create duplicate `canonical_record_lineage` rows or corrupt run metadata.
+
+**Acceptance Criteria:**
+
+**Given** a batch has already been canonically imported
+**When** I rerun the same batch
+**Then** `canonical_record_lineage` contains exactly one lineage row per batch-scoped source record
+**And** the latest run metadata updates safely without creating duplicate lineage entries
+
+**Given** a different batch imports the same source identifiers
+**When** that later batch completes
+**Then** each batch keeps its own lineage record
+**And** deduplication remains batch-scoped rather than cross-batch
+
+### Story 15.14: Holding-Path Lineage Coverage
+
+As a migration operator,
+I want rows placed into `unsupported_history_holding` to create lineage immediately,
+So that every source row remains traceable even when it is quarantined instead of canonically imported.
+
+**Acceptance Criteria:**
+
+**Given** a source row is routed into `unsupported_history_holding`
+**When** the holding write occurs
+**Then** a corresponding lineage record is created at hold time
+**And** operators can distinguish holding-path lineage from canonically imported lineage
+
+**Given** a held row is later drained into a supported canonical target
+**When** the drain path succeeds
+**Then** the lineage record updates to the canonical destination instead of creating a duplicate audit trail
+
+### Story 15.15: Legacy Refresh Orchestrator
+
+As a migration operator,
+I want one reviewed command to run the full live refresh workflow in the correct order,
+So that shadow refreshes are repeatable and do not depend on manual step sequencing.
+
+**Acceptance Criteria:**
+
+**Given** `LEGACY_DB_*`, tenant, and schema settings are configured
+**When** I run the refresh orchestrator with a fresh batch id
+**Then** it executes the approved workflow in order: `live-stage`, `normalize`, mapping/review prerequisites, `canonical-import`, `validate-import`, and the required stock follow-up scripts
+**And** it records one structured run summary containing batch id, tenant id, schema, timing, exit status, and artifact paths
+
+**Given** a step fails or validation/reconciliation exceeds the configured threshold
+**When** the orchestrator aborts
+**Then** it exits non-zero
+**And** it does not promote the batch automatically
+**And** the operator receives enough evidence to diagnose the failure from artifacts alone
+
+### Story 15.16: Scheduled Shadow Refresh And Batch State Tracking
+
+As a cutover owner,
+I want the live refresh workflow to run on a schedule against a shadow lane,
+So that the team can monitor freshness and migration quality without disturbing the working database.
+
+**Acceptance Criteria:**
+
+**Given** the refresh orchestrator exists
+**When** a scheduled shadow refresh runs nightly or at another approved cadence
+**Then** it generates an immutable shadow batch id
+**And** writes the latest successful run metadata including batch id, completion time, and status to a durable state record
+**And** produces a compact operator summary for validation status, blocker count, and reconciliation count
+
+**Given** a scheduled shadow refresh runs
+**When** it completes or fails
+**Then** only the shadow lane is affected
+**And** the team-facing working lane changes only through downstream promotion gate evaluation
+**And** if the latest shadow batch is not eligible for promotion the previously promoted working batch remains active
+
+### Story 15.17: Gated Automatic Promotion To The Working Lane
+
+As a cutover owner,
+I want the latest eligible shadow batch to be promoted into the working lane automatically when all promotion gates pass,
+So that routine refreshes land without manual intervention while blocked batches leave the current working lane untouched.
+
+**Acceptance Criteria:**
+
+**Given** a shadow batch is the latest successful candidate and all promotion gates pass
+**When** promotion evaluation runs
+**Then** the system refreshes or switches the working lane to that batch atomically
+**And** the system records the promoted batch id, previous promoted batch id, actor identity, promotion time, validation status, reconciliation gap count, threshold used, and source summary path
+
+**Given** a candidate batch fails validation, exceeds reconciliation thresholds, still requires analyst review, or otherwise fails promotion policy
+**When** promotion evaluation runs
+**Then** promotion is refused
+**And** the working lane remains on the previously promoted batch
+**And** the refusal records the specific blocking gate and emits an operator-visible alert
+
+**Given** the candidate batch is already the current working batch
+**When** promotion evaluation runs again
+**Then** the system exits idempotently without rebuilding the working lane or writing duplicate promotion history
+
+### Story 15.18: Automated Promotion Gate Policy And Approved Corrections
+
+As a cutover owner,
+I want explicit automated promotion thresholds and a manual exception policy,
+So that routine refreshes can auto-promote when drift is acceptable while out-of-policy batches pause for operator review.
+
+**Acceptance Criteria:**
+
+**Given** validation and reconciliation artifacts exist for a shadow batch
+**When** promotion policy is evaluated
+**Then** the system classifies the batch into explicit outcomes such as `eligible`, `blocked`, or `exception-required`
+**And** the same policy is reused by scheduled refreshes, promotion evaluation, alerts, and operator summaries
+
+**Given** reconciliation output reports gaps within the configured threshold and no other blocking gate is open
+**When** policy is evaluated
+**Then** the batch is eligible for automatic promotion
+
+**Given** reconciliation output exceeds the configured threshold or another gate fails
+**When** policy is evaluated
+**Then** the batch is blocked from automatic promotion
+**And** the system records which threshold or gate failed
+
+**Given** correction proposals are generated
+**When** operators decide to apply them
+**Then** only explicitly approved proposal rows may be applied
+**And** automated refresh jobs never auto-apply reconciliation corrections
+
+### Story 15.19: Incremental Refresh And Auto-Promotion Watermark Contract
+
+As a platform engineer,
+I want a reviewed watermark and replay contract for incremental legacy refreshes that feed the same promotion gates as nightly batches,
+So that we can move toward near-live updates without bypassing the automated safety model.
+
+**Acceptance Criteria:**
+
+**Given** the team wants refreshes more often than nightly
+**When** the incremental sync design is implemented
+**Then** each supported domain defines its watermark source, replay semantics, correction handling, and promotion-eligibility boundary explicitly
+**And** sync state persists the last successful watermark, shadow batch metadata, and last promoted batch metadata for resumable reruns
+
+**Given** incremental sync is active
+**When** a run fails mid-stream or produces a blocked batch
+**Then** the next run can resume safely from the last successful watermark
+**And** the working lane remains on the previously promoted batch until a later eligible batch is produced
+
+**Given** incremental sync remains lower confidence than the nightly baseline
+**When** the system operates over time
+**Then** a nightly full rebaseline remains available as the correctness backstop
+
+### Story 15.20: Legacy Dump And Manual-Promotion Surface Retirement
+
+As a platform maintainer,
+I want obsolete dump-era and manual-promotion legacy surfaces retired behind explicit stability gates,
+So that the repo defaults to the live gated refresh path and no longer carries duplicate operational workflows.
+
+**Acceptance Criteria:**
+
+**Given** the live refresh plus automatic promotion path has met agreed stability gates
+**When** the deprecation story executes
+**Then** the repository stops defaulting operators to dump-era sources or manual approval-driven promotion steps
+**And** docs, skills, and commands point to the live gated refresh workflow as the default path
+
+**Given** dump-era imports, manual promotion notes, or transitional remediation scripts still exist
+**When** a cleanup pass is evaluated
+**Then** a surface may only be removed after its logic is absorbed into the standard refresh, promotion, alerting, or exception workflow
+**And** the cleanup records which fallback surfaces intentionally remain
+
+**Given** archived CSV extracts or raw dumps still need retention for audit
+**When** active repo cleanup happens
+**Then** those artifacts are archived outside the working repo before deletion from default developer workflows
+
+### Story 15.21: Canonical Source Resolution State Model Refactor
+
+As a migration operator,
+I want hold and drain state modeled explicitly outside `canonical_record_lineage`,
+So that source-row transitions remain lossless, replay-safe, and crash-consistent as the legacy import pipeline evolves.
+
+**Acceptance Criteria:**
+
+**Given** a batch-scoped legacy source row is processed
+**When** the import pipeline persists its current resolution
+**Then** exactly one migration-owned state row exists for that source identity
+**And** the row exposes explicit status such as `holding`, `resolved`, or `failed` instead of encoding state through `canonical_record_lineage.canonical_table`
+
+**Given** a row is held, drained, retried, or manually repaired
+**When** the transition completes
+**Then** an append-only resolution event is recorded with batch, tenant, run, source identity, prior state, new state, and canonical or holding references
+**And** prior transitions remain queryable rather than being overwritten in place
+
+**Given** a held row drains into a canonical target
+**When** the shared transition helper executes
+**Then** the canonical write, current-state update, event append, and holding-row cleanup commit atomically in one transaction
+**And** a failure in any step leaves the row in its previous consistent state
+
+**Given** historical batches already contain `canonical_record_lineage` and `unsupported_history_holding` rows
+**When** the migration and backfill run
+**Then** the new state model is populated without losing tenant, batch, or run provenance
+**And** ambiguous source-identity collisions fail loudly with actionable diagnostics instead of being silently merged
+
+**Given** operators or validation code need to know whether a row is currently held or resolved
+**When** they query the post-refactor system
+**Then** they use the new source-resolution state surface instead of `canonical_table='__holding__'`
+**And** no new sentinel `__holding__` lineage rows are written after cutover
+
 ---

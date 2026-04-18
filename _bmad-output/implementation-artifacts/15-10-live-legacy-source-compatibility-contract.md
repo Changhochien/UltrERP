@@ -27,6 +27,11 @@ So that dual-source staging uses a proven read-only connector and a stable row-s
   - [x] Record the approved connector choice and source contract in the dual-source staging spec or a linked implementation artifact.
   - [x] Document the operational guardrail that live-source credentials are environment-only and never persisted in planning artifacts.
 
+### Review Findings
+
+- [ ] [Review][Patch] Block runtime persistence for `legacy_db_password` so the settings API cannot store it in `app_settings` or the audit log [backend/domains/settings/service.py:122]
+- [ ] [Review][Patch] Redact real live-source row previews from the probe artifact before committing customer, product, and transaction data into repo history [_bmad-output/implementation-artifacts/15-10-live-legacy-source-compatibility-probe.md:56]
+
 ## Dev Notes
 
 - The current staging pipeline assumes file-backed discovery plus a legacy text-row parser in `backend/domains/legacy_import/staging.py`.

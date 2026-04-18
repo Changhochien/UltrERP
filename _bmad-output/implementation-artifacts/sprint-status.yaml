@@ -718,15 +718,15 @@ development_status:
         story_id: "15.1"
         title: "Raw Legacy Staging Import"
         story_file: "15-1-raw-legacy-staging-import.md"
-        validation: "Validated on 2026-04-05 via uv-managed Ruff and pytest (7 focused tests), Alembic upgrade head, live CLI staging of tbscust+tbsstock into raw_legacy, successful rerun of the same batch ID, and control-table verification that replacement semantics kept runs=1 and table_runs=2. Review (2026-04-18): 1 patch fixed (source_row_number nil→0 collision), 9 items deferred."
+        validation: "Validated on 2026-04-05 via uv-managed Ruff and pytest (7 focused tests), Alembic upgrade head, live CLI staging of tbscust+tbsstock into raw_legacy, successful rerun of the same batch ID, and control-table verification that replacement semantics kept runs=1 and table_runs=2. Review (2026-04-18): 1 patch applied (source_row_number nil→0 collision; row_identity=line_number fallback in holding UUID), test coverage added, merge conflict resolved; 8 items remain deferred (1 false positive ruled out via investigation, 7 pre-existing)."
         last_updated: "2026-04-18"
         prerequisites: []
       15-2-canonical-master-data-normalization:
-        status: "review"
+        status: "completed"
         story_id: "15.2"
         title: "Canonical Master Data Normalization"
         story_file: "15-2-canonical-master-data-normalization.md"
-        validation: "Validated on 2026-04-05 via uv-managed Ruff and pytest (21 focused tests), live CLI staging of tbscust+tbsstock+tbsstkhouse for batch normalize-probe-001, and successful normalize output into raw_legacy with parties=1022, products=6611, warehouses=1, inventory=6588. Validation also closed a shared parser defect so mixed quoted-string/unquoted-numeric legacy rows now import correctly."
+        validation: "Validated on 2026-04-18 with focused normalization/CLI coverage (`cd backend && uv run python -m pytest tests/domains/legacy_import/test_normalization.py tests/domains/legacy_import/test_cli.py -q`, `33 passed`) plus targeted Ruff on the touched normalization files (`All checks passed`). Original live validation from 2026-04-05 still stands: staging `tbscust`, `tbsstock`, and `tbsstkhouse` for batch `normalize-probe-001` normalized into `1022` parties, `6611` products, `1` warehouse, and `6588` inventory-prep rows, and the shared staging parser now accepts mixed quoted-string/unquoted-numeric legacy rows. Review follow-up now blocks cross-tenant batch stamping by requiring the latest staged batch metadata to match the requested tenant and rejects inventory-prep rows whose product codes are missing from the staged product set. One mixed-role `tbscust` regression gap remains deferred."
         prerequisites: ["15.1"]
       15-3-product-variant-mapping-workflow:
         status: "done"
@@ -778,19 +778,87 @@ development_status:
         validation: "Validated on 2026-04-18 with a live read-only probe against the PostgreSQL 8.2.23 source over Tailscale: `asyncpg 0.31.0` is approved when `LEGACY_DB_CLIENT_ENCODING=BIG5`, `server_encoding=SQL_ASCII`, `public` tables=`528`, and the required staging tables (`tbscust`, `tbsstock`, `tbsslipx`, `tbsslipdtx`, `tbsstkhouse`) all streamed successfully via metadata-driven `::text` projection. Focused validation passed with `cd backend && uv run pytest tests/domains/legacy_import tests/test_config.py tests/domains/settings/test_routes.py -q` (`125 passed`) plus targeted Ruff on the touched backend slice. The dual-source staging spec and linked probe artifact now record the approved connector contract without committed secrets. Full backend `uv run pytest -q` remains blocked by an existing duplicate `test_service.py` collection conflict between `tests/domains/intelligence/` and `tests/domains/product_analytics/`, and full backend `uv run ruff check` still reports many unrelated pre-existing violations outside the Story 15.10 files."
         prerequisites: ["15.1", "15.7"]
       15-11-dual-source-staging-architecture-refactor:
-        status: "todo"
+        status: "completed"
         story_id: "15.11"
         title: "Dual-Source Staging Architecture Refactor"
         story_file: "15-11-dual-source-staging-architecture-refactor.md"
-        validation: ""
+        validation: "Validated on 2026-04-18 with focused staging/CLI coverage (`cd backend && uv run python -m pytest tests/domains/legacy_import/test_staging.py tests/domains/legacy_import/test_cli.py -q`, `41 passed`) plus targeted Ruff on the touched legacy-import files (`All checks passed`). The refactor now routes file and live sources through shared source adapters plus `run_stage_import_from_source()`, persists non-secret source descriptors such as `legacy-db:cao50001/public`, preserves file-stage backward compatibility, and adds adapter-neutral rerun/failure plus live-adapter shared-loader coverage. Review follow-up also records failed attempts and closes the source adapter when discovery fails before staging begins. Broader regression also passed with `cd backend && uv run python -m pytest tests/domains/legacy_import -q` (`112 passed`)."
         prerequisites: ["15.1", "15.10"]
       15-12-live-legacy-db-stage-cli:
-        status: "todo"
+        status: "review"
         story_id: "15.12"
         title: "Live Legacy DB Stage CLI"
         story_file: "15-12-live-legacy-db-stage-cli.md"
-        validation: ""
+        validation: "Validated on 2026-04-18 with focused live-stage coverage (`cd backend && uv run pytest tests/domains/legacy_import/test_cli.py tests/domains/legacy_import/test_staging.py tests/test_legacy_import_skill.py -q`, `50 passed`) plus targeted Ruff on the Story 15.12 files (`All checks passed`), and a CLI help smoke check for `live-stage`. Review follow-up fixed deterministic live row ordering before `_source_row_number` assignment, aligned explicit `--table` scope with subset staging for both live and file discovery, and reclassified connect-time asyncpg server rejections as connection failures. The new command stages live `public` tables through the shared source adapter, preserves non-secret audit metadata, classifies connection/discovery/compatibility/load failures for operators, and documents the required `LEGACY_DB_*` settings in the legacy-import skill plus `.env.example`. Broader backend `uv run pytest -q` still fails on the pre-existing duplicate `test_service.py` collection conflict between `tests/domains/intelligence/` and `tests/domains/product_analytics/`, and repo-wide `uv run ruff check` still reports unrelated existing violations outside the Story 15.12 files."
         prerequisites: ["15.6", "15.10", "15.11"]
+      15-13-ac4-batch-rerun-idempotency:
+        status: "review"
+        story_id: "15.13"
+        title: "AC4 Batch Rerun Idempotency"
+        story_file: "15-13-ac4-batch-rerun-idempotency.md"
+        validation: "All 120 legacy_import tests pass, 2 reset_batch tests pass. AC1/AC2 verified by test_run_canonical_import_batch_rerun_is_idempotent_at_lineage_layer."
+        prerequisites: ["15.1"]
+      15-14-ac2-holding-lineage:
+        status: "ready-for-dev"
+        story_id: "15.14"
+        title: "AC2 Holding Path Lineage"
+        story_file: "15-14-ac2-holding-lineage.md"
+        validation: "none"
+        prerequisites: ["15.1", "15.4"]
+      15-15-legacy-refresh-orchestrator:
+        status: "review"
+        story_id: "15.15"
+        title: "Legacy Refresh Orchestrator"
+        story_file: "15-15-legacy-refresh-orchestrator.md"
+        validation: "Validated on 2026-04-18 with focused orchestrator coverage (`cd backend && uv run pytest tests/test_run_legacy_refresh.py -q`) plus targeted Ruff on the touched backend slice. The reviewed `run_legacy_refresh` entry point now reuses the live-stage, normalization, mapping, canonical import, validation, stock backfill, and reconciliation functions directly, writes stable per-run JSON summaries under `_bmad-output/operations/legacy-refresh/`, preserves partial-failure evidence, and keeps scheduling, promotion, and automatic correction application out of scope."
+        last_updated: "2026-04-18"
+        prerequisites: ["15.12"]
+      15-16-scheduled-shadow-refresh-and-batch-state-tracking:
+        status: "review"
+        story_id: "15.16"
+        title: "Scheduled Shadow Refresh And Batch State Tracking"
+        story_file: "15-16-scheduled-shadow-refresh-and-batch-state-tracking.md"
+        validation: "Validated on 2026-04-18 with targeted Ruff and focused scheduled-wrapper coverage (`cd backend && uv run ruff check scripts/run_scheduled_legacy_shadow_refresh.py tests/test_run_scheduled_legacy_shadow_refresh.py && uv run pytest tests/test_run_scheduled_legacy_shadow_refresh.py -q`, `8 passed`). The wrapper now generates immutable UTC batch ids, reuses `run_legacy_refresh()`, writes per-lane `latest-run.json` and `latest-success.json` under `_bmad-output/operations/legacy-refresh/state/`, blocks overlapping runs with `scheduler.lock`, preserves the prior durable success state on failed or overlap-blocked runs, and does not write promotion-side artifacts."
+        last_updated: "2026-04-18"
+        prerequisites: ["15.15"]
+      15-17-gated-automatic-promotion-to-the-working-lane:
+        status: "completed"
+        story_id: "15.17"
+        title: "Gated Automatic Promotion To The Working Lane"
+        story_file: "15-17-gated-automatic-promotion-to-the-working-lane.md"
+        validation: "Validated on 2026-04-18 with focused promotion and scheduler coverage plus targeted Ruff (`cd backend && uv run ruff check --fix scripts/run_scheduled_legacy_shadow_refresh.py scripts/run_legacy_promotion.py domains/legacy_import/promotion.py tests/domains/legacy_import/test_promotion.py tests/test_run_legacy_promotion.py && uv run pytest tests/test_run_scheduled_legacy_shadow_refresh.py tests/domains/legacy_import/test_promotion.py tests/test_run_legacy_promotion.py -q && uv run ruff check scripts/legacy_refresh_state.py scripts/run_scheduled_legacy_shadow_refresh.py scripts/run_legacy_promotion.py domains/legacy_import/promotion.py tests/test_run_scheduled_legacy_shadow_refresh.py tests/domains/legacy_import/test_promotion.py tests/test_run_legacy_promotion.py`), review-fix follow-up validation (`cd backend && /Users/hcchang/.local/bin/uv run pytest tests/domains/legacy_import/test_promotion.py tests/test_run_legacy_promotion.py -q && /Users/hcchang/.local/bin/uv run ruff check domains/legacy_import/promotion.py scripts/run_legacy_promotion.py tests/domains/legacy_import/test_promotion.py tests/test_run_legacy_promotion.py`), re-review hardening validation (`cd backend && /usr/bin/env -C /Volumes/2T_SSD_App/Projects/UltrERP/backend /Users/hcchang/.local/bin/uv run pytest tests/domains/legacy_import/test_promotion.py tests/test_run_legacy_promotion.py -q && /usr/bin/env -C /Volumes/2T_SSD_App/Projects/UltrERP/backend /Users/hcchang/.local/bin/uv run ruff check domains/legacy_import/promotion.py scripts/run_legacy_promotion.py tests/domains/legacy_import/test_promotion.py tests/test_run_legacy_promotion.py`), current-pointer corruption validation (`cd backend && /usr/bin/env -C /Volumes/2T_SSD_App/Projects/UltrERP/backend /Users/hcchang/.local/bin/uv run pytest tests/domains/legacy_import/test_promotion.py tests/test_run_legacy_promotion.py -q && /usr/bin/env -C /Volumes/2T_SSD_App/Projects/UltrERP/backend /Users/hcchang/.local/bin/uv run ruff check domains/legacy_import/promotion.py scripts/run_legacy_promotion.py scripts/legacy_refresh_state.py tests/domains/legacy_import/test_promotion.py tests/test_run_legacy_promotion.py`), concurrency-guard validation (`cd backend && /usr/bin/env -C /Volumes/2T_SSD_App/Projects/UltrERP/backend /Users/hcchang/.local/bin/uv run pytest tests/domains/legacy_import/test_promotion.py tests/test_run_legacy_promotion.py -q && /usr/bin/env -C /Volumes/2T_SSD_App/Projects/UltrERP/backend /Users/hcchang/.local/bin/uv run ruff check domains/legacy_import/promotion.py scripts/run_legacy_promotion.py scripts/legacy_refresh_state.py tests/domains/legacy_import/test_promotion.py tests/test_run_legacy_promotion.py`), stale-lock recovery validation (`/usr/bin/env -C /Volumes/2T_SSD_App/Projects/UltrERP/backend /Users/hcchang/.local/bin/uv run pytest tests/test_run_legacy_promotion.py tests/test_run_scheduled_legacy_shadow_refresh.py && /usr/bin/env -C /Volumes/2T_SSD_App/Projects/UltrERP/backend /Users/hcchang/.local/bin/uv run ruff check scripts/legacy_refresh_state.py scripts/run_legacy_promotion.py scripts/run_scheduled_legacy_shadow_refresh.py tests/test_run_legacy_promotion.py tests/test_run_scheduled_legacy_shadow_refresh.py`), and promoted-pointer CAS validation (`/usr/bin/env -C /Volumes/2T_SSD_App/Projects/UltrERP/backend /Users/hcchang/.local/bin/uv run pytest tests/test_run_legacy_promotion.py && /usr/bin/env -C /Volumes/2T_SSD_App/Projects/UltrERP/backend /Users/hcchang/.local/bin/uv run ruff check scripts/run_legacy_promotion.py tests/test_run_legacy_promotion.py`). The implementation now fail-closes malformed or incomplete summary/candidate gate payloads, validates lane identity before noop/promote, cleans up stale promoted artifacts on pointer-write failure, explicitly blocks malformed `latest-promoted.json`, re-evaluates refreshed candidates under the shared scheduler lock, reaps expired scheduler/promotion locks before either entry point wedges the lane, and blocks live promoted-pointer drift before promoted or noop finalization. Story 15.17 review follow-ups are closed."
+        last_updated: "2026-04-18"
+        prerequisites: ["15.15", "15.16"]
+      15-18-automated-promotion-gate-policy-and-approved-corrections:
+        status: "completed"
+        story_id: "15.18"
+        title: "Automated Promotion Gate Policy And Approved Corrections"
+        story_file: "15-18-automated-promotion-gate-policy-and-approved-corrections.md"
+        validation: "Validated on 2026-04-18 with focused policy, refresh, scheduler, and promotion coverage plus targeted Ruff (`/usr/bin/env -C /Volumes/2T_SSD_App/Projects/UltrERP/backend /Users/hcchang/.local/bin/uv run pytest tests/domains/legacy_import/test_promotion_policy.py tests/test_run_legacy_refresh.py tests/test_run_scheduled_legacy_shadow_refresh.py tests/test_run_legacy_promotion.py && /usr/bin/env -C /Volumes/2T_SSD_App/Projects/UltrERP/backend /Users/hcchang/.local/bin/uv run ruff check domains/legacy_import/promotion.py domains/legacy_import/promotion_policy.py scripts/run_legacy_refresh.py scripts/run_scheduled_legacy_shadow_refresh.py scripts/run_legacy_promotion.py tests/domains/legacy_import/test_promotion_policy.py tests/test_run_legacy_refresh.py tests/test_run_scheduled_legacy_shadow_refresh.py tests/test_run_legacy_promotion.py`), followed by review-fix validation (`cd /Volumes/2T_SSD_App/Projects/UltrERP/backend && /Users/hcchang/.local/bin/uv run pytest tests/domains/legacy_import/test_promotion_policy.py tests/test_run_legacy_refresh.py tests/test_run_scheduled_legacy_shadow_refresh.py tests/test_run_legacy_promotion.py -q && /Users/hcchang/.local/bin/uv run ruff check domains/legacy_import/promotion_policy.py scripts/run_legacy_promotion.py tests/domains/legacy_import/test_promotion_policy.py tests/test_run_legacy_promotion.py`). The repo now shares one promotion-policy classifier across refresh summaries, scheduler lane state, and promotion evaluation; preserves manual-only correction application; records audited exception overrides with durable `promotion-overrides/` artifacts when operators intentionally advance `exception-required` batches; keeps reconciliation-blocked batches blocked even when analyst review is also outstanding; rejects blank or reserved override actor identities; and removes override artifacts when a promoted result cannot commit successfully."
+        last_updated: "2026-04-18"
+        prerequisites: ["15.15", "15.16", "15.17"]
+      15-19-incremental-refresh-and-auto-promotion-watermark-contract:
+        status: "in-progress"
+        story_id: "15.19"
+        title: "Incremental Refresh And Auto-Promotion Watermark Contract"
+        story_file: "15-19-incremental-refresh-and-auto-promotion-watermark-contract.md"
+        validation: "none"
+        last_updated: "2026-04-18"
+        prerequisites: ["15.16", "15.17", "15.18"]
+      15-20-legacy-dump-and-manual-promotion-surface-retirement:
+        status: "ready-for-dev"
+        story_id: "15.20"
+        title: "Legacy Dump And Manual-Promotion Surface Retirement"
+        story_file: "15-20-legacy-dump-and-manual-promotion-surface-retirement.md"
+        validation: "none"
+        prerequisites: ["15.12", "15.15", "15.16", "15.17", "15.18"]
+      15-21-canonical-source-resolution-state-model-refactor:
+        status: "done"
+        story_id: "15.21"
+        title: "Canonical Source Resolution State Model Refactor"
+        story_file: "15-21-canonical-source-resolution-state-model-refactor.md"
+        validation: "Validated on 2026-04-18: explicit source-row state and event tables are implemented, canonical/AP writers no longer emit new __holding__ sentinel lineage rows, reset/validation/docs were updated to the new surface, and `uv run pytest tests/domains/legacy_import/test_source_resolution.py tests/domains/legacy_import/test_ap_payment_import.py tests/domains/legacy_import/test_canonical.py tests/domains/legacy_import/test_validation.py tests/test_reset_legacy_import_batch.py tests/test_source_row_resolution_migration.py` passed (55 passed)."
+        prerequisites: ["15.4", "15.5", "15.13", "15.14", "16.12"]
 
   # Epic 16 - Extended Legacy Import: Purchase Transactions and Payments
   epic-16:
@@ -985,18 +1053,25 @@ development_status:
       - "18.5 Forward Invoice Unit Cost Ambiguity Guard"
     stories:
       18-1-legacy-receiving-audit-trail-import:
-        status: "review"
+        status: "done"
         story_id: "18.1"
         title: "Legacy Receiving Audit Trail Import"
         story_file: "18-1-legacy-receiving-audit-trail-import.md"
-        validation: "Validated on 2026-04-12: focused pytest for `tests/domains/legacy_import/test_canonical.py` (`15 passed` after review fixes), the full `tests/domains/legacy_import` suite (`79 passed`), and targeted Ruff over `domains/legacy_import/canonical.py` plus `tests/domains/legacy_import/test_canonical.py` all passed. Full backend pytest remains blocked by unrelated MCP customer collection and other pre-existing non-legacy failures outside this story."
+        validation: "Validated on 2026-04-12: focused pytest for `tests/domains/legacy_import/test_canonical.py` (`15 passed` after review fixes), the full `tests/domains/legacy_import` suite (`79 passed`), and targeted Ruff over `domains/legacy_import/canonical.py` plus `tests/domains/legacy_import/test_canonical.py` all passed. 2026-04-18 BMAD review: deferred edge-case fixes applied (batch fallback day ValueError guard, holding UUID row_identity collision prevention). All 20 canonical tests pass. Ruff clean (E501 pre-existing)."
+        prerequisites: ["15.2", "15.4", "16.4"]
+      18-2-legacy-sales-adjustment-backfill:
+        status: "completed"
+        story_id: "18.2"
+        title: "Legacy Sales Adjustment Backfill"
+        story_file: "18-2-legacy-sales-adjustment-backfill.md"
+        validation: "Validated on 2026-04-18: focused legacy-import + backfill tests (126 passed), Ruff clean on all 8 story scripts. Reconciliation: 12,107 adjustment groups, 6,651 inventory groups, 2,913 flagged gaps (inherent legacy data quality residuals, not artifacts — correction proposal/apply pipeline is plan-only with operator approval gate per story design). AC6 gap tolerance is an operator decision, not an automation target."
         prerequisites: ["15.2", "15.4", "16.4"]
       18-3-purchase-price-mapping-and-margin-calculation:
-        status: "review"
+        status: "done"
         story_id: "18.3"
         title: "Purchase Price Mapping and Margin Calculation"
         story_file: "18-3-purchase-price-mapping-and-margin-calculation.md"
-        validation: "Validated on 2026-04-12: focused pytest for `tests/domains/dashboard/test_gross_margin.py`, `tests/domains/invoices/test_service.py`, `tests/domains/orders/test_order_confirmation.py`, and `tests/domains/inventory/test_supplier_orders.py` all passed on the targeted gross-margin/cost path; an additional focused pytest for `test_resolve_latest_unit_cost_uses_invoice_date_cutoff_and_priority` passed after review-driven fixes; frontend Vitest for `src/domain/dashboard/components/GrossMarginCard.test.tsx` and `src/domain/inventory/components/SupplierOrderForm.test.tsx` passed; Alembic upgraded the local DB from `a4d1c8e7b2f3` to `1c2d3e4f5a6b` and `alembic current` now reports `1c2d3e4f5a6b (head)`. Historical invoice-line backfill remains a separate follow-up task."
+        validation: "Validated on 2026-04-12 and revalidated 2026-04-18: focused pytest for `tests/domains/dashboard/test_gross_margin.py`, `tests/domains/invoices/test_service.py`, `tests/domains/orders/test_order_confirmation.py` (22 passed, 37 deselected), and `tests/domains/inventory/test_supplier_orders.py` (76 passed, 2 pre-existing failures unrelated to this story); frontend Vitest for `src/domain/dashboard/components/GrossMarginCard.test.tsx` (3 tests) and `src/domain/inventory/components/SupplierOrderForm.test.tsx` (1 test) passed. Review fixes applied: (1) `FakeAsyncSession` in `test_service.py` updated with `_FakeBegin` transaction context manager and `in_transaction()` method to support the new `create_invoice_in_transaction` guard added in commit 26c06e2; (2) `ProductCombobox` now forwards `aria-label` to its button for accessible combobox labelling; (3) `SupplierOrderForm.test.tsx` rewritten with proper ResizeObserver mock, top-level mock function references, and click-to-open combobox interaction pattern."
         prerequisites: []
       18-4-historical-invoice-unit-cost-backfill:
         status: "review"

@@ -1,6 +1,6 @@
 # Story 15.11: Dual-Source Staging Architecture Refactor
 
-Status: ready-for-dev
+Status: completed
 
 ## Story
 
@@ -17,15 +17,19 @@ So that both source modes preserve the same batch semantics, control-table behav
 
 ## Tasks / Subtasks
 
-- [ ] Task 1 (AC: 1, 2)
-  - [ ] Extract source-adapter interfaces and shared orchestration from `run_stage_import()`.
-  - [ ] Preserve the current file-based adapter behavior for manifest validation and selected-table filtering.
-- [ ] Task 2 (AC: 2, 3)
-  - [ ] Refactor shared stage result and source metadata types so they no longer depend on `source_dir` semantics alone.
-  - [ ] Ensure `legacy_import_runs.source_path` stores non-secret source descriptors that remain useful for validation and operator audits.
-- [ ] Task 3 (AC: 2, 4)
-  - [ ] Keep the existing raw-table loader semantics for `_batch_id`, `_source_row_number`, `_legacy_pk`, and table-level validation.
-  - [ ] Add regression tests for adapter-neutral rerun and failure handling.
+- [x] Task 1 (AC: 1, 2)
+  - [x] Extract source-adapter interfaces and shared orchestration from `run_stage_import()`.
+  - [x] Preserve the current file-based adapter behavior for manifest validation and selected-table filtering.
+- [x] Task 2 (AC: 2, 3)
+  - [x] Refactor shared stage result and source metadata types so they no longer depend on `source_dir` semantics alone.
+  - [x] Ensure `legacy_import_runs.source_path` stores non-secret source descriptors that remain useful for validation and operator audits.
+- [x] Task 3 (AC: 2, 4)
+  - [x] Keep the existing raw-table loader semantics for `_batch_id`, `_source_row_number`, `_legacy_pk`, and table-level validation.
+  - [x] Add regression tests for adapter-neutral rerun and failure handling.
+
+### Review Findings
+
+- [x] [Review][Patch] Record a failed stage attempt and close the source adapter when discovery fails before any table staging begins [backend/domains/legacy_import/staging.py:1410]
 
 ## Dev Notes
 
@@ -53,16 +57,42 @@ So that both source modes preserve the same batch semantics, control-table behav
 
 GPT-5.4
 
+### Implementation Plan
+
+- Extract a shared source-adapter boundary so file-backed staging and future live-db staging can both call the same orchestration path.
+- Move batch metadata to a source-agnostic descriptor so stage summaries and `legacy_import_runs.source_path` remain useful without assuming a permanent directory.
+- Lock the refactor with adapter-neutral rerun/failure tests plus a live-adapter integration test that exercises the shared raw loader semantics.
+
 ### Debug Log References
 
-- Planning-only story creation; no runtime logs yet.
+- Added `StageSourceDescriptor`, file/live source adapters, and the shared `run_stage_import_from_source()` orchestration in `backend/domains/legacy_import/staging.py`.
+- Verified backward-compatible CLI output for file staging and source-agnostic summary output in `backend/domains/legacy_import/cli.py` plus `backend/tests/domains/legacy_import/test_cli.py`.
+- Added adapter-neutral rerun/failure coverage and a focused live-adapter integration test in `backend/tests/domains/legacy_import/test_staging.py`.
+- Fixed the AP payment holding-row call sites to pass `row_identity`, which kept the full legacy-import regression slice green after the staging refactor validation run.
+- Focused validation passed with `cd backend && uv run python -m pytest tests/domains/legacy_import/test_staging.py tests/domains/legacy_import/test_cli.py -q` (`41 passed in 0.34s`) and `cd backend && uv run python -m ruff check domains/legacy_import/staging.py tests/domains/legacy_import/test_staging.py` (`All checks passed`).
+- Full legacy-import regression passed with `cd backend && uv run python -m pytest tests/domains/legacy_import -q` (`112 passed in 0.32s`).
 
 ### Completion Notes List
 
-- Story created to isolate the shared staging boundary before the live adapter and CLI are added.
+- Added a shared staging orchestration boundary that accepts pluggable source adapters while preserving existing file-based manifest validation, selected-table filtering, attempt numbering, rerun cleanup, and raw-table loading semantics.
+- Added a live legacy source adapter plus `run_live_stage_import()` as the durable implementation boundary for Story 15.12 without changing the existing `legacy-import stage` CLI contract.
+- Refactored `StageBatchResult` and control-table source metadata to use non-secret source descriptors such as `legacy-db:cao50001/public` instead of assuming a filesystem-only `source_dir`.
+- Added regression coverage for adapter-neutral reruns, failure persistence, source-agnostic stage summaries, and the live-adapter shared-loader path.
+- Fixed adjacent legacy-import validation blockers so the full `tests/domains/legacy_import` slice now passes cleanly.
+- Review follow-up now records failed attempts even when source discovery fails before table staging starts, and guarantees the source adapter closes on that path.
 
 ### File List
 
-- `_bmad-output/planning-artifacts/epic-15.md`
+- `backend/domains/legacy_import/staging.py`
+- `backend/domains/legacy_import/cli.py`
+- `backend/domains/legacy_import/ap_payment_import.py`
+- `backend/tests/domains/legacy_import/test_staging.py`
+- `backend/tests/domains/legacy_import/test_cli.py`
+- `backend/tests/domains/legacy_import/test_currency.py`
 - `_bmad-output/implementation-artifacts/15-11-dual-source-staging-architecture-refactor.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 
+### Change Log
+
+- 2026-04-18: Refactored legacy staging around shared source adapters and source-agnostic batch descriptors while preserving the file-stage CLI behavior.
+- 2026-04-18: Added adapter-neutral and live-adapter staging regressions, then fixed adjacent legacy-import test blockers so the full legacy-import suite passes.

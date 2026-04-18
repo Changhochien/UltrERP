@@ -195,3 +195,4 @@ Some `dtslipdate` values may be `1900-01-01` (the PostgreSQL NULL sentinel used 
 
 - 2026-04-12: Added legacy receiving audit import with deterministic stock-adjustment upserts, sentinel-date fallback, lineage recording, and focused regression coverage.
 - 2026-04-12: Addressed BMAD code-review findings by filtering to purchase-invoice rows, making replay immutable, and adding stronger replay/query tests.
+- 2026-04-18: Fixed deferred edge-case findings from BMAD review: (1) `_derive_legacy_receiving_batch_fallback_day` now wraps `_as_legacy_date` in try/except to handle malformed date strings without crashing; (2) `_upsert_holding_row` now includes `row_identity` in the holding UUID derivation to prevent distinct blank-doc rows from colliding on replay.

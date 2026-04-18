@@ -1,6 +1,6 @@
 # Story 18.3: Purchase Price Mapping and Margin Calculation
 
-Status: review
+Status: done
 
 ## Story
 

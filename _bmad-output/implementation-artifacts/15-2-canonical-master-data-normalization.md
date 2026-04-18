@@ -1,6 +1,6 @@
 # Story 15.2: Canonical Master Data Normalization
 
-Status: review
+Status: completed
 
 ## Story
 
@@ -59,6 +59,11 @@ So that downstream loads use consistent customer, supplier, product, and warehou
   - [x] Add tests for combined customer/supplier records in `tbscust`
   - [x] Add tests proving normalized outputs keep batch lineage and deterministic identifiers
 
+### Review Findings
+
+- [x] [Review][Patch] Reject normalization when the latest staged batch metadata belongs to a different tenant than the requested `--tenant-id` [backend/domains/legacy_import/normalization.py:723]
+- [x] [Review][Patch] Reject inventory-prep rows whose `tbsstkhouse.product_code` is missing from the staged product set instead of writing orphan normalized inventory rows [backend/domains/legacy_import/normalization.py:898]
+
 ## Dev Notes
 
 ### Repo Reality
@@ -114,6 +119,7 @@ GitHub Copilot (GPT-5.4)
 - BMAD review follow-up added focused regression coverage for customer-role normalization, tenant-scoped normalized-table DDL, transactional rerun behavior, no-clear-on-missing-stage behavior, and comma-bearing legacy staging rows.
 - Review evidence on warehouse granularity: the current `tbsstkhouse` extract has `6588` rows, `6588` unique product codes, `0` repeated product rows, and an empty third field on every sampled/exported row, so richer warehouse derivation remains blocked on a trustworthy warehouse-identity source rather than on the normalization logic alone.
 - Focused backend validation after the review fixes: `.venv/bin/pytest tests/domains/legacy_import` -> `26 passed`.
+- 2026-04-18 review follow-up now requires the latest staged batch metadata to match the requested tenant before normalization begins, rejects inventory-prep rows that reference products missing from the staged product set, and passes focused validation with `cd backend && uv run python -m pytest tests/domains/legacy_import/test_normalization.py tests/domains/legacy_import/test_cli.py -q` (`33 passed in 0.36s`) plus `cd backend && uv run python -m ruff check domains/legacy_import/normalization.py tests/domains/legacy_import/test_normalization.py` (`All checks passed`).
 
 ### File List
 

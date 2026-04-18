@@ -1,6 +1,6 @@
 # Story 15.1: Raw Legacy Staging Import
 
-Status: review
+Status: done
 
 ## Story
 
@@ -136,8 +136,8 @@ GitHub Copilot (GPT-5.4)
 
 ### Review Findings
 
-- [ ] [Review][Patch] source_row_number nil → 0 collision on blank doc_number [backend/domains/legacy_import/canonical.py:1484] — fixed: used `row_identity = source_row_number or line_number`
-- [x] [Review][Defer] Date parsing loses day second digit for 8-digit all-digit dates [backend/domains/legacy_import/normalization.py:216-217] — deferred, outside this diff's scope
+- [x] [Review][Patch] source_row_number nil → 0 collision on blank doc_number [backend/domains/legacy_import/canonical.py:1484] — fixed: `row_identity = source_row_number or line_number`; notes updated to `row_id=N` for traceability; test coverage added
+- [x] [Review][Defer] Date parsing loses day second digit for 8-digit all-digit dates [backend/domains/legacy_import/normalization.py:216-217] — ruled out as false positive; investigation confirmed 8-digit path uses `raw[4:6]` correctly for day; slice `raw[5:7]` only appears in 10-digit branch and is correct there
 - [x] [Review][Defer] Silent fallback swallowing ValueError with no counter/metric — deferred, pre-existing
 - [x] [Review][Defer] Holding rows have no visible drain/recovery path — deferred, pre-existing design concern
 - [x] [Review][Defer] "tbsslipdtj" hardcoded literal is opaque — deferred, pre-existing
@@ -152,3 +152,4 @@ GitHub Copilot (GPT-5.4)
 - 2026-04-05: Implemented Story 15.1 raw legacy staging foundation with CLI entry point, control tables, COPY-based staging, focused tests, and live rerun validation.
 - 2026-04-05: Completed BMAD review follow-up for Story 15.1 by hardening CLI UUID validation, deduplicating repeated table selections, tightening downgrade safety, and documenting remaining redesign-level risks.
 - 2026-04-05: Completed the long-term redesign for Story 15.1 by moving COPY staging into the `AsyncSession` transaction, versioning rerun attempts, and preserving prior committed state on failed replacements.
+- 2026-04-18: Post-review investigation: ruled out date parsing bug as false positive (confirmed correct slices in both 8-digit and 10-digit paths); added test `test_run_canonical_import_receiving_audit_routes_blank_doc_number_to_holding` confirming `row_identity = line_number` fallback prevents UUID collision; resolved merge conflict in `common/models/__init__.py`.

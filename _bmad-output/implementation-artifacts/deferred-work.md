@@ -12,7 +12,7 @@
 - **"tbsslipdtj" hardcoded literal is opaque** [canonical.py:1493] — Fourth argument to `_upsert_holding_row` is hardcoded as `"tbsslipdtj"`. Unclear if this is a table name, batch type, or external identifier. Pre-existing — not introduced by this diff.
 - **No per-row error isolation for holding upsert** [canonical.py] — If `_upsert_holding_row` throws, the exception propagates and the `for line in lines` loop terminates. Pre-existing.
 - **receipt_date→invoice_date fallback not flagged as data issue** [canonical.py] — Rows with sentinel/missing `receipt_date` are common in legacy systems and often indicate incomplete data. Warning log is insufficient for audit trails. Pre-existing.
-- **No test coverage changes for blank-doc_number routing** [canonical.py] — Behavioral change routing blank-doc_number rows to holding has no test modifications. Test file not in diff scope.
+- ~~**No test coverage changes for blank-doc_number routing**~~ — FIXED (2026-04-18): Added `test_run_canonical_import_receiving_audit_routes_blank_doc_number_to_holding` in `test_canonical.py`.
 - **AC4 batch rerun idempotency not addressed by this fix** — The diff prevents UUID collisions but does not address the broader AC4 requirement that "a stage rerun alone cannot create duplicate canonical records" at the batch level. Scope question for later story.
 - **AC2 lineage only captured in holding path, not main staging** — The diff adds `source_row_number` capture in the holding path. Main staging path lineage is existing code and not modified here.
 
@@ -39,3 +39,16 @@
 ## Deferred from: code review of 12-5-print-preview-performance.md (2026-04-17)
 
 - **Target-hardware sub-1-second proof is still a manual operator validation step rather than a recorded repo artifact** [`docs/superpowers/specs/2026-04-04-print-preview-performance.md:24`]: the runbook exists, but the repo still does not contain a recorded hardware profile plus measured durations proving the AC1 budget on target hardware.
+
+## Deferred from: code review of 15-2-canonical-master-data-normalization.md (2026-04-18)
+
+- **Mixed-role `tbscust` regression coverage is still missing** [`backend/tests/domains/legacy_import/test_normalization.py`]: Story 15.2 marks combined customer/supplier coverage complete, but the current suite still does not exercise a shared-party scenario that proves supplier semantics survive a customer-centric target model.
+
+## Deferred from: code review of 15-18-automated-promotion-gate-policy-and-approved-corrections.md (2026-04-18)
+
+- **Stale-lock recovery can unlock an active long-running refresh** [backend/scripts/legacy_refresh_state.py:16] — `recover_stale_lock()` deletes `scheduler.lock` after a fixed six-hour TTL with no heartbeat renewal, and promotion calls it before evaluation. Real issue, but the stale-lock model predates Story 15.18 and needs a broader lane-lifecycle decision.
+- **Two backfill failures can leave the refresh step ledger inconsistent** [backend/scripts/run_legacy_refresh.py:660] — when both backfill coroutines fail, only the first failed step is finalized and the second can remain `running` in the persisted summary. Real issue, but it lives in the earlier Story 15.15 orchestration path.
+- **Scheduled refresh publication of latest-run and latest-success is non-atomic** [backend/scripts/run_scheduled_legacy_shadow_refresh.py:344] — a write failure between the two state files can expose a newer successful `latest-run` while leaving `latest-success` stale. Real issue, but it belongs to the Story 15.16 state-publication contract.
+- **Second-level scheduled batch ids can collide for rapid successive runs** [backend/scripts/run_scheduled_legacy_shadow_refresh.py:92] — `build_shadow_batch_id()` only encodes seconds, so two quick sequential invocations can reuse the same batch id. Real issue, but it predates Story 15.18 and should be addressed with the scheduler contract.
+- **Promotion trusts unvalidated summary paths from latest-success state** [backend/scripts/run_legacy_promotion.py:651] — the promotion runner loads whatever `summary_path` is stored in lane state without constraining it to the approved summary root. Real issue, but the trust boundary is inherited from Story 15.17’s promotion state model.
+- **Approved review imports allow whitespace-only reviewer identities** [backend/scripts/run_legacy_refresh.py:382] — `approved_by` is only checked for truthiness, so blank-but-whitespace reviewer identities pass through. Real issue, but it belongs to the pre-existing Story 15.15 review-import contract.
