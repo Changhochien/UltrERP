@@ -54,6 +54,7 @@ async def test_list_reorder_suggestions_returns_items(monkeypatch) -> None:
             [
                 {
                     "product_id": uuid.uuid4(),
+                    "product_code": "RTC-001",
                     "product_name": "Rotor",
                     "warehouse_id": requested_warehouse_id,
                     "warehouse_name": "Main Warehouse",
@@ -120,6 +121,7 @@ async def test_create_reorder_suggestion_orders_returns_created_and_unresolved_r
             "unresolved_rows": [
                 {
                     "product_id": product_id,
+                    "product_code": "VLV-001",
                     "product_name": "Valve",
                     "warehouse_id": warehouse_id,
                     "warehouse_name": "Main Warehouse",
