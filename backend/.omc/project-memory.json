@@ -141,9 +141,15 @@
       "type": "directory"
     },
     {
+      "path": "domains/inventory/services.py",
+      "accessCount": 35,
+      "lastAccessed": 1776518266162,
+      "type": "directory"
+    },
+    {
       "path": "",
-      "accessCount": 27,
-      "lastAccessed": 1776041445197,
+      "accessCount": 34,
+      "lastAccessed": 1776517270623,
       "type": "directory"
     },
     {
@@ -154,8 +160,8 @@
     },
     {
       "path": "app/main.py",
-      "accessCount": 19,
-      "lastAccessed": 1775752338578,
+      "accessCount": 25,
+      "lastAccessed": 1776517309225,
       "type": "directory"
     },
     {
@@ -165,15 +171,15 @@
       "type": "file"
     },
     {
-      "path": "domains/inventory/services.py",
-      "accessCount": 13,
-      "lastAccessed": 1775965059823,
-      "type": "directory"
-    },
-    {
       "path": "common/time.py",
       "accessCount": 10,
       "lastAccessed": 1775806664189,
+      "type": "file"
+    },
+    {
+      "path": "domains/inventory/routes.py",
+      "accessCount": 9,
+      "lastAccessed": 1776518266248,
       "type": "file"
     },
     {
@@ -189,6 +195,12 @@
       "type": "file"
     },
     {
+      "path": "domains/inventory/schemas.py",
+      "accessCount": 7,
+      "lastAccessed": 1776518250423,
+      "type": "file"
+    },
+    {
       "path": "domains/auth/routes.py",
       "accessCount": 6,
       "lastAccessed": 1775749986985,
@@ -201,10 +213,10 @@
       "type": "file"
     },
     {
-      "path": "domains/inventory/routes.py",
-      "accessCount": 4,
-      "lastAccessed": 1775718613566,
-      "type": "file"
+      "path": "common/models",
+      "accessCount": 5,
+      "lastAccessed": 1776518245759,
+      "type": "directory"
     },
     {
       "path": "domains/users",
@@ -216,6 +228,36 @@
       "path": "compute_rop_sql.py",
       "accessCount": 4,
       "lastAccessed": 1775890006210,
+      "type": "file"
+    },
+    {
+      "path": "domains/inventory",
+      "accessCount": 4,
+      "lastAccessed": 1776506351222,
+      "type": "directory"
+    },
+    {
+      "path": "common",
+      "accessCount": 4,
+      "lastAccessed": 1776506615601,
+      "type": "directory"
+    },
+    {
+      "path": "common/config.py",
+      "accessCount": 4,
+      "lastAccessed": 1776506694150,
+      "type": "file"
+    },
+    {
+      "path": "app",
+      "accessCount": 4,
+      "lastAccessed": 1776517280972,
+      "type": "directory"
+    },
+    {
+      "path": "common/database.py",
+      "accessCount": 4,
+      "lastAccessed": 1776517285246,
       "type": "file"
     },
     {
@@ -231,21 +273,9 @@
       "type": "file"
     },
     {
-      "path": "common",
-      "accessCount": 3,
-      "lastAccessed": 1776041217234,
-      "type": "directory"
-    },
-    {
       "path": "domains",
       "accessCount": 2,
       "lastAccessed": 1775660499991,
-      "type": "directory"
-    },
-    {
-      "path": "domains/inventory",
-      "accessCount": 2,
-      "lastAccessed": 1775674150012,
       "type": "directory"
     },
     {
@@ -261,12 +291,6 @@
       "type": "directory"
     },
     {
-      "path": "common/models",
-      "accessCount": 2,
-      "lastAccessed": 1775750015903,
-      "type": "directory"
-    },
-    {
       "path": "domains/settings/seed.py",
       "accessCount": 2,
       "lastAccessed": 1775751162815,
@@ -279,12 +303,6 @@
       "type": "directory"
     },
     {
-      "path": "common/config.py",
-      "accessCount": 2,
-      "lastAccessed": 1775752275831,
-      "type": "file"
-    },
-    {
       "path": "domains/legacy_import/cli.py",
       "accessCount": 2,
       "lastAccessed": 1775869362745,
@@ -295,12 +313,6 @@
       "accessCount": 2,
       "lastAccessed": 1775869475604,
       "type": "file"
-    },
-    {
-      "path": "app",
-      "accessCount": 2,
-      "lastAccessed": 1775893160964,
-      "type": "directory"
     },
     {
       "path": "domains/invoices/models.py",
@@ -366,18 +378,6 @@
       "path": "tests/domains/inventory/test_reorder_alerts.py",
       "accessCount": 1,
       "lastAccessed": 1775714110893,
-      "type": "file"
-    },
-    {
-      "path": "domains/inventory/schemas.py",
-      "accessCount": 1,
-      "lastAccessed": 1775718600373,
-      "type": "file"
-    },
-    {
-      "path": "common/database.py",
-      "accessCount": 1,
-      "lastAccessed": 1775718703032,
       "type": "file"
     },
     {
