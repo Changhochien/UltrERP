@@ -374,7 +374,7 @@ describe("InvoiceDetail", () => {
 		const previewButton = await screen.findByRole("button", { name: "Preparing Preview…" });
 		expect(previewButton).toHaveProperty("disabled", true);
 
-		resolveCustomer?.(jsonResponse(customerResponse));
+		if (resolveCustomer) (resolveCustomer as (value: Response) => void)(jsonResponse(customerResponse));
 
 		await waitFor(() => {
 			expect(previewButton).not.toHaveProperty("disabled", true);

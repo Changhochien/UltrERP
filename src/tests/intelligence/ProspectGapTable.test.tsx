@@ -194,6 +194,8 @@ describe("ProspectGapTable", () => {
       existing_buyers_count: 2,
       prospects_count: 0,
       prospects: [],
+      available_categories: [],
+      generated_at: "2026-04-14T03:30:00Z",
     });
 
     render(<ProspectGapTable />);

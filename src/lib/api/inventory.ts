@@ -794,7 +794,7 @@ function normalizeInventoryFieldErrors(detail: unknown): InventoryFieldError[] {
   return detail.map((item) => {
     const field =
       item && typeof item === "object" && Array.isArray((item as { loc?: unknown }).loc)
-        ? String(((item as { loc: unknown[] }).loc.at(-1) ?? ""))
+        ? String(((item as { loc: unknown[] }).loc as unknown[]).at(-1) ?? "")
         : "";
     const message =
       item && typeof item === "object" && typeof (item as { msg?: unknown }).msg === "string"

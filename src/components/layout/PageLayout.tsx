@@ -37,7 +37,7 @@ interface SectionCardProps {
   actions?: ReactNode;
   className?: string;
   contentClassName?: string;
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 export function SectionCard({ title, description, actions, className, contentClassName, children }: SectionCardProps) {
