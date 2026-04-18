@@ -72,8 +72,8 @@ At minimum, report these JSON-backed fields:
 Use this checklist to prove the skill documentation matches the reviewed CLI surface:
 
 1. Confirm discovery packaging:
-   - Skill path is `.agents/skills/legacy-import/`
-   - Directory name matches frontmatter `name: legacy-import`
+   - Skill path is `.agents/skills/ultr-erp-dump-import/`
+   - Directory name matches frontmatter `name: ultr-erp-dump-import`
 2. Confirm CLI help path works:
 
 ```bash

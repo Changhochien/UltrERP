@@ -1,5 +1,5 @@
 ---
-name: UltrERP-ops
+name: ultr-erp-ops
 description: Use when the operator says "/UltrERP-ops", "check ERP health", "is the ERP running", "check database connectivity", "check tables", "check alembic", "check users", "seed settings", "create admin user", or "run full setup on an existing ERP". This skill is for ongoing operator tasks on an already-bootstrapped ERP. For first-time setup, use /UltrERP-init instead. For migration management, use /UltrERP-migrate.
 argument-hint: "[check-db|check-alembic|check-tables|check-users|check-health|seed-settings|create-admin|full-setup]"
 ---

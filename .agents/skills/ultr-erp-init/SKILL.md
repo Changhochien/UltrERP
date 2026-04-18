@@ -1,5 +1,5 @@
 ---
-name: UltrERP-init
+name: ultr-erp-init
 description: Use when the operator says "/UltrERP-init", "init the ERP", "bootstrap the ERP", "first time setup", "fresh install", or "set up from scratch". This skill bootstraps a freshly cloned UltrERP repo — installing dependencies, creating the database, generating the schema, and creating the first admin user. For ongoing operator tasks after init, use /UltrERP-ops. For migration management, use /UltrERP-migrate. For legacy data import, use /legacy-import.
 argument-hint: "[check|prereqs|install|init-db|generate-migrations|full] [--env <path>]"
 ---

@@ -1,7 +1,6 @@
 ---
-name: UltrERP-dump-import
+name: ultr-erp-dump-import
 description: Use when asked to "/UltrERP-dump-import", "import a dump", "dump import", "import legacy data", "extract a SQL dump", "run legacy import", "stage legacy data", "normalize legacy data", "map products", "canonical import", or "validate a legacy import batch". This skill guides the UltrERP dump-import workflow through the stable backend CLI — extract, stage, normalize, map, canonical-import, and validate.
-argument-hint: "[phase] --batch-id <batch-id> [--schema raw_legacy] [--tenant-id <uuid>]"
 argument-hint: "[phase] --batch-id <batch-id> [--schema raw_legacy] [--tenant-id <uuid>]"
 ---
 
@@ -23,14 +22,6 @@ Use these operating rules:
 10. If `validate-import` reports that no canonical import run exists for the batch, stop and explain that validation only works after a completed `canonical-import` attempt for that same batch.
 11. `extract` is the only phase that reads a raw SQL dump and writes files. It is idempotent — re-running overwrites the output directory. It is also the only phase that has no database dependency.
 
-Suggested execution flow:
-
-1. Read the requested phase in [the command map](./command-map.md). `extract` (phase 0) is the entry point when starting from a raw SQL dump; `stage` (phase 1) is the entry point when CSV files already exist.
-2. If the operator needs syntax or available flags, run the corresponding `--help` command first.
-3. If the phase writes data or files, apply the confirmation checklist from [the safety and validation guide](./safety-and-validation.md).
-4. Run the reviewed CLI command.
-5. If validation was requested, open the JSON artifact and summarize blockers, replay metadata, and stage discrepancies from the artifact itself.
-
 ### Smart defaults for `extract`
 
 When the operator provides a SQL dump path, auto-derive parameters without asking:
@@ -44,5 +35,13 @@ When the operator provides a SQL dump path, auto-derive parameters without askin
 | `--tenant-id` | `00000000-0000-0000-0000-000000000001` (DEFAULT_TENANT_ID) |
 
 Only stop and ask if the operator wants to override a derived value.
+
+### Suggested execution flow
+
+1. Read the requested phase in [the command map](./command-map.md). `extract` (phase 0) is the entry point when starting from a raw SQL dump; `stage` (phase 1) is the entry point when CSV files already exist.
+2. If the operator needs syntax or available flags, run the corresponding `--help` command first.
+3. If the phase writes data or files, apply the confirmation checklist from [the safety and validation guide](./safety-and-validation.md).
+4. Run the reviewed CLI command.
+5. If validation was requested, open the JSON artifact and summarize blockers, replay metadata, and stage discrepancies from the artifact itself.
 
 Use this skill for legacy-import workflow guidance only. Do not use it for unrelated ERP tasks, generic data migration advice, or non-CLI import implementations.

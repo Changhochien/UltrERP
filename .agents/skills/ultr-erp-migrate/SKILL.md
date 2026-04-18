@@ -1,5 +1,5 @@
 ---
-name: UltrERP-migrate
+name: ultr-erp-migrate
 description: Use when the operator says "/UltrERP-migrate", "check alembic", "check migrations", "run migrations", "resolve migration heads", "upgrade migrations", "downgrade migrations", "stamp alembic", or "show alembic history". This skill manages Alembic migration lifecycle — checking state, upgrading, downgrading, resolving conflicts, and stamping. For first-time setup, use /UltrERP-init. For ongoing ERP operations, use /UltrERP-ops.
 argument-hint: "[check|history|heads|branches|upgrade|downgrade|stamp|resolve-heads] [--revision <rev>]"
 ---
