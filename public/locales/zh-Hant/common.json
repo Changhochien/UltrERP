@@ -1315,6 +1315,7 @@
         "inTransit": "途上量",
         "reserved": "保留 / 欠單",
         "currentRop": "目前 ROP（單位）",
+        "delta": "差異（單位）",
         "targetOverride": "目標覆寫值",
         "computedRop": "計算後 ROP（單位）",
         "avgDailyUsage": "平均日用量（單位/日）",

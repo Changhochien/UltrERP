@@ -6,9 +6,17 @@ import { SlidersHorizontal, CheckCircle2, AlertCircle, Info } from "lucide-react
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { SectionCard } from "@/components/layout/PageLayout";
 import { DataTable, DataTableToolbar } from "@/components/layout/DataTable";
 import { useTranslation } from "react-i18next";
+import { SettingsTab } from "./SettingsTab";
 import { useReorderPointAdmin } from "../hooks/useReorderPointAdmin";
 import { useWarehouses } from "../hooks/useWarehouses";
 import type { ReorderPointPreviewRow } from "../types";
@@ -52,6 +60,44 @@ function num(value: number | null | undefined, fallback = "—"): string {
   return value.toFixed(1);
 }
 
+function deltaNum(current: number | null | undefined, next: number | null | undefined): string {
+  if (current == null || next == null) {
+    return "—";
+  }
+
+  const delta = next - current;
+  const prefix = delta > 0 ? "+" : "";
+  return `${prefix}${delta.toFixed(1)}`;
+}
+
+function buildQualityNote(
+  row: ReorderPointPreviewRow,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  if (row.quality_note) {
+    return row.quality_note;
+  }
+
+  if (row.lead_time_confidence && row.lead_time_sample_count != null) {
+    return t("qualityMessage.lowConfidenceHistory", {
+      count: row.lead_time_sample_count,
+      confidence: t(`leadTimeConfidence.${row.lead_time_confidence}`, {
+        defaultValue: row.lead_time_confidence,
+      }).toLowerCase(),
+    });
+  }
+
+  if (row.lead_time_source === "supplier_default") {
+    return t("qualityMessage.supplierDefault");
+  }
+
+  if (row.lead_time_source === "fallback_7d") {
+    return t("qualityMessage.leadTimeMissing");
+  }
+
+  return "—";
+}
+
 interface CandidateRow extends ReorderPointPreviewRow {
   _checked: boolean;
 }
@@ -63,6 +109,7 @@ function ReorderPointAdmin() {
   const [warehouseId, setWarehouseId] = useState("");
   const [activeTab, setActiveTab] = useState<"candidates" | "skipped">("candidates");
   const [candidateRows, setCandidateRows] = useState<CandidateRow[]>([]);
+  const [settingsRow, setSettingsRow] = useState<ReorderPointPreviewRow | null>(null);
 
   const { warehouses } = useWarehouses();
   const {
@@ -132,6 +179,25 @@ function ReorderPointAdmin() {
     setCandidateRows([]);
   }, [applyReorderPoints, selectedStockIds, safetyFactor, lookbackDays, warehouseId]);
 
+  const handleSettingsSaved = useCallback(async () => {
+    setSettingsRow(null);
+    await handlePreview();
+  }, [handlePreview]);
+
+  const renderLeadTimeConfidence = useCallback((row: ReorderPointPreviewRow) => {
+    if (!row.lead_time_confidence) {
+      return "—";
+    }
+
+    return (
+      <Badge variant="outline" className="normal-case tracking-normal">
+        {t(`leadTimeConfidence.${row.lead_time_confidence}`, {
+          defaultValue: row.lead_time_confidence,
+        })}
+      </Badge>
+    );
+  }, [t]);
+
   const candidateColumns = [
     {
       id: "checkbox",
@@ -187,6 +253,18 @@ function ReorderPointAdmin() {
         ) : (
           "—"
         ),
+    },
+    {
+      id: "delta",
+      header: t("col.delta"),
+      cell: (row: CandidateRow) => {
+        const value = deltaNum(row.current_reorder_point, row.computed_reorder_point);
+        if (value === "—") {
+          return value;
+        }
+
+        return <span className="font-mono text-sm tabular-nums">{value}</span>;
+      },
     },
     {
       id: "avg_daily_usage",
@@ -260,14 +338,30 @@ function ReorderPointAdmin() {
       ),
     },
     {
+      id: "lead_time_confidence",
+      header: t("col.ltConfidence"),
+      cell: (row: CandidateRow) => renderLeadTimeConfidence(row),
+    },
+    {
       id: "quality_note",
       header: t("col.qualityNote"),
-      cell: (row: CandidateRow) =>
-        row.quality_note ? (
-          <span className="text-xs text-muted-foreground">{row.quality_note}</span>
-        ) : (
-          "—"
-        ),
+      cell: (row: CandidateRow) => (
+        <span className="text-xs text-muted-foreground">{buildQualityNote(row, t)}</span>
+      ),
+    },
+    {
+      id: "actions",
+      header: t("col.actions"),
+      cell: (row: CandidateRow) => (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setSettingsRow(row)}
+        >
+          {t("openSettings")}
+        </Button>
+      ),
     },
   ];
 
@@ -295,7 +389,7 @@ function ReorderPointAdmin() {
       cell: (row: ReorderPointPreviewRow) =>
         row.skip_reason ? (
           <Badge variant="outline" className="normal-case tracking-normal text-muted-foreground">
-            {row.skip_reason}
+            {t(`skipReasonLabel.${row.skip_reason}`, { defaultValue: row.skip_reason })}
           </Badge>
         ) : (
           "—"
@@ -310,6 +404,20 @@ function ReorderPointAdmin() {
         ) : (
           "—"
         ),
+    },
+    {
+      id: "actions",
+      header: t("col.actions"),
+      cell: (row: ReorderPointPreviewRow) => (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setSettingsRow(row)}
+        >
+          {t("openSettings")}
+        </Button>
+      ),
     },
   ];
 
@@ -527,6 +635,30 @@ function ReorderPointAdmin() {
           </p>
         </div>
       )}
+
+      <Dialog open={settingsRow !== null} onOpenChange={(open) => { if (!open) setSettingsRow(null); }}>
+        <DialogContent aria-label={t("settingsInlineTitle")} className="sm:max-w-5xl">
+          {settingsRow ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>{t("settingsInlineTitle")}</DialogTitle>
+                <DialogDescription>
+                  {t("settingsInlineHint", {
+                    product: settingsRow.product_name,
+                    warehouse: settingsRow.warehouse_name,
+                  })}
+                </DialogDescription>
+              </DialogHeader>
+
+              <SettingsTab
+                productId={settingsRow.product_id}
+                warehouseFilterId={settingsRow.warehouse_id}
+                onSaveSuccess={handleSettingsSaved}
+              />
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </SectionCard>
   );
 }

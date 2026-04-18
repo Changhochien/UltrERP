@@ -1318,6 +1318,7 @@
         "inTransit": "In Transit",
         "reserved": "Reserved / Backorder",
         "currentRop": "Current ROP (units)",
+        "delta": "Difference (units)",
         "targetOverride": "Target Override",
         "computedRop": "Computed ROP (units)",
         "avgDailyUsage": "Avg Daily Usage (units/day)",
