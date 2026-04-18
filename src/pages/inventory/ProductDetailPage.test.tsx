@@ -93,6 +93,9 @@ vi.mock("@/domain/inventory/hooks/useProductDetail", () => ({
 
 vi.mock("@/lib/api/inventory", () => ({
   setProductStatus: (...args: unknown[]) => mocks.setProductStatus(...args),
+  listProductSuppliers: vi.fn().mockResolvedValue({ ok: true, data: { items: [], total: 0 } }),
+  fetchSuppliers: vi.fn().mockResolvedValue({ ok: true, data: { items: [], total: 0 } }),
+  fetchSupplier: vi.fn().mockResolvedValue({ ok: true, data: null }),
 }));
 
 vi.mock("@/domain/inventory/components/EditProductForm", () => ({
@@ -161,6 +164,16 @@ vi.mock("@/domain/inventory/hooks/useProductAuditLog", () => ({
   })),
 }));
 
+vi.mock("@/domain/inventory/hooks/useSuppliers", () => ({
+  useSuppliers: vi.fn(() => ({
+    suppliers: [],
+    total: 0,
+    loading: false,
+    error: null,
+    reload: vi.fn(),
+  })),
+}));
+
 vi.mock("@/domain/inventory/components/StockTrendChart", () => ({
   StockTrendChart: () => <div>stock-trend-chart</div>,
 }));
@@ -183,7 +196,6 @@ afterEach(() => {
   mocks.applyLocalUpdate.mockReset();
   mocks.setProductStatus.mockReset();
   mocks.navigate.mockReset();
-  vi.restoreAllMocks();
 });
 
 describe("ProductDetailPage", () => {

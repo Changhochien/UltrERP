@@ -22,7 +22,7 @@ const reorderSuggestionsState = vi.hoisted(() => ({
       suggested_qty: 14,
       supplier_hint: {
         supplier_id: "sup-1",
-        supplier_name: "North Supply",
+        name: "North Supply",
         unit_cost: "12.50",
         default_lead_time_days: 9,
       },
@@ -111,6 +111,8 @@ describe("ReorderSuggestionsPage", () => {
         <ReorderSuggestionsPage />
       </MemoryRouter>,
     );
+
+    expect(screen.getByText("North Supply")).toBeTruthy();
 
     fireEvent.click(screen.getAllByRole("checkbox")[1]);
     fireEvent.click(screen.getByRole("button", { name: "createSelected" }));
