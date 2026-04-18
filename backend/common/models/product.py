@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import JSON, DateTime, Index, String, Text, func
+from sqlalchemy import JSON, DateTime, Index, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -32,6 +33,7 @@ class Product(Base):
 	category: Mapped[str | None] = mapped_column(String(200))
 	description: Mapped[str | None] = mapped_column(Text)
 	unit: Mapped[str] = mapped_column(String(50), default="pcs", nullable=False)
+	standard_cost: Mapped["Decimal | None"] = mapped_column(Numeric(19, 4), nullable=True)
 	status: Mapped[str] = mapped_column(String(20), default="active", nullable=False)
 	legacy_master_snapshot: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
 	search_vector: Mapped[Any] = mapped_column(TSVECTOR, nullable=True)

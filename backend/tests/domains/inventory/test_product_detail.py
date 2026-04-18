@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 from httpx import ASGITransport, AsyncClient
@@ -26,6 +27,7 @@ class FakeProduct:
         category: str | None = "Electronics",
         description: str | None = "Test description",
         unit: str = "pcs",
+        standard_cost: Decimal | None = Decimal("4.2000"),
         status: str = "active",
     ):
         self.id = pid or uuid.uuid4()
@@ -35,6 +37,7 @@ class FakeProduct:
         self.category = category
         self.description = description
         self.unit = unit
+        self.standard_cost = standard_cost
         self.status = status
         self.legacy_master_snapshot = {"legacy_code": code}
 
@@ -249,6 +252,7 @@ async def test_product_detail_multi_warehouse() -> None:
         assert body["category"] == "Electronics"
         assert body["description"] == "Test description"
         assert body["unit"] == "pcs"
+        assert body["standard_cost"] == "4.2000"
         assert body["status"] == "active"
         assert body["legacy_master_snapshot"]["legacy_code"] == "TST-001"
         assert body["total_stock"] == 60

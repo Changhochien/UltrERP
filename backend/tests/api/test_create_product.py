@@ -8,6 +8,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 from httpx import ASGITransport, AsyncClient
@@ -36,6 +37,7 @@ class _FakeProduct:
         self.category = None
         self.description = None
         self.unit = "pcs"
+        self.standard_cost = Decimal("12.5000")
         self.status = "active"
         self.created_at = datetime.now(tz=UTC)
         self.updated_at = datetime.now(tz=UTC)
@@ -119,6 +121,7 @@ def _valid_body() -> dict[str, object]:
         "category": "",
         "description": "",
         "unit": "pcs",
+        "standard_cost": "12.5000",
     }
 
 
@@ -139,8 +142,25 @@ async def test_create_product_success() -> None:
         body = resp.json()
         assert body["code"] == "WIDGET-001"
         assert body["name"] == "Test Widget"
+        assert body["standard_cost"] == "12.5000"
         assert body["status"] == "active"
         assert "id" in body
+    finally:
+        _teardown(previous)
+
+
+async def test_create_product_negative_standard_cost_returns_422() -> None:
+    previous = _setup(existing=None)
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver", headers=auth_header()
+        ) as client:
+            payload = _valid_body()
+            payload["standard_cost"] = "-0.0100"
+            resp = await client.post("/api/v1/inventory/products", json=payload)
+
+        assert resp.status_code == 422
     finally:
         _teardown(previous)
 

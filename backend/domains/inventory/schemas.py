@@ -261,6 +261,7 @@ class ProductCreate(BaseModel):
     category: str | None = Field(None, max_length=200)
     description: str | None = None
     unit: str = Field(default="pcs", max_length=50)
+    standard_cost: Decimal | None = Field(default=None, ge=0, max_digits=19, decimal_places=4)
 
 
 class ProductUpdate(BaseModel):
@@ -269,6 +270,7 @@ class ProductUpdate(BaseModel):
     category: str | None = Field(None, max_length=200)
     description: str | None = None
     unit: str = Field(..., min_length=1, max_length=50)
+    standard_cost: Decimal | None = Field(default=None, ge=0, max_digits=19, decimal_places=4)
 
 
 class ProductStatusUpdate(BaseModel):
@@ -284,6 +286,7 @@ class ProductResponse(BaseModel):
     category: str | None
     description: str | None
     unit: str
+    standard_cost: Decimal | None = None
     status: str
     created_at: datetime
 
@@ -326,6 +329,7 @@ class ProductDetailResponse(BaseModel):
     category: str | None
     description: str | None
     unit: str
+    standard_cost: Decimal | None = None
     status: str
     legacy_master_snapshot: dict[str, Any] | None = None
     total_stock: int

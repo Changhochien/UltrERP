@@ -60,6 +60,7 @@ class TransferValidationError(Exception):
 
 _PLANNING_QUANTITY_QUANT = Decimal("0.001")
 _PLANNING_INDEX_QUANT = Decimal("0.001")
+_STANDARD_COST_QUANT = Decimal("0.0001")
 _ZERO_QUANTITY = Decimal("0.000")
 
 
@@ -89,6 +90,24 @@ def _quantize_quantity(value: Decimal | int | float | None) -> Decimal:
 
 def _quantize_index(value: Decimal) -> Decimal:
     return value.quantize(_PLANNING_INDEX_QUANT, rounding=ROUND_HALF_UP)
+
+
+def _normalize_standard_cost(value: object | None) -> Decimal | None:
+    if value is None or value == "":
+        return None
+
+    standard_cost = value if isinstance(value, Decimal) else Decimal(str(value))
+    if standard_cost < 0:
+        raise ValidationError(
+            [
+                {
+                    "loc": ("standard_cost",),
+                    "msg": "standard_cost must be greater than or equal to 0",
+                    "type": "value_error",
+                }
+            ]
+        )
+    return standard_cost.quantize(_STANDARD_COST_QUANT, rounding=ROUND_HALF_UP)
 
 
 # ── Warehouse queries ──────────────────────────────────────────
@@ -161,12 +180,13 @@ def _normalize_category_name(name: str) -> str:
 
 def _normalize_product_payload(
     data: object,
-) -> tuple[str, str, str | None, str | None, str]:
+) -> tuple[str, str, str | None, str | None, str, Decimal | None]:
     code = str(getattr(data, "code", "")).strip()
     name = str(getattr(data, "name", "")).strip()
     unit = str(getattr(data, "unit", "")).strip()
     category = _normalize_optional_product_text(getattr(data, "category", None))
     description = _normalize_optional_product_text(getattr(data, "description", None))
+    standard_cost = _normalize_standard_cost(getattr(data, "standard_cost", None))
 
     errors: list[dict[str, str | tuple[str, ...]]] = []
     if not code:
@@ -178,7 +198,7 @@ def _normalize_product_payload(
     if errors:
         raise ValidationError(errors)
 
-    return code, name, category, description, unit
+    return code, name, category, description, unit, standard_cost
 
 
 def _normalize_supplier_payload(
@@ -384,7 +404,7 @@ async def create_product(
     data: "ProductCreate",
 ) -> Product:
     """Create a new product for a tenant."""
-    code, name, category, description, unit = _normalize_product_payload(data)
+    code, name, category, description, unit, standard_cost = _normalize_product_payload(data)
 
     # Check for duplicate code within tenant
     row = await _find_product_by_code(session, tenant_id, code)
@@ -398,6 +418,7 @@ async def create_product(
         category=category,
         description=description,
         unit=unit,
+        standard_cost=standard_cost,
         status="active",
         search_vector=func.to_tsvector("simple", name + " " + code),
     )
@@ -423,7 +444,7 @@ async def update_product(
     data: "ProductUpdate",
 ) -> Product | None:
     """Update an existing product for a tenant."""
-    code, name, category, description, unit = _normalize_product_payload(data)
+    code, name, category, description, unit, standard_cost = _normalize_product_payload(data)
 
     stmt = select(Product).where(
         Product.id == product_id,
@@ -449,6 +470,7 @@ async def update_product(
     product.category = category
     product.description = description
     product.unit = unit
+    product.standard_cost = standard_cost
     if code_or_name_changed:
         product.search_vector = func.to_tsvector("simple", name + " " + code)
 
@@ -488,7 +510,6 @@ async def set_product_status(
     product.status = status
     await session.flush()
     return product
-
 
 # ── Stock transfer ─────────────────────────────────────────────
 
@@ -1550,6 +1571,7 @@ async def get_product_detail(
         "category": product.category,
         "description": product.description,
         "unit": product.unit,
+        "standard_cost": product.standard_cost,
         "status": product.status,
         "legacy_master_snapshot": getattr(product, "legacy_master_snapshot", None),
         "total_stock": total_stock,
