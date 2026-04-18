@@ -53,6 +53,8 @@ class ResetPlanItem:
 def build_reset_plan(
     *,
     lineage_counts: dict[str, int],
+    resolution_state_count: int,
+    resolution_event_count: int,
     holding_count: int,
     lineage_count: int,
     step_run_count: int,
@@ -97,6 +99,16 @@ def build_reset_plan(
                 )
 
     control_items = [
+        (
+            "source_row_resolution_events",
+            resolution_event_count,
+            "batch-scoped source-resolution event rows",
+        ),
+        (
+            "source_row_resolution",
+            resolution_state_count,
+            "batch-scoped source-resolution state rows",
+        ),
         ("unsupported_history_holding", holding_count, "batch-scoped unsupported-history rows"),
         ("canonical_record_lineage", lineage_count, "batch-scoped lineage rows"),
         ("canonical_import_step_runs", step_run_count, "batch-scoped step-run rows"),
@@ -144,7 +156,27 @@ async def _fetch_control_counts(
     tenant_id: uuid.UUID,
     batch_id: str,
     schema_name: str,
-) -> tuple[int, int, int, int]:
+) -> tuple[int, int, int, int, int, int]:
+    resolution_event_result = await session.execute(
+        text(
+            f"""
+            SELECT COUNT(*)
+            FROM {schema_name}.source_row_resolution_events
+            WHERE tenant_id = :tenant_id AND batch_id = :batch_id
+            """
+        ),
+        {"tenant_id": str(tenant_id), "batch_id": batch_id},
+    )
+    resolution_state_result = await session.execute(
+        text(
+            f"""
+            SELECT COUNT(*)
+            FROM {schema_name}.source_row_resolution
+            WHERE tenant_id = :tenant_id AND batch_id = :batch_id
+            """
+        ),
+        {"tenant_id": str(tenant_id), "batch_id": batch_id},
+    )
     holding_result = await session.execute(
         text(
             f"""
@@ -190,6 +222,8 @@ async def _fetch_control_counts(
         {"tenant_id": str(tenant_id), "batch_id": batch_id},
     )
     return (
+        int(resolution_state_result.scalar_one()),
+        int(resolution_event_result.scalar_one()),
         int(holding_result.scalar_one()),
         int(lineage_result.scalar_one()),
         int(step_run_result.scalar_one()),
@@ -295,7 +329,14 @@ async def reset_legacy_import_batch(
             batch_id=batch_id,
             schema_name=schema_name,
         )
-        holding_count, lineage_count, step_run_count, run_count = await _fetch_control_counts(
+        (
+            resolution_state_count,
+            resolution_event_count,
+            holding_count,
+            lineage_count,
+            step_run_count,
+            run_count,
+        ) = await _fetch_control_counts(
             session,
             tenant_id=tenant_id,
             batch_id=batch_id,
@@ -304,6 +345,8 @@ async def reset_legacy_import_batch(
         extra_counts = await _fetch_extra_counts(session, tenant_id=tenant_id)
         plan = build_reset_plan(
             lineage_counts=lineage_counts,
+            resolution_state_count=resolution_state_count,
+            resolution_event_count=resolution_event_count,
             holding_count=holding_count,
             lineage_count=lineage_count,
             step_run_count=step_run_count,
@@ -361,6 +404,30 @@ async def reset_legacy_import_batch(
                         label="correction_rows",
                     )
                     print(f"Deleted {deleted} correction rows.")
+
+        if resolution_event_count:
+            deleted = await session.execute(
+                text(
+                    f"""
+                    DELETE FROM {schema_name}.source_row_resolution_events
+                    WHERE tenant_id = :tenant_id AND batch_id = :batch_id
+                    """
+                ),
+                {"tenant_id": str(tenant_id), "batch_id": batch_id},
+            )
+            print(f"Deleted {deleted.rowcount or 0} source_row_resolution_events rows.")
+
+        if resolution_state_count:
+            deleted = await session.execute(
+                text(
+                    f"""
+                    DELETE FROM {schema_name}.source_row_resolution
+                    WHERE tenant_id = :tenant_id AND batch_id = :batch_id
+                    """
+                ),
+                {"tenant_id": str(tenant_id), "batch_id": batch_id},
+            )
+            print(f"Deleted {deleted.rowcount or 0} source_row_resolution rows.")
 
         if holding_count:
             deleted = await session.execute(

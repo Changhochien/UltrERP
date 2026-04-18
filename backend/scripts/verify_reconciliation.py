@@ -8,6 +8,7 @@ non-zero gaps for operator review.
 from __future__ import annotations
 
 import asyncio
+import uuid
 
 from common.database import AsyncSessionLocal
 from common.tenant import DEFAULT_TENANT_ID
@@ -19,15 +20,15 @@ from scripts._legacy_stock_adjustments import (
 )
 
 
-async def verify() -> int:
+async def verify(tenant_id: uuid.UUID = DEFAULT_TENANT_ID) -> int:
     async with AsyncSessionLocal() as session:
         adjustment_rows = await fetch_reconciliation_adjustment_rows(
             session,
-            tenant_id=DEFAULT_TENANT_ID,
+            tenant_id=tenant_id,
         )
         inventory_rows = await fetch_reconciliation_inventory_rows(
             session,
-            tenant_id=DEFAULT_TENANT_ID,
+            tenant_id=tenant_id,
         )
 
     rows = build_reconciliation_rows(

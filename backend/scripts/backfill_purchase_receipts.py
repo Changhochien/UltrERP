@@ -12,6 +12,7 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+import uuid
 from datetime import timedelta
 
 from common.database import AsyncSessionLocal
@@ -27,7 +28,11 @@ from scripts._legacy_stock_adjustments import (
 )
 
 
-async def backfill(lookback_days: int = 180, dry_run: bool = True) -> None:
+async def backfill(
+    lookback_days: int = 180,
+    dry_run: bool = True,
+    tenant_id: uuid.UUID = DEFAULT_TENANT_ID,
+) -> None:
     simulated_today = utc_now().date()
     cutoff = simulated_today - timedelta(days=lookback_days)
     print(f"Simulated today : {simulated_today}")
@@ -38,15 +43,15 @@ async def backfill(lookback_days: int = 180, dry_run: bool = True) -> None:
     async with AsyncSessionLocal() as session:
         product_mappings = await fetch_product_mappings(
             session,
-            tenant_id=DEFAULT_TENANT_ID,
+            tenant_id=tenant_id,
         )
         product_by_code = await fetch_product_by_code(
             session,
-            tenant_id=DEFAULT_TENANT_ID,
+            tenant_id=tenant_id,
         )
         warehouse_by_code = await fetch_warehouse_by_code(
             session,
-            tenant_id=DEFAULT_TENANT_ID,
+            tenant_id=tenant_id,
         )
         legacy_rows = await fetch_purchase_receipt_rows(
             session,
@@ -55,7 +60,7 @@ async def backfill(lookback_days: int = 180, dry_run: bool = True) -> None:
         )
         adjustments = build_purchase_receipt_adjustments(
             rows=legacy_rows,
-            tenant_id=DEFAULT_TENANT_ID,
+            tenant_id=tenant_id,
             product_by_code=product_by_code,
             warehouse_by_code=warehouse_by_code,
             product_mappings=product_mappings,

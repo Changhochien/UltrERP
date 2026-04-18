@@ -398,11 +398,11 @@ async def _upsert_inventory_snapshot(
             tenant_id,
             batch_id,
             canonical_table,
-            canonical_id,
             source_table,
-            source_identifier
+            source_identifier,
+            source_row_number
         ) DO UPDATE SET
-            source_row_number = EXCLUDED.source_row_number,
+            canonical_id = EXCLUDED.canonical_id,
             import_run_id = EXCLUDED.import_run_id
         """
     )
