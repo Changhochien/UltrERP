@@ -5,6 +5,7 @@ export const INVENTORY_ROUTE = "/inventory";
 export const INVENTORY_CATEGORIES_ROUTE = "/inventory/categories";
 export const INVENTORY_BELOW_REORDER_REPORT_ROUTE = "/inventory/reports/below-reorder";
 export const INVENTORY_REORDER_SUGGESTIONS_ROUTE = "/inventory/reorder-suggestions";
+export const INVENTORY_SUPPLIERS_ROUTE = "/inventory/suppliers";
 export const PRODUCT_DETAIL_ROUTE = "/inventory/:productId";
 export const PURCHASES_ROUTE = "/purchases";
 export const CUSTOMERS_ROUTE = "/customers";
@@ -44,6 +45,10 @@ export type AppRoute =
   | typeof ADMIN_ROUTE
   | typeof SETTINGS_ROUTE
   | typeof OWNER_DASHBOARD_ROUTE;
+
+export function buildSupplierDetailPath(supplierId: string): string {
+  return `/inventory/suppliers/${encodeURIComponent(supplierId)}`;
+}
 
 export function buildProductDetailPath(productId: string, tab?: string): string {
   const basePath = PRODUCT_DETAIL_ROUTE.replace(":productId", encodeURIComponent(productId));
