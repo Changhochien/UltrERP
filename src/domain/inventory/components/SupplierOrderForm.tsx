@@ -6,6 +6,7 @@ import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayo
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table";
+import { ProductCombobox } from "../../../components/products/ProductCombobox";
 import { useWarehouses } from "../hooks/useWarehouses";
 import {
   useSuppliers,
@@ -148,12 +149,10 @@ export function SupplierOrderForm({
                 {lines.map((line, idx) => (
                   <TableRow key={idx}>
                     <TableCell>
-                      <Input
-                        type="text"
-                        required
+                      <ProductCombobox
                         value={line.product_id}
-                        onChange={(e) => updateLine(idx, { product_id: e.target.value })}
-                        placeholder="Product UUID"
+                        onChange={(id) => updateLine(idx, { product_id: id })}
+                        placeholder="Search product…"
                         aria-label={`Line ${idx + 1} product`}
                       />
                     </TableCell>
