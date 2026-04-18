@@ -29,9 +29,9 @@ from common.models.physical_count_session import (
     PhysicalCountSessionStatus,
 )
 from common.models.product import Product
+from common.models.product_supplier import ProductSupplier
 from common.models.reorder_alert import AlertStatus, ReorderAlert
 from common.models.stock_adjustment import ReasonCode, StockAdjustment
-from common.models.warehouse import Warehouse
 from common.models.stock_transfer import StockTransferHistory
 from common.models.supplier import Supplier
 from common.models.supplier_invoice import SupplierInvoice, SupplierInvoiceLine
@@ -2031,9 +2031,12 @@ async def list_below_reorder_products(
     result = await session.execute(stmt)
     rows = result.all()
 
+    product_ids = [row.product_id for row in rows]
+    supplier_map = await _batch_get_product_suppliers(session, tenant_id, product_ids)
+
     items: list[dict] = []
     for row in rows:
-        supplier_hint = await get_product_supplier(session, tenant_id, row.product_id)
+        supplier_hint = supplier_map.get(row.product_id)
         items.append(
             _serialize_below_reorder_report_row(
                 row,
@@ -3688,6 +3691,196 @@ async def get_top_customer(
     }
 
 
+async def _validate_product_supplier_scope(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+    supplier_id: uuid.UUID,
+) -> Supplier:
+    product = await session.get(Product, product_id)
+    if product is None or product.tenant_id != tenant_id:
+        raise ValidationError([
+            {"loc": ["product_id"], "msg": "Product not found", "type": "value_error"},
+        ])
+
+    supplier = await session.get(Supplier, supplier_id)
+    if supplier is None or supplier.tenant_id != tenant_id:
+        raise ValidationError([
+            {"loc": ["supplier_id"], "msg": "Supplier not found", "type": "value_error"},
+        ])
+    return supplier
+
+
+def _serialize_product_supplier_association(
+    association: ProductSupplier,
+    supplier_name: str,
+) -> dict[str, Any]:
+    return {
+        "id": association.id,
+        "product_id": association.product_id,
+        "supplier_id": association.supplier_id,
+        "supplier_name": supplier_name,
+        "unit_cost": float(association.unit_cost) if association.unit_cost is not None else None,
+        "lead_time_days": association.lead_time_days,
+        "is_default": association.is_default,
+        "created_at": association.created_at,
+        "updated_at": association.updated_at,
+    }
+
+
+async def list_product_suppliers(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+) -> list[dict[str, Any]]:
+    stmt = (
+        select(ProductSupplier, Supplier.name)
+        .join(
+            Supplier,
+            and_(
+                Supplier.id == ProductSupplier.supplier_id,
+                Supplier.tenant_id == tenant_id,
+            ),
+        )
+        .where(
+            ProductSupplier.tenant_id == tenant_id,
+            ProductSupplier.product_id == product_id,
+        )
+        .order_by(desc(ProductSupplier.is_default), asc(Supplier.name))
+    )
+    result = await session.execute(stmt)
+    return [
+        _serialize_product_supplier_association(association, supplier_name)
+        for association, supplier_name in result.all()
+    ]
+
+
+async def create_product_supplier(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+    *,
+    supplier_id: uuid.UUID,
+    unit_cost: float | None = None,
+    lead_time_days: int | None = None,
+    is_default: bool = False,
+) -> dict[str, Any]:
+    supplier = await _validate_product_supplier_scope(session, tenant_id, product_id, supplier_id)
+
+    existing_stmt = select(ProductSupplier).where(
+        ProductSupplier.tenant_id == tenant_id,
+        ProductSupplier.product_id == product_id,
+        ProductSupplier.supplier_id == supplier_id,
+    )
+    existing_result = await session.execute(existing_stmt)
+    existing = existing_result.scalar_one_or_none()
+    if existing is not None:
+        raise ValidationError([
+            {
+                "loc": ["supplier_id"],
+                "msg": "Supplier association already exists for this product",
+                "type": "value_error",
+            }
+        ])
+
+    if is_default:
+        default_result = await session.execute(
+            select(ProductSupplier).where(
+                ProductSupplier.tenant_id == tenant_id,
+                ProductSupplier.product_id == product_id,
+                ProductSupplier.is_default.is_(True),
+            )
+        )
+        for association in default_result.scalars().all():
+            association.is_default = False
+
+    association = ProductSupplier(
+        tenant_id=tenant_id,
+        product_id=product_id,
+        supplier_id=supplier_id,
+        unit_cost=(Decimal(str(unit_cost)) if unit_cost is not None else None),
+        lead_time_days=lead_time_days,
+        is_default=is_default,
+    )
+    session.add(association)
+    await session.flush()
+
+    return _serialize_product_supplier_association(association, supplier.name)
+
+
+async def update_product_supplier(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+    supplier_id: uuid.UUID,
+    *,
+    unit_cost: float | None = None,
+    lead_time_days: int | None = None,
+    is_default: bool | None = None,
+) -> dict[str, Any] | None:
+    stmt = (
+        select(ProductSupplier, Supplier.name)
+        .join(
+            Supplier,
+            and_(Supplier.id == ProductSupplier.supplier_id, Supplier.tenant_id == tenant_id),
+        )
+        .where(
+            ProductSupplier.tenant_id == tenant_id,
+            ProductSupplier.product_id == product_id,
+            ProductSupplier.supplier_id == supplier_id,
+        )
+    )
+    result = await session.execute(stmt)
+    row = result.first()
+    if row is None:
+        return None
+
+    association, supplier_name = row
+
+    if is_default:
+        default_result = await session.execute(
+            select(ProductSupplier).where(
+                ProductSupplier.tenant_id == tenant_id,
+                ProductSupplier.product_id == product_id,
+                ProductSupplier.is_default.is_(True),
+                ProductSupplier.supplier_id != supplier_id,
+            )
+        )
+        for assoc in default_result.scalars().all():
+            assoc.is_default = False
+
+    if unit_cost is not None:
+        association.unit_cost = Decimal(str(unit_cost))
+    if lead_time_days is not None:
+        association.lead_time_days = lead_time_days
+    if is_default is not None:
+        association.is_default = is_default
+
+    await session.flush()
+    return _serialize_product_supplier_association(association, supplier_name)
+
+
+async def delete_product_supplier(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+    supplier_id: uuid.UUID,
+) -> bool:
+    stmt = select(ProductSupplier).where(
+        ProductSupplier.tenant_id == tenant_id,
+        ProductSupplier.product_id == product_id,
+        ProductSupplier.supplier_id == supplier_id,
+    )
+    result = await session.execute(stmt)
+    association = result.scalar_one_or_none()
+    if association is None:
+        return False
+
+    await session.delete(association)
+    await session.flush()
+    return True
+
+
 # ── Product supplier ──────────────────────────────────────────────
 
 
@@ -3696,12 +3889,49 @@ async def get_product_supplier(
     tenant_id: uuid.UUID,
     product_id: uuid.UUID,
 ) -> dict | None:
-    """Return the most-recent supplier for a product, with unit cost and lead time.
+    """Return the explicit default supplier for a product, else most-recent fallback.
 
-    Resolves via supplier_order_line → supplier_order: picks the supplier
-    with the most recently received order lines for this product.
-    Returns null if no supplier orders exist.
+    Explicit product-supplier associations are the primary source of truth.
+    When no explicit default exists, falls back to the most-recent supplier
+    heuristic based on supplier orders and invoices.
     """
+    explicit_stmt = (
+        select(
+            Supplier.id,
+            Supplier.name,
+            ProductSupplier.unit_cost,
+            func.coalesce(
+                ProductSupplier.lead_time_days,
+                Supplier.default_lead_time_days,
+            ).label("effective_lead_time_days"),
+        )
+        .join(
+            Supplier,
+            and_(
+                Supplier.id == ProductSupplier.supplier_id,
+                Supplier.tenant_id == tenant_id,
+            ),
+        )
+        .where(
+            ProductSupplier.tenant_id == tenant_id,
+            ProductSupplier.product_id == product_id,
+            ProductSupplier.is_default.is_(True),
+        )
+        .limit(1)
+    )
+    explicit_result = await session.execute(explicit_stmt)
+    explicit_row = explicit_result.first()
+
+    if explicit_row is not None:
+        return {
+            "supplier_id": explicit_row.id,
+            "name": explicit_row.name,
+            "unit_cost": (
+                float(explicit_row.unit_cost) if explicit_row.unit_cost is not None else None
+            ),
+            "default_lead_time_days": explicit_row.effective_lead_time_days,
+        }
+
     supplier_sources = (
         select(
             SupplierOrder.supplier_id.label("supplier_id"),

@@ -27,6 +27,7 @@ from common.errors import (
     error_response,
 )
 from common.models.inventory_stock import InventoryStock
+from common.models.physical_count_session import PhysicalCountSessionStatus
 from common.models.product import Product
 from common.models.stock_adjustment import ReasonCode
 from common.tenant import get_tenant_id
@@ -69,6 +70,10 @@ from domains.inventory.schemas import (
     ProductResponse,
     ProductSearchResponse,
     ProductSearchResult,
+    ProductSupplierAssociationCreate,
+    ProductSupplierAssociationListResponse,
+    ProductSupplierAssociationResponse,
+    ProductSupplierAssociationUpdate,
     ProductStatusUpdate,
     ProductSupplierResponse,
     ProductUpdate,
@@ -133,7 +138,9 @@ from domains.inventory.services import (
     list_below_reorder_products,
     create_reorder_suggestion_orders,
     dismiss_alert,
+    delete_product_supplier,
     create_supplier,
+    create_product_supplier,
     get_physical_count_session,
     get_category,
     get_inventory_stocks,
@@ -152,6 +159,7 @@ from domains.inventory.services import (
     get_warehouse,
     list_physical_count_sessions,
     list_categories,
+    list_product_suppliers,
     list_reorder_alerts,
     list_reorder_suggestions,
     list_supplier_orders,
@@ -171,6 +179,7 @@ from domains.inventory.services import (
     update_physical_count_line,
     update_category,
     update_product,
+    update_product_supplier,
     update_supplier,
     update_unit,
     update_stock_settings,
@@ -432,10 +441,9 @@ async def list_count_sessions_endpoint(
     _user: ReadUser,
     tenant_id: CurrentTenant,
     warehouse_id: uuid.UUID | None = Query(None),
-    status_filter: str | None = Query(
+    status: PhysicalCountSessionStatus | None = Query(
         None,
         alias="status",
-        pattern=r"^(in_progress|submitted|approved)$",
     ),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
@@ -444,7 +452,7 @@ async def list_count_sessions_endpoint(
         session,
         tenant_id,
         warehouse_id=warehouse_id,
-        status=status_filter,
+        status=status.value if status else None,
         limit=limit,
         offset=offset,
     )
@@ -1478,7 +1486,7 @@ async def create_reorder_suggestion_orders_endpoint(
         session,
         tenant_id,
         items=[item.model_dump() for item in data.items],
-        actor_id=ACTOR_ID,
+        actor_id=_current_actor_id(_user),
     )
     await session.commit()
     return CreateReorderSuggestionOrdersResponse(
@@ -1921,6 +1929,108 @@ async def get_top_customer_endpoint(
 
 
 # ── Product supplier endpoint ────────────────────────────────────
+
+
+@router.get(
+    "/products/{product_id}/suppliers",
+    response_model=ProductSupplierAssociationListResponse,
+)
+async def list_product_suppliers_endpoint(
+    product_id: uuid.UUID,
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+) -> ProductSupplierAssociationListResponse:
+    items = await list_product_suppliers(session, tenant_id, product_id)
+    return ProductSupplierAssociationListResponse(
+        items=[ProductSupplierAssociationResponse(**item) for item in items],
+        total=len(items),
+    )
+
+
+@router.post(
+    "/products/{product_id}/suppliers",
+    response_model=ProductSupplierAssociationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_product_supplier_endpoint(
+    product_id: uuid.UUID,
+    data: ProductSupplierAssociationCreate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> ProductSupplierAssociationResponse:
+    try:
+        item = await create_product_supplier(
+            session,
+            tenant_id,
+            product_id,
+            supplier_id=data.supplier_id,
+            unit_cost=data.unit_cost,
+            lead_time_days=data.lead_time_days,
+            is_default=data.is_default,
+        )
+    except ValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=exc.errors,
+        ) from exc
+
+    await session.commit()
+    return ProductSupplierAssociationResponse(**item)
+
+
+@router.patch(
+    "/products/{product_id}/suppliers/{supplier_id}",
+    response_model=ProductSupplierAssociationResponse,
+)
+async def update_product_supplier_endpoint(
+    product_id: uuid.UUID,
+    supplier_id: uuid.UUID,
+    data: ProductSupplierAssociationUpdate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> ProductSupplierAssociationResponse:
+    item = await update_product_supplier(
+        session,
+        tenant_id,
+        product_id,
+        supplier_id,
+        unit_cost=data.unit_cost,
+        lead_time_days=data.lead_time_days,
+        is_default=data.is_default,
+    )
+    if item is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product supplier association not found",
+        )
+
+    await session.commit()
+    return ProductSupplierAssociationResponse(**item)
+
+
+@router.delete(
+    "/products/{product_id}/suppliers/{supplier_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_product_supplier_endpoint(
+    product_id: uuid.UUID,
+    supplier_id: uuid.UUID,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> Response:
+    deleted = await delete_product_supplier(session, tenant_id, product_id, supplier_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product supplier association not found",
+        )
+
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(

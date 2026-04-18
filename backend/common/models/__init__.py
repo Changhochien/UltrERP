@@ -10,6 +10,7 @@ from common.models.order_line import OrderLine
 from common.models.physical_count_line import PhysicalCountLine
 from common.models.physical_count_session import PhysicalCountSession, PhysicalCountSessionStatus
 from common.models.product import Product
+from common.models.product_supplier import ProductSupplier
 from common.models.reorder_alert import ReorderAlert
 from common.models.stock_adjustment import ReasonCode, StockAdjustment
 from common.models.stock_transfer import StockTransferHistory
@@ -34,6 +35,7 @@ __all__ = [
 	"PhysicalCountSession",
 	"PhysicalCountSessionStatus",
 	"Product",
+	"ProductSupplier",
 	"ReasonCode",
 	"ReorderAlert",
 	"StockAdjustment",

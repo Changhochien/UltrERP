@@ -1874,6 +1874,24 @@
         "noSupplierConfigured": "No supplier configured.",
         "supplierInfo": "Supplier Info",
         "save": "Save"
+      },
+      "suppliersPanel": {
+        "title": "Product Suppliers",
+        "description": "Manage explicit supplier associations and the default supplier for this product.",
+        "supplier": "Supplier",
+        "selectSupplier": "Select supplier",
+        "unitCost": "Unit Cost",
+        "leadTimeDays": "Lead Time (days)",
+        "defaultSupplier": "Default supplier",
+        "defaultBadge": "Default supplier",
+        "secondaryBadge": "Secondary supplier",
+        "add": "Add Supplier",
+        "save": "Save",
+        "setDefault": "Set Default",
+        "remove": "Remove",
+        "saving": "Saving…",
+        "loading": "Loading suppliers…",
+        "empty": "No supplier associations yet."
       }
     }
   },

@@ -17,6 +17,11 @@ import type {
   ProductDetail,
   ProductCreate,
   ProductResponse,
+  ProductSupplierAssociation,
+  ProductSupplierAssociationCreate,
+  ProductSupplierAssociationListResponse,
+  ProductSupplierAssociationUpdate,
+  ProductSupplierInfo,
   ProductUpdate,
   ReorderAlertListResponse,
   ReorderSuggestionListResponse,
@@ -948,6 +953,130 @@ export async function fetchSupplier(
       };
     }
     return { ok: true, data: body as Supplier };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+export async function fetchProductSupplier(
+  productId: string,
+  options?: { signal?: AbortSignal },
+): Promise<{ ok: true; data: ProductSupplierInfo | null } | { ok: false; error: string }> {
+  try {
+    const resp = await apiFetch(
+      `/api/v1/inventory/products/${encodeURIComponent(productId)}/supplier`,
+      { signal: options?.signal },
+    );
+    const body = await resp.json().catch(() => null);
+    if (!resp.ok) {
+      return {
+        ok: false,
+        error: (body as { detail?: string } | null)?.detail ?? "Failed to fetch product supplier",
+      };
+    }
+    return { ok: true, data: body as ProductSupplierInfo | null };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+export async function listProductSuppliers(
+  productId: string,
+  options?: { signal?: AbortSignal },
+): Promise<{ ok: true; data: ProductSupplierAssociationListResponse } | { ok: false; error: string }> {
+  try {
+    const resp = await apiFetch(
+      `/api/v1/inventory/products/${encodeURIComponent(productId)}/suppliers`,
+      { signal: options?.signal },
+    );
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      return {
+        ok: false,
+        error: (body as { detail?: string }).detail ?? "Failed to fetch product suppliers",
+      };
+    }
+    return { ok: true, data: body as ProductSupplierAssociationListResponse };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+export async function createProductSupplier(
+  productId: string,
+  data: ProductSupplierAssociationCreate,
+): Promise<{ ok: true; data: ProductSupplierAssociation } | { ok: false; error: string }> {
+  try {
+    const resp = await apiFetch(
+      `/api/v1/inventory/products/${encodeURIComponent(productId)}/suppliers`,
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      },
+    );
+    const body = await resp.json().catch(() => ({}));
+
+    if (resp.ok) {
+      return { ok: true, data: body as ProductSupplierAssociation };
+    }
+
+    const detail = (body as { detail?: Array<{ msg?: string }> | string }).detail;
+    if (Array.isArray(detail)) {
+      return { ok: false, error: detail[0]?.msg ?? "Failed to create product supplier" };
+    }
+
+    return {
+      ok: false,
+      error: typeof detail === "string" ? detail : "Failed to create product supplier",
+    };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+export async function updateProductSupplier(
+  productId: string,
+  supplierId: string,
+  data: ProductSupplierAssociationUpdate,
+): Promise<{ ok: true; data: ProductSupplierAssociation } | { ok: false; error: string }> {
+  try {
+    const resp = await apiFetch(
+      `/api/v1/inventory/products/${encodeURIComponent(productId)}/suppliers/${encodeURIComponent(supplierId)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      },
+    );
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      return {
+        ok: false,
+        error: (body as { detail?: string }).detail ?? "Failed to update product supplier",
+      };
+    }
+    return { ok: true, data: body as ProductSupplierAssociation };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+export async function deleteProductSupplier(
+  productId: string,
+  supplierId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const resp = await apiFetch(
+      `/api/v1/inventory/products/${encodeURIComponent(productId)}/suppliers/${encodeURIComponent(supplierId)}`,
+      { method: "DELETE" },
+    );
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({}));
+      return {
+        ok: false,
+        error: (body as { detail?: string }).detail ?? "Failed to delete product supplier",
+      };
+    }
+    return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
   }

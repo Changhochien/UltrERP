@@ -1,17 +1,19 @@
 /** Form to create a new supplier order with dynamic line items. */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayout";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table";
 import { ProductCombobox } from "../../../components/products/ProductCombobox";
+import { fetchProductSupplier } from "../../../lib/api/inventory";
 import { SupplierCombobox } from "./SupplierCombobox";
 import { useWarehouses } from "../hooks/useWarehouses";
 import {
   useCreateSupplierOrder,
 } from "../hooks/useSupplierOrders";
+import type { ProductSupplierInfo } from "../types";
 
 interface OrderLine {
   product_id: string;
@@ -68,13 +70,96 @@ export function SupplierOrderForm({
   const [lines, setLines] = useState<OrderLine[]>(
     () => initialLines?.length ? initialLines.map(hydrateLine) : [emptyLine()],
   );
+  const [supplierResolutionMessage, setSupplierResolutionMessage] = useState<string | null>(null);
+  const autoResolvedSupplierId = useRef("");
+
+  const selectedProductIds = useMemo(
+    () => Array.from(new Set(lines.map((line) => line.product_id).filter(Boolean))),
+    [lines],
+  );
+  const selectedProductKey = selectedProductIds.join("|");
 
   useEffect(() => {
     setSupplierId(initialSupplierId);
     setOrderDate(initialOrderDate ?? new Date().toISOString().slice(0, 10));
     setExpectedArrival(initialExpectedArrivalDate);
     setLines(initialLines?.length ? initialLines.map(hydrateLine) : [emptyLine()]);
+    autoResolvedSupplierId.current = initialSupplierId;
+    setSupplierResolutionMessage(null);
   }, [initialExpectedArrivalDate, initialLines, initialOrderDate, initialSupplierId]);
+
+  useEffect(() => {
+    if (initialSupplierId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function resolveSupplierPrefill() {
+      if (selectedProductIds.length === 0) {
+        setSupplierResolutionMessage(null);
+        setSupplierId((current) => (current === autoResolvedSupplierId.current ? "" : current));
+        autoResolvedSupplierId.current = "";
+        return;
+      }
+
+      try {
+        const rawResults = await Promise.all(selectedProductIds.map((productId) => fetchProductSupplier(productId)));
+        if (cancelled) {
+          return;
+        }
+
+        const results = rawResults.map((result) => {
+          if (result && typeof result === "object" && "ok" in result) {
+            return result;
+          }
+          return { ok: false as const, error: "Failed to fetch product supplier" };
+        });
+
+        const resolvedSuppliers = results
+          .filter((result): result is { ok: true; data: ProductSupplierInfo } => result.ok && result.data != null)
+          .map((result) => result.data);
+        const uniqueSupplierIds = Array.from(new Set(resolvedSuppliers.map((supplier) => supplier.supplier_id)));
+        const hasMissingSupplier = results.some((result) => !result.ok || (result.ok && result.data == null));
+        const resolvedSupplierId = !hasMissingSupplier && uniqueSupplierIds.length === 1 ? uniqueSupplierIds[0] : null;
+
+        if (resolvedSupplierId) {
+          setSupplierResolutionMessage(null);
+          setSupplierId((current) => {
+            if (current === "" || current === autoResolvedSupplierId.current) {
+              autoResolvedSupplierId.current = resolvedSupplierId;
+              return resolvedSupplierId;
+            }
+            return current;
+          });
+          return;
+        }
+
+        setSupplierId((current) => {
+          if (current === autoResolvedSupplierId.current) {
+            return "";
+          }
+          return current;
+        });
+        autoResolvedSupplierId.current = "";
+
+        if (uniqueSupplierIds.length > 1) {
+          setSupplierResolutionMessage("Selected products have different default suppliers. Choose one manually.");
+        } else if (selectedProductIds.length > 1 && hasMissingSupplier) {
+          setSupplierResolutionMessage("Selected products do not resolve to one supplier. Choose one manually.");
+        } else {
+          setSupplierResolutionMessage(null);
+        }
+      } catch {
+        setSupplierResolutionMessage(null);
+      }
+    }
+
+    void resolveSupplierPrefill();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialSupplierId, selectedProductKey]);
 
   if (whLoading) return <p aria-busy="true">Loading…</p>;
 
@@ -136,6 +221,12 @@ export function SupplierOrderForm({
                 ariaLabel="Supplier"
               />
             </label>
+
+            {supplierResolutionMessage ? (
+              <SurfaceMessage tone="warning" className="md:col-span-2 xl:col-span-3">
+                {supplierResolutionMessage}
+              </SurfaceMessage>
+            ) : null}
 
             <label className="space-y-2">
               <span>Order date</span>

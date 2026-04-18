@@ -1871,6 +1871,24 @@
         "noSupplierConfigured": "尚未設定供應商。",
         "supplierInfo": "供應商資訊",
         "save": "儲存"
+      },
+      "suppliersPanel": {
+        "title": "產品供應商",
+        "description": "管理此產品的明確供應商關聯與預設供應商。",
+        "supplier": "供應商",
+        "selectSupplier": "選擇供應商",
+        "unitCost": "單價",
+        "leadTimeDays": "前置時間（天）",
+        "defaultSupplier": "預設供應商",
+        "defaultBadge": "預設供應商",
+        "secondaryBadge": "次要供應商",
+        "add": "新增供應商",
+        "save": "儲存",
+        "setDefault": "設為預設",
+        "remove": "移除",
+        "saving": "儲存中…",
+        "loading": "載入供應商中…",
+        "empty": "尚未建立供應商關聯。"
       }
     }
   },

@@ -146,6 +146,43 @@ export interface ProductSearchResponse {
   total: number;
 }
 
+export interface ProductSupplierInfo {
+  supplier_id: string;
+  name: string;
+  unit_cost: number | null;
+  default_lead_time_days: number | null;
+}
+
+export interface ProductSupplierAssociation {
+  id: string;
+  product_id: string;
+  supplier_id: string;
+  supplier_name: string;
+  unit_cost: number | null;
+  lead_time_days: number | null;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductSupplierAssociationListResponse {
+  items: ProductSupplierAssociation[];
+  total: number;
+}
+
+export interface ProductSupplierAssociationCreate {
+  supplier_id: string;
+  unit_cost?: number;
+  lead_time_days?: number;
+  is_default?: boolean;
+}
+
+export interface ProductSupplierAssociationUpdate {
+  unit_cost?: number;
+  lead_time_days?: number;
+  is_default?: boolean;
+}
+
 export interface Category {
   id: string;
   tenant_id: string;

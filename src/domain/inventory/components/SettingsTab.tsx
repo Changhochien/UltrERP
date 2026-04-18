@@ -6,6 +6,7 @@ import { Save } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { SectionCard } from "@/components/layout/PageLayout";
+import { ProductSuppliersPanel } from "./ProductSuppliersPanel";
 import { useProductDetail } from "../hooks/useProductDetail";
 import { useStockHistory } from "../hooks/useStockHistory";
 import { useUpdateStockSettings } from "../hooks/useUpdateStockSettings";
@@ -313,10 +314,7 @@ export function SettingsTab({ productId, warehouseFilterId, onSaveSuccess }: Set
           onSave={handleSave}
         />
       ))}
-
-      <SectionCard title={t("supplierInfo")}>
-        <p className="text-sm text-muted-foreground">{t("noSupplierConfigured")}</p>
-      </SectionCard>
+      <ProductSuppliersPanel productId={productId} />
     </div>
   );
 }

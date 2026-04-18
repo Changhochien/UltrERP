@@ -4,6 +4,11 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { SupplierOrderForm } from "./SupplierOrderForm";
 
 const createSupplierOrderMock = vi.fn();
+const fetchProductSupplierMock = vi.fn();
+
+vi.mock("../../../lib/api/inventory", () => ({
+  fetchProductSupplier: (...args: unknown[]) => fetchProductSupplierMock(...args),
+}));
 
 vi.mock("../hooks/useSupplierOrders", () => ({
   useCreateSupplierOrder: () => ({
@@ -35,6 +40,7 @@ vi.mock("../../../components/products/ProductCombobox", () => ({
 afterEach(() => {
   cleanup();
   createSupplierOrderMock.mockReset();
+  fetchProductSupplierMock.mockReset();
   vi.restoreAllMocks();
 });
 
@@ -100,5 +106,73 @@ describe("SupplierOrderForm", () => {
     expect((screen.getByLabelText("Line 1 warehouse") as HTMLSelectElement).value).toBe("wh-1");
     expect((screen.getByLabelText("Line 1 quantity") as HTMLInputElement).value).toBe("6");
     expect((screen.getByLabelText("Line 1 unit cost") as HTMLInputElement).value).toBe("12.50");
+  });
+
+  it("prefills the supplier when one product resolves to a single default", async () => {
+    fetchProductSupplierMock.mockResolvedValue({
+      ok: true,
+      data: {
+        supplier_id: "sup-1",
+        name: "Acme Supply",
+        unit_cost: 11.5,
+        default_lead_time_days: 5,
+      },
+    });
+
+    render(
+      <SupplierOrderForm
+        initialLines={[{ product_id: "prod-1", warehouse_id: "wh-1", quantity: 4 }]}
+        onCreated={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect((screen.getByLabelText("Supplier") as HTMLInputElement).value).toBe("sup-1");
+    });
+  });
+
+  it("leaves supplier blank and shows a conflict when defaults disagree", async () => {
+    fetchProductSupplierMock.mockImplementation(async (productId: string) => {
+      if (productId === "prod-1") {
+        return {
+          ok: true,
+          data: {
+            supplier_id: "sup-1",
+            name: "Acme Supply",
+            unit_cost: 11.5,
+            default_lead_time_days: 5,
+          },
+        };
+      }
+
+      return {
+        ok: true,
+        data: {
+          supplier_id: "sup-2",
+          name: "Beta Supply",
+          unit_cost: 9.75,
+          default_lead_time_days: 7,
+        },
+      };
+    });
+
+    render(
+      <SupplierOrderForm
+        initialLines={[
+          { product_id: "prod-1", warehouse_id: "wh-1", quantity: 2 },
+          { product_id: "prod-2", warehouse_id: "wh-1", quantity: 3 },
+        ]}
+        onCreated={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect((screen.getByLabelText("Supplier") as HTMLInputElement).value).toBe("");
+    });
+    expect(
+      await screen.findByText("Selected products have different default suppliers. Choose one manually."),
+    ).toBeTruthy();
   });
 });

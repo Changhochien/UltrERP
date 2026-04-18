@@ -14,6 +14,7 @@ MODEL_MODULES = (
 	"common.models.physical_count_line",
 	"common.models.physical_count_session",
 	"common.models.product",
+	"common.models.product_supplier",
 	"common.models.reorder_alert",
 	"common.models.stock_adjustment",
 	"common.models.stock_transfer",

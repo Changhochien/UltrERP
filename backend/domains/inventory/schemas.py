@@ -220,6 +220,36 @@ class ProductSupplierResponse(BaseModel):
     default_lead_time_days: int | None = None
 
 
+class ProductSupplierAssociationCreate(BaseModel):
+    supplier_id: uuid.UUID
+    unit_cost: float | None = Field(None, ge=0)
+    lead_time_days: int | None = Field(None, ge=0)
+    is_default: bool = False
+
+
+class ProductSupplierAssociationUpdate(BaseModel):
+    unit_cost: float | None = Field(None, ge=0)
+    lead_time_days: int | None = Field(None, ge=0)
+    is_default: bool | None = None
+
+
+class ProductSupplierAssociationResponse(BaseModel):
+    id: uuid.UUID
+    product_id: uuid.UUID
+    supplier_id: uuid.UUID
+    supplier_name: str
+    unit_cost: float | None = None
+    lead_time_days: int | None = None
+    is_default: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class ProductSupplierAssociationListResponse(BaseModel):
+    items: list[ProductSupplierAssociationResponse]
+    total: int
+
+
 # --- Category schemas ---
 
 
