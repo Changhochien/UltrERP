@@ -28,6 +28,7 @@ interface ProductComboboxProps {
   onClear?: () => void;
   placeholder?: string;
   disabled?: boolean;
+  "aria-label"?: string;
 }
 
 export function ProductCombobox({
@@ -37,6 +38,7 @@ export function ProductCombobox({
   onClear,
   placeholder = "Search product by name or code…",
   disabled,
+  "aria-label": ariaLabel,
 }: ProductComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -146,6 +148,7 @@ export function ProductCombobox({
             role="combobox"
             aria-expanded={open}
             disabled={disabled}
+            aria-label={ariaLabel}
             className={cn(
               "w-full justify-start text-left font-normal",
               !selectedProduct && "text-muted-foreground",
