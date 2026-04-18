@@ -124,5 +124,34 @@ So that I can plan the migration strategy.
 **And** I know the corrected orphan profile: 190 orphan codes affecting 523 rows (0.09%)
 **And** I have a documented migration plan for shadow-mode validation
 
----
+### Story 1.9: Backend Architecture Boundary Hardening
 
+As a developer,
+I want explicit backend boundary wiring for shared model registration and order confirmation orchestration,
+So that foundation-level refactors stop leaking across domains and core business flows stay safe to evolve.
+
+**Acceptance Criteria:**
+
+**Given** Alembic and helper scripts need ORM side-effect imports
+**When** backend model metadata is loaded
+**Then** all ORM tables are registered through an explicit registry module
+**And** `backend/common/models/__init__.py` no longer imports domain-owned ORM models
+**And** migration and bootstrap scripts continue to discover all mapped tables successfully
+
+**Given** a pending order is confirmed
+**When** `confirm_order()` runs
+**Then** the order domain owns row locking, state validation, snapshot stamping, and status mutation
+**And** invoice persistence and stock reservation are invoked through explicit public collaborator functions rather than private cross-domain internals
+**And** the full confirmation workflow remains atomic inside one transaction boundary
+
+**Given** a downstream failure occurs during order confirmation
+**When** the transaction exits
+**Then** order status, invoice linkage, stock adjustments, and audit rows roll back together
+**And** no partial confirmation side effects are committed
+
+**Given** the current order-confirmation behavior is already covered by focused tests
+**When** the architecture hardening change lands
+**Then** success, rollback, snapshot stamping, and audit-log regressions remain covered by targeted backend tests
+**And** the public API/response shape for order confirmation does not change
+
+---

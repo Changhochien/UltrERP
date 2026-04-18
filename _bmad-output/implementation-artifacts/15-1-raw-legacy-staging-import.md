@@ -134,6 +134,19 @@ GitHub Copilot (GPT-5.4)
 - backend/tests/domains/legacy_import/test_staging.py
 - migrations/versions/ss999uu99v21_create_legacy_import_control_tables.py
 
+### Review Findings
+
+- [ ] [Review][Patch] source_row_number nil → 0 collision on blank doc_number [backend/domains/legacy_import/canonical.py:1484] — fixed: used `row_identity = source_row_number or line_number`
+- [x] [Review][Defer] Date parsing loses day second digit for 8-digit all-digit dates [backend/domains/legacy_import/normalization.py:216-217] — deferred, outside this diff's scope
+- [x] [Review][Defer] Silent fallback swallowing ValueError with no counter/metric — deferred, pre-existing
+- [x] [Review][Defer] Holding rows have no visible drain/recovery path — deferred, pre-existing design concern
+- [x] [Review][Defer] "tbsslipdtj" hardcoded literal is opaque — deferred, pre-existing
+- [x] [Review][Defer] No per-row error isolation for holding upsert — deferred, pre-existing
+- [x] [Review][Defer] receipt_date→invoice_date fallback not flagged as data issue — deferred, pre-existing
+- [x] [Review][Defer] No test coverage changes for blank-doc_number routing — deferred, test file not in diff
+- [x] [Review][Defer] AC4 batch rerun idempotency not addressed by this fix — deferred, scope question for later story
+- [x] [Review][Defer] AC2 lineage only captured in holding path, not main staging — deferred, existing code concern
+
 ### Change Log
 
 - 2026-04-05: Implemented Story 15.1 raw legacy staging foundation with CLI entry point, control tables, COPY-based staging, focused tests, and live rerun validation.

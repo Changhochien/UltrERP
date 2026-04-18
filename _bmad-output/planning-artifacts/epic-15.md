@@ -2,7 +2,7 @@
 
 ### Epic Goal
 
-Operations and AI agents can stage, map, import, and validate legacy ERP data into UltrERP through a repeatable CLI-backed workflow plus a task-specific skill that preserves lineage and exposes unresolved data-quality issues instead of hiding them.
+Operations and AI agents can stage, map, import, and validate legacy ERP data into UltrERP from file-backed extracts or a read-only live legacy DB through a repeatable CLI-backed workflow plus a task-specific skill that preserves lineage and exposes unresolved data-quality issues instead of hiding them.
 
 ### Stories
 
@@ -132,5 +132,66 @@ So that imported products land in stable, sales-meaningful categories for downst
 **And** the product `legacy_master_snapshot` preserves raw provenance plus rule/confidence metadata
 **And** existing Story 19 category analytics continue to read `Product.category` without requiring a new category table or foreign key contract
 
----
+### Story 15.10: Live Legacy Source Compatibility Contract
 
+As a migration operator and ERP engineer,
+I want the live legacy source contract verified before we build against it,
+So that dual-source staging uses a proven read-only connector and a stable row-serialization contract.
+
+**Acceptance Criteria:**
+
+**Given** `LEGACY_DB_*` settings are configured
+**When** a compatibility probe runs against the live legacy PostgreSQL 8.2 source over Tailscale
+**Then** the repo proves or rejects the chosen connector in read-only mode
+**And** captures the table discovery, column metadata, and streaming-read behaviors needed by staging
+**And** does not issue write operations to the legacy DB
+
+**Given** the live-source connector contract is approved
+**When** staging code consumes rows from the live source
+**Then** the contract defines how `NULL`, numerics, strings, and date-like values are serialized for the shared raw loader
+**And** preserves the text semantics needed by existing lineage fields such as `_legacy_pk`
+**And** fails fast with explicit diagnostics for unsupported types or incompatible connector behavior
+
+### Story 15.11: Dual-Source Staging Architecture Refactor
+
+As a migration operator,
+I want file and live source staging to share one orchestration path,
+So that both source modes preserve the same batch semantics, control-table behavior, and `raw_legacy` contracts.
+
+**Acceptance Criteria:**
+
+**Given** file-based staging already exists
+**When** the staging domain is refactored around source adapters plus a shared loader/orchestration layer
+**Then** `legacy-import stage` remains backward compatible for manifest-backed CSV imports
+**And** the shared orchestration owns attempt numbering, overlapping-table cleanup, raw-table recreation, lineage fields, validation hooks, and control-table persistence
+
+**Given** either a file adapter or live adapter supplies discovered tables and row streams
+**When** the shared orchestration stages them
+**Then** `_batch_id`, `_source_row_number`, `_legacy_pk`, and partial rerun cleanup rules remain consistent with the current file-based behavior
+**And** shared stage summaries and persisted source metadata use a source-agnostic descriptor that works for both file and live runs without leaking secrets
+
+### Story 15.12: Live Legacy DB Stage CLI
+
+As a migration operator,
+I want a `legacy-import live-stage` command that stages selected tables from the live legacy DB over Tailscale,
+So that I can run the migration pipeline without generating a SQL dump or extracted CSV set first.
+
+**Acceptance Criteria:**
+
+**Given** live DB settings are configured and the connector contract is approved
+**When** I run `legacy-import live-stage --batch-id <id> [--table ...]`
+**Then** the CLI discovers `public` tables or limits to the requested subset
+**And** stages them into `raw_legacy` through the shared orchestration path
+**And** prints the same operator-friendly batch/table summary shape as file-based `stage`
+
+**Given** a live-stage run completes
+**When** operator summaries, control tables, and docs are inspected
+**Then** `legacy_import_runs` and `legacy_import_table_runs` capture non-secret live-source metadata sufficient for audit and validation
+**And** `.env.example` plus the legacy-import skill document the `live-stage` command and required `LEGACY_DB_*` settings without embedding credentials
+
+**Given** the live connection, table discovery, or table load fails
+**When** the command aborts
+**Then** the operator receives clear diagnostics that distinguish the failure type
+**And** no partial committed stage snapshot is left behind for that batch attempt
+
+---

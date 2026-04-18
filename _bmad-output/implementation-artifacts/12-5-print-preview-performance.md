@@ -1,6 +1,6 @@
 # Story 12.5: Print Preview Performance
 
-Status: review
+Status: completed
 
 ## Story
 
@@ -58,6 +58,10 @@ So that I can verify layout quickly before printing.
 - [x] [Review][Patch] Provide a retryable preview preparation path instead of a sticky session-long outage [src/domain/invoices/components/InvoiceDetail.tsx:127]
 - [x] [Review][Patch] Prevent repeated clicks from corrupting preview timing marks [src/domain/invoices/components/InvoiceDetail.tsx:123]
 - [x] [Review][Patch] Clear stale preview timing measures before recording the next run [src/lib/print/invoices.ts:91]
+- [x] [Review][Patch] Keep the preview button disabled while the initial preload is still assembling the modal shell and print context [src/domain/invoices/components/InvoiceDetail.tsx:146]
+- [x] [Review][Patch] Clear stale pending-open intent and timing state when invoice detail switches to a different invoice [src/domain/invoices/components/InvoiceDetail.tsx:58]
+- [x] [Review][Patch] Exercise the real invoice-detail open path with a large preview fixture instead of a single-line invoice [src/domain/invoices/__tests__/InvoiceDetail.test.tsx:117]
+- [x] [Review][Defer] Target-hardware sub-1-second proof is still a manual operator validation step rather than a recorded repo artifact [docs/superpowers/specs/2026-04-04-print-preview-performance.md:24] — deferred, manual validation required
 
 ## Dev Notes
 
@@ -112,11 +116,13 @@ GitHub Copilot (GPT-5.4)
 - Focused validation passed with `pnpm exec vitest run src/domain/invoices/__tests__/InvoiceDetail.test.tsx src/tests/invoices/InvoicePrintPreviewModal.test.tsx src/tests/invoices/InvoicePrintSheet.test.tsx`, and broader frontend validation passed with `pnpm test`, `pnpm lint`, and `pnpm build`.
 - The manual target-hardware validation recipe now lives in `docs/superpowers/specs/2026-04-04-print-preview-performance.md`; the emitted User Timing measure is `ultrerp:invoice-print-preview-open`.
 - Story 12.5 review follow-up hardened the preview-open lifecycle: chunk-load failures now recover, thrown customer-preload failures no longer strand the button, retry is explicit, repeated clicks cannot overwrite an in-flight timing sample, and stale User Timing measures are cleared before the next run.
+- The latest review follow-up keeps the preview action disabled until the modal shell and print context are actually ready, clears stale pending-open/timing state on invoice switches, and extends the real invoice-detail preview test to a large 120-line fixture.
 
 ### Change Log
 
 - 2026-04-04: Added a real invoice-detail print preview open path with User Timing instrumentation, lazy-loaded preview shell prefetch, precomputed customer print payload, large-fixture preview coverage, and a manual performance validation runbook.
 - 2026-04-04: Addressed Story 12.5 code review findings by hardening preview-shell recovery, retry behavior, and timing-measure lifecycle.
+- 2026-04-17: Addressed follow-up review findings by fixing the preload readiness race, clearing stale pending-open state on invoice changes, and extending the real-route preview test to a large invoice fixture.
 
 ### File List
 

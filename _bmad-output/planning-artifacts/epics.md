@@ -191,7 +191,7 @@ From Architecture Document:
 - AR14: API versioning at /api/v1/* path level
 
 **Legacy Import Investigation:**
-- AR15: Legacy import reads from exported CSV assets or SQL-dump-derived extracts only; the legacy source remains strictly read-only
+- AR15: Legacy import reads from exported CSV assets, SQL-dump-derived extracts, or a read-only live PostgreSQL legacy DB over Tailscale; the legacy source remains strictly read-only
 - AR16: Raw import lands in PostgreSQL `raw_legacy` staging tables first and uses bulk-loading plus lineage columns (`_legacy_table`, `_legacy_pk`, batch/run identifiers, import status)
 - AR17: Migration schema changes and canonical writes follow the repo's Alembic/SQLAlchemy/PostgreSQL conventions; the PoC `psycopg2` scripts remain reference material, not the production implementation surface
 - AR18: Product-code resolution uses `raw_legacy.product_code_mapping` plus analyst-reviewed mappings and an `UNKNOWN` placeholder to preserve unresolved transactions without inventing false certainty
@@ -262,7 +262,7 @@ Provides Traditional Chinese language support throughout the application with dy
 **FRs covered:** FR37-FR38, NFR16-NFR17
 
 ### Epic 15: Legacy Data Import Pipeline
-Operations and AI agents can stage, map, import, and validate legacy ERP data into UltrERP through a repeatable CLI-backed workflow plus a task-specific skill that preserves lineage and exposes unresolved data-quality issues instead of hiding them.
+Operations and AI agents can stage, map, import, and validate legacy ERP data into UltrERP from file-backed extracts or a read-only live legacy DB through a repeatable CLI-backed workflow plus a task-specific skill that preserves lineage and exposes unresolved data-quality issues instead of hiding them.
 **FRs covered:** FR56-FR62, NFR32-NFR36, AR15-AR21
 
 ### Epic 16: Extended Legacy Import — Purchase Transactions and Payments
@@ -366,5 +366,4 @@ INTEL-005: Epic 19 - Prospect gap analysis (customers not buying in a category)
 INTEL-006: Epic 19 - Market opportunities signal feed (macro market signals)
 INTEL-007: Epic 19 - Intelligence feature gate and MCP scope configuration
 INTEL-008: Epic 19 - Backend test coverage for intelligence services
-
 

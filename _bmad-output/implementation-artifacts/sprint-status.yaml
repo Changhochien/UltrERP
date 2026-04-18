@@ -11,7 +11,7 @@ development_status:
   # Epic 1 - Project Foundation
   epic-1:
     status: "completed"
-    validation_note: "Implemented, re-reviewed, and revalidated on 2026-04-01 via pnpm test/lint/build, backend pytest/ruff, Alembic upgrade, runtime health checks, Vite proxy verification, pg_isready, and shell syntax checks. A follow-up Epic 1 review on 2026-04-03 found that fresh-clone backend bootstrap still depended on an undeclared JWT_SECRET, so `.env.example`, README bootstrap instructions, and backend CI were updated to seed/document that requirement explicitly. The Epic 1 review cycle also closed the restore-target asymmetry in Story 1.4, restored the shared backend deps scaffold for Story 1.2, made root/backend .env loading explicit for Stories 1.1 and 1.5, documented the full Alembic command surface for Story 1.7, and updated backend CI to provision PostgreSQL 17 and run Alembic before pytest for Story 1.3."
+    validation_note: "Implemented, re-reviewed, and revalidated on 2026-04-01 via pnpm test/lint/build, backend pytest/ruff, Alembic upgrade, runtime health checks, Vite proxy verification, pg_isready, and shell syntax checks. A follow-up Epic 1 review on 2026-04-03 found that fresh-clone backend bootstrap still depended on an undeclared JWT_SECRET, so `.env.example`, README bootstrap instructions, and backend CI were updated to seed/document that requirement explicitly. The Epic 1 review cycle also closed the restore-target asymmetry in Story 1.4, restored the shared backend deps scaffold for Story 1.2, made root/backend .env loading explicit for Stories 1.1 and 1.5, documented the full Alembic command surface for Story 1.7, and updated backend CI to provision PostgreSQL 17 and run Alembic before pytest for Story 1.3. Story 1.9 foundation hardening was re-reviewed and revalidated on 2026-04-17; the follow-up fixes added an explicit active-transaction guard for the public invoice collaborator, strengthened explicit registry coverage to the full mapped table surface, and added a post-invoice reservation-failure regression proving the confirmation workflow stays uncommitted in the focused test harness."
     stories:
       1-1-developer-environment-setup:
         status: "completed"
@@ -45,6 +45,13 @@ development_status:
         status: "completed"
         story_id: "1.8"
         validation: "legacy migration findings consolidated into docs/legacy/migration-plan.md with corrected orphan profile and shadow-mode plan"
+      1-9-backend-architecture-boundary-hardening:
+        title: "Backend Architecture Boundary Hardening"
+        status: "completed"
+        story_id: "1.9"
+        validation: "Validated on 2026-04-17 with `cd /Volumes/2T_SSD_App/Projects/UltrERP/backend && uv run pytest tests/common/test_model_registry.py tests/domains/orders/test_order_confirmation.py -q` (`19 passed in 2.29s`) and `cd /Volumes/2T_SSD_App/Projects/UltrERP/backend && uv run ruff check common/model_registry.py common/models/__init__.py ../migrations/env.py ../seed_user.py domains/orders/services.py domains/invoices/service.py domains/inventory/order_confirmation.py tests/common/test_model_registry.py tests/domains/orders/test_order_confirmation.py tests/domains/orders/_helpers.py` (all checks passed). Story 1.9 added an explicit ORM model registry, removed domain-owned ORM re-exports from `common.models`, promoted public in-transaction confirmation collaborators, and the review-fix pass added an explicit active-transaction guard, full-table registry coverage, and a post-invoice reservation-failure regression while preserving the atomic order-confirmation contract."
+        prerequisites: ["1.2", "1.5", "5.5", "20.1"]
+        cross_epic: "Hardens shared foundation boundaries while preserving the implemented order-confirmation and snapshot flows from Epics 5 and 20"
 
   # Epic 2 - Invoice Lifecycle
   epic-2:
@@ -500,11 +507,11 @@ development_status:
         validation: "Validated on 2026-04-04 against the implemented repo: the root Tauri shell now hides to tray on close, restores the existing window from tray click/menu actions, and exits only through an explicit quit path. Browser-safe desktop window/notification bridges and hidden eGUI transition monitoring reuse the Story 12.3 server-owned state source, suppress duplicate notifications locally, and degrade cleanly when notification permission is denied. Code-review follow-up hardened watcher session scoping, hidden-cycle cancellation/visibility rechecks, permanent-error eviction for inaccessible tracked invoices, and malformed local-state sanitization. Focused validation is green via cargo check, focused Vitest coverage for the new desktop bridge/monitor slices plus InvoiceDetail, and pnpm build; manual macOS/Windows hardware verification is documented in docs/superpowers/specs/2026-04-04-system-tray-mode.md."
         prerequisites: ["12-2-keyboard-shortcuts", "12-3-egui-status-badge"]
       12-5-print-preview-performance:
-        status: "review"
+        status: "completed"
         story_id: "12.5"
         title: "Print Preview Performance"
         story_file: "12-5-print-preview-performance.md"
-        validation: "Validated on 2026-04-04 against the implemented repo: invoice detail now opens print preview through a real click-to-preview-ready path instrumented with the `ultrerp:invoice-print-preview-open` User Timing measure. The preview shell is lazy-loaded and prefetched, `InvoicePrintSheet` remains the single shared renderer, customer print payload is prepared ahead of modal mount through the existing customer detail API, a large-fixture preview modal test is in place, and the manual target-hardware performance recipe is documented in docs/superpowers/specs/2026-04-04-print-preview-performance.md. Code-review follow-up hardened preview-shell recovery, retry behavior, and timing-measure lifecycle. Frontend validation passed via focused preview tests plus `pnpm test`, `pnpm lint`, and `pnpm build`; actual target-hardware timing execution remains a manual review step rather than a completed automated proof."
+        validation: "Validated on 2026-04-04 against the implemented repo: invoice detail now opens print preview through a real click-to-preview-ready path instrumented with the `ultrerp:invoice-print-preview-open` User Timing measure. The preview shell is lazy-loaded and prefetched, `InvoicePrintSheet` remains the single shared renderer, customer print payload is prepared ahead of modal mount through the existing customer detail API, a large-fixture preview modal test is in place, and the manual target-hardware performance recipe is documented in docs/superpowers/specs/2026-04-04-print-preview-performance.md. Code-review follow-up hardened preview-shell recovery, retry behavior, timing-measure lifecycle, preload readiness gating, and stale pending-open cleanup on invoice switches; the real invoice-detail preview test now exercises a 120-line fixture. Review-fix validation reran clean with `pnpm exec vitest run src/domain/invoices/__tests__/InvoiceDetail.test.tsx src/tests/invoices/InvoicePrintPreviewModal.test.tsx` and focused ESLint on the touched files. Actual target-hardware timing execution remains a manual review step rather than a completed automated proof."
         prerequisites: []
 
   # Epic 13 - Shadow-Mode Validation
@@ -591,6 +598,9 @@ development_status:
       - "15.7 Unified Extract + Import CLI"
       - "15.8 Interactive ERP Onboarding Setup Skill"
       - "15.9 Legacy Product Family Categorization Hardening"
+      - "15.10 Live Legacy Source Compatibility Contract"
+      - "15.11 Dual-Source Staging Architecture Refactor"
+      - "15.12 Live Legacy DB Stage CLI"
     stories:
       15-0-unified-extract-and-import-cli:
         status: "done"
@@ -600,11 +610,12 @@ development_status:
         validation: "Validated on 2026-04-05: 94 tables, 1.1M rows extracted from cao50001.sql matching original extractor output exactly; /legacy-import skill updated with extract as phase 0."
         prerequisites: []
       15-1-raw-legacy-staging-import:
-        status: "review"
+        status: "done"
         story_id: "15.1"
         title: "Raw Legacy Staging Import"
         story_file: "15-1-raw-legacy-staging-import.md"
-        validation: "Validated on 2026-04-05 via uv-managed Ruff and pytest (7 focused tests), Alembic upgrade head, live CLI staging of tbscust+tbsstock into raw_legacy, successful rerun of the same batch ID, and control-table verification that replacement semantics kept runs=1 and table_runs=2."
+        validation: "Validated on 2026-04-05 via uv-managed Ruff and pytest (7 focused tests), Alembic upgrade head, live CLI staging of tbscust+tbsstock into raw_legacy, successful rerun of the same batch ID, and control-table verification that replacement semantics kept runs=1 and table_runs=2. Review (2026-04-18): 1 patch fixed (source_row_number nil→0 collision), 9 items deferred."
+        last_updated: "2026-04-18"
         prerequisites: []
       15-2-canonical-master-data-normalization:
         status: "review"
@@ -655,6 +666,27 @@ development_status:
         story_file: "15-9-legacy-product-family-categorization-hardening.md"
         validation: "Validated on 2026-04-14 with focused legacy-import and intelligence coverage: `uv run pytest tests/domains/legacy_import/test_normalization.py tests/domains/legacy_import/test_category_review.py tests/domains/legacy_import/test_cli.py tests/domains/legacy_import/test_canonical.py tests/domains/legacy_import/test_validation.py tests/domains/intelligence/test_service.py -q` (`85 passed`). Canonical/validation contract rerun also passed with `uv run pytest tests/domains/legacy_import/test_canonical.py tests/domains/legacy_import/test_validation.py -q` (`30 passed`), the final heuristic/intelligence rerun passed with `uv run pytest tests/domains/legacy_import/test_normalization.py tests/domains/intelligence/test_service.py -q` (`38 passed`), BMAD post-review regressions passed with `uv run pytest tests/domains/legacy_import/test_normalization.py tests/domains/legacy_import/test_category_review.py -q` (`19 passed`), targeted Ruff on the touched review-fix files passed, and Alembic smoke validation advanced the dev database cleanly from `1c2d3e4f5a6b` to `9b2f3c4d5e6f` via `uv run alembic -c ../migrations/alembic.ini upgrade head`."
         prerequisites: ["15.2", "15.3", "15.4", "15.5"]
+      15-10-live-legacy-source-compatibility-contract:
+        status: "review"
+        story_id: "15.10"
+        title: "Live Legacy Source Compatibility Contract"
+        story_file: "15-10-live-legacy-source-compatibility-contract.md"
+        validation: "Validated on 2026-04-18 with a live read-only probe against the PostgreSQL 8.2.23 source over Tailscale: `asyncpg 0.31.0` is approved when `LEGACY_DB_CLIENT_ENCODING=BIG5`, `server_encoding=SQL_ASCII`, `public` tables=`528`, and the required staging tables (`tbscust`, `tbsstock`, `tbsslipx`, `tbsslipdtx`, `tbsstkhouse`) all streamed successfully via metadata-driven `::text` projection. Focused validation passed with `cd backend && uv run pytest tests/domains/legacy_import tests/test_config.py tests/domains/settings/test_routes.py -q` (`125 passed`) plus targeted Ruff on the touched backend slice. The dual-source staging spec and linked probe artifact now record the approved connector contract without committed secrets. Full backend `uv run pytest -q` remains blocked by an existing duplicate `test_service.py` collection conflict between `tests/domains/intelligence/` and `tests/domains/product_analytics/`, and full backend `uv run ruff check` still reports many unrelated pre-existing violations outside the Story 15.10 files."
+        prerequisites: ["15.1", "15.7"]
+      15-11-dual-source-staging-architecture-refactor:
+        status: "todo"
+        story_id: "15.11"
+        title: "Dual-Source Staging Architecture Refactor"
+        story_file: "15-11-dual-source-staging-architecture-refactor.md"
+        validation: ""
+        prerequisites: ["15.1", "15.10"]
+      15-12-live-legacy-db-stage-cli:
+        status: "todo"
+        story_id: "15.12"
+        title: "Live Legacy DB Stage CLI"
+        story_file: "15-12-live-legacy-db-stage-cli.md"
+        validation: ""
+        prerequisites: ["15.6", "15.10", "15.11"]
 
   # Epic 16 - Extended Legacy Import: Purchase Transactions and Payments
   epic-16:
@@ -958,4 +990,4 @@ development_status:
         validation: "Validated on 2026-04-16 with `cd /Volumes/2T_SSD_App/Projects/UltrERP/backend && uv run pytest tests/domains/product_analytics/test_service.py tests/domains/intelligence/test_revenue_diagnosis_service.py tests/domains/intelligence/test_product_performance_service.py tests/domains/intelligence/test_customer_buying_behavior_service.py tests/domains/intelligence/test_routes.py tests/domains/inventory/test_planning_support.py tests/test_mcp_intelligence.py tests/test_mcp_auth.py -q` (`109 passed in 2.78s`). Story 20.9 adds shared-foundation regressions for countable-status filtering, per-snapshot monthly grain aggregation, tenant isolation, and immutable sale-time snapshots; adds Epic 20 route auth and query-validation coverage; and extends centralized MCP auth with explicit insufficient-scope checks for the new revenue diagnosis, product performance, and customer buying behavior tools while reusing the existing owner-domain inventory and intelligence suites."
         prerequisites: ["20.3", "20.4", "20.5", "20.6", "20.7", "20.8"]
 
-last_updated: "2026-04-16"
+last_updated: "2026-04-18"
