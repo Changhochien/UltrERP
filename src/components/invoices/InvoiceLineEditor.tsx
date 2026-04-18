@@ -7,6 +7,7 @@ import { INVOICE_TAX_POLICY_OPTIONS } from "../../domain/invoices/types";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import { ProductCombobox } from "../products/ProductCombobox";
 import {
   Select,
   SelectContent,
@@ -61,12 +62,11 @@ export function InvoiceLineEditor({
             <label htmlFor={`line-${index}-product-code`} className="text-sm font-medium">
               {t("invoice.lineEditor.productCode")}
             </label>
-            <Input
-              id={`line-${index}-product-code`}
-              type="text"
-              value={line.product_code}
-              onChange={(event) => onChange({ ...line, product_code: event.target.value })}
-              placeholder="Optional"
+            <ProductCombobox
+              value={line.product_id ?? ""}
+              onChange={(productId) => onChange({ ...line, product_id: productId, product_code: line.product_code })}
+              onProductSelected={(product) => onChange({ ...line, product_id: product.id, product_code: product.code, description: product.name })}
+              placeholder="Search product…"
             />
           </div>
 
