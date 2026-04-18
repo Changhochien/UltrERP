@@ -34,6 +34,15 @@ class DuplicateBusinessNumberError(ApplicationError):
         )
 
 
+class DuplicateProductCodeError(ApplicationError):
+    """A product with this code already exists for the tenant."""
+
+    def __init__(self, existing_id: uuid.UUID, existing_code: str) -> None:
+        self.existing_id = existing_id
+        self.existing_code = existing_code
+        super().__init__(f"Duplicate product code {existing_code}: existing product {existing_id}")
+
+
 class VersionConflictError(ApplicationError):
     """Optimistic locking conflict — the record was modified since last read."""
 
@@ -57,4 +66,13 @@ def duplicate_response(err: DuplicateBusinessNumberError) -> dict[str, Any]:
         "existing_customer_id": str(err.existing_id),
         "existing_customer_name": err.existing_name,
         "normalized_business_number": err.normalized_business_number,
+    }
+
+
+def duplicate_product_code_response(err: DuplicateProductCodeError) -> dict[str, Any]:
+    """Stable 409 duplicate product code error envelope."""
+    return {
+        "error": "duplicate_product_code",
+        "existing_product_id": str(err.existing_id),
+        "existing_product_code": err.existing_code,
     }

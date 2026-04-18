@@ -6,7 +6,15 @@ import { ArrowRightLeft, ArrowLeft, ShoppingCart, SlidersHorizontal } from "luci
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SectionCard } from "@/components/layout/PageLayout";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EditProductForm } from "@/domain/inventory/components/EditProductForm";
 import { useProductDetail } from "@/domain/inventory/hooks/useProductDetail";
 import { useStockHistory } from "@/domain/inventory/hooks/useStockHistory";
 import { WarehouseProvider, useWarehouseContext } from "@/domain/inventory/context/WarehouseContext";
@@ -157,7 +165,8 @@ function ProductDetailContent({ productId }: { productId: string }) {
   const { t } = useTranslation("common", { keyPrefix: "inventory.productDetail" });
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { product, loading, error } = useProductDetail(productId);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const { product, loading, error, reload, applyLocalUpdate } = useProductDetail(productId);
   const { selectedWarehouse } = useWarehouseContext();
   const requestedTab = searchParams.get("tab");
   const defaultTab = requestedTab === "analytics"
@@ -181,7 +190,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-start gap-4">
         <Button variant="ghost" size="sm" onClick={() => navigate(INVENTORY_ROUTE)}>
           <ArrowLeft size={16} />
         </Button>
@@ -234,15 +243,35 @@ function ProductDetailContent({ productId }: { productId: string }) {
                   </Badge>
                 )}
                 <Badge
+                  variant="outline"
+                  style={{
+                    borderColor: "var(--inv-border)",
+                    color: "var(--inv-muted)",
+                    background: "transparent",
+                  }}
+                >
+                  {product.unit}
+                </Badge>
+                <Badge
                   variant={product.status === "active" ? "success" : "destructive"}
                   style={{ textTransform: "capitalize" }}
                 >
                   {t(`statuses.${product.status}`, { defaultValue: product.status })}
                 </Badge>
               </div>
+              {product.description && (
+                <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                  {product.description}
+                </p>
+              )}
             </div>
           ) : null}
         </div>
+        {!loading && !error && product && (
+          <Button variant="outline" size="sm" onClick={() => setShowEditDialog(true)}>
+            {t("edit")}
+          </Button>
+        )}
       </div>
 
       <Tabs defaultValue={defaultTab}>
@@ -272,6 +301,23 @@ function ProductDetailContent({ productId }: { productId: string }) {
                   </span>
                 </div>
                 <StockHealthBar warehouses={product.warehouses} />
+              </SectionCard>
+
+              <SectionCard title={t("masterData")}>
+                <dl className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      {t("unitLabel")}
+                    </dt>
+                    <dd className="mt-1 text-sm font-medium text-foreground">{product.unit}</dd>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      {t("productDescription")}
+                    </dt>
+                    <dd className="mt-1 text-sm text-foreground">{product.description || "—"}</dd>
+                  </div>
+                </dl>
               </SectionCard>
 
               {/* By Warehouse */}
@@ -390,6 +436,26 @@ function ProductDetailContent({ productId }: { productId: string }) {
           <AuditLogTabContent productId={productId} />
         </TabsContent>
       </Tabs>
+
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent aria-label={t("edit")} className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t("edit")}</DialogTitle>
+            <DialogDescription>{t("editDescription")}</DialogDescription>
+          </DialogHeader>
+          {product && (
+            <EditProductForm
+              product={product}
+              onSuccess={(updatedProduct) => {
+                applyLocalUpdate(updatedProduct);
+                setShowEditDialog(false);
+                void reload();
+              }}
+              onCancel={() => setShowEditDialog(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

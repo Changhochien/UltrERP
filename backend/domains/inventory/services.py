@@ -10,6 +10,7 @@ from sqlalchemy import and_, asc, case, desc, distinct, func, literal, or_, sele
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from common.errors import DuplicateProductCodeError, ValidationError
 from common.events import StockChangedEvent, emit
 from common.models.audit_log import AuditLog
 from common.models.inventory_stock import InventoryStock
@@ -123,6 +124,146 @@ async def create_warehouse(
     session.add(warehouse)
     await session.flush()
     return warehouse
+
+
+def _normalize_optional_product_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip()
+    return normalized or None
+
+
+def _normalize_product_payload(
+    data: object,
+) -> tuple[str, str, str | None, str | None, str]:
+    code = str(getattr(data, "code", "")).strip()
+    name = str(getattr(data, "name", "")).strip()
+    unit = str(getattr(data, "unit", "")).strip()
+    category = _normalize_optional_product_text(getattr(data, "category", None))
+    description = _normalize_optional_product_text(getattr(data, "description", None))
+
+    errors: list[dict[str, str | tuple[str, ...]]] = []
+    if not code:
+        errors.append({"loc": ("code",), "msg": "code cannot be blank", "type": "value_error"})
+    if not name:
+        errors.append({"loc": ("name",), "msg": "name cannot be blank", "type": "value_error"})
+    if not unit:
+        errors.append({"loc": ("unit",), "msg": "unit cannot be blank", "type": "value_error"})
+    if errors:
+        raise ValidationError(errors)
+
+    return code, name, category, description, unit
+
+
+async def _find_product_by_code(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    code: str,
+    *,
+    exclude_product_id: uuid.UUID | None = None,
+) -> Product | None:
+    stmt = select(Product).where(
+        Product.tenant_id == tenant_id,
+        func.lower(Product.code) == code.lower(),
+    )
+    if exclude_product_id is not None:
+        stmt = stmt.where(Product.id != exclude_product_id)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+# ── Product creation ───────────────────────────────────────────
+
+
+async def create_product(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    data: "ProductCreate",
+) -> Product:
+    """Create a new product for a tenant."""
+    code, name, category, description, unit = _normalize_product_payload(data)
+
+    # Check for duplicate code within tenant
+    row = await _find_product_by_code(session, tenant_id, code)
+    if row is not None:
+        raise DuplicateProductCodeError(existing_id=row.id, existing_code=row.code)
+
+    product = Product(
+        tenant_id=tenant_id,
+        code=code,
+        name=name,
+        category=category,
+        description=description,
+        unit=unit,
+        status="active",
+        search_vector=func.to_tsvector("simple", name + " " + code),
+    )
+    try:
+        session.add(product)
+        await session.flush()
+    except IntegrityError:
+        await session.rollback()
+        # Race condition: another request inserted the same code between our
+        # pre-check and insert. Query for the conflicting product and raise
+        # DuplicateProductCodeError so the route returns a proper 409.
+        existing = await _find_product_by_code(session, tenant_id, code)
+        if existing is not None:
+            raise DuplicateProductCodeError(existing_id=existing.id, existing_code=existing.code)
+        raise
+    return product
+
+
+async def update_product(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+    data: "ProductUpdate",
+) -> Product | None:
+    """Update an existing product for a tenant."""
+    code, name, category, description, unit = _normalize_product_payload(data)
+
+    stmt = select(Product).where(
+        Product.id == product_id,
+        Product.tenant_id == tenant_id,
+    )
+    result = await session.execute(stmt)
+    product = result.scalar_one_or_none()
+    if product is None:
+        return None
+
+    existing = await _find_product_by_code(
+        session,
+        tenant_id,
+        code,
+        exclude_product_id=product.id,
+    )
+    if existing is not None:
+        raise DuplicateProductCodeError(existing_id=existing.id, existing_code=existing.code)
+
+    code_or_name_changed = product.code != code or product.name != name
+    product.code = code
+    product.name = name
+    product.category = category
+    product.description = description
+    product.unit = unit
+    if code_or_name_changed:
+        product.search_vector = func.to_tsvector("simple", name + " " + code)
+
+    try:
+        await session.flush()
+    except IntegrityError:
+        await session.rollback()
+        existing = await _find_product_by_code(
+            session,
+            tenant_id,
+            code,
+            exclude_product_id=product_id,
+        )
+        if existing is not None:
+            raise DuplicateProductCodeError(existing_id=existing.id, existing_code=existing.code)
+        raise
+
+    return product
 
 
 # ── Stock transfer ─────────────────────────────────────────────
@@ -878,6 +1019,8 @@ async def get_product_detail(
         "code": product.code,
         "name": product.name,
         "category": product.category,
+        "description": product.description,
+        "unit": product.unit,
         "status": product.status,
         "legacy_master_snapshot": getattr(product, "legacy_master_snapshot", None),
         "total_stock": total_stock,

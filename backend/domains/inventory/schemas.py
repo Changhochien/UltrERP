@@ -208,6 +208,38 @@ class ProductSearchResponse(BaseModel):
     total: int
 
 
+# --- Product schemas ---
+
+
+class ProductCreate(BaseModel):
+    code: str = Field(..., min_length=1, max_length=100)
+    name: str = Field(..., min_length=1, max_length=500)
+    category: str | None = Field(None, max_length=200)
+    description: str | None = None
+    unit: str = Field(default="pcs", max_length=50)
+
+
+class ProductUpdate(BaseModel):
+    code: str = Field(..., min_length=1, max_length=100)
+    name: str = Field(..., min_length=1, max_length=500)
+    category: str | None = Field(None, max_length=200)
+    description: str | None = None
+    unit: str = Field(..., min_length=1, max_length=50)
+
+
+class ProductResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    code: str
+    name: str
+    category: str | None
+    description: str | None
+    unit: str
+    status: str
+    created_at: datetime
+
+
 # --- Product detail schemas ---
 
 
@@ -244,6 +276,8 @@ class ProductDetailResponse(BaseModel):
     code: str
     name: str
     category: str | None
+    description: str | None
+    unit: str
     status: str
     legacy_master_snapshot: dict[str, Any] | None = None
     total_stock: int

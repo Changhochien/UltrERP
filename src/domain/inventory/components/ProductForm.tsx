@@ -1,0 +1,220 @@
+import { useEffect, useState } from "react";
+
+import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
+import { Textarea } from "../../../components/ui/textarea";
+import type { ProductResponse, ProductUpdate } from "../types";
+
+export interface ProductFormFieldError {
+  field: string;
+  message: string;
+}
+
+export type ProductFormSubmitResult =
+  | { ok: true; product: ProductResponse }
+  | { ok: false; fieldErrors?: ProductFormFieldError[]; formError?: string };
+
+export interface ProductFormValues {
+  code: string;
+  name: string;
+  category: string;
+  description: string;
+  unit: string;
+}
+
+interface ProductFormProps {
+  initialValues?: Partial<ProductFormValues>;
+  onSubmit: (values: ProductUpdate) => Promise<ProductFormSubmitResult>;
+  onSuccess: (product: ProductResponse) => void;
+  onCancel?: () => void;
+  submitLabel: string;
+  submittingLabel: string;
+}
+
+const DEFAULT_VALUES: ProductFormValues = {
+  code: "",
+  name: "",
+  category: "",
+  description: "",
+  unit: "pcs",
+};
+
+function toErrorMap(errors: ProductFormFieldError[]): Record<string, string> {
+  return errors.reduce<Record<string, string>>((acc, error) => {
+    if (error.field) {
+      acc[error.field] = error.message;
+    }
+    return acc;
+  }, {});
+}
+
+export function ProductForm({
+  initialValues,
+  onSubmit,
+  onSuccess,
+  onCancel,
+  submitLabel,
+  submittingLabel,
+}: ProductFormProps) {
+  const [formData, setFormData] = useState<ProductFormValues>(DEFAULT_VALUES);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    setFormData({
+      code: initialValues?.code ?? DEFAULT_VALUES.code,
+      name: initialValues?.name ?? DEFAULT_VALUES.name,
+      category: initialValues?.category ?? DEFAULT_VALUES.category,
+      description: initialValues?.description ?? DEFAULT_VALUES.description,
+      unit: initialValues?.unit ?? DEFAULT_VALUES.unit,
+    });
+    setErrors({});
+    setServerError(null);
+  }, [
+    initialValues?.category,
+    initialValues?.code,
+    initialValues?.description,
+    initialValues?.name,
+    initialValues?.unit,
+  ]);
+
+  function validate(values: ProductFormValues): Record<string, string> {
+    const nextErrors: Record<string, string> = {};
+    if (!values.code.trim()) {
+      nextErrors.code = "Code is required";
+    }
+    if (!values.name.trim()) {
+      nextErrors.name = "Name is required";
+    }
+    if (!values.unit.trim()) {
+      nextErrors.unit = "Unit is required";
+    }
+    return nextErrors;
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setServerError(null);
+
+    const clientErrors = validate(formData);
+    setErrors(clientErrors);
+    if (Object.keys(clientErrors).length > 0) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const result = await onSubmit({
+        code: formData.code.trim(),
+        name: formData.name.trim(),
+        category: formData.category.trim(),
+        description: formData.description.trim(),
+        unit: formData.unit.trim(),
+      });
+
+      if (result.ok) {
+        onSuccess(result.product);
+        return;
+      }
+
+      setErrors(toErrorMap(result.fieldErrors ?? []));
+      const generalError = result.fieldErrors?.find((error) => !error.field)?.message ?? null;
+      setServerError(result.formError ?? generalError);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {serverError && (
+        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+          {serverError}
+        </div>
+      )}
+
+      <div>
+        <label htmlFor="product-code" className="block text-sm font-medium">
+          Code <span className="text-destructive">*</span>
+        </label>
+        <Input
+          id="product-code"
+          type="text"
+          value={formData.code}
+          onChange={(event) => setFormData((current) => ({ ...current, code: event.target.value }))}
+          aria-invalid={Boolean(errors.code)}
+          disabled={isSubmitting}
+        />
+        {errors.code && <p className="mt-1 text-sm text-destructive">{errors.code}</p>}
+      </div>
+
+      <div>
+        <label htmlFor="product-name" className="block text-sm font-medium">
+          Name <span className="text-destructive">*</span>
+        </label>
+        <Input
+          id="product-name"
+          type="text"
+          value={formData.name}
+          onChange={(event) => setFormData((current) => ({ ...current, name: event.target.value }))}
+          aria-invalid={Boolean(errors.name)}
+          disabled={isSubmitting}
+        />
+        {errors.name && <p className="mt-1 text-sm text-destructive">{errors.name}</p>}
+      </div>
+
+      <div>
+        <label htmlFor="product-category" className="block text-sm font-medium">
+          Category
+        </label>
+        <Input
+          id="product-category"
+          type="text"
+          value={formData.category}
+          onChange={(event) => setFormData((current) => ({ ...current, category: event.target.value }))}
+          disabled={isSubmitting}
+        />
+      </div>
+
+      <div>
+        <label htmlFor="product-description" className="block text-sm font-medium">
+          Description
+        </label>
+        <Textarea
+          id="product-description"
+          value={formData.description}
+          onChange={(event) => setFormData((current) => ({ ...current, description: event.target.value }))}
+          rows={4}
+          disabled={isSubmitting}
+        />
+      </div>
+
+      <div>
+        <label htmlFor="product-unit" className="block text-sm font-medium">
+          Unit <span className="text-destructive">*</span>
+        </label>
+        <Input
+          id="product-unit"
+          type="text"
+          value={formData.unit}
+          onChange={(event) => setFormData((current) => ({ ...current, unit: event.target.value }))}
+          aria-invalid={Boolean(errors.unit)}
+          disabled={isSubmitting}
+        />
+        {errors.unit && <p className="mt-1 text-sm text-destructive">{errors.unit}</p>}
+      </div>
+
+      <div className="flex gap-2">
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? submittingLabel : submitLabel}
+        </Button>
+        {onCancel && (
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
+      </div>
+    </form>
+  );
+}

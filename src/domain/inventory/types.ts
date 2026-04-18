@@ -115,6 +115,8 @@ export interface ProductDetail {
   code: string;
   name: string;
   category: string | null;
+  description: string | null;
+  unit: string;
   status: string;
   total_stock: number;
   warehouses: WarehouseStockInfo[];
@@ -405,4 +407,33 @@ export interface ReorderPointApplyResponse {
   updated_count: number;
   skipped_count: number;
   run_parameters: Record<string, unknown>;
+}
+
+// --- Product create types ---
+
+export interface ProductCreate {
+  code: string;
+  name: string;
+  category?: string;
+  description?: string;
+  unit?: string;
+}
+
+export interface ProductUpdate {
+  code: string;
+  name: string;
+  category?: string;
+  description?: string;
+  unit: string;
+}
+
+export interface ProductResponse {
+  id: string;
+  code: string;
+  name: string;
+  category: string | null;
+  description: string | null;
+  unit: string;
+  status: string;
+  created_at: string;
 }

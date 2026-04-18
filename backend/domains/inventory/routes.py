@@ -14,6 +14,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from common.auth import require_role
 from common.config import settings
 from common.database import get_db
+from common.errors import (
+    DuplicateProductCodeError,
+    ValidationError,
+    duplicate_product_code_response,
+    error_response,
+)
 from common.models.inventory_stock import InventoryStock
 from common.models.product import Product
 from common.models.stock_adjustment import ReasonCode
@@ -35,9 +41,12 @@ from domains.inventory.schemas import (
     InventoryStockResponse,
     MonthlyDemandResponse,
     PlanningSupportResponse,
+    ProductCreate,
     ProductDetailResponse,
+    ProductResponse,
     ProductSearchResponse,
     ProductSearchResult,
+    ProductUpdate,
     ProductSupplierResponse,
     ReasonCodeItem,
     ReasonCodeListResponse,
@@ -74,6 +83,7 @@ from domains.inventory.services import (
     InsufficientStockError,
     TransferValidationError,
     acknowledge_alert,
+    create_product,
     create_stock_adjustment,
     create_supplier_order,
     create_warehouse,
@@ -98,10 +108,12 @@ from domains.inventory.services import (
     snooze_alert,
     transfer_stock,
     update_stock_settings,
+    update_product,
     update_supplier_order_status,
 )
 
 router = APIRouter()
+
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 CurrentTenant = Annotated[uuid.UUID, Depends(get_tenant_id)]
@@ -510,6 +522,56 @@ async def search_products_endpoint(
         items=[ProductSearchResult(**r) for r in results],
         total=total,
     )
+
+
+# ── Product creation endpoint ──────────────────────────────────
+
+
+@router.post(
+    "/products",
+    response_model=ProductResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_product_endpoint(
+    data: ProductCreate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> ProductResponse:
+    try:
+        product = await create_product(session, tenant_id, data)
+        await session.commit()
+    except DuplicateProductCodeError as exc:
+        return JSONResponse(status_code=409, content=duplicate_product_code_response(exc))
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+    return ProductResponse.model_validate(product)
+
+
+@router.put(
+    "/products/{product_id}",
+    response_model=ProductResponse,
+)
+async def update_product_endpoint(
+    product_id: uuid.UUID,
+    data: ProductUpdate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> ProductResponse:
+    try:
+        product = await update_product(session, tenant_id, product_id, data)
+        if product is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Product not found",
+            )
+        await session.commit()
+    except DuplicateProductCodeError as exc:
+        return JSONResponse(status_code=409, content=duplicate_product_code_response(exc))
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+    return ProductResponse.model_validate(product)
 
 
 # ── Product detail endpoint ────────────────────────────────────

@@ -5,6 +5,9 @@ import type {
   PlanningSupportResponse,
   ProductSearchResponse,
   ProductDetail,
+  ProductCreate,
+  ProductResponse,
+  ProductUpdate,
   ReorderAlertListResponse,
   SnoozeAlertResponse,
   WarehouseListResponse,
@@ -365,5 +368,93 @@ export async function receiveSupplierOrder(
     return { ok: true, data: (await resp.json()) as SupplierOrder };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+export async function createProduct(data: ProductCreate): Promise<ProductResponse> {
+  const resp = await apiFetch("/api/v1/inventory/products", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({}));
+    if (resp.status === 409) {
+      throw new Error("Product code already exists");
+    }
+    throw new Error((body as { detail?: string }).detail ?? "Failed to create product");
+  }
+  return resp.json() as Promise<ProductResponse>;
+}
+
+export interface InventoryFieldError {
+  field: string;
+  message: string;
+}
+
+export type UpdateProductResult =
+  | { ok: true; data: ProductResponse }
+  | { ok: false; errors: InventoryFieldError[] };
+
+function normalizeInventoryFieldErrors(detail: unknown): InventoryFieldError[] {
+  if (!Array.isArray(detail)) {
+    return [];
+  }
+
+  return detail.map((item) => {
+    const field =
+      item && typeof item === "object" && Array.isArray((item as { loc?: unknown }).loc)
+        ? String(((item as { loc: unknown[] }).loc.at(-1) ?? ""))
+        : "";
+    const message =
+      item && typeof item === "object" && typeof (item as { msg?: unknown }).msg === "string"
+        ? (item as { msg: string }).msg
+        : "Invalid value";
+    return { field, message };
+  });
+}
+
+export async function updateProduct(
+  productId: string,
+  data: ProductUpdate,
+): Promise<UpdateProductResult> {
+  try {
+    const resp = await apiFetch(`/api/v1/inventory/products/${encodeURIComponent(productId)}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+    const body = await resp.json().catch(() => ({}));
+
+    if (resp.ok) {
+      return { ok: true, data: body as ProductResponse };
+    }
+
+    if (resp.status === 409) {
+      return {
+        ok: false,
+        errors: [{ field: "code", message: "Product code already exists" }],
+      };
+    }
+
+    if (resp.status === 404) {
+      return {
+        ok: false,
+        errors: [{ field: "", message: (body as { detail?: string }).detail ?? "Product not found" }],
+      };
+    }
+
+    const errors = normalizeInventoryFieldErrors((body as { detail?: unknown }).detail);
+    if (errors.length > 0) {
+      return { ok: false, errors };
+    }
+
+    return {
+      ok: false,
+      errors: [{ field: "", message: (body as { detail?: string }).detail ?? "Failed to update product" }],
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      errors: [{ field: "", message: e instanceof Error ? e.message : "Unknown error" }],
+    };
   }
 }
