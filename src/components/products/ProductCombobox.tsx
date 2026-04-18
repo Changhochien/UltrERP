@@ -107,6 +107,7 @@ export function ProductCombobox({
               id: result.data.id,
               code: result.data.code,
               name: result.data.name,
+              category_id: result.data.category_id,
               category: result.data.category,
               status: result.data.status,
               current_stock: result.data.total_stock ?? 0,

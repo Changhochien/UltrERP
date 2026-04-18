@@ -135,6 +135,7 @@ export interface ProductSearchResult {
   id: string;
   code: string;
   name: string;
+  category_id: string | null;
   category: string | null;
   status: string;
   current_stock: number;
@@ -187,6 +188,9 @@ export interface Category {
   id: string;
   tenant_id: string;
   name: string;
+  name_en: string;
+  name_zh_hant: string | null;
+  translations: Record<string, string>;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -199,10 +203,12 @@ export interface CategoryListResponse {
 
 export interface CategoryCreate {
   name: string;
+  translations?: Record<string, string>;
 }
 
 export interface CategoryUpdate {
-  name: string;
+  name?: string | null;
+  translations?: Record<string, string> | null;
 }
 
 export interface CategoryStatusUpdate {
@@ -269,6 +275,7 @@ export interface ProductDetail {
   id: string;
   code: string;
   name: string;
+  category_id: string | null;
   category: string | null;
   description: string | null;
   unit: string;
@@ -701,7 +708,7 @@ export interface ReorderPointApplyResponse {
 export interface ProductCreate {
   code: string;
   name: string;
-  category?: string;
+  category_id?: string | null;
   description?: string;
   unit?: string;
   standard_cost?: string | null;
@@ -710,7 +717,7 @@ export interface ProductCreate {
 export interface ProductUpdate {
   code: string;
   name: string;
-  category?: string;
+  category_id?: string | null;
   description?: string;
   unit: string;
   standard_cost?: string | null;
@@ -720,6 +727,7 @@ export interface ProductResponse {
   id: string;
   code: string;
   name: string;
+  category_id: string | null;
   category: string | null;
   description: string | null;
   unit: string;

@@ -19,15 +19,15 @@ interface ProductSearchProps {
 
 export function ProductSearch({ onProductClick }: ProductSearchProps) {
   const { t } = useTranslation("common", { keyPrefix: "inventory.productGrid" });
-  const { query, results, loading, error, includeInactive, category, search } = useProductSearch();
+  const { query, results, loading, error, includeInactive, categoryId, categoryLabel, search } = useProductSearch();
   const { selectedWarehouse } = useWarehouseContext();
   const trimmedQuery = query.trim();
   const hasSearchQuery = trimmedQuery.length > 0;
 
   // Load all products on mount
   useEffect(() => {
-    search("", selectedWarehouse?.id, 1, undefined, includeInactive, category);
-  }, [category, includeInactive, search, selectedWarehouse?.id]);
+    search("", selectedWarehouse?.id, 1, undefined, includeInactive, categoryId, categoryLabel);
+  }, [categoryId, categoryLabel, includeInactive, search, selectedWarehouse?.id]);
 
   return (
     <SectionCard title={t("productsTitle")} description={t("browseProducts")}>
@@ -82,7 +82,7 @@ export function ProductSearch({ onProductClick }: ProductSearchProps) {
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => search(trimmedQuery, selectedWarehouse?.id, 1, undefined, includeInactive, category)}
+              onClick={() => search(trimmedQuery, selectedWarehouse?.id, 1, undefined, includeInactive, categoryId, categoryLabel)}
             >
               {t("retry")}
             </Button>
@@ -106,16 +106,19 @@ export function ProductSearch({ onProductClick }: ProductSearchProps) {
                 <Input
                   type="search"
                   placeholder={t("searchPlaceholder")}
-                  onChange={(event) => search(event.target.value, selectedWarehouse?.id, 1, undefined, includeInactive, category)}
+                  onChange={(event) => search(event.target.value, selectedWarehouse?.id, 1, undefined, includeInactive, categoryId, categoryLabel)}
                   aria-label={t("searchPlaceholder")}
                   className="pl-9"
                 />
               </div>
               <div className="min-w-[14rem]">
                 <CategoryCombobox
-                  value={category}
-                  onChange={(nextCategory) => search(trimmedQuery, selectedWarehouse?.id, 1, undefined, includeInactive, nextCategory)}
-                  onClear={() => search(trimmedQuery, selectedWarehouse?.id, 1, undefined, includeInactive, "")}
+                  value={categoryId || null}
+                  valueLabel={categoryLabel || null}
+                  onChange={(nextCategoryId, nextCategoryLabel) =>
+                    search(trimmedQuery, selectedWarehouse?.id, 1, undefined, includeInactive, nextCategoryId, nextCategoryLabel)
+                  }
+                  onClear={() => search(trimmedQuery, selectedWarehouse?.id, 1, undefined, includeInactive, "", "")}
                   placeholder={t("filterCategory")}
                 />
               </div>
@@ -124,7 +127,7 @@ export function ProductSearch({ onProductClick }: ProductSearchProps) {
                 size="sm"
                 variant={includeInactive ? "default" : "outline"}
                 aria-pressed={includeInactive}
-                onClick={() => search(trimmedQuery, selectedWarehouse?.id, 1, undefined, !includeInactive, category)}
+                onClick={() => search(trimmedQuery, selectedWarehouse?.id, 1, undefined, !includeInactive, categoryId, categoryLabel)}
               >
                 {t("showInactive")}
               </Button>

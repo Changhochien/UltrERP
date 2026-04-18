@@ -19,7 +19,8 @@ export type ProductFormSubmitResult =
 export interface ProductFormValues {
   code: string;
   name: string;
-  category: string;
+  category_id: string | null;
+  category_name: string;
   description: string;
   unit: string;
   standard_cost: string;
@@ -37,7 +38,8 @@ interface ProductFormProps {
 const DEFAULT_VALUES: ProductFormValues = {
   code: "",
   name: "",
-  category: "",
+  category_id: null,
+  category_name: "",
   description: "",
   unit: "pcs",
   standard_cost: "",
@@ -69,7 +71,8 @@ export function ProductForm({
     setFormData({
       code: initialValues?.code ?? DEFAULT_VALUES.code,
       name: initialValues?.name ?? DEFAULT_VALUES.name,
-      category: initialValues?.category ?? DEFAULT_VALUES.category,
+      category_id: initialValues?.category_id ?? DEFAULT_VALUES.category_id,
+      category_name: initialValues?.category_name ?? DEFAULT_VALUES.category_name,
       description: initialValues?.description ?? DEFAULT_VALUES.description,
       unit: initialValues?.unit ?? DEFAULT_VALUES.unit,
       standard_cost: initialValues?.standard_cost ?? DEFAULT_VALUES.standard_cost,
@@ -77,7 +80,8 @@ export function ProductForm({
     setErrors({});
     setServerError(null);
   }, [
-    initialValues?.category,
+    initialValues?.category_id,
+    initialValues?.category_name,
     initialValues?.code,
     initialValues?.description,
     initialValues?.name,
@@ -123,7 +127,7 @@ export function ProductForm({
       const result = await onSubmit({
         code: formData.code.trim(),
         name: formData.name.trim(),
-        category: formData.category.trim(),
+        category_id: formData.category_id,
         description: formData.description.trim(),
         unit: formData.unit.trim(),
         standard_cost: formData.standard_cost.trim() ? formData.standard_cost.trim() : null,
@@ -188,9 +192,12 @@ export function ProductForm({
           <CategoryCombobox
             inputId="product-category-trigger"
             ariaLabelledBy="product-category-label"
-            value={formData.category}
-            onChange={(category) => setFormData((current) => ({ ...current, category }))}
-            onClear={() => setFormData((current) => ({ ...current, category: "" }))}
+            value={formData.category_id}
+            valueLabel={formData.category_name}
+            onChange={(category_id, category_name) =>
+              setFormData((current) => ({ ...current, category_id, category_name }))
+            }
+            onClear={() => setFormData((current) => ({ ...current, category_id: null, category_name: "" }))}
             placeholder="Search or create category…"
             allowCreate
             disabled={isSubmitting}

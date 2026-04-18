@@ -39,6 +39,7 @@ const productDetailFixture: ProductDetail = {
   id: "product-2",
   code: "SKU-2",
   name: "Rotor",
+  category_id: null,
   category: "Hardware",
   description: "Updated product detail",
   unit: "pcs",
@@ -88,7 +89,7 @@ describe("inventory hook abort handling", () => {
 
     const { result, rerender } = renderHook(
       ({ productId }: { productId: string | null }) => useProductDetail(productId),
-      { initialProps: { productId: "product-2" } },
+      { initialProps: { productId: "product-2" } as { productId: string | null } },
     );
 
     await waitFor(() => {
@@ -124,7 +125,7 @@ describe("inventory hook abort handling", () => {
 
     const { result, rerender } = renderHook(
       ({ productId }: { productId: string | null }) => useProductDetail(productId),
-      { initialProps: { productId: "product-1" } },
+      { initialProps: { productId: "product-1" } as { productId: string | null } },
     );
 
     await waitFor(() => {

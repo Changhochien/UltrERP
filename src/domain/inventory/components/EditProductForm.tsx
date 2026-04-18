@@ -14,7 +14,8 @@ export function EditProductForm({ product, onSuccess, onCancel }: EditProductFor
       initialValues={{
         code: product.code,
         name: product.name,
-        category: product.category ?? "",
+        category_id: product.category_id,
+        category_name: product.category ?? "",
         description: product.description ?? "",
         unit: product.unit,
         standard_cost: product.standard_cost ?? "",

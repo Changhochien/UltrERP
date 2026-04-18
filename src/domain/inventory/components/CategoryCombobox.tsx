@@ -21,8 +21,9 @@ import {
 } from "../../../components/ui/command";
 
 interface CategoryComboboxProps {
-  value: string;
-  onChange: (categoryName: string) => void;
+  value: string | null;
+  valueLabel?: string | null;
+  onChange: (categoryId: string, categoryName: string) => void;
   onClear?: () => void;
   placeholder?: string;
   disabled?: boolean;
@@ -35,6 +36,7 @@ interface CategoryComboboxProps {
 
 export function CategoryCombobox({
   value,
+  valueLabel,
   onChange,
   onClear,
   placeholder = "Search category…",
@@ -180,12 +182,19 @@ export function CategoryCombobox({
       }
       return [result.data, ...current];
     });
-    onChange(result.data.name);
+    onChange(result.data.id, result.data.name);
     setOpen(false);
   }
 
-  function handleSelect(categoryName: string) {
-    onChange(categoryName);
+  const selectedLabel = useMemo(() => {
+    if (valueLabel) {
+      return valueLabel;
+    }
+    return categories.find((category) => category.id === value)?.name ?? null;
+  }, [categories, value, valueLabel]);
+
+  function handleSelect(category: Category) {
+    onChange(category.id, category.name);
     setOpen(false);
   }
 
@@ -204,12 +213,16 @@ export function CategoryCombobox({
             disabled={disabled}
             className={cn(
               "w-full justify-start text-left font-normal",
-              !value && "text-muted-foreground",
+              !selectedLabel && "text-muted-foreground",
             )}
           />
         }
       >
-        {value ? <span className="truncate flex-1">{value}</span> : <span className="truncate flex-1">{placeholder}</span>}
+        {selectedLabel ? (
+          <span className="truncate flex-1">{selectedLabel}</span>
+        ) : (
+          <span className="truncate flex-1">{placeholder}</span>
+        )}
         {value && onClear ? (
           <span
             role="button"
@@ -249,8 +262,8 @@ export function CategoryCombobox({
                     {filteredCategories.map((category) => (
                       <CommandItem
                         key={category.id}
-                        value={category.name}
-                        onSelect={() => handleSelect(category.name)}
+                        value={category.id}
+                        onSelect={() => handleSelect(category)}
                       >
                         <div className="flex flex-col gap-0.5">
                           <span className="font-medium">{category.name}</span>

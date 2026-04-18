@@ -70,6 +70,7 @@ export function useProductDetail(productId: string | null) {
       if (
         current.code === updated.code &&
         current.name === updated.name &&
+        current.category_id === updated.category_id &&
         current.category === updated.category &&
         current.description === updated.description &&
         current.unit === updated.unit &&
@@ -82,6 +83,7 @@ export function useProductDetail(productId: string | null) {
         ...current,
         code: updated.code,
         name: updated.name,
+        category_id: updated.category_id,
         category: updated.category,
         description: updated.description,
         unit: updated.unit,

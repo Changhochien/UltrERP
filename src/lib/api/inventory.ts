@@ -57,7 +57,7 @@ export async function searchProducts(
   options?: {
     limit?: number;
     offset?: number;
-    category?: string;
+    categoryId?: string;
     warehouseId?: string;
     includeInactive?: boolean;
     sortBy?: string;
@@ -68,7 +68,7 @@ export async function searchProducts(
   const params = new URLSearchParams({ q: query });
   if (options?.limit) params.set("limit", String(options.limit));
   if (options?.offset) params.set("offset", String(options.offset));
-  if (options?.category) params.set("category", options.category);
+  if (options?.categoryId) params.set("category_id", options.categoryId);
   if (options?.warehouseId) params.set("warehouse_id", options.warehouseId);
   if (options?.includeInactive) params.set("include_inactive", "true");
   if (options?.sortBy) params.set("sort_by", options.sortBy);
