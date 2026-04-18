@@ -6,6 +6,7 @@ import { PageHeader, SectionCard } from "../../components/layout/PageLayout";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import type { PhysicalCountSession } from "../../domain/inventory/types";
+import { countSessionStatusVariant } from "../../domain/inventory/utils";
 import {
   approvePhysicalCountSession,
   fetchPhysicalCountSession,
@@ -15,16 +16,6 @@ import {
 import { INVENTORY_COUNT_SESSIONS_ROUTE } from "../../lib/routes";
 
 type DraftMap = Record<string, { countedQty: string; notes: string }>;
-
-function statusVariant(status: PhysicalCountSession["status"]) {
-  if (status === "approved") {
-    return "success" as const;
-  }
-  if (status === "submitted") {
-    return "outline" as const;
-  }
-  return "secondary" as const;
-}
 
 function buildDrafts(session: PhysicalCountSession): DraftMap {
   return Object.fromEntries(
@@ -171,7 +162,7 @@ export function CountSessionDetailPage() {
               {t("backToList")}
             </Button>
             {session ? (
-              <Badge variant={statusVariant(session.status)} className="normal-case tracking-normal">
+              <Badge variant={countSessionStatusVariant(session.status)} className="normal-case tracking-normal">
                 {t(`status.${session.status}`)}
               </Badge>
             ) : null}

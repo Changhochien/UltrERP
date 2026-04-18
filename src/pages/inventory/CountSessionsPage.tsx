@@ -7,6 +7,7 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { useWarehouses } from "../../domain/inventory/hooks/useWarehouses";
 import type { PhysicalCountSessionSummary } from "../../domain/inventory/types";
+import { countSessionStatusVariant } from "../../domain/inventory/utils";
 import {
   createPhysicalCountSession,
   fetchPhysicalCountSessions,
@@ -15,16 +16,6 @@ import {
   INVENTORY_ROUTE,
   buildCountSessionDetailPath,
 } from "../../lib/routes";
-
-function statusVariant(status: PhysicalCountSessionSummary["status"]) {
-  if (status === "approved") {
-    return "success" as const;
-  }
-  if (status === "submitted") {
-    return "outline" as const;
-  }
-  return "secondary" as const;
-}
 
 export function CountSessionsPage() {
   const { t } = useTranslation("common", { keyPrefix: "inventory.countSessionsPage" });
@@ -187,7 +178,7 @@ export function CountSessionsPage() {
                   <tr key={session.id}>
                     <td className="px-4 py-3 font-medium">{session.warehouse_name ?? t("unknownWarehouse")}</td>
                     <td className="px-4 py-3">
-                      <Badge variant={statusVariant(session.status)} className="normal-case tracking-normal">
+                      <Badge variant={countSessionStatusVariant(session.status)} className="normal-case tracking-normal">
                         {t(`status.${session.status}`)}
                       </Badge>
                     </td>
