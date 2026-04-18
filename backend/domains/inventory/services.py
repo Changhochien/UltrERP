@@ -3,25 +3,41 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, date, datetime, timedelta
-from decimal import Decimal, ROUND_HALF_UP
+from datetime import date, datetime, timedelta
+from decimal import ROUND_HALF_UP, Decimal
+from typing import TYPE_CHECKING
 
 from sqlalchemy import and_, asc, case, desc, distinct, func, literal, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from common.errors import (
+    DuplicateCategoryNameError,
+    DuplicateProductCodeError,
+    ValidationError,
+)
 from common.events import StockChangedEvent, emit
 from common.models.audit_log import AuditLog
+from common.models.category import Category
 from common.models.inventory_stock import InventoryStock
 from common.models.product import Product
 from common.models.reorder_alert import AlertStatus, ReorderAlert
 from common.models.stock_adjustment import ReasonCode, StockAdjustment
 from common.models.stock_transfer import StockTransferHistory
 from common.models.supplier import Supplier
+from common.models.supplier_invoice import SupplierInvoice, SupplierInvoiceLine
 from common.models.supplier_order import SupplierOrder, SupplierOrderLine, SupplierOrderStatus
 from common.models.warehouse import Warehouse
 from common.time import today, utc_now
 from domains.product_analytics.service import read_sales_monthly_range
+
+if TYPE_CHECKING:
+    from domains.inventory.schemas import (
+        CategoryCreate,
+        CategoryUpdate,
+        ProductCreate,
+        ProductUpdate,
+    )
 
 
 class InsufficientStockError(Exception):
@@ -122,6 +138,326 @@ async def create_warehouse(
     session.add(warehouse)
     await session.flush()
     return warehouse
+
+
+def _normalize_optional_product_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip()
+    return normalized or None
+
+
+def _normalize_category_name(name: str) -> str:
+    normalized = name.strip()
+    if not normalized:
+        raise ValidationError(
+            [{"loc": ("name",), "msg": "name cannot be blank", "type": "value_error"}]
+        )
+    return normalized
+
+
+def _normalize_product_payload(
+    data: object,
+) -> tuple[str, str, str | None, str | None, str]:
+    code = str(getattr(data, "code", "")).strip()
+    name = str(getattr(data, "name", "")).strip()
+    unit = str(getattr(data, "unit", "")).strip()
+    category = _normalize_optional_product_text(getattr(data, "category", None))
+    description = _normalize_optional_product_text(getattr(data, "description", None))
+
+    errors: list[dict[str, str | tuple[str, ...]]] = []
+    if not code:
+        errors.append({"loc": ("code",), "msg": "code cannot be blank", "type": "value_error"})
+    if not name:
+        errors.append({"loc": ("name",), "msg": "name cannot be blank", "type": "value_error"})
+    if not unit:
+        errors.append({"loc": ("unit",), "msg": "unit cannot be blank", "type": "value_error"})
+    if errors:
+        raise ValidationError(errors)
+
+    return code, name, category, description, unit
+
+
+async def _find_product_by_code(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    code: str,
+    *,
+    exclude_product_id: uuid.UUID | None = None,
+) -> Product | None:
+    stmt = select(Product).where(
+        Product.tenant_id == tenant_id,
+        func.lower(Product.code) == code.lower(),
+    )
+    if exclude_product_id is not None:
+        stmt = stmt.where(Product.id != exclude_product_id)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def _find_category_by_name(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    name: str,
+    *,
+    exclude_category_id: uuid.UUID | None = None,
+) -> Category | None:
+    stmt = select(Category).where(
+        Category.tenant_id == tenant_id,
+        func.lower(Category.name) == name.lower(),
+    )
+    if exclude_category_id is not None:
+        stmt = stmt.where(Category.id != exclude_category_id)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+# ── Category queries ──────────────────────────────────────────
+
+
+async def create_category(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    data: "CategoryCreate",
+) -> Category:
+    name = _normalize_category_name(data.name)
+
+    existing = await _find_category_by_name(session, tenant_id, name)
+    if existing is not None:
+        raise DuplicateCategoryNameError(existing_id=existing.id, existing_name=existing.name)
+
+    category = Category(
+        tenant_id=tenant_id,
+        name=name,
+        is_active=True,
+    )
+    try:
+        session.add(category)
+        await session.flush()
+    except IntegrityError:
+        await session.rollback()
+        existing = await _find_category_by_name(session, tenant_id, name)
+        if existing is not None:
+            raise DuplicateCategoryNameError(existing_id=existing.id, existing_name=existing.name)
+        raise
+
+    return category
+
+
+async def list_categories(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    *,
+    q: str = "",
+    active_only: bool = True,
+    limit: int = 100,
+    offset: int = 0,
+) -> tuple[list[Category], int]:
+    where_conditions = [Category.tenant_id == tenant_id]
+    if active_only:
+        where_conditions.append(Category.is_active.is_(True))
+
+    stripped = q.strip()
+    if stripped:
+        q_like = stripped.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        where_conditions.append(Category.name.ilike(f"%{q_like}%", escape="\\"))
+
+    count_stmt = select(func.count(Category.id)).where(*where_conditions)
+    count_result = await session.execute(count_stmt)
+    total = count_result.scalar() or 0
+
+    stmt = (
+        select(Category)
+        .where(*where_conditions)
+        .order_by(Category.name)
+        .offset(offset)
+        .limit(limit)
+    )
+    result = await session.execute(stmt)
+    categories = result.scalars().all()
+    return list(categories), total
+
+
+async def get_category(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    category_id: uuid.UUID,
+) -> Category | None:
+    stmt = select(Category).where(
+        Category.id == category_id,
+        Category.tenant_id == tenant_id,
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def update_category(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    category_id: uuid.UUID,
+    data: "CategoryUpdate",
+) -> Category | None:
+    category = await get_category(session, tenant_id, category_id)
+    if category is None:
+        return None
+
+    name = _normalize_category_name(data.name)
+    existing = await _find_category_by_name(
+        session,
+        tenant_id,
+        name,
+        exclude_category_id=category.id,
+    )
+    if existing is not None:
+        raise DuplicateCategoryNameError(existing_id=existing.id, existing_name=existing.name)
+
+    category.name = name
+    try:
+        await session.flush()
+    except IntegrityError:
+        await session.rollback()
+        existing = await _find_category_by_name(
+            session,
+            tenant_id,
+            name,
+            exclude_category_id=category_id,
+        )
+        if existing is not None:
+            raise DuplicateCategoryNameError(existing_id=existing.id, existing_name=existing.name)
+        raise
+
+    return category
+
+
+async def set_category_status(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    category_id: uuid.UUID,
+    *,
+    is_active: bool,
+) -> Category | None:
+    category = await get_category(session, tenant_id, category_id)
+    if category is None:
+        return None
+
+    category.is_active = is_active
+    await session.flush()
+    return category
+
+
+# ── Product creation ───────────────────────────────────────────
+
+
+async def create_product(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    data: "ProductCreate",
+) -> Product:
+    """Create a new product for a tenant."""
+    code, name, category, description, unit = _normalize_product_payload(data)
+
+    # Check for duplicate code within tenant
+    row = await _find_product_by_code(session, tenant_id, code)
+    if row is not None:
+        raise DuplicateProductCodeError(existing_id=row.id, existing_code=row.code)
+
+    product = Product(
+        tenant_id=tenant_id,
+        code=code,
+        name=name,
+        category=category,
+        description=description,
+        unit=unit,
+        status="active",
+        search_vector=func.to_tsvector("simple", name + " " + code),
+    )
+    try:
+        session.add(product)
+        await session.flush()
+    except IntegrityError:
+        await session.rollback()
+        # Race condition: another request inserted the same code between our
+        # pre-check and insert. Query for the conflicting product and raise
+        # DuplicateProductCodeError so the route returns a proper 409.
+        existing = await _find_product_by_code(session, tenant_id, code)
+        if existing is not None:
+            raise DuplicateProductCodeError(existing_id=existing.id, existing_code=existing.code)
+        raise
+    return product
+
+
+async def update_product(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+    data: "ProductUpdate",
+) -> Product | None:
+    """Update an existing product for a tenant."""
+    code, name, category, description, unit = _normalize_product_payload(data)
+
+    stmt = select(Product).where(
+        Product.id == product_id,
+        Product.tenant_id == tenant_id,
+    )
+    result = await session.execute(stmt)
+    product = result.scalar_one_or_none()
+    if product is None:
+        return None
+
+    existing = await _find_product_by_code(
+        session,
+        tenant_id,
+        code,
+        exclude_product_id=product.id,
+    )
+    if existing is not None:
+        raise DuplicateProductCodeError(existing_id=existing.id, existing_code=existing.code)
+
+    code_or_name_changed = product.code != code or product.name != name
+    product.code = code
+    product.name = name
+    product.category = category
+    product.description = description
+    product.unit = unit
+    if code_or_name_changed:
+        product.search_vector = func.to_tsvector("simple", name + " " + code)
+
+    try:
+        await session.flush()
+    except IntegrityError:
+        await session.rollback()
+        existing = await _find_product_by_code(
+            session,
+            tenant_id,
+            code,
+            exclude_product_id=product_id,
+        )
+        if existing is not None:
+            raise DuplicateProductCodeError(existing_id=existing.id, existing_code=existing.code)
+        raise
+
+    return product
+
+
+async def set_product_status(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+    status: str,
+) -> Product | None:
+    """Set the active/inactive lifecycle status for an existing product."""
+    stmt = select(Product).where(
+        Product.id == product_id,
+        Product.tenant_id == tenant_id,
+    )
+    result = await session.execute(stmt)
+    product = result.scalar_one_or_none()
+    if product is None:
+        return None
+
+    product.status = status
+    await session.flush()
+    return product
 
 
 # ── Stock transfer ─────────────────────────────────────────────
@@ -797,6 +1133,12 @@ async def get_product_detail(
             InventoryStock.reorder_point,
             InventoryStock.safety_factor,
             InventoryStock.lead_time_days,
+            InventoryStock.policy_type,
+            InventoryStock.target_stock_qty,
+            InventoryStock.on_order_qty,
+            InventoryStock.in_transit_qty,
+            InventoryStock.reserved_qty,
+            InventoryStock.planning_horizon_days,
             InventoryStock.review_cycle_days,
             last_adj_sq.c.last_adjusted,
         )
@@ -828,6 +1170,12 @@ async def get_product_detail(
                 "reorder_point": row.reorder_point,
                 "safety_factor": row.safety_factor,
                 "lead_time_days": row.lead_time_days,
+                "policy_type": row.policy_type,
+                "target_stock_qty": row.target_stock_qty,
+                "on_order_qty": row.on_order_qty,
+                "in_transit_qty": row.in_transit_qty,
+                "reserved_qty": row.reserved_qty,
+                "planning_horizon_days": row.planning_horizon_days,
                 "review_cycle_days": row.review_cycle_days,
                 "is_below_reorder": (row.reorder_point > 0 and row.quantity < row.reorder_point),
                 "last_adjusted": row.last_adjusted,
@@ -865,6 +1213,8 @@ async def get_product_detail(
         "code": product.code,
         "name": product.name,
         "category": product.category,
+        "description": product.description,
+        "unit": product.unit,
         "status": product.status,
         "legacy_master_snapshot": getattr(product, "legacy_master_snapshot", None),
         "total_stock": total_stock,
@@ -882,6 +1232,8 @@ async def search_products(
     query: str,
     *,
     warehouse_id: uuid.UUID | None = None,
+    category: str | None = None,
+    include_inactive: bool = False,
     limit: int = 20,
     offset: int = 0,
     sort_by: str = "code",
@@ -935,6 +1287,12 @@ async def search_products(
         )
     stock_sq = stock_sq.group_by(InventoryStock.product_id).subquery()
 
+    base_conditions = [Product.tenant_id == tenant_id]
+    if not include_inactive:
+        base_conditions.append(Product.status == "active")
+    if category and category.strip():
+        base_conditions.append(Product.category == category.strip())
+
     # Main query
     stmt = (
         select(
@@ -947,6 +1305,7 @@ async def search_products(
             relevance.label("relevance"),
         )
         .outerjoin(stock_sq, Product.id == stock_sq.c.product_id)
+        .where(*base_conditions)
     )
 
     def build_broader_conditions():
@@ -992,7 +1351,7 @@ async def search_products(
                 relevance.label("relevance"),
             )
             .outerjoin(stock_sq, Product.id == stock_sq.c.product_id)
-            .where(Product.tenant_id == tenant_id)
+            .where(*base_conditions)
             .where(fast_match)
             .order_by(relevance.desc(), Product.code),
             limit,
@@ -1014,7 +1373,7 @@ async def search_products(
                     relevance.label("relevance"),
                 )
                 .outerjoin(stock_sq, Product.id == stock_sq.c.product_id)
-                .where(Product.tenant_id == tenant_id)
+                .where(*base_conditions)
                 .where(build_broader_conditions()),
                 limit,
                 offset,
@@ -1030,13 +1389,12 @@ async def search_products(
         # Total count: count distinct products matching the broader conditions
         count_stmt = select(func.count(distinct(Product.id))).select_from(
             Product
-        ).outerjoin(stock_sq, Product.id == stock_sq.c.product_id).where(
-            Product.tenant_id == tenant_id
-        ).where(build_broader_conditions())
+        ).outerjoin(stock_sq, Product.id == stock_sq.c.product_id).where(*base_conditions).where(
+            build_broader_conditions()
+        )
         total_result = await session.execute(count_stmt)
         total = total_result.scalar() or 0
     else:
-        base_conditions = [Product.tenant_id == tenant_id]
         count_sq = select(
             InventoryStock.product_id,
         ).where(InventoryStock.tenant_id == tenant_id)
@@ -1053,7 +1411,7 @@ async def search_products(
         total = total_result.scalar() or 0
 
         rows_stmt = apply_pagination(
-            apply_order_by(stmt.where(Product.tenant_id == tenant_id)),
+            apply_order_by(stmt),
             limit,
             offset,
         )
@@ -1144,6 +1502,7 @@ async def create_supplier_order(
             product_id=line_data["product_id"],
             warehouse_id=line_data["warehouse_id"],
             quantity_ordered=line_data["quantity_ordered"],
+            unit_price=line_data.get("unit_price"),
             notes=line_data.get("notes"),
         )
         session.add(line)
@@ -1220,6 +1579,7 @@ async def _serialize_order(
                 "product_id": line.product_id,
                 "warehouse_id": line.warehouse_id,
                 "quantity_ordered": line.quantity_ordered,
+                "unit_price": getattr(line, "unit_price", None),
                 "quantity_received": line.quantity_received,
                 "notes": line.notes,
             }
@@ -1553,6 +1913,7 @@ async def get_stock_history(
     initial stock from the current quantity and applying adjustments forward.
     """
     from collections import Counter
+
     from common.time import utc_now
 
     # Cap start_date to at most _max_range_days ago to avoid loading huge histories
@@ -1614,7 +1975,11 @@ async def get_stock_history(
 
         for day_key, info in sorted(by_date.items()):
             running += info["quantity_change"]
-            dominant_rc = info["reason_codes"].most_common(1)[0][0] if info["reason_codes"] else "unknown"
+            dominant_rc = (
+                info["reason_codes"].most_common(1)[0][0]
+                if info["reason_codes"]
+                else "unknown"
+            )
             points.append({
                 "date": datetime.fromisoformat(day_key),
                 "quantity_change": info["quantity_change"],
@@ -1681,6 +2046,12 @@ async def update_stock_settings(
     reorder_point: int | None = None,
     safety_factor: float | None = None,
     lead_time_days: int | None = None,
+    policy_type: str | None = None,
+    target_stock_qty: int | None = None,
+    on_order_qty: int | None = None,
+    in_transit_qty: int | None = None,
+    reserved_qty: int | None = None,
+    planning_horizon_days: int | None = None,
     review_cycle_days: int | None = None,
 ) -> InventoryStock | None:
     """Update replenishment settings for a stock record."""
@@ -1699,6 +2070,18 @@ async def update_stock_settings(
         stock.safety_factor = safety_factor
     if lead_time_days is not None:
         stock.lead_time_days = lead_time_days
+    if policy_type is not None:
+        stock.policy_type = policy_type
+    if target_stock_qty is not None:
+        stock.target_stock_qty = target_stock_qty
+    if on_order_qty is not None:
+        stock.on_order_qty = on_order_qty
+    if in_transit_qty is not None:
+        stock.in_transit_qty = in_transit_qty
+    if reserved_qty is not None:
+        stock.reserved_qty = reserved_qty
+    if planning_horizon_days is not None:
+        stock.planning_horizon_days = planning_horizon_days
     if review_cycle_days is not None:
         stock.review_cycle_days = review_cycle_days
 
@@ -1755,7 +2138,11 @@ async def get_planning_support(
     include_current_month: bool = True,
 ) -> dict | None:
     current_month_start = utc_now().date().replace(day=1)
-    end_month = current_month_start if include_current_month else _shift_months(current_month_start, -1)
+    end_month = (
+        current_month_start
+        if include_current_month
+        else _shift_months(current_month_start, -1)
+    )
     start_month = _shift_months(end_month, -(months - 1))
     requested_months = _iter_month_starts(start_month, end_month)
     includes_current_month = include_current_month and current_month_start in requested_months
@@ -1771,7 +2158,10 @@ async def get_planning_support(
     for item in monthly_result.items:
         if item.product_id != product_id:
             continue
-        monthly_quantities[item.month_start] = monthly_quantities.get(item.month_start, _ZERO_QUANTITY) + item.quantity_sold
+        monthly_quantities[item.month_start] = (
+            monthly_quantities.get(item.month_start, _ZERO_QUANTITY)
+            + item.quantity_sold
+        )
     monthly_quantities = {
         month_start: _quantize_quantity(quantity)
         for month_start, quantity in monthly_quantities.items()
@@ -1837,8 +2227,14 @@ async def get_planning_support(
         items.append(
             {
                 "month": _format_month(month_start),
-                "quantity": _quantize_quantity(monthly_quantities.get(month_start, _ZERO_QUANTITY)),
-                "source": "live" if month_start == current_month_start and includes_current_month else "aggregated",
+                "quantity": _quantize_quantity(
+                    monthly_quantities.get(month_start, _ZERO_QUANTITY)
+                ),
+                "source": (
+                    "live"
+                    if month_start == current_month_start and includes_current_month
+                    else "aggregated"
+                ),
             }
         )
 
@@ -1903,10 +2299,6 @@ async def get_sales_history(
     offset: int = 0,
 ) -> dict:
     """Return paginated sales history (all reason codes) for a product."""
-    from common.models.order_line import OrderLine
-    from common.models.order import Order
-    from domains.customers.models import Customer
-
     count_stmt = select(func.count(StockAdjustment.id)).where(
         StockAdjustment.tenant_id == tenant_id,
         StockAdjustment.product_id == product_id,
@@ -1948,8 +2340,8 @@ async def get_top_customer(
     product_id: uuid.UUID,
 ) -> dict | None:
     """Return the customer who has ordered the most of this product (by quantity)."""
-    from common.models.order_line import OrderLine
     from common.models.order import Order
+    from common.models.order_line import OrderLine
     from domains.customers.models import Customer
 
     stmt = (
@@ -1994,12 +2386,12 @@ async def get_product_supplier(
     with the most recently received order lines for this product.
     Returns null if no supplier orders exist.
     """
-    # Use a subquery to find the supplier_id with the most recent received order
-    latest_order_line_sq = (
+    supplier_sources = (
         select(
-            SupplierOrderLine.product_id,
-            SupplierOrder.supplier_id,
-            func.max(SupplierOrder.received_date).label("latest_received"),
+            SupplierOrder.supplier_id.label("supplier_id"),
+            SupplierOrder.received_date.label("effective_date"),
+            SupplierOrderLine.unit_price.label("unit_cost"),
+            literal(0).label("source_priority"),
         )
         .join(SupplierOrder, SupplierOrder.id == SupplierOrderLine.order_id)
         .where(
@@ -2007,53 +2399,52 @@ async def get_product_supplier(
             SupplierOrderLine.product_id == product_id,
             SupplierOrder.received_date.isnot(None),
         )
-        .group_by(SupplierOrderLine.product_id, SupplierOrder.supplier_id)
-        .subquery()
-    )
-
-    best_supplier_sq = (
-        select(
-            latest_order_line_sq.c.supplier_id,
-            latest_order_line_sq.c.latest_received,
+        .union_all(
+            select(
+                SupplierInvoice.supplier_id.label("supplier_id"),
+                SupplierInvoice.invoice_date.label("effective_date"),
+                SupplierInvoiceLine.unit_price.label("unit_cost"),
+                literal(1).label("source_priority"),
+            )
+            .join(
+                SupplierInvoice,
+                SupplierInvoice.id == SupplierInvoiceLine.supplier_invoice_id,
+            )
+            .where(
+                SupplierInvoice.tenant_id == tenant_id,
+                SupplierInvoiceLine.product_id == product_id,
+                SupplierInvoiceLine.unit_price.isnot(None),
+            )
         )
-        .order_by(latest_order_line_sq.c.latest_received.desc())
-        .limit(1)
         .subquery()
     )
 
     stmt = (
-        select(Supplier)
-        .join(best_supplier_sq, Supplier.id == best_supplier_sq.c.supplier_id)
-        .where(Supplier.tenant_id == tenant_id)
-    )
-    result = await session.execute(stmt)
-    supplier = result.scalar_one_or_none()
-
-    if supplier is None:
-        return None
-
-    # Get unit_cost from the most recent received order line
-    unit_cost_stmt = (
-        select(SupplierOrderLine.unit_price)
-        .join(SupplierOrder, SupplierOrder.id == SupplierOrderLine.order_id)
-        .where(
-            SupplierOrder.tenant_id == tenant_id,
-            SupplierOrderLine.product_id == product_id,
-            SupplierOrder.supplier_id == supplier.id,
-            SupplierOrder.received_date.isnot(None),
+        select(
+            Supplier.id,
+            Supplier.name,
+            Supplier.default_lead_time_days,
+            supplier_sources.c.unit_cost,
         )
-        .order_by(SupplierOrder.received_date.desc())
+        .join(supplier_sources, Supplier.id == supplier_sources.c.supplier_id)
+        .where(Supplier.tenant_id == tenant_id)
+        .order_by(
+            supplier_sources.c.effective_date.desc(),
+            supplier_sources.c.source_priority.desc(),
+        )
         .limit(1)
     )
-    unit_cost_result = await session.execute(unit_cost_stmt)
-    unit_cost_row = unit_cost_result.first()
-    unit_cost = float(unit_cost_row.unit_price) if unit_cost_row else None
+    result = await session.execute(stmt)
+    row = result.first()
+
+    if row is None:
+        return None
 
     return {
-        "supplier_id": supplier.id,
-        "name": supplier.name,
-        "unit_cost": unit_cost,
-        "default_lead_time_days": supplier.default_lead_time_days,
+        "supplier_id": row.id,
+        "name": row.name,
+        "unit_cost": float(row.unit_cost) if row.unit_cost is not None else None,
+        "default_lead_time_days": row.default_lead_time_days,
     }
 
 

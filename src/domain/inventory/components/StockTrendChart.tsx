@@ -201,8 +201,8 @@ function ChartInner({
                       date: filtered[i].date,
                       daysUntilStockout: daysUntilStockout ?? undefined,
                     },
-                    tooltipLeft: e.clientX,
-                    tooltipTop: e.clientY,
+                    tooltipLeft: e.pageX,
+                    tooltipTop: e.pageY,
                   });
                 }}
                 onMouseLeave={hideTooltip}
@@ -303,20 +303,27 @@ export function StockTrendChart({
     return { filtered, currentStock, daysUntilStockout, projectedLine };
   }, [points, range, avgDailyUsage]);
 
-  const displayPoints =
-    filtered.length < 2 && points.length >= 2 ? points : filtered;
+  const displayPoints = filtered;
 
-  if (displayPoints.length === 0) {
-    return (
-      <div className="flex h-64 flex-col items-center justify-center text-muted-foreground">
-        <p className="text-sm">No movements in selected period</p>
-        <p className="mt-1 text-xs">Current stock: {currentStock}</p>
-      </div>
-    );
+  // Debug logging
+  if (points.length > 0) {
+    const now = Date.now();
+    const cutoff = range === -1 ? 0 : now - range * 24 * 60 * 60 * 1000;
+    const cutoffDate = new Date(cutoff).toISOString();
+    console.log("[StockTrendChart]", {
+      range,
+      cutoffDate,
+      now: new Date(now).toISOString(),
+      pointsCount: points.length,
+      filteredCount: filtered.length,
+      firstPoint: points[0]?.date,
+      lastPoint: points[points.length - 1]?.date,
+    });
   }
 
   return (
     <div className="space-y-3">
+      {/* Time range buttons - always visible */}
       <div className="flex items-center gap-1">
         {TIME_RANGES.map((r) => (
           <button
@@ -339,39 +346,49 @@ export function StockTrendChart({
         )}
       </div>
 
-      <ParentSize>
-        {({ width }) => (
-          <ChartInner
-            filtered={displayPoints}
-            projectedLine={projectedLine}
-            reorderPoint={reorderPoint}
-            safetyStock={safetyStock}
-            width={width}
-            height={260}
-            daysUntilStockout={daysUntilStockout}
-          />
-        )}
-      </ParentSize>
+      {/* Chart or empty state */}
+      {displayPoints.length === 0 ? (
+        <div className="flex h-64 flex-col items-center justify-center text-muted-foreground">
+          <p className="text-sm">No movements in selected period</p>
+          <p className="mt-1 text-xs">Current stock: {currentStock}</p>
+        </div>
+      ) : (
+        <>
+          <ParentSize>
+            {({ width }) => (
+              <ChartInner
+                filtered={displayPoints}
+                projectedLine={projectedLine}
+                reorderPoint={reorderPoint}
+                safetyStock={safetyStock}
+                width={width}
+                height={260}
+                daysUntilStockout={daysUntilStockout}
+              />
+            )}
+          </ParentSize>
 
-      <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1">
-          <span className="size-2 rounded-full bg-blue-500" /> Stock
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="size-2 rounded-full bg-red-400" /> Sales/Reservation
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="size-2 rounded-full bg-green-500" /> Supplier Delivery
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="size-2 rounded-full bg-slate-400" /> Other
-        </span>
-        {safetyStock != null && (
-          <span className="flex items-center gap-1">
-            <span className="size-2 rounded-full bg-orange-400 opacity-50" /> Safety Stock
-          </span>
-        )}
-      </div>
+          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <span className="size-2 rounded-full bg-blue-500" /> Stock
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="size-2 rounded-full bg-red-400" /> Sales/Reservation
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="size-2 rounded-full bg-green-500" /> Supplier Delivery
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="size-2 rounded-full bg-slate-400" /> Other
+            </span>
+            {safetyStock != null && (
+              <span className="flex items-center gap-1">
+                <span className="size-2 rounded-full bg-orange-400 opacity-50" /> Safety Stock
+              </span>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

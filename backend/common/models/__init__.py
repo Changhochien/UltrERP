@@ -2,6 +2,7 @@
 
 from common.models.approval_request import ApprovalRequest
 from common.models.audit_log import AuditLog
+from common.models.category import Category
 from common.models.inventory_stock import InventoryStock
 from common.models.legacy_import import LegacyImportRun, LegacyImportTableRun
 from common.models.order import Order
@@ -20,6 +21,7 @@ from common.models.warehouse import Warehouse
 __all__ = [
 	"ApprovalRequest",
 	"AuditLog",
+	"Category",
 	"InventoryStock",
 	"LegacyImportRun",
 	"LegacyImportTableRun",

@@ -1,0 +1,6 @@
+{
+  "eval_id": 0,
+  "eval_name": "first-time-setup-detection-baseline",
+  "prompt": "I just cloned the UltrERP repo and opened a fresh Claude Code session. I want to set up the ERP for the first time. Help me check what needs to be done.",
+  "assertions": []
+}

@@ -23,6 +23,7 @@ export interface InvoiceCreatePayload {
 }
 
 export interface InvoiceDraftLine {
+	product_id: string;
 	product_code: string;
 	description: string;
 	quantity: string;

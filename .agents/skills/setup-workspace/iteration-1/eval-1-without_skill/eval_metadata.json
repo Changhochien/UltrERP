@@ -1,0 +1,6 @@
+{
+  "eval_id": 1,
+  "eval_name": "health-check-existing-system-baseline",
+  "prompt": "Can you run a health check on our UltrERP system? I want to verify everything is working.",
+  "assertions": []
+}

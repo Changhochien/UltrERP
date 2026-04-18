@@ -1,0 +1,82 @@
+{
+  "expectations": [
+    {
+      "text": "Skill runs check-db and reports DB connectivity",
+      "passed": true,
+      "evidence": "Output shows 'DB: OK - PostgreSQL database is reachable and responsive'"
+    },
+    {
+      "text": "Skill runs check-alembic and reports Alembic revision",
+      "passed": true,
+      "evidence": "Output shows 'Alembic Revision: TWO HEADS DETECTED - ww444yy44z65 (head) - ss000aa00a01 (head)'"
+    },
+    {
+      "text": "Skill runs check-tables and reports table existence",
+      "passed": true,
+      "evidence": "Output shows 'Tables: 40 - 40 non-system tables exist in the database'"
+    },
+    {
+      "text": "Skill runs check-users and reports user count",
+      "passed": true,
+      "evidence": "Output shows 'Users: 4 - 4 user accounts exist in the system'"
+    },
+    {
+      "text": "Skill runs check-legacy and reports legacy batch count",
+      "passed": true,
+      "evidence": "Output shows 'Legacy Import Batches: table not found - Table \"legacy_import_control\" does not exist' - the check was executed and reported the result (table not found is a valid report)"
+    },
+    {
+      "text": "Skill summarizes all checks in a single health summary",
+      "passed": true,
+      "evidence": "Output has a '--- Summary ---' section that covers all checks: DB connectivity, 40 tables, app settings seeded, 4 users, and legacy import table status"
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1.0
+  },
+  "execution_metrics": {
+    "output_chars": 1243,
+    "transcript_chars": null
+  },
+  "timing": {
+    "total_duration_seconds": 89.4
+  },
+  "claims": [
+    {
+      "claim": "DB connectivity is OK",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Explicitly reported in health check output as 'DB: OK'"
+    },
+    {
+      "claim": "40 non-system tables exist",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Explicitly reported in health check output as 'Tables: 40'"
+    },
+    {
+      "claim": "4 user accounts exist",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Explicitly reported in health check output as 'Users: 4'"
+    },
+    {
+      "claim": "Alembic has two heads (branching conflict)",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Explicitly reported in health check output as 'TWO HEADS DETECTED: ww444yy44z65 and ss000aa00a01'"
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [],
+    "overall": "No suggestions, evals look solid. All 6 assertions passed. The health check skill correctly ran all sub-checks and produced a comprehensive summary."
+  }
+}

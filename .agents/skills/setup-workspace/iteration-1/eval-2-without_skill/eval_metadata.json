@@ -1,0 +1,6 @@
+{
+  "eval_id": 2,
+  "eval_name": "check-alembic-revision-baseline",
+  "prompt": "What Alembic migration revision is currently applied in our UltrERP database?",
+  "assertions": []
+}

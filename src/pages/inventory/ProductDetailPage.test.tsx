@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 const mocks = vi.hoisted(() => ({
@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({
     code: "SKU-1",
     name: "Widget",
     category: "Hardware",
+    description: "Original description",
+    unit: "pcs",
     status: "active",
     total_stock: 12,
     warehouses: [
@@ -32,6 +34,19 @@ const mocks = vi.hoisted(() => ({
     ],
     adjustment_history: [],
   },
+  updatedProduct: {
+    id: "product-1",
+    code: "SKU-2",
+    name: "Widget Pro",
+    category: "Hardware",
+    description: "Updated description",
+    unit: "box",
+    status: "active",
+    created_at: "2026-04-01T00:00:00Z",
+  },
+  reload: vi.fn(),
+  applyLocalUpdate: vi.fn(),
+  setProductStatus: vi.fn(),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -60,7 +75,21 @@ vi.mock("@/domain/inventory/hooks/useProductDetail", () => ({
     product: mocks.product,
     loading: false,
     error: null,
+    reload: mocks.reload,
+    applyLocalUpdate: mocks.applyLocalUpdate,
   })),
+}));
+
+vi.mock("@/lib/api/inventory", () => ({
+  setProductStatus: (...args: unknown[]) => mocks.setProductStatus(...args),
+}));
+
+vi.mock("@/domain/inventory/components/EditProductForm", () => ({
+  EditProductForm: ({ onSuccess }: { onSuccess: (product: typeof mocks.updatedProduct) => void }) => (
+    <button type="button" onClick={() => onSuccess(mocks.updatedProduct)}>
+      mock-save-edit
+    </button>
+  ),
 }));
 
 vi.mock("@/domain/inventory/hooks/useStockHistory", () => ({
@@ -139,6 +168,9 @@ vi.mock("@/domain/inventory/components/AnalyticsTab", () => ({
 
 afterEach(() => {
   cleanup();
+  mocks.reload.mockReset();
+  mocks.applyLocalUpdate.mockReset();
+  mocks.setProductStatus.mockReset();
   vi.restoreAllMocks();
 });
 
@@ -182,5 +214,63 @@ describe("ProductDetailPage", () => {
 
     expect(screen.getByText("inventory.productDetail.settingsTab.reorderPoint")).toBeTruthy();
     expect(screen.getByText("inventory.productDetail.settingsTab.planningHorizon")).toBeTruthy();
+  });
+
+  it("opens the edit dialog and refreshes the product detail after save", async () => {
+    const { ProductDetailPage } = await import("./ProductDetailPage");
+
+    render(
+      <MemoryRouter initialEntries={["/inventory/product-1"]}>
+        <Routes>
+          <Route path="/inventory/:productId" element={<ProductDetailPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "inventory.productDetail.edit" }));
+    fireEvent.click(screen.getByRole("button", { name: "mock-save-edit" }));
+
+    await waitFor(() => {
+      expect(mocks.applyLocalUpdate).toHaveBeenCalledWith(mocks.updatedProduct);
+    });
+    await waitFor(() => {
+      expect(mocks.reload).toHaveBeenCalled();
+    });
+  });
+
+  it("confirms deactivation before updating product status", async () => {
+    mocks.setProductStatus.mockResolvedValue({
+      ok: true,
+      data: {
+        ...mocks.updatedProduct,
+        status: "inactive",
+      },
+    });
+
+    const { ProductDetailPage } = await import("./ProductDetailPage");
+
+    render(
+      <MemoryRouter initialEntries={["/inventory/product-1"]}>
+        <Routes>
+          <Route path="/inventory/:productId" element={<ProductDetailPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "inventory.productDetail.deactivate" }));
+    fireEvent.click(screen.getByRole("button", { name: "inventory.productDetail.confirmDeactivate" }));
+
+    await waitFor(() => {
+      expect(mocks.setProductStatus).toHaveBeenCalledWith("product-1", "inactive");
+    });
+    await waitFor(() => {
+      expect(mocks.applyLocalUpdate).toHaveBeenCalledWith({
+        ...mocks.updatedProduct,
+        status: "inactive",
+      });
+    });
+    await waitFor(() => {
+      expect(mocks.reload).toHaveBeenCalled();
+    });
   });
 });

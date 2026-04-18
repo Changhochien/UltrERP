@@ -6,7 +6,15 @@ import { ArrowRightLeft, ArrowLeft, ShoppingCart, SlidersHorizontal } from "luci
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SectionCard } from "@/components/layout/PageLayout";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EditProductForm } from "@/domain/inventory/components/EditProductForm";
 import { useProductDetail } from "@/domain/inventory/hooks/useProductDetail";
 import { useStockHistory } from "@/domain/inventory/hooks/useStockHistory";
 import { WarehouseProvider, useWarehouseContext } from "@/domain/inventory/context/WarehouseContext";
@@ -16,6 +24,7 @@ import { AnalyticsTab } from "@/domain/inventory/components/AnalyticsTab";
 import { SettingsTab } from "@/domain/inventory/components/SettingsTab";
 import { AuditLogTable } from "@/domain/inventory/components/AuditLogTable";
 import { useProductAuditLog } from "@/domain/inventory/hooks/useProductAuditLog";
+import { setProductStatus } from "@/lib/api/inventory";
 import { INVENTORY_ROUTE } from "@/lib/routes";
 import { parseBackendDate } from "@/lib/time";
 import type { WarehouseStockInfo } from "@/domain/inventory/types";
@@ -157,7 +166,11 @@ function ProductDetailContent({ productId }: { productId: string }) {
   const { t } = useTranslation("common", { keyPrefix: "inventory.productDetail" });
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { product, loading, error } = useProductDetail(productId);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [statusSubmitting, setStatusSubmitting] = useState(false);
+  const { product, loading, error, reload, applyLocalUpdate } = useProductDetail(productId);
   const { selectedWarehouse } = useWarehouseContext();
   const requestedTab = searchParams.get("tab");
   const defaultTab = requestedTab === "analytics"
@@ -178,10 +191,28 @@ function ProductDetailContent({ productId }: { productId: string }) {
     error: chartError,
   } = useStockHistory(stockId ?? "");
 
+  async function handleStatusChange(nextStatus: "active" | "inactive") {
+    setStatusSubmitting(true);
+    setStatusError(null);
+    const result = await setProductStatus(productId, nextStatus);
+    if (!result.ok) {
+      setStatusError(result.error);
+      setStatusSubmitting(false);
+      return;
+    }
+
+    applyLocalUpdate(result.data);
+    if (nextStatus === "inactive") {
+      setShowDeactivateDialog(false);
+    }
+    await reload();
+    setStatusSubmitting(false);
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-start gap-4">
         <Button variant="ghost" size="sm" onClick={() => navigate(INVENTORY_ROUTE)}>
           <ArrowLeft size={16} />
         </Button>
@@ -234,16 +265,71 @@ function ProductDetailContent({ productId }: { productId: string }) {
                   </Badge>
                 )}
                 <Badge
+                  variant="outline"
+                  style={{
+                    borderColor: "var(--inv-border)",
+                    color: "var(--inv-muted)",
+                    background: "transparent",
+                  }}
+                >
+                  {product.unit}
+                </Badge>
+                <Badge
                   variant={product.status === "active" ? "success" : "destructive"}
                   style={{ textTransform: "capitalize" }}
                 >
                   {t(`statuses.${product.status}`, { defaultValue: product.status })}
                 </Badge>
               </div>
+              {product.description && (
+                <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                  {product.description}
+                </p>
+              )}
             </div>
           ) : null}
         </div>
+        {!loading && !error && product && (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowEditDialog(true)}
+              disabled={statusSubmitting}
+            >
+              {t("edit")}
+            </Button>
+            {product.status === "active" ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setStatusError(null);
+                  setShowDeactivateDialog(true);
+                }}
+                disabled={statusSubmitting}
+              >
+                {t("deactivate")}
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void handleStatusChange("active")}
+                disabled={statusSubmitting}
+              >
+                {t("activate")}
+              </Button>
+            )}
+          </div>
+        )}
       </div>
+
+      {statusError && (
+        <div className="rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {t("error", { message: statusError })}
+        </div>
+      )}
 
       <Tabs defaultValue={defaultTab}>
         <TabsList>
@@ -272,6 +358,23 @@ function ProductDetailContent({ productId }: { productId: string }) {
                   </span>
                 </div>
                 <StockHealthBar warehouses={product.warehouses} />
+              </SectionCard>
+
+              <SectionCard title={t("masterData")}>
+                <dl className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      {t("unitLabel")}
+                    </dt>
+                    <dd className="mt-1 text-sm font-medium text-foreground">{product.unit}</dd>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      {t("productDescription")}
+                    </dt>
+                    <dd className="mt-1 text-sm text-foreground">{product.description || "—"}</dd>
+                  </div>
+                </dl>
               </SectionCard>
 
               {/* By Warehouse */}
@@ -390,6 +493,53 @@ function ProductDetailContent({ productId }: { productId: string }) {
           <AuditLogTabContent productId={productId} />
         </TabsContent>
       </Tabs>
+
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent aria-label={t("edit")} className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t("edit")}</DialogTitle>
+            <DialogDescription>{t("editDescription")}</DialogDescription>
+          </DialogHeader>
+          {product && (
+            <EditProductForm
+              product={product}
+              onSuccess={(updatedProduct) => {
+                applyLocalUpdate(updatedProduct);
+                setShowEditDialog(false);
+                void reload();
+              }}
+              onCancel={() => setShowEditDialog(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDeactivateDialog} onOpenChange={setShowDeactivateDialog}>
+        <DialogContent aria-label={t("deactivate")} className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t("deactivate")}</DialogTitle>
+            <DialogDescription>{t("deactivateDescription")}</DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowDeactivateDialog(false)}
+              disabled={statusSubmitting}
+            >
+              {t("cancel")}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => void handleStatusChange("inactive")}
+              disabled={statusSubmitting}
+            >
+              {t("confirmDeactivate")}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

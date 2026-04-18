@@ -14,6 +14,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from common.auth import require_role
 from common.config import settings
 from common.database import get_db
+from common.errors import (
+    DuplicateCategoryNameError,
+    DuplicateProductCodeError,
+    ValidationError,
+    duplicate_category_name_response,
+    duplicate_product_code_response,
+    error_response,
+)
 from common.models.inventory_stock import InventoryStock
 from common.models.product import Product
 from common.models.stock_adjustment import ReasonCode
@@ -31,14 +39,23 @@ from domains.inventory.schemas import (
     USER_SELECTABLE_REASON_CODES,
     AcknowledgeAlertResponse,
     AuditLogListResponse,
+    CategoryCreate,
+    CategoryListResponse,
+    CategoryResponse,
+    CategoryStatusUpdate,
+    CategoryUpdate,
     DismissAlertResponse,
     InventoryStockResponse,
     MonthlyDemandResponse,
     PlanningSupportResponse,
+    ProductCreate,
     ProductDetailResponse,
+    ProductResponse,
     ProductSearchResponse,
     ProductSearchResult,
+    ProductStatusUpdate,
     ProductSupplierResponse,
+    ProductUpdate,
     ReasonCodeItem,
     ReasonCodeListResponse,
     ReceiveOrderRequest,
@@ -51,12 +68,12 @@ from domains.inventory.schemas import (
     ReorderPointPreviewRow,
     SalesHistoryItem,
     SalesHistoryResponse,
+    SnoozeAlertRequest,
+    SnoozeAlertResponse,
     StockAdjustmentRequest,
     StockAdjustmentResponse,
     StockHistoryResponse,
     StockSettingsUpdateRequest,
-    SnoozeAlertRequest,
-    SnoozeAlertResponse,
     SupplierListResponse,
     SupplierOrderCreate,
     SupplierOrderListResponse,
@@ -74,10 +91,13 @@ from domains.inventory.services import (
     InsufficientStockError,
     TransferValidationError,
     acknowledge_alert,
+    create_category,
+    create_product,
     create_stock_adjustment,
     create_supplier_order,
     create_warehouse,
     dismiss_alert,
+    get_category,
     get_inventory_stocks,
     get_monthly_demand,
     get_planning_support,
@@ -89,19 +109,25 @@ from domains.inventory.services import (
     get_supplier_order,
     get_top_customer,
     get_warehouse,
+    list_categories,
     list_reorder_alerts,
     list_supplier_orders,
     list_suppliers,
     list_warehouses,
     receive_supplier_order,
     search_products,
+    set_category_status,
+    set_product_status,
     snooze_alert,
     transfer_stock,
+    update_category,
+    update_product,
     update_stock_settings,
     update_supplier_order_status,
 )
 
 router = APIRouter()
+
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 CurrentTenant = Annotated[uuid.UUID, Depends(get_tenant_id)]
@@ -116,6 +142,12 @@ def _require_feature_enabled(enabled: bool, detail: str) -> None:
         raise HTTPException(status_code=403, detail=detail)
 
 
+def _api_reason_code(value: str) -> str:
+    return value.lower()
+
+
+def _enum_reason_code(value: str) -> ReasonCode:
+    return ReasonCode(value.upper())
 # ── Warehouse endpoints ───────────────────────────────────────
 
 
@@ -215,6 +247,15 @@ async def create_transfer_endpoint(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),
         ) from exc
+    except InsufficientStockError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": f"Insufficient stock: {exc.available} units available",
+                "available": exc.available,
+                "requested": exc.requested,
+            },
+        ) from exc
 
 
 # ── Reorder point endpoints ────────────────────────────────────
@@ -253,7 +294,7 @@ async def compute_reorder_points_endpoint(
             in_transit_qty=d.get("in_transit_qty"),
             reserved_qty=d.get("reserved_qty"),
             current_reorder_point=d.get("current_reorder_point", 0.0),
-            policy_type=d.get("policy_type"),
+            policy_type=d.get("policy_type", "continuous"),
             target_stock_qty=d.get("target_stock_qty"),
             planning_horizon_days=d.get("planning_horizon_days"),
             effective_horizon_days=d.get("effective_horizon_days"),
@@ -346,9 +387,9 @@ async def list_reason_codes(
 ) -> ReasonCodeListResponse:
     items = [
         ReasonCodeItem(
-            value=rc.value,
+            value=_api_reason_code(rc.value),
             label=rc.value.replace("_", " ").title(),
-            user_selectable=rc.value in USER_SELECTABLE_REASON_CODES,
+            user_selectable=_api_reason_code(rc.value) in USER_SELECTABLE_REASON_CODES,
         )
         for rc in ReasonCode
     ]
@@ -381,7 +422,7 @@ async def create_adjustment_endpoint(
         )
 
     try:
-        reason = ReasonCode(data.reason_code)
+        reason = _enum_reason_code(data.reason_code)
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -439,7 +480,12 @@ async def create_adjustment_endpoint(
             notes=data.notes,
         )
         await session.commit()
-        return StockAdjustmentResponse(**result)
+        return StockAdjustmentResponse(
+            **{
+                **result,
+                "reason_code": _api_reason_code(str(result["reason_code"])),
+            }
+        )
     except TransferValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -468,9 +514,11 @@ async def search_products_endpoint(
     _user: ReadUser,
     tenant_id: CurrentTenant,
     q: str = Query("", max_length=100),
+    category: str | None = Query(None, max_length=200),
     limit: int = Query(20, ge=1, le=500),
     offset: int = Query(0, ge=0),
     warehouse_id: uuid.UUID | None = Query(None),
+    include_inactive: bool = Query(False),
     sort_by: str = Query("code", pattern="^(code|name|category|status|current_stock)$"),
     sort_dir: str = Query("asc", pattern="^(asc|desc)$"),
 ) -> ProductSearchResponse:
@@ -480,6 +528,8 @@ async def search_products_endpoint(
         tenant_id,
         stripped,
         warehouse_id=warehouse_id,
+        category=category,
+        include_inactive=include_inactive,
         limit=limit,
         offset=offset,
         sort_by=sort_by,
@@ -489,6 +539,202 @@ async def search_products_endpoint(
         items=[ProductSearchResult(**r) for r in results],
         total=total,
     )
+
+
+# ── Category endpoints ────────────────────────────────────────
+
+
+@router.get(
+    "/categories",
+    response_model=CategoryListResponse,
+)
+async def list_categories_endpoint(
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+    q: str = Query("", max_length=200),
+    active_only: bool = Query(True),
+    limit: int = Query(100, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+) -> CategoryListResponse:
+    items, total = await list_categories(
+        session,
+        tenant_id,
+        q=q,
+        active_only=active_only,
+        limit=limit,
+        offset=offset,
+    )
+    return CategoryListResponse(
+        items=[CategoryResponse.model_validate(item) for item in items],
+        total=total,
+    )
+
+
+@router.post(
+    "/categories",
+    response_model=CategoryResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_category_endpoint(
+    data: CategoryCreate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> CategoryResponse:
+    try:
+        category = await create_category(session, tenant_id, data)
+        await session.commit()
+    except DuplicateCategoryNameError as exc:
+        return JSONResponse(status_code=409, content=duplicate_category_name_response(exc))
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+
+    return CategoryResponse.model_validate(category)
+
+
+@router.get(
+    "/categories/{category_id}",
+    response_model=CategoryResponse,
+)
+async def get_category_endpoint(
+    category_id: uuid.UUID,
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+) -> CategoryResponse:
+    category = await get_category(session, tenant_id, category_id)
+    if category is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Category not found",
+        )
+    return CategoryResponse.model_validate(category)
+
+
+@router.put(
+    "/categories/{category_id}",
+    response_model=CategoryResponse,
+)
+async def update_category_endpoint(
+    category_id: uuid.UUID,
+    data: CategoryUpdate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> CategoryResponse:
+    try:
+        category = await update_category(session, tenant_id, category_id, data)
+        if category is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Category not found",
+            )
+        await session.commit()
+    except DuplicateCategoryNameError as exc:
+        return JSONResponse(status_code=409, content=duplicate_category_name_response(exc))
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+
+    return CategoryResponse.model_validate(category)
+
+
+@router.patch(
+    "/categories/{category_id}/status",
+    response_model=CategoryResponse,
+)
+async def update_category_status_endpoint(
+    category_id: uuid.UUID,
+    data: CategoryStatusUpdate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> CategoryResponse:
+    category = await set_category_status(
+        session,
+        tenant_id,
+        category_id,
+        is_active=data.is_active,
+    )
+    if category is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Category not found",
+        )
+
+    await session.commit()
+    return CategoryResponse.model_validate(category)
+
+
+# ── Product creation endpoint ──────────────────────────────────
+
+
+@router.post(
+    "/products",
+    response_model=ProductResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_product_endpoint(
+    data: ProductCreate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> ProductResponse:
+    try:
+        product = await create_product(session, tenant_id, data)
+        await session.commit()
+    except DuplicateProductCodeError as exc:
+        return JSONResponse(status_code=409, content=duplicate_product_code_response(exc))
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+    return ProductResponse.model_validate(product)
+
+
+@router.put(
+    "/products/{product_id}",
+    response_model=ProductResponse,
+)
+async def update_product_endpoint(
+    product_id: uuid.UUID,
+    data: ProductUpdate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> ProductResponse:
+    try:
+        product = await update_product(session, tenant_id, product_id, data)
+        if product is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Product not found",
+            )
+        await session.commit()
+    except DuplicateProductCodeError as exc:
+        return JSONResponse(status_code=409, content=duplicate_product_code_response(exc))
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+    return ProductResponse.model_validate(product)
+
+
+@router.patch(
+    "/products/{product_id}/status",
+    response_model=ProductResponse,
+)
+async def set_product_status_endpoint(
+    product_id: uuid.UUID,
+    data: ProductStatusUpdate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> ProductResponse:
+    product = await set_product_status(session, tenant_id, product_id, data.status)
+    if product is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found",
+        )
+    await session.commit()
+    return ProductResponse.model_validate(product)
 
 
 # ── Product detail endpoint ────────────────────────────────────
@@ -938,6 +1184,12 @@ async def update_stock_settings_endpoint(
         reorder_point=data.reorder_point,
         safety_factor=data.safety_factor,
         lead_time_days=data.lead_time_days,
+        policy_type=data.policy_type,
+        target_stock_qty=data.target_stock_qty,
+        on_order_qty=data.on_order_qty,
+        in_transit_qty=data.in_transit_qty,
+        reserved_qty=data.reserved_qty,
+        planning_horizon_days=data.planning_horizon_days,
         review_cycle_days=data.review_cycle_days,
     )
     if stock is None:
