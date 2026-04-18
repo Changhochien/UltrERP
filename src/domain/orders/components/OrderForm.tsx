@@ -1,14 +1,15 @@
 /** Form to create a new sales order with dynamic line items. */
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { SurfaceMessage } from "../../../components/layout/PageLayout";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
+import { CustomerCombobox } from "../../../components/customers/CustomerCombobox";
+import { ProductCombobox } from "../../../components/products/ProductCombobox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table";
 import { usePaymentTerms, useCreateOrder } from "../hooks/useOrders";
-import { useStockCheck } from "../hooks/useStockCheck";
 import type { OrderCreatePayload, OrderLineCreate } from "../types";
 import { trackEvent, AnalyticsEvents } from "../../../lib/analytics";
 
@@ -25,7 +26,6 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
   const { t } = useTranslation("common");
   const { items: paymentTerms, loading: termsLoading, error: termsError } = usePaymentTerms();
   const { create, submitting, error } = useCreateOrder();
-  const { stockData, stockLoading, checkProductStock } = useStockCheck();
 
   const [customerId, setCustomerId] = useState("");
   const [paymentTermsCode, setPaymentTermsCode] = useState("NET_30");
@@ -35,15 +35,6 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
   const [lines, setLines] = useState<OrderLineCreate[]>([emptyLine()]);
   const submittingRef = useRef(false);
 
-  const productIdKey = lines.map((l) => l.product_id).join(",");
-
-  useEffect(() => {
-    for (const pid of productIdKey.split(",")) {
-      if (pid && pid.length >= 36) {
-        checkProductStock(pid);
-      }
-    }
-  }, [productIdKey, checkProductStock]);
 
   if (termsLoading) return <p aria-busy="true">{t("orders.form.loading")}</p>;
   if (termsError) return <div role="alert" className="text-sm text-destructive">{termsError}</div>;
@@ -100,13 +91,11 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <label className="space-y-2">
             <span>{t("orders.form.customerId")}</span>
-            <Input
-              id="ord-customer"
-              type="text"
-              required
+            <CustomerCombobox
               value={customerId}
-              onChange={(e) => setCustomerId(e.target.value)}
-              placeholder="Customer UUID"
+              onChange={setCustomerId}
+              onClear={() => setCustomerId("")}
+              placeholder={t("orders.form.customerPlaceholder") ?? "Search customer by name or BAN…"}
             />
           </label>
 
@@ -168,7 +157,6 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
                 <TableHead>{t("orders.form.unitPrice")}</TableHead>
                 <TableHead>{t("orders.form.discount")}</TableHead>
                 <TableHead>{t("orders.form.taxPolicy")}</TableHead>
-                <TableHead>{t("orders.form.stock")}</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -176,13 +164,11 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
               {lines.map((line, idx) => (
                 <TableRow key={idx}>
                   <TableCell>
-                    <Input
-                      type="text"
-                      required
-                      value={line.product_id}
-                      onChange={(e) => updateLine(idx, { product_id: e.target.value })}
-                      placeholder="Product UUID"
-                      aria-label={`Line ${idx + 1} product`}
+                    <ProductCombobox
+                      value={line.product_id ?? ""}
+                      onChange={(productId) => updateLine(idx, { product_id: productId })}
+                      onProductSelected={(product) => updateLine(idx, { description: product.name })}
+                      placeholder="Search product…"
                     />
                   </TableCell>
                   <TableCell>
@@ -241,25 +227,6 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
                       <option value="exempt">{t("orders.form.taxPolicyExempt")}</option>
                       <option value="special">Special</option>
                     </select>
-                  </TableCell>
-                  <TableCell>
-                    {(() => {
-                      const pid = line.product_id;
-                      if (!pid || pid.length < 36) return null;
-                      if (stockLoading[pid]) return <span aria-busy="true">…</span>;
-                      const info = stockData[pid];
-                      if (!info) return null;
-                      const avail = info.total_available;
-                      const insufficient = line.quantity > avail;
-                      return (
-                        <span aria-label={t("orders.form.lineStock", { index: idx + 1 })} className={insufficient ? "font-semibold text-destructive" : "font-semibold text-success-token"}>
-                          {avail} avail
-                          {insufficient ? (
-                            <span className="block text-xs font-normal text-destructive">Insufficient stock: {avail} units available</span>
-                          ) : null}
-                        </span>
-                      );
-                    })()}
                   </TableCell>
                   <TableCell>
                     {lines.length > 1 ? (
