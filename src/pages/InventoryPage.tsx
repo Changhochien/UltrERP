@@ -8,6 +8,7 @@ import { AlertPanel } from "../domain/inventory/components/AlertPanel";
 import { MetricCards } from "../domain/inventory/components/MetricCards";
 import { PageHeader } from "../components/layout/PageLayout";
 import { ProductDetailDrawer } from "../domain/inventory/components/ProductDetailDrawer";
+import { CreateProductForm } from "../domain/inventory/components/CreateProductForm";
 import { ReorderPointAdmin } from "../domain/inventory/components/ReorderPointAdmin";
 import { StockAdjustmentForm } from "../domain/inventory/components/StockAdjustmentForm";
 import { StockTransferForm } from "../domain/inventory/components/StockTransferForm";
@@ -20,6 +21,8 @@ function InventoryWorkspace() {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [adjustProductId, setAdjustProductId] = useState<string | null>(null);
   const [transferProductId, setTransferProductId] = useState<string | null>(null);
+  const [showCreateProduct, setShowCreateProduct] = useState(false);
+  const [createdProductKey, setCreatedProductKey] = useState(0);
 
   return (
     <div className="space-y-6">
@@ -28,10 +31,20 @@ function InventoryWorkspace() {
         title={t("inventory.page.title")}
         description={t("inventory.page.description")}
         actions={
-          <WarehouseSelector
-            value={selectedWarehouse}
-            onChange={setSelectedWarehouse}
-          />
+          <>
+            <WarehouseSelector
+              value={selectedWarehouse}
+              onChange={setSelectedWarehouse}
+            />
+            {canWrite("inventory") && (
+              <button
+                onClick={() => setShowCreateProduct(true)}
+                className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                Add Product
+              </button>
+            )}
+          </>
         }
       />
 
@@ -41,6 +54,7 @@ function InventoryWorkspace() {
         <ProductTable
           warehouseId={selectedWarehouse?.id}
           onProductClick={(id) => setSelectedProductId(id)}
+          createdProductKey={createdProductKey}
         />
         <AlertPanel />
       </div>
@@ -93,6 +107,20 @@ function InventoryWorkspace() {
             >
               Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {showCreateProduct && (
+        <div className="fixed inset-0 z-[9002] flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-lg rounded-xl border border-border bg-background p-6 shadow-lg">
+            <CreateProductForm
+              onSuccess={() => {
+                setShowCreateProduct(false);
+                setCreatedProductKey((k) => k + 1);
+              }}
+              onCancel={() => setShowCreateProduct(false)}
+            />
           </div>
         </div>
       )}
