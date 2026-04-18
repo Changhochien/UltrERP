@@ -14,6 +14,9 @@ import type {
   ProductUpdate,
   ReorderAlertListResponse,
   SnoozeAlertResponse,
+  Supplier,
+  SupplierCreate,
+  SupplierListOptions,
   WarehouseListResponse,
   TransferResponse,
   ReasonCodeListResponse,
@@ -21,6 +24,7 @@ import type {
   SupplierListResponse,
   SupplierOrderListResponse,
   SupplierOrder,
+  SupplierUpdate,
   UpdateOrderStatusRequest,
   ReceiveOrderRequest,
   CreateSupplierOrderRequest,
@@ -432,16 +436,137 @@ export async function submitAdjustment(
   }
 }
 
-export async function fetchSuppliers(): Promise<{
+export async function fetchSuppliers(
+  options?: SupplierListOptions & { signal?: AbortSignal },
+): Promise<{
   ok: true;
   data: SupplierListResponse;
 } | { ok: false; error: string }> {
   try {
-    const resp = await apiFetch("/api/v1/inventory/suppliers");
+    const params = new URLSearchParams();
+    if (options?.q) params.set("q", options.q);
+    if (options?.activeOnly != null) params.set("active_only", String(options.activeOnly));
+    if (options?.limit != null) params.set("limit", String(options.limit));
+    if (options?.offset != null) params.set("offset", String(options.offset));
+
+    const qs = params.toString();
+    const resp = await apiFetch(`/api/v1/inventory/suppliers${qs ? `?${qs}` : ""}`, {
+      signal: options?.signal,
+    });
     if (!resp.ok) return { ok: false, error: "Failed to fetch suppliers" };
     return { ok: true, data: (await resp.json()) as SupplierListResponse };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+export async function fetchSupplier(
+  supplierId: string,
+): Promise<{ ok: true; data: Supplier } | { ok: false; error: string }> {
+  try {
+    const resp = await apiFetch(`/api/v1/inventory/suppliers/${encodeURIComponent(supplierId)}`);
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      return {
+        ok: false,
+        error: (body as { detail?: string }).detail ?? "Failed to fetch supplier",
+      };
+    }
+    return { ok: true, data: body as Supplier };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+export type SupplierMutationResult =
+  | { ok: true; data: Supplier }
+  | { ok: false; error: string; errors?: InventoryFieldError[] };
+
+export async function createSupplier(data: SupplierCreate): Promise<SupplierMutationResult> {
+  try {
+    const resp = await apiFetch("/api/v1/inventory/suppliers", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    const body = await resp.json().catch(() => ({}));
+
+    if (resp.ok) {
+      return { ok: true, data: body as Supplier };
+    }
+
+    const errors = normalizeInventoryFieldErrors((body as { detail?: unknown }).detail);
+    if (errors.length > 0) {
+      return { ok: false, error: errors[0]?.message ?? "Failed to create supplier", errors };
+    }
+
+    return {
+      ok: false,
+      error: (body as { detail?: string }).detail ?? "Failed to create supplier",
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Unknown error",
+    };
+  }
+}
+
+export async function updateSupplier(
+  supplierId: string,
+  data: SupplierUpdate,
+): Promise<SupplierMutationResult> {
+  try {
+    const resp = await apiFetch(`/api/v1/inventory/suppliers/${encodeURIComponent(supplierId)}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+    const body = await resp.json().catch(() => ({}));
+
+    if (resp.ok) {
+      return { ok: true, data: body as Supplier };
+    }
+
+    const errors = normalizeInventoryFieldErrors((body as { detail?: unknown }).detail);
+    if (errors.length > 0) {
+      return { ok: false, error: errors[0]?.message ?? "Failed to update supplier", errors };
+    }
+
+    return {
+      ok: false,
+      error: (body as { detail?: string }).detail ?? "Failed to update supplier",
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Unknown error",
+    };
+  }
+}
+
+export async function setSupplierStatus(
+  supplierId: string,
+  isActive: boolean,
+): Promise<SupplierMutationResult> {
+  try {
+    const resp = await apiFetch(`/api/v1/inventory/suppliers/${encodeURIComponent(supplierId)}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ is_active: isActive }),
+    });
+    const body = await resp.json().catch(() => ({}));
+
+    if (resp.ok) {
+      return { ok: true, data: body as Supplier };
+    }
+
+    return {
+      ok: false,
+      error: (body as { detail?: string }).detail ?? "Failed to update supplier status",
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Unknown error",
+    };
   }
 }
 

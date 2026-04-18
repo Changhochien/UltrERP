@@ -7,9 +7,9 @@ import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table";
 import { ProductCombobox } from "../../../components/products/ProductCombobox";
+import { SupplierCombobox } from "./SupplierCombobox";
 import { useWarehouses } from "../hooks/useWarehouses";
 import {
-  useSuppliers,
   useCreateSupplierOrder,
 } from "../hooks/useSupplierOrders";
 
@@ -33,7 +33,6 @@ export function SupplierOrderForm({
   onCreated,
   onCancel,
 }: SupplierOrderFormProps) {
-  const { suppliers, loading: suppLoading } = useSuppliers();
   const { warehouses, loading: whLoading } = useWarehouses();
   const { create, submitting, error } = useCreateSupplierOrder();
 
@@ -44,7 +43,7 @@ export function SupplierOrderForm({
   const [expectedArrival, setExpectedArrival] = useState("");
   const [lines, setLines] = useState<OrderLine[]>([emptyLine()]);
 
-  if (suppLoading || whLoading) return <p aria-busy="true">Loading…</p>;
+  if (whLoading) return <p aria-busy="true">Loading…</p>;
 
   const updateLine = (idx: number, patch: Partial<OrderLine>) => {
     setLines((prev) =>
@@ -95,19 +94,14 @@ export function SupplierOrderForm({
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <label className="space-y-2">
               <span>Supplier</span>
-              <select
-                id="so-supplier"
-                required
+              <SupplierCombobox
+                inputId="so-supplier"
                 value={supplierId}
-                onChange={(e) => setSupplierId(e.target.value)}
-              >
-                <option value="">Select supplier</option>
-                {suppliers.map((supplier) => (
-                  <option key={supplier.id} value={supplier.id}>
-                    {supplier.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setSupplierId}
+                onClear={() => setSupplierId("")}
+                placeholder="Search supplier…"
+                ariaLabel="Supplier"
+              />
             </label>
 
             <label className="space-y-2">
@@ -153,7 +147,7 @@ export function SupplierOrderForm({
                         value={line.product_id}
                         onChange={(id) => updateLine(idx, { product_id: id })}
                         placeholder="Search product…"
-                        aria-label={`Line ${idx + 1} product`}
+                        ariaLabel={`Line ${idx + 1} product`}
                       />
                     </TableCell>
                     <TableCell>

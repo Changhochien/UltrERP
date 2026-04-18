@@ -75,10 +75,13 @@ from domains.inventory.schemas import (
     StockHistoryResponse,
     StockSettingsUpdateRequest,
     SupplierListResponse,
+    SupplierCreate,
     SupplierOrderCreate,
     SupplierOrderListResponse,
     SupplierOrderResponse,
     SupplierResponse,
+    SupplierStatusUpdate,
+    SupplierUpdate,
     TopCustomerResponse,
     TransferRequest,
     TransferResponse,
@@ -97,6 +100,7 @@ from domains.inventory.services import (
     create_supplier_order,
     create_warehouse,
     dismiss_alert,
+    create_supplier,
     get_category,
     get_inventory_stocks,
     get_monthly_demand,
@@ -106,6 +110,7 @@ from domains.inventory.services import (
     get_product_supplier,
     get_sales_history,
     get_stock_history,
+    get_supplier,
     get_supplier_order,
     get_top_customer,
     get_warehouse,
@@ -118,10 +123,12 @@ from domains.inventory.services import (
     search_products,
     set_category_status,
     set_product_status,
+    set_supplier_status,
     snooze_alert,
     transfer_stock,
     update_category,
     update_product,
+    update_supplier,
     update_stock_settings,
     update_supplier_order_status,
 )
@@ -1039,17 +1046,114 @@ async def list_suppliers_endpoint(
     session: DbSession,
     _user: ReadUser,
     tenant_id: CurrentTenant,
+    q: str | None = Query(None),
     active_only: bool = Query(True),
+    limit: int = Query(100, ge=1, le=200),
+    offset: int = Query(0, ge=0),
 ) -> SupplierListResponse:
-    suppliers = await list_suppliers(
+    suppliers, total = await list_suppliers(
         session,
         tenant_id,
+        q=q,
         active_only=active_only,
+        limit=limit,
+        offset=offset,
     )
     return SupplierListResponse(
-        items=[SupplierResponse(**s) for s in suppliers],
-        total=len(suppliers),
+        items=[SupplierResponse.model_validate(s) for s in suppliers],
+        total=total,
     )
+
+
+@router.post(
+    "/suppliers",
+    response_model=SupplierResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_supplier_endpoint(
+    data: SupplierCreate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> SupplierResponse | JSONResponse:
+    try:
+        supplier = await create_supplier(session, tenant_id, data)
+        await session.commit()
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+
+    return SupplierResponse.model_validate(supplier)
+
+
+@router.get(
+    "/suppliers/{supplier_id}",
+    response_model=SupplierResponse,
+)
+async def get_supplier_endpoint(
+    supplier_id: uuid.UUID,
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+) -> SupplierResponse:
+    supplier = await get_supplier(session, tenant_id, supplier_id)
+    if supplier is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Supplier not found",
+        )
+    return SupplierResponse.model_validate(supplier)
+
+
+@router.put(
+    "/suppliers/{supplier_id}",
+    response_model=SupplierResponse,
+)
+async def update_supplier_endpoint(
+    supplier_id: uuid.UUID,
+    data: SupplierUpdate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> SupplierResponse | JSONResponse:
+    try:
+        supplier = await update_supplier(session, tenant_id, supplier_id, data)
+        if supplier is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Supplier not found",
+            )
+        await session.commit()
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+
+    return SupplierResponse.model_validate(supplier)
+
+
+@router.patch(
+    "/suppliers/{supplier_id}/status",
+    response_model=SupplierResponse,
+)
+async def update_supplier_status_endpoint(
+    supplier_id: uuid.UUID,
+    data: SupplierStatusUpdate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> SupplierResponse:
+    supplier = await set_supplier_status(
+        session,
+        tenant_id,
+        supplier_id,
+        is_active=data.is_active,
+    )
+    if supplier is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Supplier not found",
+        )
+
+    await session.commit()
+    return SupplierResponse.model_validate(supplier)
 
 
 # ── Supplier order endpoints ──────────────────────────────────

@@ -446,6 +446,26 @@ class DismissAlertResponse(BaseModel):
 # --- Supplier schemas ---
 
 
+class SupplierBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=300)
+    contact_email: str | None = Field(default=None, max_length=255)
+    phone: str | None = Field(default=None, max_length=50)
+    address: str | None = Field(default=None, max_length=500)
+    default_lead_time_days: int | None = Field(default=None, ge=0)
+
+
+class SupplierCreate(SupplierBase):
+    pass
+
+
+class SupplierUpdate(SupplierBase):
+    pass
+
+
+class SupplierStatusUpdate(BaseModel):
+    is_active: bool
+
+
 class SupplierResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

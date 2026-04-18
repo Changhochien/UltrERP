@@ -261,10 +261,10 @@ development_status:
         prerequisites: []
       4-13-supplier-crud-ui:
         title: "Supplier CRUD UI"
-        status: "backlog"
+        status: "completed"
         story_id: "4.13"
         story_file: "4-13-supplier-crud-ui.md"
-        validation: "none"
+        validation: "Supplier management is implemented with tenant-scoped create/detail/update/status APIs, searchable supplier directory and detail screens, active-only supplier combobox reuse in supplier orders, and focused validations passing (16 backend tests and 7 frontend tests)."
         prerequisites: []
       4-14-reorder-suggestions:
         title: "Reorder Suggestions Generation"

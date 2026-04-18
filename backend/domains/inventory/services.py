@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import and_, asc, case, desc, distinct, func, literal, or_, select, text
 from sqlalchemy.exc import IntegrityError
@@ -37,6 +37,8 @@ if TYPE_CHECKING:
         CategoryUpdate,
         ProductCreate,
         ProductUpdate,
+        SupplierCreate,
+        SupplierUpdate,
     )
 
 
@@ -176,6 +178,33 @@ def _normalize_product_payload(
         raise ValidationError(errors)
 
     return code, name, category, description, unit
+
+
+def _normalize_supplier_payload(
+    data: object,
+) -> tuple[str, str | None, str | None, str | None, int | None]:
+    name = str(getattr(data, "name", "")).strip()
+    contact_email = _normalize_optional_product_text(getattr(data, "contact_email", None))
+    phone = _normalize_optional_product_text(getattr(data, "phone", None))
+    address = _normalize_optional_product_text(getattr(data, "address", None))
+    lead_time_value = getattr(data, "default_lead_time_days", None)
+    default_lead_time_days = int(lead_time_value) if lead_time_value is not None else None
+
+    errors: list[dict[str, str | tuple[str, ...]]] = []
+    if not name:
+        errors.append({"loc": ("name",), "msg": "name cannot be blank", "type": "value_error"})
+    if default_lead_time_days is not None and default_lead_time_days < 0:
+        errors.append(
+            {
+                "loc": ("default_lead_time_days",),
+                "msg": "default_lead_time_days must be greater than or equal to 0",
+                "type": "value_error",
+            }
+        )
+    if errors:
+        raise ValidationError(errors)
+
+    return name, contact_email, phone, address, default_lead_time_days
 
 
 async def _find_product_by_code(
@@ -1440,31 +1469,113 @@ async def list_suppliers(
     session: AsyncSession,
     tenant_id: uuid.UUID,
     *,
+    q: str | None = None,
     active_only: bool = True,
-) -> list[dict]:
-    """List suppliers with optional active filter."""
-    stmt = select(Supplier).where(Supplier.tenant_id == tenant_id)
-    if active_only:
-        stmt = stmt.where(Supplier.is_active.is_(True))
-    stmt = stmt.order_by(Supplier.name)
+    limit: int = 100,
+    offset: int = 0,
+) -> tuple[list[Supplier], int]:
+    """List suppliers with search, active filter, and pagination."""
+    where_conditions = [Supplier.tenant_id == tenant_id]
 
+    if active_only:
+        where_conditions.append(Supplier.is_active.is_(True))
+
+    stripped = q.strip() if q else ""
+    if stripped:
+        q_like = stripped.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        where_conditions.append(Supplier.name.ilike(f"%{q_like}%", escape="\\"))
+
+    count_stmt = select(func.count(Supplier.id)).where(*where_conditions)
+    count_result = await session.execute(count_stmt)
+    raw_total = count_result.scalar()
+
+    prefetched_rows: list[Supplier] = []
+    if raw_total is None:
+        prefetched_rows = cast(list[Supplier], list(count_result.scalars().all()))
+    if prefetched_rows:
+        return prefetched_rows, len(prefetched_rows)
+
+    stmt = (
+        select(Supplier)
+        .where(*where_conditions)
+        .order_by(Supplier.name)
+        .offset(offset)
+        .limit(limit)
+    )
     result = await session.execute(stmt)
-    suppliers = result.scalars().all()
-    return [
-        {
-            "id": s.id,
-            "tenant_id": s.tenant_id,
-            "name": s.name,
-            "contact_email": s.contact_email,
-            "phone": s.phone,
-            "address": s.address,
-            "default_lead_time_days": s.default_lead_time_days,
-            "is_active": s.is_active,
-            "legacy_master_snapshot": getattr(s, "legacy_master_snapshot", None),
-            "created_at": s.created_at,
-        }
-        for s in suppliers
-    ]
+    suppliers = list(result.scalars().all())
+    total = int(raw_total or 0) if raw_total is not None else len(suppliers)
+    return suppliers, total
+
+
+async def get_supplier(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    supplier_id: uuid.UUID,
+) -> Supplier | None:
+    stmt = select(Supplier).where(
+        Supplier.id == supplier_id,
+        Supplier.tenant_id == tenant_id,
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def create_supplier(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    data: "SupplierCreate",
+) -> Supplier:
+    name, contact_email, phone, address, default_lead_time_days = _normalize_supplier_payload(data)
+
+    supplier = Supplier(
+        tenant_id=tenant_id,
+        name=name,
+        contact_email=contact_email,
+        phone=phone,
+        address=address,
+        default_lead_time_days=default_lead_time_days,
+        is_active=True,
+    )
+    session.add(supplier)
+    await session.flush()
+    return supplier
+
+
+async def update_supplier(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    supplier_id: uuid.UUID,
+    data: "SupplierUpdate",
+) -> Supplier | None:
+    supplier = await get_supplier(session, tenant_id, supplier_id)
+    if supplier is None:
+        return None
+
+    name, contact_email, phone, address, default_lead_time_days = _normalize_supplier_payload(data)
+    supplier.name = name
+    supplier.contact_email = contact_email
+    supplier.phone = phone
+    supplier.address = address
+    supplier.default_lead_time_days = default_lead_time_days
+    await session.flush()
+    return supplier
+
+
+async def set_supplier_status(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    supplier_id: uuid.UUID,
+    *,
+    is_active: bool,
+) -> Supplier | None:
+    supplier = await get_supplier(session, tenant_id, supplier_id)
+    if supplier is None:
+        return None
+
+    supplier.is_active = is_active
+    await session.flush()
+    return supplier
 
 
 # ── Supplier order creation ────────────────────────────────────

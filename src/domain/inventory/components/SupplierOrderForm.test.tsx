@@ -6,10 +6,6 @@ import { SupplierOrderForm } from "./SupplierOrderForm";
 const createSupplierOrderMock = vi.fn();
 
 vi.mock("../hooks/useSupplierOrders", () => ({
-  useSuppliers: () => ({
-    suppliers: [{ id: "sup-1", name: "Acme Supply" }],
-    loading: false,
-  }),
   useCreateSupplierOrder: () => ({
     create: createSupplierOrderMock,
     submitting: false,
@@ -17,11 +13,23 @@ vi.mock("../hooks/useSupplierOrders", () => ({
   }),
 }));
 
+vi.mock("./SupplierCombobox", () => ({
+  SupplierCombobox: ({ value, onChange, ariaLabel }: { value: string; onChange: (value: string) => void; ariaLabel?: string }) => (
+    <input aria-label={ariaLabel ?? "Supplier"} value={value} onChange={(event) => onChange(event.target.value)} />
+  ),
+}));
+
 vi.mock("../hooks/useWarehouses", () => ({
   useWarehouses: () => ({
     warehouses: [{ id: "wh-1", name: "Main Warehouse" }],
     loading: false,
   }),
+}));
+
+vi.mock("../../../components/products/ProductCombobox", () => ({
+  ProductCombobox: ({ value, onChange, ariaLabel }: { value: string; onChange: (value: string) => void; ariaLabel?: string }) => (
+    <input aria-label={ariaLabel ?? "Product"} value={value} onChange={(event) => onChange(event.target.value)} />
+  ),
 }));
 
 afterEach(() => {

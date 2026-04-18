@@ -154,45 +154,6 @@ export interface ProductStatusUpdate {
   status: "active" | "inactive";
 }
 
-export type PlanningSupportDataBasis =
-  | "aggregated_only"
-  | "aggregated_plus_live_current_month"
-  | "live_current_month_only"
-  | "no_history";
-
-export interface PlanningSupportItem {
-  month: string;
-  quantity: string;
-  source: "aggregated" | "live";
-}
-
-export interface PlanningSupportWindow {
-  start_month: string;
-  end_month: string;
-  includes_current_month: boolean;
-  is_partial: boolean;
-}
-
-export interface PlanningSupportResponse {
-  product_id: string;
-  items: PlanningSupportItem[];
-  avg_monthly_quantity: string | null;
-  peak_monthly_quantity: string | null;
-  low_monthly_quantity: string | null;
-  seasonality_index: string | null;
-  above_average_months: string[];
-  history_months_used: number;
-  current_month_live_quantity: string | null;
-  reorder_point: number;
-  on_order_qty: number;
-  in_transit_qty: number;
-  reserved_qty: number;
-  data_basis: PlanningSupportDataBasis;
-  advisory_only: boolean;
-  data_gap: boolean;
-  window: PlanningSupportWindow;
-}
-
 export interface StockAdjustmentRequest {
   product_id: string;
   warehouse_id: string;
@@ -299,6 +260,23 @@ export interface Supplier {
   default_lead_time_days: number | null;
   is_active: boolean;
   created_at: string;
+}
+
+export interface SupplierCreate {
+  name: string;
+  contact_email?: string;
+  phone?: string;
+  address?: string;
+  default_lead_time_days?: number;
+}
+
+export interface SupplierUpdate extends SupplierCreate {}
+
+export interface SupplierListOptions {
+  q?: string;
+  activeOnly?: boolean;
+  limit?: number;
+  offset?: number;
 }
 
 export interface SupplierListResponse {
