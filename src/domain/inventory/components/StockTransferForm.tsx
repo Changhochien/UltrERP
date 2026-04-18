@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useWarehouses } from "../hooks/useWarehouses";
 import { createTransfer } from "../../../lib/api/inventory";
+import { ProductCombobox } from "../../../components/products/ProductCombobox";
 
 interface StockTransferFormProps {
   defaultProductId?: string;
@@ -95,11 +96,10 @@ export function StockTransferForm({ defaultProductId = "" }: StockTransferFormPr
 
       <label>
         Product ID
-        <input
-          type="text"
+        <ProductCombobox
           value={productId}
-          onChange={(e) => setProductId(e.target.value)}
-          placeholder="Product UUID"
+          onChange={setProductId}
+          placeholder="Search product…"
         />
       </label>
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type { ProductDetail } from "../types";
+import type { ProductDetail, ProductResponse } from "../types";
 import { fetchProductDetail } from "../../../lib/api/inventory";
 
 export function useProductDetail(productId: string | null) {
@@ -7,11 +7,13 @@ export function useProductDetail(productId: string | null) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (preserveCurrent = false) => {
     if (!productId) return;
     setLoading(true);
     setError(null);
-    setProduct(null);
+    if (!preserveCurrent) {
+      setProduct(null);
+    }
     try {
       const res = await fetchProductDetail(productId);
       if (res.ok) {
@@ -30,5 +32,26 @@ export function useProductDetail(productId: string | null) {
     void load();
   }, [load]);
 
-  return { product, loading, error, reload: load };
+  const reload = useCallback(async () => {
+    await load(true);
+  }, [load]);
+
+  const applyLocalUpdate = useCallback((updated: ProductResponse) => {
+    setProduct((current) => {
+      if (!current) {
+        return current;
+      }
+      return {
+        ...current,
+        code: updated.code,
+        name: updated.name,
+        category: updated.category,
+        description: updated.description,
+        unit: updated.unit,
+        status: updated.status,
+      };
+    });
+  }, []);
+
+  return { product, loading, error, reload, applyLocalUpdate };
 }

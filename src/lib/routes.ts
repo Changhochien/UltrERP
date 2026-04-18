@@ -2,6 +2,7 @@ export const HOME_ROUTE = "/";
 export const LOGIN_ROUTE = "/login";
 export const OWNER_DASHBOARD_ROUTE = "/owner-dashboard";
 export const INVENTORY_ROUTE = "/inventory";
+export const INVENTORY_CATEGORIES_ROUTE = "/inventory/categories";
 export const PRODUCT_DETAIL_ROUTE = "/inventory/:productId";
 export const PURCHASES_ROUTE = "/purchases";
 export const CUSTOMERS_ROUTE = "/customers";
@@ -22,6 +23,7 @@ export type AppRoute =
   | typeof HOME_ROUTE
   | typeof LOGIN_ROUTE
   | typeof INVENTORY_ROUTE
+  | typeof INVENTORY_CATEGORIES_ROUTE
   | typeof PRODUCT_DETAIL_ROUTE
   | typeof PURCHASES_ROUTE
   | typeof CUSTOMERS_ROUTE

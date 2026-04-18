@@ -13,6 +13,7 @@ import {
 } from "../../../components/ui/dialog";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
+import { ProductCombobox } from "../../../components/products/ProductCombobox";
 import { useProductDetail } from "../hooks/useProductDetail";
 import { useWarehouses } from "../hooks/useWarehouses";
 import {
@@ -87,13 +88,10 @@ export function StockAdjustmentForm({ defaultProductId = "", defaultWarehouseId 
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-2">
               <span>Product</span>
-              <Input
-                id="adj-product"
-                type="text"
-                required
+              <ProductCombobox
                 value={productId}
-                onChange={(e) => setProductId(e.target.value)}
-                placeholder="Enter product UUID"
+                onChange={setProductId}
+                placeholder="Search product…"
               />
               {product && (
                 <span className="text-sm font-medium text-foreground">

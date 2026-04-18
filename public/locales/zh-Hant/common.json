@@ -67,6 +67,14 @@
       "description": "管理庫存水位與倉儲作業。",
       "label": "庫存"
     },
+    "inventoryCategories": {
+      "description": "管理商品表單與搜尋篩選所使用的類別主檔。",
+      "label": "產品類別"
+    },
+    "intelligence": {
+      "description": "檢視可供 AI 與業務使用的客戶與商品洞察訊號。",
+      "label": "商業洞察"
+    },
     "purchases": {
       "description": "檢視已匯入的供應商發票與應付歷史。",
       "label": "採購"
@@ -810,6 +818,8 @@
       "description": "管理您的產品目錄與庫存水準。",
       "eyebrow": "庫存",
       "title": "庫存",
+      "manageCategories": "管理類別",
+      "addProduct": "新增產品",
       "warehouseScope": "倉庫範圍",
       "warehouseScopeDescription": "依倉庫篩選庫存檢視。"
     },
@@ -908,6 +918,8 @@
     },
     "productGrid": {
       "searchPlaceholder": "依編號或名稱搜尋…",
+      "filterCategory": "依類別篩選",
+      "showInactive": "顯示停用產品",
       "allStatus": "所有狀態",
       "active": "啟用",
       "lowStock": "偏低",
@@ -939,6 +951,40 @@
       "status": "狀態",
       "units": "單位"
     },
+    "categoriesPage": {
+      "eyebrow": "庫存設定",
+      "title": "產品類別",
+      "description": "管理產品表單與庫存搜尋篩選所使用的類別主檔。",
+      "backToInventory": "返回庫存",
+      "createTitle": "新增類別",
+      "editTitle": "編輯類別",
+      "formDescription": "建立並維護可用類別，同時保留歷史產品上既有的類別文字。",
+      "nameLabel": "類別名稱",
+      "namePlaceholder": "例如：五金",
+      "save": "儲存類別",
+      "saving": "儲存中…",
+      "update": "更新類別",
+      "cancelEdit": "取消編輯",
+      "directoryTitle": "類別清單",
+      "directoryDescription": "搜尋、檢視並停用類別，同時保留產品目前儲存的類別文字。",
+      "searchPlaceholder": "搜尋類別…",
+      "showInactive": "顯示停用",
+      "categories": "{count} 個類別",
+      "status": "狀態",
+      "active": "啟用",
+      "inactive": "停用",
+      "updated": "更新日期",
+      "actions": "操作",
+      "edit": "編輯",
+      "deactivate": "停用",
+      "activate": "啟用",
+      "loading": "載入類別中…",
+      "empty": "查無類別。",
+      "emptyDescription": "建立一個類別，讓產品選擇與搜尋篩選維持一致。",
+      "loadError": "載入類別失敗。",
+      "statusError": "更新類別狀態失敗。",
+      "readOnly": "您可以在此檢視類別，但只有庫存編輯者可以修改。"
+    },
     "productDetail": {
       "adjustmentHistory": {
         "actor": "操作者",
@@ -952,10 +998,18 @@
         "title": "異動紀錄"
       },
       "belowReorderPoint": "低於補貨點",
+      "activate": "啟用產品",
+      "cancel": "取消",
       "category": "類別：{category}",
       "code": "編號：{code}",
+      "confirmDeactivate": "停用產品",
+      "deactivate": "停用產品",
+      "deactivateDescription": "停用後產品仍會保留歷史資料與產品編號，但會從預設搜尋與選擇器中隱藏。",
+      "edit": "編輯產品",
+      "editDescription": "更新編號、名稱、類別、說明與單位。",
       "error": "錯誤：{message}",
       "loading": "載入中…",
+      "masterData": "主檔資料",
       "productDescription": "產品說明",
       "retry": "重試",
       "stockByWarehouse": {
@@ -985,6 +1039,7 @@
       "settings": "設定",
       "auditLog": "異動紀錄",
       "totalUnits": "總單位",
+      "unitLabel": "單位",
       "outOfStock": "缺貨",
       "critical": "危急",
       "low": "偏低",

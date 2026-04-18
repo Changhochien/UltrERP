@@ -74,6 +74,32 @@ export interface ProductSearchResponse {
   total: number;
 }
 
+export interface Category {
+  id: string;
+  tenant_id: string;
+  name: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CategoryListResponse {
+  items: Category[];
+  total: number;
+}
+
+export interface CategoryCreate {
+  name: string;
+}
+
+export interface CategoryUpdate {
+  name: string;
+}
+
+export interface CategoryStatusUpdate {
+  status: "active" | "inactive";
+}
+
 export interface WarehouseStockInfo {
   stock_id: string;
   warehouse_id: string;
@@ -101,10 +127,55 @@ export interface ProductDetail {
   code: string;
   name: string;
   category: string | null;
+  description: string | null;
+  unit: string;
   status: string;
   total_stock: number;
   warehouses: WarehouseStockInfo[];
   adjustment_history: AdjustmentHistoryItem[];
+}
+
+export interface ProductStatusUpdate {
+  status: "active" | "inactive";
+}
+
+export type PlanningSupportDataBasis =
+  | "aggregated_only"
+  | "aggregated_plus_live_current_month"
+  | "live_current_month_only"
+  | "no_history";
+
+export interface PlanningSupportItem {
+  month: string;
+  quantity: string;
+  source: "aggregated" | "live";
+}
+
+export interface PlanningSupportWindow {
+  start_month: string;
+  end_month: string;
+  includes_current_month: boolean;
+  is_partial: boolean;
+}
+
+export interface PlanningSupportResponse {
+  product_id: string;
+  items: PlanningSupportItem[];
+  avg_monthly_quantity: string | null;
+  peak_monthly_quantity: string | null;
+  low_monthly_quantity: string | null;
+  seasonality_index: string | null;
+  above_average_months: string[];
+  history_months_used: number;
+  current_month_live_quantity: string | null;
+  reorder_point: number;
+  on_order_qty: number;
+  in_transit_qty: number;
+  reserved_qty: number;
+  data_basis: PlanningSupportDataBasis;
+  advisory_only: boolean;
+  data_gap: boolean;
+  window: PlanningSupportWindow;
 }
 
 export interface StockAdjustmentRequest {
@@ -340,4 +411,33 @@ export interface ReorderPointApplyResponse {
   updated_count: number;
   skipped_count: number;
   run_parameters: Record<string, unknown>;
+}
+
+// --- Product create types ---
+
+export interface ProductCreate {
+  code: string;
+  name: string;
+  category?: string;
+  description?: string;
+  unit?: string;
+}
+
+export interface ProductUpdate {
+  code: string;
+  name: string;
+  category?: string;
+  description?: string;
+  unit: string;
+}
+
+export interface ProductResponse {
+  id: string;
+  code: string;
+  name: string;
+  category: string | null;
+  description: string | null;
+  unit: string;
+  status: string;
+  created_at: string;
 }

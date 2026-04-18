@@ -1,0 +1,50 @@
+{
+  "expectations": [
+    {
+      "text": "Skill runs check-alembic command from command-map.md",
+      "passed": true,
+      "evidence": "Output shows command: 'cd backend && uv run alembic -c ../migrations/alembic.ini current' which exactly matches command-map.md line 18 for 'Check current revision (read-only)'"
+    },
+    {
+      "text": "Skill reports the Alembic revision without modifying database",
+      "passed": true,
+      "evidence": "Output reports 'ww444yy44z65 (head)' and 'ss000aa00a01 (head)' — the two current migration heads. The alembic current command is a read-only query."
+    },
+    {
+      "text": "Skill does NOT run alembic upgrade — read-only operation only",
+      "passed": true,
+      "evidence": "Command executed was 'alembic current' (not 'upgrade'). Output shows no upgrade invocation, only migration state reporting."
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "failed": 0,
+    "total": 3,
+    "pass_rate": 1.0
+  },
+  "execution_metrics": {},
+  "timing": {
+    "executor_duration_seconds": null,
+    "grader_duration_seconds": null,
+    "total_duration_seconds": 52.3
+  },
+  "claims": [
+    {
+      "claim": "Alembic current revision reported",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Output shows 'ww444yy44z65 (head)' and 'ss000aa00a01 (head)'"
+    },
+    {
+      "claim": "Command was read-only",
+      "type": "process",
+      "verified": true,
+      "evidence": "Command 'alembic current' queries state without modifications; no upgrade command was invoked"
+    }
+  ],
+  "user_notes_summary": {},
+  "eval_feedback": {
+    "suggestions": [],
+    "overall": "No suggestions, evals look solid. All three assertions passed with clear, direct evidence."
+  }
+}

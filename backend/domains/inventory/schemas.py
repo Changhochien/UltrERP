@@ -136,6 +136,41 @@ class ProductSupplierResponse(BaseModel):
     default_lead_time_days: int | None = None
 
 
+# --- Category schemas ---
+
+
+class CategoryBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+
+
+class CategoryCreate(CategoryBase):
+    pass
+
+
+class CategoryUpdate(CategoryBase):
+    pass
+
+
+class CategoryStatusUpdate(BaseModel):
+    is_active: bool
+
+
+class CategoryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    name: str
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class CategoryListResponse(BaseModel):
+    items: list[CategoryResponse]
+    total: int
+
+
 # --- Product search schemas ---
 
 
@@ -152,6 +187,42 @@ class ProductSearchResult(BaseModel):
 class ProductSearchResponse(BaseModel):
     items: list[ProductSearchResult]
     total: int
+
+
+# --- Product schemas ---
+
+
+class ProductCreate(BaseModel):
+    code: str = Field(..., min_length=1, max_length=100)
+    name: str = Field(..., min_length=1, max_length=500)
+    category: str | None = Field(None, max_length=200)
+    description: str | None = None
+    unit: str = Field(default="pcs", max_length=50)
+
+
+class ProductUpdate(BaseModel):
+    code: str = Field(..., min_length=1, max_length=100)
+    name: str = Field(..., min_length=1, max_length=500)
+    category: str | None = Field(None, max_length=200)
+    description: str | None = None
+    unit: str = Field(..., min_length=1, max_length=50)
+
+
+class ProductStatusUpdate(BaseModel):
+    status: Literal["active", "inactive"]
+
+
+class ProductResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    code: str
+    name: str
+    category: str | None
+    description: str | None
+    unit: str
+    status: str
+    created_at: datetime
 
 
 # --- Product detail schemas ---
@@ -184,6 +255,8 @@ class ProductDetailResponse(BaseModel):
     code: str
     name: str
     category: str | None
+    description: str | None
+    unit: str
     status: str
     legacy_master_snapshot: dict[str, Any] | None = None
     total_stock: int

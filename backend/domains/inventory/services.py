@@ -9,8 +9,14 @@ from sqlalchemy import and_, asc, case, desc, distinct, func, literal, or_, sele
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from common.errors import (
+    DuplicateCategoryNameError,
+    DuplicateProductCodeError,
+    ValidationError,
+)
 from common.events import StockChangedEvent, emit
 from common.models.audit_log import AuditLog
+from common.models.category import Category
 from common.models.inventory_stock import InventoryStock
 from common.models.product import Product
 from common.models.reorder_alert import AlertStatus, ReorderAlert
@@ -87,6 +93,326 @@ async def create_warehouse(
     session.add(warehouse)
     await session.flush()
     return warehouse
+
+
+def _normalize_optional_product_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip()
+    return normalized or None
+
+
+def _normalize_category_name(name: str) -> str:
+    normalized = name.strip()
+    if not normalized:
+        raise ValidationError(
+            [{"loc": ("name",), "msg": "name cannot be blank", "type": "value_error"}]
+        )
+    return normalized
+
+
+def _normalize_product_payload(
+    data: object,
+) -> tuple[str, str, str | None, str | None, str]:
+    code = str(getattr(data, "code", "")).strip()
+    name = str(getattr(data, "name", "")).strip()
+    unit = str(getattr(data, "unit", "")).strip()
+    category = _normalize_optional_product_text(getattr(data, "category", None))
+    description = _normalize_optional_product_text(getattr(data, "description", None))
+
+    errors: list[dict[str, str | tuple[str, ...]]] = []
+    if not code:
+        errors.append({"loc": ("code",), "msg": "code cannot be blank", "type": "value_error"})
+    if not name:
+        errors.append({"loc": ("name",), "msg": "name cannot be blank", "type": "value_error"})
+    if not unit:
+        errors.append({"loc": ("unit",), "msg": "unit cannot be blank", "type": "value_error"})
+    if errors:
+        raise ValidationError(errors)
+
+    return code, name, category, description, unit
+
+
+async def _find_product_by_code(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    code: str,
+    *,
+    exclude_product_id: uuid.UUID | None = None,
+) -> Product | None:
+    stmt = select(Product).where(
+        Product.tenant_id == tenant_id,
+        func.lower(Product.code) == code.lower(),
+    )
+    if exclude_product_id is not None:
+        stmt = stmt.where(Product.id != exclude_product_id)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def _find_category_by_name(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    name: str,
+    *,
+    exclude_category_id: uuid.UUID | None = None,
+) -> Category | None:
+    stmt = select(Category).where(
+        Category.tenant_id == tenant_id,
+        func.lower(Category.name) == name.lower(),
+    )
+    if exclude_category_id is not None:
+        stmt = stmt.where(Category.id != exclude_category_id)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+# ── Category queries ──────────────────────────────────────────
+
+
+async def create_category(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    data: "CategoryCreate",
+) -> Category:
+    name = _normalize_category_name(data.name)
+
+    existing = await _find_category_by_name(session, tenant_id, name)
+    if existing is not None:
+        raise DuplicateCategoryNameError(existing_id=existing.id, existing_name=existing.name)
+
+    category = Category(
+        tenant_id=tenant_id,
+        name=name,
+        is_active=True,
+    )
+    try:
+        session.add(category)
+        await session.flush()
+    except IntegrityError:
+        await session.rollback()
+        existing = await _find_category_by_name(session, tenant_id, name)
+        if existing is not None:
+            raise DuplicateCategoryNameError(existing_id=existing.id, existing_name=existing.name)
+        raise
+
+    return category
+
+
+async def list_categories(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    *,
+    q: str = "",
+    active_only: bool = True,
+    limit: int = 100,
+    offset: int = 0,
+) -> tuple[list[Category], int]:
+    where_conditions = [Category.tenant_id == tenant_id]
+    if active_only:
+        where_conditions.append(Category.is_active.is_(True))
+
+    stripped = q.strip()
+    if stripped:
+        q_like = stripped.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        where_conditions.append(Category.name.ilike(f"%{q_like}%", escape="\\"))
+
+    count_stmt = select(func.count(Category.id)).where(*where_conditions)
+    count_result = await session.execute(count_stmt)
+    total = count_result.scalar() or 0
+
+    stmt = (
+        select(Category)
+        .where(*where_conditions)
+        .order_by(Category.name)
+        .offset(offset)
+        .limit(limit)
+    )
+    result = await session.execute(stmt)
+    categories = result.scalars().all()
+    return list(categories), total
+
+
+async def get_category(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    category_id: uuid.UUID,
+) -> Category | None:
+    stmt = select(Category).where(
+        Category.id == category_id,
+        Category.tenant_id == tenant_id,
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def update_category(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    category_id: uuid.UUID,
+    data: "CategoryUpdate",
+) -> Category | None:
+    category = await get_category(session, tenant_id, category_id)
+    if category is None:
+        return None
+
+    name = _normalize_category_name(data.name)
+    existing = await _find_category_by_name(
+        session,
+        tenant_id,
+        name,
+        exclude_category_id=category.id,
+    )
+    if existing is not None:
+        raise DuplicateCategoryNameError(existing_id=existing.id, existing_name=existing.name)
+
+    category.name = name
+    try:
+        await session.flush()
+    except IntegrityError:
+        await session.rollback()
+        existing = await _find_category_by_name(
+            session,
+            tenant_id,
+            name,
+            exclude_category_id=category_id,
+        )
+        if existing is not None:
+            raise DuplicateCategoryNameError(existing_id=existing.id, existing_name=existing.name)
+        raise
+
+    return category
+
+
+async def set_category_status(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    category_id: uuid.UUID,
+    *,
+    is_active: bool,
+) -> Category | None:
+    category = await get_category(session, tenant_id, category_id)
+    if category is None:
+        return None
+
+    category.is_active = is_active
+    await session.flush()
+    return category
+
+
+# ── Product creation ───────────────────────────────────────────
+
+
+async def create_product(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    data: "ProductCreate",
+) -> Product:
+    """Create a new product for a tenant."""
+    code, name, category, description, unit = _normalize_product_payload(data)
+
+    # Check for duplicate code within tenant
+    row = await _find_product_by_code(session, tenant_id, code)
+    if row is not None:
+        raise DuplicateProductCodeError(existing_id=row.id, existing_code=row.code)
+
+    product = Product(
+        tenant_id=tenant_id,
+        code=code,
+        name=name,
+        category=category,
+        description=description,
+        unit=unit,
+        status="active",
+        search_vector=func.to_tsvector("simple", name + " " + code),
+    )
+    try:
+        session.add(product)
+        await session.flush()
+    except IntegrityError:
+        await session.rollback()
+        # Race condition: another request inserted the same code between our
+        # pre-check and insert. Query for the conflicting product and raise
+        # DuplicateProductCodeError so the route returns a proper 409.
+        existing = await _find_product_by_code(session, tenant_id, code)
+        if existing is not None:
+            raise DuplicateProductCodeError(existing_id=existing.id, existing_code=existing.code)
+        raise
+    return product
+
+
+async def update_product(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+    data: "ProductUpdate",
+) -> Product | None:
+    """Update an existing product for a tenant."""
+    code, name, category, description, unit = _normalize_product_payload(data)
+
+    stmt = select(Product).where(
+        Product.id == product_id,
+        Product.tenant_id == tenant_id,
+    )
+    result = await session.execute(stmt)
+    product = result.scalar_one_or_none()
+    if product is None:
+        return None
+
+    existing = await _find_product_by_code(
+        session,
+        tenant_id,
+        code,
+        exclude_product_id=product.id,
+    )
+    if existing is not None:
+        raise DuplicateProductCodeError(existing_id=existing.id, existing_code=existing.code)
+
+    code_or_name_changed = product.code != code or product.name != name
+    product.code = code
+    product.name = name
+    product.category = category
+    product.description = description
+    product.unit = unit
+    if code_or_name_changed:
+        product.search_vector = func.to_tsvector("simple", name + " " + code)
+
+    try:
+        await session.flush()
+    except IntegrityError:
+        await session.rollback()
+        existing = await _find_product_by_code(
+            session,
+            tenant_id,
+            code,
+            exclude_product_id=product_id,
+        )
+        if existing is not None:
+            raise DuplicateProductCodeError(existing_id=existing.id, existing_code=existing.code)
+        raise
+
+    return product
+
+
+async def set_product_status(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+    status: str,
+) -> Product | None:
+    """Set the active/inactive lifecycle status for an existing product."""
+    stmt = select(Product).where(
+        Product.id == product_id,
+        Product.tenant_id == tenant_id,
+    )
+    result = await session.execute(stmt)
+    product = result.scalar_one_or_none()
+    if product is None:
+        return None
+
+    product.status = status
+    await session.flush()
+    return product
 
 
 # ── Stock transfer ─────────────────────────────────────────────
@@ -830,6 +1156,8 @@ async def get_product_detail(
         "code": product.code,
         "name": product.name,
         "category": product.category,
+        "description": product.description,
+        "unit": product.unit,
         "status": product.status,
         "legacy_master_snapshot": getattr(product, "legacy_master_snapshot", None),
         "total_stock": total_stock,
@@ -847,6 +1175,8 @@ async def search_products(
     query: str,
     *,
     warehouse_id: uuid.UUID | None = None,
+    category: str | None = None,
+    include_inactive: bool = False,
     limit: int = 20,
     offset: int = 0,
     sort_by: str = "code",
@@ -900,6 +1230,12 @@ async def search_products(
         )
     stock_sq = stock_sq.group_by(InventoryStock.product_id).subquery()
 
+    base_conditions = [Product.tenant_id == tenant_id]
+    if not include_inactive:
+        base_conditions.append(Product.status == "active")
+    if category and category.strip():
+        base_conditions.append(Product.category == category.strip())
+
     # Main query
     stmt = (
         select(
@@ -912,6 +1248,7 @@ async def search_products(
             relevance.label("relevance"),
         )
         .outerjoin(stock_sq, Product.id == stock_sq.c.product_id)
+        .where(*base_conditions)
     )
 
     def build_broader_conditions():
@@ -957,7 +1294,7 @@ async def search_products(
                 relevance.label("relevance"),
             )
             .outerjoin(stock_sq, Product.id == stock_sq.c.product_id)
-            .where(Product.tenant_id == tenant_id)
+            .where(*base_conditions)
             .where(fast_match)
             .order_by(relevance.desc(), Product.code),
             limit,
@@ -979,7 +1316,7 @@ async def search_products(
                     relevance.label("relevance"),
                 )
                 .outerjoin(stock_sq, Product.id == stock_sq.c.product_id)
-                .where(Product.tenant_id == tenant_id)
+                .where(*base_conditions)
                 .where(build_broader_conditions()),
                 limit,
                 offset,
@@ -995,13 +1332,12 @@ async def search_products(
         # Total count: count distinct products matching the broader conditions
         count_stmt = select(func.count(distinct(Product.id))).select_from(
             Product
-        ).outerjoin(stock_sq, Product.id == stock_sq.c.product_id).where(
-            Product.tenant_id == tenant_id
-        ).where(build_broader_conditions())
+        ).outerjoin(stock_sq, Product.id == stock_sq.c.product_id).where(*base_conditions).where(
+            build_broader_conditions()
+        )
         total_result = await session.execute(count_stmt)
         total = total_result.scalar() or 0
     else:
-        base_conditions = [Product.tenant_id == tenant_id]
         count_sq = select(
             InventoryStock.product_id,
         ).where(InventoryStock.tenant_id == tenant_id)
@@ -1018,7 +1354,7 @@ async def search_products(
         total = total_result.scalar() or 0
 
         rows_stmt = apply_pagination(
-            apply_order_by(stmt.where(Product.tenant_id == tenant_id)),
+            apply_order_by(stmt),
             limit,
             offset,
         )

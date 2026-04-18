@@ -24,6 +24,8 @@ class FakeProduct:
         code: str = "TST-001",
         name: str = "Test Product",
         category: str | None = "Electronics",
+        description: str | None = "Test description",
+        unit: str = "pcs",
         status: str = "active",
     ):
         self.id = pid or uuid.uuid4()
@@ -31,6 +33,8 @@ class FakeProduct:
         self.code = code
         self.name = name
         self.category = category
+        self.description = description
+        self.unit = unit
         self.status = status
         self.legacy_master_snapshot = {"legacy_code": code}
 
@@ -243,6 +247,8 @@ async def test_product_detail_multi_warehouse() -> None:
         assert body["code"] == "TST-001"
         assert body["name"] == "Test Product"
         assert body["category"] == "Electronics"
+        assert body["description"] == "Test description"
+        assert body["unit"] == "pcs"
         assert body["status"] == "active"
         assert body["legacy_master_snapshot"]["legacy_code"] == "TST-001"
         assert body["total_stock"] == 60

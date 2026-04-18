@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { WarehouseSelector } from "../domain/inventory/components/WarehouseSelector";
@@ -8,18 +9,24 @@ import { AlertPanel } from "../domain/inventory/components/AlertPanel";
 import { MetricCards } from "../domain/inventory/components/MetricCards";
 import { PageHeader } from "../components/layout/PageLayout";
 import { ProductDetailDrawer } from "../domain/inventory/components/ProductDetailDrawer";
+import { CreateProductForm } from "../domain/inventory/components/CreateProductForm";
 import { ReorderPointAdmin } from "../domain/inventory/components/ReorderPointAdmin";
 import { StockAdjustmentForm } from "../domain/inventory/components/StockAdjustmentForm";
 import { StockTransferForm } from "../domain/inventory/components/StockTransferForm";
+import { Button } from "../components/ui/button";
 import { usePermissions } from "../hooks/usePermissions";
+import { INVENTORY_CATEGORIES_ROUTE } from "../lib/routes";
 
 function InventoryWorkspace() {
   const { t } = useTranslation("common");
+  const navigate = useNavigate();
   const { selectedWarehouse, setSelectedWarehouse } = useWarehouseContext();
   const { canWrite } = usePermissions();
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [adjustProductId, setAdjustProductId] = useState<string | null>(null);
   const [transferProductId, setTransferProductId] = useState<string | null>(null);
+  const [showCreateProduct, setShowCreateProduct] = useState(false);
+  const [createdProductKey, setCreatedProductKey] = useState(0);
 
   return (
     <div className="space-y-6">
@@ -28,10 +35,26 @@ function InventoryWorkspace() {
         title={t("inventory.page.title")}
         description={t("inventory.page.description")}
         actions={
-          <WarehouseSelector
-            value={selectedWarehouse}
-            onChange={setSelectedWarehouse}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <WarehouseSelector
+              value={selectedWarehouse}
+              onChange={setSelectedWarehouse}
+            />
+            {canWrite("inventory") && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate(INVENTORY_CATEGORIES_ROUTE)}
+                >
+                  {t("inventory.page.manageCategories")}
+                </Button>
+                <Button type="button" onClick={() => setShowCreateProduct(true)}>
+                  {t("inventory.page.addProduct")}
+                </Button>
+              </>
+            )}
+          </div>
         }
       />
 
@@ -41,6 +64,7 @@ function InventoryWorkspace() {
         <ProductTable
           warehouseId={selectedWarehouse?.id}
           onProductClick={(id) => setSelectedProductId(id)}
+          createdProductKey={createdProductKey}
         />
         <AlertPanel />
       </div>
@@ -93,6 +117,20 @@ function InventoryWorkspace() {
             >
               Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {showCreateProduct && (
+        <div className="fixed inset-0 z-[9002] flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-lg rounded-xl border border-border bg-background p-6 shadow-lg">
+            <CreateProductForm
+              onSuccess={() => {
+                setShowCreateProduct(false);
+                setCreatedProductKey((k) => k + 1);
+              }}
+              onCancel={() => setShowCreateProduct(false)}
+            />
           </div>
         </div>
       )}

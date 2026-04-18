@@ -1,0 +1,28 @@
+{
+  "current_phase": "spec-complete",
+  "source": "deep-dive",
+  "interview_id": "order-creation-ux-query",
+  "slug": "order-creation-ux-query-customer",
+  "initial_idea": "order creation UX - query customer, product and more by input. investigate the proper UX",
+  "type": "brownfield",
+  "trace_lanes": [
+    "Code-path: current order form uses dropdowns/radio instead of searchable input fields",
+    "Config/env: API endpoints lack search/filter support for customers and products",
+    "Measurement: UX inconsistency - some entities use search, others use dropdowns"
+  ],
+  "trace_result": "CustomerCombobox exists and works for customer search but OrderForm uses raw UUID inputs. searchProducts API exists but no ProductCombobox exists anywhere. Backend APIs fully support search. Gap is systemic: CustomerCombobox was not wired into OrderForm, and ProductCombobox was never built.",
+  "trace_path": ".omc/specs/deep-dive-trace-order-creation-ux-query-customer.md",
+  "spec_path": ".omc/specs/deep-dive-order-creation-ux-query-customer.md",
+  "rounds": [],
+  "current_ambiguity": 0.1,
+  "threshold": 0.2,
+  "codebase_context": "OrderForm at src/domain/orders/components/OrderForm.tsx uses plain <input> for customer_id and product_id (UUID only). CustomerCombobox with full search exists at src/components/customers/CustomerCombobox.tsx but is not used in OrderForm. listCustomers API supports q param. searchProducts API exists. No ProductCombobox exists anywhere in the codebase.",
+  "challenge_modes_used": [],
+  "ontology_snapshots": [],
+  "_meta": {
+    "mode": "deep-interview",
+    "sessionId": null,
+    "updatedAt": "2026-04-17T09:47:21.747Z",
+    "updatedBy": "state_write_tool"
+  }
+}

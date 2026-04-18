@@ -1,0 +1,12 @@
+Command: alembic -c /Volumes/2T_SSD_App/Projects/UltrERP/migrations/alembic.ini current
+
+Output:
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+ww444yy44z65 (head)
+ss000aa00a01 (head)
+
+Summary:
+The Alembic migration context is configured with PostgreSQL.
+Two migration heads are currently applied: ww444yy44z65 and ss000aa00a01.
+This indicates the database has two head migrations active, which typically means there are parallel migration branches applied to this database.

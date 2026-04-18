@@ -2,12 +2,14 @@
 
 import { Search } from "lucide-react";
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 
 import { DataTable, DataTableToolbar } from "../../../components/layout/DataTable";
 import { SectionCard } from "../../../components/layout/PageLayout";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
+import { CategoryCombobox } from "./CategoryCombobox";
 import { useProductSearch } from "../hooks/useProductSearch";
 import { useWarehouseContext } from "../context/WarehouseContext";
 
@@ -16,52 +18,52 @@ interface ProductSearchProps {
 }
 
 export function ProductSearch({ onProductClick }: ProductSearchProps) {
-  const { query, results, loading, error, search } = useProductSearch();
+  const { t } = useTranslation("common", { keyPrefix: "inventory.productGrid" });
+  const { query, results, loading, error, includeInactive, category, search } = useProductSearch();
   const { selectedWarehouse } = useWarehouseContext();
   const trimmedQuery = query.trim();
   const hasSearchQuery = trimmedQuery.length > 0;
 
   // Load all products on mount
   useEffect(() => {
-    search("", selectedWarehouse?.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    search("", selectedWarehouse?.id, 1, undefined, includeInactive, category);
+  }, [category, includeInactive, search, selectedWarehouse?.id]);
 
   return (
-    <SectionCard title="Product Search" description="Search by code or name and review current stock by warehouse scope.">
+    <SectionCard title={t("productsTitle")} description={t("browseProducts")}>
       <DataTable
         columns={[
           {
             id: "code",
-            header: "Code",
+            header: t("code"),
             sortable: true,
             getSortValue: (item) => item.code,
             cell: (item) => <span className="font-mono text-sm">{item.code}</span>,
           },
           {
             id: "name",
-            header: "Name",
+            header: t("name"),
             sortable: true,
             getSortValue: (item) => item.name,
             cell: (item) => <span className="font-medium">{item.name}</span>,
           },
           {
             id: "category",
-            header: "Category",
+            header: t("category"),
             sortable: true,
             getSortValue: (item) => item.category ?? "",
             cell: (item) => item.category ?? "—",
           },
           {
             id: "current_stock",
-            header: "Stock",
+            header: t("stock"),
             sortable: true,
             getSortValue: (item) => item.current_stock,
             cell: (item) => item.current_stock,
           },
           {
             id: "status",
-            header: "Status",
+            header: t("status"),
             sortable: true,
             getSortValue: (item) => item.status,
             cell: (item) => (
@@ -76,35 +78,62 @@ export function ProductSearch({ onProductClick }: ProductSearchProps) {
         error={error ? (
           <div className="flex items-center gap-3">
             <span>{error}</span>
-            <Button type="button" size="sm" variant="outline" onClick={() => search(trimmedQuery, selectedWarehouse?.id)}>
-              Retry
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => search(trimmedQuery, selectedWarehouse?.id, 1, undefined, includeInactive, category)}
+            >
+              {t("retry")}
             </Button>
           </div>
         ) : undefined}
-        emptyTitle={hasSearchQuery ? "No matching products." : "No products found."}
-        emptyDescription={hasSearchQuery ? "Try a broader keyword or switch warehouse scope." : "No products exist in the system."}
+        getRowClassName={(row) =>
+          row.status === "inactive" ? "bg-muted/20 text-muted-foreground" : undefined
+        }
+        emptyTitle={hasSearchQuery ? t("noProductsFound") : t("noProductsInSystem")}
+        emptyDescription={hasSearchQuery ? t("tryDifferentSearchTerm") : undefined}
         toolbar={(
           <DataTableToolbar>
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Warehouse scope: {selectedWarehouse?.name ?? "All warehouses"}</p>
+              <p className="text-sm text-muted-foreground">
+                {t("scope")}: {selectedWarehouse?.name ?? t("allWarehouses")}
+              </p>
             </div>
-            <div className="relative w-full max-w-md">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search by code or name…"
-                onChange={(event) => search(event.target.value, selectedWarehouse?.id)}
-                aria-label="Search products"
-                className="pl-9"
-              />
+            <div className="flex w-full max-w-xl flex-col gap-3 md:flex-row md:items-center">
+              <div className="relative w-full max-w-md">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder={t("searchPlaceholder")}
+                  onChange={(event) => search(event.target.value, selectedWarehouse?.id, 1, undefined, includeInactive, category)}
+                  aria-label={t("searchPlaceholder")}
+                  className="pl-9"
+                />
+              </div>
+              <div className="min-w-[14rem]">
+                <CategoryCombobox
+                  value={category}
+                  onChange={(nextCategory) => search(trimmedQuery, selectedWarehouse?.id, 1, undefined, includeInactive, nextCategory)}
+                  onClear={() => search(trimmedQuery, selectedWarehouse?.id, 1, undefined, includeInactive, "")}
+                  placeholder={t("filterCategory")}
+                />
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant={includeInactive ? "default" : "outline"}
+                aria-pressed={includeInactive}
+                onClick={() => search(trimmedQuery, selectedWarehouse?.id, 1, undefined, !includeInactive, category)}
+              >
+                {t("showInactive")}
+              </Button>
             </div>
           </DataTableToolbar>
         )}
         summary={
           results.length > 0
-            ? hasSearchQuery
-              ? `${results.length} matching products`
-              : `${results.length} products`
+            ? t("products", { count: results.length })
             : undefined
         }
         getRowId={(item) => item.id}

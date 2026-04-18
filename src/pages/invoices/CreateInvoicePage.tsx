@@ -37,6 +37,7 @@ function makeDraftLine(id: number): DraftLine {
   return {
     id,
     product_code: "",
+    product_id: "",
     description: "",
     quantity: "1",
     unit_price: "0",
@@ -161,6 +162,7 @@ export default function CreateInvoicePage() {
       invoice_date: invoiceDate,
       currency_code: "TWD",
       lines: lines.map((line) => ({
+        product_id: line.product_id?.trim() || null,
         product_code: line.product_code.trim() || null,
         description: line.description.trim(),
         quantity: line.quantity,

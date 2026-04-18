@@ -165,8 +165,8 @@ development_status:
 
   # Epic 4 - Inventory Operations
   epic-4:
-    status: "completed"
-    validation_note: "Revalidated on 2026-04-03. Sprint status had drifted behind the implementation artifacts: Stories 4.1, 4.5, and 4.6 were already marked done in their story files and the focused backend inventory suite finished green with 81 tests passing. Repo-scoped review notes covering models, services, routes, migrations, tests, and frontend inventory files found no remaining fixes needed."
+    status: "in-progress"
+    validation_note: "Revalidated on 2026-04-03. Sprint status had drifted behind the implementation artifacts: Stories 4.1, 4.5, and 4.6 were already marked done in their story files and the focused backend inventory suite finished green with 81 tests passing. Repo-scoped review notes covering models, services, routes, migrations, tests, and frontend inventory files found no remaining fixes needed. On 2026-04-17, Story 4.9 (Create Product) was added to address missing product creation UI."
     recommended_execution_order:
       - "4.6 Multiple Warehouse Support"
       - "4.1 Search Products"
@@ -174,6 +174,7 @@ development_status:
       - "4.4 Record Stock Adjustment with Reason Codes"
       - "4.3 Reorder Alerts"
       - "4.5 Track Supplier Orders and Auto-Update Stock"
+      - "4.9 Create Product"
     stories:
       4-6-multiple-warehouse-support:
         title: "Multiple Warehouse Support"
@@ -211,6 +212,109 @@ development_status:
         story_id: "4.5"
         validation: "Supplier order creation, receiving, partial/idempotent receipt handling, warehouse-specific stock updates, and supporting backend flows are implemented with focused supplier-order tests passing"
         prerequisites: ["4.3", "4.4", "4.6"]
+      4-7-auto-calculate-reorder-points:
+        title: "Auto-Calculate Reorder Points"
+        status: "completed"
+        story_id: "4.7"
+        validation: ""
+        prerequisites: []
+      4-8-product-detail-page:
+        title: "Product Detail Page"
+        status: "completed"
+        story_id: "4.8"
+        validation: ""
+        prerequisites: []
+      4-9-create-product:
+        title: "Create Product"
+        status: "ready-for-dev"
+        story_id: "4.9"
+        story_file: "4-9-create-product.md"
+        validation: "none"
+        prerequisites: []
+      4-10-update-product:
+        title: "Update Product"
+        status: "completed"
+        story_id: "4.10"
+        story_file: "4-10-update-product.md"
+        validation: "Product update backend/API/UI are implemented with prefilled edit UX, shared product-form behavior, duplicate-code protection, whitespace validation, detail refresh after save, and focused backend/frontend tests passing (23 backend tests and 11 frontend tests)."
+        prerequisites: []
+      4-11-deactivate-product:
+        title: "Deactivate Product (Soft Delete)"
+        status: "completed"
+        story_id: "4.11"
+        story_file: "4-11-deactivate-product.md"
+        validation: "Product lifecycle toggle is implemented with a dedicated status endpoint, default active-only search semantics, explicit inactive browse controls, inactive-code duplicate protection, and focused backend/frontend validations passing (23 backend tests, 5 frontend tests, and targeted lint)."
+        prerequisites: []
+      4-12-product-categories:
+        title: "Product Categories Management"
+        status: "completed"
+        story_id: "4.12"
+        story_file: "4-12-product-categories.md"
+        validation: "Category master data is implemented with tenant-scoped CRUD/status APIs, shared product-form category selection, inline category creation, dedicated categories management UI, product-search category filtering, and focused backend/frontend validations passing (10 backend tests and 15 frontend tests)."
+        prerequisites: []
+      4-13-supplier-crud-ui:
+        title: "Supplier CRUD UI"
+        status: "backlog"
+        story_id: "4.13"
+        story_file: "4-13-supplier-crud-ui.md"
+        validation: "none"
+        prerequisites: []
+      4-14-reorder-suggestions:
+        title: "Reorder Suggestions Generation"
+        status: "backlog"
+        story_id: "4.14"
+        story_file: "4-14-reorder-suggestions.md"
+        validation: "none"
+        prerequisites: []
+      4-15-below-reorder-report:
+        title: "Below-Reorder-Point Reporting (CSV Export)"
+        status: "backlog"
+        story_id: "4.15"
+        story_file: "4-15-below-reorder-report.md"
+        validation: "none"
+        prerequisites: []
+      4-16-inventory-valuation:
+        title: "Inventory Valuation and Cost Tracking"
+        status: "backlog"
+        story_id: "4.16"
+        story_file: "4-16-inventory-valuation.md"
+        validation: "none"
+        prerequisites: []
+      4-17-inventory-audit:
+        title: "Physical Count / Inventory Audit"
+        status: "backlog"
+        story_id: "4.17"
+        story_file: "4-17-inventory-audit.md"
+        validation: "none"
+        prerequisites: []
+      4-18-unit-of-measure:
+        title: "Unit of Measure Management"
+        status: "backlog"
+        story_id: "4.18"
+        story_file: "4-18-unit-of-measure.md"
+        validation: "none"
+        prerequisites: []
+      4-19-stock-transfer-ui:
+        title: "Stock Transfer UI"
+        status: "backlog"
+        story_id: "4.19"
+        story_file: "4-19-stock-transfer-ui.md"
+        validation: "none"
+        prerequisites: []
+      4-20-reorder-point-admin:
+        title: "Reorder Point Bulk Admin UI"
+        status: "backlog"
+        story_id: "4.20"
+        story_file: "4-20-reorder-point-admin.md"
+        validation: "none"
+        prerequisites: []
+      4-21-default-supplier:
+        title: "Default Supplier per Product"
+        status: "backlog"
+        story_id: "4.21"
+        story_file: "4-21-default-supplier.md"
+        validation: "none"
+        prerequisites: []
 
   # Epic 5 - Order to Cash
   epic-5:
@@ -958,4 +1062,4 @@ development_status:
         validation: "Validated on 2026-04-16 with `cd /Volumes/2T_SSD_App/Projects/UltrERP/backend && uv run pytest tests/domains/product_analytics/test_service.py tests/domains/intelligence/test_revenue_diagnosis_service.py tests/domains/intelligence/test_product_performance_service.py tests/domains/intelligence/test_customer_buying_behavior_service.py tests/domains/intelligence/test_routes.py tests/domains/inventory/test_planning_support.py tests/test_mcp_intelligence.py tests/test_mcp_auth.py -q` (`109 passed in 2.78s`). Story 20.9 adds shared-foundation regressions for countable-status filtering, per-snapshot monthly grain aggregation, tenant isolation, and immutable sale-time snapshots; adds Epic 20 route auth and query-validation coverage; and extends centralized MCP auth with explicit insufficient-scope checks for the new revenue diagnosis, product performance, and customer buying behavior tools while reusing the existing owner-domain inventory and intelligence suites."
         prerequisites: ["20.3", "20.4", "20.5", "20.6", "20.7", "20.8"]
 
-last_updated: "2026-04-16"
+last_updated: "2026-04-17"

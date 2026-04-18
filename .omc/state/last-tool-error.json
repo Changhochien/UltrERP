@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"git checkout main && git merge improve/frontend_bundle_size --no-edit\"}",
+  "error": "Exit code 1\nSwitched to a new branch 'main'\nbranch 'main' set up to track 'origin/main'.\nAuto-merging backend/domains/inventory/routes.py\nCONFLICT (content): Merge conflict in backend/domains/inventory/routes.py\nAuto-merging backend/domains/inventory/schemas.py\nAuto-merging backend/domains/inventory/services.py\nAuto-merging public/locales/en/common.json\nCONFLICT (content): Merge conflict in public/locales/en/common.json\nAuto-merging public/locales/zh-Hant/common.json\nCONFLICT (content): Merge co...",
+  "timestamp": "2026-04-18T01:21:40.953Z",
+  "retry_count": 4
+}

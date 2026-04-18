@@ -86,6 +86,9 @@ importers:
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
+      claude:
+        specifier: ^0.1.2
+        version: 0.1.2
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -2149,6 +2152,10 @@ packages:
 
   classnames@2.5.1:
     resolution: {integrity: sha512-saHYOzhIQs6wy2sVxTM6bUDsQO4F50V9RQ22qBpEdCW+I+/Wmke2HOl6lS6dTpdxVhb88/I6+Hs+438c3lfUow==}
+
+  claude@0.1.2:
+    resolution: {integrity: sha512-Qjrrs+G1pwovbIgGh5R1Ni4Al79AfpbkvfonpHH0yj86cfOq3AoAzNbEeD9TQ980hrog8TM0vh1CNn+7uf/zYA==}
+    deprecated: The official Claude Code package is available at @anthropic-ai/claude-code
 
   cli-cursor@5.0.0:
     resolution: {integrity: sha512-aCj4O5wKyszjMmDT4tZj93kxyydN/K5zPWSCe6/0AV/AA1pqe5ZBIw0a2ZfPQV7lL5/yb5HsUreJ6UFAF1tEQw==}
@@ -6023,6 +6030,8 @@ snapshots:
       clsx: 2.1.1
 
   classnames@2.5.1: {}
+
+  claude@0.1.2: {}
 
   cli-cursor@5.0.0:
     dependencies:

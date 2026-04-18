@@ -1,0 +1,37 @@
+{
+  "eval_id": 0,
+  "eval_name": "first-time-setup-detection",
+  "prompt": "I just cloned the UltrERP repo and opened a fresh Claude Code session. I want to set up the ERP for the first time. Run /setup to check what needs to be done.",
+  "assertions": [
+    {
+      "text": "Skill runs check-db and reports database connectivity status",
+      "passed": null,
+      "evidence": null
+    },
+    {
+      "text": "Skill runs check-alembic and reports current Alembic revision",
+      "passed": null,
+      "evidence": null
+    },
+    {
+      "text": "Skill runs check-tables and reports which tables exist",
+      "passed": null,
+      "evidence": null
+    },
+    {
+      "text": "Skill runs check-users and reports user count",
+      "passed": null,
+      "evidence": null
+    },
+    {
+      "text": "Skill presents a checklist of missing vs. present components",
+      "passed": null,
+      "evidence": null
+    },
+    {
+      "text": "Skill does NOT run any write actions (migrations, seed, create-admin) without operator confirmation",
+      "passed": null,
+      "evidence": null
+    }
+  ]
+}

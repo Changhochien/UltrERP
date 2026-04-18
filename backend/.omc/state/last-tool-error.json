@@ -1,7 +1,7 @@
 {
-  "tool_name": "mcp__plugin_oh-my-claudecode_t__lsp_diagnostics",
-  "tool_input_preview": "{\"file\":\"/Volumes/2T_SSD_App/Projects/UltrERP/src/tests/orders/OrderForm.test.tsx\"}",
-  "error": "Language server 'typescript-language-server' not found.\nInstall with: npm install -g typescript-language-server typescript",
-  "timestamp": "2026-04-14T03:52:08.645Z",
-  "retry_count": 3
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"cp /Users/changtom/Downloads/UltrERP/seed_user.py /Users/changtom/Downloads/UltrERP/backend/seed_user.py && uv run python seed_user.py 2>&1\",\"timeout\":30000,\"description\":\"Copy seed to bac...",
+  "error": "Exit code 1\nTraceback (most recent call last):\n  File \"/Users/changtom/Downloads/UltrERP/backend/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py\", line 550, in _prepare_and_execute\n    self._rows = deque(await prepared_stmt.fetch(*parameters))\n                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/changtom/Downloads/UltrERP/backend/.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py\", line 177, in fetch\n    data = await self.__bind_execu...",
+  "timestamp": "2026-04-17T08:09:07.732Z",
+  "retry_count": 14
 }

@@ -34,7 +34,7 @@ export function InvoiceList({ onSelect }: InvoiceListProps) {
   const dateFrom = searchParams.get("date_from") ?? "";
   const dateTo = searchParams.get("date_to") ?? "";
   const search = searchParams.get("search") ?? "";
-  const sortBy = searchParams.get("sort_by") ?? "outstanding_balance";
+  const sortBy = searchParams.get("sort_by") ?? "invoice_date";
   const sortOrder = (searchParams.get("sort_order") as "asc" | "desc") ?? "desc";
 
   // Build sort state for DataTable
