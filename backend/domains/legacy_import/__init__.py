@@ -21,10 +21,12 @@ from domains.legacy_import.normalization import (
 )
 from domains.legacy_import.staging import (
     DiscoveredLegacyTable,
+    LegacySourceCompatibilityError,
     StageBatchResult,
     StageTableResult,
     discover_legacy_tables,
     parse_legacy_row,
+    run_live_stage_import,
     run_stage_import,
 )
 from domains.legacy_import.validation import (
@@ -53,6 +55,7 @@ __all__ = [
     "StageTableResult",
     "UNKNOWN_PRODUCT_CODE",
     "ImportReplayMetadata",
+    "LegacySourceCompatibilityError",
     "MigrationBatchValidationResult",
     "MigrationValidationIssue",
     "MigrationValidationReport",
@@ -63,6 +66,7 @@ __all__ = [
     "normalize_party_record",
     "parse_legacy_row",
     "run_canonical_import",
+    "run_live_stage_import",
     "run_normalization",
     "run_stage_import",
     "validate_import_batch",

@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from common.tenant import DEFAULT_TENANT_ID
+from domains.legacy_import.shared import coerce_mapping as _coerce_mapping
 from domains.legacy_import.staging import _open_raw_connection, _quoted_identifier
 
 _APPROVED_CATEGORY_VALUES = frozenset(
@@ -39,12 +40,6 @@ class ProductCategoryReviewImportResult:
     schema_name: str
     input_path: Path
     applied_decision_count: int
-
-
-def _coerce_mapping(record: object) -> dict[str, object]:
-    if isinstance(record, dict):
-        return record
-    return dict(record)
 
 
 def _build_review_rows(

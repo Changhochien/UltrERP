@@ -10,7 +10,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Protocol, Sequence
+from typing import Any, AsyncIterator, Protocol, Sequence
 
 import asyncpg
 from sqlalchemy import func, select
@@ -26,6 +26,7 @@ _IDENTIFIER_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _MANIFEST_ROW_RE = re.compile(r"^\|\s*([a-z0-9_]+)\s*\|\s*([0-9,]+)\s*\|")
 _NUMERIC_LITERAL_RE = re.compile(r"^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][-+]?\d+)?$")
 _STAGE_COPY_BATCH_SIZE = 25_000
+_LIVE_SOURCE_CURSOR_PREFETCH = 1_000
 _SUPPORTED_LEGACY_SOURCE_DATA_TYPES = frozenset(
     {
         "character",
@@ -49,6 +50,71 @@ class DiscoveredLegacyTable:
     csv_path: Path
     expected_row_count: int | None = None
 
+    @property
+    def source_name(self) -> str:
+        return self.csv_path.name
+
+    async def get_column_count(self) -> int:
+        _, column_count = _analyze_legacy_file(self)
+        return column_count
+
+    async def iter_rows(self) -> AsyncIterator[tuple[int, list[str]]]:
+        row_number = 0
+        for row in iter_legacy_rows(self.csv_path):
+            row_number += 1
+            yield row_number, row
+
+
+@dataclass(slots=True, frozen=True)
+class LiveDiscoveredLegacyTable:
+    table_name: str
+    source_schema: str
+    columns: tuple[LegacySourceColumnMetadata, ...]
+    query: str
+    connection_settings: LegacySourceConnectionSettings
+    expected_row_count: int | None = None
+
+    @property
+    def source_name(self) -> str:
+        return f"{self.source_schema}.{self.table_name}"
+
+    async def get_column_count(self) -> int:
+        if not self.columns:
+            raise LegacySourceCompatibilityError(
+                f"No column metadata found for live source table {self.source_name}"
+            )
+        return len(self.columns)
+
+    async def iter_rows(self) -> AsyncIterator[tuple[int, list[str]]]:
+        connection = await _open_legacy_source_connection(self.connection_settings)
+        try:
+            async with connection.transaction(readonly=True):
+                await _assert_read_only_transaction_async(connection)
+                row_number = 0
+                async for record in connection.cursor(
+                    self.query,
+                    prefetch=_LIVE_SOURCE_CURSOR_PREFETCH,
+                ):
+                    row_number += 1
+                    yield row_number, serialize_legacy_source_record(record, self.columns)
+        except UnicodeDecodeError as exc:
+            raise LegacySourceCompatibilityError(
+                "asyncpg could not decode live-source text while streaming "
+                f"{self.source_name}; verify LEGACY_DB_CLIENT_ENCODING."
+            ) from exc
+        finally:
+            await connection.close()
+
+
+async def _assert_read_only_transaction_async(connection: LegacySourceConnection) -> None:
+    transaction_read_only = str(
+        await connection.fetchval("SHOW transaction_read_only")
+    ).strip()
+    if transaction_read_only.lower() != "on":
+        raise LegacySourceCompatibilityError(
+            "Legacy live-stage reads require a read-only transaction."
+        )
+
 
 @dataclass(slots=True, frozen=True)
 class StageTableResult:
@@ -60,11 +126,53 @@ class StageTableResult:
 
 
 @dataclass(slots=True, frozen=True)
+class StageSourceDescriptor:
+    kind: str
+    display_name: str
+    audit_value: str
+
+    @classmethod
+    def file(cls, source_dir: Path) -> StageSourceDescriptor:
+        source_value = str(source_dir)
+        return cls(
+            kind="file",
+            display_name=source_value,
+            audit_value=source_value,
+        )
+
+    @classmethod
+    def live(cls, *, database: str, schema_name: str) -> StageSourceDescriptor:
+        descriptor = f"legacy-db:{database}/{schema_name}"
+        return cls(
+            kind="live",
+            display_name=descriptor,
+            audit_value=descriptor,
+        )
+
+    def __str__(self) -> str:
+        return self.display_name
+
+
+@dataclass(slots=True, frozen=True)
 class StageBatchResult:
     batch_id: str
     schema_name: str
-    source_dir: Path
+    source_descriptor: StageSourceDescriptor
     tables: tuple[StageTableResult, ...]
+
+    @property
+    def source_display_name(self) -> str:
+        return self.source_descriptor.display_name
+
+    @property
+    def source_path(self) -> str:
+        return self.source_descriptor.audit_value
+
+    @property
+    def source_dir(self) -> Path | None:
+        if self.source_descriptor.kind != "file":
+            return None
+        return Path(self.source_descriptor.audit_value)
 
 
 @dataclass(slots=True)
@@ -159,6 +267,147 @@ class LegacySourceConnection(Protocol):
     def transaction(self, *, readonly: bool = False) -> Any: ...
 
     async def close(self) -> None: ...
+
+
+class StageSourceTable(Protocol):
+    table_name: str
+    expected_row_count: int | None
+
+    @property
+    def source_name(self) -> str: ...
+
+    async def get_column_count(self) -> int: ...
+
+    async def iter_rows(self) -> AsyncIterator[tuple[int, list[str]]]: ...
+
+
+class LegacyStageSourceAdapter(Protocol):
+    source_descriptor: StageSourceDescriptor
+
+    async def discover_tables(
+        self,
+        *,
+        required_tables: Sequence[str],
+        selected_tables: Sequence[str] | None = None,
+    ) -> list[StageSourceTable]: ...
+
+    async def close(self) -> None: ...
+
+
+class FileLegacyStageSourceAdapter:
+    def __init__(self, source_dir: Path) -> None:
+        self._source_dir = source_dir
+        self.source_descriptor = StageSourceDescriptor.file(source_dir)
+
+    async def discover_tables(
+        self,
+        *,
+        required_tables: Sequence[str],
+        selected_tables: Sequence[str] | None = None,
+    ) -> list[StageSourceTable]:
+        return discover_legacy_tables(
+            self._source_dir,
+            list(required_tables),
+            tuple(selected_tables or ()),
+        )
+
+    async def close(self) -> None:
+        return None
+
+
+class LiveLegacyStageSourceAdapter:
+    def __init__(
+        self,
+        *,
+        source_schema: str = "public",
+        connection_settings: LegacySourceConnectionSettings | None = None,
+    ) -> None:
+        self._source_schema = source_schema
+        self._connection_settings = connection_settings or _read_legacy_source_connection_settings()
+        self._connection: LegacySourceConnection | None = None
+        self.source_descriptor = StageSourceDescriptor.live(
+            database=self._connection_settings.database,
+            schema_name=source_schema,
+        )
+
+    async def _get_connection(self) -> LegacySourceConnection:
+        if self._connection is not None:
+            is_closed = getattr(self._connection, "is_closed", None)
+            if callable(is_closed) and is_closed():
+                self._connection = None
+        if self._connection is None:
+            self._connection = await _open_legacy_source_connection(self._connection_settings)
+        return self._connection
+
+    async def discover_tables(
+        self,
+        *,
+        required_tables: Sequence[str],
+        selected_tables: Sequence[str] | None = None,
+    ) -> list[StageSourceTable]:
+        connection = await self._get_connection()
+        try:
+            discovered_tables = await _discover_live_source_tables(
+                connection,
+                schema_name=self._source_schema,
+            )
+            available_tables = set(discovered_tables)
+            selected = _dedupe_table_sequence(selected_tables)
+            deduped_required_tables = _dedupe_table_sequence(required_tables)
+            if selected:
+                missing_selected = [
+                    table_name for table_name in selected if table_name not in available_tables
+                ]
+                if missing_selected:
+                    raise LegacySourceCompatibilityError(
+                        "Requested live-source tables not found in "
+                        f"{self._source_schema}: {', '.join(missing_selected)}"
+                    )
+                table_names = selected
+            else:
+                missing_required_tables = [
+                    table_name
+                    for table_name in deduped_required_tables
+                    if table_name not in available_tables
+                ]
+                if missing_required_tables:
+                    raise LegacySourceCompatibilityError(
+                        "Missing required live-source tables in "
+                        f"{self._source_schema}: {', '.join(missing_required_tables)}"
+                    )
+                table_names = discovered_tables
+
+            discovered: list[StageSourceTable] = []
+            for table_name in table_names:
+                columns = await _load_live_source_column_metadata(
+                    connection,
+                    schema_name=self._source_schema,
+                    table_name=table_name,
+                )
+                query = build_legacy_source_text_query(
+                    schema_name=self._source_schema,
+                    table_name=table_name,
+                    columns=columns,
+                )
+                discovered.append(
+                    LiveDiscoveredLegacyTable(
+                        table_name=table_name,
+                        source_schema=self._source_schema,
+                        columns=columns,
+                        query=query,
+                        connection_settings=self._connection_settings,
+                    )
+                )
+            return discovered
+        finally:
+            await self.close()
+
+    async def close(self) -> None:
+        if self._connection is None:
+            return
+        connection = self._connection
+        self._connection = None
+        await connection.close()
 
 
 class _PooledRawConnection:
@@ -343,7 +592,10 @@ def build_legacy_source_text_query(
 
     quoted_schema = _quoted_identifier(schema_name)
     quoted_table = _quoted_identifier(table_name)
-    return f"SELECT {', '.join(projections)} FROM {quoted_schema}.{quoted_table}"
+    return (
+        f"SELECT {', '.join(projections)} FROM {quoted_schema}.{quoted_table} "
+        f"ORDER BY ctid"
+    )
 
 
 def serialize_legacy_source_record(
@@ -506,13 +758,7 @@ async def _probe_live_source_connection(
 
         try:
             async with connection.transaction(readonly=True):
-                transaction_read_only = str(
-                    await connection.fetchval("SHOW transaction_read_only")
-                ).strip()
-                if transaction_read_only.lower() != "on":
-                    raise LegacySourceCompatibilityError(
-                        "Legacy source probe requires a read-only transaction."
-                    )
+                await _assert_read_only_transaction_async(connection)
 
                 sample_rows: list[tuple[str, ...]] = []
                 async for record in connection.cursor(
@@ -602,7 +848,7 @@ def parse_manifest_rows(manifest_path: Path) -> dict[str, int]:
 
 
 def _dedupe_table_names(table_names: tuple[str, ...] | list[str] | None) -> tuple[str, ...]:
-    return tuple(dict.fromkeys(table_names or ()))
+    return _dedupe_table_sequence(table_names)
 
 
 def discover_legacy_tables(
@@ -621,11 +867,6 @@ def discover_legacy_tables(
     selected = _dedupe_table_names(selected_tables)
     manifest_tables = tuple(sorted(manifest_counts))
 
-    missing_required = [table for table in required_tables if table not in manifest_counts]
-    if missing_required:
-        missing = ", ".join(sorted(missing_required))
-        raise FileNotFoundError(f"Missing required legacy tables: {missing}")
-
     if selected:
         missing_selected = [table for table in selected if table not in manifest_counts]
         if missing_selected:
@@ -633,11 +874,20 @@ def discover_legacy_tables(
             raise FileNotFoundError(f"Requested legacy tables not found: {missing}")
         table_names = selected
     else:
+        missing_required = [table for table in required_tables if table not in manifest_counts]
+        if missing_required:
+            missing = ", ".join(sorted(missing_required))
+            raise FileNotFoundError(f"Missing required legacy tables: {missing}")
         table_names = manifest_tables
 
+    required_file_tables = (
+        table_names
+        if selected
+        else tuple(dict.fromkeys((*required_tables, *table_names)))
+    )
     missing_files = [
         table_name
-        for table_name in dict.fromkeys((*required_tables, *table_names))
+        for table_name in required_file_tables
         if not (source_dir / f"{table_name}.csv").exists()
     ]
     if missing_files:
@@ -736,19 +986,19 @@ def _analyze_legacy_file(table: DiscoveredLegacyTable) -> tuple[int, int]:
     return row_count, column_count
 
 
-def _iter_stage_records(table: DiscoveredLegacyTable, batch_id: str, column_count: int):
-    """Yield stage records lazily — SHA256 is computed on-demand during iteration.
+async def _iter_stage_records(
+    table: StageSourceTable,
+    batch_id: str,
+    column_count: int,
+) -> AsyncIterator[tuple[object, ...]]:
+    """Yield normalized stage records lazily from any source adapter."""
 
-    Row numbers are tracked via a local counter so no full row list is held.
-    """
-    row_number = 0
-    for row in iter_legacy_rows(table.csv_path):
-        row_number += 1
+    async for row_number, row in table.iter_rows():
         padded = row + [None] * (column_count - len(row))
         yield (
             *padded,
             table.table_name,
-            table.csv_path.name,
+            table.source_name,
             row_number,
             batch_id,
             "loaded",
@@ -756,14 +1006,14 @@ def _iter_stage_records(table: DiscoveredLegacyTable, batch_id: str, column_coun
         )
 
 
-def _batched_stage_records(records, batch_size: int):
-    """Yield small batches from a record generator without holding full batches in memory.
+async def _batched_stage_records(
+    records: AsyncIterator[tuple[object, ...]],
+    batch_size: int,
+) -> AsyncIterator[list[tuple[object, ...]]]:
+    """Yield small batches from an async record generator without buffering whole tables."""
 
-    Each batch is a list of at most `batch_size` records that is passed directly to
-    `copy_records_to_table` and then discarded before the next batch is consumed.
-    """
-    batch: list[object] = []
-    for record in records:
+    batch: list[tuple[object, ...]] = []
+    async for record in records:
         batch.append(record)
         if len(batch) >= batch_size:
             yield batch
@@ -991,11 +1241,11 @@ async def _validate_staged_table(
 async def stage_table(
     connection: RawStageConnection,
     *,
-    table: DiscoveredLegacyTable,
+    table: StageSourceTable,
     schema_name: str,
     batch_id: str,
 ) -> StageTableResult:
-    row_count, column_count = _analyze_legacy_file(table)
+    column_count = await table.get_column_count()
     await _recreate_stage_table(
         connection,
         schema_name=schema_name,
@@ -1004,10 +1254,12 @@ async def stage_table(
     )
 
     columns = _stage_columns(column_count)
-    for batch_records in _batched_stage_records(
+    row_count = 0
+    async for batch_records in _batched_stage_records(
         _iter_stage_records(table, batch_id, column_count),
         _STAGE_COPY_BATCH_SIZE,
     ):
+        row_count += len(batch_records)
         await connection.copy_records_to_table(
             table.table_name,
             schema_name=schema_name,
@@ -1015,6 +1267,8 @@ async def stage_table(
             records=batch_records,
             timeout=None,
         )
+    if row_count == 0:
+        raise ValueError(f"No importable rows found in {table.source_name}")
     validation_message = await _validate_staged_table(
         connection,
         schema_name=schema_name,
@@ -1025,7 +1279,7 @@ async def stage_table(
         table_name=table.table_name,
         row_count=row_count,
         column_count=column_count,
-        source_file=table.csv_path.name,
+        source_file=table.source_name,
         validation_message=validation_message,
     )
 
@@ -1127,7 +1381,7 @@ async def _record_failed_stage_attempt(
     tenant_id: uuid.UUID,
     batch_id: str,
     attempt_number: int,
-    source_dir: Path,
+    source_descriptor: StageSourceDescriptor,
     schema_name: str,
     requested_tables: tuple[str, ...],
     error_message: str,
@@ -1139,7 +1393,7 @@ async def _record_failed_stage_attempt(
             run = LegacyImportRun(
                 tenant_id=tenant_id,
                 batch_id=batch_id,
-                source_path=str(source_dir),
+                source_path=source_descriptor.audit_value,
                 target_schema=schema_name,
                 attempt_number=attempt_number,
                 requested_tables=list(requested_tables) if requested_tables else None,
@@ -1166,23 +1420,17 @@ async def _record_failed_stage_attempt(
                 )
 
 
-async def run_stage_import(
+async def run_stage_import_from_source(
     *,
     batch_id: str,
-    source_dir: Path | None = None,
+    source: LegacyStageSourceAdapter,
     selected_tables: tuple[str, ...] | list[str] | None = None,
     tenant_id: uuid.UUID = DEFAULT_TENANT_ID,
     schema_name: str | None = None,
 ) -> StageBatchResult:
-    resolved_source_dir = Path(source_dir or settings.legacy_import_data_dir)
     resolved_schema = schema_name or settings.legacy_import_schema
-    selected_scope = _dedupe_table_names(selected_tables)
+    selected_scope = _dedupe_table_sequence(selected_tables)
     requested_tables = list(selected_scope) if selected_scope else None
-    discovered_tables = discover_legacy_tables(
-        resolved_source_dir,
-        list(settings.legacy_import_required_tables),
-        selected_scope,
-    )
     results: list[StageTableResult] = []
     table_audits: list[AttemptTableAudit] = []
     attempt_number: int | None = None
@@ -1190,6 +1438,10 @@ async def run_stage_import(
         async with AsyncSessionLocal() as session:
             async with session.begin():
                 attempt_number = await _next_batch_attempt_number(session, tenant_id, batch_id)
+                discovered_tables = await source.discover_tables(
+                    required_tables=settings.legacy_import_required_tables,
+                    selected_tables=selected_scope,
+                )
                 previous_table_names = await _load_existing_batch_table_names(
                     session,
                     tenant_id,
@@ -1212,7 +1464,7 @@ async def run_stage_import(
                 run = LegacyImportRun(
                     tenant_id=tenant_id,
                     batch_id=batch_id,
-                    source_path=str(resolved_source_dir),
+                    source_path=source.source_descriptor.audit_value,
                     target_schema=resolved_schema,
                     attempt_number=attempt_number,
                     requested_tables=requested_tables,
@@ -1224,7 +1476,7 @@ async def run_stage_import(
                 for table in discovered_tables:
                     table_audit = AttemptTableAudit(
                         table_name=table.table_name,
-                        source_file=table.csv_path.name,
+                        source_file=table.source_name,
                         expected_row_count=table.expected_row_count,
                     )
                     table_audits.append(table_audit)
@@ -1232,7 +1484,7 @@ async def run_stage_import(
                     table_run = LegacyImportTableRun(
                         run_id=run.id,
                         table_name=table.table_name,
-                        source_file=table.csv_path.name,
+                        source_file=table.source_name,
                         expected_row_count=table.expected_row_count,
                         status="running",
                     )
@@ -1271,17 +1523,58 @@ async def run_stage_import(
                 tenant_id=tenant_id,
                 batch_id=batch_id,
                 attempt_number=attempt_number,
-                source_dir=resolved_source_dir,
+                source_descriptor=source.source_descriptor,
                 schema_name=resolved_schema,
                 requested_tables=selected_scope,
                 error_message=str(exc),
                 table_audits=tuple(table_audits),
             )
         raise
+    finally:
+        await source.close()
 
     return StageBatchResult(
         batch_id=batch_id,
         schema_name=resolved_schema,
-        source_dir=resolved_source_dir,
+        source_descriptor=source.source_descriptor,
         tables=tuple(results),
+    )
+
+
+async def run_stage_import(
+    *,
+    batch_id: str,
+    source_dir: Path | None = None,
+    selected_tables: tuple[str, ...] | list[str] | None = None,
+    tenant_id: uuid.UUID = DEFAULT_TENANT_ID,
+    schema_name: str | None = None,
+) -> StageBatchResult:
+    resolved_source_dir = Path(source_dir or settings.legacy_import_data_dir)
+    return await run_stage_import_from_source(
+        batch_id=batch_id,
+        source=FileLegacyStageSourceAdapter(resolved_source_dir),
+        selected_tables=selected_tables,
+        tenant_id=tenant_id,
+        schema_name=schema_name,
+    )
+
+
+async def run_live_stage_import(
+    *,
+    batch_id: str,
+    source_schema: str = "public",
+    selected_tables: tuple[str, ...] | list[str] | None = None,
+    tenant_id: uuid.UUID = DEFAULT_TENANT_ID,
+    schema_name: str | None = None,
+    connection_settings: LegacySourceConnectionSettings | None = None,
+) -> StageBatchResult:
+    return await run_stage_import_from_source(
+        batch_id=batch_id,
+        source=LiveLegacyStageSourceAdapter(
+            source_schema=source_schema,
+            connection_settings=connection_settings,
+        ),
+        selected_tables=selected_tables,
+        tenant_id=tenant_id,
+        schema_name=schema_name,
     )

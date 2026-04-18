@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -17,10 +18,20 @@ from common.models.stock_adjustment import ReasonCode
 from common.tenant import DEFAULT_TENANT_ID
 from domains.legacy_import.mapping import UNKNOWN_PRODUCT_CODE
 from domains.legacy_import.normalization import deterministic_legacy_uuid, normalize_legacy_date
+from domains.legacy_import import source_resolution
+from domains.legacy_import.shared import execute_many, resolve_row_identity as _resolve_row_identity
 from domains.legacy_import.staging import _open_raw_connection, _quoted_identifier
 
 _DIGITS_ONLY_RE = re.compile(r"\D+")
 _LOGGER = logging.getLogger(__name__)
+
+# Legacy source table code for receiving audit slip detail (tbsslipdtj = TBS-SLIP-DTJ)
+LEGACY_RECEIVING_SOURCE = "tbsslipdtj"
+
+# Module-level fallback counters — used as a mutable accumulator passed through
+# the date-resolution call chain. Reset via .clear() at the start of each
+# run_canonical_import call to avoid cross-batch leakage.
+_receiving_date_fallback_counts: dict[str, int] = {}
 
 
 @dataclass(slots=True, frozen=True)
@@ -38,9 +49,21 @@ class CanonicalImportResult:
     invoice_line_count: int
     holding_count: int
     lineage_count: int
+    receiving_date_fallback_count: int = 0
     supplier_count: int = 0
     supplier_invoice_count: int = 0
     supplier_invoice_line_count: int = 0
+
+
+@dataclass(slots=True, frozen=True)
+class PendingLineageResolution:
+    canonical_table: str
+    canonical_id: uuid.UUID
+    source_table: str
+    source_identifier: str
+    source_row_number: int
+    domain_name: str | None = None
+    resolution_notes: str | None = None
 
 
 def _coerce_row(row: Mapping[str, object] | object) -> dict[str, object]:
@@ -106,6 +129,25 @@ def _as_legacy_date(value: object | None) -> date | None:
     if not text:
         return None
     return normalize_legacy_date(text)
+
+
+def _try_as_legacy_date(value: object | None) -> date | None:
+    text = _as_text(value)
+    if text in {"", "0", "1900-01-01"}:
+        return None
+
+    looks_supported = (
+        (len(text) == 10 and text.isdigit())
+        or (len(text) == 8 and text.isdigit())
+        or (len(text) == 10 and text[4] == "-" and text[7] == "-")
+    )
+    if not looks_supported:
+        return None
+
+    try:
+        return normalize_legacy_date(text)
+    except ValueError:
+        return None
 
 
 def _as_timestamp(day: date | None) -> datetime:
@@ -361,12 +403,12 @@ async def _ensure_canonical_support_tables(connection, schema_name: str) -> None
 			import_run_id UUID NOT NULL,
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 			PRIMARY KEY (
-				tenant_id,
 				batch_id,
+				tenant_id,
 				canonical_table,
-				canonical_id,
 				source_table,
-				source_identifier
+                source_identifier,
+                source_row_number
 			)
 		)
 		"""
@@ -387,9 +429,14 @@ async def _ensure_canonical_support_tables(connection, schema_name: str) -> None
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 			UNIQUE (tenant_id, batch_id, source_table, source_identifier, source_row_number)
-		)
-		"""
+        )
+        """
     )
+    await source_resolution.ensure_source_resolution_tables(connection, schema_name)
+
+    # Held rows stay in manual quarantine until a later import resolves them.
+    # Current holding/resolved state lives in source_row_resolution, and the
+    # payload/notes remain in unsupported_history_holding for operator review.
 
 
 async def _next_attempt_number(
@@ -513,21 +560,9 @@ async def _upsert_step_row(
     )
 
 
-async def _upsert_lineage(
-    connection,
-    schema_name: str,
-    run_id: uuid.UUID,
-    tenant_id: uuid.UUID,
-    batch_id: str,
-    canonical_table: str,
-    canonical_id: uuid.UUID,
-    source_table: str,
-    source_identifier: str,
-    source_row_number: int,
-) -> None:
+def _lineage_record_query(schema_name: str) -> str:
     quoted_schema = _quoted_identifier(schema_name)
-    await connection.execute(
-        f"""
+    return f"""
 		INSERT INTO {quoted_schema}.canonical_record_lineage (
 			tenant_id,
 			batch_id,
@@ -540,17 +575,89 @@ async def _upsert_lineage(
 		)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         ON CONFLICT (
-            tenant_id,
             batch_id,
+            tenant_id,
             canonical_table,
-            canonical_id,
             source_table,
-            source_identifier
+            source_identifier,
+            source_row_number
         )
 		DO UPDATE SET
-			source_row_number = EXCLUDED.source_row_number,
+			canonical_id = EXCLUDED.canonical_id,
 			import_run_id = EXCLUDED.import_run_id
-		""",
+		"""
+
+
+def _lineage_record_args(
+    run_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    batch_id: str,
+    row: PendingLineageResolution,
+) -> tuple[object, ...]:
+    return (
+        tenant_id,
+        batch_id,
+        row.canonical_table,
+        row.canonical_id,
+        row.source_table,
+        row.source_identifier,
+        row.source_row_number,
+        run_id,
+    )
+
+
+async def _flush_lineage_resolutions(
+    connection,
+    schema_name: str,
+    run_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    batch_id: str,
+    rows: list[PendingLineageResolution],
+) -> None:
+    if not rows:
+        return
+
+    await execute_many(
+        connection,
+        _lineage_record_query(schema_name),
+        [_lineage_record_args(run_id, tenant_id, batch_id, row) for row in rows],
+    )
+    await source_resolution.resolve_source_rows(
+        connection,
+        schema_name=schema_name,
+        run_id=run_id,
+        tenant_id=tenant_id,
+        batch_id=batch_id,
+        rows=[
+            source_resolution.ResolvedSourceRow(
+                domain_name=row.domain_name or row.canonical_table,
+                source_table=row.source_table,
+                source_identifier=row.source_identifier,
+                source_row_number=row.source_row_number,
+                canonical_table=row.canonical_table,
+                canonical_id=row.canonical_id,
+                notes=row.resolution_notes,
+            )
+            for row in rows
+        ],
+    )
+
+
+async def _upsert_lineage_record(
+    connection,
+    schema_name: str,
+    run_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    batch_id: str,
+    canonical_table: str,
+    canonical_id: uuid.UUID,
+    source_table: str,
+    source_identifier: str,
+    source_row_number: int,
+) -> None:
+    """Upsert canonical lineage for one canonical destination mapping."""
+    await connection.execute(
+        _lineage_record_query(schema_name),
         tenant_id,
         batch_id,
         canonical_table,
@@ -562,67 +669,46 @@ async def _upsert_lineage(
     )
 
 
-async def _upsert_holding_row(
+async def _upsert_lineage(
     connection,
     schema_name: str,
     run_id: uuid.UUID,
     tenant_id: uuid.UUID,
     batch_id: str,
-    domain_name: str,
+    canonical_table: str,
+    canonical_id: uuid.UUID,
     source_table: str,
     source_identifier: str,
     source_row_number: int,
-    payload: dict[str, object],
-    notes: str,
+    domain_name: str | None = None,
+    resolution_notes: str | None = None,
 ) -> None:
-    quoted_schema = _quoted_identifier(schema_name)
-    holding_id = _tenant_scoped_uuid(
-        tenant_id,
-        "unsupported-history",
-        domain_name,
-        source_table,
-        source_identifier,
-        str(source_row_number),
-    )
-    await connection.execute(
-        f"""
-		INSERT INTO {quoted_schema}.unsupported_history_holding (
-			id,
-			tenant_id,
-			batch_id,
-			domain_name,
-			source_table,
-			source_identifier,
-			source_row_number,
-			payload,
-			notes,
-			import_run_id,
-			updated_at
-		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, NOW())
-        ON CONFLICT (
-            tenant_id,
-            batch_id,
-            source_table,
-            source_identifier,
-            source_row_number
-        ) DO UPDATE SET
-			domain_name = EXCLUDED.domain_name,
-			payload = EXCLUDED.payload,
-			notes = EXCLUDED.notes,
-			import_run_id = EXCLUDED.import_run_id,
-			updated_at = NOW()
-		""",
-        holding_id,
+    """Upsert canonical lineage and mark the source row as resolved."""
+    await _upsert_lineage_record(
+        connection,
+        schema_name,
+        run_id,
         tenant_id,
         batch_id,
-        domain_name,
+        canonical_table,
+        canonical_id,
         source_table,
         source_identifier,
         source_row_number,
-        json.dumps(payload),
-        notes,
-        run_id,
+    )
+    await source_resolution.resolve_source_row(
+        connection,
+        schema_name=schema_name,
+        run_id=run_id,
+        tenant_id=tenant_id,
+        batch_id=batch_id,
+        domain_name=domain_name or canonical_table,
+        source_table=source_table,
+        source_identifier=source_identifier,
+        source_row_number=source_row_number,
+        canonical_table=canonical_table,
+        canonical_id=canonical_id,
+        notes=resolution_notes,
     )
 
 
@@ -945,14 +1031,15 @@ def _derive_legacy_receiving_batch_fallback_day(
     headers: list[dict[str, object]],
     lines: list[dict[str, object]],
 ) -> date | None:
-    candidates = [
-        candidate
-        for candidate in (
-            *(_as_legacy_date(header.get("invoice_date")) for header in headers),
-            *(_as_legacy_date(line.get("receipt_date")) for line in lines),
-        )
-        if candidate is not None
-    ]
+    candidates = []
+    for header in headers:
+        day = _try_as_legacy_date(header.get("invoice_date"))
+        if day is not None:
+            candidates.append(day)
+    for line in lines:
+        day = _try_as_legacy_date(line.get("receipt_date"))
+        if day is not None:
+            candidates.append(day)
     return max(candidates) if candidates else None
 
 
@@ -965,26 +1052,19 @@ def _resolve_legacy_receiving_created_at(
         f"{_as_text(line.get('doc_number'))}:{_as_int(line.get('line_number'), 1)}"
     )
 
-    # Wrap date parsing in try/except so malformed dates fall through to the
-    # next fallback level instead of crashing the entire receiving_audit step.
-    try:
-        line_day = _as_legacy_date(line.get("receipt_date"))
-    except ValueError:
-        line_day = None
+    line_day = _try_as_legacy_date(line.get("receipt_date"))
     if line_day is not None:
         return _as_timestamp(line_day)
 
     if header is not None:
-        try:
-            header_day = _as_legacy_date(header.get("invoice_date"))
-        except ValueError:
-            header_day = None
+        header_day = _try_as_legacy_date(header.get("invoice_date"))
         if header_day is not None:
             _LOGGER.warning(
                 "Legacy receiving line %s has sentinel/missing receipt_date; "
                 "falling back to header invoice_date",
                 source_identifier,
             )
+            _receiving_date_fallback_counts["receiving_date_fallback_receipt_to_invoice"] += 1
             return _as_timestamp(header_day)
 
     if batch_fallback_day is not None:
@@ -994,6 +1074,7 @@ def _resolve_legacy_receiving_created_at(
             source_identifier,
             batch_fallback_day.isoformat(),
         )
+        _receiving_date_fallback_counts["receiving_date_fallback_to_batch"] += 1
         return _as_timestamp(batch_fallback_day)
 
     _LOGGER.warning(
@@ -1001,6 +1082,7 @@ def _resolve_legacy_receiving_created_at(
         "header fallback; using import-day timestamp",
         source_identifier,
     )
+    _receiving_date_fallback_counts["receiving_date_fallback_to_import_day"] += 1
     return _as_timestamp(None)
 
 
@@ -1014,6 +1096,7 @@ async def _import_customers(
 ) -> tuple[int, int, dict[str, uuid.UUID], dict[str, str]]:
     count = 0
     lineage_count = 0
+    pending_lineage: list[PendingLineageResolution] = []
     customer_by_code: dict[str, uuid.UUID] = {}
     business_number_by_code: dict[str, str] = {}
     async for row in party_rows:
@@ -1095,22 +1178,27 @@ async def _import_customers(
                 "check ON CONFLICT constraint or tenant_id mismatch"
             )
         actual_customer_id = actual_row["id"]
-        await _upsert_lineage(
-            connection,
-            schema_name,
-            run_id,
-            tenant_id,
-            batch_id,
-            "customers",
-            actual_customer_id,
-            _as_text(row.get("source_table")) or "tbscust",
-            legacy_code,
-            _as_int(row.get("source_row_number")),
+        pending_lineage.append(
+            PendingLineageResolution(
+                canonical_table="customers",
+                canonical_id=actual_customer_id,
+                source_table=_as_text(row.get("source_table")) or "tbscust",
+                source_identifier=legacy_code,
+                source_row_number=_as_int(row.get("source_row_number")),
+            )
         )
         customer_by_code[legacy_code] = actual_customer_id
         business_number_by_code[legacy_code] = business_number
         count += 1
         lineage_count += 1
+    await _flush_lineage_resolutions(
+        connection,
+        schema_name,
+        run_id,
+        tenant_id,
+        batch_id,
+        pending_lineage,
+    )
     return count, lineage_count, customer_by_code, business_number_by_code
 
 
@@ -1124,6 +1212,7 @@ async def _import_suppliers(
 ) -> tuple[int, int, dict[str, uuid.UUID]]:
     count = 0
     lineage_count = 0
+    pending_lineage: list[PendingLineageResolution] = []
     supplier_by_code: dict[str, uuid.UUID] = {}
     async for row in party_rows:
         if _as_text(row.get("role")) != "supplier":
@@ -1163,21 +1252,26 @@ async def _import_suppliers(
             _as_text(row.get("address")) or _as_text(row.get("full_address")) or None,
             json.dumps(legacy_master_snapshot),
         )
-        await _upsert_lineage(
-            connection,
-            schema_name,
-            run_id,
-            tenant_id,
-            batch_id,
-            "supplier",
-            supplier_id,
-            _as_text(row.get("source_table")) or "tbscust",
-            legacy_code,
-            _as_int(row.get("source_row_number")),
+        pending_lineage.append(
+            PendingLineageResolution(
+                canonical_table="supplier",
+                canonical_id=supplier_id,
+                source_table=_as_text(row.get("source_table")) or "tbscust",
+                source_identifier=legacy_code,
+                source_row_number=_as_int(row.get("source_row_number")),
+            )
         )
         supplier_by_code[legacy_code] = supplier_id
         count += 1
         lineage_count += 1
+    await _flush_lineage_resolutions(
+        connection,
+        schema_name,
+        run_id,
+        tenant_id,
+        batch_id,
+        pending_lineage,
+    )
     return count, lineage_count, supplier_by_code
 
 
@@ -1191,6 +1285,7 @@ async def _import_products(
 ) -> tuple[int, int, dict[str, uuid.UUID], dict[str, dict[str, str | None]]]:
     count = 0
     lineage_count = 0
+    pending_lineage: list[PendingLineageResolution] = []
     product_by_code: dict[str, uuid.UUID] = {}
     product_snapshot_by_code: dict[str, dict[str, str | None]] = {}
     unknown_product_present = False
@@ -1263,17 +1358,14 @@ async def _import_products(
             status,
             json.dumps(legacy_master_snapshot),
         )
-        await _upsert_lineage(
-            connection,
-            schema_name,
-            run_id,
-            tenant_id,
-            batch_id,
-            "product",
-            product_id,
-            _as_text(row.get("source_table")) or "tbsstock",
-            legacy_code,
-            _as_int(row.get("source_row_number")),
+        pending_lineage.append(
+            PendingLineageResolution(
+                canonical_table="product",
+                canonical_id=product_id,
+                source_table=_as_text(row.get("source_table")) or "tbsstock",
+                source_identifier=legacy_code,
+                source_row_number=_as_int(row.get("source_row_number")),
+            )
         )
         product_by_code[legacy_code] = product_id
         product_snapshot_by_code[legacy_code] = {
@@ -1299,6 +1391,14 @@ async def _import_products(
             }
         )
 
+    await _flush_lineage_resolutions(
+        connection,
+        schema_name,
+        run_id,
+        tenant_id,
+        batch_id,
+        pending_lineage,
+    )
     return count, lineage_count, product_by_code, product_snapshot_by_code
 
 
@@ -1336,6 +1436,7 @@ async def _import_warehouses(
 ) -> tuple[int, int, dict[str, uuid.UUID]]:
     count = 0
     lineage_count = 0
+    pending_lineage: list[PendingLineageResolution] = []
     warehouse_by_code: dict[str, uuid.UUID] = {}
     async for row in warehouse_rows:
         code = _as_text(row.get("code"))
@@ -1370,21 +1471,26 @@ async def _import_warehouses(
             _as_text(row.get("address")) or None,
             None,
         )
-        await _upsert_lineage(
-            connection,
-            schema_name,
-            run_id,
-            tenant_id,
-            batch_id,
-            "warehouse",
-            warehouse_id,
-            _as_text(row.get("source_table")) or "normalized_warehouses",
-            code,
-            _as_int(row.get("source_row_number")),
+        pending_lineage.append(
+            PendingLineageResolution(
+                canonical_table="warehouse",
+                canonical_id=warehouse_id,
+                source_table=_as_text(row.get("source_table")) or "normalized_warehouses",
+                source_identifier=code,
+                source_row_number=_as_int(row.get("source_row_number")),
+            )
         )
         warehouse_by_code[code] = warehouse_id
         count += 1
         lineage_count += 1
+    await _flush_lineage_resolutions(
+        connection,
+        schema_name,
+        run_id,
+        tenant_id,
+        batch_id,
+        pending_lineage,
+    )
     return count, lineage_count, warehouse_by_code
 
 
@@ -1400,6 +1506,7 @@ async def _import_inventory(
 ) -> tuple[int, int]:
     count = 0
     lineage_count = 0
+    pending_lineage: list[PendingLineageResolution] = []
     async for row in inventory_rows:
         product_code = _as_text(row.get("product_legacy_code"))
         warehouse_code = _as_text(row.get("warehouse_code"))
@@ -1440,20 +1547,25 @@ async def _import_inventory(
             int(_as_decimal(row.get("quantity_on_hand"))),
             _as_int(row.get("reorder_point")),
         )
-        await _upsert_lineage(
-            connection,
-            schema_name,
-            run_id,
-            tenant_id,
-            batch_id,
-            "inventory_stock",
-            inventory_id,
-            _as_text(row.get("source_table")) or "tbsstkhouse",
-            f"{product_code}:{warehouse_code}",
-            _as_int(row.get("source_row_number")),
+        pending_lineage.append(
+            PendingLineageResolution(
+                canonical_table="inventory_stock",
+                canonical_id=inventory_id,
+                source_table=_as_text(row.get("source_table")) or "tbsstkhouse",
+                source_identifier=f"{product_code}:{warehouse_code}",
+                source_row_number=_as_int(row.get("source_row_number")),
+            )
         )
         count += 1
         lineage_count += 1
+    await _flush_lineage_resolutions(
+        connection,
+        schema_name,
+        run_id,
+        tenant_id,
+        batch_id,
+        pending_lineage,
+    )
     return count, lineage_count
 
 
@@ -1468,9 +1580,11 @@ async def _import_legacy_receiving_audit(
     product_by_code: dict[str, uuid.UUID],
     warehouse_by_code: dict[str, uuid.UUID],
     product_mappings: dict[str, str],
-) -> tuple[int, int]:
+) -> tuple[int, int, int, int]:
     count = 0
     lineage_count = 0
+    holding_count = 0
+    pending_lineage: list[PendingLineageResolution] = []
     headers_by_doc = {
         _as_text(header.get("doc_number")): header
         for header in headers
@@ -1487,21 +1601,24 @@ async def _import_legacy_receiving_audit(
         # rows (same source_identifier = ":{line_number}"). Route to holding instead.
         # Use line_number as the row identity when source_row_number is absent or zero
         # to avoid UUID collisions in the holding table.
-        row_identity = source_row_number or line_number
+        row_identity = _resolve_row_identity(source_row_number, line_number)
         if not doc_number:
-            await _upsert_holding_row(
+            ok = await _try_upsert_holding_and_lineage(
                 connection,
                 schema_name,
                 run_id,
                 tenant_id,
                 batch_id,
                 "receiving_audit",
-                "tbsslipdtj",
+                LEGACY_RECEIVING_SOURCE,
                 f":{line_number}",
+                source_row_number,
                 row_identity,
                 line,
-                "Blank doc_number — routed to holding; UUID collision prevented.",
+                f"Blank doc_number held (row_id={row_identity}); UUID collision prevented.",
             )
+            if ok:
+                holding_count += 1
             continue
 
         source_identifier = f"{doc_number}:{line_number}"
@@ -1571,22 +1688,28 @@ async def _import_legacy_receiving_audit(
             None,
             created_at,
         )
-        await _upsert_lineage(
-            connection,
-            schema_name,
-            run_id,
-            tenant_id,
-            batch_id,
-            "stock_adjustment",
-            stock_adjustment_id,
-            "tbsslipdtj",
-            source_identifier,
-            _as_int(line.get("source_row_number")),
+        pending_lineage.append(
+            PendingLineageResolution(
+                canonical_table="stock_adjustment",
+                canonical_id=stock_adjustment_id,
+                source_table=LEGACY_RECEIVING_SOURCE,
+                source_identifier=source_identifier,
+                source_row_number=_as_int(line.get("source_row_number")),
+            )
         )
         count += 1
         lineage_count += 1
 
-    return count, lineage_count
+    await _flush_lineage_resolutions(
+        connection,
+        schema_name,
+        run_id,
+        tenant_id,
+        batch_id,
+        pending_lineage,
+    )
+    fallback_count = sum(_receiving_date_fallback_counts.values())
+    return count, lineage_count, holding_count, fallback_count
 
 
 async def _import_sales_history(
@@ -1612,6 +1735,7 @@ async def _import_sales_history(
     invoice_count = 0
     invoice_line_count = 0
     lineage_count = 0
+    pending_lineage: list[PendingLineageResolution] = []
 
     for header in headers:
         doc_number = _as_text(header.get("doc_number"))
@@ -1693,17 +1817,14 @@ async def _import_sales_history(
             _as_text(header.get("created_by")) or "legacy-import",
             created_at,
         )
-        await _upsert_lineage(
-            connection,
-            schema_name,
-            run_id,
-            tenant_id,
-            batch_id,
-            "orders",
-            order_id,
-            "tbsslipx",
-            doc_number,
-            _as_int(header.get("source_row_number")),
+        pending_lineage.append(
+            PendingLineageResolution(
+                canonical_table="orders",
+                canonical_id=order_id,
+                source_table="tbsslipx",
+                source_identifier=doc_number,
+                source_row_number=_as_int(header.get("source_row_number")),
+            )
         )
         order_count += 1
         lineage_count += 1
@@ -1788,17 +1909,14 @@ async def _import_sales_history(
             order_id,
             tenant_id,
         )
-        await _upsert_lineage(
-            connection,
-            schema_name,
-            run_id,
-            tenant_id,
-            batch_id,
-            "invoices",
-            invoice_id,
-            "tbsslipx",
-            doc_number,
-            _as_int(header.get("source_row_number")),
+        pending_lineage.append(
+            PendingLineageResolution(
+                canonical_table="invoices",
+                canonical_id=invoice_id,
+                source_table="tbsslipx",
+                source_identifier=doc_number,
+                source_row_number=_as_int(header.get("source_row_number")),
+            )
         )
         invoice_count += 1
         lineage_count += 1
@@ -1965,17 +2083,14 @@ async def _import_sales_history(
                 _as_decimal(line.get("available_stock_snapshot"), "0"),
                 None,  # backorder_note: legacy import does not calculate backorder status
             )
-            await _upsert_lineage(
-                connection,
-                schema_name,
-                run_id,
-                tenant_id,
-                batch_id,
-                "order_lines",
-                order_line_id,
-                "tbsslipdtx",
-                f"{doc_number}:{line_number}",
-                _as_int(line.get("source_row_number")),
+            pending_lineage.append(
+                PendingLineageResolution(
+                    canonical_table="order_lines",
+                    canonical_id=order_line_id,
+                    source_table="tbsslipdtx",
+                    source_identifier=f"{doc_number}:{line_number}",
+                    source_row_number=_as_int(line.get("source_row_number")),
+                )
             )
             order_line_count += 1
             lineage_count += 1
@@ -2030,17 +2145,14 @@ async def _import_sales_history(
                 line_tax_amount,
                 line_total,
             )
-            await _upsert_lineage(
-                connection,
-                schema_name,
-                run_id,
-                tenant_id,
-                batch_id,
-                "invoice_lines",
-                invoice_line_id,
-                "tbsslipdtx",
-                f"{doc_number}:{line_number}",
-                _as_int(line.get("source_row_number")),
+            pending_lineage.append(
+                PendingLineageResolution(
+                    canonical_table="invoice_lines",
+                    canonical_id=invoice_line_id,
+                    source_table="tbsslipdtx",
+                    source_identifier=f"{doc_number}:{line_number}",
+                    source_row_number=_as_int(line.get("source_row_number")),
+                )
             )
             invoice_line_count += 1
             lineage_count += 1
@@ -2087,6 +2199,14 @@ async def _import_sales_history(
                 invoice_id,
             )
 
+    await _flush_lineage_resolutions(
+        connection,
+        schema_name,
+        run_id,
+        tenant_id,
+        batch_id,
+        pending_lineage,
+    )
     return order_count, order_line_count, invoice_count, invoice_line_count, lineage_count
 
 
@@ -2138,6 +2258,7 @@ async def _import_purchase_history(
     invoice_count = 0
     invoice_line_count = 0
     lineage_count = 0
+    pending_lineage: list[PendingLineageResolution] = []
 
     for header in headers:
         doc_number = _as_text(header.get("doc_number"))
@@ -2228,17 +2349,14 @@ async def _import_purchase_history(
             json.dumps(legacy_header_snapshot),
             created_at,
         )
-        await _upsert_lineage(
-            connection,
-            schema_name,
-            run_id,
-            tenant_id,
-            batch_id,
-            "supplier_invoices",
-            supplier_invoice_id,
-            "tbsslipj",
-            doc_number,
-            _as_int(header.get("source_row_number")),
+        pending_lineage.append(
+            PendingLineageResolution(
+                canonical_table="supplier_invoices",
+                canonical_id=supplier_invoice_id,
+                source_table="tbsslipj",
+                source_identifier=doc_number,
+                source_row_number=_as_int(header.get("source_row_number")),
+            )
         )
         invoice_count += 1
         lineage_count += 1
@@ -2324,22 +2442,85 @@ async def _import_purchase_history(
                 line_tax_amount,
                 line_total,
             )
-            await _upsert_lineage(
-                connection,
-                schema_name,
-                run_id,
-                tenant_id,
-                batch_id,
-                "supplier_invoice_lines",
-                supplier_invoice_line_id,
-                "tbsslipdtj",
-                f"{doc_number}:{line_number}",
-                _as_int(line.get("source_row_number")),
+            pending_lineage.append(
+                PendingLineageResolution(
+                    canonical_table="supplier_invoice_lines",
+                    canonical_id=supplier_invoice_line_id,
+                    source_table=LEGACY_RECEIVING_SOURCE,
+                    source_identifier=f"{doc_number}:{line_number}",
+                    source_row_number=_as_int(line.get("source_row_number")),
+                )
             )
             invoice_line_count += 1
             lineage_count += 1
 
+    await _flush_lineage_resolutions(
+        connection,
+        schema_name,
+        run_id,
+        tenant_id,
+        batch_id,
+        pending_lineage,
+    )
     return invoice_count, invoice_line_count, lineage_count
+
+
+async def _try_upsert_holding_and_lineage(
+    connection,
+    schema_name: str,
+    run_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    batch_id: str,
+    domain_name: str,
+    source_table: str,
+    source_identifier: str,
+    source_row_number: int,
+    row_identity: int,
+    payload: dict[str, object],
+    notes: str,
+) -> bool:
+    """Insert holding payload and current-state transition in one savepoint.
+
+    The nested transaction becomes a savepoint inside the outer import transaction,
+    so a holding-state failure rolls back both writes for this source row without
+    aborting the rest of the batch.
+    """
+    try:
+        holding_id = source_resolution.build_holding_id(
+            tenant_id,
+            domain_name=domain_name,
+            source_table=source_table,
+            source_identifier=source_identifier,
+            source_row_number=source_row_number,
+            row_identity=row_identity,
+        )
+        async with connection.transaction():
+            await source_resolution.hold_source_row(
+                connection,
+                schema_name=schema_name,
+                run_id=run_id,
+                tenant_id=tenant_id,
+                batch_id=batch_id,
+                domain_name=domain_name,
+                source_table=source_table,
+                source_identifier=source_identifier,
+                source_row_number=source_row_number,
+                row_identity=row_identity,
+                holding_id=holding_id,
+                payload=payload,
+                notes=notes,
+            )
+        return True
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        _LOGGER.error(
+            "Failed to insert source-row holding state for %s at source_id=%s",
+            domain_name,
+            row_identity or source_identifier,
+            exc_info=True,
+        )
+        return False
 
 
 async def _hold_payment_adjacent_history(
@@ -2368,7 +2549,8 @@ async def _hold_payment_adjacent_history(
                 _as_text(raw_row.get("col_2"))
                 or f"{table_name}:{_as_int(raw_row.get('_source_row_number'))}"
             )
-            await _upsert_holding_row(
+            source_row_number = _as_int(raw_row.get("_source_row_number"))
+            ok = await _try_upsert_holding_and_lineage(
                 connection,
                 schema_name,
                 run_id,
@@ -2377,14 +2559,16 @@ async def _hold_payment_adjacent_history(
                 "payment_history",
                 table_name,
                 source_identifier,
-                _as_int(raw_row.get("_source_row_number")),
+                source_row_number,
+                source_row_number,
                 raw_row,
                 (
                     "Payment-adjacent legacy rows are preserved in holding "
                     "until a verified payment mapping is defined."
                 ),
             )
-            total += 1
+            if ok:
+                total += 1
     return total
 
 
@@ -2394,6 +2578,12 @@ async def run_canonical_import(
     tenant_id: uuid.UUID = DEFAULT_TENANT_ID,
     schema_name: str | None = None,
 ) -> CanonicalImportResult:
+    _receiving_date_fallback_counts.clear()
+    _receiving_date_fallback_counts.update({
+        "receiving_date_fallback_receipt_to_invoice": 0,
+        "receiving_date_fallback_to_batch": 0,
+        "receiving_date_fallback_to_import_day": 0,
+    })
     resolved_schema = schema_name or settings.legacy_import_schema
     connection = await _open_raw_connection()
     run_id = uuid.uuid4()
@@ -2564,7 +2754,7 @@ async def run_canonical_import(
             )
             purchase_lines = (
                 await _fetch_purchase_lines(connection, resolved_schema, batch_id)
-                if await _table_exists(connection, resolved_schema, "tbsslipdtj")
+                if await _table_exists(connection, resolved_schema, LEGACY_RECEIVING_SOURCE)
                 else []
             )
 
@@ -2572,6 +2762,8 @@ async def run_canonical_import(
             (
                 counts["receiving_audit_count"],
                 receiving_audit_lineage_count,
+                receiving_holding_count,
+                receiving_date_fallback_count,
             ) = await _import_legacy_receiving_audit(
                 connection,
                 resolved_schema,
@@ -2585,6 +2777,7 @@ async def run_canonical_import(
                 product_mappings,
             )
             counts["lineage_count"] += receiving_audit_lineage_count
+            counts["holding_count"] += receiving_holding_count
             step_outcomes.append(
                 (
                     "receiving_audit",
@@ -2727,6 +2920,7 @@ async def run_canonical_import(
             supplier_invoice_line_count=counts["supplier_invoice_line_count"],
             holding_count=counts["holding_count"],
             lineage_count=counts["lineage_count"],
+            receiving_date_fallback_count=receiving_date_fallback_count,
         )
     except Exception as exc:
         if current_step is not None:

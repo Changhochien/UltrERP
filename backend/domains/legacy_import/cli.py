@@ -11,7 +11,10 @@ import uuid
 from collections.abc import Sequence
 from pathlib import Path
 
+import asyncpg
+
 from common.tenant import DEFAULT_TENANT_ID
+from common.cli_args import parse_non_negative_int, parse_tenant_uuid
 from domains.legacy_import.ap_payment_import import (
     SupplierPaymentImportResult,
     run_ap_payment_import,
@@ -36,15 +39,13 @@ from domains.legacy_import.mapping import (
     run_product_mapping_seed,
 )
 from domains.legacy_import.normalization import NormalizationBatchResult, run_normalization
-from domains.legacy_import.staging import StageBatchResult, run_stage_import
+from domains.legacy_import.staging import (
+    LegacySourceCompatibilityError,
+    StageBatchResult,
+    run_live_stage_import,
+    run_stage_import,
+)
 from domains.legacy_import.validation import MigrationBatchValidationResult, validate_import_batch
-
-
-def _parse_tenant_uuid(value: str) -> uuid.UUID:
-    try:
-        return uuid.UUID(value)
-    except ValueError as exc:
-        raise argparse.ArgumentTypeError("tenant-id must be a valid UUID") from exc
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -60,7 +61,7 @@ def build_parser() -> argparse.ArgumentParser:
     stage_parser.add_argument("--schema", help="Override target raw schema name")
     stage_parser.add_argument(
         "--tenant-id",
-        type=_parse_tenant_uuid,
+        type=parse_tenant_uuid,
         default=DEFAULT_TENANT_ID,
         help="Tenant UUID for control-table tracking",
     )
@@ -69,6 +70,33 @@ def build_parser() -> argparse.ArgumentParser:
         action="append",
         dest="tables",
         help="Limit staging to specific table names (repeatable)",
+    )
+    live_stage_parser = subparsers.add_parser(
+        "live-stage",
+        help="Load live legacy DB tables into the raw staging schema",
+    )
+    live_stage_parser.add_argument(
+        "--batch-id",
+        required=True,
+        help="Deterministic batch identifier",
+    )
+    live_stage_parser.add_argument(
+        "--source-schema",
+        default="public",
+        help="Legacy source schema to discover and stage (default: public)",
+    )
+    live_stage_parser.add_argument("--schema", help="Override target raw schema name")
+    live_stage_parser.add_argument(
+        "--tenant-id",
+        type=parse_tenant_uuid,
+        default=DEFAULT_TENANT_ID,
+        help="Tenant UUID for control-table tracking",
+    )
+    live_stage_parser.add_argument(
+        "--table",
+        action="append",
+        dest="tables",
+        help="Limit staging to specific live-source table names (repeatable)",
     )
 
     normalize_parser = subparsers.add_parser(
@@ -79,7 +107,7 @@ def build_parser() -> argparse.ArgumentParser:
     normalize_parser.add_argument("--schema", help="Override target raw schema name")
     normalize_parser.add_argument(
         "--tenant-id",
-        type=_parse_tenant_uuid,
+        type=parse_tenant_uuid,
         default=DEFAULT_TENANT_ID,
         help="Tenant UUID for normalized prep records",
     )
@@ -96,7 +124,7 @@ def build_parser() -> argparse.ArgumentParser:
     map_products_parser.add_argument("--schema", help="Override target raw schema name")
     map_products_parser.add_argument(
         "--tenant-id",
-        type=_parse_tenant_uuid,
+        type=parse_tenant_uuid,
         default=DEFAULT_TENANT_ID,
         help="Tenant UUID for mapping records",
     )
@@ -119,7 +147,7 @@ def build_parser() -> argparse.ArgumentParser:
     export_review_parser.add_argument("--schema", help="Override target raw schema name")
     export_review_parser.add_argument(
         "--tenant-id",
-        type=_parse_tenant_uuid,
+        type=parse_tenant_uuid,
         default=DEFAULT_TENANT_ID,
         help="Tenant UUID for review export",
     )
@@ -147,7 +175,7 @@ def build_parser() -> argparse.ArgumentParser:
     import_review_parser.add_argument("--schema", help="Override target raw schema name")
     import_review_parser.add_argument(
         "--tenant-id",
-        type=_parse_tenant_uuid,
+        type=parse_tenant_uuid,
         default=DEFAULT_TENANT_ID,
         help="Tenant UUID for review import",
     )
@@ -169,7 +197,7 @@ def build_parser() -> argparse.ArgumentParser:
     export_category_review_parser.add_argument("--schema", help="Override target raw schema name")
     export_category_review_parser.add_argument(
         "--tenant-id",
-        type=_parse_tenant_uuid,
+        type=parse_tenant_uuid,
         default=DEFAULT_TENANT_ID,
         help="Tenant UUID for category review export",
     )
@@ -197,7 +225,7 @@ def build_parser() -> argparse.ArgumentParser:
     import_category_review_parser.add_argument("--schema", help="Override target raw schema name")
     import_category_review_parser.add_argument(
         "--tenant-id",
-        type=_parse_tenant_uuid,
+        type=parse_tenant_uuid,
         default=DEFAULT_TENANT_ID,
         help="Tenant UUID for category review import",
     )
@@ -220,7 +248,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     currency_parser.add_argument(
         "--tenant-id",
-        type=_parse_tenant_uuid,
+        type=parse_tenant_uuid,
         default=DEFAULT_TENANT_ID,
         help="Tenant UUID for control-table tracking",
     )
@@ -236,7 +264,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap_payment_parser.add_argument("--schema", help="Override target raw schema name")
     ap_payment_parser.add_argument(
         "--tenant-id",
-        type=_parse_tenant_uuid,
+        type=parse_tenant_uuid,
         default=DEFAULT_TENANT_ID,
         help="Tenant UUID for AP payment import records",
     )
@@ -248,7 +276,7 @@ def build_parser() -> argparse.ArgumentParser:
     canonical_parser.add_argument("--schema", help="Override target raw schema name")
     canonical_parser.add_argument(
         "--tenant-id",
-        type=_parse_tenant_uuid,
+        type=parse_tenant_uuid,
         default=DEFAULT_TENANT_ID,
         help="Tenant UUID for canonical import records",
     )
@@ -259,13 +287,13 @@ def build_parser() -> argparse.ArgumentParser:
     validate_parser.add_argument("--batch-id", required=True, help="Batch identifier to validate")
     validate_parser.add_argument(
         "--attempt-number",
-        type=int,
+        type=parse_non_negative_int,
         help="Specific canonical import attempt number to validate",
     )
     validate_parser.add_argument("--schema", help="Override target raw schema name")
     validate_parser.add_argument(
         "--tenant-id",
-        type=_parse_tenant_uuid,
+        type=parse_tenant_uuid,
         default=DEFAULT_TENANT_ID,
         help="Tenant UUID for validation and replay metadata",
     )
@@ -307,6 +335,23 @@ async def _run_stage(args: argparse.Namespace) -> int:
         tenant_id=args.tenant_id,
         schema_name=args.schema,
     )
+    _print_stage_summary(result)
+    return 0
+
+
+async def _run_live_stage(args: argparse.Namespace) -> int:
+    try:
+        result = await run_live_stage_import(
+            batch_id=args.batch_id,
+            source_schema=args.source_schema,
+            selected_tables=tuple(args.tables or ()),
+            tenant_id=args.tenant_id,
+            schema_name=args.schema,
+        )
+    except Exception as exc:
+        print(_format_live_stage_error(exc), file=sys.stderr)
+        return 1
+
     _print_stage_summary(result)
     return 0
 
@@ -513,7 +558,8 @@ def _write_extracted_json(table: TableData, output_dir: Path) -> None:
 
 def _print_stage_summary(result: StageBatchResult) -> None:
     print(
-        f"Staged {len(result.tables)} tables into {result.schema_name} from {result.source_dir} "
+        f"Staged {len(result.tables)} tables into {result.schema_name} from "
+        f"{result.source_display_name} "
         f"(batch {result.batch_id})."
     )
     for table in result.tables:
@@ -524,6 +570,38 @@ def _print_stage_summary(result: StageBatchResult) -> None:
         if table.validation_message:
             message += f"  WARNING: {table.validation_message}"
         print(message)
+
+
+def _format_live_stage_error(exc: Exception) -> str:
+    detail = str(exc).strip() or exc.__class__.__name__
+
+    if isinstance(exc, OSError):
+        return f"Live legacy DB connection failed: {detail}"
+
+    if isinstance(exc, asyncpg.PostgresError):
+        sqlstate = str(getattr(exc, "sqlstate", "") or "")
+        if sqlstate.startswith(("08", "28", "3D", "53")) or sqlstate == "57P03":
+            return f"Live legacy DB connection failed: {detail}"
+        return f"Live legacy DB query failed: {detail}"
+
+    if isinstance(exc, LegacySourceCompatibilityError):
+        if detail.startswith("Missing legacy source settings:"):
+            return f"Live legacy source configuration failed: {detail}"
+        if detail.startswith("Requested live-source tables not found"):
+            return f"Live legacy table discovery failed: {detail}"
+        if detail.startswith("Missing required live-source tables"):
+            return f"Live legacy source contract check failed: {detail}"
+        if (
+            detail.startswith("Unsupported live-source column types")
+            or detail.startswith("No column metadata found")
+            or "read-only" in detail.lower()
+            or "verify LEGACY_DB_CLIENT_ENCODING" in detail
+            or "must be projected to text" in detail
+        ):
+            return f"Live legacy source compatibility failed: {detail}"
+        return f"Live legacy table load failed: {detail}"
+
+    return f"Live legacy table load failed: {detail}"
 
 
 def _print_normalize_summary(result: NormalizationBatchResult) -> None:
@@ -627,6 +705,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _run_extract(args)
     if args.command == "stage":
         return asyncio.run(_run_stage(args))
+    if args.command == "live-stage":
+        return asyncio.run(_run_live_stage(args))
     if args.command == "normalize":
         return asyncio.run(_run_normalize(args))
     if args.command == "map-products":

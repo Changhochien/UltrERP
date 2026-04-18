@@ -13,6 +13,7 @@ from typing import Mapping
 
 from common.tenant import DEFAULT_TENANT_ID
 from domains.legacy_import.normalization import deterministic_legacy_uuid
+from domains.legacy_import.shared import coerce_mapping as _coerce_mapping
 from domains.legacy_import.staging import _open_raw_connection, _quoted_identifier
 
 CORRECTED_ORPHAN_CODE_BASELINE = 190
@@ -81,12 +82,6 @@ class ProductMappingReviewImportResult:
 
 def _normalize_code_token(value: str) -> str:
     return _NORMALIZED_TOKEN_RE.sub("", value.strip().upper())
-
-
-def _coerce_mapping(record: Mapping[str, object] | object) -> dict[str, object]:
-    if isinstance(record, dict):
-        return record
-    return dict(record)
 
 
 def _collect_product_counts(

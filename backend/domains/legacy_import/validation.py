@@ -452,12 +452,18 @@ def build_validation_report(
         "scope_cutoff_date": cutoff_date,
         "lineage_count": _as_int(counts.get("lineage_count")),
         "holding_count": _as_int(counts.get("holding_count")),
+        "resolution_status_counts": {
+            key: _as_int(value)
+            for key, value in counts.items()
+            if key.startswith("resolution_") and key.endswith("_count")
+        },
         "comparison_inputs": [
             "stage_reconciliation",
             "mapping_summary",
             "failed_stages",
             "counts",
             "snapshot_coverage",
+            "resolution_status_counts",
         ],
         "boundary": (
             "Story 15.5 emits batch-scoped import evidence only. "
@@ -558,6 +564,15 @@ def render_validation_markdown(report: MigrationValidationReport) -> str:
     lines.append(f"- Scope key: {report.epic13_handoff['scope_key']}")
     lines.append(f"- Lineage count: {report.epic13_handoff['lineage_count']}")
     lines.append(f"- Holding count: {report.epic13_handoff['holding_count']}")
+    resolution_status_counts = report.epic13_handoff.get("resolution_status_counts") or {}
+    if resolution_status_counts:
+        lines.append(
+            "- Resolution states: "
+            + ", ".join(
+                f"{key.removeprefix('resolution_').removesuffix('_count')}={value}"
+                for key, value in sorted(resolution_status_counts.items())
+            )
+        )
     lines.append(f"- Boundary: {report.epic13_handoff['boundary']}")
     return "\n".join(lines) + "\n"
 
@@ -963,6 +978,35 @@ async def _fetch_legacy_header_snapshot_coverage(
     )
 
 
+async def _fetch_resolution_status_counts(
+    connection,
+    schema_name: str,
+    tenant_id: uuid.UUID,
+    batch_id: str,
+) -> dict[str, int]:
+    quoted_schema = _quoted_identifier(schema_name)
+    rows = await connection.fetch(
+        f"""
+        SELECT status, COUNT(*)::INTEGER AS row_count
+        FROM {quoted_schema}.source_row_resolution
+        WHERE tenant_id = $1
+            AND batch_id = $2
+        GROUP BY status
+        ORDER BY status
+        """,
+        tenant_id,
+        batch_id,
+    )
+    counts: dict[str, int] = {}
+    for row in rows:
+        payload = _coerce_row(row)
+        status = _as_text(payload.get("status"))
+        if not status:
+            continue
+        counts[f"resolution_{status}_count"] = _as_int(payload.get("row_count"))
+    return counts
+
+
 async def validate_import_batch(
     *,
     batch_id: str,
@@ -1005,6 +1049,12 @@ async def validate_import_batch(
             connection, resolved_schema, canonical_run_id
         )
         snapshot_coverage = await _fetch_legacy_header_snapshot_coverage(
+            connection,
+            resolved_schema,
+            tenant_id,
+            batch_id,
+        )
+        resolution_status_counts = await _fetch_resolution_status_counts(
             connection,
             resolved_schema,
             tenant_id,
@@ -1061,6 +1111,7 @@ async def validate_import_batch(
             counts={
                 **counts,
                 **snapshot_coverage.to_counts(),
+                **resolution_status_counts,
                 **customer_type_counts,
                 "category_review_candidate_count": category_review_summary.candidate_count,
                 "category_review_fallback_count": category_review_summary.fallback_count,

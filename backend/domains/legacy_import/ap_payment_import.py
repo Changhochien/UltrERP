@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 from common.config import settings
 from common.tenant import DEFAULT_TENANT_ID
+from domains.legacy_import import source_resolution
 from domains.legacy_import.canonical import (
     _as_decimal,
     _as_int,
@@ -20,9 +21,9 @@ from domains.legacy_import.canonical import (
     _ensure_canonical_support_tables,
     _table_exists,
     _tenant_scoped_uuid,
-    _upsert_holding_row,
-    _upsert_lineage,
+    _upsert_lineage_record,
 )
+from domains.legacy_import.shared import resolve_row_identity as _resolve_row_identity
 from domains.legacy_import.staging import _open_raw_connection, _quoted_identifier
 
 _TABLE_NAMES = ("tbsprepay", "tbsspay")
@@ -372,34 +373,6 @@ async def _fetch_staged_rows(
     return [_coerce_row(row) for row in rows]
 
 
-async def _delete_holding_row(
-    connection,
-    *,
-    schema_name: str,
-    tenant_id: uuid.UUID,
-    batch_id: str,
-    table_name: str,
-    source_identifier: str,
-    source_row_number: int,
-) -> None:
-    quoted_schema = _quoted_identifier(schema_name)
-    await connection.execute(
-        f"""
-		DELETE FROM {quoted_schema}.unsupported_history_holding
-		WHERE tenant_id = $1
-			AND batch_id = $2
-			AND source_table = $3
-			AND source_identifier = $4
-			AND source_row_number = $5
-		""",
-        tenant_id,
-        batch_id,
-        table_name,
-        source_identifier,
-        source_row_number,
-    )
-
-
 async def _upsert_supplier_payment(
     connection,
     *,
@@ -420,86 +393,94 @@ async def _upsert_supplier_payment(
         source_identifier,
     )
 
-    await connection.execute(
-        """
-		INSERT INTO supplier_payments (
-			id,
-			tenant_id,
-			supplier_id,
-			payment_number,
-			payment_kind,
-			status,
-			currency_code,
-			payment_date,
-			gross_amount,
-			payment_method,
-			reference_number,
-			notes,
-			created_at,
-			updated_at
-		)
-		VALUES (
-			$1,
-			$2,
-			$3,
-			$4,
-			$5,
-			$6,
-			$7,
-			$8,
-			$9,
-			$10,
-			$11,
-			$12,
-			NOW(),
-			NOW()
-		)
-		ON CONFLICT (id) DO UPDATE SET
-			supplier_id = EXCLUDED.supplier_id,
-			payment_number = EXCLUDED.payment_number,
-			payment_kind = EXCLUDED.payment_kind,
-			status = EXCLUDED.status,
-			currency_code = EXCLUDED.currency_code,
-			payment_date = EXCLUDED.payment_date,
-			gross_amount = EXCLUDED.gross_amount,
-			payment_method = EXCLUDED.payment_method,
-			reference_number = EXCLUDED.reference_number,
-			notes = EXCLUDED.notes,
-			updated_at = NOW()
-		""",
-        payment_id,
-        tenant_id,
-        supplier_id,
-        payment_number,
-        "special_payment",
-        "unapplied",
-        _currency_code(raw_row.get("col_8")),
-        _as_legacy_date(raw_row.get("col_4")),
-        _as_money(_as_decimal(raw_row.get("col_10"), "0.00")),
-        _special_payment_method(raw_row),
-        _special_payment_reference(raw_row),
-        _special_payment_notes(raw_row),
-    )
-    await _delete_holding_row(
+    async def write_supplier_payment() -> None:
+        await connection.execute(
+            """
+            INSERT INTO supplier_payments (
+                id,
+                tenant_id,
+                supplier_id,
+                payment_number,
+                payment_kind,
+                status,
+                currency_code,
+                payment_date,
+                gross_amount,
+                payment_method,
+                reference_number,
+                notes,
+                created_at,
+                updated_at
+            )
+            VALUES (
+                $1,
+                $2,
+                $3,
+                $4,
+                $5,
+                $6,
+                $7,
+                $8,
+                $9,
+                $10,
+                $11,
+                $12,
+                NOW(),
+                NOW()
+            )
+            ON CONFLICT (id) DO UPDATE SET
+                supplier_id = EXCLUDED.supplier_id,
+                payment_number = EXCLUDED.payment_number,
+                payment_kind = EXCLUDED.payment_kind,
+                status = EXCLUDED.status,
+                currency_code = EXCLUDED.currency_code,
+                payment_date = EXCLUDED.payment_date,
+                gross_amount = EXCLUDED.gross_amount,
+                payment_method = EXCLUDED.payment_method,
+                reference_number = EXCLUDED.reference_number,
+                notes = EXCLUDED.notes,
+                updated_at = NOW()
+            """,
+            payment_id,
+            tenant_id,
+            supplier_id,
+            payment_number,
+            "special_payment",
+            "unapplied",
+            _currency_code(raw_row.get("col_8")),
+            _as_legacy_date(raw_row.get("col_4")),
+            _as_money(_as_decimal(raw_row.get("col_10"), "0.00")),
+            _special_payment_method(raw_row),
+            _special_payment_reference(raw_row),
+            _special_payment_notes(raw_row),
+        )
+        await _upsert_lineage_record(
+            connection,
+            schema_name,
+            run_id,
+            tenant_id,
+            batch_id,
+            "supplier_payments",
+            payment_id,
+            "tbsspay",
+            source_identifier,
+            source_row_number,
+        )
+
+    await source_resolution.resolve_source_row(
         connection,
         schema_name=schema_name,
+        run_id=run_id,
         tenant_id=tenant_id,
         batch_id=batch_id,
-        table_name="tbsspay",
+        domain_name="payment_history",
+        source_table="tbsspay",
         source_identifier=source_identifier,
         source_row_number=source_row_number,
-    )
-    await _upsert_lineage(
-        connection,
-        schema_name,
-        run_id,
-        tenant_id,
-        batch_id,
-        "supplier_payments",
-        payment_id,
-        "tbsspay",
-        source_identifier,
-        source_row_number,
+        canonical_table="supplier_payments",
+        canonical_id=payment_id,
+        notes="drained to canonical supplier payment",
+        canonical_write=write_supplier_payment,
     )
     return 1, 1
 
@@ -581,6 +562,7 @@ async def run_ap_payment_import(
                     column_count = max(column_count, _stage_column_count(raw_row))
                     source_identifier = _source_identifier(table_name, raw_row)
                     source_row_number = _as_int(raw_row.get("_source_row_number"))
+                    row_identity = _resolve_row_identity(source_row_number, processed_count)
 
                     if table_name == "tbsspay":
                         party_code = _as_text(raw_row.get("col_6"))
@@ -610,36 +592,54 @@ async def run_ap_payment_import(
                             lineage_count += imported_lineage
                             continue
 
-                        await _upsert_holding_row(
+                        await source_resolution.hold_source_row(
                             connection,
-                            resolved_schema,
-                            run_id,
-                            tenant_id,
-                            batch_id,
-                            "payment_history",
-                            table_name,
-                            source_identifier,
-                            source_row_number,
-                            raw_row,
-                            hold_reason or "tbsspay row could not be verified for AP import",
+                            schema_name=resolved_schema,
+                            run_id=run_id,
+                            tenant_id=tenant_id,
+                            batch_id=batch_id,
+                            domain_name="payment_history",
+                            source_table=table_name,
+                            source_identifier=source_identifier,
+                            source_row_number=source_row_number,
+                            row_identity=row_identity,
+                            holding_id=source_resolution.build_holding_id(
+                                tenant_id,
+                                domain_name="payment_history",
+                                source_table=table_name,
+                                source_identifier=source_identifier,
+                                source_row_number=source_row_number,
+                                row_identity=row_identity,
+                            ),
+                            payload=raw_row,
+                            notes=hold_reason or "tbsspay row could not be verified for AP import",
                         )
                         holding_count += 1
                         continue
 
                     party_code = _as_text(raw_row.get("col_2"))
                     party_role = party_roles.get(party_code)
-                    await _upsert_holding_row(
+                    await source_resolution.hold_source_row(
                         connection,
-                        resolved_schema,
-                        run_id,
-                        tenant_id,
-                        batch_id,
-                        "payment_history",
-                        table_name,
-                        source_identifier,
-                        source_row_number,
-                        raw_row,
-                        _tbsprepay_hold_reason(raw_row, party_role=party_role),
+                        schema_name=resolved_schema,
+                        run_id=run_id,
+                        tenant_id=tenant_id,
+                        batch_id=batch_id,
+                        domain_name="payment_history",
+                        source_table=table_name,
+                        source_identifier=source_identifier,
+                        source_row_number=source_row_number,
+                        row_identity=row_identity,
+                        holding_id=source_resolution.build_holding_id(
+                            tenant_id,
+                            domain_name="payment_history",
+                            source_table=table_name,
+                            source_identifier=source_identifier,
+                            source_row_number=source_row_number,
+                            row_identity=row_identity,
+                        ),
+                        payload=raw_row,
+                        notes=_tbsprepay_hold_reason(raw_row, party_role=party_role),
                     )
                     holding_count += 1
 

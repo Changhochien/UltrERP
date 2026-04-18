@@ -11,6 +11,10 @@ from typing import Mapping
 
 from common.config import settings
 from common.tenant import DEFAULT_TENANT_ID
+from domains.legacy_import.shared import (
+    coerce_mapping as _coerce_mapping,
+    execute_many as _execute_many,
+)
 from domains.legacy_import.staging import _open_raw_connection, _quoted_identifier
 
 _NAMESPACE = uuid.UUID("4e59177d-61e5-48f4-b1f8-6b2141739ab9")
@@ -169,6 +173,7 @@ _V_BELT_SERIES_RE = re.compile(r"^(?:[358]V|[ABCDM]O?\d)")
 _CATEGORY_REVIEW_CONFIDENCE_THRESHOLD = Decimal("0.80")
 _MATCHING_NOISE_TOKENS = ("進口",)
 _MATCHING_TEXT_RE = re.compile(r"[^A-Z0-9\u4E00-\u9FFF]+")
+_LEGACY_IMPORT_CONTROL_SCHEMA = "public"
 
 
 @dataclass(slots=True, frozen=True)
@@ -187,12 +192,6 @@ class CategoryDerivation:
     source: str
     rule_id: str
     confidence: Decimal
-
-
-def _coerce_mapping(record: Mapping[str, object] | object) -> dict[str, object]:
-    if isinstance(record, dict):
-        return record
-    return dict(record)
 
 
 def deterministic_legacy_uuid(kind: str, *parts: str) -> uuid.UUID:
@@ -674,41 +673,87 @@ async def _replace_product_category_review_candidates(
     review_candidates: tuple[tuple[object, ...], ...],
 ) -> None:
     quoted_schema = _quoted_identifier(schema_name)
-    for review_candidate in review_candidates:
-        await connection.execute(
-            f"""
-            INSERT INTO {quoted_schema}.product_category_review_candidates (
-                tenant_id,
-                batch_id,
-                legacy_code,
-                name,
-                legacy_category,
-                stock_kind,
-                current_category,
-                category_source,
-                category_rule_id,
-                category_confidence,
-                review_reason,
-                source_table,
-                source_row_number
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-            ON CONFLICT (tenant_id, batch_id, legacy_code) DO UPDATE SET
-                name = EXCLUDED.name,
-                legacy_category = EXCLUDED.legacy_category,
-                stock_kind = EXCLUDED.stock_kind,
-                current_category = EXCLUDED.current_category,
-                category_source = EXCLUDED.category_source,
-                category_rule_id = EXCLUDED.category_rule_id,
-                category_confidence = EXCLUDED.category_confidence,
-                review_reason = EXCLUDED.review_reason,
-                source_table = EXCLUDED.source_table,
-                source_row_number = EXCLUDED.source_row_number,
-                updated_at = NOW()
-            """,
+    review_rows = [(tenant_id, batch_id, *review_candidate) for review_candidate in review_candidates]
+    await _execute_many(
+        connection,
+        f"""
+        INSERT INTO {quoted_schema}.product_category_review_candidates (
             tenant_id,
             batch_id,
-            *review_candidate,
+            legacy_code,
+            name,
+            legacy_category,
+            stock_kind,
+            current_category,
+            category_source,
+            category_rule_id,
+            category_confidence,
+            review_reason,
+            source_table,
+            source_row_number
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        ON CONFLICT (tenant_id, batch_id, legacy_code) DO UPDATE SET
+            name = EXCLUDED.name,
+            legacy_category = EXCLUDED.legacy_category,
+            stock_kind = EXCLUDED.stock_kind,
+            current_category = EXCLUDED.current_category,
+            category_source = EXCLUDED.category_source,
+            category_rule_id = EXCLUDED.category_rule_id,
+            category_confidence = EXCLUDED.category_confidence,
+            review_reason = EXCLUDED.review_reason,
+            source_table = EXCLUDED.source_table,
+            source_row_number = EXCLUDED.source_row_number,
+            updated_at = NOW()
+        """,
+        review_rows,
+    )
+
+
+async def _ensure_staged_batch_ready(
+    connection,
+    schema_name: str,
+    batch_id: str,
+    tenant_id: uuid.UUID,
+) -> None:
+    rows = await connection.fetch(
+        f"""
+        SELECT runs.tenant_id, runs.status
+        FROM {_LEGACY_IMPORT_CONTROL_SCHEMA}.legacy_import_runs AS runs
+        WHERE runs.batch_id = $1
+          AND runs.target_schema = $2
+          AND EXISTS (
+              SELECT 1
+              FROM {_LEGACY_IMPORT_CONTROL_SCHEMA}.legacy_import_table_runs AS table_runs
+              WHERE table_runs.run_id = runs.id
+          )
+        ORDER BY runs.started_at DESC, runs.created_at DESC
+        LIMIT 1
+        """,
+        batch_id,
+        schema_name,
+    )
+    if not rows:
+        raise ValueError(
+            f"No staged batch metadata found for batch {batch_id} in schema {schema_name}"
+        )
+
+    batch_metadata = _coerce_mapping(rows[0])
+    batch_tenant = batch_metadata.get("tenant_id")
+    batch_tenant_id = (
+        batch_tenant
+        if isinstance(batch_tenant, uuid.UUID)
+        else uuid.UUID(str(batch_tenant))
+    )
+    batch_status = str(batch_metadata.get("status") or "").strip().lower()
+
+    if batch_tenant_id != tenant_id:
+        raise ValueError(
+            f"Batch {batch_id} belongs to tenant {batch_tenant_id}, not {tenant_id}"
+        )
+    if batch_status != "completed":
+        raise ValueError(
+            f"Latest staged batch {batch_id} for tenant {tenant_id} is not completed"
         )
 
 
@@ -873,6 +918,31 @@ async def _fetch_stage_rows(
     return await connection.fetch(query, batch_id)
 
 
+def _validate_inventory_product_codes(
+    product_rows: list[Mapping[str, object]],
+    inventory_rows: list[Mapping[str, object]],
+) -> None:
+    known_product_codes = {
+        str(row.get("legacy_code") or "").strip()
+        for row in product_rows
+        if str(row.get("legacy_code") or "").strip()
+    }
+    missing_codes = sorted(
+        {
+            product_code
+            for row in inventory_rows
+            for product_code in [str(row.get("product_code") or "").strip()]
+            if product_code and product_code not in known_product_codes
+        }
+    )
+    if missing_codes:
+        missing_list = ", ".join(missing_codes)
+        raise ValueError(
+            "Inventory rows reference products missing from the staged product set: "
+            f"{missing_list}"
+        )
+
+
 async def run_normalization(
     *,
     batch_id: str,
@@ -882,6 +952,7 @@ async def run_normalization(
     resolved_schema = schema_name or settings.legacy_import_schema
     connection = await _open_raw_connection()
     try:
+        await _ensure_staged_batch_ready(connection, resolved_schema, batch_id, tenant_id)
         async with connection.transaction():
             await _ensure_normalized_tables(connection, resolved_schema)
 
@@ -954,6 +1025,8 @@ async def run_normalization(
             )
             if not inventory_rows:
                 raise ValueError(f"No staged tbsstkhouse rows found for batch {batch_id}")
+
+            _validate_inventory_product_codes(product_rows, inventory_rows)
 
             party_records = [normalize_party_record(row, batch_id, tenant_id) for row in party_rows]
             product_records: list[tuple] = []
