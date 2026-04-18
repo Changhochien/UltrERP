@@ -19,9 +19,11 @@ from common.database import get_db
 from common.errors import (
     DuplicateCategoryNameError,
     DuplicateProductCodeError,
+    DuplicateUnitCodeError,
     ValidationError,
     duplicate_category_name_response,
     duplicate_product_code_response,
+    duplicate_unit_code_response,
     error_response,
 )
 from common.models.inventory_stock import InventoryStock
@@ -101,6 +103,11 @@ from domains.inventory.schemas import (
     TopCustomerResponse,
     TransferRequest,
     TransferResponse,
+    UnitOfMeasureCreate,
+    UnitOfMeasureListResponse,
+    UnitOfMeasureResponse,
+    UnitOfMeasureStatusUpdate,
+    UnitOfMeasureUpdate,
     UpdateOrderStatusRequest,
     WarehouseCreate,
     WarehouseList,
@@ -129,6 +136,7 @@ from domains.inventory.services import (
     get_category,
     get_inventory_stocks,
     get_monthly_demand,
+    get_unit,
     get_planning_support,
     get_product_audit_log,
     get_product_detail,
@@ -145,12 +153,14 @@ from domains.inventory.services import (
     list_reorder_suggestions,
     list_supplier_orders,
     list_suppliers,
+    list_units,
     list_warehouses,
     receive_supplier_order,
     search_products,
     set_category_status,
     set_product_status,
     set_supplier_status,
+    set_unit_status,
     snooze_alert,
     submit_physical_count_session,
     transfer_stock,
@@ -158,8 +168,10 @@ from domains.inventory.services import (
     update_category,
     update_product,
     update_supplier,
+    update_unit,
     update_stock_settings,
     update_supplier_order_status,
+    create_unit,
 )
 
 router = APIRouter()
@@ -898,6 +910,128 @@ async def update_category_status_endpoint(
 
     await session.commit()
     return CategoryResponse.model_validate(category)
+
+
+@router.get(
+    "/units",
+    response_model=UnitOfMeasureListResponse,
+)
+async def list_units_endpoint(
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+    q: str = Query("", max_length=200),
+    active_only: bool = Query(True),
+    limit: int = Query(100, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+) -> UnitOfMeasureListResponse:
+    items, total = await list_units(
+        session,
+        tenant_id,
+        q=q,
+        active_only=active_only,
+        limit=limit,
+        offset=offset,
+    )
+    return UnitOfMeasureListResponse(
+        items=[UnitOfMeasureResponse.model_validate(item) for item in items],
+        total=total,
+    )
+
+
+@router.post(
+    "/units",
+    response_model=UnitOfMeasureResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_unit_endpoint(
+    data: UnitOfMeasureCreate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> UnitOfMeasureResponse | JSONResponse:
+    try:
+        unit = await create_unit(session, tenant_id, data)
+        await session.commit()
+    except DuplicateUnitCodeError as exc:
+        return JSONResponse(status_code=409, content=duplicate_unit_code_response(exc))
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+
+    return UnitOfMeasureResponse.model_validate(unit)
+
+
+@router.get(
+    "/units/{unit_id}",
+    response_model=UnitOfMeasureResponse,
+)
+async def get_unit_endpoint(
+    unit_id: uuid.UUID,
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+) -> UnitOfMeasureResponse:
+    unit = await get_unit(session, tenant_id, unit_id)
+    if unit is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Unit of measure not found",
+        )
+    return UnitOfMeasureResponse.model_validate(unit)
+
+
+@router.put(
+    "/units/{unit_id}",
+    response_model=UnitOfMeasureResponse,
+)
+async def update_unit_endpoint(
+    unit_id: uuid.UUID,
+    data: UnitOfMeasureUpdate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> UnitOfMeasureResponse | JSONResponse:
+    try:
+        unit = await update_unit(session, tenant_id, unit_id, data)
+        if unit is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Unit of measure not found",
+            )
+        await session.commit()
+    except DuplicateUnitCodeError as exc:
+        return JSONResponse(status_code=409, content=duplicate_unit_code_response(exc))
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+
+    return UnitOfMeasureResponse.model_validate(unit)
+
+
+@router.patch(
+    "/units/{unit_id}/status",
+    response_model=UnitOfMeasureResponse,
+)
+async def update_unit_status_endpoint(
+    unit_id: uuid.UUID,
+    data: UnitOfMeasureStatusUpdate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> UnitOfMeasureResponse:
+    unit = await set_unit_status(
+        session,
+        tenant_id,
+        unit_id,
+        is_active=data.is_active,
+    )
+    if unit is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Unit of measure not found",
+        )
+
+    await session.commit()
+    return UnitOfMeasureResponse.model_validate(unit)
 
 
 # ── Product creation endpoint ──────────────────────────────────

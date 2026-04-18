@@ -17,6 +17,7 @@ from common.models.supplier import Supplier
 from common.models.supplier_invoice import SupplierInvoice, SupplierInvoiceLine
 from common.models.supplier_order import SupplierOrder, SupplierOrderLine
 from common.models.supplier_payment import SupplierPayment, SupplierPaymentAllocation
+from common.models.unit_of_measure import UnitOfMeasure
 from common.models.user import User
 from common.models.warehouse import Warehouse
 
@@ -44,6 +45,7 @@ __all__ = [
 	"SupplierPaymentAllocation",
 	"SupplierOrder",
 	"SupplierOrderLine",
+	"UnitOfMeasure",
 	"User",
 	"Warehouse",
 ]

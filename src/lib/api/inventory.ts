@@ -32,6 +32,10 @@ import type {
   SupplierOrderListResponse,
   SupplierOrder,
   SupplierUpdate,
+  UnitOfMeasure,
+  UnitOfMeasureCreate,
+  UnitOfMeasureListResponse,
+  UnitOfMeasureUpdate,
   UpdateOrderStatusRequest,
   ReceiveOrderRequest,
   CreateSupplierOrderRequest,
@@ -91,6 +95,10 @@ export async function listCategories(options?: {
 
 export type CategoryMutationResult =
   | { ok: true; data: Category }
+  | { ok: false; error: string; errors?: InventoryFieldError[] };
+
+export type UnitMutationResult =
+  | { ok: true; data: UnitOfMeasure }
   | { ok: false; error: string; errors?: InventoryFieldError[] };
 
 export async function createCategory(data: CategoryCreate): Promise<CategoryMutationResult> {
@@ -188,6 +196,133 @@ export async function setCategoryStatus(
     return {
       ok: false,
       error: (body as { detail?: string }).detail ?? "Failed to update category status",
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Unknown error",
+    };
+  }
+}
+
+export async function listUnits(options?: {
+  q?: string;
+  activeOnly?: boolean;
+  limit?: number;
+  offset?: number;
+  signal?: AbortSignal;
+}): Promise<UnitOfMeasureListResponse> {
+  const params = new URLSearchParams();
+  if (options?.q) params.set("q", options.q);
+  if (options?.activeOnly != null) params.set("active_only", String(options.activeOnly));
+  if (options?.limit != null) params.set("limit", String(options.limit));
+  if (options?.offset != null) params.set("offset", String(options.offset));
+
+  const qs = params.toString();
+  const resp = await apiFetch(`/api/v1/inventory/units${qs ? `?${qs}` : ""}`, {
+    signal: options?.signal,
+  });
+  if (!resp.ok) {
+    throw new Error("Failed to load units");
+  }
+  return resp.json() as Promise<UnitOfMeasureListResponse>;
+}
+
+export async function createUnit(data: UnitOfMeasureCreate): Promise<UnitMutationResult> {
+  try {
+    const resp = await apiFetch("/api/v1/inventory/units", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    const body = await resp.json().catch(() => ({}));
+
+    if (resp.ok) {
+      return { ok: true, data: body as UnitOfMeasure };
+    }
+
+    if (resp.status === 409) {
+      return {
+        ok: false,
+        error: "Unit code already exists",
+        errors: [{ field: "code", message: "Unit code already exists" }],
+      };
+    }
+
+    const errors = normalizeInventoryFieldErrors((body as { detail?: unknown }).detail);
+    if (errors.length > 0) {
+      return { ok: false, error: errors[0]?.message ?? "Failed to create unit", errors };
+    }
+
+    return {
+      ok: false,
+      error: (body as { detail?: string }).detail ?? "Failed to create unit",
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Unknown error",
+    };
+  }
+}
+
+export async function updateUnit(
+  unitId: string,
+  data: UnitOfMeasureUpdate,
+): Promise<UnitMutationResult> {
+  try {
+    const resp = await apiFetch(`/api/v1/inventory/units/${encodeURIComponent(unitId)}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+    const body = await resp.json().catch(() => ({}));
+
+    if (resp.ok) {
+      return { ok: true, data: body as UnitOfMeasure };
+    }
+
+    if (resp.status === 409) {
+      return {
+        ok: false,
+        error: "Unit code already exists",
+        errors: [{ field: "code", message: "Unit code already exists" }],
+      };
+    }
+
+    const errors = normalizeInventoryFieldErrors((body as { detail?: unknown }).detail);
+    if (errors.length > 0) {
+      return { ok: false, error: errors[0]?.message ?? "Failed to update unit", errors };
+    }
+
+    return {
+      ok: false,
+      error: (body as { detail?: string }).detail ?? "Failed to update unit",
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Unknown error",
+    };
+  }
+}
+
+export async function setUnitStatus(
+  unitId: string,
+  isActive: boolean,
+): Promise<UnitMutationResult> {
+  try {
+    const resp = await apiFetch(`/api/v1/inventory/units/${encodeURIComponent(unitId)}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ is_active: isActive }),
+    });
+    const body = await resp.json().catch(() => ({}));
+
+    if (resp.ok) {
+      return { ok: true, data: body as UnitOfMeasure };
+    }
+
+    return {
+      ok: false,
+      error: (body as { detail?: string }).detail ?? "Failed to update unit status",
     };
   } catch (e) {
     return {

@@ -27,6 +27,7 @@ import {
   INVENTORY_BELOW_REORDER_REPORT_ROUTE,
   INVENTORY_CATEGORIES_ROUTE,
   INVENTORY_COUNT_SESSIONS_ROUTE,
+  INVENTORY_UNITS_ROUTE,
   INVENTORY_VALUATION_ROUTE,
   INVENTORY_REORDER_SUGGESTIONS_ROUTE,
   INVENTORY_ROUTE,
@@ -58,6 +59,7 @@ import { CountSessionsPage } from "./pages/inventory/CountSessionsPage";
 import { InventoryValuationPage } from "./pages/inventory/InventoryValuationPage";
 import { ProductDetailPage } from "./pages/inventory/ProductDetailPage";
 import { ReorderSuggestionsPage } from "./pages/inventory/ReorderSuggestionsPage";
+import { UnitsPage } from "./pages/inventory/UnitsPage";
 import CreateInvoicePage from "./pages/invoices/CreateInvoicePage";
 import { InvoicesPage } from "./pages/InvoicesPage";
 import { OrdersPage } from "./pages/orders/OrdersPage";
@@ -212,6 +214,16 @@ export default function App() {
               <ProtectedAppRoute requiredFeature="inventory">
                 <RoutedPage>
                   <CategoriesPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={INVENTORY_UNITS_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="inventory">
+                <RoutedPage>
+                  <UnitsPage />
                 </RoutedPage>
               </ProtectedAppRoute>
             }

@@ -2,13 +2,14 @@ import { cleanup, render, screen, fireEvent, waitFor } from "@testing-library/re
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CreateProductForm } from "../../domain/inventory/components/CreateProductForm";
-import { createCategory, createProduct, listCategories } from "../../lib/api/inventory";
+import { createCategory, createProduct, listCategories, listUnits } from "../../lib/api/inventory";
 import type { ProductResponse } from "../../domain/inventory/types";
 
 vi.mock("../../lib/api/inventory", () => ({
   createCategory: vi.fn(),
   createProduct: vi.fn(),
   listCategories: vi.fn(),
+  listUnits: vi.fn(),
 }));
 
 class ResizeObserverMock {
@@ -25,6 +26,29 @@ const CATEGORY = {
   created_at: "2026-04-01T00:00:00Z",
   updated_at: "2026-04-01T00:00:00Z",
 };
+
+const UNITS = [
+  {
+    id: "unit-1",
+    tenant_id: "tenant-1",
+    code: "pcs",
+    name: "Pieces",
+    decimal_places: 0,
+    is_active: true,
+    created_at: "2026-04-01T00:00:00Z",
+    updated_at: "2026-04-01T00:00:00Z",
+  },
+  {
+    id: "unit-2",
+    tenant_id: "tenant-1",
+    code: "box",
+    name: "Box",
+    decimal_places: 0,
+    is_active: true,
+    created_at: "2026-04-01T00:00:00Z",
+    updated_at: "2026-04-01T00:00:00Z",
+  },
+];
 
 const mockProduct: ProductResponse = {
   id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
@@ -182,6 +206,7 @@ describe("CreateProductForm", () => {
   });
 
   it("renders all form fields", () => {
+    vi.stubGlobal("ResizeObserver", ResizeObserverMock);
     const onSuccess = vi.fn();
     render(<CreateProductForm onSuccess={onSuccess} />);
 
@@ -189,8 +214,35 @@ describe("CreateProductForm", () => {
     expect(screen.getByLabelText(/Name/i)).toBeTruthy();
     expect(screen.getByRole("combobox", { name: /Category/i })).toBeTruthy();
     expect(screen.getByLabelText(/Description/i)).toBeTruthy();
-    expect(screen.getByLabelText(/Unit/i)).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: /Unit/i })).toBeTruthy();
     expect(screen.getByLabelText(/Standard Cost/i)).toBeTruthy();
     expect(screen.getByRole("button", { name: /Create Product/i })).toBeTruthy();
+  });
+
+  it("submits the selected unit code from the combobox", async () => {
+    vi.stubGlobal("ResizeObserver", ResizeObserverMock);
+    (listUnits as ReturnType<typeof vi.fn>).mockResolvedValue({ items: UNITS, total: 2 });
+    const onSuccess = vi.fn();
+    (createProduct as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ...mockProduct,
+      unit: "box",
+    });
+
+    render(<CreateProductForm onSuccess={onSuccess} />);
+    fillValidForm();
+    fireEvent.click(screen.getByRole("combobox", { name: /Unit/i }));
+    fireEvent.click(await screen.findByText("Box"));
+    fireEvent.click(screen.getByRole("button", { name: /Create Product/i }));
+
+    await waitFor(() => {
+      expect(createProduct).toHaveBeenCalledWith({
+        code: "WIDGET-001",
+        name: "Test Widget",
+        category: "",
+        description: "",
+        unit: "box",
+        standard_cost: null,
+      });
+    });
   });
 });

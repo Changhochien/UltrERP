@@ -234,6 +234,45 @@ class CategoryListResponse(BaseModel):
     total: int
 
 
+# --- Unit of measure schemas ---
+
+
+class UnitOfMeasureBase(BaseModel):
+    code: str = Field(..., min_length=1, max_length=50)
+    name: str = Field(..., min_length=1, max_length=200)
+    decimal_places: int = Field(default=0, ge=0, le=6)
+
+
+class UnitOfMeasureCreate(UnitOfMeasureBase):
+    pass
+
+
+class UnitOfMeasureUpdate(UnitOfMeasureBase):
+    pass
+
+
+class UnitOfMeasureStatusUpdate(BaseModel):
+    is_active: bool
+
+
+class UnitOfMeasureResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    code: str
+    name: str
+    decimal_places: int
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class UnitOfMeasureListResponse(BaseModel):
+    items: list[UnitOfMeasureResponse]
+    total: int
+
+
 # --- Product search schemas ---
 
 

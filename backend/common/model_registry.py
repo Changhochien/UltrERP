@@ -21,6 +21,7 @@ MODEL_MODULES = (
 	"common.models.supplier_invoice",
 	"common.models.supplier_order",
 	"common.models.supplier_payment",
+	"common.models.unit_of_measure",
 	"common.models.user",
 	"common.models.warehouse",
 	"domains.customers.models",

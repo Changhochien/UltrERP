@@ -20,6 +20,7 @@ import {
   INVENTORY_CATEGORIES_ROUTE,
   INVENTORY_COUNT_SESSIONS_ROUTE,
   INVENTORY_REORDER_SUGGESTIONS_ROUTE,
+  INVENTORY_UNITS_ROUTE,
   INVENTORY_VALUATION_ROUTE,
 } from "../lib/routes";
 
@@ -75,6 +76,13 @@ function InventoryWorkspace() {
                   onClick={() => navigate(INVENTORY_COUNT_SESSIONS_ROUTE)}
                 >
                   {t("inventory.page.manageCountSessions")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate(INVENTORY_UNITS_ROUTE)}
+                >
+                  {t("inventory.page.manageUnits")}
                 </Button>
                 <Button
                   type="button"

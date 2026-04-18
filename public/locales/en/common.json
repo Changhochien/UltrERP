@@ -70,6 +70,10 @@
       "description": "Standardize product category master data used in forms and search filters.",
       "label": "Product Categories"
     },
+    "inventoryUnits": {
+      "description": "Manage tenant-specific unit codes used by product forms and inventory master data.",
+      "label": "Units of Measure"
+    },
     "inventoryCountSessions": {
       "description": "Start, review, and reconcile warehouse physical count sessions.",
       "label": "Count Sessions"
@@ -1084,6 +1088,7 @@
       "inventoryValuation": "Inventory Valuation",
       "reviewSuggestions": "Review Suggestions",
       "manageCountSessions": "Count Sessions",
+      "manageUnits": "Manage Units",
       "manageCategories": "Manage Categories",
       "addProduct": "Add Product",
       "warehouseScope": "Warehouse Scope",
@@ -1556,6 +1561,46 @@
       "loadError": "Failed to load categories.",
       "statusError": "Failed to update category status.",
       "readOnly": "You can review categories here, but only inventory editors can make changes."
+    },
+    "unitsPage": {
+      "eyebrow": "Inventory Setup",
+      "title": "Units of Measure",
+      "description": "Manage tenant-specific unit codes used in product forms while preserving historical product unit text.",
+      "backToInventory": "Back to inventory",
+      "createTitle": "Create Unit",
+      "editTitle": "Edit Unit",
+      "formDescription": "Create and maintain active unit codes that product forms can reuse without free-text drift.",
+      "codeLabel": "Unit code",
+      "codePlaceholder": "e.g. pcs",
+      "nameLabel": "Display name",
+      "namePlaceholder": "e.g. Pieces",
+      "decimalPlacesLabel": "Decimal places",
+      "save": "Save Unit",
+      "saving": "Saving…",
+      "update": "Update Unit",
+      "cancelEdit": "Cancel edit",
+      "directoryTitle": "Unit Directory",
+      "directoryDescription": "Search, review, and deactivate units while keeping stored product unit codes intact.",
+      "searchPlaceholder": "Search units…",
+      "showInactive": "Show inactive",
+      "units": "{count} units",
+      "status": "Status",
+      "active": "Active",
+      "inactive": "Inactive",
+      "updated": "Updated",
+      "actions": "Actions",
+      "edit": "Edit",
+      "deactivate": "Deactivate",
+      "activate": "Activate",
+      "loading": "Loading units…",
+      "empty": "No units found.",
+      "emptyDescription": "Create a unit to standardize product selection and inventory master data.",
+      "loadError": "Failed to load units.",
+      "statusError": "Failed to update unit status.",
+      "readOnly": "You can review units here, but only inventory editors can make changes.",
+      "codeRequired": "Unit code is required",
+      "nameRequired": "Display name is required",
+      "decimalPlacesInvalid": "Decimal places must be an integer between 0 and 6"
     },
     "productDetail": {
       "adjustmentHistory": {

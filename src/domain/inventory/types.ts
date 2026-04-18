@@ -149,6 +149,34 @@ export interface CategoryStatusUpdate {
   status: "active" | "inactive";
 }
 
+export interface UnitOfMeasure {
+  id: string;
+  tenant_id: string;
+  code: string;
+  name: string;
+  decimal_places: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UnitOfMeasureListResponse {
+  items: UnitOfMeasure[];
+  total: number;
+}
+
+export interface UnitOfMeasureCreate {
+  code: string;
+  name: string;
+  decimal_places: number;
+}
+
+export interface UnitOfMeasureUpdate {
+  code: string;
+  name: string;
+  decimal_places: number;
+}
+
 export interface WarehouseStockInfo {
   stock_id: string;
   warehouse_id: string;

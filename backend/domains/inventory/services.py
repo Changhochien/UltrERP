@@ -16,6 +16,7 @@ from sqlalchemy.orm import selectinload
 from common.errors import (
     DuplicateCategoryNameError,
     DuplicateProductCodeError,
+    DuplicateUnitCodeError,
     ValidationError,
 )
 from common.events import StockChangedEvent, emit
@@ -35,6 +36,7 @@ from common.models.stock_transfer import StockTransferHistory
 from common.models.supplier import Supplier
 from common.models.supplier_invoice import SupplierInvoice, SupplierInvoiceLine
 from common.models.supplier_order import SupplierOrder, SupplierOrderLine, SupplierOrderStatus
+from common.models.unit_of_measure import UnitOfMeasure
 from common.models.warehouse import Warehouse
 from common.time import today, utc_now
 from domains.product_analytics.service import read_sales_monthly_range
@@ -47,6 +49,8 @@ if TYPE_CHECKING:
         ProductUpdate,
         SupplierCreate,
         SupplierUpdate,
+        UnitOfMeasureCreate,
+        UnitOfMeasureUpdate,
     )
 
 
@@ -82,6 +86,18 @@ _PLANNING_INDEX_QUANT = Decimal("0.001")
 _STANDARD_COST_QUANT = Decimal("0.0001")
 _VALUATION_AMOUNT_QUANT = Decimal("0.0001")
 _ZERO_QUANTITY = Decimal("0.000")
+DEFAULT_UNIT_OF_MEASURE_SEEDS: tuple[tuple[str, str, int], ...] = (
+    ("pcs", "Pieces", 0),
+    ("kg", "Kilogram", 3),
+    ("g", "Gram", 0),
+    ("box", "Box", 0),
+    ("carton", "Carton", 0),
+    ("pallet", "Pallet", 0),
+    ("liter", "Liter", 3),
+    ("ml", "Milliliter", 0),
+    ("meter", "Meter", 3),
+    ("cm", "Centimeter", 0),
+)
 
 
 def _shift_months(value: date, months: int) -> date:
@@ -132,6 +148,41 @@ def _normalize_standard_cost(value: object | None) -> Decimal | None:
             ]
         )
     return standard_cost.quantize(_STANDARD_COST_QUANT, rounding=ROUND_HALF_UP)
+
+
+def _normalize_unit_code(value: str) -> str:
+    normalized = value.strip().lower()
+    if not normalized:
+        raise ValidationError(
+            [{"loc": ("code",), "msg": "code cannot be blank", "type": "value_error"}]
+        )
+    return normalized
+
+
+def _normalize_unit_name(value: str) -> str:
+    normalized = value.strip()
+    if not normalized:
+        raise ValidationError(
+            [{"loc": ("name",), "msg": "name cannot be blank", "type": "value_error"}]
+        )
+    return normalized
+
+
+async def _find_unit_by_code(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    code: str,
+    *,
+    exclude_unit_id: uuid.UUID | None = None,
+) -> UnitOfMeasure | None:
+    stmt = select(UnitOfMeasure).where(
+        UnitOfMeasure.tenant_id == tenant_id,
+        UnitOfMeasure.code == code,
+    )
+    if exclude_unit_id is not None:
+        stmt = stmt.where(UnitOfMeasure.id != exclude_unit_id)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
 
 
 # ── Warehouse queries ──────────────────────────────────────────
@@ -417,6 +468,181 @@ async def set_category_status(
     category.is_active = is_active
     await session.flush()
     return category
+
+
+async def seed_default_units(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+) -> list[UnitOfMeasure]:
+    stmt = select(UnitOfMeasure).where(UnitOfMeasure.tenant_id == tenant_id)
+    result = await session.execute(stmt)
+    existing_units = list(result.scalars().all())
+    existing_codes = {unit.code for unit in existing_units}
+
+    created_units: list[UnitOfMeasure] = []
+    for code, name, decimal_places in DEFAULT_UNIT_OF_MEASURE_SEEDS:
+        if code in existing_codes:
+            continue
+        created_units.append(
+            UnitOfMeasure(
+                tenant_id=tenant_id,
+                code=code,
+                name=name,
+                decimal_places=decimal_places,
+                is_active=True,
+            )
+        )
+
+    if created_units:
+        session.add_all(created_units)
+        await session.flush()
+
+    return created_units
+
+
+async def create_unit(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    data: "UnitOfMeasureCreate",
+) -> UnitOfMeasure:
+    code = _normalize_unit_code(data.code)
+    name = _normalize_unit_name(data.name)
+
+    existing = await _find_unit_by_code(session, tenant_id, code)
+    if existing is not None:
+        raise DuplicateUnitCodeError(existing_id=existing.id, existing_code=existing.code)
+
+    unit = UnitOfMeasure(
+        tenant_id=tenant_id,
+        code=code,
+        name=name,
+        decimal_places=data.decimal_places,
+        is_active=True,
+    )
+    try:
+        session.add(unit)
+        await session.flush()
+    except IntegrityError:
+        await session.rollback()
+        existing = await _find_unit_by_code(session, tenant_id, code)
+        if existing is not None:
+            raise DuplicateUnitCodeError(existing_id=existing.id, existing_code=existing.code)
+        raise
+
+    return unit
+
+
+async def list_units(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    *,
+    q: str = "",
+    active_only: bool = True,
+    limit: int = 100,
+    offset: int = 0,
+    seed_defaults: bool = True,
+) -> tuple[list[UnitOfMeasure], int]:
+    if seed_defaults:
+        await seed_default_units(session, tenant_id)
+
+    where_conditions = [UnitOfMeasure.tenant_id == tenant_id]
+    if active_only:
+        where_conditions.append(UnitOfMeasure.is_active.is_(True))
+
+    stripped = q.strip().lower()
+    if stripped:
+        q_like = stripped.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        where_conditions.append(
+            or_(
+                UnitOfMeasure.code.ilike(f"%{q_like}%", escape="\\"),
+                UnitOfMeasure.name.ilike(f"%{q_like}%", escape="\\"),
+            )
+        )
+
+    count_stmt = select(func.count(UnitOfMeasure.id)).where(*where_conditions)
+    count_result = await session.execute(count_stmt)
+    total = count_result.scalar() or 0
+
+    stmt = (
+        select(UnitOfMeasure)
+        .where(*where_conditions)
+        .order_by(UnitOfMeasure.code)
+        .offset(offset)
+        .limit(limit)
+    )
+    result = await session.execute(stmt)
+    units = result.scalars().all()
+    return list(units), total
+
+
+async def get_unit(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    unit_id: uuid.UUID,
+) -> UnitOfMeasure | None:
+    stmt = select(UnitOfMeasure).where(
+        UnitOfMeasure.id == unit_id,
+        UnitOfMeasure.tenant_id == tenant_id,
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def update_unit(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    unit_id: uuid.UUID,
+    data: "UnitOfMeasureUpdate",
+) -> UnitOfMeasure | None:
+    unit = await get_unit(session, tenant_id, unit_id)
+    if unit is None:
+        return None
+
+    code = _normalize_unit_code(data.code)
+    name = _normalize_unit_name(data.name)
+    existing = await _find_unit_by_code(
+        session,
+        tenant_id,
+        code,
+        exclude_unit_id=unit.id,
+    )
+    if existing is not None:
+        raise DuplicateUnitCodeError(existing_id=existing.id, existing_code=existing.code)
+
+    unit.code = code
+    unit.name = name
+    unit.decimal_places = data.decimal_places
+    try:
+        await session.flush()
+    except IntegrityError:
+        await session.rollback()
+        existing = await _find_unit_by_code(
+            session,
+            tenant_id,
+            code,
+            exclude_unit_id=unit_id,
+        )
+        if existing is not None:
+            raise DuplicateUnitCodeError(existing_id=existing.id, existing_code=existing.code)
+        raise
+
+    return unit
+
+
+async def set_unit_status(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    unit_id: uuid.UUID,
+    *,
+    is_active: bool,
+) -> UnitOfMeasure | None:
+    unit = await get_unit(session, tenant_id, unit_id)
+    if unit is None:
+        return None
+
+    unit.is_active = is_active
+    await session.flush()
+    return unit
 
 
 # ── Product creation ───────────────────────────────────────────

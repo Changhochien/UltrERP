@@ -2,11 +2,12 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { EditProductForm } from "../../domain/inventory/components/EditProductForm";
-import { listCategories, updateProduct } from "../../lib/api/inventory";
+import { listCategories, listUnits, updateProduct } from "../../lib/api/inventory";
 import type { ProductDetail, ProductResponse } from "../../domain/inventory/types";
 
 vi.mock("../../lib/api/inventory", () => ({
   listCategories: vi.fn(),
+  listUnits: vi.fn(),
   updateProduct: vi.fn(),
 }));
 
@@ -58,13 +59,38 @@ describe("EditProductForm", () => {
     expect(screen.getByDisplayValue("Widget")).toBeTruthy();
     expect(screen.getByRole("combobox", { name: /Category/i }).textContent).toContain("Hardware");
     expect(screen.getByDisplayValue("Original description")).toBeTruthy();
-    expect(screen.getByDisplayValue("pcs")).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: /Unit/i }).textContent).toContain("pcs");
     expect(screen.getByDisplayValue("5.2500")).toBeTruthy();
   });
 
   it("submits the full editable payload and calls onSuccess", async () => {
     vi.stubGlobal("ResizeObserver", ResizeObserverMock);
     (listCategories as ReturnType<typeof vi.fn>).mockResolvedValue({ items: [], total: 0 });
+    (listUnits as ReturnType<typeof vi.fn>).mockResolvedValue({
+      items: [
+        {
+          id: "unit-1",
+          tenant_id: "tenant-1",
+          code: "pcs",
+          name: "Pieces",
+          decimal_places: 0,
+          is_active: true,
+          created_at: "2026-04-01T00:00:00Z",
+          updated_at: "2026-04-01T00:00:00Z",
+        },
+        {
+          id: "unit-2",
+          tenant_id: "tenant-1",
+          code: "box",
+          name: "Box",
+          decimal_places: 0,
+          is_active: true,
+          created_at: "2026-04-01T00:00:00Z",
+          updated_at: "2026-04-01T00:00:00Z",
+        },
+      ],
+      total: 2,
+    });
     const onSuccess = vi.fn();
     (updateProduct as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true, data: updatedProduct });
 
@@ -72,7 +98,8 @@ describe("EditProductForm", () => {
     fireEvent.change(screen.getByLabelText(/Code/i), { target: { value: "SKU-2" } });
     fireEvent.change(screen.getByLabelText(/Name/i), { target: { value: "Widget Pro" } });
     fireEvent.change(screen.getByLabelText(/Description/i), { target: { value: "Updated description" } });
-    fireEvent.change(screen.getByLabelText(/Unit/i), { target: { value: "box" } });
+    fireEvent.click(screen.getByRole("combobox", { name: /Unit/i }));
+    fireEvent.click(await screen.findByText("Box"));
     fireEvent.change(screen.getByLabelText(/Standard Cost/i), { target: { value: "7.1250" } });
     fireEvent.click(screen.getByRole("button", { name: /Save Changes/i }));
 

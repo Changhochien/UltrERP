@@ -52,6 +52,15 @@ class DuplicateCategoryNameError(ApplicationError):
         super().__init__(f"Duplicate category name {existing_name}: existing category {existing_id}")
 
 
+class DuplicateUnitCodeError(ApplicationError):
+    """A unit code already exists for the tenant."""
+
+    def __init__(self, existing_id: uuid.UUID, existing_code: str) -> None:
+        self.existing_id = existing_id
+        self.existing_code = existing_code
+        super().__init__(f"Duplicate unit code {existing_code}: existing unit {existing_id}")
+
+
 class VersionConflictError(ApplicationError):
     """Optimistic locking conflict — the record was modified since last read."""
 
@@ -93,4 +102,13 @@ def duplicate_category_name_response(err: DuplicateCategoryNameError) -> dict[st
         "error": "duplicate_category_name",
         "existing_category_id": str(err.existing_id),
         "existing_category_name": err.existing_name,
+    }
+
+
+def duplicate_unit_code_response(err: DuplicateUnitCodeError) -> dict[str, Any]:
+    """Stable 409 duplicate unit code error envelope."""
+    return {
+        "error": "duplicate_unit_code",
+        "existing_unit_id": str(err.existing_id),
+        "existing_unit_code": err.existing_code,
     }

@@ -33,6 +33,7 @@ EXPECTED_REGISTERED_TABLES = {
     "supplier_order_line",
     "supplier_payment_allocations",
     "supplier_payments",
+    "unit_of_measure",
     "users",
     "warehouse",
 }

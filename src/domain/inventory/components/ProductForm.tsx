@@ -4,6 +4,7 @@ import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Textarea } from "../../../components/ui/textarea";
 import { CategoryCombobox } from "./CategoryCombobox";
+import { UnitCombobox } from "./UnitCombobox";
 import type { ProductResponse, ProductUpdate } from "../types";
 
 export interface ProductFormFieldError {
@@ -212,17 +213,20 @@ export function ProductForm({
       </div>
 
       <div>
-        <label htmlFor="product-unit" className="block text-sm font-medium">
+        <label id="product-unit-label" className="block text-sm font-medium">
           Unit <span className="text-destructive">*</span>
         </label>
-        <Input
-          id="product-unit"
-          type="text"
-          value={formData.unit}
-          onChange={(event) => setFormData((current) => ({ ...current, unit: event.target.value }))}
-          aria-invalid={Boolean(errors.unit)}
-          disabled={isSubmitting}
-        />
+        <div id="product-unit" className="mt-1">
+          <UnitCombobox
+            inputId="product-unit-trigger"
+            ariaLabelledBy="product-unit-label"
+            value={formData.unit}
+            onChange={(unit) => setFormData((current) => ({ ...current, unit }))}
+            onClear={() => setFormData((current) => ({ ...current, unit: "" }))}
+            placeholder="Search unit…"
+            disabled={isSubmitting}
+          />
+        </div>
         {errors.unit && <p className="mt-1 text-sm text-destructive">{errors.unit}</p>}
       </div>
 

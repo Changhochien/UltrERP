@@ -71,6 +71,10 @@
       "description": "管理商品表單與搜尋篩選所使用的類別主檔。",
       "label": "產品類別"
     },
+    "inventoryUnits": {
+      "description": "管理商品表單與庫存主檔共用的租戶專屬單位代碼。",
+      "label": "計量單位"
+    },
     "inventoryCountSessions": {
       "description": "啟動、複核並核准倉庫盤點作業。",
       "label": "盤點作業"
@@ -1081,6 +1085,7 @@
       "inventoryValuation": "庫存估值",
       "reviewSuggestions": "查看補貨建議",
       "manageCountSessions": "盤點作業",
+      "manageUnits": "管理單位",
       "manageCategories": "管理類別",
       "addProduct": "新增產品",
       "warehouseScope": "倉庫範圍",
@@ -1553,6 +1558,46 @@
       "loadError": "載入類別失敗。",
       "statusError": "更新類別狀態失敗。",
       "readOnly": "您可以在此檢視類別，但只有庫存編輯者可以修改。"
+    },
+    "unitsPage": {
+      "eyebrow": "庫存設定",
+      "title": "計量單位",
+      "description": "管理商品表單使用的租戶單位代碼，同時保留歷史產品上已儲存的單位文字。",
+      "backToInventory": "返回庫存",
+      "createTitle": "新增單位",
+      "editTitle": "編輯單位",
+      "formDescription": "建立並維護可用單位代碼，避免產品表單持續出現自由輸入的單位漂移。",
+      "codeLabel": "單位代碼",
+      "codePlaceholder": "例如：pcs",
+      "nameLabel": "顯示名稱",
+      "namePlaceholder": "例如：件",
+      "decimalPlacesLabel": "小數位數",
+      "save": "儲存單位",
+      "saving": "儲存中…",
+      "update": "更新單位",
+      "cancelEdit": "取消編輯",
+      "directoryTitle": "單位清單",
+      "directoryDescription": "搜尋、檢視並停用單位，同時保留產品目前儲存的單位代碼。",
+      "searchPlaceholder": "搜尋單位…",
+      "showInactive": "顯示停用",
+      "units": "{count} 個單位",
+      "status": "狀態",
+      "active": "啟用",
+      "inactive": "停用",
+      "updated": "更新日期",
+      "actions": "操作",
+      "edit": "編輯",
+      "deactivate": "停用",
+      "activate": "啟用",
+      "loading": "載入單位中…",
+      "empty": "查無單位。",
+      "emptyDescription": "建立一個單位，讓產品選擇與庫存主檔維持一致。",
+      "loadError": "載入單位失敗。",
+      "statusError": "更新單位狀態失敗。",
+      "readOnly": "您可以在此檢視單位，但只有庫存編輯者可以修改。",
+      "codeRequired": "必須輸入單位代碼",
+      "nameRequired": "必須輸入顯示名稱",
+      "decimalPlacesInvalid": "小數位數必須是 0 到 6 之間的整數"
     },
     "productDetail": {
       "adjustmentHistory": {
