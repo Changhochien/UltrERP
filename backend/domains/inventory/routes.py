@@ -46,6 +46,7 @@ from domains.inventory.schemas import (
     ProductResponse,
     ProductSearchResponse,
     ProductSearchResult,
+    ProductStatusUpdate,
     ProductUpdate,
     ProductSupplierResponse,
     ReasonCodeItem,
@@ -105,6 +106,7 @@ from domains.inventory.services import (
     list_warehouses,
     receive_supplier_order,
     search_products,
+    set_product_status,
     snooze_alert,
     transfer_stock,
     update_stock_settings,
@@ -504,6 +506,7 @@ async def search_products_endpoint(
     limit: int = Query(20, ge=1, le=500),
     offset: int = Query(0, ge=0),
     warehouse_id: uuid.UUID | None = Query(None),
+    include_inactive: bool = Query(False),
     sort_by: str = Query("code", pattern="^(code|name|category|status|current_stock)$"),
     sort_dir: str = Query("asc", pattern="^(asc|desc)$"),
 ) -> ProductSearchResponse:
@@ -513,6 +516,7 @@ async def search_products_endpoint(
         tenant_id,
         stripped,
         warehouse_id=warehouse_id,
+        include_inactive=include_inactive,
         limit=limit,
         offset=offset,
         sort_by=sort_by,
@@ -571,6 +575,27 @@ async def update_product_endpoint(
         return JSONResponse(status_code=409, content=duplicate_product_code_response(exc))
     except ValidationError as exc:
         return JSONResponse(status_code=422, content=error_response(exc.errors))
+    return ProductResponse.model_validate(product)
+
+
+@router.patch(
+    "/products/{product_id}/status",
+    response_model=ProductResponse,
+)
+async def set_product_status_endpoint(
+    product_id: uuid.UUID,
+    data: ProductStatusUpdate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> ProductResponse:
+    product = await set_product_status(session, tenant_id, product_id, data.status)
+    if product is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found",
+        )
+    await session.commit()
     return ProductResponse.model_validate(product)
 
 

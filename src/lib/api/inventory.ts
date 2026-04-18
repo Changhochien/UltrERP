@@ -28,6 +28,7 @@ export async function searchProducts(
     limit?: number;
     offset?: number;
     warehouseId?: string;
+    includeInactive?: boolean;
     sortBy?: string;
     sortDir?: string;
     signal?: AbortSignal;
@@ -37,6 +38,7 @@ export async function searchProducts(
   if (options?.limit) params.set("limit", String(options.limit));
   if (options?.offset) params.set("offset", String(options.offset));
   if (options?.warehouseId) params.set("warehouse_id", options.warehouseId);
+  if (options?.includeInactive) params.set("include_inactive", "true");
   if (options?.sortBy) params.set("sort_by", options.sortBy);
   if (options?.sortDir) params.set("sort_dir", options.sortDir);
   const resp = await apiFetch(
@@ -62,6 +64,28 @@ export async function fetchProductDetail(
     const resp = await apiFetch(url);
     if (!resp.ok) return { ok: false, error: "Failed to fetch product detail" };
     return { ok: true, data: (await resp.json()) as ProductDetail };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+export async function setProductStatus(
+  productId: string,
+  status: "active" | "inactive",
+): Promise<{ ok: true; data: ProductResponse } | { ok: false; error: string }> {
+  try {
+    const resp = await apiFetch(`/api/v1/inventory/products/${encodeURIComponent(productId)}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      return {
+        ok: false,
+        error: (body as { detail?: string }).detail ?? "Failed to update product status",
+      };
+    }
+    return { ok: true, data: body as ProductResponse };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
   }

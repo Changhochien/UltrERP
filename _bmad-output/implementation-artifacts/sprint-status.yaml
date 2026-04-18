@@ -240,10 +240,10 @@ development_status:
         prerequisites: []
       4-11-deactivate-product:
         title: "Deactivate Product (Soft Delete)"
-        status: "backlog"
+        status: "completed"
         story_id: "4.11"
         story_file: "4-11-deactivate-product.md"
-        validation: "none"
+        validation: "Product lifecycle toggle is implemented with a dedicated status endpoint, default active-only search semantics, explicit inactive browse controls, inactive-code duplicate protection, and focused backend/frontend validations passing (23 backend tests, 5 frontend tests, and targeted lint)."
         prerequisites: []
       4-12-product-categories:
         title: "Product Categories Management"

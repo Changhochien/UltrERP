@@ -123,6 +123,10 @@ export interface ProductDetail {
   adjustment_history: AdjustmentHistoryItem[];
 }
 
+export interface ProductStatusUpdate {
+  status: "active" | "inactive";
+}
+
 export type PlanningSupportDataBasis =
   | "aggregated_only"
   | "aggregated_plus_live_current_month"

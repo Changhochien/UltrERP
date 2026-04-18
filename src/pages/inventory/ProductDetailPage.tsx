@@ -24,6 +24,7 @@ import { AnalyticsTab } from "@/domain/inventory/components/AnalyticsTab";
 import { SettingsTab } from "@/domain/inventory/components/SettingsTab";
 import { AuditLogTable } from "@/domain/inventory/components/AuditLogTable";
 import { useProductAuditLog } from "@/domain/inventory/hooks/useProductAuditLog";
+import { setProductStatus } from "@/lib/api/inventory";
 import { INVENTORY_ROUTE } from "@/lib/routes";
 import { parseBackendDate } from "@/lib/time";
 import type { WarehouseStockInfo } from "@/domain/inventory/types";
@@ -166,6 +167,9 @@ function ProductDetailContent({ productId }: { productId: string }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [statusSubmitting, setStatusSubmitting] = useState(false);
   const { product, loading, error, reload, applyLocalUpdate } = useProductDetail(productId);
   const { selectedWarehouse } = useWarehouseContext();
   const requestedTab = searchParams.get("tab");
@@ -186,6 +190,24 @@ function ProductDetailContent({ productId }: { productId: string }) {
     loading: chartLoading,
     error: chartError,
   } = useStockHistory(stockId ?? "");
+
+  async function handleStatusChange(nextStatus: "active" | "inactive") {
+    setStatusSubmitting(true);
+    setStatusError(null);
+    const result = await setProductStatus(productId, nextStatus);
+    if (!result.ok) {
+      setStatusError(result.error);
+      setStatusSubmitting(false);
+      return;
+    }
+
+    applyLocalUpdate(result.data);
+    if (nextStatus === "inactive") {
+      setShowDeactivateDialog(false);
+    }
+    await reload();
+    setStatusSubmitting(false);
+  }
 
   return (
     <div className="space-y-6">
@@ -268,11 +290,46 @@ function ProductDetailContent({ productId }: { productId: string }) {
           ) : null}
         </div>
         {!loading && !error && product && (
-          <Button variant="outline" size="sm" onClick={() => setShowEditDialog(true)}>
-            {t("edit")}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowEditDialog(true)}
+              disabled={statusSubmitting}
+            >
+              {t("edit")}
+            </Button>
+            {product.status === "active" ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setStatusError(null);
+                  setShowDeactivateDialog(true);
+                }}
+                disabled={statusSubmitting}
+              >
+                {t("deactivate")}
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void handleStatusChange("active")}
+                disabled={statusSubmitting}
+              >
+                {t("activate")}
+              </Button>
+            )}
+          </div>
         )}
       </div>
+
+      {statusError && (
+        <div className="rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {t("error", { message: statusError })}
+        </div>
+      )}
 
       <Tabs defaultValue={defaultTab}>
         <TabsList>
@@ -454,6 +511,33 @@ function ProductDetailContent({ productId }: { productId: string }) {
               onCancel={() => setShowEditDialog(false)}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDeactivateDialog} onOpenChange={setShowDeactivateDialog}>
+        <DialogContent aria-label={t("deactivate")} className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t("deactivate")}</DialogTitle>
+            <DialogDescription>{t("deactivateDescription")}</DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowDeactivateDialog(false)}
+              disabled={statusSubmitting}
+            >
+              {t("cancel")}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => void handleStatusChange("inactive")}
+              disabled={statusSubmitting}
+            >
+              {t("confirmDeactivate")}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

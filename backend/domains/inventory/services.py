@@ -266,6 +266,27 @@ async def update_product(
     return product
 
 
+async def set_product_status(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+    status: str,
+) -> Product | None:
+    """Set the active/inactive lifecycle status for an existing product."""
+    stmt = select(Product).where(
+        Product.id == product_id,
+        Product.tenant_id == tenant_id,
+    )
+    result = await session.execute(stmt)
+    product = result.scalar_one_or_none()
+    if product is None:
+        return None
+
+    product.status = status
+    await session.flush()
+    return product
+
+
 # ── Stock transfer ─────────────────────────────────────────────
 
 
@@ -1038,6 +1059,7 @@ async def search_products(
     query: str,
     *,
     warehouse_id: uuid.UUID | None = None,
+    include_inactive: bool = False,
     limit: int = 20,
     offset: int = 0,
     sort_by: str = "code",
@@ -1091,6 +1113,10 @@ async def search_products(
         )
     stock_sq = stock_sq.group_by(InventoryStock.product_id).subquery()
 
+    base_conditions = [Product.tenant_id == tenant_id]
+    if not include_inactive:
+        base_conditions.append(Product.status == "active")
+
     # Main query
     stmt = (
         select(
@@ -1103,6 +1129,7 @@ async def search_products(
             relevance.label("relevance"),
         )
         .outerjoin(stock_sq, Product.id == stock_sq.c.product_id)
+        .where(*base_conditions)
     )
 
     def build_broader_conditions():
@@ -1148,7 +1175,7 @@ async def search_products(
                 relevance.label("relevance"),
             )
             .outerjoin(stock_sq, Product.id == stock_sq.c.product_id)
-            .where(Product.tenant_id == tenant_id)
+            .where(*base_conditions)
             .where(fast_match)
             .order_by(relevance.desc(), Product.code),
             limit,
@@ -1170,7 +1197,7 @@ async def search_products(
                     relevance.label("relevance"),
                 )
                 .outerjoin(stock_sq, Product.id == stock_sq.c.product_id)
-                .where(Product.tenant_id == tenant_id)
+                .where(*base_conditions)
                 .where(build_broader_conditions()),
                 limit,
                 offset,
@@ -1186,13 +1213,12 @@ async def search_products(
         # Total count: count distinct products matching the broader conditions
         count_stmt = select(func.count(distinct(Product.id))).select_from(
             Product
-        ).outerjoin(stock_sq, Product.id == stock_sq.c.product_id).where(
-            Product.tenant_id == tenant_id
-        ).where(build_broader_conditions())
+        ).outerjoin(stock_sq, Product.id == stock_sq.c.product_id).where(*base_conditions).where(
+            build_broader_conditions()
+        )
         total_result = await session.execute(count_stmt)
         total = total_result.scalar() or 0
     else:
-        base_conditions = [Product.tenant_id == tenant_id]
         count_sq = select(
             InventoryStock.product_id,
         ).where(InventoryStock.tenant_id == tenant_id)
@@ -1209,7 +1235,7 @@ async def search_products(
         total = total_result.scalar() or 0
 
         rows_stmt = apply_pagination(
-            apply_order_by(stmt.where(Product.tenant_id == tenant_id)),
+            apply_order_by(stmt),
             limit,
             offset,
         )

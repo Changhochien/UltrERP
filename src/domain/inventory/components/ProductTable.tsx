@@ -14,9 +14,10 @@ import { useProductSearch } from "../hooks/useProductSearch";
 interface ProductTableProps {
   warehouseId?: string;
   onProductClick?: (productId: string) => void;
+  createdProductKey?: number;
 }
 
-export function ProductTable({ warehouseId, onProductClick }: ProductTableProps) {
+export function ProductTable({ warehouseId, onProductClick, createdProductKey }: ProductTableProps) {
   const { t } = useTranslation("common", { keyPrefix: "inventory.productGrid" });
   const navigate = useNavigate();
   const {
@@ -26,6 +27,7 @@ export function ProductTable({ warehouseId, onProductClick }: ProductTableProps)
     pageSize,
     loading,
     error,
+    includeInactive,
     search,
     nextPage,
     prevPage,
@@ -35,13 +37,12 @@ export function ProductTable({ warehouseId, onProductClick }: ProductTableProps)
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    search("", warehouseId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [warehouseId]);
+    search("", warehouseId, 1, sortState ?? undefined, includeInactive);
+  }, [createdProductKey, includeInactive, search, sortState, warehouseId]);
 
   const handleSearchChange = (value: string) => {
     setQuery(value);
-    search(value, warehouseId);
+    search(value, warehouseId, 1, sortState ?? undefined, includeInactive);
   };
 
   return (
@@ -144,13 +145,16 @@ export function ProductTable({ warehouseId, onProductClick }: ProductTableProps)
               <span>{error}</span>
               <button
                 type="button"
-                onClick={() => search(query, warehouseId)}
+                onClick={() => search(query, warehouseId, page, sortState ?? undefined, includeInactive)}
                 className="text-sm underline"
               >
                 {t("retry")}
               </button>
             </div>
           ) : undefined
+        }
+        getRowClassName={(row) =>
+          row.status === "inactive" ? "bg-muted/20 text-muted-foreground" : undefined
         }
         emptyTitle={query ? t("noProductsFound") : t("noProductsInSystem")}
         emptyDescription={
@@ -171,16 +175,27 @@ export function ProductTable({ warehouseId, onProductClick }: ProductTableProps)
         getRowId={(item) => item.id}
         toolbar={(
           <DataTableToolbar>
-            <div className="relative max-w-64">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder={t("searchPlaceholder")}
-                value={query}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                aria-label={t("searchPlaceholder")}
-                className="pl-9"
-              />
+            <div className="flex flex-col gap-3 md:flex-row md:items-center">
+              <div className="relative max-w-64">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder={t("searchPlaceholder")}
+                  value={query}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  aria-label={t("searchPlaceholder")}
+                  className="pl-9"
+                />
+              </div>
+              <Button
+                type="button"
+                variant={includeInactive ? "default" : "outline"}
+                size="sm"
+                aria-pressed={includeInactive}
+                onClick={() => search(query, warehouseId, 1, sortState ?? undefined, !includeInactive)}
+              >
+                {t("showInactive")}
+              </Button>
             </div>
           </DataTableToolbar>
         )}

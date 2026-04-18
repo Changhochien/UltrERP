@@ -1271,6 +1271,7 @@
     },
     "productGrid": {
       "searchPlaceholder": "依編號或名稱搜尋…",
+      "showInactive": "顯示停用產品",
       "allStatus": "所有狀態",
       "active": "啟用",
       "lowStock": "偏低",
@@ -1316,8 +1317,13 @@
         "title": "異動紀錄"
       },
       "belowReorderPoint": "低於補貨點",
+      "activate": "啟用產品",
+      "cancel": "取消",
       "category": "類別：{category}",
       "code": "編號：{code}",
+      "confirmDeactivate": "停用產品",
+      "deactivate": "停用產品",
+      "deactivateDescription": "停用後產品仍會保留歷史資料與產品編號，但會從預設搜尋與選擇器中隱藏。",
       "edit": "編輯產品",
       "editDescription": "更新編號、名稱、類別、說明與單位。",
       "error": "錯誤：{message}",

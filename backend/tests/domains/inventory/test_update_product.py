@@ -155,6 +155,31 @@ async def test_update_product_raises_duplicate_conflict() -> None:
     assert exc_info.value.existing_code == "SKU-2"
 
 
+async def test_update_product_rejects_code_reuse_from_inactive_product() -> None:
+    tenant_id = uuid.uuid4()
+    product = FakeProduct(code="SKU-1")
+    existing = FakeProduct(code="SKU-2", status="inactive")
+    session = FakeAsyncSession()
+    session.queue_scalar(product)
+    session.queue_scalar(existing)
+
+    with pytest.raises(DuplicateProductCodeError) as exc_info:
+        await update_product(
+            session,
+            tenant_id,
+            product.id,
+            ProductUpdate(
+                code="SKU-2",
+                name="Widget",
+                category="Hardware",
+                description="Updated",
+                unit="pcs",
+            ),
+        )
+
+    assert exc_info.value.existing_code == "SKU-2"
+
+
 async def test_update_product_rejects_whitespace_required_fields() -> None:
     session = FakeAsyncSession()
 

@@ -16,16 +16,15 @@ interface ProductSearchProps {
 }
 
 export function ProductSearch({ onProductClick }: ProductSearchProps) {
-  const { query, results, loading, error, search } = useProductSearch();
+  const { query, results, loading, error, includeInactive, search } = useProductSearch();
   const { selectedWarehouse } = useWarehouseContext();
   const trimmedQuery = query.trim();
   const hasSearchQuery = trimmedQuery.length > 0;
 
   // Load all products on mount
   useEffect(() => {
-    search("", selectedWarehouse?.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    search("", selectedWarehouse?.id, 1, undefined, includeInactive);
+  }, [includeInactive, search, selectedWarehouse?.id]);
 
   return (
     <SectionCard title="Product Search" description="Search by code or name and review current stock by warehouse scope.">
@@ -76,11 +75,19 @@ export function ProductSearch({ onProductClick }: ProductSearchProps) {
         error={error ? (
           <div className="flex items-center gap-3">
             <span>{error}</span>
-            <Button type="button" size="sm" variant="outline" onClick={() => search(trimmedQuery, selectedWarehouse?.id)}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => search(trimmedQuery, selectedWarehouse?.id, 1, undefined, includeInactive)}
+            >
               Retry
             </Button>
           </div>
         ) : undefined}
+        getRowClassName={(row) =>
+          row.status === "inactive" ? "bg-muted/20 text-muted-foreground" : undefined
+        }
         emptyTitle={hasSearchQuery ? "No matching products." : "No products found."}
         emptyDescription={hasSearchQuery ? "Try a broader keyword or switch warehouse scope." : "No products exist in the system."}
         toolbar={(
@@ -88,15 +95,26 @@ export function ProductSearch({ onProductClick }: ProductSearchProps) {
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Warehouse scope: {selectedWarehouse?.name ?? "All warehouses"}</p>
             </div>
-            <div className="relative w-full max-w-md">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search by code or name…"
-                onChange={(event) => search(event.target.value, selectedWarehouse?.id)}
-                aria-label="Search products"
-                className="pl-9"
-              />
+            <div className="flex w-full max-w-xl flex-col gap-3 md:flex-row md:items-center">
+              <div className="relative w-full max-w-md">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search by code or name…"
+                  onChange={(event) => search(event.target.value, selectedWarehouse?.id, 1, undefined, includeInactive)}
+                  aria-label="Search products"
+                  className="pl-9"
+                />
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant={includeInactive ? "default" : "outline"}
+                aria-pressed={includeInactive}
+                onClick={() => search(trimmedQuery, selectedWarehouse?.id, 1, undefined, !includeInactive)}
+              >
+                Show inactive
+              </Button>
             </div>
           </DataTableToolbar>
         )}

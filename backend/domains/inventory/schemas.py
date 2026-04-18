@@ -227,6 +227,10 @@ class ProductUpdate(BaseModel):
     unit: str = Field(..., min_length=1, max_length=50)
 
 
+class ProductStatusUpdate(BaseModel):
+    status: Literal["active", "inactive"]
+
+
 class ProductResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

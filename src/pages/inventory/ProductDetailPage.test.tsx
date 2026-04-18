@@ -46,6 +46,7 @@ const mocks = vi.hoisted(() => ({
   },
   reload: vi.fn(),
   applyLocalUpdate: vi.fn(),
+  setProductStatus: vi.fn(),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -77,6 +78,10 @@ vi.mock("@/domain/inventory/hooks/useProductDetail", () => ({
     reload: mocks.reload,
     applyLocalUpdate: mocks.applyLocalUpdate,
   })),
+}));
+
+vi.mock("@/lib/api/inventory", () => ({
+  setProductStatus: (...args: unknown[]) => mocks.setProductStatus(...args),
 }));
 
 vi.mock("@/domain/inventory/components/EditProductForm", () => ({
@@ -165,6 +170,7 @@ afterEach(() => {
   cleanup();
   mocks.reload.mockReset();
   mocks.applyLocalUpdate.mockReset();
+  mocks.setProductStatus.mockReset();
   vi.restoreAllMocks();
 });
 
@@ -226,6 +232,42 @@ describe("ProductDetailPage", () => {
 
     await waitFor(() => {
       expect(mocks.applyLocalUpdate).toHaveBeenCalledWith(mocks.updatedProduct);
+    });
+    await waitFor(() => {
+      expect(mocks.reload).toHaveBeenCalled();
+    });
+  });
+
+  it("confirms deactivation before updating product status", async () => {
+    mocks.setProductStatus.mockResolvedValue({
+      ok: true,
+      data: {
+        ...mocks.updatedProduct,
+        status: "inactive",
+      },
+    });
+
+    const { ProductDetailPage } = await import("./ProductDetailPage");
+
+    render(
+      <MemoryRouter initialEntries={["/inventory/product-1"]}>
+        <Routes>
+          <Route path="/inventory/:productId" element={<ProductDetailPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "inventory.productDetail.deactivate" }));
+    fireEvent.click(screen.getByRole("button", { name: "inventory.productDetail.confirmDeactivate" }));
+
+    await waitFor(() => {
+      expect(mocks.setProductStatus).toHaveBeenCalledWith("product-1", "inactive");
+    });
+    await waitFor(() => {
+      expect(mocks.applyLocalUpdate).toHaveBeenCalledWith({
+        ...mocks.updatedProduct,
+        status: "inactive",
+      });
     });
     await waitFor(() => {
       expect(mocks.reload).toHaveBeenCalled();

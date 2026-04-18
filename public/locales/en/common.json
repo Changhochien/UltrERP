@@ -1274,6 +1274,7 @@
     },
     "productGrid": {
       "searchPlaceholder": "Search by code or name…",
+      "showInactive": "Show inactive",
       "allStatus": "All Status",
       "active": "Active",
       "lowStock": "Low Stock",
@@ -1319,8 +1320,13 @@
         "title": "Adjustment History"
       },
       "belowReorderPoint": "Below reorder point",
+      "activate": "Activate product",
+      "cancel": "Cancel",
       "category": "Category: {category}",
       "code": "Code: {code}",
+      "confirmDeactivate": "Deactivate product",
+      "deactivate": "Deactivate product",
+      "deactivateDescription": "Inactive products stay in history and still reserve their code, but they disappear from default search and selectors.",
       "edit": "Edit product",
       "editDescription": "Update code, name, category, description, and unit.",
       "error": "Error: {message}",
