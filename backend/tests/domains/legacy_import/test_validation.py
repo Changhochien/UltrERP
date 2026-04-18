@@ -34,6 +34,8 @@ class FakeValidationConnection:
             return self.rows_by_key.get("stage_tables", [])
         if 'FROM "raw_legacy".canonical_import_step_runs' in query:
             return self.rows_by_key.get("canonical_steps", [])
+        if 'FROM "raw_legacy".source_row_resolution' in query:
+            return self.rows_by_key.get("resolution_status_counts", [])
         if "FROM customers" in query and "GROUP BY customer_type" in query:
             return self.rows_by_key.get("customer_type_counts", [])
         if "SELECT col_3 AS invoice_date_raw" in query:
@@ -150,6 +152,10 @@ async def test_validate_import_batch_blocks_on_severity1_and_keeps_severity2_vis
                 "supplier_invoice_count": 0,
                 "supplier_invoice_snapshot_count": 0,
             },
+            "resolution_status_counts": [
+                {"status": "holding", "row_count": 2},
+                {"status": "resolved", "row_count": 6},
+            ],
             "cutoff_date": date(2024, 8, 31),
         }
     )
@@ -187,7 +193,12 @@ async def test_validate_import_batch_blocks_on_severity1_and_keeps_severity2_vis
     report_payload = json.loads(result.json_path.read_text(encoding="utf-8"))
     assert report_payload["status"] == "blocked"
     assert report_payload["replay"]["scope_cutoff_date"] == "2024-08-31"
+    assert report_payload["counts"]["resolution_holding_count"] == 2
     assert report_payload["epic13_handoff"]["scope_key"] == result.report.replay.scope_key
+    assert report_payload["epic13_handoff"]["resolution_status_counts"] == {
+        "resolution_holding_count": 2,
+        "resolution_resolved_count": 6,
+    }
     assert report_payload["issues"][2]["code"] == "unresolved-product-mappings"
     assert "Severity 1" in result.markdown_path.read_text(encoding="utf-8")
 
@@ -265,6 +276,9 @@ async def test_validate_import_batch_marks_clean_replayed_scope_success(
                 "supplier_invoice_count": 0,
                 "supplier_invoice_snapshot_count": 0,
             },
+            "resolution_status_counts": [
+                {"status": "resolved", "row_count": 3},
+            ],
             "cutoff_date": date(2024, 8, 31),
         }
     )
@@ -295,8 +309,12 @@ async def test_validate_import_batch_marks_clean_replayed_scope_success(
     assert result.report.replay.disposition == "replayed-scope"
     assert result.report.blocking_issue_count == 0
     assert result.report.epic13_handoff["lineage_count"] == 3
+    assert result.report.epic13_handoff["resolution_status_counts"] == {
+        "resolution_resolved_count": 3,
+    }
     assert result.report.counts["customer_type_dealer_count"] == 2
     assert result.report.counts["customer_type_unknown_count"] == 1
+    assert result.report.counts["resolution_resolved_count"] == 3
     assert result.json_path.exists()
     assert result.markdown_path.exists()
 

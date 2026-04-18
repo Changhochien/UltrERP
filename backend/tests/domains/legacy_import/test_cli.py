@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import asyncpg
 import pytest
 
 from domains.legacy_import import cli
@@ -16,7 +17,12 @@ from domains.legacy_import.mapping import (
     ProductMappingReviewExportResult,
     ProductMappingReviewImportResult,
 )
-from domains.legacy_import.staging import StageBatchResult, StageTableResult
+from domains.legacy_import.staging import (
+    LegacySourceCompatibilityError,
+    StageBatchResult,
+    StageSourceDescriptor,
+    StageTableResult,
+)
 from domains.legacy_import.validation import (
     ImportReplayMetadata,
     MigrationBatchValidationResult,
@@ -32,7 +38,7 @@ def test_stage_cli_invokes_stage_import(monkeypatch, capsys) -> None:
         return StageBatchResult(
             batch_id="batch-001",
             schema_name="raw_legacy",
-            source_dir=Path("/tmp/legacy-data"),
+            source_descriptor=StageSourceDescriptor.file(Path("/tmp/legacy-data")),
             tables=(
                 StageTableResult(
                     table_name="tbscust",
@@ -51,6 +57,127 @@ def test_stage_cli_invokes_stage_import(monkeypatch, capsys) -> None:
     assert result == 0
     assert "batch batch-001" in output
     assert "tbscust: 2 rows" in output
+
+
+def test_live_stage_cli_invokes_live_stage_import(monkeypatch, capsys) -> None:
+    async def fake_run_live_stage_import(**kwargs):
+        assert kwargs["batch_id"] == "batch-live-001"
+        assert kwargs["source_schema"] == "public"
+        assert kwargs["selected_tables"] == ("tbscust", "tbsstock")
+        return StageBatchResult(
+            batch_id="batch-live-001",
+            schema_name="raw_legacy",
+            source_descriptor=StageSourceDescriptor.live(
+                database="cao50001",
+                schema_name="public",
+            ),
+            tables=(
+                StageTableResult(
+                    table_name="tbscust",
+                    row_count=2,
+                    column_count=3,
+                    source_file="public.tbscust",
+                ),
+                StageTableResult(
+                    table_name="tbsstock",
+                    row_count=1,
+                    column_count=4,
+                    source_file="public.tbsstock",
+                ),
+            ),
+        )
+
+    monkeypatch.setattr(cli, "run_live_stage_import", fake_run_live_stage_import)
+
+    result = cli.main(
+        [
+            "live-stage",
+            "--batch-id",
+            "batch-live-001",
+            "--table",
+            "tbscust",
+            "--table",
+            "tbsstock",
+        ]
+    )
+    output = capsys.readouterr().out
+
+    assert result == 0
+    assert "from legacy-db:cao50001/public" in output
+    assert "tbscust: 2 rows" in output
+    assert "tbsstock: 1 rows" in output
+
+
+def test_live_stage_cli_reports_connection_failures(monkeypatch, capsys) -> None:
+    async def fake_run_live_stage_import(**kwargs):
+        raise OSError("timed out")
+
+    monkeypatch.setattr(cli, "run_live_stage_import", fake_run_live_stage_import)
+
+    result = cli.main(["live-stage", "--batch-id", "batch-live-002"])
+    captured = capsys.readouterr()
+
+    assert result == 1
+    assert "Live legacy DB connection failed" in captured.err
+    assert "timed out" in captured.err
+
+
+def test_live_stage_cli_reports_connect_time_postgres_errors_as_connection_failures(
+    monkeypatch, capsys
+) -> None:
+    async def fake_run_live_stage_import(**kwargs):
+        raise asyncpg.InvalidCatalogNameError('database "missing" does not exist')
+
+    monkeypatch.setattr(cli, "run_live_stage_import", fake_run_live_stage_import)
+
+    result = cli.main(["live-stage", "--batch-id", "batch-live-002b"])
+    captured = capsys.readouterr()
+
+    assert result == 1
+    assert "Live legacy DB connection failed" in captured.err
+    assert 'database "missing" does not exist' in captured.err
+
+
+def test_live_stage_cli_reports_discovery_failures(monkeypatch, capsys) -> None:
+    async def fake_run_live_stage_import(**kwargs):
+        raise LegacySourceCompatibilityError(
+            "Requested live-source tables not found in public: missing_table"
+        )
+
+    monkeypatch.setattr(cli, "run_live_stage_import", fake_run_live_stage_import)
+
+    result = cli.main(["live-stage", "--batch-id", "batch-live-003", "--table", "missing_table"])
+    captured = capsys.readouterr()
+
+    assert result == 1
+    assert "Live legacy table discovery failed" in captured.err
+    assert "missing_table" in captured.err
+
+
+def test_print_stage_summary_supports_source_agnostic_descriptors(capsys) -> None:
+    cli._print_stage_summary(
+        StageBatchResult(
+            batch_id="batch-010",
+            schema_name="raw_legacy",
+            source_descriptor=StageSourceDescriptor.live(
+                database="cao50001",
+                schema_name="public",
+            ),
+            tables=(
+                StageTableResult(
+                    table_name="tbscust",
+                    row_count=2,
+                    column_count=3,
+                    source_file="public.tbscust",
+                ),
+            ),
+        )
+    )
+
+    output = capsys.readouterr().out
+
+    assert "from legacy-db:cao50001/public" in output
+    assert "source=public.tbscust" in output
 
 
 def test_stage_cli_rejects_invalid_tenant_id(capsys) -> None:
@@ -361,3 +488,11 @@ def test_validate_import_cli_passes_attempt_number(monkeypatch, capsys, tmp_path
     assert "status=clean" in output
     assert "json=" in output
     assert "markdown=" in output
+
+
+def test_validate_import_cli_rejects_negative_attempt_number(capsys) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        cli.main(["validate-import", "--batch-id", "batch-155", "--attempt-number", "-1"])
+
+    assert exc_info.value.code == 2
+    assert "value must be a non-negative integer" in capsys.readouterr().err

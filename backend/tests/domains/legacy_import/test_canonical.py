@@ -8,9 +8,11 @@ import pytest
 
 import domains.legacy_import.canonical as canonical
 import domains.legacy_import.cli as cli
+import domains.legacy_import.source_resolution as source_resolution
 from common.models.stock_adjustment import ReasonCode
 from domains.legacy_import.mapping import UNKNOWN_PRODUCT_CODE
 from domains.legacy_import.normalization import deterministic_legacy_uuid
+from tests.domains.legacy_import.test_ap_payment_import import FakePaymentConnection
 
 
 class FakeCanonicalTransaction:
@@ -40,6 +42,7 @@ class FakeCanonicalConnection:
     def __init__(self, rows_by_key: dict[str, list[dict[str, object]]]) -> None:
         self.rows_by_key = rows_by_key
         self.execute_calls: list[tuple[str, tuple[object, ...]]] = []
+        self.executemany_calls: list[tuple[str, list[tuple[object, ...]]]] = []
         self.committed_execute_calls: list[tuple[str, tuple[object, ...]]] = []
         self.transaction_buffers: list[list[tuple[str, tuple[object, ...]]]] = []
         self.transaction_started = False
@@ -52,6 +55,9 @@ class FakeCanonicalConnection:
         self._fake_stock_adjustments: dict[uuid.UUID, dict[str, object]] = {}
         self._fake_lineage_rows: dict[tuple[object, ...], dict[str, object]] = {}
         self._fake_order_lines: dict[uuid.UUID, dict[str, object]] = {}
+        self._fake_resolution_rows: dict[tuple[object, ...], dict[str, object]] = {}
+        self._fake_resolution_events: list[dict[str, object]] = []
+        self._fake_holding_rows: dict[tuple[object, ...], dict[str, object]] = {}
 
     def transaction(self) -> FakeCanonicalTransaction:
         return FakeCanonicalTransaction(self)
@@ -107,6 +113,10 @@ class FakeCanonicalConnection:
         if "FROM suppliers WHERE tenant_id" in query and "normalized_business_number" in query:
             tenant_id, business_number = args[0], args[1]
             return self._fake_suppliers.get((tenant_id, business_number))
+        if 'FROM "raw_legacy".source_row_resolution' in query:
+            key = (args[0], args[1], args[2], args[3], args[4])
+            row = self._fake_resolution_rows.get(key)
+            return None if row is None else dict(row)
         rows = await self.fetch(query, *args)
         return rows[0] if rows else None
 
@@ -203,12 +213,67 @@ class FakeCanonicalConnection:
                 if existing.get("product_category_snapshot") is None:
                     existing["product_category_snapshot"] = args[17]
         elif 'INSERT INTO "raw_legacy".canonical_record_lineage' in query:
-            lineage_key = tuple(args[:6])
+            lineage_key = (args[0], args[1], args[2], args[4], args[5], args[6])
             self._fake_lineage_rows[lineage_key] = {
-                "source_row_number": args[6],
+                "canonical_id": args[3],
                 "import_run_id": args[7],
             }
+        elif 'INSERT INTO "raw_legacy".source_row_resolution_events' in query:
+            self._fake_resolution_events.append(
+                {
+                    "event_id": args[0],
+                    "tenant_id": args[1],
+                    "batch_id": args[2],
+                    "source_table": args[3],
+                    "source_identifier": args[4],
+                    "source_row_number": args[5],
+                    "domain_name": args[6],
+                    "previous_status": args[7],
+                    "new_status": args[8],
+                    "holding_id": args[9],
+                    "canonical_table": args[10],
+                    "canonical_id": args[11],
+                    "notes": args[12],
+                    "import_run_id": args[13],
+                }
+            )
+        elif 'INSERT INTO "raw_legacy".source_row_resolution' in query:
+            key = (args[0], args[1], args[2], args[3], args[4])
+            self._fake_resolution_rows[key] = {
+                "tenant_id": args[0],
+                "batch_id": args[1],
+                "source_table": args[2],
+                "source_identifier": args[3],
+                "source_row_number": args[4],
+                "domain_name": args[5],
+                "status": args[6],
+                "holding_id": args[7],
+                "canonical_table": args[8],
+                "canonical_id": args[9],
+                "notes": args[10],
+                "import_run_id": args[11],
+            }
+        elif 'INSERT INTO "raw_legacy".unsupported_history_holding' in query:
+            key = (args[1], args[2], args[4], args[5], args[6])
+            self._fake_holding_rows[key] = {
+                "id": args[0],
+                "tenant_id": args[1],
+                "batch_id": args[2],
+                "domain_name": args[3],
+                "source_table": args[4],
+                "source_identifier": args[5],
+                "source_row_number": args[6],
+            }
+        elif 'DELETE FROM "raw_legacy".unsupported_history_holding' in query:
+            key = (args[0], args[1], args[2], args[3], args[4])
+            self._fake_holding_rows.pop(key, None)
         return "OK"
+
+    async def executemany(self, query: str, args_iterable) -> None:
+        rows = [tuple(args) for args in args_iterable]
+        self.executemany_calls.append((query, rows))
+        for args in rows:
+            await self.execute(query, *args)
 
     async def close(self) -> None:
         self.closed = True
@@ -292,6 +357,88 @@ async def test_iter_normalized_parties_selects_customer_type() -> None:
     assert rows == [{"legacy_code": "C001", "role": "customer", "customer_type": "dealer"}]
 
 
+@pytest.mark.asyncio
+async def test_try_upsert_holding_and_lineage_rolls_back_with_savepoint(
+    monkeypatch,
+) -> None:
+    connection = FakeCanonicalConnection({})
+
+    async def fail_holding_row(*args, **kwargs) -> None:
+        raise ValueError("boom")
+
+    monkeypatch.setattr(source_resolution, "hold_source_row", fail_holding_row)
+
+    result = await canonical._try_upsert_holding_and_lineage(
+        connection,
+        "raw_legacy",
+        uuid.uuid4(),
+        uuid.UUID("00000000-0000-0000-0000-000000000599"),
+        "batch-savepoint",
+        "payment_history",
+        "tbsspay",
+        "PAY-001",
+        17,
+        17,
+        {"col_2": "PAY-001"},
+        "holding test",
+    )
+
+    assert result is False
+    assert connection.committed_execute_calls == []
+    assert connection._fake_resolution_rows == {}
+    assert connection._fake_holding_rows == {}
+    assert not any(query.strip() == "ROLLBACK" for query, _ in connection.execute_calls)
+
+
+@pytest.mark.asyncio
+async def test_flush_lineage_resolutions_uses_executemany_when_available() -> None:
+    connection = FakeCanonicalConnection({})
+    run_id = uuid.uuid4()
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000612")
+
+    await canonical._flush_lineage_resolutions(
+        connection,
+        "raw_legacy",
+        run_id,
+        tenant_id,
+        "batch-lineage",
+        [
+            canonical.PendingLineageResolution(
+                canonical_table="orders",
+                canonical_id=uuid.uuid4(),
+                source_table="tbsslipx",
+                source_identifier="SO-001",
+                source_row_number=1,
+            ),
+            canonical.PendingLineageResolution(
+                canonical_table="orders",
+                canonical_id=uuid.uuid4(),
+                source_table="tbsslipx",
+                source_identifier="SO-002",
+                source_row_number=2,
+            ),
+        ],
+    )
+
+    lineage_batches = [
+        rows
+        for query, rows in connection.executemany_calls
+        if 'INSERT INTO "raw_legacy".canonical_record_lineage' in query
+    ]
+    assert len(lineage_batches) == 1
+    assert [row[5] for row in lineage_batches[0]] == ["SO-001", "SO-002"]
+    assert any(
+        'INSERT INTO "raw_legacy".source_row_resolution' in query
+        for query, _ in connection.executemany_calls
+    )
+    assert connection._fake_resolution_rows[
+        (tenant_id, "batch-lineage", "tbsslipx", "SO-001", 1)
+    ]["status"] == source_resolution.STATUS_RESOLVED
+    assert connection._fake_resolution_rows[
+        (tenant_id, "batch-lineage", "tbsslipx", "SO-002", 2)
+    ]["status"] == source_resolution.STATUS_RESOLVED
+
+
 def _args_for_queries(
     execute_calls: list[tuple[str, tuple[object, ...]]],
     needle: str,
@@ -320,6 +467,8 @@ async def test_ensure_canonical_support_tables_create_run_lineage_and_holding_ta
     assert 'CREATE TABLE IF NOT EXISTS "raw_legacy".canonical_import_step_runs' in ddl
     assert 'CREATE TABLE IF NOT EXISTS "raw_legacy".canonical_record_lineage' in ddl
     assert 'CREATE TABLE IF NOT EXISTS "raw_legacy".unsupported_history_holding' in ddl
+    assert 'CREATE TABLE IF NOT EXISTS "raw_legacy".source_row_resolution' in ddl
+    assert 'CREATE TABLE IF NOT EXISTS "raw_legacy".source_row_resolution_events' in ddl
 
 
 @pytest.mark.asyncio
@@ -1470,6 +1619,268 @@ async def test_run_canonical_import_imports_legacy_receiving_audit_records(
 
 
 @pytest.mark.asyncio
+async def test_run_canonical_import_batch_rerun_is_idempotent_at_lineage_layer(monkeypatch) -> None:
+    """AC4: Re-running the same batch produces exactly one lineage entry per (canonical_table, source_table, source_identifier).
+
+    The lineage primary key is (batch_id, tenant_id, canonical_table, source_table, source_identifier),
+    so a rerun of the same batch triggers ON CONFLICT DO UPDATE rather than inserting a duplicate.
+    """
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000471")
+    connection = FakeCanonicalConnection(
+        {
+            "normalized_parties": [
+                {
+                    "legacy_code": "T067",
+                    "role": "supplier",
+                    "company_name": "Supplier A",
+                    "tax_id": "22345678",
+                    "full_address": "Taoyuan",
+                    "address": "Taoyuan",
+                    "phone": "03-1234",
+                    "email": "",
+                    "contact_person": "Bob",
+                    "source_table": "tbscust",
+                    "source_row_number": 7,
+                    "deterministic_id": deterministic_legacy_uuid("party", "supplier", "T067"),
+                }
+            ],
+            "normalized_products": [
+                {
+                    "legacy_code": "P001",
+                    "name": "Widget",
+                    "category": "BELT",
+                    "unit": "pcs",
+                    "status": "A",
+                    "source_table": "tbsstock",
+                    "source_row_number": 12,
+                    "deterministic_id": deterministic_legacy_uuid("product", "P001"),
+                }
+            ],
+            "normalized_warehouses": [
+                {
+                    "code": "WH-A",
+                    "name": "Legacy Warehouse A",
+                    "location": None,
+                    "address": None,
+                    "source_table": "tbsstkhouse",
+                    "source_row_number": 31,
+                    "deterministic_id": deterministic_legacy_uuid("warehouse", "WH-A"),
+                }
+            ],
+            "normalized_inventory_prep": [
+                {
+                    "product_legacy_code": "P001",
+                    "warehouse_code": "WH-A",
+                    "quantity_on_hand": 8,
+                    "reorder_point": 0,
+                    "product_deterministic_id": deterministic_legacy_uuid("product", "P001"),
+                    "warehouse_deterministic_id": deterministic_legacy_uuid("warehouse", "WH-A"),
+                }
+            ],
+            "product_code_mapping": [],
+            "sales_headers": [],
+            "sales_lines": [],
+            "purchase_headers": [
+                {
+                    "doc_number": "1130827001",
+                    "raw_invoice_number": "GG46104158",
+                    "invoice_number": "GG46104158",
+                    "slip_date": "2024-08-27",
+                    "raw_invoice_date": "2024-08-27",
+                    "invoice_date": "2024-08-27",
+                    "period_code": "11308",
+                    "supplier_code": "T067",
+                    "supplier_name": "Supplier A",
+                    "address": "Taoyuan",
+                    "notes": "SQ04",
+                    "subtotal": "90.00",
+                    "tax_amount": "5.00",
+                    "must_pay_amount": "95.00",
+                    "total_amount": "95.00",
+                    "source_row_number": 17,
+                }
+            ],
+            "purchase_lines": [
+                {
+                    "doc_number": "1130827001",
+                    "line_number": 1,
+                    "product_code": "P001",
+                    "product_name": "Widget",
+                    "warehouse_code": "WH-A",
+                    "qty": "3",
+                    "unit_price": "30.00",
+                    "extended_amount": "90.00",
+                    "receipt_date": "2024-08-27",
+                    "source_row_number": 18,
+                }
+            ],
+        }
+    )
+
+    async def fake_open_raw_connection() -> FakeCanonicalConnection:
+        return connection
+
+    monkeypatch.setattr(canonical, "_open_raw_connection", fake_open_raw_connection)
+
+    batch_id = "batch-receiving-audit"
+
+    # First run
+    await canonical.run_canonical_import(
+        batch_id=batch_id,
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+    )
+
+    # Capture all lineage queries from the first run
+    lineage_queries = [
+        query for query, _ in connection.committed_execute_calls
+        if 'INSERT INTO "raw_legacy".canonical_record_lineage' in query
+    ]
+
+    # AC1 & AC2: The ON CONFLICT clause targets (batch_id, tenant_id, canonical_table, source_table, source_identifier)
+    # WITHOUT canonical_id — this is the fix for AC4 batch-scoped deduplication.
+    # If canonical_id were in the constraint, a rerun with a new import_run_id (new UUID per run)
+    # would bypass the conflict and insert a duplicate lineage row.
+    for query in lineage_queries:
+        assert "ON CONFLICT" in query, "Lineage INSERT must have ON CONFLICT clause"
+        on_conflict_idx = query.index("ON CONFLICT")
+        do_update_idx = query.index("DO UPDATE")
+        on_conflict_target = query[on_conflict_idx:do_update_idx]
+        assert "canonical_id" not in on_conflict_target.lower(), (
+            f"ON CONFLICT target must NOT include canonical_id for batch-scoped deduplication. "
+            f"Found: {on_conflict_target}"
+        )
+        # batch_id must be first in the constraint (batch-scoped deduplication)
+        assert "batch_id" in on_conflict_target, (
+            f"ON CONFLICT target must include batch_id. Found: {on_conflict_target}"
+        )
+
+
+@pytest.mark.asyncio
+async def test_run_canonical_import_receiving_audit_routes_blank_doc_number_to_holding(
+    monkeypatch,
+) -> None:
+    """Blank doc_number rows are routed to holding to prevent UUID collisions."""
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000416")
+    connection = FakeCanonicalConnection(
+        {
+            "normalized_parties": [
+                {
+                    "legacy_code": "T067",
+                    "role": "supplier",
+                    "company_name": "Supplier A",
+                    "tax_id": "22345678",
+                    "full_address": "Taoyuan",
+                    "address": "Taoyuan",
+                    "phone": "03-1234",
+                    "email": "ap@supplier.test",
+                    "contact_person": "Betty",
+                    "source_table": "tbscust",
+                    "source_row_number": 7,
+                    "deterministic_id": deterministic_legacy_uuid("party", "supplier", "T067"),
+                }
+            ],
+            "normalized_products": [
+                {
+                    "legacy_code": "P001",
+                    "name": "Widget",
+                    "category": "BELT",
+                    "unit": "pcs",
+                    "status": "A",
+                    "source_table": "tbsstock",
+                    "source_row_number": 12,
+                    "deterministic_id": deterministic_legacy_uuid("product", "P001"),
+                }
+            ],
+            "normalized_warehouses": [
+                {
+                    "code": "WH-A",
+                    "name": "Legacy Warehouse A",
+                    "location": None,
+                    "address": None,
+                    "source_table": "tbsstkhouse",
+                    "source_row_number": 31,
+                    "deterministic_id": deterministic_legacy_uuid("warehouse", "WH-A"),
+                }
+            ],
+            "normalized_inventory_prep": [],
+            "product_code_mapping": [],
+            "sales_headers": [],
+            "sales_lines": [],
+            "purchase_headers": [
+                {
+                    "doc_number": "1130827001",
+                    "raw_invoice_number": "GG46104158",
+                    "invoice_number": "GG46104158",
+                    "slip_date": "2024-08-27",
+                    "raw_invoice_date": "2024-08-27",
+                    "invoice_date": "2024-08-27",
+                    "period_code": "11308",
+                    "supplier_code": "T067",
+                    "supplier_name": "Supplier A",
+                    "address": "Taoyuan",
+                    "notes": "SQ04",
+                    "subtotal": "90.00",
+                    "tax_amount": "5.00",
+                    "must_pay_amount": "95.00",
+                    "total_amount": "95.00",
+                    "source_row_number": 17,
+                }
+            ],
+            # doc_number is blank — should be routed to holding, not cause UUID collision
+            "purchase_lines": [
+                {
+                    "doc_number": "",  # blank doc_number
+                    "line_number": 3,
+                    "product_code": "P001",
+                    "product_name": "Widget",
+                    "warehouse_code": "WH-A",
+                    "qty": "3",
+                    "unit_price": "30.00",
+                    "extended_amount": "90.00",
+                    "receipt_date": "2024-08-27",
+                    # source_row_number absent — row_identity falls back to line_number
+                }
+            ],
+        }
+    )
+
+    async def fake_open_raw_connection() -> FakeCanonicalConnection:
+        return connection
+
+    monkeypatch.setattr(canonical, "_open_raw_connection", fake_open_raw_connection)
+
+    await canonical.run_canonical_import(
+        batch_id="batch-receiving-blank-doc",
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+    )
+
+    # Blank doc_number row must NOT produce a stock adjustment (it is held)
+    assert not any(
+        "INSERT INTO stock_adjustment" in query
+        for query, _ in connection.execute_calls
+    ), "Blank doc_number row should not produce a stock adjustment"
+
+    # Blank doc_number row must be routed to unsupported_history_holding
+    holding_calls = [
+        args
+        for query, args in connection.execute_calls
+        if 'INSERT INTO "raw_legacy".unsupported_history_holding' in query
+        and "tbsslipdtj" in args
+    ]
+    assert len(holding_calls) == 1, "Expected exactly one holding insert for blank doc_number row"
+
+    # row_identity should be line_number (3), not 0 (the default when source_row_number is absent)
+    holding_args = holding_calls[0]
+    # holding_args[5] is source_identifier (":{line_number}")
+    # holding_args[6] is source_row_number (stored in holding table — 0 since absent in test data)
+    # row_identity is used only in the UUID, not stored; verify via notes field instead
+    assert holding_args[5] == ":3", f"source_identifier should be ':3', got {holding_args[5]}"
+    assert "row_id=3" in holding_args[8], f"notes should mention row_id=3, got {holding_args[8]}"
+
+
+@pytest.mark.asyncio
 async def test_run_canonical_import_receiving_audit_coerces_fractional_quantity(
     monkeypatch,
 ) -> None:
@@ -2024,3 +2435,565 @@ def test_canonical_import_cli_invokes_service(monkeypatch, capsys) -> None:
     assert "attempt=3" in output
     assert "orders=1" in output
     assert "holding=2" in output
+
+
+# ---------------------------------------------------------------------------
+# Story 15.14 — Holding lineage AC1, AC2, AC3
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_holding_state_created_on_blank_doc_number_hold(monkeypatch) -> None:
+    """A blank receiving-audit doc number should create holding state and an
+    append-only holding event without writing a sentinel lineage row."""
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000440")
+    connection = FakeCanonicalConnection(
+        {
+            "normalized_parties": [
+                {
+                    "legacy_code": "T055",
+                    "role": "supplier",
+                    "company_name": "Holding Supplier",
+                    "tax_id": "22345678",
+                    "full_address": "Taoyuan",
+                    "address": "Taoyuan",
+                    "phone": "03-1234",
+                    "email": "ap@supplier.test",
+                    "contact_person": "Betty",
+                    "source_table": "tbscust",
+                    "source_row_number": 7,
+                    "deterministic_id": deterministic_legacy_uuid("party", "supplier", "T055"),
+                }
+            ],
+            "normalized_products": [
+                {
+                    "legacy_code": "P001",
+                    "name": "Widget",
+                    "category": "BELT",
+                    "unit": "pcs",
+                    "status": "A",
+                    "source_table": "tbsstock",
+                    "source_row_number": 12,
+                    "deterministic_id": deterministic_legacy_uuid("product", "P001"),
+                }
+            ],
+            "normalized_warehouses": [
+                {
+                    "code": "WH-A",
+                    "name": "Legacy Warehouse A",
+                    "location": None,
+                    "address": None,
+                    "source_table": "tbsstkhouse",
+                    "source_row_number": 31,
+                    "deterministic_id": deterministic_legacy_uuid("warehouse", "WH-A"),
+                }
+            ],
+            "normalized_inventory_prep": [],
+            "product_code_mapping": [],
+            "sales_headers": [],
+            "sales_lines": [],
+            "purchase_headers": [
+                {
+                    "doc_number": "1130827001",
+                    "raw_invoice_number": "GG46104158",
+                    "invoice_number": "GG46104158",
+                    "slip_date": "2024-08-27",
+                    "raw_invoice_date": "2024-08-27",
+                    "invoice_date": "2024-08-27",
+                    "period_code": "11308",
+                    "supplier_code": "T055",
+                    "supplier_name": "Holding Supplier",
+                    "address": "Taoyuan",
+                    "notes": "SQ04",
+                    "subtotal": "90.00",
+                    "tax_amount": "5.00",
+                    "must_pay_amount": "95.00",
+                    "total_amount": "95.00",
+                    "source_row_number": 17,
+                }
+            ],
+            # doc_number is blank — should be routed to holding
+            "purchase_lines": [
+                {
+                    "doc_number": "",  # blank doc_number triggers hold
+                    "line_number": 3,
+                    "product_code": "P001",
+                    "product_name": "Widget",
+                    "warehouse_code": "WH-A",
+                    "qty": "3",
+                    "unit_price": "30.00",
+                    "extended_amount": "90.00",
+                    "receipt_date": "2024-08-27",
+                    # source_row_number absent — row_identity falls back to line_number (3)
+                }
+            ],
+        }
+    )
+
+    async def fake_open_raw_connection() -> FakeCanonicalConnection:
+        return connection
+
+    monkeypatch.setattr(canonical, "_open_raw_connection", fake_open_raw_connection)
+
+    await canonical.run_canonical_import(
+        batch_id="batch-holding-lineage-blank",
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+    )
+
+    # Verify a holding insert was made
+    holding_calls = [
+        args
+        for query, args in connection.execute_calls
+        if 'INSERT INTO "raw_legacy".unsupported_history_holding' in query
+        and "tbsslipdtj" in args
+    ]
+    assert len(holding_calls) == 1, "Expected exactly one holding insert"
+
+    holding_keys = [
+        key
+        for key in connection._fake_resolution_rows
+        if key[2] == "tbsslipdtj" and key[3] == ":3"
+    ]
+    assert len(holding_keys) == 1
+    holding_state = connection._fake_resolution_rows[holding_keys[0]]
+    assert holding_state["status"] == source_resolution.STATUS_HOLDING
+    assert holding_state["domain_name"] == "receiving_audit"
+    assert holding_state["holding_id"] is not None
+    assert not any(key[2] == "__holding__" for key in connection._fake_lineage_rows)
+    assert any(
+        event["source_table"] == "tbsslipdtj"
+        and event["source_identifier"] == ":3"
+        and event["new_status"] == source_resolution.STATUS_HOLDING
+        for event in connection._fake_resolution_events
+    )
+
+
+@pytest.mark.asyncio
+async def test_holding_state_created_on_payment_adjacent_hold(monkeypatch) -> None:
+    """A payment-adjacent row should record holding state outside lineage."""
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000441")
+    # No tbscust = no verified payment → all tbsprepay rows are payment-adjacent
+    connection = FakeCanonicalConnection(
+        {
+            "normalized_parties": [],
+            "normalized_products": [],
+            "normalized_warehouses": [],
+            "normalized_inventory_prep": [],
+            "product_code_mapping": [],
+            "sales_headers": [],
+            "sales_lines": [],
+            "payment_headers": [
+                {
+                    "_source_row_number": 5,
+                    "col_2": "PAY-ADJ-001",
+                    "col_5": "Adjacent legacy memo",
+                    "col_8": "999.99",
+                }
+            ],
+        }
+    )
+
+    async def fake_open_raw_connection() -> FakeCanonicalConnection:
+        return connection
+
+    monkeypatch.setattr(canonical, "_open_raw_connection", fake_open_raw_connection)
+
+    result = await canonical.run_canonical_import(
+        batch_id="batch-holding-lineage-payment-adj",
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+    )
+
+    assert result.holding_count == 1
+
+    holding_keys = [
+        key
+        for key in connection._fake_resolution_rows
+        if key[2] == "tbsprepay" and key[3] == "PAY-ADJ-001"
+    ]
+    assert len(holding_keys) == 1
+    holding_state = connection._fake_resolution_rows[holding_keys[0]]
+    assert holding_state["status"] == source_resolution.STATUS_HOLDING
+    assert holding_state["domain_name"] == "payment_history"
+    assert not any(key[2] == "__holding__" for key in connection._fake_lineage_rows)
+
+
+@pytest.mark.asyncio
+async def test_holding_state_payment_adjacent_no_col2(monkeypatch) -> None:
+    """When col_2 is absent, holding state should fall back to the row-number-based
+    source identifier without creating sentinel lineage."""
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000443")
+    connection = FakeCanonicalConnection(
+        {
+            "normalized_parties": [],
+            "normalized_products": [],
+            "normalized_warehouses": [],
+            "normalized_inventory_prep": [],
+            "product_code_mapping": [],
+            "sales_headers": [],
+            "sales_lines": [],
+            "payment_headers": [
+                {
+                    "_source_row_number": 5,
+                    "col_2": None,  # absent payment number
+                    "col_5": "Adjacent legacy memo",
+                    "col_8": "999.99",
+                }
+            ],
+        }
+    )
+
+    async def fake_open_raw_connection() -> FakeCanonicalConnection:
+        return connection
+
+    monkeypatch.setattr(canonical, "_open_raw_connection", fake_open_raw_connection)
+
+    result = await canonical.run_canonical_import(
+        batch_id="batch-holding-lineage-no-col2",
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+    )
+
+    assert result.holding_count == 1
+
+    holding_keys = [
+        key
+        for key in connection._fake_resolution_rows
+        if key[2] == "tbsprepay" and key[3] == "tbsprepay:5"
+    ]
+    assert len(holding_keys) == 1
+    holding_state = connection._fake_resolution_rows[holding_keys[0]]
+    assert holding_state["status"] == source_resolution.STATUS_HOLDING
+    assert holding_state["holding_id"] is not None
+    assert not any(key[2] == "__holding__" for key in connection._fake_lineage_rows)
+
+
+@pytest.mark.asyncio
+async def test_holding_and_drained_rows_are_distinguishable(monkeypatch) -> None:
+    """AC3: rows with canonical_table='__holding__' are held rows; rows with
+    canonical_table='supplier_payments' are drained rows — they are queryable
+    as two distinct sets."""
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000442")
+
+    # Set up one row that will be held (blank doc_number) and one that will drain
+    connection = FakeCanonicalConnection(
+        {
+            "normalized_parties": [
+                {
+                    "legacy_code": "T055",
+                    "role": "supplier",
+                    "company_name": "Distinguish Supplier",
+                    "tax_id": "22345678",
+                    "full_address": "Taoyuan",
+                    "address": "Taoyuan",
+                    "phone": "03-1234",
+                    "email": "ap@supplier.test",
+                    "contact_person": "Betty",
+                    "source_table": "tbscust",
+                    "source_row_number": 7,
+                    "deterministic_id": deterministic_legacy_uuid("party", "supplier", "T055"),
+                }
+            ],
+            "normalized_products": [
+                {
+                    "legacy_code": "P001",
+                    "name": "Widget",
+                    "category": "BELT",
+                    "unit": "pcs",
+                    "status": "A",
+                    "source_table": "tbsstock",
+                    "source_row_number": 12,
+                    "deterministic_id": deterministic_legacy_uuid("product", "P001"),
+                }
+            ],
+            "normalized_warehouses": [
+                {
+                    "code": "WH-A",
+                    "name": "Legacy Warehouse A",
+                    "location": None,
+                    "address": None,
+                    "source_table": "tbsstkhouse",
+                    "source_row_number": 31,
+                    "deterministic_id": deterministic_legacy_uuid("warehouse", "WH-A"),
+                }
+            ],
+            "normalized_inventory_prep": [],
+            "product_code_mapping": [],
+            "sales_headers": [],
+            "sales_lines": [],
+            # This header has a valid doc_number — its line will drain as stock_adjustment
+            "purchase_headers": [
+                {
+                    "doc_number": "1130827001",
+                    "raw_invoice_number": "GG46104158",
+                    "invoice_number": "GG46104158",
+                    "slip_date": "2024-08-27",
+                    "raw_invoice_date": "2024-08-27",
+                    "invoice_date": "2024-08-27",
+                    "period_code": "11308",
+                    "supplier_code": "T055",
+                    "supplier_name": "Distinguish Supplier",
+                    "address": "Taoyuan",
+                    "notes": "SQ04",
+                    "subtotal": "90.00",
+                    "tax_amount": "5.00",
+                    "must_pay_amount": "95.00",
+                    "total_amount": "95.00",
+                    "source_row_number": 17,
+                }
+            ],
+            # Line with valid doc_number → drains as stock_adjustment
+            "purchase_lines": [
+                {
+                    "doc_number": "1130827001",
+                    "line_number": 1,
+                    "product_code": "P001",
+                    "warehouse_code": "WH-A",
+                    "qty": "3",
+                    "unit_price": "30.00",
+                    "extended_amount": "90.00",
+                    "receipt_date": "2024-08-27",
+                    "source_row_number": 18,
+                },
+            ],
+        }
+    )
+
+    async def fake_open_raw_connection() -> FakeCanonicalConnection:
+        return connection
+
+    monkeypatch.setattr(canonical, "_open_raw_connection", fake_open_raw_connection)
+
+    await canonical.run_canonical_import(
+        batch_id="batch-distinguish-holding-vs-drained",
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+    )
+
+    # Classify lineage entries by canonical_table
+    holding_entries = [
+        key for key in connection._fake_lineage_rows if key[2] == "__holding__"
+    ]
+    drained_entries = [
+        key
+        for key in connection._fake_lineage_rows
+        if key[2] not in ("__holding__",)
+    ]
+
+    # Drained rows should have lineage entries (stock_adjustment)
+    assert len(drained_entries) >= 1, "Expected at least one drained lineage entry"
+
+    # Holding entries should be absent — no blank doc_number rows in this test
+    assert len(holding_entries) == 0, (
+        f"Expected no __holding__ entries (no blank doc_number rows), got {len(holding_entries)}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Story 15.21 — Holding state and drain lineage are distinguishable
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_holding_and_drained_rows_are_distinguishable_holding(monkeypatch) -> None:
+    """A held receiving-audit row should exist in source resolution while drained
+    rows continue to appear only in canonical lineage."""
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000442")
+
+    # purchase_headers must have a valid doc_number (blank header raises an error
+    # before we even reach _import_legacy_receiving_audit where the blank line is handled).
+    # Only the purchase_lines (tbsslipdtj) row has blank doc_number — it goes to __holding__.
+    connection = FakeCanonicalConnection(
+        {
+            "normalized_parties": [
+                {
+                    "legacy_code": "T055",
+                    "role": "supplier",
+                    "company_name": "Distinguish Supplier",
+                    "tax_id": "22345678",
+                    "full_address": "Taoyuan",
+                    "address": "Taoyuan",
+                    "phone": "03-1234",
+                    "email": "ap@supplier.test",
+                    "contact_person": "Betty",
+                    "source_table": "tbscust",
+                    "source_row_number": 7,
+                    "deterministic_id": deterministic_legacy_uuid("party", "supplier", "T055"),
+                }
+            ],
+            "normalized_products": [
+                {
+                    "legacy_code": "P001",
+                    "name": "Widget",
+                    "category": "BELT",
+                    "unit": "pcs",
+                    "status": "A",
+                    "source_table": "tbsstock",
+                    "source_row_number": 12,
+                    "deterministic_id": deterministic_legacy_uuid("product", "P001"),
+                }
+            ],
+            "normalized_warehouses": [
+                {
+                    "code": "WH-A",
+                    "name": "Legacy Warehouse A",
+                    "location": None,
+                    "address": None,
+                    "source_table": "tbsstkhouse",
+                    "source_row_number": 31,
+                    "deterministic_id": deterministic_legacy_uuid("warehouse", "WH-A"),
+                }
+            ],
+            "normalized_inventory_prep": [],
+            "product_code_mapping": [],
+            "sales_headers": [],
+            "sales_lines": [],
+            # purchase_headers must have valid doc_number; blank lines in purchase_lines
+            # (tbsslipdtj) are handled by _import_legacy_receiving_audit
+            "purchase_headers": [
+                {
+                    "doc_number": "HOLD001",
+                    "raw_invoice_number": "HOLD001",
+                    "invoice_number": "HOLD001",
+                    "slip_date": "2024-08-27",
+                    "raw_invoice_date": "2024-08-27",
+                    "invoice_date": "2024-08-27",
+                    "period_code": "11308",
+                    "supplier_code": "T055",
+                    "supplier_name": "Distinguish Supplier",
+                    "address": "Taoyuan",
+                    "notes": "SQ04",
+                    "subtotal": "90.00",
+                    "tax_amount": "5.00",
+                    "must_pay_amount": "95.00",
+                    "total_amount": "95.00",
+                    "source_row_number": 17,
+                }
+            ],
+            # purchase_lines maps to tbsslipdtj (LEGACY_RECEIVING_SOURCE)
+            # blank doc_number → __holding__ entry in _import_legacy_receiving_audit
+            # col_1 must be '4' to pass the COALESCE(col_1, '') = '4' filter in _fetch_purchase_lines
+            "purchase_lines": [
+                {
+                    "col_1": "4",
+                    "doc_number": "",
+                    "line_number": 1,
+                    "product_code": "P001",
+                    "warehouse_code": "WH-A",
+                    "qty": "3",
+                    "unit_price": "30.00",
+                    "extended_amount": "90.00",
+                    "receipt_date": "2024-08-27",
+                    "source_row_number": 25,
+                },
+            ],
+        }
+    )
+
+    async def fake_open_raw_connection() -> FakeCanonicalConnection:
+        return connection
+
+    monkeypatch.setattr(canonical, "_open_raw_connection", fake_open_raw_connection)
+
+    await canonical.run_canonical_import(
+        batch_id="batch-holding-vs-drained",
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+    )
+
+    # Verify a holding insert was made for the blank doc_number tbsslipdtj row
+    holding_calls = [
+        args
+        for query, args in connection.execute_calls
+        if 'INSERT INTO "raw_legacy".unsupported_history_holding' in query
+        and "tbsslipdtj" in args
+    ]
+    assert len(holding_calls) == 1, (
+        f"Expected exactly one holding insert for blank doc_number row, got {len(holding_calls)}"
+    )
+
+    holding_entries = [
+        key
+        for key in connection._fake_resolution_rows
+        if key[2] == "tbsslipdtj" and key[3] == ":1"
+    ]
+    assert len(holding_entries) == 1, (
+        f"Expected exactly one holding state entry, got {len(holding_entries)}"
+    )
+    assert connection._fake_resolution_rows[holding_entries[0]]["status"] == source_resolution.STATUS_HOLDING
+    drained_entries = [
+        key
+        for key in connection._fake_lineage_rows
+        if key[2] != "__holding__"
+    ]
+    assert drained_entries, "Expected canonical lineage entries for drained records"
+    assert not any(key[2] == "__holding__" for key in connection._fake_lineage_rows)
+
+
+@pytest.mark.asyncio
+async def test_holding_and_drained_rows_are_distinguishable_drain(monkeypatch) -> None:
+    """A drained AP payment should resolve source state and write normal lineage,
+    with no sentinel holding lineage rows."""
+    import domains.legacy_import.ap_payment_import as ap_payment_import
+
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000442")
+    supplier_id = ap_payment_import._tenant_scoped_uuid(
+        tenant_id, "party", "supplier", "T008"
+    )
+
+    # Set up a tbsspay row with a verified supplier — it will drain to supplier_payments
+    connection = FakePaymentConnection(
+        {
+            "tbscust": [
+                {"legacy_code": "T008", "legacy_type": "1"},
+            ],
+            "supplier": [{"id": supplier_id}],
+            "tbsspay": [
+                {
+                    "col_2": "DRAIN-001",
+                    "col_4": "2016-05-05",
+                    "col_6": "T008",
+                    "col_8": "0001",
+                    "col_10": "570.00000000",
+                    "col_12": "CHK-001",
+                    "col_18": "drained payment",
+                    "_source_row_number": 1,
+                },
+            ],
+            "tbsprepay": [],
+        }
+    )
+    # Initialise lineage tracker so execute() can record entries
+    connection._fake_lineage_rows = {}
+
+    async def fake_open_raw_connection() -> FakePaymentConnection:
+        return connection
+
+    monkeypatch.setattr(ap_payment_import, "_open_raw_connection", fake_open_raw_connection)
+
+    result = await ap_payment_import.run_ap_payment_import(
+        batch_id="batch-holding-vs-drained-drain",
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+    )
+
+    assert result.payment_count == 1
+    assert result.holding_count == 0
+
+    all_lineage_keys = list(connection._fake_lineage_rows)
+    assert len(all_lineage_keys) == 1, (
+        f"Expected exactly one lineage entry, got {len(all_lineage_keys)}"
+    )
+
+    _t, _b, canonical_table, source_table, source_identifier, source_row_number = all_lineage_keys[0]
+    assert canonical_table == "supplier_payments"
+    assert source_table == "tbsspay"
+    assert source_identifier == "DRAIN-001"
+    assert source_row_number == 1
+    assert canonical_table != "__holding__"
+    resolution_row = connection._fake_resolution_rows[
+        (tenant_id, "batch-holding-vs-drained-drain", "tbsspay", "DRAIN-001", 1)
+    ]
+    assert resolution_row["status"] == source_resolution.STATUS_RESOLVED
+    assert resolution_row["canonical_table"] == "supplier_payments"

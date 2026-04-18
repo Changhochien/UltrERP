@@ -32,8 +32,14 @@ class FakeNormalizationTransaction:
 
 
 class FakeNormalizationConnection:
-    def __init__(self, staged_rows: dict[str, list[dict[str, object]]]) -> None:
+    def __init__(
+        self,
+        staged_rows: dict[str, list[dict[str, object]]],
+        *,
+        stage_run_rows: list[dict[str, object]] | None = None,
+    ) -> None:
         self.staged_rows = staged_rows
+        self.stage_run_rows = stage_run_rows or []
         self.execute_calls: list[tuple[str, tuple[object, ...]]] = []
         self.copy_calls: list[dict[str, object]] = []
         self.transaction_started = False
@@ -49,11 +55,27 @@ class FakeNormalizationConnection:
         return "OK"
 
     async def fetch(self, query: str, *args: object):
+        if "legacy_import_runs AS runs" in query:
+            batch_id = args[0] if args else None
+            schema_name = args[1] if len(args) > 1 else None
+            return [
+                row
+                for row in self.stage_run_rows
+                if row.get("batch_id") == batch_id and row.get("target_schema") == schema_name
+            ][:1]
         for table_name, rows in self.staged_rows.items():
             if f'FROM "raw_legacy"."{table_name}"' in query:
-                return rows
+                batch_id = args[0] if args else None
+                return [
+                    row for row in rows if row.get("_batch_id", batch_id) == batch_id
+                ]
         if 'FROM "raw_legacy".product_category_override' in query:
-            return self.staged_rows.get("product_category_override", [])
+            tenant_id = args[0] if args else None
+            return [
+                row
+                for row in self.staged_rows.get("product_category_override", [])
+                if row.get("tenant_id", tenant_id) == tenant_id
+            ]
         return []
 
     async def copy_records_to_table(
@@ -513,13 +535,21 @@ async def test_run_normalization_is_tenant_scoped_and_transactional(monkeypatch)
             ],
             "tbsstkhouse": [
                 {
-                    "product_code": "P001",
+                    "product_code": "PC096",
                     "warehouse_code": "A",
                     "qty_on_hand": "8.0000",
                     "source_row_number": 3,
                 }
             ],
-        }
+        },
+        stage_run_rows=[
+            {
+                "tenant_id": uuid.UUID("00000000-0000-0000-0000-000000000321"),
+                "status": "completed",
+                "batch_id": "batch-002",
+                "target_schema": "raw_legacy",
+            }
+        ],
     )
     tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000321")
 
@@ -570,6 +600,42 @@ async def test_run_normalization_is_tenant_scoped_and_transactional(monkeypatch)
     assert product_record["category_source"] == "heuristic_rule"
     assert product_record["category_rule_id"] == "code-prefix-v-belts"
     assert product_record["category_confidence"] == Decimal("0.98")
+
+
+@pytest.mark.asyncio
+async def test_run_normalization_rejects_stage_batches_for_other_tenants(monkeypatch) -> None:
+    requested_tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000321")
+    connection = FakeNormalizationConnection(
+        {
+            "tbscust": [],
+            "tbsstock": [],
+            "tbsstkhouse": [],
+        },
+        stage_run_rows=[
+            {
+                "tenant_id": uuid.UUID("00000000-0000-0000-0000-000000000999"),
+                "status": "completed",
+                "batch_id": "batch-002",
+                "target_schema": "raw_legacy",
+            }
+        ],
+    )
+
+    async def fake_open_raw_connection() -> FakeNormalizationConnection:
+        return connection
+
+    monkeypatch.setattr(normalization, "_open_raw_connection", fake_open_raw_connection)
+
+    with pytest.raises(ValueError, match="belongs to tenant"):
+        await normalization.run_normalization(
+            batch_id="batch-002",
+            tenant_id=requested_tenant_id,
+            schema_name="raw_legacy",
+        )
+
+    assert connection.transaction_started is False
+    assert connection.copy_calls == []
+    assert connection.closed is True
 
 
 @pytest.mark.asyncio
@@ -633,9 +699,18 @@ async def test_run_normalization_applies_category_overrides_and_records_review_c
                     "review_notes": "Legacy catalog corrected by analyst.",
                     "approval_source": "review-import",
                     "approved_by": "analyst@example.com",
+                    "tenant_id": uuid.UUID("00000000-0000-0000-0000-000000000321"),
                 }
             ],
-        }
+        },
+        stage_run_rows=[
+            {
+                "tenant_id": uuid.UUID("00000000-0000-0000-0000-000000000321"),
+                "status": "completed",
+                "batch_id": "batch-override",
+                "target_schema": "raw_legacy",
+            }
+        ],
     )
 
     async def fake_open_raw_connection() -> FakeNormalizationConnection:
@@ -686,7 +761,15 @@ async def test_run_normalization_does_not_clear_rows_before_stage_validation(mon
             "tbscust": [],
             "tbsstock": [],
             "tbsstkhouse": [],
-        }
+        },
+        stage_run_rows=[
+            {
+                "tenant_id": uuid.UUID("00000000-0000-0000-0000-000000000001"),
+                "status": "completed",
+                "batch_id": "missing-batch",
+                "target_schema": "raw_legacy",
+            }
+        ],
     )
 
     async def fake_open_raw_connection() -> FakeNormalizationConnection:
@@ -696,6 +779,81 @@ async def test_run_normalization_does_not_clear_rows_before_stage_validation(mon
 
     with pytest.raises(ValueError, match="No staged tbscust rows found"):
         await normalization.run_normalization(batch_id="missing-batch")
+
+    assert not any(
+        query.startswith('DELETE FROM "raw_legacy".') for query, _ in connection.execute_calls
+    )
+    assert connection.copy_calls == []
+    assert connection.transaction_started is True
+    assert connection.transaction_rolled_back is True
+    assert connection.closed is True
+
+
+@pytest.mark.asyncio
+async def test_run_normalization_rejects_inventory_rows_without_matching_product(
+    monkeypatch,
+) -> None:
+    connection = FakeNormalizationConnection(
+        {
+            "tbscust": [
+                {
+                    "legacy_code": "S001",
+                    "legacy_type": "1",
+                    "company_name": "Supplier One",
+                    "status_code": "A",
+                    "record_status": "A",
+                    "source_row_number": 1,
+                }
+            ],
+            "tbsstock": [
+                {
+                    "legacy_code": "PC096",
+                    "name": "三角皮帶 C-96",
+                    "legacy_category": None,
+                    "stock_kind": "0",
+                    "supplier_code": "S001",
+                    "origin": "TW",
+                    "unit": "條",
+                    "created_date": "2025-04-07",
+                    "last_sale_date": "2025-04-07",
+                    "avg_cost": "12.50",
+                    "status": "A",
+                    "source_row_number": 2,
+                }
+            ],
+            "tbsstkhouse": [
+                {
+                    "product_code": "P001",
+                    "warehouse_code": "A",
+                    "qty_on_hand": "8.0000",
+                    "source_row_number": 3,
+                }
+            ],
+        },
+        stage_run_rows=[
+            {
+                "tenant_id": uuid.UUID("00000000-0000-0000-0000-000000000321"),
+                "status": "completed",
+                "batch_id": "batch-002",
+                "target_schema": "raw_legacy",
+            }
+        ],
+    )
+
+    async def fake_open_raw_connection() -> FakeNormalizationConnection:
+        return connection
+
+    monkeypatch.setattr(normalization, "_open_raw_connection", fake_open_raw_connection)
+
+    with pytest.raises(
+        ValueError,
+        match="Inventory rows reference products missing from the staged product set: P001",
+    ):
+        await normalization.run_normalization(
+            batch_id="batch-002",
+            tenant_id=uuid.UUID("00000000-0000-0000-0000-000000000321"),
+            schema_name="raw_legacy",
+        )
 
     assert not any(
         query.startswith('DELETE FROM "raw_legacy".') for query, _ in connection.execute_calls

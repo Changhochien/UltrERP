@@ -11,6 +11,8 @@ def test_build_reset_plan_orders_lineaged_tables_before_control_rows() -> None:
             "stock_adjustment": 4,
             "warehouse": 1,
         },
+        resolution_state_count=2,
+        resolution_event_count=5,
         holding_count=2,
         lineage_count=9,
         step_run_count=5,
@@ -26,6 +28,8 @@ def test_build_reset_plan_orders_lineaged_tables_before_control_rows() -> None:
         "sales_backfill",
         "orders",
         "warehouse",
+        "source_row_resolution_events",
+        "source_row_resolution",
         "unsupported_history_holding",
         "canonical_record_lineage",
         "canonical_import_step_runs",
@@ -38,6 +42,8 @@ def test_build_reset_plan_orders_lineaged_tables_before_control_rows() -> None:
 def test_build_reset_plan_omits_optional_extra_slices_when_disabled() -> None:
     plan = reset_batch.build_reset_plan(
         lineage_counts={"inventory_stock": 5},
+        resolution_state_count=0,
+        resolution_event_count=0,
         holding_count=0,
         lineage_count=5,
         step_run_count=1,

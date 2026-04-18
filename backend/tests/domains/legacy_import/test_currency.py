@@ -7,7 +7,6 @@ import pytest
 from sqlalchemy.dialects import postgresql
 
 import domains.legacy_import.currency as currency
-from common.models.legacy_import import LegacyImportRun, LegacyImportTableRun
 
 
 class FakeSession:
@@ -65,6 +64,20 @@ class FakeSessionContext:
         return False
 
 
+class FakeLegacyImportRunRecord:
+    def __init__(self, **kwargs) -> None:
+        self.id = uuid.uuid4()
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+class FakeLegacyImportTableRunRecord:
+    def __init__(self, **kwargs) -> None:
+        self.id = uuid.uuid4()
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
 def _write_currency_export(tmp_path: Path) -> None:
     rows = [
         (
@@ -112,6 +125,13 @@ async def test_run_currency_import_upserts_settings_and_tracks_attempt(
     _write_currency_export(tmp_path)
     session = FakeSession(scalar_values=[None])
 
+    monkeypatch.setattr(currency, "LegacyImportRun", FakeLegacyImportRunRecord)
+    monkeypatch.setattr(currency, "LegacyImportTableRun", FakeLegacyImportTableRunRecord)
+
+    async def fake_next_batch_attempt_number(*args, **kwargs) -> int:
+        return 1
+
+    monkeypatch.setattr(currency, "_next_batch_attempt_number", fake_next_batch_attempt_number)
     monkeypatch.setattr(currency, "AsyncSessionLocal", lambda: FakeSessionContext(session))
 
     result = await currency.run_currency_import(
@@ -119,8 +139,10 @@ async def test_run_currency_import_upserts_settings_and_tracks_attempt(
         export_dir=tmp_path,
     )
 
-    run = next(obj for obj in session.added if isinstance(obj, LegacyImportRun))
-    table_run = next(obj for obj in session.added if isinstance(obj, LegacyImportTableRun))
+    run = next(obj for obj in session.added if isinstance(obj, FakeLegacyImportRunRecord))
+    table_run = next(
+        obj for obj in session.added if isinstance(obj, FakeLegacyImportTableRunRecord)
+    )
     statements = [
         str(
             statement.compile(

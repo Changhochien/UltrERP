@@ -5,6 +5,7 @@ SKILL_DIR = PROJECT_ROOT / ".agents" / "skills" / "legacy-import"
 SKILL_FILE = SKILL_DIR / "SKILL.md"
 COMMAND_MAP_FILE = SKILL_DIR / "command-map.md"
 SAFETY_GUIDE_FILE = SKILL_DIR / "safety-and-validation.md"
+ENV_EXAMPLE_FILE = PROJECT_ROOT / ".env.example"
 
 
 def _read(path: Path) -> str:
@@ -36,3 +37,17 @@ def test_legacy_import_skill_documents_machine_readable_validation() -> None:
     assert "blocking_issue_count" in safety_guide_text
     assert "replay.scope_key" in safety_guide_text
     assert "no canonical import run exists" in safety_guide_text
+
+
+def test_legacy_import_skill_documents_live_stage_and_env_requirements() -> None:
+    skill_text = _read(SKILL_FILE)
+    command_map_text = _read(COMMAND_MAP_FILE)
+    safety_guide_text = _read(SAFETY_GUIDE_FILE)
+    env_example_text = _read(ENV_EXAMPLE_FILE)
+
+    assert "live-stage" in skill_text
+    assert "uv run python -m domains.legacy_import.cli live-stage" in command_map_text
+    assert "`live-stage`" in safety_guide_text
+    assert "LEGACY_DB_HOST" in env_example_text
+    assert "LEGACY_DB_PASSWORD" in env_example_text
+    assert "legacy-import live-stage" in env_example_text

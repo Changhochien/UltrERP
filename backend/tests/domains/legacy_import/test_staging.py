@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import hashlib
+import uuid
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
@@ -11,6 +13,7 @@ from domains.legacy_import.staging import (
     LegacySourceColumnMetadata,
     LegacySourceCompatibilityError,
     LegacySourceConnectionSettings,
+    StageSourceDescriptor,
     build_legacy_source_text_query,
     discover_legacy_tables,
     parse_legacy_row,
@@ -191,6 +194,94 @@ class FakeSessionContext:
         return False
 
 
+class FakeLegacyImportRunRecord:
+    def __init__(self, **kwargs) -> None:
+        self.id = uuid.uuid4()
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+class FakeLegacyImportTableRunRecord:
+    def __init__(self, **kwargs) -> None:
+        self.id = uuid.uuid4()
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+def patch_control_table_models(monkeypatch) -> None:
+    monkeypatch.setattr(staging, "LegacyImportRun", FakeLegacyImportRunRecord)
+    monkeypatch.setattr(staging, "LegacyImportTableRun", FakeLegacyImportTableRunRecord)
+
+
+@dataclass(slots=True, frozen=True)
+class InlineStageTable:
+    table_name: str
+    source_name: str
+    rows: tuple[tuple[str, ...], ...]
+    expected_row_count: int | None = None
+
+    async def get_column_count(self) -> int:
+        if not self.rows:
+            raise ValueError(f"No importable rows found in {self.source_name}")
+        return max(len(row) for row in self.rows)
+
+    async def iter_rows(self):
+        for row_number, row in enumerate(self.rows, start=1):
+            yield row_number, list(row)
+
+
+class InlineStageSourceAdapter:
+    def __init__(
+        self,
+        *,
+        source_descriptor: StageSourceDescriptor,
+        tables: list[InlineStageTable],
+    ) -> None:
+        self.source_descriptor = source_descriptor
+        self._tables = tables
+        self.closed = False
+        self.discover_calls: list[dict[str, object]] = []
+
+    async def discover_tables(
+        self,
+        *,
+        required_tables,
+        selected_tables=None,
+    ) -> list[InlineStageTable]:
+        self.discover_calls.append(
+            {
+                "required_tables": tuple(required_tables),
+                "selected_tables": tuple(selected_tables or ()),
+            }
+        )
+        selected = tuple(dict.fromkeys(selected_tables or ()))
+        if not selected:
+            return list(self._tables)
+        table_map = {table.table_name: table for table in self._tables}
+        return [table_map[table_name] for table_name in selected]
+
+    async def close(self) -> None:
+        self.closed = True
+
+
+class FailingStageSourceAdapter:
+    def __init__(self, *, source_descriptor: StageSourceDescriptor, error: Exception) -> None:
+        self.source_descriptor = source_descriptor
+        self._error = error
+        self.closed = False
+
+    async def discover_tables(
+        self,
+        *,
+        required_tables,
+        selected_tables=None,
+    ) -> list[InlineStageTable]:
+        raise self._error
+
+    async def close(self) -> None:
+        self.closed = True
+
+
 def test_parse_legacy_row_handles_wrapped_export_format() -> None:
     row = parse_legacy_row("\"'1149', '2', '昌弘五金實業有限公司'\"")
 
@@ -254,7 +345,7 @@ def test_build_legacy_source_text_query_supports_text_numeric_and_date_types() -
         == 'SELECT COALESCE("scustno"::text, \'NULL\') AS "scustno", '
         'COALESCE("balance"::text, \'NULL\') AS "balance", '
         'COALESCE("created_on"::text, \'NULL\') AS "created_on" '
-        'FROM "public"."tbscust"'
+        'FROM "public"."tbscust" ORDER BY ctid'
     )
 
 
@@ -500,6 +591,208 @@ async def test_probe_live_source_connection_collects_metadata_and_streams_rows()
     assert "::text" in connection.cursor_calls[0]["query"]
 
 
+@pytest.mark.asyncio
+async def test_run_live_stage_import_uses_shared_loader_and_descriptor(
+    monkeypatch,
+) -> None:
+    live_connection = FakeLegacySourceConnection(
+        fetch_rows_by_query={
+            "FROM pg_catalog.pg_tables": [{"tablename": "tbscust"}],
+            "FROM information_schema.columns": [
+                {
+                    "table_name": "tbscust",
+                    "column_name": "scustno",
+                    "ordinal_position": 1,
+                    "data_type": "character varying",
+                    "udt_name": "varchar",
+                    "is_nullable": "NO",
+                },
+                {
+                    "table_name": "tbscust",
+                    "column_name": "balance",
+                    "ordinal_position": 2,
+                    "data_type": "numeric",
+                    "udt_name": "numeric",
+                    "is_nullable": "YES",
+                },
+            ],
+        },
+        fetchvals_by_query={"SHOW transaction_read_only": "on"},
+        cursor_rows_by_query={
+            'FROM "public"."tbscust"': [
+                {"scustno": "T068", "balance": "NULL"},
+                {"scustno": "T069", "balance": "12.5000"},
+            ]
+        },
+    )
+    raw_connection = FakeRawStageConnection()
+    session = FakeSession()
+
+    patch_control_table_models(monkeypatch)
+    monkeypatch.setattr(staging, "AsyncSessionLocal", lambda: FakeSessionContext(session))
+    monkeypatch.setattr(staging.settings, "legacy_import_required_tables", ("tbscust",))
+
+    async def fake_open_legacy_source_connection(*args, **kwargs):
+        return live_connection
+
+    async def fake_load_existing_batch_table_names(*args, **kwargs) -> tuple[str, ...]:
+        return ()
+
+    async def fake_next_batch_attempt_number(*args, **kwargs) -> int:
+        return 1
+
+    async def fake_raw_stage_connection_from_session(*args, **kwargs) -> FakeRawStageConnection:
+        return raw_connection
+
+    monkeypatch.setattr(
+        staging,
+        "_open_legacy_source_connection",
+        fake_open_legacy_source_connection,
+    )
+    monkeypatch.setattr(
+        staging,
+        "_load_existing_batch_table_names",
+        fake_load_existing_batch_table_names,
+    )
+    monkeypatch.setattr(staging, "_next_batch_attempt_number", fake_next_batch_attempt_number)
+    monkeypatch.setattr(
+        staging,
+        "_raw_stage_connection_from_session",
+        fake_raw_stage_connection_from_session,
+    )
+
+    result = await staging.run_live_stage_import(
+        batch_id="batch-001",
+        source_schema="public",
+        connection_settings=LegacySourceConnectionSettings(
+            host="100.77.54.101",
+            port=5432,
+            user="postgres",
+            password="secret",
+            database="cao50001",
+            client_encoding="BIG5",
+        ),
+    )
+
+    assert result.source_display_name == "legacy-db:cao50001/public"
+    assert result.tables == (
+        staging.StageTableResult(
+            table_name="tbscust",
+            row_count=2,
+            column_count=2,
+            source_file="public.tbscust",
+        ),
+    )
+    assert session.added[0].source_path == "legacy-db:cao50001/public"
+    copy_call = raw_connection.copy_calls[0]
+    first_row = copy_call["rows"][0]
+    expected_identity = hashlib.sha256(
+        b"tbscust\0" + b"T068\x1fNULL\x1f"
+    ).hexdigest()
+    assert first_row[:2] == ("T068", "NULL")
+    assert first_row[-4:-1] == (1, "batch-001", "loaded")
+    assert first_row[-1] == expected_identity
+    assert live_connection.transaction_readonly_args == [True]
+    assert live_connection.closed is True
+
+
+@pytest.mark.asyncio
+async def test_run_live_stage_import_limits_scope_to_selected_tables(
+    monkeypatch,
+) -> None:
+    live_connection = FakeLegacySourceConnection(
+        fetch_rows_by_query={
+            "FROM pg_catalog.pg_tables": [{"tablename": "tbsstock"}],
+            "FROM information_schema.columns": [
+                {
+                    "table_name": "tbsstock",
+                    "column_name": "stockno",
+                    "ordinal_position": 1,
+                    "data_type": "character varying",
+                    "udt_name": "varchar",
+                    "is_nullable": "NO",
+                },
+                {
+                    "table_name": "tbsstock",
+                    "column_name": "stockname",
+                    "ordinal_position": 2,
+                    "data_type": "character varying",
+                    "udt_name": "varchar",
+                    "is_nullable": "YES",
+                },
+            ],
+        },
+        fetchvals_by_query={"SHOW transaction_read_only": "on"},
+        cursor_rows_by_query={
+            'FROM "public"."tbsstock"': [
+                {"stockno": "P001", "stockname": "Widget"},
+            ]
+        },
+    )
+    raw_connection = FakeRawStageConnection()
+    session = FakeSession()
+
+    patch_control_table_models(monkeypatch)
+    monkeypatch.setattr(staging, "AsyncSessionLocal", lambda: FakeSessionContext(session))
+    monkeypatch.setattr(staging.settings, "legacy_import_required_tables", ("tbscust", "tbsstock"))
+
+    async def fake_open_legacy_source_connection(*args, **kwargs):
+        return live_connection
+
+    async def fake_load_existing_batch_table_names(*args, **kwargs) -> tuple[str, ...]:
+        return ()
+
+    async def fake_next_batch_attempt_number(*args, **kwargs) -> int:
+        return 2
+
+    async def fake_raw_stage_connection_from_session(*args, **kwargs) -> FakeRawStageConnection:
+        return raw_connection
+
+    monkeypatch.setattr(
+        staging,
+        "_open_legacy_source_connection",
+        fake_open_legacy_source_connection,
+    )
+    monkeypatch.setattr(
+        staging,
+        "_load_existing_batch_table_names",
+        fake_load_existing_batch_table_names,
+    )
+    monkeypatch.setattr(staging, "_next_batch_attempt_number", fake_next_batch_attempt_number)
+    monkeypatch.setattr(
+        staging,
+        "_raw_stage_connection_from_session",
+        fake_raw_stage_connection_from_session,
+    )
+
+    result = await staging.run_live_stage_import(
+        batch_id="batch-002",
+        source_schema="public",
+        selected_tables=("tbsstock", "tbsstock"),
+        connection_settings=LegacySourceConnectionSettings(
+            host="100.77.54.101",
+            port=5432,
+            user="postgres",
+            password="secret",
+            database="cao50001",
+            client_encoding="BIG5",
+        ),
+    )
+
+    assert result.tables == (
+        staging.StageTableResult(
+            table_name="tbsstock",
+            row_count=1,
+            column_count=2,
+            source_file="public.tbsstock",
+        ),
+    )
+    assert session.added[0].requested_tables == ["tbsstock"]
+    assert len(raw_connection.copy_calls) == 1
+    assert raw_connection.copy_calls[0]["table_name"] == "tbsstock"
+    assert live_connection.closed is True
+
+
 def test_parse_manifest_rows_extracts_counts(tmp_path: Path) -> None:
     manifest = tmp_path / "MANIFEST.md"
     manifest.write_text(
@@ -564,6 +857,26 @@ def test_discover_legacy_tables_deduplicates_selected_tables(tmp_path: Path) -> 
     )
 
     assert [table.table_name for table in tables] == ["tbscust", "tbsstock"]
+
+
+def test_discover_legacy_tables_allows_selected_subset_without_all_required_tables(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "MANIFEST.md").write_text(
+        "| Table Name | Rows | Description |\n"
+        "|------------|------|-------------|\n"
+        "| tbscust | 1 | Customer master |\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "tbscust.csv").write_text("\"'1', 'A'\"\n", encoding="utf-8")
+
+    tables = discover_legacy_tables(
+        tmp_path,
+        ["tbscust", "tbsstock"],
+        selected_tables=["tbscust"],
+    )
+
+    assert [table.table_name for table in tables] == ["tbscust"]
 
 
 def test_discover_legacy_tables_fails_when_manifest_file_is_missing(tmp_path: Path) -> None:
@@ -681,20 +994,27 @@ async def test_stage_table_fails_on_manifest_row_count_mismatch(tmp_path: Path) 
 @pytest.mark.asyncio
 async def test_run_stage_import_only_drops_overlapping_tables_on_partial_rerun(
     monkeypatch,
-    tmp_path: Path,
 ) -> None:
     """On partial re-run (subset of tables), only drop tables in the intersection."""
-    data_file = tmp_path / "tbscust.csv"
-    data_file.write_text("\"'1', 'A'\"\n", encoding="utf-8")
     connection = FakeRawStageConnection()
     session = FakeSession()
-
-    monkeypatch.setattr(staging, "AsyncSessionLocal", lambda: FakeSessionContext(session))
-    monkeypatch.setattr(
-        staging,
-        "discover_legacy_tables",
-        lambda *args, **kwargs: [DiscoveredLegacyTable("tbscust", data_file, expected_row_count=1)],
+    source = InlineStageSourceAdapter(
+        source_descriptor=StageSourceDescriptor.live(
+            database="cao50001",
+            schema_name="public",
+        ),
+        tables=[
+            InlineStageTable(
+                table_name="tbscust",
+                source_name="public.tbscust",
+                rows=(("1", "A"),),
+                expected_row_count=1,
+            )
+        ],
     )
+
+    patch_control_table_models(monkeypatch)
+    monkeypatch.setattr(staging, "AsyncSessionLocal", lambda: FakeSessionContext(session))
 
     async def fake_load_existing_batch_table_names(*args, **kwargs) -> tuple[str, ...]:
         # Previous run had both tbscust and tbsstock
@@ -705,14 +1025,6 @@ async def test_run_stage_import_only_drops_overlapping_tables_on_partial_rerun(
 
     async def fake_raw_stage_connection_from_session(*args, **kwargs) -> FakeRawStageConnection:
         return connection
-
-    async def fake_stage_table(*args, **kwargs) -> staging.StageTableResult:
-        return staging.StageTableResult(
-            table_name="tbscust",
-            row_count=1,
-            column_count=2,
-            source_file="tbscust.csv",
-        )
 
     monkeypatch.setattr(
         staging,
@@ -725,11 +1037,10 @@ async def test_run_stage_import_only_drops_overlapping_tables_on_partial_rerun(
         "_raw_stage_connection_from_session",
         fake_raw_stage_connection_from_session,
     )
-    monkeypatch.setattr(staging, "stage_table", fake_stage_table)
 
-    result = await staging.run_stage_import(
+    result = await staging.run_stage_import_from_source(
         batch_id="batch-001",
-        source_dir=tmp_path,
+        source=source,
         selected_tables=("tbscust",),
     )
 
@@ -748,37 +1059,49 @@ async def test_run_stage_import_only_drops_overlapping_tables_on_partial_rerun(
             table_name="tbscust",
             row_count=1,
             column_count=2,
-            source_file="tbscust.csv",
+            source_file="public.tbscust",
         ),
     )
     assert session.added[0].attempt_number == 1
+    assert session.added[0].source_path == "legacy-db:cao50001/public"
     assert session.committed is True
+    assert source.closed is True
 
 
 @pytest.mark.asyncio
 async def test_run_stage_import_records_failed_attempt_after_rollback(
     monkeypatch,
-    tmp_path: Path,
 ) -> None:
-    data_file = tmp_path / "tbscust.csv"
-    data_file.write_text("\"'1', 'A'\"\n", encoding="utf-8")
     connection = FakeRawStageConnection()
     main_session = FakeSession()
     failure_session = FakeSession()
     sessions = iter([main_session, failure_session])
+    source = InlineStageSourceAdapter(
+        source_descriptor=StageSourceDescriptor.live(
+            database="cao50001",
+            schema_name="public",
+        ),
+        tables=[
+            InlineStageTable(
+                table_name="tbscust",
+                source_name="public.tbscust",
+                rows=(("1", "A"),),
+                expected_row_count=1,
+            ),
+            InlineStageTable(
+                table_name="tbsstock",
+                source_name="public.tbsstock",
+                rows=(("P001", "Widget"),),
+                expected_row_count=1,
+            ),
+        ],
+    )
 
+    patch_control_table_models(monkeypatch)
     monkeypatch.setattr(
         staging,
         "AsyncSessionLocal",
         lambda: FakeSessionContext(next(sessions)),
-    )
-    monkeypatch.setattr(
-        staging,
-        "discover_legacy_tables",
-        lambda *args, **kwargs: [
-            DiscoveredLegacyTable("tbscust", data_file, expected_row_count=1),
-            DiscoveredLegacyTable("tbsstock", data_file, expected_row_count=1),
-        ],
     )
 
     async def fake_load_existing_batch_table_names(*args, **kwargs) -> tuple[str, ...]:
@@ -793,7 +1116,7 @@ async def test_run_stage_import_records_failed_attempt_after_rollback(
     async def fake_stage_table(
         connection: FakeRawStageConnection,
         *,
-        table: DiscoveredLegacyTable,
+        table,
         schema_name: str,
         batch_id: str,
     ) -> staging.StageTableResult:
@@ -803,7 +1126,7 @@ async def test_run_stage_import_records_failed_attempt_after_rollback(
             table_name=table.table_name,
             row_count=1,
             column_count=2,
-            source_file=table.csv_path.name,
+            source_file=table.source_name,
         )
 
     monkeypatch.setattr(
@@ -820,7 +1143,10 @@ async def test_run_stage_import_records_failed_attempt_after_rollback(
     monkeypatch.setattr(staging, "stage_table", fake_stage_table)
 
     with pytest.raises(ValueError, match="Malformed legacy row"):
-        await staging.run_stage_import(batch_id="batch-001", source_dir=tmp_path)
+        await staging.run_stage_import_from_source(
+            batch_id="batch-001",
+            source=source,
+        )
 
     assert main_session.rolled_back is True
     assert failure_session.committed is True
@@ -828,7 +1154,56 @@ async def test_run_stage_import_records_failed_attempt_after_rollback(
         obj for obj in failure_session.added if getattr(obj, "status", None) == "failed"
     )
     assert failed_run.attempt_number == 3
+    assert failed_run.source_path == "legacy-db:cao50001/public"
     assert failed_run.error_message == "Malformed legacy row in tbsstock.csv at line 1"
+    assert source.closed is True
+
+
+@pytest.mark.asyncio
+async def test_run_stage_import_records_failed_attempt_when_source_discovery_fails(
+    monkeypatch,
+) -> None:
+    main_session = FakeSession()
+    failure_session = FakeSession()
+    sessions = iter([main_session, failure_session])
+    source = FailingStageSourceAdapter(
+        source_descriptor=StageSourceDescriptor.live(
+            database="cao50001",
+            schema_name="public",
+        ),
+        error=LegacySourceCompatibilityError(
+            "Requested live-source tables not found in public: missing_table"
+        ),
+    )
+
+    patch_control_table_models(monkeypatch)
+    monkeypatch.setattr(
+        staging,
+        "AsyncSessionLocal",
+        lambda: FakeSessionContext(next(sessions)),
+    )
+
+    async def fake_next_batch_attempt_number(*args, **kwargs) -> int:
+        return 4
+
+    monkeypatch.setattr(staging, "_next_batch_attempt_number", fake_next_batch_attempt_number)
+    monkeypatch.setattr(staging.settings, "legacy_import_required_tables", ("tbscust",))
+
+    with pytest.raises(LegacySourceCompatibilityError, match="missing_table"):
+        await staging.run_stage_import_from_source(
+            batch_id="batch-001",
+            source=source,
+        )
+
+    assert main_session.rolled_back is True
+    assert failure_session.committed is True
+    failed_run = next(
+        obj for obj in failure_session.added if getattr(obj, "status", None) == "failed"
+    )
+    assert failed_run.attempt_number == 4
+    assert failed_run.source_path == "legacy-db:cao50001/public"
+    assert "missing_table" in failed_run.error_message
+    assert source.closed is True
 
 
 @pytest.mark.asyncio
@@ -842,6 +1217,7 @@ async def test_run_stage_import_records_deduped_requested_tables(
     session = FakeSession()
     captured: dict[str, object] = {}
 
+    patch_control_table_models(monkeypatch)
     monkeypatch.setattr(staging, "AsyncSessionLocal", lambda: FakeSessionContext(session))
 
     def fake_discover_legacy_tables(*args, **kwargs):

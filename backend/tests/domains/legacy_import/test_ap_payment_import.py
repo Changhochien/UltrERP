@@ -7,6 +7,7 @@ from typing import cast
 import pytest
 
 import domains.legacy_import.ap_payment_import as ap_payment_import
+import domains.legacy_import.source_resolution as source_resolution
 
 
 class FakePaymentTransaction:
@@ -42,6 +43,10 @@ class FakePaymentConnection:
         self.transaction_committed = False
         self.transaction_rolled_back = False
         self.closed = False
+        self._fake_lineage_rows: dict[tuple[object, ...], dict[str, object]] = {}
+        self._fake_resolution_rows: dict[tuple[object, ...], dict[str, object]] = {}
+        self._fake_resolution_events: list[dict[str, object]] = []
+        self._fake_holding_rows: dict[tuple[object, ...], dict[str, object]] = {}
 
     def transaction(self) -> FakePaymentTransaction:
         return FakePaymentTransaction(self)
@@ -68,6 +73,13 @@ class FakePaymentConnection:
             return "raw_legacy.tbsprepay" if "tbsprepay" in self.rows_by_key else None
         return None
 
+    async def fetchrow(self, query: str, *args: object):
+        if 'FROM "raw_legacy".source_row_resolution' in query:
+            key = (args[0], args[1], args[2], args[3], args[4])
+            row = self._fake_resolution_rows.get(key)
+            return None if row is None else dict(row)
+        return None
+
     async def execute(self, query: str, *args: object) -> str:
         call = (query, args)
         self.execute_calls.append(call)
@@ -75,6 +87,62 @@ class FakePaymentConnection:
             self.transaction_buffers[-1].append(call)
         else:
             self.committed_execute_calls.append(call)
+
+        if 'INSERT INTO "raw_legacy".canonical_record_lineage' in query:
+            key = (args[0], args[1], args[2], args[4], args[5], args[6])
+            self._fake_lineage_rows[key] = {
+                "canonical_id": args[3],
+                "import_run_id": args[7],
+            }
+        elif 'INSERT INTO "raw_legacy".source_row_resolution_events' in query:
+            self._fake_resolution_events.append(
+                {
+                    "event_id": args[0],
+                    "tenant_id": args[1],
+                    "batch_id": args[2],
+                    "source_table": args[3],
+                    "source_identifier": args[4],
+                    "source_row_number": args[5],
+                    "domain_name": args[6],
+                    "previous_status": args[7],
+                    "new_status": args[8],
+                    "holding_id": args[9],
+                    "canonical_table": args[10],
+                    "canonical_id": args[11],
+                    "notes": args[12],
+                    "import_run_id": args[13],
+                }
+            )
+        elif 'INSERT INTO "raw_legacy".source_row_resolution' in query:
+            key = (args[0], args[1], args[2], args[3], args[4])
+            self._fake_resolution_rows[key] = {
+                "tenant_id": args[0],
+                "batch_id": args[1],
+                "source_table": args[2],
+                "source_identifier": args[3],
+                "source_row_number": args[4],
+                "domain_name": args[5],
+                "status": args[6],
+                "holding_id": args[7],
+                "canonical_table": args[8],
+                "canonical_id": args[9],
+                "notes": args[10],
+                "import_run_id": args[11],
+            }
+        elif 'INSERT INTO "raw_legacy".unsupported_history_holding' in query:
+            key = (args[1], args[2], args[4], args[5], args[6])
+            self._fake_holding_rows[key] = {
+                "id": args[0],
+                "tenant_id": args[1],
+                "batch_id": args[2],
+                "domain_name": args[3],
+                "source_table": args[4],
+                "source_identifier": args[5],
+                "source_row_number": args[6],
+            }
+        elif 'DELETE FROM "raw_legacy".unsupported_history_holding' in query:
+            key = (args[0], args[1], args[2], args[3], args[4])
+            self._fake_holding_rows.pop(key, None)
         return "OK"
 
     async def close(self) -> None:
@@ -197,6 +265,21 @@ async def test_run_ap_payment_import_imports_verified_special_payments_and_holds
     assert "no verified payment document number" in cast(str, prepay_holding[8])
     assert "all candidate prepayment amount fields are zero" in cast(str, prepay_holding[8])
 
+    customer_resolution = connection._fake_resolution_rows[
+        (tenant_id, "batch-ap-001", "tbsspay", "CUS-PAY-002", 2)
+    ]
+    assert customer_resolution["status"] == source_resolution.STATUS_HOLDING
+    prepay_resolution = connection._fake_resolution_rows[
+        (tenant_id, "batch-ap-001", "tbsprepay", "T008", 3)
+    ]
+    assert prepay_resolution["status"] == source_resolution.STATUS_HOLDING
+    drained_resolution = connection._fake_resolution_rows[
+        (tenant_id, "batch-ap-001", "tbsspay", "SUP-PAY-001", 1)
+    ]
+    assert drained_resolution["status"] == source_resolution.STATUS_RESOLVED
+    assert drained_resolution["canonical_table"] == "supplier_payments"
+    assert not any(key[2] == "__holding__" for key in connection._fake_lineage_rows)
+
     table_run_args = [
         args
         for query, args in connection.execute_calls
@@ -217,6 +300,112 @@ async def test_run_ap_payment_import_imports_verified_special_payments_and_holds
         args[2] == "tbsprepay" and args[5] == 1 and args[7] == "completed"
         for args in table_run_args
     )
+
+
+# ---------------------------------------------------------------------------
+# Story 15.21 — Drain path resolves held source state atomically
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_drain_path_resolves_existing_holding_state(monkeypatch) -> None:
+    """A previously held AP payment row should resolve to canonical lineage,
+    clear holding payload state, and update the current resolution row."""
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000503")
+    supplier_id = ap_payment_import._tenant_scoped_uuid(
+        tenant_id, "party", "supplier", "T008"
+    )
+
+    connection = FakePaymentConnection(
+        {
+            "tbscust": [
+                {"legacy_code": "T008", "legacy_type": "1"},
+            ],
+            "supplier": [{"id": supplier_id}],
+            "tbsspay": [
+                {
+                    "col_2": "SUP-PAY-001",
+                    "col_4": "2016-05-05",
+                    "col_6": "T008",
+                    "col_8": "0001",
+                    "col_10": "570.00000000",
+                    "col_12": "CHK-001",
+                    "col_18": "legacy ap payment",
+                    "_source_row_number": 1,
+                },
+            ],
+            "tbsprepay": [],
+        }
+    )
+    holding_id = source_resolution.build_holding_id(
+        tenant_id,
+        domain_name="payment_history",
+        source_table="tbsspay",
+        source_identifier="SUP-PAY-001",
+        source_row_number=1,
+        row_identity=1,
+    )
+    connection._fake_holding_rows[(tenant_id, "batch-ap-drain", "tbsspay", "SUP-PAY-001", 1)] = {
+        "id": holding_id,
+        "tenant_id": tenant_id,
+        "batch_id": "batch-ap-drain",
+        "domain_name": "payment_history",
+        "source_table": "tbsspay",
+        "source_identifier": "SUP-PAY-001",
+        "source_row_number": 1,
+    }
+    connection._fake_resolution_rows[(tenant_id, "batch-ap-drain", "tbsspay", "SUP-PAY-001", 1)] = {
+        "tenant_id": tenant_id,
+        "batch_id": "batch-ap-drain",
+        "source_table": "tbsspay",
+        "source_identifier": "SUP-PAY-001",
+        "source_row_number": 1,
+        "domain_name": "payment_history",
+        "status": source_resolution.STATUS_HOLDING,
+        "holding_id": holding_id,
+        "canonical_table": None,
+        "canonical_id": None,
+        "notes": "held before verification",
+        "import_run_id": uuid.uuid4(),
+    }
+
+    async def fake_open_raw_connection() -> FakePaymentConnection:
+        return connection
+
+    monkeypatch.setattr(ap_payment_import, "_open_raw_connection", fake_open_raw_connection)
+
+    result = await ap_payment_import.run_ap_payment_import(
+        batch_id="batch-ap-drain",
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+    )
+
+    assert result.payment_count == 1
+    assert result.holding_count == 0
+    assert result.lineage_count == 1
+
+    lineage_keys_for_row = [
+        key
+        for key in connection._fake_lineage_rows
+        if key[3] == "tbsspay" and key[4] == "SUP-PAY-001" and key[5] == 1
+    ]
+    assert len(lineage_keys_for_row) == 1, (
+        f"Expected exactly 1 lineage entry for the drained row, got {len(lineage_keys_for_row)}"
+    )
+
+    _tenant_id, _batch_id, canonical_table, _source_table, _source_identifier, _source_row_number = (
+        lineage_keys_for_row[0]
+    )
+    assert canonical_table == "supplier_payments"
+
+    resolution_row = connection._fake_resolution_rows[
+        (tenant_id, "batch-ap-drain", "tbsspay", "SUP-PAY-001", 1)
+    ]
+    assert resolution_row["status"] == source_resolution.STATUS_RESOLVED
+    assert resolution_row["holding_id"] is None
+    assert resolution_row["canonical_table"] == "supplier_payments"
+    assert not connection._fake_holding_rows
+    assert connection._fake_resolution_events[-1]["new_status"] == source_resolution.STATUS_RESOLVED
 
 
 @pytest.mark.asyncio
