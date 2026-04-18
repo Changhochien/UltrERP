@@ -7,7 +7,7 @@ from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import TYPE_CHECKING, Any, cast
 
-from sqlalchemy import and_, asc, case, desc, distinct, func, literal, or_, select, text
+from sqlalchemy import and_, asc, case, desc, distinct, func, literal, or_, select, text, update
 from sqlalchemy.exc import IntegrityError, ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, selectinload
@@ -20,7 +20,7 @@ from common.errors import (
 )
 from common.events import StockChangedEvent, emit
 from common.models.audit_log import AuditLog
-from common.models.category import Category
+from common.models.category import Category, CategoryTranslation
 from common.models.inventory_stock import InventoryStock
 from common.models.physical_count_line import PhysicalCountLine
 from common.models.physical_count_session import (
@@ -97,6 +97,9 @@ DEFAULT_UNIT_OF_MEASURE_SEEDS: tuple[tuple[str, str, int], ...] = (
     ("meter", "Meter", 3),
     ("cm", "Centimeter", 0),
 )
+SUPPORTED_CATEGORY_LOCALES: tuple[str, ...] = ("en", "zh-Hant")
+DEFAULT_CATEGORY_LOCALE = "en"
+ZH_HANT_LOCALE = "zh-Hant"
 
 
 def _shift_months(value: date, months: int) -> date:
@@ -252,13 +255,125 @@ def _normalize_category_name(name: str) -> str:
     return normalized
 
 
+def _normalize_category_locale(locale: str | None) -> str | None:
+    if locale is None:
+        return None
+
+    normalized = locale.strip().replace("_", "-")
+    if not normalized:
+        return None
+
+    lower = normalized.lower()
+    if lower.startswith("zh-hant"):
+        return ZH_HANT_LOCALE
+    if lower.startswith("en"):
+        return DEFAULT_CATEGORY_LOCALE
+    if normalized in SUPPORTED_CATEGORY_LOCALES:
+        return normalized
+    return None
+
+
+def resolve_category_locale(
+    locale: str | None,
+    accept_language: str | None = None,
+) -> str:
+    normalized = _normalize_category_locale(locale)
+    if normalized is not None:
+        return normalized
+
+    if accept_language:
+        for candidate in accept_language.split(","):
+            language_tag = candidate.split(";", 1)[0].strip()
+            normalized = _normalize_category_locale(language_tag)
+            if normalized is not None:
+                return normalized
+
+    return DEFAULT_CATEGORY_LOCALE
+
+
+def _normalize_category_translations(
+    translations: dict[str, str] | None,
+) -> dict[str, str]:
+    normalized: dict[str, str] = {}
+    if not translations:
+        return normalized
+
+    errors: list[dict[str, str | tuple[str, ...]]] = []
+    for locale, value in translations.items():
+        normalized_locale = _normalize_category_locale(locale)
+        if normalized_locale is None:
+            errors.append(
+                {
+                    "loc": ("translations", locale),
+                    "msg": "unsupported locale",
+                    "type": "value_error",
+                }
+            )
+            continue
+        try:
+            normalized[normalized_locale] = _normalize_category_name(value)
+        except ValidationError:
+            errors.append(
+                {
+                    "loc": ("translations", normalized_locale),
+                    "msg": "name cannot be blank",
+                    "type": "value_error",
+                }
+            )
+
+    if errors:
+        raise ValidationError(errors)
+
+    return normalized
+
+
+def _category_translation_map(category: Category) -> dict[str, str]:
+    translations = {translation.locale: translation.name for translation in category.translations}
+    if DEFAULT_CATEGORY_LOCALE not in translations and category.name:
+        translations[DEFAULT_CATEGORY_LOCALE] = category.name
+    return translations
+
+
+def _localized_category_name(
+    category: Category | None,
+    locale: str,
+    *,
+    fallback_name: str | None = None,
+) -> str | None:
+    if category is None:
+        return fallback_name
+
+    translations = _category_translation_map(category)
+    return (
+        translations.get(locale)
+        or translations.get(DEFAULT_CATEGORY_LOCALE)
+        or category.name
+        or fallback_name
+    )
+
+
+def serialize_category(category: Category, locale: str) -> dict[str, object]:
+    translations = _category_translation_map(category)
+    return {
+        "id": category.id,
+        "tenant_id": category.tenant_id,
+        "name": translations.get(locale) or translations.get(DEFAULT_CATEGORY_LOCALE) or category.name,
+        "name_en": translations.get(DEFAULT_CATEGORY_LOCALE) or category.name,
+        "name_zh_hant": translations.get(ZH_HANT_LOCALE),
+        "translations": translations,
+        "is_active": category.is_active,
+        "created_at": category.created_at,
+        "updated_at": category.updated_at,
+    }
+
+
 def _normalize_product_payload(
     data: object,
-) -> tuple[str, str, str | None, str | None, str, Decimal | None]:
+) -> tuple[str, str, uuid.UUID | None, str | None, str, Decimal | None]:
     code = str(getattr(data, "code", "")).strip()
     name = str(getattr(data, "name", "")).strip()
     unit = str(getattr(data, "unit", "")).strip()
-    category = _normalize_optional_product_text(getattr(data, "category", None))
+    category_id = getattr(data, "category_id", None)
     description = _normalize_optional_product_text(getattr(data, "description", None))
     standard_cost = _normalize_standard_cost(getattr(data, "standard_cost", None))
 
@@ -272,7 +387,7 @@ def _normalize_product_payload(
     if errors:
         raise ValidationError(errors)
 
-    return code, name, category, description, unit, standard_cost
+    return code, name, category_id, description, unit, standard_cost
 
 
 def _normalize_supplier_payload(
@@ -336,6 +451,45 @@ async def _find_category_by_name(
     return result.scalar_one_or_none()
 
 
+async def _find_category_by_id(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    category_id: uuid.UUID,
+) -> Category | None:
+    stmt = (
+        select(Category)
+        .options(selectinload(Category.translations))
+        .where(
+            Category.id == category_id,
+            Category.tenant_id == tenant_id,
+        )
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def _resolve_product_category(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    category_id: uuid.UUID | None,
+) -> Category | None:
+    if category_id is None:
+        return None
+
+    category = await _find_category_by_id(session, tenant_id, category_id)
+    if category is None:
+        raise ValidationError(
+            [
+                {
+                    "loc": ("category_id",),
+                    "msg": "category_id does not reference an existing category",
+                    "type": "value_error",
+                }
+            ]
+        )
+    return category
+
+
 # ── Category queries ──────────────────────────────────────────
 
 
@@ -343,24 +497,33 @@ async def create_category(
     session: AsyncSession,
     tenant_id: uuid.UUID,
     data: "CategoryCreate",
+    *,
+    locale: str = DEFAULT_CATEGORY_LOCALE,
 ) -> Category:
-    name = _normalize_category_name(data.name)
+    requested_locale = resolve_category_locale(locale)
+    translations = _normalize_category_translations(data.translations)
+    translations[requested_locale] = _normalize_category_name(data.name)
+    fallback_name = translations.get(DEFAULT_CATEGORY_LOCALE) or translations[requested_locale]
 
-    existing = await _find_category_by_name(session, tenant_id, name)
+    existing = await _find_category_by_name(session, tenant_id, fallback_name)
     if existing is not None:
         raise DuplicateCategoryNameError(existing_id=existing.id, existing_name=existing.name)
 
     category = Category(
         tenant_id=tenant_id,
-        name=name,
+        name=fallback_name,
         is_active=True,
+        translations=[
+            CategoryTranslation(locale=translation_locale, name=translation_name)
+            for translation_locale, translation_name in translations.items()
+        ],
     )
     try:
         session.add(category)
         await session.flush()
     except IntegrityError:
         await session.rollback()
-        existing = await _find_category_by_name(session, tenant_id, name)
+        existing = await _find_category_by_name(session, tenant_id, fallback_name)
         if existing is not None:
             raise DuplicateCategoryNameError(existing_id=existing.id, existing_name=existing.name)
         raise
@@ -372,6 +535,7 @@ async def list_categories(
     session: AsyncSession,
     tenant_id: uuid.UUID,
     *,
+    locale: str = DEFAULT_CATEGORY_LOCALE,
     q: str = "",
     active_only: bool = True,
     limit: int = 100,
@@ -381,25 +545,32 @@ async def list_categories(
     if active_only:
         where_conditions.append(Category.is_active.is_(True))
 
-    stripped = q.strip()
-    if stripped:
-        q_like = stripped.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        where_conditions.append(Category.name.ilike(f"%{q_like}%", escape="\\"))
-
-    count_stmt = select(func.count(Category.id)).where(*where_conditions)
-    count_result = await session.execute(count_stmt)
-    total = count_result.scalar() or 0
-
     stmt = (
         select(Category)
+        .options(selectinload(Category.translations))
         .where(*where_conditions)
         .order_by(Category.name)
-        .offset(offset)
-        .limit(limit)
     )
     result = await session.execute(stmt)
-    categories = result.scalars().all()
-    return list(categories), total
+    categories = list(result.scalars().all())
+
+    stripped = q.strip().lower()
+    if stripped:
+        categories = [
+            category
+            for category in categories
+            if stripped in (category.name or "").lower()
+            or any(stripped in translation.name.lower() for translation in category.translations)
+        ]
+
+    resolved_locale = resolve_category_locale(locale)
+    categories.sort(
+        key=lambda category: (
+            _localized_category_name(category, resolved_locale) or category.name or ""
+        ).lower()
+    )
+    total = len(categories)
+    return categories[offset : offset + limit], total
 
 
 async def get_category(
@@ -407,12 +578,7 @@ async def get_category(
     tenant_id: uuid.UUID,
     category_id: uuid.UUID,
 ) -> Category | None:
-    stmt = select(Category).where(
-        Category.id == category_id,
-        Category.tenant_id == tenant_id,
-    )
-    result = await session.execute(stmt)
-    return result.scalar_one_or_none()
+    return await _find_category_by_id(session, tenant_id, category_id)
 
 
 async def update_category(
@@ -420,34 +586,74 @@ async def update_category(
     tenant_id: uuid.UUID,
     category_id: uuid.UUID,
     data: "CategoryUpdate",
+    *,
+    locale: str = DEFAULT_CATEGORY_LOCALE,
 ) -> Category | None:
     category = await get_category(session, tenant_id, category_id)
     if category is None:
         return None
 
-    name = _normalize_category_name(data.name)
-    existing = await _find_category_by_name(
-        session,
-        tenant_id,
-        name,
-        exclude_category_id=category.id,
-    )
-    if existing is not None:
-        raise DuplicateCategoryNameError(existing_id=existing.id, existing_name=existing.name)
+    requested_locale = resolve_category_locale(locale)
+    old_fallback_name = category.name
+    translations = _category_translation_map(category)
+    if data.translations is not None:
+        translations.update(_normalize_category_translations(data.translations))
+    if data.name is not None:
+        translations[requested_locale] = _normalize_category_name(data.name)
 
-    category.name = name
-    try:
-        await session.flush()
-    except IntegrityError:
-        await session.rollback()
+    next_fallback_name = (
+        translations.get(DEFAULT_CATEGORY_LOCALE)
+        or old_fallback_name
+        or next(iter(translations.values()), None)
+    )
+    if next_fallback_name is None:
+        raise ValidationError(
+            [{"loc": ("name",), "msg": "name cannot be blank", "type": "value_error"}]
+        )
+
+    if next_fallback_name != old_fallback_name:
         existing = await _find_category_by_name(
             session,
             tenant_id,
-            name,
-            exclude_category_id=category_id,
+            next_fallback_name,
+            exclude_category_id=category.id,
         )
         if existing is not None:
             raise DuplicateCategoryNameError(existing_id=existing.id, existing_name=existing.name)
+
+    category.name = next_fallback_name
+    existing_translations = {translation.locale: translation for translation in category.translations}
+    for translation_locale, translation_name in translations.items():
+        translation = existing_translations.get(translation_locale)
+        if translation is None:
+            category.translations.append(
+                CategoryTranslation(locale=translation_locale, name=translation_name)
+            )
+        else:
+            translation.name = translation_name
+
+    try:
+        if next_fallback_name != old_fallback_name:
+            await session.execute(
+                update(Product)
+                .where(
+                    Product.tenant_id == tenant_id,
+                    Product.category_id == category.id,
+                )
+                .values(category=next_fallback_name)
+            )
+        await session.flush()
+    except IntegrityError:
+        await session.rollback()
+        if next_fallback_name != old_fallback_name:
+            existing = await _find_category_by_name(
+                session,
+                tenant_id,
+                next_fallback_name,
+                exclude_category_id=category_id,
+            )
+            if existing is not None:
+                raise DuplicateCategoryNameError(existing_id=existing.id, existing_name=existing.name)
         raise
 
     return category
@@ -653,7 +859,8 @@ async def create_product(
     data: "ProductCreate",
 ) -> Product:
     """Create a new product for a tenant."""
-    code, name, category, description, unit, standard_cost = _normalize_product_payload(data)
+    code, name, category_id, description, unit, standard_cost = _normalize_product_payload(data)
+    category = await _resolve_product_category(session, tenant_id, category_id)
 
     # Check for duplicate code within tenant
     row = await _find_product_by_code(session, tenant_id, code)
@@ -664,7 +871,8 @@ async def create_product(
         tenant_id=tenant_id,
         code=code,
         name=name,
-        category=category,
+        category=category.name if category is not None else None,
+        category_id=category.id if category is not None else None,
         description=description,
         unit=unit,
         standard_cost=standard_cost,
@@ -693,7 +901,7 @@ async def update_product(
     data: "ProductUpdate",
 ) -> Product | None:
     """Update an existing product for a tenant."""
-    code, name, category, description, unit, standard_cost = _normalize_product_payload(data)
+    code, name, category_id, description, unit, standard_cost = _normalize_product_payload(data)
 
     stmt = select(Product).where(
         Product.id == product_id,
@@ -713,10 +921,12 @@ async def update_product(
     if existing is not None:
         raise DuplicateProductCodeError(existing_id=existing.id, existing_code=existing.code)
 
+    category = await _resolve_product_category(session, tenant_id, category_id)
     code_or_name_changed = product.code != code or product.name != name
     product.code = code
     product.name = name
-    product.category = category
+    product.category = category.name if category is not None else None
+    product.category_id = category.id if category is not None else None
     product.description = description
     product.unit = unit
     product.standard_cost = standard_cost
@@ -1193,7 +1403,6 @@ async def create_physical_count_session(
         )
         for stock in stock_rows
     ]
-    count_session.lines = lines
     if lines:
         session.add_all(lines)
 
@@ -2505,14 +2714,19 @@ async def get_product_detail(
     tenant_id: uuid.UUID,
     product_id: uuid.UUID,
     *,
+    locale: str = DEFAULT_CATEGORY_LOCALE,
     history_limit: int = 100,
     history_offset: int = 0,
 ) -> dict | None:
     """Return product with per-warehouse stock info and adjustment history."""
     # 1. Fetch product
-    product_stmt = select(Product).where(
-        Product.id == product_id,
-        Product.tenant_id == tenant_id,
+    product_stmt = (
+        select(Product)
+        .options(selectinload(Product.category_ref).selectinload(Category.translations))
+        .where(
+            Product.id == product_id,
+            Product.tenant_id == tenant_id,
+        )
     )
     product_result = await session.execute(product_stmt)
     product = product_result.scalar_one_or_none()
@@ -2622,7 +2836,12 @@ async def get_product_detail(
         "id": product.id,
         "code": product.code,
         "name": product.name,
-        "category": product.category,
+        "category_id": product.category_id,
+        "category": _localized_category_name(
+            product.category_ref,
+            resolve_category_locale(locale),
+            fallback_name=product.category,
+        ),
         "description": product.description,
         "unit": product.unit,
         "standard_cost": product.standard_cost,
@@ -2643,7 +2862,9 @@ async def search_products(
     query: str,
     *,
     warehouse_id: uuid.UUID | None = None,
+    category_id: uuid.UUID | None = None,
     category: str | None = None,
+    locale: str = DEFAULT_CATEGORY_LOCALE,
     include_inactive: bool = False,
     limit: int = 20,
     offset: int = 0,
@@ -2701,8 +2922,14 @@ async def search_products(
     base_conditions = [Product.tenant_id == tenant_id]
     if not include_inactive:
         base_conditions.append(Product.status == "active")
-    if category and category.strip():
+    if category_id is not None:
+        base_conditions.append(Product.category_id == category_id)
+    elif category and category.strip():
         base_conditions.append(Product.category == category.strip())
+
+    resolved_locale = resolve_category_locale(locale)
+    category_translation = aliased(CategoryTranslation)
+    category_name = func.coalesce(category_translation.name, Category.name, Product.category)
 
     # Main query
     stmt = (
@@ -2710,12 +2937,27 @@ async def search_products(
             Product.id,
             Product.code,
             Product.name,
-            Product.category,
+            Product.category_id,
+            category_name.label("category"),
             Product.status,
             func.coalesce(stock_sq.c.total_stock, 0).label("current_stock"),
             relevance.label("relevance"),
         )
         .outerjoin(stock_sq, Product.id == stock_sq.c.product_id)
+        .outerjoin(
+            Category,
+            and_(
+                Category.id == Product.category_id,
+                Category.tenant_id == tenant_id,
+            ),
+        )
+        .outerjoin(
+            category_translation,
+            and_(
+                category_translation.category_id == Category.id,
+                category_translation.locale == resolved_locale,
+            ),
+        )
         .where(*base_conditions)
     )
 
@@ -2738,7 +2980,7 @@ async def search_products(
         elif sort_by == "current_stock":
             return s.order_by(dir_fn(text("current_stock")), asc(Product.code))
         elif sort_by == "category":
-            return s.order_by(dir_fn(Product.category), asc(Product.code))
+            return s.order_by(dir_fn(category_name), asc(Product.code))
         elif sort_by == "status":
             return s.order_by(dir_fn(Product.status), asc(Product.code))
         else:
@@ -2756,12 +2998,27 @@ async def search_products(
                 Product.id,
                 Product.code,
                 Product.name,
-                Product.category,
+                Product.category_id,
+                category_name.label("category"),
                 Product.status,
                 func.coalesce(stock_sq.c.total_stock, 0).label("current_stock"),
                 relevance.label("relevance"),
             )
             .outerjoin(stock_sq, Product.id == stock_sq.c.product_id)
+            .outerjoin(
+                Category,
+                and_(
+                    Category.id == Product.category_id,
+                    Category.tenant_id == tenant_id,
+                ),
+            )
+            .outerjoin(
+                category_translation,
+                and_(
+                    category_translation.category_id == Category.id,
+                    category_translation.locale == resolved_locale,
+                ),
+            )
             .where(*base_conditions)
             .where(fast_match)
             .order_by(relevance.desc(), Product.code),
@@ -2778,12 +3035,27 @@ async def search_products(
                     Product.id,
                     Product.code,
                     Product.name,
-                    Product.category,
+                    Product.category_id,
+                    category_name.label("category"),
                     Product.status,
                     func.coalesce(stock_sq.c.total_stock, 0).label("current_stock"),
                     relevance.label("relevance"),
                 )
                 .outerjoin(stock_sq, Product.id == stock_sq.c.product_id)
+                .outerjoin(
+                    Category,
+                    and_(
+                        Category.id == Product.category_id,
+                        Category.tenant_id == tenant_id,
+                    ),
+                )
+                .outerjoin(
+                    category_translation,
+                    and_(
+                        category_translation.category_id == Category.id,
+                        category_translation.locale == resolved_locale,
+                    ),
+                )
                 .where(*base_conditions)
                 .where(build_broader_conditions()),
                 limit,
@@ -2834,6 +3106,7 @@ async def search_products(
             "id": row.id,
             "code": row.code,
             "name": row.name,
+            "category_id": row.category_id,
             "category": row.category,
             "status": row.status,
             "current_stock": row.current_stock,

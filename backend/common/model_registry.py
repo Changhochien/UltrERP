@@ -7,6 +7,7 @@ from importlib import import_module
 MODEL_MODULES = (
 	"common.models.approval_request",
 	"common.models.audit_log",
+	"common.models.category",
 	"common.models.inventory_stock",
 	"common.models.legacy_import",
 	"common.models.order",

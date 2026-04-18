@@ -258,11 +258,12 @@ class CategoryBase(BaseModel):
 
 
 class CategoryCreate(CategoryBase):
-    pass
+    translations: dict[str, str] = Field(default_factory=dict)
 
 
-class CategoryUpdate(CategoryBase):
-    pass
+class CategoryUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    translations: dict[str, str] | None = None
 
 
 class CategoryStatusUpdate(BaseModel):
@@ -270,11 +271,12 @@ class CategoryStatusUpdate(BaseModel):
 
 
 class CategoryResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
     id: uuid.UUID
     tenant_id: uuid.UUID
     name: str
+    name_en: str
+    name_zh_hant: str | None = None
+    translations: dict[str, str]
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -331,6 +333,7 @@ class ProductSearchResult(BaseModel):
     id: uuid.UUID
     code: str
     name: str
+    category_id: uuid.UUID | None = None
     category: str | None
     status: str
     current_stock: int
@@ -348,7 +351,7 @@ class ProductSearchResponse(BaseModel):
 class ProductCreate(BaseModel):
     code: str = Field(..., min_length=1, max_length=100)
     name: str = Field(..., min_length=1, max_length=500)
-    category: str | None = Field(None, max_length=200)
+    category_id: uuid.UUID | None = None
     description: str | None = None
     unit: str = Field(default="pcs", max_length=50)
     standard_cost: Decimal | None = Field(default=None, ge=0, max_digits=19, decimal_places=4)
@@ -357,7 +360,7 @@ class ProductCreate(BaseModel):
 class ProductUpdate(BaseModel):
     code: str = Field(..., min_length=1, max_length=100)
     name: str = Field(..., min_length=1, max_length=500)
-    category: str | None = Field(None, max_length=200)
+    category_id: uuid.UUID | None = None
     description: str | None = None
     unit: str = Field(..., min_length=1, max_length=50)
     standard_cost: Decimal | None = Field(default=None, ge=0, max_digits=19, decimal_places=4)
@@ -373,6 +376,7 @@ class ProductResponse(BaseModel):
     id: uuid.UUID
     code: str
     name: str
+    category_id: uuid.UUID | None = None
     category: str | None
     description: str | None
     unit: str
@@ -416,6 +420,7 @@ class ProductDetailResponse(BaseModel):
     id: uuid.UUID
     code: str
     name: str
+    category_id: uuid.UUID | None = None
     category: str | None
     description: str | None
     unit: str

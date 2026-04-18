@@ -168,7 +168,9 @@ from domains.inventory.services import (
     list_units,
     list_warehouses,
     receive_supplier_order,
+    resolve_category_locale,
     search_products,
+    serialize_category,
     set_category_status,
     set_product_status,
     set_supplier_status,
@@ -209,6 +211,13 @@ ReadUser = Annotated[dict, Depends(require_role("admin", "warehouse", "sales"))]
 WriteUser = Annotated[dict, Depends(require_role("admin", "warehouse"))]
 
 ACTOR_ID = "system"
+
+
+def _requested_category_locale(
+    locale: str | None,
+    accept_language: str | None,
+) -> str:
+    return resolve_category_locale(locale, accept_language)
 
 
 def _current_actor_id(user: dict) -> str:
@@ -815,13 +824,16 @@ async def search_products_endpoint(
     _user: ReadUser,
     tenant_id: CurrentTenant,
     q: str = Query("", max_length=100),
+    category_id: uuid.UUID | None = Query(None),
     category: str | None = Query(None, max_length=200),
+    locale: str | None = Query(None, max_length=10),
     limit: int = Query(20, ge=1, le=500),
     offset: int = Query(0, ge=0),
     warehouse_id: uuid.UUID | None = Query(None),
     include_inactive: bool = Query(False),
     sort_by: str = Query("code", pattern="^(code|name|category|status|current_stock)$"),
     sort_dir: str = Query("asc", pattern="^(asc|desc)$"),
+    accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> ProductSearchResponse:
     stripped = q.strip()
     results, total = await search_products(
@@ -829,7 +841,9 @@ async def search_products_endpoint(
         tenant_id,
         stripped,
         warehouse_id=warehouse_id,
+        category_id=category_id,
         category=category,
+        locale=_requested_category_locale(locale, accept_language),
         include_inactive=include_inactive,
         limit=limit,
         offset=offset,
@@ -857,17 +871,21 @@ async def list_categories_endpoint(
     active_only: bool = Query(True),
     limit: int = Query(100, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    locale: str | None = Query(None, max_length=10),
+    accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> CategoryListResponse:
+    requested_locale = _requested_category_locale(locale, accept_language)
     items, total = await list_categories(
         session,
         tenant_id,
+        locale=requested_locale,
         q=q,
         active_only=active_only,
         limit=limit,
         offset=offset,
     )
     return CategoryListResponse(
-        items=[CategoryResponse.model_validate(item) for item in items],
+        items=[CategoryResponse(**serialize_category(item, requested_locale)) for item in items],
         total=total,
     )
 
@@ -882,16 +900,19 @@ async def create_category_endpoint(
     session: DbSession,
     _user: WriteUser,
     tenant_id: CurrentTenant,
+    locale: str | None = Query(None, max_length=10),
+    accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> CategoryResponse:
+    requested_locale = _requested_category_locale(locale, accept_language)
     try:
-        category = await create_category(session, tenant_id, data)
+        category = await create_category(session, tenant_id, data, locale=requested_locale)
         await session.commit()
     except DuplicateCategoryNameError as exc:
         return JSONResponse(status_code=409, content=duplicate_category_name_response(exc))
     except ValidationError as exc:
         return JSONResponse(status_code=422, content=error_response(exc.errors))
 
-    return CategoryResponse.model_validate(category)
+    return CategoryResponse(**serialize_category(category, requested_locale))
 
 
 @router.get(
@@ -903,14 +924,17 @@ async def get_category_endpoint(
     session: DbSession,
     _user: ReadUser,
     tenant_id: CurrentTenant,
+    locale: str | None = Query(None, max_length=10),
+    accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> CategoryResponse:
+    requested_locale = _requested_category_locale(locale, accept_language)
     category = await get_category(session, tenant_id, category_id)
     if category is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Category not found",
         )
-    return CategoryResponse.model_validate(category)
+    return CategoryResponse(**serialize_category(category, requested_locale))
 
 
 @router.put(
@@ -923,9 +947,18 @@ async def update_category_endpoint(
     session: DbSession,
     _user: WriteUser,
     tenant_id: CurrentTenant,
+    locale: str | None = Query(None, max_length=10),
+    accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> CategoryResponse:
+    requested_locale = _requested_category_locale(locale, accept_language)
     try:
-        category = await update_category(session, tenant_id, category_id, data)
+        category = await update_category(
+            session,
+            tenant_id,
+            category_id,
+            data,
+            locale=requested_locale,
+        )
         if category is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -937,7 +970,7 @@ async def update_category_endpoint(
     except ValidationError as exc:
         return JSONResponse(status_code=422, content=error_response(exc.errors))
 
-    return CategoryResponse.model_validate(category)
+    return CategoryResponse(**serialize_category(category, requested_locale))
 
 
 @router.patch(
@@ -950,7 +983,10 @@ async def update_category_status_endpoint(
     session: DbSession,
     _user: WriteUser,
     tenant_id: CurrentTenant,
+    locale: str | None = Query(None, max_length=10),
+    accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> CategoryResponse:
+    requested_locale = _requested_category_locale(locale, accept_language)
     category = await set_category_status(
         session,
         tenant_id,
@@ -961,10 +997,10 @@ async def update_category_status_endpoint(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Category not found",
-        )
+    )
 
     await session.commit()
-    return CategoryResponse.model_validate(category)
+    return CategoryResponse(**serialize_category(category, requested_locale))
 
 
 @router.get(
@@ -1174,11 +1210,14 @@ async def get_product_detail_endpoint(
     tenant_id: CurrentTenant,
     history_limit: int = Query(100, ge=1, le=500),
     history_offset: int = Query(0, ge=0),
+    locale: str | None = Query(None, max_length=10),
+    accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> ProductDetailResponse:
     detail = await get_product_detail(
         session,
         tenant_id,
         product_id,
+        locale=_requested_category_locale(locale, accept_language),
         history_limit=history_limit,
         history_offset=history_offset,
     )
