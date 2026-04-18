@@ -1,6 +1,6 @@
 # Story 4.17: Physical Count / Inventory Audit
 
-**Status:** backlog
+**Status:** done
 
 **Story ID:** 4.17
 
@@ -32,37 +32,37 @@ so that inventory adjustments from count discrepancies are deliberate and audita
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Add the physical-count models and migration** (AC: 1, 2, 3, 4, 5)
-  - [ ] Add `PhysicalCountSession` and `PhysicalCountLine` under `backend/common/models/`.
-  - [ ] Include `system_qty_snapshot`, `counted_qty`, `variance_qty`, `status`, actor/timestamp fields, and one-warehouse-per-session design.
-  - [ ] Add an Alembic migration and guard against multiple open sessions for the same warehouse if business rules require exclusivity.
+- [x] **Task 1: Add the physical-count models and migration** (AC: 1, 2, 3, 4, 5)
+  - [x] Add `PhysicalCountSession` and `PhysicalCountLine` under `backend/common/models/`.
+  - [x] Include `system_qty_snapshot`, `counted_qty`, `variance_qty`, `status`, actor/timestamp fields, and one-warehouse-per-session design.
+  - [x] Add an Alembic migration and guard against multiple open sessions for the same warehouse if business rules require exclusivity.
 
-- [ ] **Task 2: Add schemas and service lifecycle** (AC: 1, 2, 3, 4, 5)
-  - [ ] Add count-session request/response models to `backend/domains/inventory/schemas.py`.
-  - [ ] Add service methods for create, list, detail, update line, submit, and approve.
-  - [ ] On approval, lock the affected `inventory_stock` rows and compare live quantity to `system_qty_snapshot` before creating adjustments.
-  - [ ] Make approval idempotent so the same session cannot create duplicate adjustments on retry.
+- [x] **Task 2: Add schemas and service lifecycle** (AC: 1, 2, 3, 4, 5)
+  - [x] Add count-session request/response models to `backend/domains/inventory/schemas.py`.
+  - [x] Add service methods for create, list, detail, update line, submit, and approve.
+  - [x] On approval, lock the affected `inventory_stock` rows and compare live quantity to `system_qty_snapshot` before creating adjustments.
+  - [x] Make approval idempotent so the same session cannot create duplicate adjustments on retry.
 
-- [ ] **Task 3: Add the routes** (AC: 1, 2, 3, 4, 5)
-  - [ ] Add `POST /api/v1/inventory/count-sessions`
-  - [ ] Add `GET /api/v1/inventory/count-sessions`
-  - [ ] Add `GET /api/v1/inventory/count-sessions/{session_id}`
-  - [ ] Add `PATCH /api/v1/inventory/count-sessions/{session_id}/lines/{line_id}`
-  - [ ] Add `POST /api/v1/inventory/count-sessions/{session_id}/submit`
-  - [ ] Add `POST /api/v1/inventory/count-sessions/{session_id}/approve`
+- [x] **Task 3: Add the routes** (AC: 1, 2, 3, 4, 5)
+  - [x] Add `POST /api/v1/inventory/count-sessions`
+  - [x] Add `GET /api/v1/inventory/count-sessions`
+  - [x] Add `GET /api/v1/inventory/count-sessions/{session_id}`
+  - [x] Add `PATCH /api/v1/inventory/count-sessions/{session_id}/lines/{line_id}`
+  - [x] Add `POST /api/v1/inventory/count-sessions/{session_id}/submit`
+  - [x] Add `POST /api/v1/inventory/count-sessions/{session_id}/approve`
 
-- [ ] **Task 4: Build the count-session UI** (AC: 1, 2, 3, 4, 5)
-  - [ ] Create `src/pages/inventory/CountSessionsPage.tsx` for list/start flow.
-  - [ ] Create `src/pages/inventory/CountSessionDetailPage.tsx` for line entry, variance review, submit, and approve actions.
-  - [ ] Surface stale-session approval conflicts clearly in the UI.
+- [x] **Task 4: Build the count-session UI** (AC: 1, 2, 3, 4, 5)
+  - [x] Create `src/pages/inventory/CountSessionsPage.tsx` for list/start flow.
+  - [x] Create `src/pages/inventory/CountSessionDetailPage.tsx` for line entry, variance review, submit, and approve actions.
+  - [x] Surface stale-session approval conflicts clearly in the UI.
 
-- [ ] **Task 5: Reuse stock-adjustment audit behavior** (AC: 4)
-  - [ ] Reuse `StockAdjustment` and audit-log patterns from Story 4.4.
-  - [ ] Ensure `physical_count` is present as a valid system reason code.
+- [x] **Task 5: Reuse stock-adjustment audit behavior** (AC: 4)
+  - [x] Reuse `StockAdjustment` and audit-log patterns from Story 4.4.
+  - [x] Ensure `physical_count` is present as a valid system reason code.
 
-- [ ] **Task 6: Add focused regression tests** (AC: 1, 2, 3, 4, 5)
-  - [ ] Backend tests for session creation, line updates, submit, approval, double-approval retry, and stale-snapshot 409 behavior.
-  - [ ] Frontend tests for count entry and approval conflict messaging.
+- [x] **Task 6: Add focused regression tests** (AC: 1, 2, 3, 4, 5)
+  - [x] Backend tests for session creation, line updates, submit, approval, double-approval retry, and stale-snapshot 409 behavior.
+  - [x] Frontend tests for count entry and approval conflict messaging.
 
 ## Dev Notes
 
@@ -99,3 +99,50 @@ so that inventory adjustments from count discrepancies are deliberate and audita
 - `backend/common/models/stock_adjustment.py`
 - `backend/domains/inventory/services.py`
 - `backend/domains/inventory/routes.py`
+
+---
+
+## Dev Agent Record
+
+**Status:** done
+**Last Updated:** 2026-04-18
+
+### Completion Notes List
+
+- Added warehouse-scoped physical-count session and line models, a migration for the new tables and reason code, and inventory service flows for create, update, submit, and approval with snapshot-staleness protection and idempotent reconciliation.
+- Reused the existing stock-adjustment and audit-log infrastructure so approval applies only non-zero variances through `PHYSICAL_COUNT` adjustments instead of introducing a second stock mutation path.
+- Shipped count-session list and detail pages with route wiring, shell-context labels, localized copy, and explicit stale-approval error handling in the UI.
+
+### Validation
+
+- `cd backend && . .venv/bin/activate && pytest tests/common/test_model_registry.py tests/domains/inventory/test_stock_adjustment.py`
+- `cd backend && . .venv/bin/activate && pytest tests/domains/inventory/test_physical_count_sessions.py`
+- `pnpm vitest run src/pages/inventory/CountSessionsPage.test.tsx src/pages/inventory/CountSessionDetailPage.test.tsx`
+- VS Code diagnostics: no new errors in the touched backend/frontend files for the 4.17 slice
+
+### File List
+
+- `backend/common/models/physical_count_session.py`
+- `backend/common/models/physical_count_line.py`
+- `backend/common/models/stock_adjustment.py`
+- `backend/common/models/__init__.py`
+- `backend/common/model_registry.py`
+- `backend/domains/inventory/schemas.py`
+- `backend/domains/inventory/services.py`
+- `backend/domains/inventory/routes.py`
+- `backend/tests/common/test_model_registry.py`
+- `backend/tests/domains/inventory/test_stock_adjustment.py`
+- `backend/tests/domains/inventory/test_physical_count_sessions.py`
+- `migrations/versions/e1b2c3d4f5a6_add_physical_count_tables.py`
+- `src/domain/inventory/types.ts`
+- `src/lib/api/inventory.ts`
+- `src/pages/InventoryPage.tsx`
+- `src/pages/inventory/CountSessionsPage.tsx`
+- `src/pages/inventory/CountSessionDetailPage.tsx`
+- `src/pages/inventory/CountSessionsPage.test.tsx`
+- `src/pages/inventory/CountSessionDetailPage.test.tsx`
+- `src/lib/routes.ts`
+- `src/lib/navigation.tsx`
+- `src/App.tsx`
+- `public/locales/en/common.json`
+- `public/locales/zh-Hant/common.json`

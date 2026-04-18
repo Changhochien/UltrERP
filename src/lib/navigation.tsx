@@ -21,6 +21,7 @@ import {
   HOME_ROUTE,
   INVENTORY_BELOW_REORDER_REPORT_ROUTE,
   INVENTORY_CATEGORIES_ROUTE,
+  INVENTORY_COUNT_SESSIONS_ROUTE,
   INVENTORY_REORDER_SUGGESTIONS_ROUTE,
   INVENTORY_VALUATION_ROUTE,
   INVENTORY_ROUTE,
@@ -157,6 +158,7 @@ export const ROUTE_CONTEXT_KEYS = [
   { match: PAYMENTS_ROUTE, labelKey: "routes.payments.label", descriptionKey: "routes.payments.description" },
   { match: INVENTORY_ROUTE, labelKey: "routes.inventory.label", descriptionKey: "routes.inventory.description" },
   { match: INVENTORY_CATEGORIES_ROUTE, labelKey: "routes.inventoryCategories.label", descriptionKey: "routes.inventoryCategories.description" },
+  { match: INVENTORY_COUNT_SESSIONS_ROUTE, labelKey: "routes.inventoryCountSessions.label", descriptionKey: "routes.inventoryCountSessions.description" },
   { match: INVENTORY_BELOW_REORDER_REPORT_ROUTE, labelKey: "routes.belowReorderReport.label", descriptionKey: "routes.belowReorderReport.description" },
   { match: INVENTORY_VALUATION_ROUTE, labelKey: "routes.inventoryValuation.label", descriptionKey: "routes.inventoryValuation.description" },
   { match: INVENTORY_REORDER_SUGGESTIONS_ROUTE, labelKey: "routes.reorderSuggestions.label", descriptionKey: "routes.reorderSuggestions.description" },
@@ -200,6 +202,22 @@ export function getRouteContext(pathname: string) {
     };
   }
 
+  if (pathname === INVENTORY_COUNT_SESSIONS_ROUTE) {
+    return {
+      labelKey: "routes.inventoryCountSessions.label",
+      descriptionKey: "routes.inventoryCountSessions.description",
+      sectionKey: "nav.operations",
+    };
+  }
+
+  if (pathname.startsWith(`${INVENTORY_COUNT_SESSIONS_ROUTE}/`)) {
+    return {
+      labelKey: "routes.inventoryCountSessionDetail.label",
+      descriptionKey: "routes.inventoryCountSessionDetail.description",
+      sectionKey: "nav.operations",
+    };
+  }
+
   if (pathname.startsWith(`${ORDERS_ROUTE}/`) && pathname !== ORDER_CREATE_ROUTE) {
     return {
       labelKey: "routes.orderDetail.label",
@@ -211,7 +229,8 @@ export function getRouteContext(pathname: string) {
   if (
     pathname.startsWith(`${INVENTORY_ROUTE}/`) &&
     pathname !== INVENTORY_ROUTE &&
-    !pathname.startsWith(INVENTORY_CATEGORIES_ROUTE)
+    !pathname.startsWith(INVENTORY_CATEGORIES_ROUTE) &&
+    !pathname.startsWith(INVENTORY_COUNT_SESSIONS_ROUTE)
   ) {
     return {
       labelKey: "routes.productDetail.label",

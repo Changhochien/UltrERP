@@ -18,6 +18,7 @@ import { usePermissions } from "../hooks/usePermissions";
 import {
   INVENTORY_BELOW_REORDER_REPORT_ROUTE,
   INVENTORY_CATEGORIES_ROUTE,
+  INVENTORY_COUNT_SESSIONS_ROUTE,
   INVENTORY_REORDER_SUGGESTIONS_ROUTE,
   INVENTORY_VALUATION_ROUTE,
 } from "../lib/routes";
@@ -67,6 +68,13 @@ function InventoryWorkspace() {
                   onClick={() => navigate(INVENTORY_REORDER_SUGGESTIONS_ROUTE)}
                 >
                   {t("inventory.page.reviewSuggestions")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate(INVENTORY_COUNT_SESSIONS_ROUTE)}
+                >
+                  {t("inventory.page.manageCountSessions")}
                 </Button>
                 <Button
                   type="button"

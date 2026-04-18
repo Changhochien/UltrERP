@@ -7,6 +7,8 @@ from common.models.inventory_stock import InventoryStock
 from common.models.legacy_import import LegacyImportRun, LegacyImportTableRun
 from common.models.order import Order
 from common.models.order_line import OrderLine
+from common.models.physical_count_line import PhysicalCountLine
+from common.models.physical_count_session import PhysicalCountSession, PhysicalCountSessionStatus
 from common.models.product import Product
 from common.models.reorder_alert import ReorderAlert
 from common.models.stock_adjustment import ReasonCode, StockAdjustment
@@ -27,6 +29,9 @@ __all__ = [
 	"LegacyImportTableRun",
 	"Order",
 	"OrderLine",
+	"PhysicalCountLine",
+	"PhysicalCountSession",
+	"PhysicalCountSessionStatus",
 	"Product",
 	"ReasonCode",
 	"ReorderAlert",

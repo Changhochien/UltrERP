@@ -48,6 +48,47 @@ export interface TransferResponse {
   created_at: string;
 }
 
+export type PhysicalCountSessionStatus = "in_progress" | "submitted" | "approved";
+
+export interface PhysicalCountLine {
+  id: string;
+  product_id: string;
+  product_code: string | null;
+  product_name: string | null;
+  system_qty_snapshot: number;
+  counted_qty: number | null;
+  variance_qty: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PhysicalCountSessionSummary {
+  id: string;
+  warehouse_id: string;
+  warehouse_name: string | null;
+  status: PhysicalCountSessionStatus;
+  created_by: string;
+  submitted_by: string | null;
+  submitted_at: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  created_at: string;
+  updated_at: string;
+  total_lines: number;
+  counted_lines: number;
+  variance_total: number;
+}
+
+export interface PhysicalCountSession extends PhysicalCountSessionSummary {
+  lines: PhysicalCountLine[];
+}
+
+export interface PhysicalCountSessionListResponse {
+  items: PhysicalCountSessionSummary[];
+  total: number;
+}
+
 export interface InventoryStock {
   id: string;
   tenant_id: string;

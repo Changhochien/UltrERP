@@ -22,9 +22,11 @@ import {
   CUSTOMER_CREATE_ROUTE,
   CUSTOMER_DETAIL_ROUTE,
   CUSTOMERS_ROUTE,
+  COUNT_SESSION_DETAIL_ROUTE,
   HOME_ROUTE,
   INVENTORY_BELOW_REORDER_REPORT_ROUTE,
   INVENTORY_CATEGORIES_ROUTE,
+  INVENTORY_COUNT_SESSIONS_ROUTE,
   INVENTORY_VALUATION_ROUTE,
   INVENTORY_REORDER_SUGGESTIONS_ROUTE,
   INVENTORY_ROUTE,
@@ -51,6 +53,8 @@ import { InventoryPage } from "./pages/InventoryPage";
 import { IntelligencePage } from "./pages/IntelligencePage";
 import { BelowReorderReportPage } from "./pages/inventory/BelowReorderReportPage";
 import { CategoriesPage } from "./pages/inventory/CategoriesPage";
+import { CountSessionDetailPage } from "./pages/inventory/CountSessionDetailPage";
+import { CountSessionsPage } from "./pages/inventory/CountSessionsPage";
 import { InventoryValuationPage } from "./pages/inventory/InventoryValuationPage";
 import { ProductDetailPage } from "./pages/inventory/ProductDetailPage";
 import { ReorderSuggestionsPage } from "./pages/inventory/ReorderSuggestionsPage";
@@ -208,6 +212,26 @@ export default function App() {
               <ProtectedAppRoute requiredFeature="inventory">
                 <RoutedPage>
                   <CategoriesPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={INVENTORY_COUNT_SESSIONS_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="inventory">
+                <RoutedPage>
+                  <CountSessionsPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={COUNT_SESSION_DETAIL_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="inventory">
+                <RoutedPage>
+                  <CountSessionDetailPage />
                 </RoutedPage>
               </ProtectedAppRoute>
             }

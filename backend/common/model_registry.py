@@ -11,6 +11,8 @@ MODEL_MODULES = (
 	"common.models.legacy_import",
 	"common.models.order",
 	"common.models.order_line",
+	"common.models.physical_count_line",
+	"common.models.physical_count_session",
 	"common.models.product",
 	"common.models.reorder_alert",
 	"common.models.stock_adjustment",

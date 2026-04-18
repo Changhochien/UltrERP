@@ -46,6 +46,11 @@ from domains.inventory.schemas import (
     InventoryValuationItem,
     InventoryValuationResponse,
     InventoryValuationWarehouseTotal,
+    PhysicalCountLineUpdateRequest,
+    PhysicalCountSessionCreate,
+    PhysicalCountSessionListResponse,
+    PhysicalCountSessionResponse,
+    PhysicalCountSessionSummary,
     CategoryCreate,
     CategoryListResponse,
     CategoryResponse,
@@ -103,10 +108,15 @@ from domains.inventory.schemas import (
 )
 from domains.inventory.services import (
     InsufficientStockError,
+    PhysicalCountConflictError,
+    PhysicalCountNotFoundError,
+    PhysicalCountStateError,
     TransferValidationError,
     acknowledge_alert,
+    approve_physical_count_session,
     create_category,
     create_product,
+    create_physical_count_session,
     create_stock_adjustment,
     create_supplier_order,
     create_warehouse,
@@ -115,6 +125,7 @@ from domains.inventory.services import (
     create_reorder_suggestion_orders,
     dismiss_alert,
     create_supplier,
+    get_physical_count_session,
     get_category,
     get_inventory_stocks,
     get_monthly_demand,
@@ -128,6 +139,7 @@ from domains.inventory.services import (
     get_supplier_order,
     get_top_customer,
     get_warehouse,
+    list_physical_count_sessions,
     list_categories,
     list_reorder_alerts,
     list_reorder_suggestions,
@@ -140,7 +152,9 @@ from domains.inventory.services import (
     set_product_status,
     set_supplier_status,
     snooze_alert,
+    submit_physical_count_session,
     transfer_stock,
+    update_physical_count_line,
     update_category,
     update_product,
     update_supplier,
@@ -170,6 +184,10 @@ ReadUser = Annotated[dict, Depends(require_role("admin", "warehouse", "sales"))]
 WriteUser = Annotated[dict, Depends(require_role("admin", "warehouse"))]
 
 ACTOR_ID = "system"
+
+
+def _current_actor_id(user: dict) -> str:
+    return str(user.get("sub") or ACTOR_ID)
 
 
 def _require_feature_enabled(enabled: bool, detail: str) -> None:
@@ -315,6 +333,163 @@ async def create_transfer_endpoint(
                 "requested": exc.requested,
             },
         ) from exc
+
+
+# ── Physical count endpoints ──────────────────────────────────
+
+
+@router.post(
+    "/count-sessions",
+    response_model=PhysicalCountSessionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_count_session_endpoint(
+    data: PhysicalCountSessionCreate,
+    session: DbSession,
+    user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> PhysicalCountSessionResponse:
+    try:
+        result = await create_physical_count_session(
+            session,
+            tenant_id,
+            warehouse_id=data.warehouse_id,
+            actor_id=_current_actor_id(user),
+        )
+        await session.commit()
+        return PhysicalCountSessionResponse.model_validate(result)
+    except PhysicalCountNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PhysicalCountConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+
+@router.get(
+    "/count-sessions",
+    response_model=PhysicalCountSessionListResponse,
+)
+async def list_count_sessions_endpoint(
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+    warehouse_id: uuid.UUID | None = Query(None),
+    status_filter: str | None = Query(
+        None,
+        alias="status",
+        pattern=r"^(in_progress|submitted|approved)$",
+    ),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+) -> PhysicalCountSessionListResponse:
+    items, total = await list_physical_count_sessions(
+        session,
+        tenant_id,
+        warehouse_id=warehouse_id,
+        status=status_filter,
+        limit=limit,
+        offset=offset,
+    )
+    return PhysicalCountSessionListResponse(
+        items=[PhysicalCountSessionSummary.model_validate(item) for item in items],
+        total=total,
+    )
+
+
+@router.get(
+    "/count-sessions/{session_id}",
+    response_model=PhysicalCountSessionResponse,
+)
+async def get_count_session_endpoint(
+    session_id: uuid.UUID,
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+) -> PhysicalCountSessionResponse:
+    result = await get_physical_count_session(session, tenant_id, session_id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Physical count session not found")
+    return PhysicalCountSessionResponse.model_validate(result)
+
+
+@router.patch(
+    "/count-sessions/{session_id}/lines/{line_id}",
+    response_model=PhysicalCountSessionResponse,
+)
+async def update_count_session_line_endpoint(
+    session_id: uuid.UUID,
+    line_id: uuid.UUID,
+    data: PhysicalCountLineUpdateRequest,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> PhysicalCountSessionResponse:
+    try:
+        result = await update_physical_count_line(
+            session,
+            tenant_id,
+            session_id,
+            line_id,
+            counted_qty=data.counted_qty,
+            notes=data.notes,
+        )
+        await session.commit()
+        return PhysicalCountSessionResponse.model_validate(result)
+    except PhysicalCountNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PhysicalCountStateError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
+
+
+@router.post(
+    "/count-sessions/{session_id}/submit",
+    response_model=PhysicalCountSessionResponse,
+)
+async def submit_count_session_endpoint(
+    session_id: uuid.UUID,
+    session: DbSession,
+    user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> PhysicalCountSessionResponse:
+    try:
+        result = await submit_physical_count_session(
+            session,
+            tenant_id,
+            session_id,
+            actor_id=_current_actor_id(user),
+        )
+        await session.commit()
+        return PhysicalCountSessionResponse.model_validate(result)
+    except PhysicalCountNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PhysicalCountStateError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
+
+
+@router.post(
+    "/count-sessions/{session_id}/approve",
+    response_model=PhysicalCountSessionResponse,
+)
+async def approve_count_session_endpoint(
+    session_id: uuid.UUID,
+    session: DbSession,
+    user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> PhysicalCountSessionResponse:
+    try:
+        result = await approve_physical_count_session(
+            session,
+            tenant_id,
+            session_id,
+            actor_id=_current_actor_id(user),
+        )
+        await session.commit()
+        return PhysicalCountSessionResponse.model_validate(result)
+    except PhysicalCountNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PhysicalCountStateError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
+    except PhysicalCountConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
 
 # ── Reorder point endpoints ────────────────────────────────────

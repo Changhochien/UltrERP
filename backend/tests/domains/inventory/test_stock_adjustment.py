@@ -112,11 +112,12 @@ async def test_list_reason_codes() -> None:
     assert "received" in values
     assert "damaged" in values
     assert "transfer_out" in values
+    assert "physical_count" in values
 
     user_codes = [i for i in body["items"] if i["user_selectable"]]
     system_codes = [i for i in body["items"] if not i["user_selectable"]]
     assert len(user_codes) == 5
-    assert len(system_codes) == 5
+    assert len(system_codes) == 6
 
 
 async def test_reason_codes_user_selectable_excludes_system() -> None:
@@ -126,6 +127,7 @@ async def test_reason_codes_user_selectable_excludes_system() -> None:
     assert "transfer_out" not in user_values
     assert "transfer_in" not in user_values
     assert "supplier_delivery" not in user_values
+    assert "physical_count" not in user_values
 
 
 # ── Adjustment success tests ─────────────────────────────────

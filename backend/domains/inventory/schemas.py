@@ -378,6 +378,57 @@ class ReasonCodeListResponse(BaseModel):
     items: list[ReasonCodeItem]
 
 
+# --- Physical count schemas ---
+
+
+class PhysicalCountSessionCreate(BaseModel):
+    warehouse_id: uuid.UUID
+
+
+class PhysicalCountLineUpdateRequest(BaseModel):
+    counted_qty: int = Field(..., ge=0)
+    notes: str | None = Field(None, max_length=1000)
+
+
+class PhysicalCountLineResponse(BaseModel):
+    id: uuid.UUID
+    product_id: uuid.UUID
+    product_code: str | None = None
+    product_name: str | None = None
+    system_qty_snapshot: int
+    counted_qty: int | None
+    variance_qty: int | None
+    notes: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class PhysicalCountSessionSummary(BaseModel):
+    id: uuid.UUID
+    warehouse_id: uuid.UUID
+    warehouse_name: str | None = None
+    status: Literal["in_progress", "submitted", "approved"]
+    created_by: str
+    submitted_by: str | None
+    submitted_at: datetime | None
+    approved_by: str | None
+    approved_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+    total_lines: int
+    counted_lines: int
+    variance_total: int
+
+
+class PhysicalCountSessionResponse(PhysicalCountSessionSummary):
+    lines: list[PhysicalCountLineResponse]
+
+
+class PhysicalCountSessionListResponse(BaseModel):
+    items: list[PhysicalCountSessionSummary]
+    total: int
+
+
 # --- Reorder alert schemas ---
 
 

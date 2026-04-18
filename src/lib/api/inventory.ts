@@ -11,6 +11,8 @@ import type {
   DismissAlertResponse,
   InventoryValuationResponse,
   PlanningSupportResponse,
+  PhysicalCountSession,
+  PhysicalCountSessionListResponse,
   ProductSearchResponse,
   ProductDetail,
   ProductCreate,
@@ -197,7 +199,7 @@ export async function setCategoryStatus(
 
 export async function fetchProductDetail(
   productId: string,
-  options?: { historyLimit?: number; historyOffset?: number },
+  options?: { historyLimit?: number; historyOffset?: number; signal?: AbortSignal },
 ): Promise<{ ok: true; data: ProductDetail } | { ok: false; error: string }> {
   try {
     const params = new URLSearchParams();
@@ -207,7 +209,7 @@ export async function fetchProductDetail(
       params.set("history_offset", String(options.historyOffset));
     const qs = params.toString();
     const url = `/api/v1/inventory/products/${encodeURIComponent(productId)}${qs ? `?${qs}` : ""}`;
-    const resp = await apiFetch(url);
+    const resp = await apiFetch(url, options?.signal ? { signal: options.signal } : undefined);
     if (!resp.ok) return { ok: false, error: "Failed to fetch product detail" };
     return { ok: true, data: (await resp.json()) as ProductDetail };
   } catch (e) {
@@ -311,14 +313,15 @@ export async function fetchBelowReorderReport(options?: {
   }
 }
 
-export async function fetchInventoryValuation(options?: {
-  warehouseId?: string;
-}): Promise<{ ok: true; data: InventoryValuationResponse } | { ok: false; error: string }> {
+export async function fetchInventoryValuation(
+  options?: { warehouseId?: string },
+  fetchOptions?: { signal?: AbortSignal },
+): Promise<{ ok: true; data: InventoryValuationResponse } | { ok: false; error: string }> {
   try {
     const params = new URLSearchParams();
     if (options?.warehouseId) params.set("warehouse_id", options.warehouseId);
     const qs = params.toString();
-    const resp = await apiFetch(`/api/v1/inventory/reports/valuation${qs ? `?${qs}` : ""}`);
+    const resp = await apiFetch(`/api/v1/inventory/reports/valuation${qs ? `?${qs}` : ""}`, fetchOptions);
     if (!resp.ok) {
       const body = await resp.json().catch(() => ({}));
       return {
@@ -518,6 +521,145 @@ export async function createTransfer(data: {
       return { ok: false, error: (body as { detail?: string }).detail ?? "Failed to create transfer" };
     }
     return { ok: true, data: (await resp.json()) as TransferResponse };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+export async function fetchPhysicalCountSessions(options?: {
+  warehouseId?: string;
+  status?: string;
+  limit?: number;
+  offset?: number;
+  signal?: AbortSignal;
+}): Promise<{ ok: true; data: PhysicalCountSessionListResponse } | { ok: false; error: string }> {
+  try {
+    const params = new URLSearchParams();
+    if (options?.warehouseId) params.set("warehouse_id", options.warehouseId);
+    if (options?.status) params.set("status", options.status);
+    if (options?.limit != null) params.set("limit", String(options.limit));
+    if (options?.offset != null) params.set("offset", String(options.offset));
+
+    const qs = params.toString();
+    const resp = await apiFetch(`/api/v1/inventory/count-sessions${qs ? `?${qs}` : ""}`, {
+      signal: options?.signal,
+    });
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({}));
+      return {
+        ok: false,
+        error: (body as { detail?: string }).detail ?? "Failed to fetch count sessions",
+      };
+    }
+    return { ok: true, data: (await resp.json()) as PhysicalCountSessionListResponse };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+export async function fetchPhysicalCountSession(
+  sessionId: string,
+  options?: { signal?: AbortSignal },
+): Promise<{ ok: true; data: PhysicalCountSession } | { ok: false; error: string }> {
+  try {
+    const resp = await apiFetch(`/api/v1/inventory/count-sessions/${encodeURIComponent(sessionId)}`, {
+      signal: options?.signal,
+    });
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      return {
+        ok: false,
+        error: (body as { detail?: string }).detail ?? "Failed to fetch count session",
+      };
+    }
+    return { ok: true, data: body as PhysicalCountSession };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+export async function createPhysicalCountSession(data: {
+  warehouse_id: string;
+}): Promise<{ ok: true; data: PhysicalCountSession } | { ok: false; error: string }> {
+  try {
+    const resp = await apiFetch("/api/v1/inventory/count-sessions", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      return {
+        ok: false,
+        error: (body as { detail?: string }).detail ?? "Failed to create count session",
+      };
+    }
+    return { ok: true, data: body as PhysicalCountSession };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+export async function updatePhysicalCountLine(
+  sessionId: string,
+  lineId: string,
+  data: { counted_qty: number; notes?: string },
+): Promise<{ ok: true; data: PhysicalCountSession } | { ok: false; error: string }> {
+  try {
+    const resp = await apiFetch(
+      `/api/v1/inventory/count-sessions/${encodeURIComponent(sessionId)}/lines/${encodeURIComponent(lineId)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      },
+    );
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      return {
+        ok: false,
+        error: (body as { detail?: string }).detail ?? "Failed to update count line",
+      };
+    }
+    return { ok: true, data: body as PhysicalCountSession };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+export async function submitPhysicalCountSession(
+  sessionId: string,
+): Promise<{ ok: true; data: PhysicalCountSession } | { ok: false; error: string }> {
+  try {
+    const resp = await apiFetch(`/api/v1/inventory/count-sessions/${encodeURIComponent(sessionId)}/submit`, {
+      method: "POST",
+    });
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      return {
+        ok: false,
+        error: (body as { detail?: string }).detail ?? "Failed to submit count session",
+      };
+    }
+    return { ok: true, data: body as PhysicalCountSession };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+export async function approvePhysicalCountSession(
+  sessionId: string,
+): Promise<{ ok: true; data: PhysicalCountSession } | { ok: false; error: string }> {
+  try {
+    const resp = await apiFetch(`/api/v1/inventory/count-sessions/${encodeURIComponent(sessionId)}/approve`, {
+      method: "POST",
+    });
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      return {
+        ok: false,
+        error: (body as { detail?: string }).detail ?? "Failed to approve count session",
+      };
+    }
+    return { ok: true, data: body as PhysicalCountSession };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
   }

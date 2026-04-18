@@ -3,6 +3,8 @@ export const LOGIN_ROUTE = "/login";
 export const OWNER_DASHBOARD_ROUTE = "/owner-dashboard";
 export const INVENTORY_ROUTE = "/inventory";
 export const INVENTORY_CATEGORIES_ROUTE = "/inventory/categories";
+export const INVENTORY_COUNT_SESSIONS_ROUTE = "/inventory/count-sessions";
+export const COUNT_SESSION_DETAIL_ROUTE = "/inventory/count-sessions/:sessionId";
 export const INVENTORY_BELOW_REORDER_REPORT_ROUTE = "/inventory/reports/below-reorder";
 export const INVENTORY_VALUATION_ROUTE = "/inventory/reports/valuation";
 export const INVENTORY_REORDER_SUGGESTIONS_ROUTE = "/inventory/reorder-suggestions";
@@ -28,6 +30,8 @@ export type AppRoute =
   | typeof LOGIN_ROUTE
   | typeof INVENTORY_ROUTE
   | typeof INVENTORY_CATEGORIES_ROUTE
+  | typeof INVENTORY_COUNT_SESSIONS_ROUTE
+  | typeof COUNT_SESSION_DETAIL_ROUTE
   | typeof INVENTORY_BELOW_REORDER_REPORT_ROUTE
   | typeof INVENTORY_VALUATION_ROUTE
   | typeof INVENTORY_REORDER_SUGGESTIONS_ROUTE
@@ -50,6 +54,10 @@ export type AppRoute =
 
 export function buildSupplierDetailPath(supplierId: string): string {
   return `/inventory/suppliers/${encodeURIComponent(supplierId)}`;
+}
+
+export function buildCountSessionDetailPath(sessionId: string): string {
+  return COUNT_SESSION_DETAIL_ROUTE.replace(":sessionId", encodeURIComponent(sessionId));
 }
 
 export function buildProductDetailPath(productId: string, tab?: string): string {

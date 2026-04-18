@@ -70,6 +70,14 @@
       "description": "Standardize product category master data used in forms and search filters.",
       "label": "Product Categories"
     },
+    "inventoryCountSessions": {
+      "description": "Start, review, and reconcile warehouse physical count sessions.",
+      "label": "Count Sessions"
+    },
+    "inventoryCountSessionDetail": {
+      "description": "Review counted quantities, variances, and approval status for one physical count session.",
+      "label": "Count Session Detail"
+    },
     "belowReorderReport": {
       "description": "Preview and export warehouse-scoped below-reorder inventory rows.",
       "label": "Below-Reorder Report"
@@ -1075,6 +1083,7 @@
       "belowReorderReport": "Below-Reorder Report",
       "inventoryValuation": "Inventory Valuation",
       "reviewSuggestions": "Review Suggestions",
+      "manageCountSessions": "Count Sessions",
       "manageCategories": "Manage Categories",
       "addProduct": "Add Product",
       "warehouseScope": "Warehouse Scope",
@@ -1329,6 +1338,89 @@
         "supplier": "Supplier Hint",
         "actions": "Actions"
       }
+    },
+    "countSessionsPage": {
+      "eyebrow": "Inventory Counts",
+      "title": "Physical Count Sessions",
+      "description": "Start warehouse count sessions and review submitted variances before reconciliation.",
+      "backToInventory": "Back to inventory",
+      "create": "Start Session",
+      "creating": "Starting…",
+      "filtersTitle": "Session Filters",
+      "filtersDescription": "Scope the list by warehouse and lifecycle status.",
+      "warehouseLabel": "Warehouse",
+      "allWarehouses": "All warehouses",
+      "statusLabel": "Status",
+      "allStatuses": "All statuses",
+      "directoryTitle": "Open and Historical Sessions",
+      "directoryDescription": "Submitted sessions stay read-only until approval applies the stock reconciliation.",
+      "loading": "Loading count sessions…",
+      "empty": "No count sessions found.",
+      "emptyDescription": "Start a new warehouse count session to snapshot live stock for review.",
+      "total": "{count} sessions",
+      "open": "Open",
+      "unknownWarehouse": "Unknown warehouse",
+      "countedProgress": "{counted} / {total} lines counted",
+      "status": {
+        "in_progress": "In Progress",
+        "submitted": "Submitted",
+        "approved": "Approved"
+      },
+      "columns": {
+        "warehouse": "Warehouse",
+        "status": "Status",
+        "counted": "Counted",
+        "variance": "Variance Total",
+        "created": "Created",
+        "actions": "Actions"
+      },
+      "loadError": "Failed to load count sessions."
+    },
+    "countSessionDetailPage": {
+      "eyebrow": "Inventory Counts",
+      "title": "Count Session {id}",
+      "titleLoading": "Count Session",
+      "description": "Capture counted quantities, then submit and approve the warehouse reconciliation.",
+      "backToList": "Back to Sessions",
+      "loadingTitle": "Loading Session",
+      "loading": "Loading session details…",
+      "missingTitle": "Session unavailable",
+      "missingDescription": "This count session could not be loaded.",
+      "summaryTitle": "Session Summary",
+      "summaryDescription": "Approval only applies adjustments when live stock still matches the original snapshot.",
+      "linesTitle": "Count Lines",
+      "linesDescriptionEditable": "Update counted quantities line by line. Submission locks editing for review.",
+      "linesDescriptionReadonly": "This session is locked. Review the recorded variances before or after reconciliation.",
+      "submit": "Submit Session",
+      "submitting": "Submitting…",
+      "approve": "Approve Reconciliation",
+      "approving": "Approving…",
+      "saveLine": "Save Line",
+      "savingLine": "Saving…",
+      "readonly": "Locked",
+      "invalidQuantity": "Enter a counted quantity greater than or equal to 0.",
+      "unknownWarehouse": "Unknown warehouse",
+      "countedProgress": "{counted} / {total} lines counted",
+      "status": {
+        "in_progress": "In Progress",
+        "submitted": "Submitted",
+        "approved": "Approved"
+      },
+      "summary": {
+        "status": "Status",
+        "warehouse": "Warehouse",
+        "countedLines": "Counted Lines",
+        "varianceTotal": "Variance Total"
+      },
+      "columns": {
+        "product": "Product",
+        "snapshot": "Snapshot Qty",
+        "counted": "Counted Qty",
+        "variance": "Variance",
+        "notes": "Notes",
+        "actions": "Actions"
+      },
+      "loadError": "Failed to load the count session."
     },
     "belowReorderReportPage": {
       "eyebrow": "Inventory Reports",
