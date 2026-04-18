@@ -1,8 +1,11 @@
 import asyncio
-import domains.customers.models
-import common.models
+
 from common.database import AsyncSessionLocal
+from common.model_registry import register_all_models
 from domains.users.service import create_user
+
+register_all_models()
+
 
 async def seed():
     async with AsyncSessionLocal() as session:

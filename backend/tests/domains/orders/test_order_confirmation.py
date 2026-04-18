@@ -6,6 +6,9 @@ import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
 
+import pytest
+from fastapi import HTTPException
+
 from domains.orders.services import confirm_order
 
 from ._helpers import (
@@ -237,6 +240,127 @@ async def test_confirm_order_scopes_product_lookup_to_tenant() -> None:
 
     product_lookup = _find_executed_statement(session, "product.code")
     assert "product.tenant_id" in str(product_lookup)
+
+
+async def test_confirm_order_uses_public_confirmation_collaborators(monkeypatch) -> None:
+    customer = FakeCustomer()
+    line = FakeOrderLine()
+    order = FakeOrder(customer_id=customer.id, lines=[line], customer=customer)
+
+    session = FakeAsyncSession()
+    _queue_confirm_success(session, order, customer)
+
+    invoice_calls: dict[str, object] = {}
+    stock_calls: dict[str, object] = {}
+
+    async def fake_create_invoice_in_transaction(session_arg, data, tenant_id, buyer_identifier):
+        invoice_calls.update(
+            {
+                "session": session_arg,
+                "tenant_id": tenant_id,
+                "buyer_identifier": buyer_identifier,
+                "line_count": len(data.lines),
+            }
+        )
+        return type(
+            "FakeInvoice",
+            (),
+            {
+                "id": uuid.uuid4(),
+                "invoice_number": "AA00000001",
+                "total_amount": Decimal("1050.00"),
+                "order_id": None,
+            },
+        )()
+
+    async def fake_reserve_stock_for_order_confirmation(
+        session_arg,
+        tenant_id,
+        *,
+        order_number,
+        order_lines,
+        actor_id,
+    ):
+        stock_calls.update(
+            {
+                "session": session_arg,
+                "tenant_id": tenant_id,
+                "order_number": order_number,
+                "line_count": len(order_lines),
+                "actor_id": actor_id,
+            }
+        )
+
+    import domains.inventory.order_confirmation as inventory_order_confirmation
+    import domains.invoices.service as invoice_service
+
+    monkeypatch.setattr(
+        invoice_service,
+        "create_invoice_in_transaction",
+        fake_create_invoice_in_transaction,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        inventory_order_confirmation,
+        "reserve_stock_for_order_confirmation",
+        fake_reserve_stock_for_order_confirmation,
+        raising=False,
+    )
+
+    result = await confirm_order(session, order.id, tenant_id=order.tenant_id)
+
+    assert invoice_calls["session"] is session
+    assert invoice_calls["tenant_id"] == order.tenant_id
+    assert invoice_calls["line_count"] == len(order.lines)
+    assert stock_calls["session"] is session
+    assert stock_calls["tenant_id"] == order.tenant_id
+    assert stock_calls["order_number"] == order.order_number
+    assert stock_calls["line_count"] == len(order.lines)
+    assert result.status == "confirmed"
+    assert result.invoice_id is not None
+
+
+async def test_create_invoice_in_transaction_requires_active_transaction() -> None:
+    from domains.invoices.service import create_invoice_in_transaction
+
+    session = FakeAsyncSession()
+
+    with pytest.raises(RuntimeError, match="active transaction"):
+        await create_invoice_in_transaction(
+            session,
+            None,
+            uuid.uuid4(),
+            "12345678",
+        )
+
+
+async def test_confirm_order_rolls_back_added_rows_when_reservation_fails(monkeypatch) -> None:
+    customer = FakeCustomer()
+    line = FakeOrderLine()
+    order = FakeOrder(customer_id=customer.id, lines=[line], customer=customer)
+
+    session = FakeAsyncSession()
+    _queue_confirm_success(session, order, customer)
+
+    async def fail_reservation(*_args, **_kwargs):
+        raise ValueError("reservation failed")
+
+    import domains.inventory.order_confirmation as inventory_order_confirmation
+
+    monkeypatch.setattr(
+        inventory_order_confirmation,
+        "reserve_stock_for_order_confirmation",
+        fail_reservation,
+        raising=False,
+    )
+
+    with pytest.raises(HTTPException, match="reservation failed") as exc_info:
+        await confirm_order(session, order.id, tenant_id=order.tenant_id)
+
+    assert exc_info.value.status_code == 409
+    assert order.status == "pending"
+    assert order.invoice_id is None
+    assert session.added == []
 
 
 async def test_confirm_order_resolves_invoice_line_unit_costs() -> None:

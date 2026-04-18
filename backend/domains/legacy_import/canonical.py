@@ -964,18 +964,28 @@ def _resolve_legacy_receiving_created_at(
     source_identifier = (
         f"{_as_text(line.get('doc_number'))}:{_as_int(line.get('line_number'), 1)}"
     )
-    line_day = _as_legacy_date(line.get("receipt_date"))
+
+    # Wrap date parsing in try/except so malformed dates fall through to the
+    # next fallback level instead of crashing the entire receiving_audit step.
+    try:
+        line_day = _as_legacy_date(line.get("receipt_date"))
+    except ValueError:
+        line_day = None
     if line_day is not None:
         return _as_timestamp(line_day)
 
-    header_day = _as_legacy_date(header.get("invoice_date")) if header is not None else None
-    if header_day is not None:
-        _LOGGER.warning(
-            "Legacy receiving line %s has sentinel/missing receipt_date; "
-            "falling back to header invoice_date",
-            source_identifier,
-        )
-        return _as_timestamp(header_day)
+    if header is not None:
+        try:
+            header_day = _as_legacy_date(header.get("invoice_date"))
+        except ValueError:
+            header_day = None
+        if header_day is not None:
+            _LOGGER.warning(
+                "Legacy receiving line %s has sentinel/missing receipt_date; "
+                "falling back to header invoice_date",
+                source_identifier,
+            )
+            return _as_timestamp(header_day)
 
     if batch_fallback_day is not None:
         _LOGGER.warning(
@@ -1471,6 +1481,29 @@ async def _import_legacy_receiving_audit(
     for line in lines:
         doc_number = _as_text(line.get("doc_number"))
         line_number = _as_int(line.get("line_number"), 1)
+        source_row_number = _as_int(line.get("source_row_number"))
+
+        # Blank doc_number would produce colliding deterministic UUIDs across all blank
+        # rows (same source_identifier = ":{line_number}"). Route to holding instead.
+        # Use line_number as the row identity when source_row_number is absent or zero
+        # to avoid UUID collisions in the holding table.
+        row_identity = source_row_number or line_number
+        if not doc_number:
+            await _upsert_holding_row(
+                connection,
+                schema_name,
+                run_id,
+                tenant_id,
+                batch_id,
+                "receiving_audit",
+                "tbsslipdtj",
+                f":{line_number}",
+                row_identity,
+                line,
+                "Blank doc_number — routed to holding; UUID collision prevented.",
+            )
+            continue
+
         source_identifier = f"{doc_number}:{line_number}"
 
         legacy_product_code = _as_text(line.get("product_code"))

@@ -52,6 +52,7 @@ export function InvoiceDetail({ invoiceId, onBack }: InvoiceDetailProps) {
   const [pendingPrintPreviewOpen, setPendingPrintPreviewOpen] = useState(false);
   const [PrintPreviewModalComponent, setPrintPreviewModalComponent] = useState<InvoicePrintPreviewModalComponent | null>(null);
   const previewMeasurementRef = useRef<InvoicePrintPreviewMeasurement | null>(null);
+  const previewInvoiceIdRef = useRef<string | null>(null);
 
   const egui = invoice?.egui_submission;
 
@@ -65,6 +66,7 @@ export function InvoiceDetail({ invoiceId, onBack }: InvoiceDetailProps) {
 
   useEffect(() => {
     if (!invoice) {
+      previewInvoiceIdRef.current = null;
       setPrintPreviewOpen(false);
       setPrintPreviewLoading(false);
       setPrintPreviewError(null);
@@ -77,6 +79,13 @@ export function InvoiceDetail({ invoiceId, onBack }: InvoiceDetailProps) {
     }
 
     let active = true;
+
+    if (previewInvoiceIdRef.current !== invoice.id) {
+      previewInvoiceIdRef.current = invoice.id;
+      setPendingPrintPreviewOpen(false);
+      clearInvoicePrintPreviewMeasurement(previewMeasurementRef.current);
+      previewMeasurementRef.current = null;
+    }
 
     setPrintPreviewOpen(false);
     setPrintPreviewLoading(true);
@@ -157,11 +166,13 @@ export function InvoiceDetail({ invoiceId, onBack }: InvoiceDetailProps) {
 
   const ps = invoice.payment_status;
   const printPreviewValidationError = validatePrintReady(invoice);
+  const previewPreparationPending = !printPreviewError
+    && (!PrintPreviewModalComponent || !printPreviewContext || printPreviewLoading);
   const printPreviewDisabledReason = printPreviewValidationError
-    ?? (printPreviewLoading ? "Preparing print preview…" : null);
+    ?? (previewPreparationPending ? "Preparing print preview…" : null);
   const printPreviewButtonLabel = printPreviewError
     ? "Retry Preview"
-    : (printPreviewLoading ? "Preparing Preview…" : "Print Preview");
+    : (previewPreparationPending ? "Preparing Preview…" : "Print Preview");
 
   const formatOperationalTimestamp = (value: string | null | undefined): string => {
     if (!value) {
@@ -192,7 +203,7 @@ export function InvoiceDetail({ invoiceId, onBack }: InvoiceDetailProps) {
     }
 
     setPendingPrintPreviewOpen(true);
-    if (printPreviewError || !PrintPreviewModalComponent || !printPreviewContext) {
+    if (printPreviewError) {
       setPrintPreviewAttempt((attempt) => attempt + 1);
       return;
     }

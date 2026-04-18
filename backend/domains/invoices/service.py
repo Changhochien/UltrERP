@@ -619,6 +619,23 @@ async def _create_invoice_core(
     return invoice
 
 
+async def create_invoice_in_transaction(
+    session: AsyncSession,
+    data: InvoiceCreate,
+    tenant_id: uuid.UUID,
+    buyer_identifier: str,
+) -> Invoice:
+    """Create an invoice inside an already-open transaction.
+
+    The caller owns ``session.begin()`` and tenant scoping.
+    """
+    if not session.in_transaction():
+        raise RuntimeError(
+            "create_invoice_in_transaction requires an active transaction"
+        )
+    return await _create_invoice_core(session, data, tenant_id, buyer_identifier)
+
+
 async def create_invoice(
     session: AsyncSession,
     data: InvoiceCreate,
@@ -648,7 +665,12 @@ async def create_invoice(
 
     async with session.begin():
         await set_tenant(session, tid)
-        invoice = await _create_invoice_core(session, data, tid, buyer_identifier)
+        invoice = await create_invoice_in_transaction(
+            session,
+            data,
+            tid,
+            buyer_identifier,
+        )
         if artifact_store is not None:
             from domains.invoices.artifacts import archive_invoice_xml
 

@@ -53,6 +53,26 @@ function jsonResponse(body: unknown, status = 200): Response {
 	} as Response;
 }
 
+function makeLargeInvoice(lineCount = 120) {
+	return {
+		...invoiceResponse,
+		lines: Array.from({ length: lineCount }, (_, index) => ({
+			id: `line-${index + 1}`,
+			product_id: null,
+			product_code_snapshot: `W-${String(index + 1).padStart(3, "0")}`,
+			description: `Large Fixture Item ${index + 1}`,
+			quantity: "10",
+			unit_price: "100",
+			subtotal_amount: "1000",
+			tax_type: 1,
+			tax_rate: "0.05",
+			tax_amount: "50",
+			total_amount: "1050",
+			zero_tax_rate_reason: null,
+		})),
+	};
+}
+
 function mockInvoiceDetailRequests(options?: {
 	invoice?: Record<string, unknown>;
 	refreshBody?: unknown;
@@ -286,25 +306,7 @@ describe("InvoiceDetail", () => {
 	});
 
 	it("opens print preview and records a preview-ready measure", async () => {
-		const largeInvoice = {
-			...invoiceResponse,
-			lines: [
-				{
-					id: "line-1",
-					product_id: null,
-					product_code_snapshot: "W-001",
-					description: "Widget A",
-					quantity: "10",
-					unit_price: "100",
-					subtotal_amount: "1000",
-					tax_type: 1,
-					tax_rate: "0.05",
-					tax_amount: "50",
-					total_amount: "1050",
-					zero_tax_rate_reason: null,
-				},
-			],
-		};
+		const largeInvoice = makeLargeInvoice();
 
 		mockInvoiceDetailRequests({ invoice: largeInvoice });
 		const markSpy = vi.spyOn(window.performance, "mark").mockImplementation(
@@ -327,6 +329,9 @@ describe("InvoiceDetail", () => {
 			expect(screen.getByRole("dialog", { name: "Invoice print preview" })).toBeTruthy();
 		});
 
+		expect(screen.getByText("Large Fixture Item 1")).toBeTruthy();
+		expect(screen.getByText("Large Fixture Item 120")).toBeTruthy();
+
 		await waitFor(() => {
 			expect(measureSpy).toHaveBeenCalledWith(
 				INVOICE_PRINT_PREVIEW_OPEN_MEASURE,
@@ -336,6 +341,44 @@ describe("InvoiceDetail", () => {
 		});
 
 		expect(markSpy).toHaveBeenCalled();
+	});
+
+	it("keeps print preview disabled until preload is ready", async () => {
+		let resolveCustomer: ((value: Response) => void) | null = null;
+		vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+			const url = typeof input === "string"
+				? input
+				: input instanceof URL
+					? input.toString()
+					: input.url;
+
+			if (url.includes("/api/v1/invoices/inv-1")) {
+				return jsonResponse(makeLargeInvoice());
+			}
+
+			if (url.includes("/api/v1/payments?invoice_id=inv-1")) {
+				return jsonResponse(paymentHistoryResponse);
+			}
+
+			if (url.includes("/api/v1/customers/cust-1")) {
+				return await new Promise<Response>((resolve) => {
+					resolveCustomer = resolve;
+				});
+			}
+
+			throw new Error(`Unexpected fetch URL: ${url}`);
+		});
+
+		render(<MemoryRouter><InvoiceDetail invoiceId="inv-1" onBack={() => {}} /></MemoryRouter>);
+
+		const previewButton = await screen.findByRole("button", { name: "Preparing Preview…" });
+		expect(previewButton).toHaveProperty("disabled", true);
+
+		resolveCustomer?.(jsonResponse(customerResponse));
+
+		await waitFor(() => {
+			expect(previewButton).not.toHaveProperty("disabled", true);
+		});
 	});
 
 	it("allows retrying preview preparation after a transient customer preload failure", async () => {

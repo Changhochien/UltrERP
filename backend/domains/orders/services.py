@@ -18,7 +18,6 @@ from common.models.audit_log import AuditLog
 from common.models.inventory_stock import InventoryStock
 from common.models.order import Order
 from common.models.order_line import OrderLine
-from common.models.stock_adjustment import ReasonCode
 from common.models.warehouse import Warehouse
 from common.tenant import DEFAULT_TENANT_ID, set_tenant
 from domains.invoices.tax import TaxPolicyCode, aggregate_invoice_totals, calculate_line_amounts
@@ -248,47 +247,15 @@ async def confirm_order(
 ) -> Order:
     """Confirm an order and auto-generate an invoice atomically."""
     from domains.customers.models import Customer
-    from domains.inventory.services import create_stock_adjustment
+    from domains.inventory.order_confirmation import reserve_stock_for_order_confirmation
     from domains.invoices.enums import BuyerType
     from domains.invoices.schemas import InvoiceCreate, InvoiceCreateLine
-    from domains.invoices.service import _create_invoice_core, normalize_buyer_identifier
+    from domains.invoices.service import create_invoice_in_transaction, normalize_buyer_identifier
 
     tid = tenant_id or TENANT_ID
 
     async with session.begin():
         await set_tenant(session, tid)
-
-        async def _get_default_warehouse_id(product_ids: list[uuid.UUID]) -> uuid.UUID:
-            if product_ids:
-                stocked_result = await session.execute(
-                    select(InventoryStock.warehouse_id)
-                    .join(Warehouse, Warehouse.id == InventoryStock.warehouse_id)
-                    .where(
-                        InventoryStock.tenant_id == tid,
-                        InventoryStock.product_id.in_(product_ids),
-                        InventoryStock.quantity > 0,
-                        Warehouse.is_active.is_(True),
-                    )
-                    .order_by(InventoryStock.quantity.desc(), InventoryStock.warehouse_id.asc())
-                    .limit(1)
-                )
-                stocked_warehouse_id = stocked_result.scalar_one_or_none()
-                if stocked_warehouse_id is not None:
-                    return stocked_warehouse_id
-
-            warehouse_result = await session.execute(
-                select(Warehouse.id)
-                .where(
-                    Warehouse.tenant_id == tid,
-                    Warehouse.is_active.is_(True),
-                )
-                .order_by(Warehouse.created_at.asc(), Warehouse.id.asc())
-                .limit(1)
-            )
-            warehouse_id = warehouse_result.scalar_one_or_none()
-            if warehouse_id is None:
-                raise HTTPException(status_code=409, detail="No active warehouse configured")
-            return warehouse_id
 
         # Fetch order with lines + FOR UPDATE lock
         result = await session.execute(
@@ -397,25 +364,23 @@ async def confirm_order(
 
         # Create invoice within this transaction (no nested begin)
         try:
-            invoice = await _create_invoice_core(
+            invoice = await create_invoice_in_transaction(
                 session, invoice_data, tid, buyer_identifier_normalized
             )
         except ServiceValidationError as e:
             raise HTTPException(status_code=409, detail=e.errors)
         invoice.order_id = order.id
 
-        warehouse_id = await _get_default_warehouse_id(line_product_ids)
-        for line in order.lines:
-            await create_stock_adjustment(
+        try:
+            await reserve_stock_for_order_confirmation(
                 session,
                 tid,
-                product_id=line.product_id,
-                warehouse_id=warehouse_id,
-                quantity_change=-int(line.quantity),
-                reason_code=ReasonCode.SALES_RESERVATION,
+                order_number=order.order_number,
+                order_lines=order.lines,
                 actor_id=actor_id,
-                notes=f"Sales reservation for order {order.order_number}",
             )
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc))
 
         # Update order
         now = datetime.now(tz=UTC)
@@ -543,9 +508,13 @@ async def list_orders(
     if customer_id:
         filters.append(Order.customer_id == customer_id)
     if date_from:
-        filters.append(Order.created_at >= datetime.combine(date_from, datetime.min.time(), tzinfo=UTC))
+        filters.append(
+            Order.created_at >= datetime.combine(date_from, datetime.min.time(), tzinfo=UTC)
+        )
     if date_to:
-        filters.append(Order.created_at <= datetime.combine(date_to, datetime.max.time(), tzinfo=UTC))
+        filters.append(
+            Order.created_at <= datetime.combine(date_to, datetime.max.time(), tzinfo=UTC)
+        )
     if search:
         filters.append(Order.order_number.ilike(f"%{search}%"))
 

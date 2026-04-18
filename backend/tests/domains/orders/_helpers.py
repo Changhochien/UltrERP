@@ -233,10 +233,19 @@ class FakeScalarsResult:
 
 
 class _FakeBegin:
+    def __init__(self, session: FakeAsyncSession) -> None:
+        self._session = session
+        self._added_start = 0
+
     async def __aenter__(self) -> None:
+        self._added_start = len(self._session.added)
+        self._session._transaction_depth += 1
         return None
 
-    async def __aexit__(self, *args: object) -> bool:
+    async def __aexit__(self, exc_type: object, *_args: object) -> bool:
+        self._session._transaction_depth = max(self._session._transaction_depth - 1, 0)
+        if exc_type is not None:
+            del self._session.added[self._added_start :]
         return False
 
 
@@ -244,6 +253,7 @@ class FakeAsyncSession:
     def __init__(self) -> None:
         self._execute_results: list[object] = []
         self._idx = 0
+        self._transaction_depth = 0
         self.added: list[object] = []
         self.executed_statements: list[tuple[object, object | None]] = []
 
@@ -277,7 +287,10 @@ class FakeAsyncSession:
         pass
 
     def begin(self) -> _FakeBegin:
-        return _FakeBegin()
+        return _FakeBegin(self)
+
+    def in_transaction(self) -> bool:
+        return self._transaction_depth > 0
 
     def queue_scalar(self, obj: object | None) -> None:
         self._execute_results.append(FakeResult(obj=obj))

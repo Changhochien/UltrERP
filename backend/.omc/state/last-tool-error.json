@@ -1,7 +1,7 @@
 {
-  "tool_name": "mcp__plugin_oh-my-claudecode_t__lsp_diagnostics",
-  "tool_input_preview": "{\"file\":\"/Volumes/2T_SSD_App/Projects/UltrERP/src/tests/orders/OrderForm.test.tsx\"}",
-  "error": "Language server 'typescript-language-server' not found.\nInstall with: npm install -g typescript-language-server typescript",
-  "timestamp": "2026-04-14T03:52:08.645Z",
-  "retry_count": 3
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"uv run pytest tests/domains/legacy_import/test_canonical.py -q 2>&1 && uv run ruff check domains/legacy_import/canonical.py 2>&1\",\"timeout\":120000,\"description\":\"Run tests and lint check\"}",
+  "error": "Exit code 1\n....................                                                     [100%]\n20 passed in 0.23s\nE501 Line too long (104 > 100)\n    --> domains/legacy_import/canonical.py:1324:101\n     |\n1323 |     if mapped_product_code == UNKNOWN_PRODUCT_CODE:\n1324 |         return fallback_name or master_name or mapped_product_code, fallback_category or master_category\n     |                                                                                                     ^^^^\n1325 |\n1326 |   ...",
+  "timestamp": "2026-04-18T00:43:08.424Z",
+  "retry_count": 2
 }

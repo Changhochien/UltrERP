@@ -297,3 +297,15 @@ async def test_nullable_field_null_sentinel() -> None:
         assert body["is_null"] is True
     finally:
         teardown_session(prev)
+
+
+async def test_legacy_db_settings_metadata_marks_password_sensitive() -> None:
+    from domains.settings.introspection import _read_settings_metadata
+
+    meta = _read_settings_metadata()
+
+    assert meta["legacy_db_host"]["category"] == "legacy_import"
+    assert meta["legacy_db_host"]["is_sensitive"] is False
+    assert meta["legacy_db_password"]["category"] == "legacy_import"
+    assert meta["legacy_db_password"]["is_sensitive"] is True
+    assert meta["legacy_db_client_encoding"]["is_sensitive"] is False

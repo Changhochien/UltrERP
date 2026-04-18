@@ -10,7 +10,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Protocol, Sequence
 
 import asyncpg
 from sqlalchemy import func, select
@@ -26,6 +26,19 @@ _IDENTIFIER_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _MANIFEST_ROW_RE = re.compile(r"^\|\s*([a-z0-9_]+)\s*\|\s*([0-9,]+)\s*\|")
 _NUMERIC_LITERAL_RE = re.compile(r"^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][-+]?\d+)?$")
 _STAGE_COPY_BATCH_SIZE = 25_000
+_SUPPORTED_LEGACY_SOURCE_DATA_TYPES = frozenset(
+    {
+        "character",
+        "character varying",
+        "date",
+        "double precision",
+        "integer",
+        "numeric",
+        "smallint",
+        "text",
+        "timestamp with time zone",
+    }
+)
 _RAW_CONNECTION_POOL: asyncpg.Pool | None = None
 _RAW_CONNECTION_POOL_LOCK = asyncio.Lock()
 
@@ -65,6 +78,53 @@ class AttemptTableAudit:
     error_message: str | None = None
 
 
+@dataclass(slots=True, frozen=True)
+class LegacySourceConnectionSettings:
+    host: str
+    port: int
+    user: str
+    password: str
+    database: str
+    client_encoding: str = "BIG5"
+
+
+@dataclass(slots=True, frozen=True)
+class LegacySourceColumnMetadata:
+    table_name: str
+    column_name: str
+    ordinal_position: int
+    data_type: str
+    udt_name: str
+    is_nullable: bool
+
+
+@dataclass(slots=True, frozen=True)
+class LegacySourceTableProbe:
+    table_name: str
+    column_count: int
+    sample_row_count: int
+    columns: tuple[LegacySourceColumnMetadata, ...]
+    sample_rows: tuple[tuple[str, ...], ...]
+
+
+@dataclass(slots=True, frozen=True)
+class LegacySourceCompatibilityReport:
+    connector_name: str
+    connector_version: str
+    server_version: str
+    server_encoding: str
+    client_encoding: str
+    read_only_verified: bool
+    public_table_count: int
+    required_tables_present: tuple[str, ...]
+    missing_required_tables: tuple[str, ...]
+    sampled_tables: tuple[LegacySourceTableProbe, ...]
+
+
+class LegacySourceCompatibilityError(RuntimeError):
+    """Raised when the live legacy source cannot satisfy the staging contract."""
+
+
 class RawStageConnection(Protocol):
     async def execute(self, query: str, *args: object) -> str: ...
 
@@ -85,6 +145,18 @@ class RawStageConnection(Protocol):
     ) -> str: ...
 
     def transaction(self) -> Any: ...
+
+    async def close(self) -> None: ...
+
+
+class LegacySourceConnection(Protocol):
+    async def fetch(self, query: str, *args: object): ...
+
+    async def fetchval(self, query: str, *args: object): ...
+
+    def cursor(self, query: str, *args: object, prefetch: int | None = None): ...
+
+    def transaction(self, *, readonly: bool = False) -> Any: ...
 
     async def close(self) -> None: ...
 
@@ -207,6 +279,300 @@ def parse_legacy_row(raw_line: str) -> list[str]:
         raise ValueError(f"Malformed legacy row: {raw_line.strip()}")
 
     return [field.strip() for field in row]
+
+
+def _read_legacy_source_connection_settings() -> LegacySourceConnectionSettings:
+    values = {
+        "LEGACY_DB_HOST": settings.legacy_db_host,
+        "LEGACY_DB_USER": settings.legacy_db_user,
+        "LEGACY_DB_PASSWORD": settings.legacy_db_password,
+        "LEGACY_DB_NAME": settings.legacy_db_name,
+    }
+    missing = [key for key, value in values.items() if value is None or str(value).strip() == ""]
+    if missing:
+        raise LegacySourceCompatibilityError(
+            "Missing legacy source settings: " + ", ".join(missing)
+        )
+
+    return LegacySourceConnectionSettings(
+        host=str(settings.legacy_db_host).strip(),
+        port=int(settings.legacy_db_port),
+        user=str(settings.legacy_db_user).strip(),
+        password=str(settings.legacy_db_password),
+        database=str(settings.legacy_db_name).strip(),
+        client_encoding=str(settings.legacy_db_client_encoding).strip() or "BIG5",
+    )
+
+
+def _row_value(row: object, key: str, index: int) -> object:
+    if isinstance(row, dict):
+        return row[key]
+    return row[key] if hasattr(row, "__getitem__") else row[index]
+
+
+def _bool_from_nullable(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().upper() == "YES"
+
+
+def build_legacy_source_text_query(
+    *,
+    schema_name: str,
+    table_name: str,
+    columns: Sequence[LegacySourceColumnMetadata],
+) -> str:
+    projections: list[str] = []
+    unsupported: list[str] = []
+    for column in columns:
+        if column.data_type not in _SUPPORTED_LEGACY_SOURCE_DATA_TYPES:
+            unsupported.append(
+                f"{column.column_name} ({column.data_type}/{column.udt_name})"
+            )
+            continue
+        quoted_column = _quoted_identifier(column.column_name)
+        projections.append(
+            f"COALESCE({quoted_column}::text, 'NULL') AS {quoted_column}"
+        )
+
+    if unsupported:
+        raise LegacySourceCompatibilityError(
+            "Unsupported live-source column types for "
+            f"{schema_name}.{table_name}: {', '.join(unsupported)}"
+        )
+
+    quoted_schema = _quoted_identifier(schema_name)
+    quoted_table = _quoted_identifier(table_name)
+    return f"SELECT {', '.join(projections)} FROM {quoted_schema}.{quoted_table}"
+
+
+def serialize_legacy_source_record(
+    record: object,
+    columns: Sequence[LegacySourceColumnMetadata],
+) -> list[str]:
+    serialized: list[str] = []
+    for index, column in enumerate(columns):
+        try:
+            value = _row_value(record, column.column_name, index)
+        except Exception as exc:  # pragma: no cover - defensive guard
+            raise LegacySourceCompatibilityError(
+                "Live-source record is missing expected projected column "
+                f"{column.table_name}.{column.column_name}"
+            ) from exc
+
+        if not isinstance(value, str):
+            raise LegacySourceCompatibilityError(
+                "Live-source column "
+                f"{column.table_name}.{column.column_name} must be projected to text "
+                f"before staging; got {type(value).__name__}."
+            )
+        serialized.append(value)
+    return serialized
+
+
+async def _open_legacy_source_connection(
+    connection_settings: LegacySourceConnectionSettings | None = None,
+) -> LegacySourceConnection:
+    resolved_settings = connection_settings or _read_legacy_source_connection_settings()
+    return await asyncpg.connect(
+        host=resolved_settings.host,
+        port=resolved_settings.port,
+        user=resolved_settings.user,
+        password=resolved_settings.password,
+        database=resolved_settings.database,
+        statement_cache_size=0,
+        command_timeout=None,
+        server_settings={
+            "default_transaction_read_only": "on",
+            "client_encoding": resolved_settings.client_encoding,
+        },
+    )
+
+
+async def _discover_live_source_tables(
+    connection: LegacySourceConnection,
+    *,
+    schema_name: str,
+) -> tuple[str, ...]:
+    rows = await connection.fetch(
+        """
+        SELECT tablename
+        FROM pg_catalog.pg_tables
+        WHERE schemaname = $1
+        ORDER BY tablename
+        """,
+        schema_name,
+    )
+    return tuple(str(_row_value(row, "tablename", 0)) for row in rows)
+
+
+async def _load_live_source_column_metadata(
+    connection: LegacySourceConnection,
+    *,
+    schema_name: str,
+    table_name: str,
+) -> tuple[LegacySourceColumnMetadata, ...]:
+    rows = await connection.fetch(
+        """
+        SELECT
+            table_name,
+            column_name,
+            ordinal_position,
+            data_type,
+            udt_name,
+            is_nullable
+        FROM information_schema.columns
+        WHERE table_schema = $1
+            AND table_name = $2
+        ORDER BY ordinal_position
+        """,
+        schema_name,
+        table_name,
+    )
+    columns = tuple(
+        LegacySourceColumnMetadata(
+            table_name=str(_row_value(row, "table_name", 0)),
+            column_name=str(_row_value(row, "column_name", 1)),
+            ordinal_position=int(_row_value(row, "ordinal_position", 2)),
+            data_type=str(_row_value(row, "data_type", 3)),
+            udt_name=str(_row_value(row, "udt_name", 4)),
+            is_nullable=_bool_from_nullable(_row_value(row, "is_nullable", 5)),
+        )
+        for row in rows
+    )
+    if not columns:
+        raise LegacySourceCompatibilityError(
+            f"No column metadata found for live source table {schema_name}.{table_name}"
+        )
+    return columns
+
+
+def _dedupe_table_sequence(table_names: Sequence[str] | None) -> tuple[str, ...]:
+    return tuple(dict.fromkeys(table_names or ()))
+
+
+async def _probe_live_source_connection(
+    connection: LegacySourceConnection,
+    *,
+    schema_name: str = "public",
+    required_tables: Sequence[str] | None = None,
+    sample_tables: Sequence[str] | None = None,
+    sample_row_limit: int = 2,
+) -> LegacySourceCompatibilityReport:
+    if sample_row_limit < 1:
+        raise ValueError("sample_row_limit must be at least 1")
+
+    server_version = str(await connection.fetchval("SHOW server_version"))
+    server_encoding = str(await connection.fetchval("SHOW server_encoding"))
+    client_encoding = str(await connection.fetchval("SHOW client_encoding"))
+
+    discovered_tables = await _discover_live_source_tables(connection, schema_name=schema_name)
+    available_tables = set(discovered_tables)
+    deduped_required_tables = _dedupe_table_sequence(required_tables)
+    missing_required_tables = tuple(
+        table_name for table_name in deduped_required_tables if table_name not in available_tables
+    )
+    if missing_required_tables:
+        raise LegacySourceCompatibilityError(
+            "Missing required live-source tables in "
+            f"{schema_name}: {', '.join(missing_required_tables)}"
+        )
+
+    if sample_tables is None:
+        tables_to_sample = deduped_required_tables or discovered_tables[:1]
+    else:
+        tables_to_sample = _dedupe_table_sequence(sample_tables)
+        missing_sample_tables = [
+            table_name for table_name in tables_to_sample if table_name not in available_tables
+        ]
+        if missing_sample_tables:
+            raise LegacySourceCompatibilityError(
+                "Requested live-source sample tables not found in "
+                f"{schema_name}: {', '.join(missing_sample_tables)}"
+            )
+
+    sampled_tables: list[LegacySourceTableProbe] = []
+    for table_name in tables_to_sample:
+        columns = await _load_live_source_column_metadata(
+            connection,
+            schema_name=schema_name,
+            table_name=table_name,
+        )
+        query = build_legacy_source_text_query(
+            schema_name=schema_name,
+            table_name=table_name,
+            columns=columns,
+        )
+
+        try:
+            async with connection.transaction(readonly=True):
+                transaction_read_only = str(
+                    await connection.fetchval("SHOW transaction_read_only")
+                ).strip()
+                if transaction_read_only.lower() != "on":
+                    raise LegacySourceCompatibilityError(
+                        "Legacy source probe requires a read-only transaction."
+                    )
+
+                sample_rows: list[tuple[str, ...]] = []
+                async for record in connection.cursor(
+                    query,
+                    prefetch=max(1, sample_row_limit),
+                ):
+                    sample_rows.append(tuple(serialize_legacy_source_record(record, columns)))
+                    if len(sample_rows) >= sample_row_limit:
+                        break
+        except UnicodeDecodeError as exc:
+            raise LegacySourceCompatibilityError(
+                "asyncpg could not decode live-source text while streaming "
+                f"{schema_name}.{table_name}; verify LEGACY_DB_CLIENT_ENCODING."
+            ) from exc
+
+        sampled_tables.append(
+            LegacySourceTableProbe(
+                table_name=table_name,
+                column_count=len(columns),
+                sample_row_count=len(sample_rows),
+                columns=columns,
+                sample_rows=tuple(sample_rows),
+            )
+        )
+
+    return LegacySourceCompatibilityReport(
+        connector_name="asyncpg",
+        connector_version=asyncpg.__version__,
+        server_version=server_version,
+        server_encoding=server_encoding,
+        client_encoding=client_encoding,
+        read_only_verified=True,
+        public_table_count=len(discovered_tables),
+        required_tables_present=tuple(
+            table_name for table_name in deduped_required_tables if table_name in available_tables
+        ),
+        missing_required_tables=missing_required_tables,
+        sampled_tables=tuple(sampled_tables),
+    )
+
+
+async def probe_live_legacy_source(
+    *,
+    schema_name: str = "public",
+    required_tables: Sequence[str] | None = None,
+    sample_tables: Sequence[str] | None = None,
+    sample_row_limit: int = 2,
+    connection_settings: LegacySourceConnectionSettings | None = None,
+) -> LegacySourceCompatibilityReport:
+    connection = await _open_legacy_source_connection(connection_settings)
+    try:
+        return await _probe_live_source_connection(
+            connection,
+            schema_name=schema_name,
+            required_tables=required_tables or settings.legacy_import_required_tables,
+            sample_tables=sample_tables,
+            sample_row_limit=sample_row_limit,
+        )
+    finally:
+        await connection.close()
 
 
 def iter_legacy_rows(csv_path: Path):

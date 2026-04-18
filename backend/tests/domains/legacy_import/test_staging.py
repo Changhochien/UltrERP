@@ -8,9 +8,14 @@ import pytest
 from domains.legacy_import import staging
 from domains.legacy_import.staging import (
     DiscoveredLegacyTable,
+    LegacySourceColumnMetadata,
+    LegacySourceCompatibilityError,
+    LegacySourceConnectionSettings,
+    build_legacy_source_text_query,
     discover_legacy_tables,
     parse_legacy_row,
     parse_manifest_rows,
+    serialize_legacy_source_record,
     stage_table,
 )
 
@@ -64,6 +69,78 @@ class FakeRawStageConnection:
             if needle in query:
                 return value
         return None
+
+    async def close(self) -> None:
+        self.closed = True
+
+
+class FakeLegacySourceTransaction:
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb) -> bool:
+        return False
+
+
+class FakeLegacySourceCursor:
+    def __init__(self, rows: list[dict[str, object]]) -> None:
+        self._rows = rows
+        self._index = 0
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        if self._index >= len(self._rows):
+            raise StopAsyncIteration
+        row = self._rows[self._index]
+        self._index += 1
+        return row
+
+
+class FakeLegacySourceConnection:
+    def __init__(
+        self,
+        *,
+        fetch_rows_by_query: dict[str, list[dict[str, object]]] | None = None,
+        fetchvals_by_query: dict[str, object] | None = None,
+        cursor_rows_by_query: dict[str, list[dict[str, object]]] | None = None,
+    ) -> None:
+        self.fetch_rows_by_query = fetch_rows_by_query or {}
+        self.fetchvals_by_query = fetchvals_by_query or {}
+        self.cursor_rows_by_query = cursor_rows_by_query or {}
+        self.cursor_calls: list[dict[str, object]] = []
+        self.transaction_readonly_args: list[bool] = []
+        self.closed = False
+
+    async def fetch(self, query: str, *args: object):
+        for needle, rows in self.fetch_rows_by_query.items():
+            if needle in query:
+                return rows
+        return []
+
+    async def fetchval(self, query: str, *args: object):
+        for needle, value in self.fetchvals_by_query.items():
+            if needle in query:
+                return value
+        return None
+
+    def cursor(self, query: str, *args: object, prefetch: int | None = None):
+        self.cursor_calls.append(
+            {
+                "query": query,
+                "args": args,
+                "prefetch": prefetch,
+            }
+        )
+        for needle, rows in self.cursor_rows_by_query.items():
+            if needle in query:
+                return FakeLegacySourceCursor(rows)
+        return FakeLegacySourceCursor([])
+
+    def transaction(self, *, readonly: bool = False):
+        self.transaction_readonly_args.append(readonly)
+        return FakeLegacySourceTransaction()
 
     async def close(self) -> None:
         self.closed = True
@@ -140,6 +217,157 @@ def test_parse_legacy_row_rejects_malformed_rows() -> None:
         parse_legacy_row("\"'1', 'A', bad\"")
 
 
+def test_build_legacy_source_text_query_supports_text_numeric_and_date_types() -> None:
+    query = build_legacy_source_text_query(
+        schema_name="public",
+        table_name="tbscust",
+        columns=(
+            LegacySourceColumnMetadata(
+                table_name="tbscust",
+                column_name="scustno",
+                ordinal_position=1,
+                data_type="character varying",
+                udt_name="varchar",
+                is_nullable=False,
+            ),
+            LegacySourceColumnMetadata(
+                table_name="tbscust",
+                column_name="balance",
+                ordinal_position=2,
+                data_type="numeric",
+                udt_name="numeric",
+                is_nullable=True,
+            ),
+            LegacySourceColumnMetadata(
+                table_name="tbscust",
+                column_name="created_on",
+                ordinal_position=3,
+                data_type="date",
+                udt_name="date",
+                is_nullable=True,
+            ),
+        ),
+    )
+
+    assert (
+        query
+        == 'SELECT COALESCE("scustno"::text, \'NULL\') AS "scustno", '
+        'COALESCE("balance"::text, \'NULL\') AS "balance", '
+        'COALESCE("created_on"::text, \'NULL\') AS "created_on" '
+        'FROM "public"."tbscust"'
+    )
+
+
+def test_build_legacy_source_text_query_rejects_unsupported_types() -> None:
+    with pytest.raises(
+        LegacySourceCompatibilityError,
+        match="Unsupported live-source column types",
+    ):
+        build_legacy_source_text_query(
+            schema_name="public",
+            table_name="tbscust",
+            columns=(
+                LegacySourceColumnMetadata(
+                    table_name="tbscust",
+                    column_name="raw_blob",
+                    ordinal_position=1,
+                    data_type="bytea",
+                    udt_name="bytea",
+                    is_nullable=True,
+                ),
+            ),
+        )
+
+
+def test_serialize_legacy_source_record_requires_text_values() -> None:
+    columns = (
+        LegacySourceColumnMetadata(
+            table_name="tbscust",
+            column_name="scustno",
+            ordinal_position=1,
+            data_type="character varying",
+            udt_name="varchar",
+            is_nullable=False,
+        ),
+        LegacySourceColumnMetadata(
+            table_name="tbscust",
+            column_name="balance",
+            ordinal_position=2,
+            data_type="numeric",
+            udt_name="numeric",
+            is_nullable=True,
+        ),
+    )
+
+    assert serialize_legacy_source_record(
+        {"scustno": "T068", "balance": "NULL"},
+        columns,
+    ) == ["T068", "NULL"]
+
+    with pytest.raises(
+        LegacySourceCompatibilityError,
+        match="must be projected to text before staging",
+    ):
+        serialize_legacy_source_record(
+            {"scustno": "T068", "balance": 12},
+            columns,
+        )
+
+
+def test_live_source_text_contract_preserves_legacy_pk_semantics() -> None:
+    columns = (
+        LegacySourceColumnMetadata(
+            table_name="tbscust",
+            column_name="scustno",
+            ordinal_position=1,
+            data_type="character varying",
+            udt_name="varchar",
+            is_nullable=False,
+        ),
+        LegacySourceColumnMetadata(
+            table_name="tbscust",
+            column_name="scustname",
+            ordinal_position=2,
+            data_type="character varying",
+            udt_name="varchar",
+            is_nullable=False,
+        ),
+        LegacySourceColumnMetadata(
+            table_name="tbscust",
+            column_name="balance",
+            ordinal_position=3,
+            data_type="numeric",
+            udt_name="numeric",
+            is_nullable=True,
+        ),
+        LegacySourceColumnMetadata(
+            table_name="tbscust",
+            column_name="created_on",
+            ordinal_position=4,
+            data_type="date",
+            udt_name="date",
+            is_nullable=True,
+        ),
+    )
+
+    live_row = serialize_legacy_source_record(
+        {
+            "scustno": "T068",
+            "scustname": "達基",
+            "balance": "NULL",
+            "created_on": "2024-01-02",
+        },
+        columns,
+    )
+    file_row = parse_legacy_row("\"'T068', '達基', NULL, '2024-01-02'\"")
+
+    assert live_row == file_row
+    assert staging._legacy_row_identity("tbscust", live_row) == staging._legacy_row_identity(
+        "tbscust",
+        file_row,
+    )
+
+
 @pytest.mark.asyncio
 async def test_open_raw_connection_disables_command_timeout(monkeypatch) -> None:
     captured: dict[str, object] = {}
@@ -168,6 +396,108 @@ async def test_open_raw_connection_disables_command_timeout(monkeypatch) -> None
         "dsn": "postgresql://example",
         "command_timeout": None,
     }
+
+
+@pytest.mark.asyncio
+async def test_open_legacy_source_connection_uses_big5_and_read_only(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+    sentinel_conn = object()
+
+    async def fake_connect(**kwargs):
+        captured.update(kwargs)
+        return sentinel_conn
+
+    monkeypatch.setattr(staging.asyncpg, "connect", fake_connect)
+
+    result = await staging._open_legacy_source_connection(
+        LegacySourceConnectionSettings(
+            host="100.77.54.101",
+            port=5432,
+            user="postgres",
+            password="secret",
+            database="cao50001",
+            client_encoding="BIG5",
+        )
+    )
+
+    assert result is sentinel_conn
+    assert captured["host"] == "100.77.54.101"
+    assert captured["port"] == 5432
+    assert captured["user"] == "postgres"
+    assert captured["database"] == "cao50001"
+    assert captured["statement_cache_size"] == 0
+    assert captured["command_timeout"] is None
+    assert captured["server_settings"] == {
+        "default_transaction_read_only": "on",
+        "client_encoding": "BIG5",
+    }
+
+
+@pytest.mark.asyncio
+async def test_probe_live_source_connection_collects_metadata_and_streams_rows() -> None:
+    connection = FakeLegacySourceConnection(
+        fetch_rows_by_query={
+            "FROM pg_catalog.pg_tables": [
+                {"tablename": "tbscust"},
+                {"tablename": "tbsstock"},
+            ],
+            "FROM information_schema.columns": [
+                {
+                    "table_name": "tbscust",
+                    "column_name": "scustno",
+                    "ordinal_position": 1,
+                    "data_type": "character varying",
+                    "udt_name": "varchar",
+                    "is_nullable": "NO",
+                },
+                {
+                    "table_name": "tbscust",
+                    "column_name": "balance",
+                    "ordinal_position": 2,
+                    "data_type": "numeric",
+                    "udt_name": "numeric",
+                    "is_nullable": "YES",
+                },
+            ],
+        },
+        fetchvals_by_query={
+            "SHOW server_version": "8.2.23",
+            "SHOW server_encoding": "SQL_ASCII",
+            "SHOW client_encoding": "BIG5",
+            "SHOW transaction_read_only": "on",
+        },
+        cursor_rows_by_query={
+            'FROM "public"."tbscust"': [
+                {"scustno": "T068", "balance": "NULL"},
+                {"scustno": "T069", "balance": "12.5000"},
+            ]
+        },
+    )
+
+    report = await staging._probe_live_source_connection(
+        connection,
+        schema_name="public",
+        required_tables=("tbscust", "tbsstock"),
+        sample_tables=("tbscust",),
+        sample_row_limit=2,
+    )
+
+    assert report.connector_name == "asyncpg"
+    assert report.server_version == "8.2.23"
+    assert report.server_encoding == "SQL_ASCII"
+    assert report.client_encoding == "BIG5"
+    assert report.read_only_verified is True
+    assert report.public_table_count == 2
+    assert report.missing_required_tables == ()
+    assert report.required_tables_present == ("tbscust", "tbsstock")
+    assert report.sampled_tables[0].table_name == "tbscust"
+    assert report.sampled_tables[0].sample_rows == (
+        ("T068", "NULL"),
+        ("T069", "12.5000"),
+    )
+    assert connection.transaction_readonly_args == [True]
+    assert "COALESCE" in connection.cursor_calls[0]["query"]
+    assert "::text" in connection.cursor_calls[0]["query"]
 
 
 def test_parse_manifest_rows_extracts_counts(tmp_path: Path) -> None:

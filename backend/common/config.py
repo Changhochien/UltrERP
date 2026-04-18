@@ -507,6 +507,74 @@ class Settings(BaseSettings):
 			"value_type": "int",
 		},
 	)
+	legacy_db_host: str | None = Field(
+		default=None,
+		validation_alias=AliasChoices("LEGACY_DB_HOST", "legacy_db_host"),
+		json_schema_extra={
+			"description": "Legacy PostgreSQL host reachable over Tailscale",
+			"category": "legacy_import",
+			"is_sensitive": False,
+			"value_type": "str",
+			"nullable": True,
+		},
+	)
+	legacy_db_port: int = Field(
+		default=5432,
+		ge=1,
+		validation_alias=AliasChoices("LEGACY_DB_PORT", "legacy_db_port"),
+		json_schema_extra={
+			"description": "Legacy PostgreSQL port",
+			"category": "legacy_import",
+			"is_sensitive": False,
+			"value_type": "int",
+		},
+	)
+	legacy_db_user: str | None = Field(
+		default=None,
+		validation_alias=AliasChoices("LEGACY_DB_USER", "legacy_db_user"),
+		json_schema_extra={
+			"description": "Legacy PostgreSQL user name",
+			"category": "legacy_import",
+			"is_sensitive": False,
+			"value_type": "str",
+			"nullable": True,
+		},
+	)
+	legacy_db_password: str | None = Field(
+		default=None,
+		validation_alias=AliasChoices("LEGACY_DB_PASSWORD", "legacy_db_password"),
+		json_schema_extra={
+			"description": "Legacy PostgreSQL password",
+			"category": "legacy_import",
+			"is_sensitive": True,
+			"value_type": "str",
+			"nullable": True,
+		},
+	)
+	legacy_db_name: str | None = Field(
+		default=None,
+		validation_alias=AliasChoices("LEGACY_DB_NAME", "legacy_db_name"),
+		json_schema_extra={
+			"description": "Legacy PostgreSQL database name",
+			"category": "legacy_import",
+			"is_sensitive": False,
+			"value_type": "str",
+			"nullable": True,
+		},
+	)
+	legacy_db_client_encoding: str = Field(
+		default="BIG5",
+		validation_alias=AliasChoices(
+			"LEGACY_DB_CLIENT_ENCODING",
+			"legacy_db_client_encoding",
+		),
+		json_schema_extra={
+			"description": "Legacy PostgreSQL client encoding used for text reads",
+			"category": "legacy_import",
+			"is_sensitive": False,
+			"value_type": "str",
+		},
+	)
 	legacy_import_data_dir: str = Field(
 		default=str(PROJECT_ROOT / "legacy-migration-pipeline" / "extracted_data"),
 		validation_alias=AliasChoices("LEGACY_IMPORT_DATA_DIR", "legacy_import_data_dir"),
