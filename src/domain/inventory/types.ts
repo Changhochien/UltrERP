@@ -340,7 +340,7 @@ export interface ReorderAlertListResponse {
 
 export interface ReorderSuggestionSupplierHint {
   supplier_id: string;
-  supplier_name: string;
+  name: string;
   unit_cost: string | null;
   default_lead_time_days: number | null;
 }

@@ -9,3 +9,13 @@ export function getStatusVariant(
   if (stock < reorderPoint) return "warning";
   return "healthy";
 }
+
+import type { PhysicalCountSessionStatus } from "./types";
+
+export function countSessionStatusVariant(
+  status: PhysicalCountSessionStatus,
+): "success" | "outline" | "secondary" {
+  if (status === "approved") return "success";
+  if (status === "submitted") return "outline";
+  return "secondary";
+}

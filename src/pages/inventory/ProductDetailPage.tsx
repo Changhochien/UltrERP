@@ -27,19 +27,8 @@ import { useProductAuditLog } from "@/domain/inventory/hooks/useProductAuditLog"
 import { setProductStatus } from "@/lib/api/inventory";
 import { buildInventoryTransfersPath, INVENTORY_ROUTE } from "@/lib/routes";
 import { parseBackendDate } from "@/lib/time";
+import { getStatusVariant } from "@/domain/inventory/utils";
 import type { WarehouseStockInfo } from "@/domain/inventory/types";
-
-function getStatusVariant(
-  stock: number,
-  reorderPoint: number,
-  productStatus: string,
-): "healthy" | "warning" | "critical" | "inactive" {
-  if (productStatus !== "active") return "inactive";
-  if (stock === 0) return "critical";
-  if (stock < reorderPoint * 0.5) return "critical";
-  if (stock < reorderPoint) return "warning";
-  return "healthy";
-}
 
 function StockHealthBar({ warehouses }: { warehouses: WarehouseStockInfo[] }) {
   const { t } = useTranslation("common", { keyPrefix: "inventory.productDetail" });

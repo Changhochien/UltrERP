@@ -1,6 +1,6 @@
 /** Stock transfer form for inter-warehouse transfers. */
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ProductCombobox } from "@/components/products/ProductCombobox";
@@ -34,7 +34,7 @@ export function StockTransferForm({
 }: StockTransferFormProps) {
   const { t } = useTranslation("common", { keyPrefix: "inventory.transferForm" });
   const { warehouses, loading, error: warehousesError } = useWarehouses();
-  const [fromId, setFromId] = useState("");
+  const [fromId, setFromId] = useState(defaultFromWarehouseId);
   const [toId, setToId] = useState("");
   const [productId, setProductId] = useState(defaultProductId);
   const [quantity, setQuantity] = useState(1);
@@ -43,14 +43,6 @@ export function StockTransferForm({
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
-
-  useEffect(() => {
-    setProductId(defaultProductId);
-  }, [defaultProductId]);
-
-  useEffect(() => {
-    setFromId(defaultFromWarehouseId);
-  }, [defaultFromWarehouseId]);
 
   const quantityError = quantity > 0 && !Number.isInteger(quantity)
     ? t("quantityInteger")

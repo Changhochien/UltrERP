@@ -48,6 +48,10 @@ import type {
   CreateSupplierOrderRequest,
 } from "../../domain/inventory/types";
 
+function isAbortError(error: unknown): error is { name: string } {
+  return typeof error === "object" && error !== null && "name" in error && error.name === "AbortError";
+}
+
 export async function searchProducts(
   query: string,
   options?: {
@@ -355,6 +359,9 @@ export async function fetchProductDetail(
     if (!resp.ok) return { ok: false, error: "Failed to fetch product detail" };
     return { ok: true, data: (await resp.json()) as ProductDetail };
   } catch (e) {
+    if (options?.signal?.aborted || isAbortError(e)) {
+      throw e;
+    }
     return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
   }
 }
@@ -465,6 +472,9 @@ export async function fetchInventoryValuation(
     const qs = params.toString();
     const resp = await apiFetch(`/api/v1/inventory/reports/valuation${qs ? `?${qs}` : ""}`, fetchOptions);
     if (!resp.ok) {
+      if (resp.status === 401) {
+        return { ok: false, error: "Session expired. Please reload the page." };
+      }
       const body = await resp.json().catch(() => ({}));
       return {
         ok: false,
@@ -473,6 +483,9 @@ export async function fetchInventoryValuation(
     }
     return { ok: true, data: (await resp.json()) as InventoryValuationResponse };
   } catch (e) {
+    if (fetchOptions?.signal?.aborted || isAbortError(e)) {
+      throw e;
+    }
     return { ok: false, error: e instanceof Error ? e.message : "Unknown error" };
   }
 }

@@ -263,7 +263,7 @@ function ReorderSuggestionsWorkspace() {
                       <td className="px-4 py-3 align-top">
                         {hasSupplier ? (
                           <div className="space-y-1">
-                            <div className="font-medium">{item.supplier_hint?.supplier_name}</div>
+                            <div className="font-medium">{item.supplier_hint?.name}</div>
                             <div className="text-xs text-muted-foreground">
                               {t("leadTimeDays", { count: item.supplier_hint?.default_lead_time_days ?? 0 })}
                             </div>
