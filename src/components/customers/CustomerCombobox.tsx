@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Search } from "lucide-react";
 
-import { listCustomers } from "../../lib/api/customers";
+import { listCustomers, createCustomer } from "../../lib/api/customers";
 import type { CustomerSummary } from "../../domain/customers/types";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
+import { Input } from "../ui/input";
 import {
   Popover,
   PopoverContent,
@@ -44,6 +45,17 @@ export function CustomerCombobox({
 }: CustomerComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [showCreatePanel, setShowCreatePanel] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    company_name: "",
+    business_number: "",
+    contact_phone: "",
+    billing_address: "",
+    contact_name: "",
+    contact_email: "",
+    credit_limit: "",
+  });
+  const [createError, setCreateError] = useState<string | null>(null);
   const [customers, setCustomers] = useState<CustomerSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -133,6 +145,39 @@ export function CustomerCombobox({
     setQuery("");
   }
 
+  async function handleCreateSubmit() {
+    setCreateError(null);
+    const payload = {
+      company_name: createForm.company_name,
+      business_number: createForm.business_number,
+      contact_phone: createForm.contact_phone,
+      billing_address: createForm.billing_address,
+      contact_name: createForm.contact_name,
+      contact_email: createForm.contact_email,
+      credit_limit: createForm.credit_limit,
+    };
+    const result = await createCustomer(payload);
+    if (result.ok) {
+      onChange(result.data.id);
+      setOpen(false);
+      setQuery("");
+      setShowCreatePanel(false);
+      setCreateForm({ company_name: "", business_number: "", contact_phone: "", billing_address: "", contact_name: "", contact_email: "", credit_limit: "" });
+    } else if (result.duplicate) {
+      const confirmed = window.confirm(
+        `A customer with business number "${result.duplicate.normalized_business_number}" already exists: "${result.duplicate.existing_customer_name}". Use existing customer?`,
+      );
+      if (confirmed) {
+        onChange(result.duplicate.existing_customer_id);
+        setOpen(false);
+        setQuery("");
+        setShowCreatePanel(false);
+      }
+    } else if (result.errors) {
+      setCreateError(result.errors[0]?.message ?? "Failed to create customer");
+    }
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
@@ -193,6 +238,15 @@ export function CustomerCombobox({
                 <CommandEmpty>
                   No customers match your search.
                 </CommandEmpty>
+                {filtered.length === 0 && query.trim().length > 0 && (
+                  <CommandGroup>
+                    <CommandItem onSelect={() => setShowCreatePanel(true)}>
+                      <div className="flex items-center gap-2">
+                        <span>Create new customer</span>
+                      </div>
+                    </CommandItem>
+                  </CommandGroup>
+                )}
                 {filtered.length > 0 && (
                   <CommandGroup>
                     {filtered.map((customer) => (
@@ -214,6 +268,63 @@ export function CustomerCombobox({
               </>
             )}
           </CommandList>
+          {showCreatePanel && (
+            <div className="border-t p-3 space-y-3">
+              <p className="text-sm font-medium text-foreground">Create new customer</p>
+              <div className="space-y-2">
+                <Input
+                  placeholder="Company name *"
+                  value={createForm.company_name}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, company_name: e.target.value }))}
+                />
+                <Input
+                  placeholder="Business number *"
+                  value={createForm.business_number}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, business_number: e.target.value }))}
+                />
+                <Input
+                  placeholder="Contact phone *"
+                  value={createForm.contact_phone}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, contact_phone: e.target.value }))}
+                />
+                <Input
+                  placeholder="Billing address"
+                  value={createForm.billing_address}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, billing_address: e.target.value }))}
+                />
+                <Input
+                  placeholder="Contact name"
+                  value={createForm.contact_name}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, contact_name: e.target.value }))}
+                />
+                <Input
+                  placeholder="Contact email"
+                  value={createForm.contact_email}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, contact_email: e.target.value }))}
+                />
+                <Input
+                  placeholder="Credit limit (optional)"
+                  value={createForm.credit_limit}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, credit_limit: e.target.value }))}
+                />
+              </div>
+              {createError && (
+                <p className="text-xs text-destructive">{createError}</p>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleCreateSubmit}
+                  disabled={!createForm.company_name.trim() || !createForm.business_number.trim() || !createForm.contact_phone.trim()}
+                >
+                  Create
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setShowCreatePanel(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
         </Command>
       </PopoverContent>
     </Popover>
