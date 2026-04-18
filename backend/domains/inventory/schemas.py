@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -78,6 +79,12 @@ class InventoryStockResponse(BaseModel):
     reorder_point: int
     safety_factor: float
     lead_time_days: int
+    policy_type: Literal["continuous", "periodic", "manual"]
+    target_stock_qty: int
+    on_order_qty: int
+    in_transit_qty: int
+    reserved_qty: int
+    planning_horizon_days: int
     review_cycle_days: int
     updated_at: datetime
 
@@ -86,6 +93,12 @@ class StockSettingsUpdateRequest(BaseModel):
     reorder_point: int | None = Field(None, ge=0)
     safety_factor: float | None = Field(None, ge=0.0)
     lead_time_days: int | None = Field(None, ge=0)
+    policy_type: Literal["continuous", "periodic", "manual"] | None = None
+    target_stock_qty: int | None = Field(None, ge=0)
+    on_order_qty: int | None = Field(None, ge=0)
+    in_transit_qty: int | None = Field(None, ge=0)
+    reserved_qty: int | None = Field(None, ge=0)
+    planning_horizon_days: int | None = Field(None, ge=0)
     review_cycle_days: int | None = Field(None, ge=0)
 
 
@@ -100,6 +113,47 @@ class MonthlyDemandItem(BaseModel):
 class MonthlyDemandResponse(BaseModel):
     items: list[MonthlyDemandItem]
     total: int
+
+
+PlanningSupportDataBasis = Literal[
+    "aggregated_only",
+    "aggregated_plus_live_current_month",
+    "live_current_month_only",
+    "no_history",
+]
+
+
+class PlanningSupportItem(BaseModel):
+    month: str
+    quantity: Decimal
+    source: Literal["aggregated", "live"]
+
+
+class PlanningSupportWindow(BaseModel):
+    start_month: str
+    end_month: str
+    includes_current_month: bool
+    is_partial: bool
+
+
+class PlanningSupportResponse(BaseModel):
+    product_id: uuid.UUID
+    items: list[PlanningSupportItem]
+    avg_monthly_quantity: Decimal | None
+    peak_monthly_quantity: Decimal | None
+    low_monthly_quantity: Decimal | None
+    seasonality_index: Decimal | None
+    above_average_months: list[str]
+    history_months_used: int
+    current_month_live_quantity: Decimal | None
+    reorder_point: int
+    on_order_qty: int
+    in_transit_qty: int
+    reserved_qty: int
+    data_basis: PlanningSupportDataBasis
+    advisory_only: bool
+    data_gap: bool
+    window: PlanningSupportWindow
 
 
 # --- Sales history schemas ---
@@ -236,6 +290,12 @@ class WarehouseStockInfo(BaseModel):
     reorder_point: int
     safety_factor: float
     lead_time_days: int
+    policy_type: Literal["continuous", "periodic", "manual"]
+    target_stock_qty: int
+    on_order_qty: int
+    in_transit_qty: int
+    reserved_qty: int
+    planning_horizon_days: int
     review_cycle_days: int
     is_below_reorder: bool
     last_adjusted: datetime | None
@@ -404,6 +464,7 @@ class SupplierOrderLineRequest(BaseModel):
     product_id: uuid.UUID
     warehouse_id: uuid.UUID
     quantity_ordered: int = Field(..., gt=0)
+    unit_price: Decimal | None = Field(default=None, ge=0)
     notes: str | None = Field(None, max_length=1000)
 
 
@@ -414,6 +475,7 @@ class SupplierOrderLineResponse(BaseModel):
     product_id: uuid.UUID
     warehouse_id: uuid.UUID
     quantity_ordered: int
+    unit_price: Decimal | None = None
     quantity_received: int
     notes: str | None
 
@@ -484,10 +546,20 @@ class ReorderPointPreviewRow(BaseModel):
     warehouse_id: uuid.UUID
     warehouse_name: str
     current_quantity: float
+    inventory_position: int | None = None
+    on_order_qty: int | None = None
+    in_transit_qty: int | None = None
+    reserved_qty: int | None = None
     current_reorder_point: float
+    policy_type: Literal["continuous", "periodic", "manual"] | None = None
+    target_stock_qty: int | None = None
+    planning_horizon_days: int | None = None
+    effective_horizon_days: int | None = None
     computed_reorder_point: float | None = None  # None if skipped
     avg_daily_usage: float | None = None
     lead_time_days: float | None = None
+    lead_time_sample_count: int | None = None
+    lead_time_confidence: Literal["high", "medium", "low"] | None = None
     review_cycle_days: float | None = None
     safety_stock: float | None = None
     target_stock_level: float | None = None

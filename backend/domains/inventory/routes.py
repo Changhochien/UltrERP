@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.auth import require_role
+from common.config import settings
 from common.database import get_db
 from common.errors import (
     DuplicateCategoryNameError,
@@ -67,12 +68,12 @@ from domains.inventory.schemas import (
     ReorderPointPreviewRow,
     SalesHistoryItem,
     SalesHistoryResponse,
+    SnoozeAlertRequest,
+    SnoozeAlertResponse,
     StockAdjustmentRequest,
     StockAdjustmentResponse,
     StockHistoryResponse,
     StockSettingsUpdateRequest,
-    SnoozeAlertRequest,
-    SnoozeAlertResponse,
     SupplierListResponse,
     SupplierOrderCreate,
     SupplierOrderListResponse,
@@ -99,6 +100,7 @@ from domains.inventory.services import (
     get_inventory_stocks,
     get_category,
     get_monthly_demand,
+    get_planning_support,
     get_product_audit_log,
     get_product_detail,
     get_product_supplier,
@@ -133,6 +135,19 @@ ReadUser = Annotated[dict, Depends(require_role("admin", "warehouse", "sales"))]
 WriteUser = Annotated[dict, Depends(require_role("admin", "warehouse"))]
 
 ACTOR_ID = "system"
+
+
+def _require_feature_enabled(enabled: bool, detail: str) -> None:
+    if not enabled:
+        raise HTTPException(status_code=403, detail=detail)
+
+
+def _api_reason_code(value: str) -> str:
+    return value.lower()
+
+
+def _enum_reason_code(value: str) -> ReasonCode:
+    return ReasonCode(value.upper())
 
 
 # ── Warehouse endpoints ───────────────────────────────────────
@@ -234,6 +249,15 @@ async def create_transfer_endpoint(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),
         ) from exc
+    except InsufficientStockError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": f"Insufficient stock: {exc.available} units available",
+                "available": exc.available,
+                "requested": exc.requested,
+            },
+        ) from exc
 
 
 # ── Reorder point endpoints ────────────────────────────────────
@@ -267,10 +291,20 @@ async def compute_reorder_points_endpoint(
             warehouse_id=d["warehouse_id"],
             warehouse_name=d.get("warehouse_name", ""),
             current_quantity=d.get("current_quantity", 0.0),
+            inventory_position=d.get("inventory_position"),
+            on_order_qty=d.get("on_order_qty"),
+            in_transit_qty=d.get("in_transit_qty"),
+            reserved_qty=d.get("reserved_qty"),
             current_reorder_point=d.get("current_reorder_point", 0.0),
+            policy_type=d.get("policy_type", "continuous"),
+            target_stock_qty=d.get("target_stock_qty"),
+            planning_horizon_days=d.get("planning_horizon_days"),
+            effective_horizon_days=d.get("effective_horizon_days"),
             computed_reorder_point=None if d.get("skipped_reason") else float(d["reorder_point"]),
             avg_daily_usage=d.get("avg_daily_usage"),
             lead_time_days=d.get("lead_time_days"),
+            lead_time_sample_count=d.get("lead_time_sample_count"),
+            lead_time_confidence=d.get("lead_time_confidence"),
             review_cycle_days=d.get("review_cycle_days"),
             safety_stock=d.get("safety_stock"),
             target_stock_level=d.get("target_stock_level"),
@@ -354,9 +388,9 @@ async def list_reason_codes(
 ) -> ReasonCodeListResponse:
     items = [
         ReasonCodeItem(
-            value=rc.value,
+            value=_api_reason_code(rc.value),
             label=rc.value.replace("_", " ").title(),
-            user_selectable=rc.value in USER_SELECTABLE_REASON_CODES,
+            user_selectable=_api_reason_code(rc.value) in USER_SELECTABLE_REASON_CODES,
         )
         for rc in ReasonCode
     ]
@@ -389,7 +423,7 @@ async def create_adjustment_endpoint(
         )
 
     try:
-        reason = ReasonCode(data.reason_code)
+        reason = _enum_reason_code(data.reason_code)
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -447,7 +481,12 @@ async def create_adjustment_endpoint(
             notes=data.notes,
         )
         await session.commit()
-        return StockAdjustmentResponse(**result)
+        return StockAdjustmentResponse(
+            **{
+                **result,
+                "reason_code": _api_reason_code(str(result["reason_code"])),
+            }
+        )
     except TransferValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -1146,6 +1185,12 @@ async def update_stock_settings_endpoint(
         reorder_point=data.reorder_point,
         safety_factor=data.safety_factor,
         lead_time_days=data.lead_time_days,
+        policy_type=data.policy_type,
+        target_stock_qty=data.target_stock_qty,
+        on_order_qty=data.on_order_qty,
+        in_transit_qty=data.in_transit_qty,
+        reserved_qty=data.reserved_qty,
+        planning_horizon_days=data.planning_horizon_days,
         review_cycle_days=data.review_cycle_days,
     )
     if stock is None:
@@ -1172,6 +1217,37 @@ async def get_monthly_demand_endpoint(
 ) -> MonthlyDemandResponse:
     result = await get_monthly_demand(session, tenant_id, product_id)
     return MonthlyDemandResponse(**result)
+
+
+@router.get(
+    "/products/{product_id}/planning-support",
+    response_model=PlanningSupportResponse,
+)
+async def get_planning_support_endpoint(
+    product_id: uuid.UUID,
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+    months: int = Query(12, ge=1, le=24),
+    include_current_month: bool = Query(True),
+) -> PlanningSupportResponse:
+    _require_feature_enabled(
+        settings.inventory_planning_support_enabled,
+        "Planning support is disabled",
+    )
+    result = await get_planning_support(
+        session,
+        tenant_id,
+        product_id,
+        months=months,
+        include_current_month=include_current_month,
+    )
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found",
+        )
+    return PlanningSupportResponse(**result)
 
 
 # ── Sales history endpoint ───────────────────────────────────────

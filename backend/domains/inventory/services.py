@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, timedelta
+from datetime import date, datetime, timedelta
+from decimal import Decimal, ROUND_HALF_UP
 
 from sqlalchemy import and_, asc, case, desc, distinct, func, literal, or_, select, text
 from sqlalchemy.exc import IntegrityError
@@ -23,9 +24,11 @@ from common.models.reorder_alert import AlertStatus, ReorderAlert
 from common.models.stock_adjustment import ReasonCode, StockAdjustment
 from common.models.stock_transfer import StockTransferHistory
 from common.models.supplier import Supplier
+from common.models.supplier_invoice import SupplierInvoice, SupplierInvoiceLine
 from common.models.supplier_order import SupplierOrder, SupplierOrderLine, SupplierOrderStatus
 from common.models.warehouse import Warehouse
 from common.time import today, utc_now
+from domains.product_analytics.service import read_sales_monthly_range
 
 
 class InsufficientStockError(Exception):
@@ -41,6 +44,39 @@ class InsufficientStockError(Exception):
 
 class TransferValidationError(Exception):
     """Raised for invalid transfer parameters."""
+
+
+_PLANNING_QUANTITY_QUANT = Decimal("0.001")
+_PLANNING_INDEX_QUANT = Decimal("0.001")
+_ZERO_QUANTITY = Decimal("0.000")
+
+
+def _shift_months(value: date, months: int) -> date:
+    month_index = (value.year * 12 + value.month - 1) + months
+    year = month_index // 12
+    month = month_index % 12 + 1
+    return date(year, month, 1)
+
+
+def _iter_month_starts(start_month: date, end_month: date) -> list[date]:
+    month_starts: list[date] = []
+    cursor = start_month
+    while cursor <= end_month:
+        month_starts.append(cursor)
+        cursor = _shift_months(cursor, 1)
+    return month_starts
+
+
+def _format_month(month_start: date) -> str:
+    return month_start.strftime("%Y-%m")
+
+
+def _quantize_quantity(value: Decimal | int | float | None) -> Decimal:
+    return Decimal(str(value or "0")).quantize(_PLANNING_QUANTITY_QUANT, rounding=ROUND_HALF_UP)
+
+
+def _quantize_index(value: Decimal) -> Decimal:
+    return value.quantize(_PLANNING_INDEX_QUANT, rounding=ROUND_HALF_UP)
 
 
 # ── Warehouse queries ──────────────────────────────────────────
@@ -1088,6 +1124,12 @@ async def get_product_detail(
             InventoryStock.reorder_point,
             InventoryStock.safety_factor,
             InventoryStock.lead_time_days,
+            InventoryStock.policy_type,
+            InventoryStock.target_stock_qty,
+            InventoryStock.on_order_qty,
+            InventoryStock.in_transit_qty,
+            InventoryStock.reserved_qty,
+            InventoryStock.planning_horizon_days,
             InventoryStock.review_cycle_days,
             last_adj_sq.c.last_adjusted,
         )
@@ -1119,6 +1161,12 @@ async def get_product_detail(
                 "reorder_point": row.reorder_point,
                 "safety_factor": row.safety_factor,
                 "lead_time_days": row.lead_time_days,
+                "policy_type": row.policy_type,
+                "target_stock_qty": row.target_stock_qty,
+                "on_order_qty": row.on_order_qty,
+                "in_transit_qty": row.in_transit_qty,
+                "reserved_qty": row.reserved_qty,
+                "planning_horizon_days": row.planning_horizon_days,
                 "review_cycle_days": row.review_cycle_days,
                 "is_below_reorder": (row.reorder_point > 0 and row.quantity < row.reorder_point),
                 "last_adjusted": row.last_adjusted,
@@ -1445,6 +1493,7 @@ async def create_supplier_order(
             product_id=line_data["product_id"],
             warehouse_id=line_data["warehouse_id"],
             quantity_ordered=line_data["quantity_ordered"],
+            unit_price=line_data.get("unit_price"),
             notes=line_data.get("notes"),
         )
         session.add(line)
@@ -1521,6 +1570,7 @@ async def _serialize_order(
                 "product_id": line.product_id,
                 "warehouse_id": line.warehouse_id,
                 "quantity_ordered": line.quantity_ordered,
+                "unit_price": getattr(line, "unit_price", None),
                 "quantity_received": line.quantity_received,
                 "notes": line.notes,
             }
@@ -1854,6 +1904,7 @@ async def get_stock_history(
     initial stock from the current quantity and applying adjustments forward.
     """
     from collections import Counter
+
     from common.time import utc_now
 
     # Cap start_date to at most _max_range_days ago to avoid loading huge histories
@@ -1915,7 +1966,11 @@ async def get_stock_history(
 
         for day_key, info in sorted(by_date.items()):
             running += info["quantity_change"]
-            dominant_rc = info["reason_codes"].most_common(1)[0][0] if info["reason_codes"] else "unknown"
+            dominant_rc = (
+                info["reason_codes"].most_common(1)[0][0]
+                if info["reason_codes"]
+                else "unknown"
+            )
             points.append({
                 "date": datetime.fromisoformat(day_key),
                 "quantity_change": info["quantity_change"],
@@ -1982,6 +2037,12 @@ async def update_stock_settings(
     reorder_point: int | None = None,
     safety_factor: float | None = None,
     lead_time_days: int | None = None,
+    policy_type: str | None = None,
+    target_stock_qty: int | None = None,
+    on_order_qty: int | None = None,
+    in_transit_qty: int | None = None,
+    reserved_qty: int | None = None,
+    planning_horizon_days: int | None = None,
     review_cycle_days: int | None = None,
 ) -> InventoryStock | None:
     """Update replenishment settings for a stock record."""
@@ -2000,6 +2061,18 @@ async def update_stock_settings(
         stock.safety_factor = safety_factor
     if lead_time_days is not None:
         stock.lead_time_days = lead_time_days
+    if policy_type is not None:
+        stock.policy_type = policy_type
+    if target_stock_qty is not None:
+        stock.target_stock_qty = target_stock_qty
+    if on_order_qty is not None:
+        stock.on_order_qty = on_order_qty
+    if in_transit_qty is not None:
+        stock.in_transit_qty = in_transit_qty
+    if reserved_qty is not None:
+        stock.reserved_qty = reserved_qty
+    if planning_horizon_days is not None:
+        stock.planning_horizon_days = planning_horizon_days
     if review_cycle_days is not None:
         stock.review_cycle_days = review_cycle_days
 
@@ -2047,6 +2120,149 @@ async def get_monthly_demand(
     return {"items": items, "total": total}
 
 
+async def get_planning_support(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+    *,
+    months: int = 12,
+    include_current_month: bool = True,
+) -> dict | None:
+    current_month_start = utc_now().date().replace(day=1)
+    end_month = current_month_start if include_current_month else _shift_months(current_month_start, -1)
+    start_month = _shift_months(end_month, -(months - 1))
+    requested_months = _iter_month_starts(start_month, end_month)
+    includes_current_month = include_current_month and current_month_start in requested_months
+
+    monthly_result = await read_sales_monthly_range(
+        session,
+        tenant_id,
+        start_month=start_month,
+        end_month=end_month,
+    )
+    monthly_points = {
+        item.month_start: item
+        for item in monthly_result.items
+        if item.product_id == product_id
+    }
+
+    product_exists = await session.scalar(
+        select(Product.id).where(
+            Product.id == product_id,
+            Product.tenant_id == tenant_id,
+        )
+    )
+    if product_exists is None:
+        return None
+
+    stock_context_row = (
+        await session.execute(
+            select(
+                func.coalesce(func.sum(InventoryStock.reorder_point), 0).label("reorder_point"),
+                func.coalesce(func.sum(InventoryStock.on_order_qty), 0).label("on_order_qty"),
+                func.coalesce(func.sum(InventoryStock.in_transit_qty), 0).label("in_transit_qty"),
+                func.coalesce(func.sum(InventoryStock.reserved_qty), 0).label("reserved_qty"),
+            ).where(
+                InventoryStock.tenant_id == tenant_id,
+                InventoryStock.product_id == product_id,
+            )
+        )
+    ).one()
+
+    current_month_live_quantity = None
+    if includes_current_month:
+        current_month_live_quantity = _ZERO_QUANTITY
+        current_month_point = monthly_points.get(current_month_start)
+        if current_month_point is not None:
+            current_month_live_quantity = _quantize_quantity(current_month_point.quantity_sold)
+
+    if not monthly_points:
+        return {
+            "product_id": product_id,
+            "items": [],
+            "avg_monthly_quantity": None,
+            "peak_monthly_quantity": None,
+            "low_monthly_quantity": None,
+            "seasonality_index": None,
+            "above_average_months": [],
+            "history_months_used": 0,
+            "current_month_live_quantity": current_month_live_quantity,
+            "reorder_point": int(stock_context_row.reorder_point or 0),
+            "on_order_qty": int(stock_context_row.on_order_qty or 0),
+            "in_transit_qty": int(stock_context_row.in_transit_qty or 0),
+            "reserved_qty": int(stock_context_row.reserved_qty or 0),
+            "data_basis": "no_history",
+            "advisory_only": True,
+            "data_gap": True,
+            "window": {
+                "start_month": _format_month(start_month),
+                "end_month": _format_month(end_month),
+                "includes_current_month": includes_current_month,
+                "is_partial": includes_current_month,
+            },
+        }
+
+    items: list[dict[str, object]] = []
+    for month_start in requested_months:
+        point = monthly_points.get(month_start)
+        quantity = _quantize_quantity(point.quantity_sold if point is not None else _ZERO_QUANTITY)
+        items.append(
+            {
+                "month": _format_month(month_start),
+                "quantity": quantity,
+                "source": "live" if month_start == current_month_start and includes_current_month else "aggregated",
+            }
+        )
+
+    quantities = [item["quantity"] for item in items]
+    total_quantity = sum(quantities, start=_ZERO_QUANTITY)
+    avg_monthly_quantity = _quantize_quantity(total_quantity / Decimal(len(items)))
+    peak_monthly_quantity = max(quantities)
+    low_monthly_quantity = min(quantities)
+    seasonality_index = (
+        _quantize_index(peak_monthly_quantity / avg_monthly_quantity)
+        if avg_monthly_quantity > 0
+        else Decimal("0.000")
+    )
+    above_average_months = [
+        str(item["month"])
+        for item in items
+        if item["quantity"] > avg_monthly_quantity
+    ]
+
+    if includes_current_month and start_month == current_month_start:
+        data_basis = "live_current_month_only"
+    elif includes_current_month:
+        data_basis = "aggregated_plus_live_current_month"
+    else:
+        data_basis = "aggregated_only"
+
+    return {
+        "product_id": product_id,
+        "items": items,
+        "avg_monthly_quantity": avg_monthly_quantity,
+        "peak_monthly_quantity": peak_monthly_quantity,
+        "low_monthly_quantity": low_monthly_quantity,
+        "seasonality_index": seasonality_index,
+        "above_average_months": above_average_months,
+        "history_months_used": len(items),
+        "current_month_live_quantity": current_month_live_quantity,
+        "reorder_point": int(stock_context_row.reorder_point or 0),
+        "on_order_qty": int(stock_context_row.on_order_qty or 0),
+        "in_transit_qty": int(stock_context_row.in_transit_qty or 0),
+        "reserved_qty": int(stock_context_row.reserved_qty or 0),
+        "data_basis": data_basis,
+        "advisory_only": True,
+        "data_gap": False,
+        "window": {
+            "start_month": _format_month(start_month),
+            "end_month": _format_month(end_month),
+            "includes_current_month": includes_current_month,
+            "is_partial": includes_current_month,
+        },
+    }
+
+
 # ── Sales history ────────────────────────────────────────────────
 
 
@@ -2059,10 +2275,6 @@ async def get_sales_history(
     offset: int = 0,
 ) -> dict:
     """Return paginated sales history (all reason codes) for a product."""
-    from common.models.order_line import OrderLine
-    from common.models.order import Order
-    from domains.customers.models import Customer
-
     count_stmt = select(func.count(StockAdjustment.id)).where(
         StockAdjustment.tenant_id == tenant_id,
         StockAdjustment.product_id == product_id,
@@ -2104,8 +2316,8 @@ async def get_top_customer(
     product_id: uuid.UUID,
 ) -> dict | None:
     """Return the customer who has ordered the most of this product (by quantity)."""
-    from common.models.order_line import OrderLine
     from common.models.order import Order
+    from common.models.order_line import OrderLine
     from domains.customers.models import Customer
 
     stmt = (
@@ -2150,12 +2362,12 @@ async def get_product_supplier(
     with the most recently received order lines for this product.
     Returns null if no supplier orders exist.
     """
-    # Use a subquery to find the supplier_id with the most recent received order
-    latest_order_line_sq = (
+    supplier_sources = (
         select(
-            SupplierOrderLine.product_id,
-            SupplierOrder.supplier_id,
-            func.max(SupplierOrder.received_date).label("latest_received"),
+            SupplierOrder.supplier_id.label("supplier_id"),
+            SupplierOrder.received_date.label("effective_date"),
+            SupplierOrderLine.unit_price.label("unit_cost"),
+            literal(0).label("source_priority"),
         )
         .join(SupplierOrder, SupplierOrder.id == SupplierOrderLine.order_id)
         .where(
@@ -2163,53 +2375,52 @@ async def get_product_supplier(
             SupplierOrderLine.product_id == product_id,
             SupplierOrder.received_date.isnot(None),
         )
-        .group_by(SupplierOrderLine.product_id, SupplierOrder.supplier_id)
-        .subquery()
-    )
-
-    best_supplier_sq = (
-        select(
-            latest_order_line_sq.c.supplier_id,
-            latest_order_line_sq.c.latest_received,
+        .union_all(
+            select(
+                SupplierInvoice.supplier_id.label("supplier_id"),
+                SupplierInvoice.invoice_date.label("effective_date"),
+                SupplierInvoiceLine.unit_price.label("unit_cost"),
+                literal(1).label("source_priority"),
+            )
+            .join(
+                SupplierInvoice,
+                SupplierInvoice.id == SupplierInvoiceLine.supplier_invoice_id,
+            )
+            .where(
+                SupplierInvoice.tenant_id == tenant_id,
+                SupplierInvoiceLine.product_id == product_id,
+                SupplierInvoiceLine.unit_price.isnot(None),
+            )
         )
-        .order_by(latest_order_line_sq.c.latest_received.desc())
-        .limit(1)
         .subquery()
     )
 
     stmt = (
-        select(Supplier)
-        .join(best_supplier_sq, Supplier.id == best_supplier_sq.c.supplier_id)
-        .where(Supplier.tenant_id == tenant_id)
-    )
-    result = await session.execute(stmt)
-    supplier = result.scalar_one_or_none()
-
-    if supplier is None:
-        return None
-
-    # Get unit_cost from the most recent received order line
-    unit_cost_stmt = (
-        select(SupplierOrderLine.unit_price)
-        .join(SupplierOrder, SupplierOrder.id == SupplierOrderLine.order_id)
-        .where(
-            SupplierOrder.tenant_id == tenant_id,
-            SupplierOrderLine.product_id == product_id,
-            SupplierOrder.supplier_id == supplier.id,
-            SupplierOrder.received_date.isnot(None),
+        select(
+            Supplier.id,
+            Supplier.name,
+            Supplier.default_lead_time_days,
+            supplier_sources.c.unit_cost,
         )
-        .order_by(SupplierOrder.received_date.desc())
+        .join(supplier_sources, Supplier.id == supplier_sources.c.supplier_id)
+        .where(Supplier.tenant_id == tenant_id)
+        .order_by(
+            supplier_sources.c.effective_date.desc(),
+            supplier_sources.c.source_priority.desc(),
+        )
         .limit(1)
     )
-    unit_cost_result = await session.execute(unit_cost_stmt)
-    unit_cost_row = unit_cost_result.first()
-    unit_cost = float(unit_cost_row.unit_price) if unit_cost_row else None
+    result = await session.execute(stmt)
+    row = result.first()
+
+    if row is None:
+        return None
 
     return {
-        "supplier_id": supplier.id,
-        "name": supplier.name,
-        "unit_cost": unit_cost,
-        "default_lead_time_days": supplier.default_lead_time_days,
+        "supplier_id": row.id,
+        "name": row.name,
+        "unit_cost": float(row.unit_cost) if row.unit_cost is not None else None,
+        "default_lead_time_days": row.default_lead_time_days,
     }
 
 
