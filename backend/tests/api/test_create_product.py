@@ -118,7 +118,7 @@ def _valid_body() -> dict[str, object]:
     return {
         "code": "WIDGET-001",
         "name": "Test Widget",
-        "category": "",
+        "category_id": None,
         "description": "",
         "unit": "pcs",
         "standard_cost": "12.5000",

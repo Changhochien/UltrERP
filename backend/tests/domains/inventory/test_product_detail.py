@@ -34,7 +34,9 @@ class FakeProduct:
         self.tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
         self.code = code
         self.name = name
+        self.category_id = None
         self.category = category
+        self.category_ref = None
         self.description = description
         self.unit = unit
         self.standard_cost = standard_cost
@@ -258,6 +260,41 @@ async def test_product_detail_multi_warehouse() -> None:
         assert body["total_stock"] == 60
         assert len(body["warehouses"]) == 2
         assert len(body["adjustment_history"]) == 2
+    finally:
+        _teardown(prev)
+
+
+async def test_product_detail_uses_localized_category_when_available() -> None:
+    category_ref = type(
+        "FakeCategoryRef",
+        (),
+        {
+            "name": "Hardware",
+            "translations": [
+                type("FakeTranslation", (), {"locale": "en", "name": "Hardware"})(),
+                type("FakeTranslation", (), {"locale": "zh-Hant", "name": "五金"})(),
+            ],
+        },
+    )()
+    product = FakeProduct(category="Hardware")
+    product.category_ref = category_ref
+    product.category_id = uuid.uuid4()
+    stock = FakeStockRow()
+
+    session = FakeAsyncSession()
+    session.queue_scalar(product)
+    session.queue_rows([stock])
+    session.queue_scalars_list([])
+
+    prev = _setup(session)
+    try:
+        transport = ASGITransport(app=app)
+        headers = {**auth_header(), "Accept-Language": "zh-Hant"}
+        async with AsyncClient(transport=transport, base_url="http://test", headers=headers) as c:
+            resp = await c.get(f"/api/v1/inventory/products/{product.id}")
+
+        assert resp.status_code == 200
+        assert resp.json()["category"] == "五金"
     finally:
         _teardown(prev)
 
