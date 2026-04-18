@@ -1,6 +1,10 @@
 import { apiFetch } from "../apiFetch";
 import type {
   AcknowledgeAlertResponse,
+  Category,
+  CategoryCreate,
+  CategoryListResponse,
+  CategoryUpdate,
   DismissAlertResponse,
   PlanningSupportResponse,
   ProductSearchResponse,
@@ -27,6 +31,7 @@ export async function searchProducts(
   options?: {
     limit?: number;
     offset?: number;
+    category?: string;
     warehouseId?: string;
     includeInactive?: boolean;
     sortBy?: string;
@@ -37,6 +42,7 @@ export async function searchProducts(
   const params = new URLSearchParams({ q: query });
   if (options?.limit) params.set("limit", String(options.limit));
   if (options?.offset) params.set("offset", String(options.offset));
+  if (options?.category) params.set("category", options.category);
   if (options?.warehouseId) params.set("warehouse_id", options.warehouseId);
   if (options?.includeInactive) params.set("include_inactive", "true");
   if (options?.sortBy) params.set("sort_by", options.sortBy);
@@ -47,6 +53,137 @@ export async function searchProducts(
   );
   if (!resp.ok) throw new Error("Search failed");
   return resp.json() as Promise<ProductSearchResponse>;
+}
+
+export async function listCategories(options?: {
+  q?: string;
+  activeOnly?: boolean;
+  limit?: number;
+  offset?: number;
+  signal?: AbortSignal;
+}): Promise<CategoryListResponse> {
+  const params = new URLSearchParams();
+  if (options?.q) params.set("q", options.q);
+  if (options?.activeOnly != null) params.set("active_only", String(options.activeOnly));
+  if (options?.limit != null) params.set("limit", String(options.limit));
+  if (options?.offset != null) params.set("offset", String(options.offset));
+
+  const qs = params.toString();
+  const resp = await apiFetch(`/api/v1/inventory/categories${qs ? `?${qs}` : ""}`, {
+    signal: options?.signal,
+  });
+  if (!resp.ok) {
+    throw new Error("Failed to load categories");
+  }
+  return resp.json() as Promise<CategoryListResponse>;
+}
+
+export type CategoryMutationResult =
+  | { ok: true; data: Category }
+  | { ok: false; error: string; errors?: InventoryFieldError[] };
+
+export async function createCategory(data: CategoryCreate): Promise<CategoryMutationResult> {
+  try {
+    const resp = await apiFetch("/api/v1/inventory/categories", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    const body = await resp.json().catch(() => ({}));
+
+    if (resp.ok) {
+      return { ok: true, data: body as Category };
+    }
+
+    if (resp.status === 409) {
+      return {
+        ok: false,
+        error: (body as { detail?: string }).detail ?? "Category name already exists",
+        errors: [{ field: "name", message: "Category name already exists" }],
+      };
+    }
+
+    const errors = normalizeInventoryFieldErrors((body as { detail?: unknown }).detail);
+    if (errors.length > 0) {
+      return { ok: false, error: errors[0]?.message ?? "Failed to create category", errors };
+    }
+
+    return {
+      ok: false,
+      error: (body as { detail?: string }).detail ?? "Failed to create category",
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Unknown error",
+    };
+  }
+}
+
+export async function updateCategory(
+  categoryId: string,
+  data: CategoryUpdate,
+): Promise<CategoryMutationResult> {
+  try {
+    const resp = await apiFetch(`/api/v1/inventory/categories/${encodeURIComponent(categoryId)}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+    const body = await resp.json().catch(() => ({}));
+
+    if (resp.ok) {
+      return { ok: true, data: body as Category };
+    }
+
+    if (resp.status === 409) {
+      return {
+        ok: false,
+        error: (body as { detail?: string }).detail ?? "Category name already exists",
+        errors: [{ field: "name", message: "Category name already exists" }],
+      };
+    }
+
+    const errors = normalizeInventoryFieldErrors((body as { detail?: unknown }).detail);
+    if (errors.length > 0) {
+      return { ok: false, error: errors[0]?.message ?? "Failed to update category", errors };
+    }
+
+    return {
+      ok: false,
+      error: (body as { detail?: string }).detail ?? "Failed to update category",
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Unknown error",
+    };
+  }
+}
+
+export async function setCategoryStatus(
+  categoryId: string,
+  status: "active" | "inactive",
+): Promise<CategoryMutationResult> {
+  try {
+    const resp = await apiFetch(`/api/v1/inventory/categories/${encodeURIComponent(categoryId)}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+    const body = await resp.json().catch(() => ({}));
+
+    if (resp.ok) {
+      return { ok: true, data: body as Category };
+    }
+
+    return {
+      ok: false,
+      error: (body as { detail?: string }).detail ?? "Failed to update category status",
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Unknown error",
+    };
+  }
 }
 
 export async function fetchProductDetail(

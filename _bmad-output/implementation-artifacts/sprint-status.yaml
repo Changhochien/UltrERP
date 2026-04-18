@@ -247,10 +247,10 @@ development_status:
         prerequisites: []
       4-12-product-categories:
         title: "Product Categories Management"
-        status: "backlog"
+        status: "completed"
         story_id: "4.12"
         story_file: "4-12-product-categories.md"
-        validation: "none"
+        validation: "Category master data is implemented with tenant-scoped CRUD/status APIs, shared product-form category selection, inline category creation, dedicated categories management UI, product-search category filtering, and focused backend/frontend validations passing (10 backend tests and 15 frontend tests)."
         prerequisites: []
       4-13-supplier-crud-ui:
         title: "Supplier CRUD UI"

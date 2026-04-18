@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Textarea } from "../../../components/ui/textarea";
+import { CategoryCombobox } from "./CategoryCombobox";
 import type { ProductResponse, ProductUpdate } from "../types";
 
 export interface ProductFormFieldError {
@@ -165,16 +166,22 @@ export function ProductForm({
       </div>
 
       <div>
-        <label htmlFor="product-category" className="block text-sm font-medium">
+        <label id="product-category-label" className="block text-sm font-medium">
           Category
         </label>
-        <Input
-          id="product-category"
-          type="text"
-          value={formData.category}
-          onChange={(event) => setFormData((current) => ({ ...current, category: event.target.value }))}
-          disabled={isSubmitting}
-        />
+        <div id="product-category" className="mt-1">
+          <CategoryCombobox
+            inputId="product-category-trigger"
+            ariaLabelledBy="product-category-label"
+            value={formData.category}
+            onChange={(category) => setFormData((current) => ({ ...current, category }))}
+            onClear={() => setFormData((current) => ({ ...current, category: "" }))}
+            placeholder="Search or create category…"
+            allowCreate
+            disabled={isSubmitting}
+          />
+        </div>
+        {errors.category && <p className="mt-1 text-sm text-destructive">{errors.category}</p>}
       </div>
 
       <div>

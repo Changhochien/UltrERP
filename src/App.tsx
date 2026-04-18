@@ -23,6 +23,7 @@ import {
   CUSTOMER_DETAIL_ROUTE,
   CUSTOMERS_ROUTE,
   HOME_ROUTE,
+  INVENTORY_CATEGORIES_ROUTE,
   INVENTORY_ROUTE,
   INTELLIGENCE_ROUTE,
   PRODUCT_DETAIL_ROUTE,
@@ -45,6 +46,7 @@ import { DashboardPage } from "./pages/dashboard/DashboardPage";
 import { OwnerDashboardPage } from "./domain/owner-dashboard/OwnerDashboardPage";
 import { InventoryPage } from "./pages/InventoryPage";
 import { IntelligencePage } from "./pages/IntelligencePage";
+import { CategoriesPage } from "./pages/inventory/CategoriesPage";
 import { ProductDetailPage } from "./pages/inventory/ProductDetailPage";
 import CreateInvoicePage from "./pages/invoices/CreateInvoicePage";
 import { InvoicesPage } from "./pages/InvoicesPage";
@@ -190,6 +192,16 @@ export default function App() {
               <ProtectedAppRoute requiredFeature="inventory">
                 <RoutedPage>
                   <InventoryPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={INVENTORY_CATEGORIES_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="inventory">
+                <RoutedPage>
+                  <CategoriesPage />
                 </RoutedPage>
               </ProtectedAppRoute>
             }

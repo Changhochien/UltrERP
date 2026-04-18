@@ -19,6 +19,7 @@ import {
   CUSTOMER_CREATE_ROUTE,
   CUSTOMERS_ROUTE,
   HOME_ROUTE,
+  INVENTORY_CATEGORIES_ROUTE,
   INVENTORY_ROUTE,
   INTELLIGENCE_ROUTE,
   INVOICES_ROUTE,
@@ -152,6 +153,7 @@ export const ROUTE_CONTEXT_KEYS = [
   { match: ORDER_CREATE_ROUTE, labelKey: "routes.createOrder.label", descriptionKey: "routes.createOrder.description" },
   { match: PAYMENTS_ROUTE, labelKey: "routes.payments.label", descriptionKey: "routes.payments.description" },
   { match: INVENTORY_ROUTE, labelKey: "routes.inventory.label", descriptionKey: "routes.inventory.description" },
+  { match: INVENTORY_CATEGORIES_ROUTE, labelKey: "routes.inventoryCategories.label", descriptionKey: "routes.inventoryCategories.description" },
   { match: PURCHASES_ROUTE, labelKey: "routes.purchases.label", descriptionKey: "routes.purchases.description" },
   { match: ADMIN_ROUTE, labelKey: "routes.admin.label", descriptionKey: "routes.admin.description" },
   { match: OWNER_DASHBOARD_ROUTE, labelKey: "routes.ownerDashboard.label", descriptionKey: "routes.ownerDashboard.description" },
@@ -160,6 +162,14 @@ export const ROUTE_CONTEXT_KEYS = [
 ] as const;
 
 export function getRouteContext(pathname: string) {
+  if (pathname === INVENTORY_CATEGORIES_ROUTE) {
+    return {
+      labelKey: "routes.inventoryCategories.label",
+      descriptionKey: "routes.inventoryCategories.description",
+      sectionKey: "nav.operations",
+    };
+  }
+
   if (pathname.startsWith(`${ORDERS_ROUTE}/`) && pathname !== ORDER_CREATE_ROUTE) {
     return {
       labelKey: "routes.orderDetail.label",
@@ -168,7 +178,11 @@ export function getRouteContext(pathname: string) {
     };
   }
 
-  if (pathname.startsWith(`${INVENTORY_ROUTE}/`) && pathname !== INVENTORY_ROUTE) {
+  if (
+    pathname.startsWith(`${INVENTORY_ROUTE}/`) &&
+    pathname !== INVENTORY_ROUTE &&
+    !pathname.startsWith(INVENTORY_CATEGORIES_ROUTE)
+  ) {
     return {
       labelKey: "routes.productDetail.label",
       descriptionKey: "routes.productDetail.description",

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { WarehouseSelector } from "../domain/inventory/components/WarehouseSelector";
@@ -12,10 +13,13 @@ import { CreateProductForm } from "../domain/inventory/components/CreateProductF
 import { ReorderPointAdmin } from "../domain/inventory/components/ReorderPointAdmin";
 import { StockAdjustmentForm } from "../domain/inventory/components/StockAdjustmentForm";
 import { StockTransferForm } from "../domain/inventory/components/StockTransferForm";
+import { Button } from "../components/ui/button";
 import { usePermissions } from "../hooks/usePermissions";
+import { INVENTORY_CATEGORIES_ROUTE } from "../lib/routes";
 
 function InventoryWorkspace() {
   const { t } = useTranslation("common");
+  const navigate = useNavigate();
   const { selectedWarehouse, setSelectedWarehouse } = useWarehouseContext();
   const { canWrite } = usePermissions();
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
@@ -31,20 +35,26 @@ function InventoryWorkspace() {
         title={t("inventory.page.title")}
         description={t("inventory.page.description")}
         actions={
-          <>
+          <div className="flex flex-wrap items-center gap-2">
             <WarehouseSelector
               value={selectedWarehouse}
               onChange={setSelectedWarehouse}
             />
             {canWrite("inventory") && (
-              <button
-                onClick={() => setShowCreateProduct(true)}
-                className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              >
-                Add Product
-              </button>
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate(INVENTORY_CATEGORIES_ROUTE)}
+                >
+                  {t("inventory.page.manageCategories")}
+                </Button>
+                <Button type="button" onClick={() => setShowCreateProduct(true)}>
+                  {t("inventory.page.addProduct")}
+                </Button>
+              </>
             )}
-          </>
+          </div>
         }
       />
 

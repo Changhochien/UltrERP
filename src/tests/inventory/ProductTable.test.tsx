@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProductTable } from "../../domain/inventory/components/ProductTable";
-import { searchProducts } from "../../lib/api/inventory";
+import { listCategories, searchProducts } from "../../lib/api/inventory";
 
 vi.mock("react-i18next", () => ({
   useTranslation: (_ns?: string, options?: { keyPrefix?: string }) => ({
@@ -24,8 +24,18 @@ vi.mock("react-router-dom", async () => {
 });
 
 vi.mock("../../lib/api/inventory", () => ({
+  listCategories: vi.fn(),
   searchProducts: vi.fn(),
 }));
+
+const CATEGORY = {
+  id: "category-1",
+  tenant_id: "tenant-1",
+  name: "Hardware",
+  is_active: true,
+  created_at: "2026-04-01T00:00:00Z",
+  updated_at: "2026-04-01T00:00:00Z",
+};
 
 const ACTIVE_PRODUCT = {
   id: "product-active",
@@ -47,16 +57,28 @@ const INACTIVE_PRODUCT = {
   relevance: 1,
 };
 
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
 beforeEach(() => {
+  vi.stubGlobal("ResizeObserver", ResizeObserverMock);
   vi.mocked(searchProducts).mockImplementation(async (_query, options) => ({
     items: options?.includeInactive ? [INACTIVE_PRODUCT] : [ACTIVE_PRODUCT],
     total: 1,
   }));
+  vi.mocked(listCategories).mockResolvedValue({
+    items: [CATEGORY],
+    total: 1,
+  });
 });
 
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("ProductTable", () => {
@@ -88,5 +110,22 @@ describe("ProductTable", () => {
     });
 
     expect(await screen.findByText("Inactive Widget")).toBeTruthy();
+  });
+
+  it("passes the selected category filter through product search", async () => {
+    render(<ProductTable warehouseId="warehouse-1" />);
+
+    fireEvent.click(await screen.findByRole("combobox"));
+    fireEvent.click(await screen.findByText("Hardware"));
+
+    await waitFor(() => {
+      expect(searchProducts).toHaveBeenLastCalledWith(
+        "",
+        expect.objectContaining({
+          warehouseId: "warehouse-1",
+          category: "Hardware",
+        }),
+      );
+    });
   });
 });

@@ -15,8 +15,10 @@ from common.auth import require_role
 from common.config import settings
 from common.database import get_db
 from common.errors import (
+    DuplicateCategoryNameError,
     DuplicateProductCodeError,
     ValidationError,
+    duplicate_category_name_response,
     duplicate_product_code_response,
     error_response,
 )
@@ -37,6 +39,11 @@ from domains.inventory.schemas import (
     USER_SELECTABLE_REASON_CODES,
     AcknowledgeAlertResponse,
     AuditLogListResponse,
+    CategoryCreate,
+    CategoryListResponse,
+    CategoryResponse,
+    CategoryStatusUpdate,
+    CategoryUpdate,
     DismissAlertResponse,
     InventoryStockResponse,
     MonthlyDemandResponse,
@@ -84,12 +91,14 @@ from domains.inventory.services import (
     InsufficientStockError,
     TransferValidationError,
     acknowledge_alert,
+    create_category,
     create_product,
     create_stock_adjustment,
     create_supplier_order,
     create_warehouse,
     dismiss_alert,
     get_inventory_stocks,
+    get_category,
     get_monthly_demand,
     get_planning_support,
     get_product_audit_log,
@@ -100,15 +109,18 @@ from domains.inventory.services import (
     get_supplier_order,
     get_top_customer,
     get_warehouse,
+    list_categories,
     list_reorder_alerts,
     list_supplier_orders,
     list_suppliers,
     list_warehouses,
     receive_supplier_order,
     search_products,
+    set_category_status,
     set_product_status,
     snooze_alert,
     transfer_stock,
+    update_category,
     update_stock_settings,
     update_product,
     update_supplier_order_status,
@@ -503,6 +515,7 @@ async def search_products_endpoint(
     _user: ReadUser,
     tenant_id: CurrentTenant,
     q: str = Query("", max_length=100),
+    category: str | None = Query(None, max_length=200),
     limit: int = Query(20, ge=1, le=500),
     offset: int = Query(0, ge=0),
     warehouse_id: uuid.UUID | None = Query(None),
@@ -516,6 +529,7 @@ async def search_products_endpoint(
         tenant_id,
         stripped,
         warehouse_id=warehouse_id,
+        category=category,
         include_inactive=include_inactive,
         limit=limit,
         offset=offset,
@@ -526,6 +540,131 @@ async def search_products_endpoint(
         items=[ProductSearchResult(**r) for r in results],
         total=total,
     )
+
+
+# ── Category endpoints ────────────────────────────────────────
+
+
+@router.get(
+    "/categories",
+    response_model=CategoryListResponse,
+)
+async def list_categories_endpoint(
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+    q: str = Query("", max_length=200),
+    active_only: bool = Query(True),
+    limit: int = Query(100, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+) -> CategoryListResponse:
+    items, total = await list_categories(
+        session,
+        tenant_id,
+        q=q,
+        active_only=active_only,
+        limit=limit,
+        offset=offset,
+    )
+    return CategoryListResponse(
+        items=[CategoryResponse.model_validate(item) for item in items],
+        total=total,
+    )
+
+
+@router.post(
+    "/categories",
+    response_model=CategoryResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_category_endpoint(
+    data: CategoryCreate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> CategoryResponse:
+    try:
+        category = await create_category(session, tenant_id, data)
+        await session.commit()
+    except DuplicateCategoryNameError as exc:
+        return JSONResponse(status_code=409, content=duplicate_category_name_response(exc))
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+
+    return CategoryResponse.model_validate(category)
+
+
+@router.get(
+    "/categories/{category_id}",
+    response_model=CategoryResponse,
+)
+async def get_category_endpoint(
+    category_id: uuid.UUID,
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+) -> CategoryResponse:
+    category = await get_category(session, tenant_id, category_id)
+    if category is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Category not found",
+        )
+    return CategoryResponse.model_validate(category)
+
+
+@router.put(
+    "/categories/{category_id}",
+    response_model=CategoryResponse,
+)
+async def update_category_endpoint(
+    category_id: uuid.UUID,
+    data: CategoryUpdate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> CategoryResponse:
+    try:
+        category = await update_category(session, tenant_id, category_id, data)
+        if category is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Category not found",
+            )
+        await session.commit()
+    except DuplicateCategoryNameError as exc:
+        return JSONResponse(status_code=409, content=duplicate_category_name_response(exc))
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+
+    return CategoryResponse.model_validate(category)
+
+
+@router.patch(
+    "/categories/{category_id}/status",
+    response_model=CategoryResponse,
+)
+async def update_category_status_endpoint(
+    category_id: uuid.UUID,
+    data: CategoryStatusUpdate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> CategoryResponse:
+    category = await set_category_status(
+        session,
+        tenant_id,
+        category_id,
+        is_active=data.is_active,
+    )
+    if category is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Category not found",
+        )
+
+    await session.commit()
+    return CategoryResponse.model_validate(category)
 
 
 # ── Product creation endpoint ──────────────────────────────────

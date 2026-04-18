@@ -2,12 +2,19 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { EditProductForm } from "../../domain/inventory/components/EditProductForm";
-import { updateProduct } from "../../lib/api/inventory";
+import { listCategories, updateProduct } from "../../lib/api/inventory";
 import type { ProductDetail, ProductResponse } from "../../domain/inventory/types";
 
 vi.mock("../../lib/api/inventory", () => ({
+  listCategories: vi.fn(),
   updateProduct: vi.fn(),
 }));
+
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
 
 const product: ProductDetail = {
   id: "product-1",
@@ -36,20 +43,25 @@ const updatedProduct: ProductResponse = {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("EditProductForm", () => {
   it("prefills the form from the current product record", () => {
+    vi.stubGlobal("ResizeObserver", ResizeObserverMock);
+    (listCategories as ReturnType<typeof vi.fn>).mockResolvedValue({ items: [], total: 0 });
     render(<EditProductForm product={product} onSuccess={vi.fn()} onCancel={vi.fn()} />);
 
     expect(screen.getByDisplayValue("SKU-1")).toBeTruthy();
     expect(screen.getByDisplayValue("Widget")).toBeTruthy();
-    expect(screen.getByDisplayValue("Hardware")).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: /Category/i }).textContent).toContain("Hardware");
     expect(screen.getByDisplayValue("Original description")).toBeTruthy();
     expect(screen.getByDisplayValue("pcs")).toBeTruthy();
   });
 
   it("submits the full editable payload and calls onSuccess", async () => {
+    vi.stubGlobal("ResizeObserver", ResizeObserverMock);
+    (listCategories as ReturnType<typeof vi.fn>).mockResolvedValue({ items: [], total: 0 });
     const onSuccess = vi.fn();
     (updateProduct as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true, data: updatedProduct });
 
@@ -73,6 +85,8 @@ describe("EditProductForm", () => {
   });
 
   it("shows inline duplicate-code feedback", async () => {
+    vi.stubGlobal("ResizeObserver", ResizeObserverMock);
+    (listCategories as ReturnType<typeof vi.fn>).mockResolvedValue({ items: [], total: 0 });
     (updateProduct as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: false,
       errors: [{ field: "code", message: "Product code already exists" }],

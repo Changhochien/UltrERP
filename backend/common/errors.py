@@ -43,6 +43,15 @@ class DuplicateProductCodeError(ApplicationError):
         super().__init__(f"Duplicate product code {existing_code}: existing product {existing_id}")
 
 
+class DuplicateCategoryNameError(ApplicationError):
+    """A category with this name already exists for the tenant."""
+
+    def __init__(self, existing_id: uuid.UUID, existing_name: str) -> None:
+        self.existing_id = existing_id
+        self.existing_name = existing_name
+        super().__init__(f"Duplicate category name {existing_name}: existing category {existing_id}")
+
+
 class VersionConflictError(ApplicationError):
     """Optimistic locking conflict — the record was modified since last read."""
 
@@ -75,4 +84,13 @@ def duplicate_product_code_response(err: DuplicateProductCodeError) -> dict[str,
         "error": "duplicate_product_code",
         "existing_product_id": str(err.existing_id),
         "existing_product_code": err.existing_code,
+    }
+
+
+def duplicate_category_name_response(err: DuplicateCategoryNameError) -> dict[str, Any]:
+    """Stable 409 duplicate category name error envelope."""
+    return {
+        "error": "duplicate_category_name",
+        "existing_category_id": str(err.existing_id),
+        "existing_category_name": err.existing_name,
     }

@@ -82,6 +82,32 @@ export interface ProductSearchResponse {
   total: number;
 }
 
+export interface Category {
+  id: string;
+  tenant_id: string;
+  name: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CategoryListResponse {
+  items: Category[];
+  total: number;
+}
+
+export interface CategoryCreate {
+  name: string;
+}
+
+export interface CategoryUpdate {
+  name: string;
+}
+
+export interface CategoryStatusUpdate {
+  status: "active" | "inactive";
+}
+
 export interface WarehouseStockInfo {
   stock_id: string;
   warehouse_id: string;

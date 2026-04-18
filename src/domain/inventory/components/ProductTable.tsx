@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { buildProductDetailPath } from "@/lib/routes";
+import { CategoryCombobox } from "./CategoryCombobox";
 import { useProductSearch } from "../hooks/useProductSearch";
 
 interface ProductTableProps {
@@ -28,6 +29,7 @@ export function ProductTable({ warehouseId, onProductClick, createdProductKey }:
     loading,
     error,
     includeInactive,
+    category,
     search,
     nextPage,
     prevPage,
@@ -37,12 +39,16 @@ export function ProductTable({ warehouseId, onProductClick, createdProductKey }:
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    search("", warehouseId, 1, sortState ?? undefined, includeInactive);
-  }, [createdProductKey, includeInactive, search, sortState, warehouseId]);
+    search("", warehouseId, 1, sortState ?? undefined, includeInactive, category);
+  }, [category, createdProductKey, includeInactive, search, sortState, warehouseId]);
 
   const handleSearchChange = (value: string) => {
     setQuery(value);
-    search(value, warehouseId, 1, sortState ?? undefined, includeInactive);
+    search(value, warehouseId, 1, sortState ?? undefined, includeInactive, category);
+  };
+
+  const handleCategoryChange = (nextCategory: string) => {
+    search(query, warehouseId, 1, sortState ?? undefined, includeInactive, nextCategory);
   };
 
   return (
@@ -145,7 +151,7 @@ export function ProductTable({ warehouseId, onProductClick, createdProductKey }:
               <span>{error}</span>
               <button
                 type="button"
-                onClick={() => search(query, warehouseId, page, sortState ?? undefined, includeInactive)}
+                onClick={() => search(query, warehouseId, page, sortState ?? undefined, includeInactive, category)}
                 className="text-sm underline"
               >
                 {t("retry")}
@@ -187,12 +193,20 @@ export function ProductTable({ warehouseId, onProductClick, createdProductKey }:
                   className="pl-9"
                 />
               </div>
+              <div className="min-w-[14rem]">
+                <CategoryCombobox
+                  value={category}
+                  onChange={handleCategoryChange}
+                  onClear={() => handleCategoryChange("")}
+                  placeholder={t("filterCategory")}
+                />
+              </div>
               <Button
                 type="button"
                 variant={includeInactive ? "default" : "outline"}
                 size="sm"
                 aria-pressed={includeInactive}
-                onClick={() => search(query, warehouseId, 1, sortState ?? undefined, !includeInactive)}
+                onClick={() => search(query, warehouseId, 1, sortState ?? undefined, !includeInactive, category)}
               >
                 {t("showInactive")}
               </Button>

@@ -10,9 +10,14 @@ from sqlalchemy import and_, asc, case, desc, distinct, func, literal, or_, sele
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from common.errors import DuplicateProductCodeError, ValidationError
+from common.errors import (
+    DuplicateCategoryNameError,
+    DuplicateProductCodeError,
+    ValidationError,
+)
 from common.events import StockChangedEvent, emit
 from common.models.audit_log import AuditLog
+from common.models.category import Category
 from common.models.inventory_stock import InventoryStock
 from common.models.product import Product
 from common.models.reorder_alert import AlertStatus, ReorderAlert
@@ -133,6 +138,15 @@ def _normalize_optional_product_text(value: str | None) -> str | None:
     return normalized or None
 
 
+def _normalize_category_name(name: str) -> str:
+    normalized = name.strip()
+    if not normalized:
+        raise ValidationError(
+            [{"loc": ("name",), "msg": "name cannot be blank", "type": "value_error"}]
+        )
+    return normalized
+
+
 def _normalize_product_payload(
     data: object,
 ) -> tuple[str, str, str | None, str | None, str]:
@@ -170,6 +184,156 @@ async def _find_product_by_code(
         stmt = stmt.where(Product.id != exclude_product_id)
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
+
+
+async def _find_category_by_name(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    name: str,
+    *,
+    exclude_category_id: uuid.UUID | None = None,
+) -> Category | None:
+    stmt = select(Category).where(
+        Category.tenant_id == tenant_id,
+        func.lower(Category.name) == name.lower(),
+    )
+    if exclude_category_id is not None:
+        stmt = stmt.where(Category.id != exclude_category_id)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+# ── Category queries ──────────────────────────────────────────
+
+
+async def create_category(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    data: "CategoryCreate",
+) -> Category:
+    name = _normalize_category_name(data.name)
+
+    existing = await _find_category_by_name(session, tenant_id, name)
+    if existing is not None:
+        raise DuplicateCategoryNameError(existing_id=existing.id, existing_name=existing.name)
+
+    category = Category(
+        tenant_id=tenant_id,
+        name=name,
+        is_active=True,
+    )
+    try:
+        session.add(category)
+        await session.flush()
+    except IntegrityError:
+        await session.rollback()
+        existing = await _find_category_by_name(session, tenant_id, name)
+        if existing is not None:
+            raise DuplicateCategoryNameError(existing_id=existing.id, existing_name=existing.name)
+        raise
+
+    return category
+
+
+async def list_categories(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    *,
+    q: str = "",
+    active_only: bool = True,
+    limit: int = 100,
+    offset: int = 0,
+) -> tuple[list[Category], int]:
+    where_conditions = [Category.tenant_id == tenant_id]
+    if active_only:
+        where_conditions.append(Category.is_active.is_(True))
+
+    stripped = q.strip()
+    if stripped:
+        q_like = stripped.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        where_conditions.append(Category.name.ilike(f"%{q_like}%", escape="\\"))
+
+    count_stmt = select(func.count(Category.id)).where(*where_conditions)
+    count_result = await session.execute(count_stmt)
+    total = count_result.scalar() or 0
+
+    stmt = (
+        select(Category)
+        .where(*where_conditions)
+        .order_by(Category.name)
+        .offset(offset)
+        .limit(limit)
+    )
+    result = await session.execute(stmt)
+    categories = result.scalars().all()
+    return list(categories), total
+
+
+async def get_category(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    category_id: uuid.UUID,
+) -> Category | None:
+    stmt = select(Category).where(
+        Category.id == category_id,
+        Category.tenant_id == tenant_id,
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def update_category(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    category_id: uuid.UUID,
+    data: "CategoryUpdate",
+) -> Category | None:
+    category = await get_category(session, tenant_id, category_id)
+    if category is None:
+        return None
+
+    name = _normalize_category_name(data.name)
+    existing = await _find_category_by_name(
+        session,
+        tenant_id,
+        name,
+        exclude_category_id=category.id,
+    )
+    if existing is not None:
+        raise DuplicateCategoryNameError(existing_id=existing.id, existing_name=existing.name)
+
+    category.name = name
+    try:
+        await session.flush()
+    except IntegrityError:
+        await session.rollback()
+        existing = await _find_category_by_name(
+            session,
+            tenant_id,
+            name,
+            exclude_category_id=category_id,
+        )
+        if existing is not None:
+            raise DuplicateCategoryNameError(existing_id=existing.id, existing_name=existing.name)
+        raise
+
+    return category
+
+
+async def set_category_status(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    category_id: uuid.UUID,
+    *,
+    is_active: bool,
+) -> Category | None:
+    category = await get_category(session, tenant_id, category_id)
+    if category is None:
+        return None
+
+    category.is_active = is_active
+    await session.flush()
+    return category
 
 
 # ── Product creation ───────────────────────────────────────────
@@ -1059,6 +1223,7 @@ async def search_products(
     query: str,
     *,
     warehouse_id: uuid.UUID | None = None,
+    category: str | None = None,
     include_inactive: bool = False,
     limit: int = 20,
     offset: int = 0,
@@ -1116,6 +1281,8 @@ async def search_products(
     base_conditions = [Product.tenant_id == tenant_id]
     if not include_inactive:
         base_conditions.append(Product.status == "active")
+    if category and category.strip():
+        base_conditions.append(Product.category == category.strip())
 
     # Main query
     stmt = (

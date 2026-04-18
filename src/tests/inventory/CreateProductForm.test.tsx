@@ -2,12 +2,29 @@ import { cleanup, render, screen, fireEvent, waitFor } from "@testing-library/re
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CreateProductForm } from "../../domain/inventory/components/CreateProductForm";
-import { createProduct } from "../../lib/api/inventory";
+import { createCategory, createProduct, listCategories } from "../../lib/api/inventory";
 import type { ProductResponse } from "../../domain/inventory/types";
 
 vi.mock("../../lib/api/inventory", () => ({
+  createCategory: vi.fn(),
   createProduct: vi.fn(),
+  listCategories: vi.fn(),
 }));
+
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+const CATEGORY = {
+  id: "category-1",
+  tenant_id: "tenant-1",
+  name: "Hardware",
+  is_active: true,
+  created_at: "2026-04-01T00:00:00Z",
+  updated_at: "2026-04-01T00:00:00Z",
+};
 
 const mockProduct: ProductResponse = {
   id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
@@ -23,6 +40,7 @@ const mockProduct: ProductResponse = {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
 });
 
 function fillValidForm() {
@@ -31,6 +49,39 @@ function fillValidForm() {
 }
 
 describe("CreateProductForm", () => {
+  it("submits the selected category as plain text", async () => {
+    vi.stubGlobal("ResizeObserver", ResizeObserverMock);
+    (listCategories as ReturnType<typeof vi.fn>).mockResolvedValue({
+      items: [CATEGORY],
+      total: 1,
+    });
+    (createCategory as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      data: CATEGORY,
+    });
+    const onSuccess = vi.fn();
+    (createProduct as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ...mockProduct,
+      category: "Hardware",
+    });
+
+    render(<CreateProductForm onSuccess={onSuccess} />);
+    fillValidForm();
+    fireEvent.click(screen.getByRole("combobox", { name: /Category/i }));
+    fireEvent.click(await screen.findByText("Hardware"));
+    fireEvent.click(screen.getByRole("button", { name: /Create Product/i }));
+
+    await waitFor(() => {
+      expect(createProduct).toHaveBeenCalledWith({
+        code: "WIDGET-001",
+        name: "Test Widget",
+        category: "Hardware",
+        description: "",
+        unit: "pcs",
+      });
+    });
+  });
+
   it("shows validation errors when submitting empty form", async () => {
     const onSuccess = vi.fn();
     render(<CreateProductForm onSuccess={onSuccess} />);
@@ -103,7 +154,7 @@ describe("CreateProductForm", () => {
 
     expect(screen.getByLabelText(/Code/i)).toBeTruthy();
     expect(screen.getByLabelText(/Name/i)).toBeTruthy();
-    expect(screen.getByLabelText(/Category/i)).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: /Category/i })).toBeTruthy();
     expect(screen.getByLabelText(/Description/i)).toBeTruthy();
     expect(screen.getByLabelText(/Unit/i)).toBeTruthy();
     expect(screen.getByRole("button", { name: /Create Product/i })).toBeTruthy();

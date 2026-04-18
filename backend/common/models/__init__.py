@@ -2,6 +2,7 @@
 
 from common.models.approval_request import ApprovalRequest
 from common.models.audit_log import AuditLog
+from common.models.category import Category
 from common.models.inventory_stock import InventoryStock
 from common.models.legacy_import import LegacyImportRun, LegacyImportTableRun
 from common.models.line_customer_mapping import LineCustomerMapping
@@ -27,6 +28,7 @@ __all__ = [
 	"ApprovalRequest",
 	"AppSetting",
 	"AuditLog",
+	"Category",
 	"Customer",
 	"EguiSubmission",
 	"InventoryStock",

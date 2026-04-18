@@ -106,3 +106,13 @@ async def test_search_products_can_include_inactive_rows() -> None:
     await search_products(session, uuid.uuid4(), "widget", include_inactive=True)
 
     assert all("product.status" not in clause for clause in session.where_clauses)
+
+
+async def test_search_products_applies_category_filter() -> None:
+    session = FakeAsyncSession()
+    session.queue_count(0)
+    session.queue_rows([])
+
+    await search_products(session, uuid.uuid4(), "", category="Hardware")
+
+    assert any("product.category" in clause for clause in session.where_clauses)

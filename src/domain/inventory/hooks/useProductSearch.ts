@@ -16,6 +16,7 @@ export function useProductSearch(debounceMs = 300) {
   const [page, setPage] = useState(1);
   const [sortState, setSortState] = useState<DataTableSortState | null>(null);
   const [currentWarehouseId, setCurrentWarehouseId] = useState<string | undefined>(undefined);
+  const [currentCategory, setCurrentCategory] = useState<string>("");
   const [includeInactive, setIncludeInactive] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -27,11 +28,13 @@ export function useProductSearch(debounceMs = 300) {
       pageNum = 1,
       sort?: DataTableSortState | null,
       nextIncludeInactive = includeInactive,
+      category = currentCategory,
     ) => {
       setQuery(q);
       setError(null);
       setPage(pageNum);
       setCurrentWarehouseId(warehouseId);
+      setCurrentCategory(category);
       setIncludeInactive(nextIncludeInactive);
       if (sort) setSortState(sort);
 
@@ -48,6 +51,7 @@ export function useProductSearch(debounceMs = 300) {
           const resp = await searchProducts(trimmed, {
             limit: PAGE_SIZE,
             offset: (pageNum - 1) * PAGE_SIZE,
+            category: category || undefined,
             warehouseId,
             includeInactive: nextIncludeInactive,
             sortBy: sort?.columnId ?? "code",
@@ -72,27 +76,27 @@ export function useProductSearch(debounceMs = 300) {
         }
       }, debounceMs);
     },
-    [debounceMs, includeInactive],
+    [currentCategory, debounceMs, includeInactive],
   );
 
   const nextPage = useCallback(() => {
     if (page * PAGE_SIZE < total) {
-      search(query, currentWarehouseId, page + 1, sortState ?? undefined, includeInactive);
+      search(query, currentWarehouseId, page + 1, sortState ?? undefined, includeInactive, currentCategory);
     }
-  }, [currentWarehouseId, includeInactive, page, total, query, search, sortState]);
+  }, [currentCategory, currentWarehouseId, includeInactive, page, total, query, search, sortState]);
 
   const prevPage = useCallback(() => {
     if (page > 1) {
-      search(query, currentWarehouseId, page - 1, sortState ?? undefined, includeInactive);
+      search(query, currentWarehouseId, page - 1, sortState ?? undefined, includeInactive, currentCategory);
     }
-  }, [currentWarehouseId, includeInactive, page, query, search, sortState]);
+  }, [currentCategory, currentWarehouseId, includeInactive, page, query, search, sortState]);
 
   const setSort = useCallback(
     (sort: DataTableSortState | null) => {
       setSortState(sort);
-      search(query, currentWarehouseId, 1, sort, includeInactive);
+      search(query, currentWarehouseId, 1, sort, includeInactive, currentCategory);
     },
-    [currentWarehouseId, includeInactive, query, search],
+    [currentCategory, currentWarehouseId, includeInactive, query, search],
   );
 
   useEffect(() => {
@@ -111,6 +115,7 @@ export function useProductSearch(debounceMs = 300) {
     loading,
     error,
     includeInactive,
+    category: currentCategory,
     search,
     nextPage,
     prevPage,
