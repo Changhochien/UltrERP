@@ -1,0 +1,35 @@
+"""Explicit ORM model registry for metadata registration side effects."""
+
+from __future__ import annotations
+
+from importlib import import_module
+
+MODEL_MODULES = (
+	"common.models.approval_request",
+	"common.models.audit_log",
+	"common.models.inventory_stock",
+	"common.models.legacy_import",
+	"common.models.order",
+	"common.models.order_line",
+	"common.models.product",
+	"common.models.reorder_alert",
+	"common.models.stock_adjustment",
+	"common.models.stock_transfer",
+	"common.models.supplier",
+	"common.models.supplier_invoice",
+	"common.models.supplier_order",
+	"common.models.supplier_payment",
+	"common.models.user",
+	"common.models.warehouse",
+	"domains.customers.models",
+	"domains.invoices.models",
+	"domains.line.models",
+	"domains.payments.models",
+	"domains.product_analytics.models",
+	"domains.settings.models",
+)
+
+
+def register_all_models() -> None:
+	for module_path in MODEL_MODULES:
+		import_module(module_path)
