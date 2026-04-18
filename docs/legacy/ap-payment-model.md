@@ -93,7 +93,7 @@ Design rules:
 
 ## Implementation Boundary
 
-Until the remaining legacy column semantics are verified, `tbsprepay` and `tbsspay` should stay in `raw_legacy.unsupported_history_holding` during canonical import.
+Until the remaining legacy column semantics are verified, unresolved `tbsprepay` and `tbsspay` rows should keep their raw payloads in `raw_legacy.unsupported_history_holding`, while their current state is tracked in `raw_legacy.source_row_resolution` and every transition is appended to `raw_legacy.source_row_resolution_events`.
 
 The move out of holding should happen in two stages:
 
@@ -102,7 +102,7 @@ The move out of holding should happen in two stages:
 
 That boundary keeps the migration lossless without faking allocation certainty.
 
-The explicit `ap-payment-import` command now implements that boundary directly: it can import the narrow subset of rows that pass those checks, but the current verified dump still routes every unresolved `tbsprepay` row and every customer-role `tbsspay` row back to holding.
+The explicit `ap-payment-import` command now implements that boundary directly: it can import the narrow subset of rows that pass those checks, but the current verified dump still routes every unresolved `tbsprepay` row and every customer-role `tbsspay` row back to holding. When a row later drains into `supplier_payments`, the canonical write, holding cleanup, current-state update, and transition-event append are committed atomically through the shared source-resolution helper.
 
 ## Verification Checklist Before Implementation
 

@@ -29,12 +29,15 @@ This document defines where Story 15.4 lands historical legacy data during the `
 | --- | --- |
 | `raw_legacy.canonical_import_runs` | Batch-level canonical import run metadata with replay attempts and final status. |
 | `raw_legacy.canonical_import_step_runs` | Step-level observability for dependency-ordered canonical import execution. |
-| `raw_legacy.canonical_record_lineage` | Deterministic mapping from a live canonical row back to source table, source identifier, source row, tenant, and batch. |
-| `raw_legacy.unsupported_history_holding` | Explicit holding area for unsupported payment-adjacent history and any future unmapped legacy domains. |
+| `raw_legacy.canonical_record_lineage` | Deterministic mapping from a live canonical row back to source table, source identifier, source row, tenant, and batch. This is canonical lineage only after Story 15.21; it no longer carries current hold state. |
+| `raw_legacy.source_row_resolution` | Current batch-scoped source-row state keyed by `(tenant_id, batch_id, source_table, source_identifier, source_row_number)`, including explicit `holding` and `resolved` statuses. |
+| `raw_legacy.source_row_resolution_events` | Append-only transition log for source-row state changes, preserving hold, resolve, retry, and repair history. |
+| `raw_legacy.unsupported_history_holding` | Explicit holding area for unsupported payment-adjacent history and any future unmapped legacy domains. The payload stays here while current state lives in `source_row_resolution`. |
 
 ## Replay Safety Rules
 
 - Live canonical writes use deterministic tenant-scoped UUIDs and `ON CONFLICT` upserts.
-- Lineage rows upsert on tenant, batch, canonical table, canonical record, and source identifier.
+- Lineage rows upsert on batch, tenant, canonical table, source table, source identifier, and source row number.
+- Current hold and resolve state is read from `raw_legacy.source_row_resolution`, not from sentinel lineage rows.
 - Unsupported holding rows upsert on tenant, batch, source table, source identifier, and source row number.
-- Replaying the same tenant and batch updates the same canonical and lineage rows rather than creating duplicates.
+- Replaying the same tenant and batch updates the same canonical, lineage, and current-state rows rather than creating duplicates, while `source_row_resolution_events` remains append-only.

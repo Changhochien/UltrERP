@@ -105,6 +105,94 @@ Shadow-mode exists to prove correctness before cutover, not to approximate succe
 4. Compare outputs using a versioned reconciliation specification.
 5. Emit daily discrepancy reports with severity classification.
 
+### Reviewed Refresh Command
+
+- The reviewed operator entry point for a full live shadow refresh is
+  `cd backend && uv run python -m scripts.run_legacy_refresh ...`.
+- It runs the live-stage, normalize, map-products, optional review export/import,
+  canonical-import, validate-import, stock backfills, and reconciliation report in one
+  controlled order, then writes a machine-readable summary under
+  `_bmad-output/operations/legacy-refresh/`.
+- Each summary now carries one shared `promotion_policy` record with explicit
+  `classification` (`eligible`, `blocked`, or `exception-required`),
+  `reason_codes`, machine-readable gate details, and operator-facing text.
+- A run can complete with `promotion_readiness=false` when unresolved product mappings
+  still require analyst review, even if the shadow dataset itself was refreshed.
+- This command is intentionally limited to refresh plus evidence generation. Scheduling,
+  promotion into the working lane, and automatic correction application stay outside this
+  workflow.
+
+### Reviewed Scheduled Shadow Refresh Wrapper
+
+- The reviewed cron-safe wrapper for unattended shadow refreshes is
+  `cd backend && uv run python -m scripts.run_scheduled_legacy_shadow_refresh ...`.
+- It generates one immutable UTC batch id per invocation, reuses
+  `scripts.run_legacy_refresh`, and writes durable lane state under
+  `_bmad-output/operations/legacy-refresh/state/<schema>-<tenant>-<source-schema>/`.
+- `latest-run.json` records every scheduled attempt, including overlap-blocked,
+  validation-blocked, reconciliation-blocked, and failed outcomes.
+- `latest-success.json` advances only for `completed` and
+  `completed-review-required`, because shadow freshness and promotion eligibility are
+  separate concerns.
+- `latest-run.json` and `latest-success.json` now copy the refresh summary
+  `promotion_policy` outcome so scheduler-side alerts and operator tooling reuse the
+  same reviewed gate classification.
+- A pre-existing `scheduler.lock` blocks a second run for the same lane until an
+  operator resolves the overlap or stale-lock condition. The wrapper leaves the prior
+  durable success state untouched in that case.
+- The scheduled wrapper itself does not mutate the working lane directly. It produces
+  the candidate batch and durable state consumed by downstream promotion gate
+  evaluation.
+- Under the updated Epic 15 plan, eligible shadow batches may be promoted
+  automatically by the downstream promotion step, while blocked batches leave the
+  previously promoted working batch unchanged and trigger operator-visible alerts.
+- Operators should distinguish the latest successful shadow batch from the latest
+  promoted working batch; those are related but not identical states.
+
+Reviewed cron example:
+
+```bash
+0 2 * * * cd /path/to/UltrERP/backend && uv run python -m scripts.run_scheduled_legacy_shadow_refresh --tenant-id <tenant-uuid> --schema raw_legacy --source-schema public --batch-prefix legacy-shadow --lookback-days 10000 --reconciliation-threshold 0
+```
+
+### Reviewed Promotion Evaluation
+
+- The reviewed operator entry point for advancing the working lane is
+  `cd backend && uv run python -m scripts.run_legacy_promotion ...`.
+- It consumes the lane's `latest-success.json` record plus the referenced Story 15.15
+  summary JSON and does not rerun staging, normalization, canonical import, or
+  reconciliation.
+- The reviewed working-lane pointer is `latest-promoted.json` under the same per-lane
+  state root used by the scheduled wrapper.
+- Every evaluation attempt also writes one append-only result artifact under
+  `promotion-results/`, so operators can audit promoted, blocked, and noop outcomes
+  separately from the current pointer.
+- Promotion artifacts now include `promotion_policy_classification`,
+  `promotion_policy_reason_codes`, `promotion_mode`, and optional override metadata so
+  automatic eligibility and exception-driven advancement remain visibly distinct.
+- Promotion is blocked when the lane is still unstable (`scheduler.lock` exists), the
+  candidate summary artifact is missing or mismatched, validation is not passed,
+  reconciliation is blocked, or analyst review is still required. The unresolved
+  analyst-review case is surfaced as `exception-required`, not silent success.
+- When the latest successful shadow batch already matches `latest-promoted.json`, the
+  evaluation returns `noop` and leaves the working-lane pointer untouched.
+- Operators can intentionally advance an `exception-required` batch only by supplying
+  `--promoted-by`, `--allow-exception-override`, `--override-rationale`, and
+  `--override-scope`; that path writes a durable audit record under
+  `promotion-overrides/` before the promotion pointer is committed.
+
+### Reviewed Reconciliation Corrections
+
+- `cd backend && uv run python -m scripts.propose_reconciliation_corrections ...` is
+  the reviewed proposal surface. It produces candidate correction CSV rows and keeps
+  configured review-only categories visible as manual/operator work.
+- `cd backend && uv run python -m scripts.apply_reconciliation_corrections --csv ... --approved-by ...`
+  is the reviewed apply surface. It remains dry-run by default and only persists rows
+  whose CSV `approval_action` is exactly `apply` and whose `disposition` is
+  `actionable`.
+- Scheduled refresh and automatic promotion never invoke correction application.
+  Reconciliation correction stays explicit and operator-approved.
+
 ### Severity Policy
 
 - Severity 1: invoice total mismatch, tax mismatch, payment allocation mismatch, or other correctness blockers. These block cutover.
