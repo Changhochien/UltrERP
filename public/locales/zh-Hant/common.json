@@ -6,6 +6,7 @@
     "language": "語言",
     "overview": "總覽",
     "inventory": "庫存",
+    "intelligence": "商業洞察",
     "purchases": "採購",
     "customers": "客戶",
     "invoices": "發票",
@@ -16,7 +17,6 @@
     "revenue": "營收",
     "settings": "設定",
     "admin": "管理",
-    "intelligence": "情報分析",
     "ownerDashboard": "經營者儀表板"
   },
   "common": {
@@ -112,10 +112,6 @@
     "ownerDashboard": {
       "label": "經營者儀表板",
       "description": "業主專屬的經營總覽與關鍵指標。"
-    },
-    "intelligence": {
-      "label": "情報分析",
-      "description": "AI 驅動的商業智慧、客戶洞察及趨勢分析。"
     }
   },
   "app": {
@@ -158,6 +154,249 @@
     "noCategories": "目前沒有可用的設定分類。",
     "saveError": "儲存設定失敗。",
     "resetError": "重設設定失敗。"
+  },
+  "intelligence": {
+    "page": {
+      "eyebrow": "商業洞察",
+      "title": "洞察工作區",
+      "description": "提供給代理與業務使用的角色管制客戶與商品訊號。",
+      "workspaceTitle": "工作區已啟用",
+      "workspaceDescription": "Epic 19 的後續故事會依衝刺順序把洞察卡片、表格與 MCP 分析能力放進這裡。",
+      "placeholder": "洞察功能門檻已啟用。sales、admin 與 owner 可進入此工作區，其餘分析功能會依衝刺順序逐步交付。"
+    },
+    "customerProfile": {
+      "title": "商品輪廓",
+      "description": "整理此客戶購買了什麼、下單頻率，以及最近新啟用的品類。",
+      "totalRevenue12m": "12 個月營收",
+      "orders12m": "12 個月訂單數",
+      "averageOrderValue": "平均訂單金額",
+      "lastOrder": "最近一次訂單",
+      "frequencyTrend": "下單頻率趨勢",
+      "aovTrend": "平均訂單金額趨勢",
+      "dormant": "沉睡",
+      "activityBasis": "以已確認、已出貨與已完成訂單為基礎。",
+      "topCategories": "主要品類",
+      "topCategoriesDescription": "最近 12 個月的營收品類分布。",
+      "topProducts": "主要商品",
+      "topProductsDescription": "依最近 12 個月訂單次數排序的商品。",
+      "new": "新",
+      "noOrdersYet": "尚無符合條件的訂單",
+      "daysSinceLastOrder": "距離上次訂單 {{count}} 天",
+      "noCategoryData": "目前尚無品類活動。",
+      "noProductData": "目前尚無商品活動。",
+      "product": "商品",
+      "category": "品類",
+      "orders": "訂單",
+      "revenue": "營收",
+      "loadError": "載入商品輪廓失敗。",
+      "trend": {
+        "increasing": "成長中",
+        "declining": "下降中",
+        "stable": "穩定"
+      },
+      "confidence": {
+        "high": "高信心",
+        "medium": "中等信心",
+        "low": "低信心"
+      }
+    },
+    "customerBuyingBehavior": {
+      "title": "客戶購買行為",
+      "description": "比較不同客戶分群的品類組合、交叉銷售提升與逐月購買型態。",
+      "customerTypeLabel": "客戶類型",
+      "filterDealers": "經銷商",
+      "filterEndUsers": "終端客戶",
+      "filterUnknown": "未知",
+      "filterAll": "全部",
+      "includeCurrentMonth": "包含本月即時資料",
+      "generatedAt": "產生時間：{value}",
+      "partial": "包含本月即時資料",
+      "historical": "僅已結束月份",
+      "dataBasis": {
+        "transactional_fallback": "交易即時計算"
+      },
+      "summary": {
+        "customers": "客戶數",
+        "avgRevenue": "平均每客營收",
+        "avgOrders": "平均每客訂單數",
+        "avgCategories": "平均每客品類數"
+      },
+      "topCategoriesTitle": "主要品類",
+      "crossSellTitle": "交叉銷售機會",
+      "patternsTitle": "購買型態",
+      "table": {
+        "category": "品類",
+        "revenue": "營收",
+        "share": "占比",
+        "customers": "客戶數",
+        "anchor": "起始品類",
+        "recommended": "推薦品類",
+        "shared": "共同客戶",
+        "segmentPenetration": "分群滲透率",
+        "lift": "提升倍數"
+      },
+      "pattern": {
+        "orders": "{count} 筆訂單",
+        "customers": "{count} 位客戶"
+      },
+      "empty": "此分群目前沒有符合條件的客戶購買行為。",
+      "emptyTopCategories": "目前尚無品類證據。",
+      "emptyCrossSell": "目前尚無達到門檻的交叉銷售機會。",
+      "loadError": "載入客戶購買行為失敗。"
+    },
+    "productPerformance": {
+      "title": "商品績效",
+      "description": "依本期與前期營收表現及生命週期，排序最值得追蹤的商品。",
+      "categoryPlaceholder": "篩選品類",
+      "lifecycleLabel": "生命週期",
+      "allStages": "全部階段",
+      "includeCurrentMonth": "包含本月即時資料",
+      "generatedAt": "產生時間：{value}",
+      "partial": "包含本月即時資料",
+      "historical": "僅已結束月份",
+      "dataBasis": {
+        "aggregate_only": "僅聚合資料",
+        "aggregate_plus_live_current_month": "聚合資料 + 本月即時資料"
+      },
+      "summary": {
+        "products": "商品數",
+        "currentWindow": "本期區間",
+        "priorWindow": "前期區間",
+        "windowNote": "顯示前 {count} 筆"
+      },
+      "table": {
+        "product": "商品",
+        "category": "品類",
+        "lifecycle": "生命週期",
+        "currentRevenue": "本期營收",
+        "priorRevenue": "前期營收",
+        "delta": "變化",
+        "peakMonth": "單月高峰營收",
+        "monthsOnSale": "已銷售 {count} 個月"
+      },
+      "stage": {
+        "new": "新商品",
+        "end_of_life": "生命末期",
+        "declining": "下滑",
+        "growing": "成長",
+        "mature": "成熟",
+        "stable": "穩定"
+      },
+      "reason": {
+        "new": "首次銷售落在目前比較區間內。",
+        "end_of_life": "目前區間沒有營收，且最後一次銷售已至少早於錨點月份 6 個完整月份。",
+        "declining": "目前營收已低於前一期比較區間的 80%。",
+        "growing": "目前營收至少比前一期比較區間高出 20%。",
+        "mature": "已銷售超過 24 個月，且營收仍維持在前一期附近。",
+        "stable": "目前營收仍為正值，且未觸發其他生命週期規則。"
+      },
+      "empty": "此比較區間目前沒有符合條件的商品。",
+      "loadError": "載入商品績效失敗。"
+    },
+    "affinity": {
+      "title": "商品關聯地圖",
+      "description": "以客戶層級共購資料計算重疊率與 Jaccard 關聯分數。",
+      "productA": "商品 A",
+      "productB": "商品 B",
+      "sharedCustomers": "共同客戶數",
+      "overlap": "重疊率",
+      "affinityScore": "關聯分數",
+      "pitchHint": "推薦話術",
+      "sharedOrders": "共同訂單：{count}",
+      "computedAt": "計算時間：{value}",
+      "minShared": "最低共同客戶 {count}",
+      "topPairs": "前 {count} 組配對",
+      "empty": "目前尚無符合條件的商品關聯。",
+      "loadError": "載入商品關聯地圖失敗。",
+      "showing": "顯示 {shown} / {total} 組配對",
+      "sortBy": "依 {label} 排序",
+      "sortDirection": {
+        "asc": "遞增",
+        "desc": "遞減"
+      }
+    },
+    "categoryTrends": {
+      "title": "品類趨勢雷達",
+      "description": "比較目前與前一期的滾動需求訊號，找出值得加碼或關注的品類。",
+      "period30d": "30 天",
+      "period90d": "90 天",
+      "period12m": "12 個月",
+      "currentPeriod": "本期",
+      "priorPeriod": "前期",
+      "delta": "營收變化",
+      "newCustomers": "新增",
+      "churnedCustomers": "流失",
+      "customerFootnote": "{current} / {prior} 位客戶",
+      "topProducts": "主力商品",
+      "empty": "目前尚無品類需求訊號。",
+      "loadError": "載入品類趨勢失敗。",
+      "generatedAt": "產生時間：{value}",
+      "activityBasis": "以已確認、已出貨、已完成訂單的需求金額為基礎。",
+      "trend": {
+        "growing": "成長",
+        "declining": "下滑",
+        "stable": "穩定"
+      },
+      "trendContext": {
+        "newly_active": "新近活躍",
+        "insufficient_history": "歷史資料不足"
+      }
+    },
+    "riskSignals": {
+      "title": "客戶風險訊號",
+      "description": "將沉睡、風險、成長、穩定與新客戶依優先順序排成外呼清單。",
+      "empty": "目前尚無客戶風險訊號。",
+      "loadError": "載入客戶風險訊號失敗。",
+      "generatedAt": "產生時間：{value}",
+      "filters": {
+        "all": "全部",
+        "growing": "成長",
+        "at_risk": "高風險",
+        "dormant": "沉睡",
+        "new": "新客戶",
+        "stable": "穩定"
+      },
+      "status": {
+        "growing": "成長",
+        "at_risk": "高風險",
+        "dormant": "沉睡",
+        "new": "新客戶",
+        "stable": "穩定"
+      },
+      "revenueCurrent": "本期營收",
+      "revenuePrior": "前期營收",
+      "delta": "變化",
+      "daysSinceLastOrder": "距上次下單 {count} 天",
+      "expanded": "新增品類：{value}",
+      "contracted": "縮減品類：{value}",
+      "noSignals": "此帳戶目前沒有次要提示。"
+    },
+    "prospectGaps": {
+      "title": "潛在空白品類分析",
+      "description": "找出目前未購買目標品類、但相似度高且值得外呼的活躍客戶。",
+      "categoryLabel": "目標品類",
+      "customerTypeLabel": "客戶類型",
+      "filterDealers": "經銷商",
+      "filterEndUsers": "終端客戶",
+      "filterAll": "全部",
+      "existingBuyers": "既有買家 {count} 家",
+      "company": "公司",
+      "reason": "原因",
+      "lastOrder": "最近訂單",
+      "categoryCount": "品類數",
+      "aov": "平均客單價",
+      "affinityScore": "適配分數",
+      "tags": "標籤",
+      "empty": "此品類目前沒有可用的空白客戶名單。",
+      "loadError": "載入空白品類分析失敗。"
+    },
+    "marketOpportunities": {
+      "showDetail": "展開詳情",
+      "hideDetail": "收合詳情",
+      "affectedCustomers": "影響客戶 {count} 家",
+      "action": "建議動作",
+      "deferred": "v1 暫不提供：{value}"
+    }
   },
   "customer": {
     "createPage": {
@@ -838,7 +1077,7 @@
     },
     "reorderPointAdmin": {
       "title": "補貨點計算機",
-      "description": "從需求歷史預覽計算後的補貨點，再套用所選列。",
+      "description": "從需求歷史預覽補貨門檻與建議訂購量，再套用所選列。",
       "safetyFactor": "安全係數",
       "lookback": "回溯期間",
       "warehouse": "倉庫",
@@ -860,7 +1099,7 @@
       "noCandidatesDesc": "所選範圍內無產品符合候選資格。",
       "noSkippedTitle": "無略過列。",
       "noSkippedDesc": "所有已評估的列均有足夠資料。",
-      "formula": "ROP 用來覆蓋前置時間需求；目標庫存用來覆蓋前置時間加補貨週期。",
+      "formula": "ROP 用來覆蓋前置時間需求；建議訂購量會以目標庫存對比庫存部位（現有 + 在訂 + 途上 - 保留）。",
       "setParamsAndClick": "設定參數並點選預覽",
       "safetyFactorBuffer": "安全係數緩衝：{value}",
       "ropUnits": "ROP / 安全庫存 = 單位",
@@ -869,13 +1108,116 @@
       "reviewCycleDays": "補貨週期 = 天",
       "targetStockUnits": "目標庫存 / 建議訂購量 = 單位",
       "applied": "已套用 {updated} 列 · {skipped} 列略過",
+      "openSettings": "補貨規劃設定",
+      "settingsInlineTitle": "補貨規劃設定",
+      "settingsInlineHint": "正在編輯 {{product}}。請查看下方的 {{warehouse}} 倉庫卡片。",
+      "closeSettings": "關閉設定",
+      "compactCol": {
+        "product": "產品",
+        "stock": "庫存概況",
+        "recommendation": "建議結果",
+        "leadTime": "前置時間狀態",
+        "note": "複核備註"
+      },
+      "rulesTitle": "這個預覽怎麼判斷",
+      "rulesDemand": "只有需求歷史足夠的列，才會進入自動計算。",
+      "rulesLeadTime": "沒有歷史或手動前置時間時，會改用 80 天營運預設，並標示為低信心度。",
+      "rulesApply": "在你明確勾選並套用之前，系統不會寫入任何補貨點。",
+      "formulaRopTitle": "補貨點",
+      "formulaRopBody": "前置時間需求 + 安全庫存",
+      "formulaInventoryTitle": "庫存部位",
+      "formulaInventoryBody": "現有 + 在訂 + 途上 - 保留",
+      "formulaOrderTitle": "建議訂購量",
+      "formulaOrderBody": "目標庫存 - 庫存部位",
+      "leadTimePolicyTitle": "前置時間規則",
+      "leadTimePolicyBody": "當列沒有手動前置時間，也找不到供應商收貨歷史時，系統會改用 80 天容器補貨例行前置時間，並明確標示為營運預設。",
+      "summary": {
+        "candidates": "可複核列",
+        "candidatesHint": "具備需求與前置時間資料，可直接判讀。",
+        "selected": "已勾選套用",
+        "selectedHint": "批次更新只會影響勾選列。",
+        "skipped": "待補資料",
+        "skippedHint": "被缺資料或低信任度條件擋下的列。",
+        "leadTimeReview": "待補前置時間",
+        "leadTimeReviewHint": "必須先設定前置時間，才能進入自動計算。",
+        "businessDefault": "使用營運預設",
+        "businessDefaultHint": "目前有多少候選列使用 {days} 天營運預設前置時間。"
+      },
+      "candidateToolbarTitle": "複核候選列",
+      "candidateToolbarHint": "先點列查看明細，再勾選要批次套用的列。",
+      "candidateToolbarSelected": "已勾選 {count} 列，準備套用。",
+      "rerunPreviewHint": "調整參數後重新預覽即可。沒有歷史 lead time 的列會改用營運預設並標示低信心度。",
+      "guidanceTitleNoCandidates": "目前沒有可直接套用的候選列",
+      "guidanceBodyNoCandidates": "在目前 {lookbackDays} 天的設定下，有 {insufficientHistoryCount} 列卡在需求歷史不足，另有 {leadTimeReviewCount} 列已經有需求但正在依賴營運預設前置時間。先放寬回溯期間檢查 coverage，再決定哪些關鍵列要覆寫營運預設。",
+      "guidanceBodyMaxLookback": "目前已經在最寬的 {lookbackDays} 天視窗內，仍有 {insufficientHistoryCount} 列沒有至少 2 筆合格需求事件，其中 {zeroDemandCount} 列是 0 筆、{singleDemandCount} 列只有 1 筆；另有 {leadTimeReviewCount} 列已經有需求但正在依賴營運預設前置時間。再放寬時間窗幫助有限，下一步應該是覆寫關鍵列的前置時間，或重新定義需求事件規則。",
+      "guidanceTryLookback": "試 {label}",
+      "skippedToolbarTitle": "複核略過列",
+      "skippedToolbarHint": "略過列會說明自動計算為什麼停下來，以及下一步該補什麼。",
+      "reviewNeededCount": "仍有 {count} 列候選需要複核",
+      "leadTimeMissingCount": "有 {count} 列需要先設定前置時間",
+      "businessDefaultCount": "有 {count} 列使用 {days} 天營運預設",
+      "detailCandidateLabel": "決策明細",
+      "detailSkippedLabel": "阻塞列明細",
+      "detailReadyLabel": "可套用",
+      "detailDemandTitle": "需求訊號",
+      "detailStockTitle": "庫存部位",
+      "detailRecommendationTitle": "建議結果",
+      "detailDecisionTitle": "規劃輸入",
+      "detailLookback": "需求回溯期間",
+      "detailReviewNote": "複核備註",
+      "detailNoQualityNote": "這列已具備可計算的資料，但仍建議先查看數字與脈絡，再批次套用。",
+      "detailEmptyTitle": "選一列查看細節",
+      "detailEmptyDesc": "先在表格中挑一列，確認公式與資料品質，再決定要不要套用。",
+      "selectRow": "勾選此列",
+      "unselectRow": "已勾選",
+      "rowDetailAria": "開啟 {product} 的明細",
+      "notSet": "未設定",
+      "leadTimeStatus": {
+        "actual": "歷史前置時間",
+        "businessDefault": "營運預設",
+        "manual": "手動覆寫",
+        "supplier": "供應商預設",
+        "needsSetup": "待設定",
+        "unknown": "未知"
+      },
+      "leadTimeConfidenceLabel": "信心度：{value}",
+      "demandBasisLabel": {
+        "sales_reservation": "銷售 / 保留"
+      },
+      "candidateReasonHint": "需求歷史包含 {count} 筆有效異動。",
+      "qualityMessage": {
+        "leadTimeMissing": "這列已經有需求，但在目前倉庫既沒有手動前置時間，也沒有可推導的供應商收貨歷史。",
+        "businessDefault": "這列目前使用 {days} 天的營運預設前置時間；若你有更準確的供應商或商品 lead time，建議再覆寫。",
+        "insufficientHistory": "在目前選定的 {days} 天視窗內，只有 {count} 筆符合條件的銷售 / 保留事件；至少需要 2 筆。",
+        "sourceUnresolved": "近期收貨還無法收斂成單一補貨來源。",
+        "supplierDefault": "這列目前只能依賴供應商預設前置時間，還沒有足夠的收貨歷史。",
+        "lowConfidenceHistory": "前置時間只建立在 {count} 筆歷史樣本上，所以信心度為{confidence}。",
+        "continuousPolicyFallback": "尚未設定目標庫存，所以建議訂購量只會補到補貨點。",
+        "periodicPolicyFallback": "週期補貨還需要規劃涵蓋期或目標庫存，才能提出完整的補貨週期建議。"
+      },
+      "skipReasonLabel": {
+        "insufficient_history": "需求歷史不足",
+        "source_unresolved": "補貨來源無法判定",
+        "lead_time_unconfigured": "前置時間尚未設定",
+        "manual_policy": "手動策略列"
+      },
       "col": {
         "product": "產品",
         "warehouse": "倉庫",
+        "actions": "操作",
+        "policy": "補貨策略",
+        "currentQty": "現有庫存（單位）",
+        "inventoryPosition": "庫存部位",
+        "onOrder": "在訂量",
+        "inTransit": "途上量",
+        "reserved": "保留 / 欠單",
         "currentRop": "目前 ROP（單位）",
+        "targetOverride": "目標覆寫值",
         "computedRop": "計算後 ROP（單位）",
         "avgDailyUsage": "平均日用量（單位/日）",
         "leadTime": "前置時間（天）",
+        "planningHorizon": "規劃涵蓋期（天）",
+        "effectiveHorizon": "實際採用涵蓋期（天）",
         "reviewCycle": "補貨週期（天）",
         "safetyStock": "安全庫存（單位）",
         "targetStock": "目標庫存（單位）",
@@ -883,15 +1225,32 @@
         "demandBasis": "需求依據",
         "movements": "異動次數",
         "ltSource": "LT 來源",
+        "ltSamples": "LT 樣本數",
+        "ltConfidence": "LT 信心度",
         "qualityNote": "品質備註",
         "skipReason": "略過原因",
         "note": "備註"
+      },
+      "policy": {
+        "continuous": "連續補貨",
+        "periodic": "週期 / 貨櫃補貨",
+        "manual": "手動"
       },
       "leadTimeSource": {
         "actual": "歷史資料",
         "manual_override": "手動覆寫",
         "supplier_default": "供應商預設",
-        "fallback_7d": "7 天預設值"
+        "fallback_7d": "待設定"
+      },
+      "leadTimeConfidence": {
+        "high": "高",
+        "medium": "中",
+        "low": "低"
+      },
+      "safetyFactorPopover": {
+        "title": "Safety Factor (安全係數)",
+        "body": "額外安全庫存倍數，套用於交貨前置時間需求。數值越高表示越保守的安全庫存，以應對需求波動或供應商延遲。",
+        "formula": "Safety Stock = Avg Daily Usage × Factor × Lead Time Days"
       }
     },
     "warehouseSelector": {
@@ -944,6 +1303,7 @@
       "stock": "庫存",
       "retry": "重試",
       "openFullPage": "開啟完整頁面",
+      "openSettingsPage": "開啟補貨規劃設定",
       "browseProducts": "瀏覽所有產品的當前庫存。",
       "productsTitle": "產品",
       "scope": "範圍",
@@ -1034,6 +1394,7 @@
       "adjustStock": "調整庫存",
       "transfer": "調撥",
       "order": "訂貨",
+      "openSettings": "補貨規劃設定",
       "overview": "概覽",
       "analytics": "分析",
       "settings": "設定",
@@ -1088,6 +1449,40 @@
           "empty": "沒有需求資料",
           "tooltipUnits": "{count} 單位"
         },
+        "planningSupport": {
+          "title": "規劃輔助",
+          "description": "共享銷售歷史僅供參考，不會取代倉別補貨規則。",
+          "advisory": "僅供參考",
+          "partial": "本月資料未結束",
+          "emptyTitle": "尚無共享銷售歷史",
+          "emptyBody": "此商品累積確認銷售歷史後，這裡會顯示規劃輔助資訊。",
+          "historySeries": "共享銷售歷史",
+          "aboveAverage": "高於平均月份",
+          "none": "無",
+          "window": "期間：{{start}} 至 {{end}}",
+          "metrics": {
+            "avgMonthly": "月均銷量",
+            "peakMonthly": "最高月份",
+            "lowMonthly": "最低月份",
+            "seasonalityIndex": "季節性指數",
+            "historyMonths": "歷史月份數",
+            "currentMonthLive": "本月即時銷量",
+            "reorderPoint": "補貨點",
+            "onOrder": "在訂量",
+            "inTransit": "途上量",
+            "reserved": "保留量"
+          },
+          "sourceLabels": {
+            "aggregated": "封存月份彙總",
+            "live": "本月即時計算"
+          },
+          "dataBasisLabels": {
+            "aggregated_only": "僅使用彙總",
+            "aggregated_plus_live_current_month": "彙總 + 本月即時",
+            "live_current_month_only": "僅本月即時",
+            "no_history": "沒有共享歷史"
+          }
+        },
         "salesHistory": {
           "title": "銷售歷史",
           "empty": "沒有銷售歷史資料",
@@ -1116,15 +1511,31 @@
         "saved": "已儲存 {{warehouse}} 的設定",
         "saving": "儲存中…",
         "manualOverride": "手動覆寫",
+        "policy": "補貨策略",
+        "policyLabel": {
+          "continuous": "連續補貨",
+          "periodic": "週期 / 貨櫃補貨",
+          "manual": "手動"
+        },
         "reorderPoint": "補貨點",
         "leadTime": "前置天數（天）",
+        "targetStockQty": "目標庫存量",
+        "onOrderQty": "在訂量",
+        "inTransitQty": "途上量",
+        "reservedQty": "保留 / 欠單量",
+        "planningHorizon": "規劃涵蓋期（天）",
         "reviewCycle": "補貨週期（天）",
         "safetyFactor": "安全係數（{{value}}）",
         "computedRop": "計算後 ROP：",
+        "effectiveHorizon": "實際採用涵蓋期",
+        "inventoryPosition": "庫存部位",
         "safetyStock": "安全庫存",
         "targetStock": "目標庫存",
         "suggestedOrderQty": "建議訂購量",
-        "previewNote": "建議訂購量是以目前庫存 {{currentStock}} 對比目標庫存計算。",
+        "previewNote": "建議訂購量是以庫存部位 {{inventoryPosition}}（現有 {{currentStock}} + 在訂 {{onOrderQty}} + 途上 {{inTransitQty}} - 保留 {{reservedQty}}）對比目標庫存計算。",
+        "manualPolicyPreview": "手動策略不會顯示自動補貨預覽。",
+        "leadTimeRequiredPreview": "請先設定前置時間，再使用自動補貨預覽。",
+        "noDemandHistoryPreview": "目前需求歷史仍不足，還無法產生自動補貨預覽。",
         "noSupplierConfigured": "尚未設定供應商。",
         "supplierInfo": "供應商資訊",
         "save": "儲存"
@@ -1206,236 +1617,7 @@
       "total": "合計"
     }
   },
-  "intelligence": {
-    "page": {
-      "eyebrow": "情報分析",
-      "title": "商業智慧",
-      "description": "AI 驅動的信號、趨勢分析，以及跨業務的客戶洞察。",
-      "workspaceTitle": "情報分析工作區",
-      "workspaceDescription": "深入探索完整的情報分析套件。",
-      "placeholder": "選擇上方的卡片以探索詳細的信號與分析。"
-    },
-    "affinity": {
-      "title": "產品關聯圖",
-      "description": "依重疊性與 Jaccard 關聯性評分的客戶層級共同購買組合。",
-      "minShared": "最少共同客戶 {count}",
-      "topPairs": "前 {count} 組配對",
-      "loadError": "無法載入產品關聯圖。",
-      "showing": "顯示 {shown} / {total} 組配對",
-      "computedAt": "計算時間：{value}",
-      "empty": "尚無符合條件的產品關聯。",
-      "sortBy": "以 {label} 排序",
-      "productA": "產品 A",
-      "productB": "產品 B",
-      "sharedCustomers": "共同客戶",
-      "overlap": "重疊率",
-      "affinityScore": "關聯分數",
-      "pitchHint": "推銷提示",
-      "sharedOrders": "共同訂單：{count}"
-    },
-    "categoryTrends": {
-      "title": "類別趨勢雷達",
-      "description": "跨類別的滾動需求信號，含當期與前期比較。",
-      "period30d": "30天",
-      "period90d": "90天",
-      "period12m": "12個月",
-      "loadError": "無法載入類別趨勢。",
-      "generatedAt": "產生時間：{value}",
-      "activityBasis": "以已確認、已出貨及已履約的訂單明細需求為基礎。",
-      "empty": "尚無類別需求信號。",
-      "priorPeriod": "前期",
-      "currentPeriod": "當期",
-      "delta": "營收變化",
-      "newCustomers": "新客戶",
-      "churnedCustomers": "流失客戶",
-      "topProducts": "熱銷產品",
-      "customerFootnote": "{current} / {prior} 客戶",
-      "trend": {
-        "growing": "成長中",
-        "declining": "衰退中",
-        "stable": "穩定"
-      },
-      "trendContext": {
-        "recovering": "復甦中",
-        "slowing": "放緩中"
-      }
-    },
-    "customerBuyingBehavior": {
-      "title": "客戶購買行為",
-      "description": "比較各區隔的類別組合、交叉銷售提升幅度及逐月購買模式。",
-      "customerTypeLabel": "客戶類型",
-      "filterDealers": "經銷商",
-      "filterEndUsers": "終端用戶",
-      "filterUnknown": "未知",
-      "filterAll": "全部",
-      "includeCurrentMonth": "含當月資料",
-      "loadError": "無法載入客戶購買行為。",
-      "generatedAt": "產生時間：{value}",
-      "partial": "含當月即時資料",
-      "historical": "僅含已完成月份",
-      "summary": {
-        "customers": "客戶數",
-        "avgRevenue": "平均客戶營收",
-        "avgOrders": "平均訂單數",
-        "avgCategories": "平均類別數"
-      },
-      "empty": "此區隔尚無符合條件的購買行為資料。",
-      "topCategoriesTitle": "熱門類別",
-      "emptyTopCategories": "尚無類別證據。",
-      "table": {
-        "category": "類別",
-        "revenue": "營收",
-        "share": "占比",
-        "customers": "客戶數",
-        "anchor": "主力",
-        "recommended": "推薦",
-        "shared": "共同",
-        "segmentPenetration": "區隔滲透",
-        "lift": "提升幅度"
-      },
-      "crossSellTitle": "交叉銷售機會",
-      "emptyCrossSell": "尚無符合支援門檻的交叉銷售機會。",
-      "patternsTitle": "購買模式",
-      "pattern": {
-        "orders": "{count} 筆訂單",
-        "customers": "{count} 位客戶"
-      },
-      "dataBasis": {
-        "transactional_fallback": "交易資料備援",
-        "aggregate_only": "僅彙總資料",
-        "aggregate_plus_live_current_month": "彙總加當月即時"
-      }
-    },
-    "prospectGaps": {
-      "title": "潛在客戶缺口分析",
-      "description": "找出看起來適合目標類別但尚未購買的活躍非客戶。",
-      "categoryLabel": "目標類別",
-      "customerTypeLabel": "客戶類型",
-      "filterDealers": "經銷商",
-      "filterEndUsers": "終端用戶",
-      "filterAll": "全部",
-      "existingBuyers": "{count} 位現有買家",
-      "loadError": "無法載入潛在客戶缺口。",
-      "empty": "此類別尚無空白區隔潛在客戶。",
-      "company": "公司",
-      "reason": "原因",
-      "lastOrder": "最近訂單",
-      "categoryCount": "類別數",
-      "aov": "平均訂單金額",
-      "affinityScore": "關聯分數",
-      "tags": "標籤"
-    },
-    "productPerformance": {
-      "title": "產品表現",
-      "description": "依當期與前期營收及生命週期階段排名產品。",
-      "lifecycleLabel": "生命週期階段",
-      "allStages": "全部階段",
-      "stage": {
-        "growing": "成長中",
-        "mature": "成熟期",
-        "stable": "穩定",
-        "declining": "衰退中",
-        "new": "新品",
-        "end_of_life": "停產"
-      },
-      "categoryPlaceholder": "篩選類別",
-      "includeCurrentMonth": "含當月資料",
-      "loadError": "無法載入產品表現。",
-      "generatedAt": "產生時間：{value}",
-      "partial": "含當月即時資料",
-      "historical": "僅含已完成月份",
-      "summary": {
-        "products": "產品數",
-        "windowNote": "顯示前 {count} 列",
-        "currentWindow": "當期區間",
-        "priorWindow": "前期區間"
-      },
-      "empty": "此比較區間尚無符合條件的產品。",
-      "table": {
-        "product": "產品",
-        "category": "類別",
-        "lifecycle": "生命週期",
-        "currentRevenue": "當期營收",
-        "priorRevenue": "前期營收",
-        "delta": "變化",
-        "peakMonth": "高峰月營收",
-        "monthsOnSale": "上架 {count} 個月"
-      },
-      "dataBasis": {
-        "aggregate_only": "僅彙總資料",
-        "aggregate_plus_live_current_month": "彙總加當月即時"
-      },
-      "reason": {
-        "rule_revenue_growth": "營收成長規則",
-        "rule_stability": "穩定性規則",
-        "rule_new_product": "新品規則"
-      }
-    },
-    "revenueDiagnosis": {
-      "title": "營收診斷",
-      "description": "將營收變化拆分為價格、數量及組合效應，並提供快照修正的歷史依據。",
-      "categoryPlaceholder": "篩選類別",
-      "loadError": "無法載入營收診斷。",
-      "generatedAt": "產生時間：{value}",
-      "partial": "含當月即時資料",
-      "historical": "僅含已完成月份",
-      "summary": {
-        "currentRevenue": "當期營收",
-        "priorRevenue": "前期營收",
-        "delta": "營收變化",
-        "currentWindow": "當期區間",
-        "priorWindow": "前期"
-      },
-      "components": {
-        "price": "價格效應",
-        "volume": "數量效應",
-        "mix": "組合效應"
-      },
-      "empty": "此比較區間尚無符合條件的營收驅動因素。",
-      "table": {
-        "product": "產品",
-        "category": "類別",
-        "delta": "變化",
-        "price": "價格",
-        "volume": "數量",
-        "mix": "組合"
-      }
-    },
-    "riskSignals": {
-      "title": "客戶風險信號",
-      "description": "跨休眠、風險、成長、穩定及新帳戶的優先 outreach 排序佇列。",
-      "filters": {
-        "all": "全部",
-        "growing": "成長中",
-        "at_risk": "有風險",
-        "dormant": "休眠",
-        "new": "新客戶",
-        "stable": "穩定"
-      },
-      "loadError": "無法載入客戶風險信號。",
-      "generatedAt": "產生時間：{value}",
-      "empty": "尚無客戶風險信號。",
-      "revenueCurrent": "當期營收",
-      "revenuePrior": "前期營收",
-      "delta": "變化",
-      "daysSinceLastOrder": "距上次訂單 {count} 天",
-      "expanded": "擴展至：{value}",
-      "contracted": "縮減至：{value}",
-      "noSignals": "此帳戶尚無次級信號。",
-      "status": {
-        "growing": "成長中",
-        "at_risk": "有風險",
-        "dormant": "休眠",
-        "new": "新客戶",
-        "stable": "穩定"
-      }
-    },
-    "marketOpportunities": {
-      "affectedCustomers": "影響 {count} 位客戶",
-      "showDetail": "顯示詳情",
-      "hideDetail": "隱藏詳情",
-      "action": "建議行動",
-      "deferred": "v1 延後實作：{value}"
-    }
+  "infoPopover": {
+    "ariaLabel": "更多資訊"
   }
 }
