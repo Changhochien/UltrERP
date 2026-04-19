@@ -214,9 +214,7 @@ describe("ProductDetailPage", () => {
     expect(screen.getByText("inventory.productDetail.statuses.active")).toBeTruthy();
     expect(screen.getByText("inventory.productDetail.adjustmentTimeline.empty")).toBeTruthy();
 
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "inventory.productDetail.analytics" }), {
-      button: 0,
-    });
+    fireEvent.click(screen.getByRole("tab", { name: "inventory.productDetail.analytics" }));
 
     expect(screen.getByText("inventory.productDetail.analyticsTab.summary.title")).toBeTruthy();
     expect(screen.getByText("inventory.productDetail.analyticsTab.monthlyDemand.title")).toBeTruthy();

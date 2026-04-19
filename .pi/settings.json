@@ -3,7 +3,7 @@
   "description": "UltrERP - Full-stack ERP system with Python/FastAPI backend and React frontend",
 
   "defaultModel": "MiniMax-M2.7-highspeed",
-  "defaultThinkingLevel": "medium",
+  "defaultThinkingLevel": "high",
 
   "skills": [
     ".agents/skills",
