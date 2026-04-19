@@ -22,18 +22,18 @@ The repo still contains defaults and operator guidance that point to dump-era ex
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Inventory the remaining dump-era and manual-promotion defaults (AC: 1, 2)
-  - [ ] Audit `backend/common/config.py` defaults such as `legacy_import_data_dir`.
-  - [ ] Audit operator skill docs and command maps, especially `.agents/skills/UltrERP-dump-import/` and `.agents/skills/legacy-import/`.
-  - [ ] Audit README and legacy docs for places that still present dump extraction or manual promotion as the routine path.
+- [x] Task 1: Inventory the remaining dump-era and manual-promotion defaults (AC: 1, 2)
+  - [x] Audit `backend/common/config.py` defaults such as `legacy_import_data_dir`.
+  - [x] Audit operator skill docs and command maps, especially `.agents/skills/ultr-erp-dump-import/` and `.agents/skills/legacy-import/`.
+  - [x] Audit README and legacy docs for places that still present dump extraction or manual promotion as the routine path.
 - [ ] Task 2: Define the stability gate and fallback inventory before removing defaults (AC: 1, 2, 3)
   - [ ] Record the minimum evidence required before defaults change, such as repeatable live-stage success, scheduled shadow refresh stability, promotion-state visibility, and automatic promotion behavior with alerts.
   - [ ] Identify which dump-era and manual-exception surfaces remain as archival or break-glass tools after the default-path switch.
   - [ ] Keep a written inventory of intentionally retained fallback surfaces and the operator scenario for each one.
-- [ ] Task 3: Update the repo defaults to the live gated refresh path (AC: 1, 2)
-  - [ ] Change operator docs and skill command maps so the default path is live-stage plus reviewed refresh plus scheduled shadow refresh plus reviewed promotion evaluation.
-  - [ ] Demote or archive manual-promotion notes from active operator instructions; retain only reviewed exception or override paths from Story 15.18.
-  - [ ] If config defaults still point to `legacy-migration-pipeline/extracted_data`, move that default to an explicit archival or opt-in path instead of the routine operator workflow.
+- [x] Task 3: Update the repo defaults to the live gated refresh path (AC: 1, 2)
+  - [x] Change operator docs and skill command maps so the default path is live-stage plus reviewed refresh plus scheduled shadow refresh plus reviewed promotion evaluation.
+  - [x] Demote or archive manual-promotion notes from active operator instructions; retain only reviewed exception or override paths from Story 15.18.
+  - [x] If config defaults still point to `legacy-migration-pipeline/extracted_data`, move that default to an explicit archival or opt-in path instead of the routine operator workflow.
 - [ ] Task 4: Archive retained dump assets outside the active workflow (AC: 2, 3)
   - [ ] Archive raw dumps and CSV extracts outside the active repo workflow before deleting or demoting default references.
   - [ ] Preserve git history and research references for `legacy-migration-pipeline/` rather than deleting blindly.
@@ -41,6 +41,13 @@ The repo still contains defaults and operator guidance that point to dump-era ex
 - [ ] Task 5: Validate the cleanup and documentation switch (AC: 1, 2, 3)
   - [ ] Verify command maps, config defaults, and migration docs no longer present dump-era or manual-promotion surfaces as the default.
   - [ ] Add smoke checks or doc-validation steps for any updated command examples.
+
+## Implementation Notes
+
+- `README.md` updated with `scripts/restore/reset-dev-db.sh` documentation — the new clean-rebuild path for local dev.
+- `.agents/skills/legacy-import/` still exists as untracked — to be removed in Task 4.
+- `backend/scripts/run_legacy_refresh.py` created as the new reviewed refresh entry point.
+- `backend/domains/legacy_import/cli.py` updated with `register_all_models()` call.
 
 ## Dev Notes
 
