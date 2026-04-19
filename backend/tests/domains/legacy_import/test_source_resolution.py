@@ -3,7 +3,6 @@ from __future__ import annotations
 import copy
 import json
 import uuid
-from collections.abc import Awaitable, Callable
 
 import pytest
 
@@ -562,3 +561,105 @@ async def test_resolve_source_rows_batches_fetches_and_updates() -> None:
         source_resolution.STATUS_RESOLVED,
         source_resolution.STATUS_RESOLVED,
     ]
+
+
+@pytest.mark.asyncio
+async def test_resolve_source_rows_clears_singular_pointer_for_multi_target_identity() -> None:
+    connection = FakeResolutionConnection()
+    run_id = uuid.uuid4()
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000726")
+    order_id = uuid.UUID("00000000-0000-0000-0000-000000000926")
+    invoice_id = uuid.UUID("00000000-0000-0000-0000-000000000927")
+
+    await source_resolution.resolve_source_rows(
+        connection,
+        schema_name="raw_legacy",
+        run_id=run_id,
+        tenant_id=tenant_id,
+        batch_id="batch-multi-target",
+        rows=[
+            source_resolution.ResolvedSourceRow(
+                domain_name="orders",
+                source_table="tbsslipx",
+                source_identifier="SO-INV-001",
+                source_row_number=9,
+                canonical_table="orders",
+                canonical_id=order_id,
+            ),
+            source_resolution.ResolvedSourceRow(
+                domain_name="invoices",
+                source_table="tbsslipx",
+                source_identifier="SO-INV-001",
+                source_row_number=9,
+                canonical_table="invoices",
+                canonical_id=invoice_id,
+            ),
+        ],
+    )
+
+    state_key = _identity_key(tenant_id, "batch-multi-target", "tbsslipx", "SO-INV-001", 9)
+    state_row = connection._fake_resolution_rows[state_key]
+    assert state_row["status"] == source_resolution.STATUS_RESOLVED
+    assert state_row["canonical_table"] is None
+    assert state_row["canonical_id"] is None
+    assert state_row["notes"] == (
+        "Resolved to multiple canonical targets; consult canonical_record_lineage."
+    )
+    assert [event["canonical_table"] for event in connection._fake_resolution_events] == [
+        "orders",
+        "invoices",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_resolve_source_row_clears_singular_pointer_when_second_target_arrives() -> None:
+    connection = FakeResolutionConnection()
+    first_run_id = uuid.uuid4()
+    second_run_id = uuid.uuid4()
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000727")
+    order_id = uuid.UUID("00000000-0000-0000-0000-000000000928")
+    invoice_id = uuid.UUID("00000000-0000-0000-0000-000000000929")
+
+    await source_resolution.resolve_source_row(
+        connection,
+        schema_name="raw_legacy",
+        run_id=first_run_id,
+        tenant_id=tenant_id,
+        batch_id="batch-sequential-multi-target",
+        domain_name="orders",
+        source_table="tbsslipx",
+        source_identifier="SO-INV-002",
+        source_row_number=10,
+        canonical_table="orders",
+        canonical_id=order_id,
+        notes=None,
+    )
+    await source_resolution.resolve_source_row(
+        connection,
+        schema_name="raw_legacy",
+        run_id=second_run_id,
+        tenant_id=tenant_id,
+        batch_id="batch-sequential-multi-target",
+        domain_name="invoices",
+        source_table="tbsslipx",
+        source_identifier="SO-INV-002",
+        source_row_number=10,
+        canonical_table="invoices",
+        canonical_id=invoice_id,
+        notes=None,
+    )
+
+    state_key = _identity_key(
+        tenant_id,
+        "batch-sequential-multi-target",
+        "tbsslipx",
+        "SO-INV-002",
+        10,
+    )
+    state_row = connection._fake_resolution_rows[state_key]
+    assert state_row["status"] == source_resolution.STATUS_RESOLVED
+    assert state_row["canonical_table"] is None
+    assert state_row["canonical_id"] is None
+    assert state_row["notes"] == (
+        "Resolved to multiple canonical targets; consult canonical_record_lineage."
+    )

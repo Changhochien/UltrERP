@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
 import uuid
 from collections.abc import Awaitable, Callable, Mapping
-from typing import Any
+from dataclasses import dataclass
 
 from domains.legacy_import.normalization import deterministic_legacy_uuid
 from domains.legacy_import.shared import execute_many
@@ -23,6 +22,9 @@ _ALLOWED_STATUSES = (
     STATUS_FAILED,
     STATUS_RETRYING,
     STATUS_REPAIRED,
+)
+_MULTI_TARGET_RESOLUTION_NOTE = (
+    "Resolved to multiple canonical targets; consult canonical_record_lineage."
 )
 
 
@@ -422,6 +424,27 @@ def _state_matches(
     )
 
 
+def _resolved_state_projection(
+    existing: Mapping[str, object] | None,
+    *,
+    domain_name: str,
+    canonical_table: str,
+    canonical_id: uuid.UUID,
+    notes: str | None,
+) -> tuple[str, str | None, uuid.UUID | None, str | None]:
+    if existing is None or existing.get("status") != STATUS_RESOLVED:
+        return domain_name, canonical_table, canonical_id, notes
+
+    existing_domain_name = str(existing.get("domain_name") or domain_name)
+    if (
+        existing.get("canonical_table") == canonical_table
+        and existing.get("canonical_id") == canonical_id
+    ):
+        return existing_domain_name, canonical_table, canonical_id, notes
+
+    return existing_domain_name, None, None, _MULTI_TARGET_RESOLUTION_NOTE
+
+
 async def _upsert_current_resolution(
     connection,
     *,
@@ -692,14 +715,27 @@ async def resolve_source_row(
     if canonical_write is not None:
         await canonical_write()
 
-    if _state_matches(
+    (
+        resolved_domain_name,
+        resolved_canonical_table,
+        resolved_canonical_id,
+        resolved_notes,
+    ) = _resolved_state_projection(
         existing,
         domain_name=domain_name,
-        status=STATUS_RESOLVED,
-        holding_id=None,
         canonical_table=canonical_table,
         canonical_id=canonical_id,
         notes=notes,
+    )
+
+    if _state_matches(
+        existing,
+        domain_name=resolved_domain_name,
+        status=STATUS_RESOLVED,
+        holding_id=None,
+        canonical_table=resolved_canonical_table,
+        canonical_id=resolved_canonical_id,
+        notes=resolved_notes,
     ) and existing.get("holding_id") is None:
         return
 
@@ -723,12 +759,12 @@ async def resolve_source_row(
         source_table=source_table,
         source_identifier=source_identifier,
         source_row_number=source_row_number,
-        domain_name=domain_name,
+        domain_name=resolved_domain_name,
         status=STATUS_RESOLVED,
         holding_id=None,
-        canonical_table=canonical_table,
-        canonical_id=canonical_id,
-        notes=notes,
+        canonical_table=resolved_canonical_table,
+        canonical_id=resolved_canonical_id,
+        notes=resolved_notes,
     )
     await _append_resolution_event(
         connection,
@@ -770,29 +806,46 @@ async def resolve_source_rows(
     )
 
     delete_rows: list[tuple[object, ...]] = []
-    current_rows: list[tuple[object, ...]] = []
+    current_rows_by_identity: dict[tuple[str, str, int], tuple[object, ...]] = {}
     event_rows: list[tuple[object, ...]] = []
+    projected_rows = dict(existing_rows)
+    deleted_holding_identities: set[tuple[str, str, int]] = set()
 
     for row in rows:
-        existing = existing_rows.get(
-            _source_identity_key(
-                row.source_table,
-                row.source_identifier,
-                row.source_row_number,
-            )
+        identity = _source_identity_key(
+            row.source_table,
+            row.source_identifier,
+            row.source_row_number,
         )
-        if _state_matches(
+        existing = projected_rows.get(identity)
+        (
+            resolved_domain_name,
+            resolved_canonical_table,
+            resolved_canonical_id,
+            resolved_notes,
+        ) = _resolved_state_projection(
             existing,
             domain_name=row.domain_name,
-            status=STATUS_RESOLVED,
-            holding_id=None,
             canonical_table=row.canonical_table,
             canonical_id=row.canonical_id,
             notes=row.notes,
+        )
+        if _state_matches(
+            existing,
+            domain_name=resolved_domain_name,
+            status=STATUS_RESOLVED,
+            holding_id=None,
+            canonical_table=resolved_canonical_table,
+            canonical_id=resolved_canonical_id,
+            notes=resolved_notes,
         ) and existing.get("holding_id") is None:
             continue
 
-        if existing is not None and existing.get("holding_id") is not None:
+        if (
+            existing is not None
+            and existing.get("holding_id") is not None
+            and identity not in deleted_holding_identities
+        ):
             delete_rows.append(
                 _delete_holding_payload_args(
                     tenant_id=tenant_id,
@@ -802,8 +855,9 @@ async def resolve_source_rows(
                     source_row_number=row.source_row_number,
                 )
             )
+            deleted_holding_identities.add(identity)
 
-        current_rows.append(
+        current_rows_by_identity[identity] = (
             _current_resolution_args(
                 run_id=run_id,
                 tenant_id=tenant_id,
@@ -811,12 +865,12 @@ async def resolve_source_rows(
                 source_table=row.source_table,
                 source_identifier=row.source_identifier,
                 source_row_number=row.source_row_number,
-                domain_name=row.domain_name,
+                domain_name=resolved_domain_name,
                 status=STATUS_RESOLVED,
                 holding_id=None,
-                canonical_table=row.canonical_table,
-                canonical_id=row.canonical_id,
-                notes=row.notes,
+                canonical_table=resolved_canonical_table,
+                canonical_id=resolved_canonical_id,
+                notes=resolved_notes,
             )
         )
         event_rows.append(
@@ -836,6 +890,14 @@ async def resolve_source_rows(
                 notes=row.notes,
             )
         )
+        projected_rows[identity] = {
+            "domain_name": resolved_domain_name,
+            "status": STATUS_RESOLVED,
+            "holding_id": None,
+            "canonical_table": resolved_canonical_table,
+            "canonical_id": resolved_canonical_id,
+            "notes": resolved_notes,
+        }
 
     await execute_many(
         connection,
@@ -845,7 +907,7 @@ async def resolve_source_rows(
     await execute_many(
         connection,
         _current_resolution_query(schema_name),
-        current_rows,
+        current_rows_by_identity.values(),
     )
     await execute_many(
         connection,

@@ -15,17 +15,26 @@ branch_labels = None
 depends_on = None
 
 
+def _column_exists(table_name: str, column_name: str) -> bool:
+    inspector = sa.inspect(op.get_bind())
+    return any(column["name"] == column_name for column in inspector.get_columns(table_name))
+
+
 def upgrade() -> None:
-    op.add_column(
-        "order_lines",
-        sa.Column("unit_cost", sa.Numeric(precision=20, scale=2), nullable=True),
-    )
-    op.add_column(
-        "invoice_lines",
-        sa.Column("unit_cost", sa.Numeric(precision=20, scale=2), nullable=True),
-    )
+    if not _column_exists("order_lines", "unit_cost"):
+        op.add_column(
+            "order_lines",
+            sa.Column("unit_cost", sa.Numeric(precision=20, scale=2), nullable=True),
+        )
+    if not _column_exists("invoice_lines", "unit_cost"):
+        op.add_column(
+            "invoice_lines",
+            sa.Column("unit_cost", sa.Numeric(precision=20, scale=2), nullable=True),
+        )
 
 
 def downgrade() -> None:
-    op.drop_column("order_lines", "unit_cost")
-    op.drop_column("invoice_lines", "unit_cost")
+    if _column_exists("order_lines", "unit_cost"):
+        op.drop_column("order_lines", "unit_cost")
+    if _column_exists("invoice_lines", "unit_cost"):
+        op.drop_column("invoice_lines", "unit_cost")

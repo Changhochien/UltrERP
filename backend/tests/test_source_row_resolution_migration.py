@@ -25,6 +25,7 @@ def test_upgrade_creates_source_resolution_tables_and_backfill_guards(monkeypatc
     executed: list[str] = []
 
     monkeypatch.setattr(module.op, "execute", executed.append)
+    monkeypatch.setattr(module, "_table_exists", lambda _schema, _table: True)
 
     module.upgrade()
 
@@ -40,8 +41,8 @@ def test_upgrade_creates_source_resolution_tables_and_backfill_guards(monkeypatc
         for statement in executed
     )
     assert any(
-        "ambiguous canonical lineage identities" in statement
-        and "source_row_resolution backfill" in statement
+        "Resolved to multiple canonical targets; consult canonical_record_lineage." in statement
+        and "COUNT(*) = 1 THEN MIN(lineage.canonical_table)" in statement
         for statement in executed
     )
     assert any(
@@ -55,7 +56,7 @@ def test_upgrade_creates_source_resolution_tables_and_backfill_guards(monkeypatc
     )
     assert any(
         "INSERT INTO raw_legacy.source_row_resolution (" in statement
-        and "FROM raw_legacy.canonical_record_lineage AS lineage" in statement
+        and "WITH lineage_state AS (" in statement
         for statement in executed
     )
     assert any(
@@ -77,6 +78,7 @@ def test_downgrade_drops_source_resolution_tables_and_restores_old_pk(monkeypatc
     executed: list[str] = []
 
     monkeypatch.setattr(module.op, "execute", executed.append)
+    monkeypatch.setattr(module, "_table_exists", lambda _schema, _table: True)
 
     module.downgrade()
 
@@ -86,3 +88,28 @@ def test_downgrade_drops_source_resolution_tables_and_restores_old_pk(monkeypatc
     assert "ADD PRIMARY KEY (" in executed[3]
     assert "source_identifier" in executed[3]
     assert "source_row_number" not in executed[3]
+
+
+def test_upgrade_skips_lineage_backfill_when_runtime_tables_are_absent(monkeypatch) -> None:
+    module = _load_migration_module()
+    executed: list[str] = []
+
+    monkeypatch.setattr(module.op, "execute", executed.append)
+    monkeypatch.setattr(module, "_table_exists", lambda _schema, _table: False)
+
+    module.upgrade()
+
+    assert any("CREATE TABLE IF NOT EXISTS raw_legacy.source_row_resolution (" in statement for statement in executed)
+    assert any(
+        "CREATE TABLE IF NOT EXISTS raw_legacy.source_row_resolution_events (" in statement
+        for statement in executed
+    )
+    assert not any(
+        "canonical_record_lineage" in statement and "ADD PRIMARY KEY (" in statement
+        for statement in executed
+    )
+    assert not any("WITH lineage_state AS (" in statement for statement in executed)
+    assert not any(
+        "FROM raw_legacy.unsupported_history_holding AS holding" in statement
+        for statement in executed
+    )

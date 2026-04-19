@@ -30,7 +30,7 @@ This document defines where Story 15.4 lands historical legacy data during the `
 | `raw_legacy.canonical_import_runs` | Batch-level canonical import run metadata with replay attempts and final status. |
 | `raw_legacy.canonical_import_step_runs` | Step-level observability for dependency-ordered canonical import execution. |
 | `raw_legacy.canonical_record_lineage` | Deterministic mapping from a live canonical row back to source table, source identifier, source row, tenant, and batch. This is canonical lineage only after Story 15.21; it no longer carries current hold state. |
-| `raw_legacy.source_row_resolution` | Current batch-scoped source-row state keyed by `(tenant_id, batch_id, source_table, source_identifier, source_row_number)`, including explicit `holding` and `resolved` statuses. |
+| `raw_legacy.source_row_resolution` | Current batch-scoped source-row state keyed by `(tenant_id, batch_id, source_table, source_identifier, source_row_number)`, including explicit `holding` and `resolved` statuses. When one source identity fans out to multiple canonical targets, this row stays `resolved` but leaves `canonical_table` and `canonical_id` null; use `canonical_record_lineage` for the full target set. |
 | `raw_legacy.source_row_resolution_events` | Append-only transition log for source-row state changes, preserving hold, resolve, retry, and repair history. |
 | `raw_legacy.unsupported_history_holding` | Explicit holding area for unsupported payment-adjacent history and any future unmapped legacy domains. The payload stays here while current state lives in `source_row_resolution`. |
 

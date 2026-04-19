@@ -218,6 +218,20 @@ scripts/restore/pg-restore.sh ultr_erp_YYYYMMDD_HHMMSS.dump.gpg
 
 Restore uses the same target-selection semantics as backup: `DATABASE_URL` when set, otherwise `ULTR_ERP_DB_NAME`, with SQLAlchemy-style URLs normalized automatically for PostgreSQL CLI tools. Set `PG_MAINTENANCE_DB` if your admin database is not `postgres`.
 
+### Development Reset
+
+```bash
+scripts/restore/reset-dev-db.sh --yes
+```
+
+This is the reviewed clean-rebuild path for local development and development
+pipelines when you need an empty app DB with the latest schema. It drops and
+recreates the configured target DB, runs `alembic upgrade head`, then seeds
+non-sensitive app settings plus the default dev users. Use `--skip-bootstrap`
+if the pipeline should stop after migrations. This command does not import live
+legacy data; run the reviewed legacy refresh after the reset if you need a fresh
+live-data load.
+
 ### launchd Example
 
 Save this as `~/Library/LaunchAgents/com.ultrerp.backup.plist` and load it with `launchctl load ~/Library/LaunchAgents/com.ultrerp.backup.plist`:

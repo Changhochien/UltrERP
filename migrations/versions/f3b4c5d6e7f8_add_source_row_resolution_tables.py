@@ -7,8 +7,8 @@ Create Date: 2026-04-18
 
 from collections.abc import Sequence
 
+import sqlalchemy as sa
 from alembic import op
-
 
 # revision identifiers, used by Alembic.
 revision: str = "f3b4c5d6e7f8"
@@ -17,51 +17,60 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
-def upgrade() -> None:
-    op.execute(
-        """
-        DO $$
-        DECLARE
-            duplicate_count INTEGER;
-        BEGIN
-            SELECT COUNT(*)
-            INTO duplicate_count
-            FROM (
-                SELECT 1
-                FROM raw_legacy.canonical_record_lineage
-                GROUP BY
-                    batch_id,
-                    tenant_id,
-                    canonical_table,
-                    source_table,
-                    source_identifier,
-                    source_row_number
-                HAVING COUNT(*) > 1
-            ) AS duplicate_groups;
+def _table_exists(schema_name: str, table_name: str) -> bool:
+    inspector = sa.inspect(op.get_bind())
+    return inspector.has_table(table_name, schema=schema_name)
 
-            IF duplicate_count > 0 THEN
-                RAISE EXCEPTION
-                    'PK migration would create duplicate key violations in raw_legacy.canonical_record_lineage. Found % duplicate tuples. Deduplicate before re-running this migration.',
-                    duplicate_count;
-            END IF;
-        END
-        $$;
-        """
-    )
-    op.execute(
-        """
-        ALTER TABLE raw_legacy.canonical_record_lineage
-        DROP CONSTRAINT IF EXISTS canonical_record_lineage_pkey,
-        ADD PRIMARY KEY (
-            batch_id,
-            tenant_id,
-            canonical_table,
-            source_table,
-            source_identifier,
-            source_row_number
-        );
-        """
-    )
+
+def upgrade() -> None:
+    lineage_exists = _table_exists("raw_legacy", "canonical_record_lineage")
+    holding_exists = _table_exists("raw_legacy", "unsupported_history_holding")
+
+    if lineage_exists:
+        op.execute(
+            """
+            DO $$
+            DECLARE
+                duplicate_count INTEGER;
+            BEGIN
+                SELECT COUNT(*)
+                INTO duplicate_count
+                FROM (
+                    SELECT 1
+                    FROM raw_legacy.canonical_record_lineage
+                    GROUP BY
+                        batch_id,
+                        tenant_id,
+                        canonical_table,
+                        source_table,
+                        source_identifier,
+                        source_row_number
+                    HAVING COUNT(*) > 1
+                ) AS duplicate_groups;
+
+                IF duplicate_count > 0 THEN
+                    RAISE EXCEPTION
+                        'PK migration would create duplicate key violations in raw_legacy.canonical_record_lineage. Found % duplicate tuples. Deduplicate before re-running this migration.',
+                        duplicate_count;
+                END IF;
+            END
+            $$;
+            """
+        )
+        op.execute(
+            """
+            ALTER TABLE raw_legacy.canonical_record_lineage
+            DROP CONSTRAINT IF EXISTS canonical_record_lineage_pkey,
+            ADD PRIMARY KEY (
+                batch_id,
+                tenant_id,
+                canonical_table,
+                source_table,
+                source_identifier,
+                source_row_number
+            );
+            """
+        )
     op.execute(
         """
         CREATE TABLE IF NOT EXISTS raw_legacy.source_row_resolution (
@@ -139,151 +148,174 @@ def upgrade() -> None:
         );
         """
     )
-    op.execute(
-        """
-        DO $$
-        DECLARE
-            duplicate_count INTEGER;
-            overlap_count INTEGER;
-        BEGIN
-            SELECT COUNT(*)
-            INTO duplicate_count
-            FROM (
-                SELECT 1
-                FROM raw_legacy.canonical_record_lineage
-                WHERE canonical_table <> '__holding__'
+    if lineage_exists and holding_exists:
+        op.execute(
+            """
+            DO $$
+            DECLARE
+                overlap_count INTEGER;
+            BEGIN
+                SELECT COUNT(*)
+                INTO overlap_count
+                FROM (
+                    SELECT 1
+                    FROM raw_legacy.unsupported_history_holding AS holding
+                    JOIN raw_legacy.canonical_record_lineage AS lineage
+                        ON lineage.tenant_id = holding.tenant_id
+                        AND lineage.batch_id = holding.batch_id
+                        AND lineage.source_table = holding.source_table
+                        AND lineage.source_identifier = holding.source_identifier
+                        AND lineage.source_row_number = holding.source_row_number
+                        AND lineage.canonical_table <> '__holding__'
+                ) AS overlap_groups;
+
+                IF overlap_count > 0 THEN
+                    RAISE EXCEPTION
+                        'source_row_resolution backfill found % identities present in both unsupported_history_holding and canonical_record_lineage. Resolve the conflicting rows before re-running this migration.',
+                        overlap_count;
+                END IF;
+            END
+            $$;
+            """
+        )
+
+    if holding_exists:
+        op.execute(
+            """
+            INSERT INTO raw_legacy.source_row_resolution (
+                tenant_id,
+                batch_id,
+                source_table,
+                source_identifier,
+                source_row_number,
+                domain_name,
+                status,
+                holding_id,
+                canonical_table,
+                canonical_id,
+                notes,
+                import_run_id,
+                created_at,
+                updated_at
+            )
+            SELECT
+                holding.tenant_id,
+                holding.batch_id,
+                holding.source_table,
+                holding.source_identifier,
+                holding.source_row_number,
+                holding.domain_name,
+                'holding',
+                holding.id,
+                NULL,
+                NULL,
+                holding.notes,
+                holding.import_run_id,
+                holding.created_at,
+                holding.updated_at
+            FROM raw_legacy.unsupported_history_holding AS holding
+            ON CONFLICT (
+                tenant_id,
+                batch_id,
+                source_table,
+                source_identifier,
+                source_row_number
+            ) DO NOTHING;
+            """
+        )
+
+    if lineage_exists:
+        op.execute(
+            """
+            WITH lineage_state AS (
+                SELECT
+                    lineage.tenant_id,
+                    lineage.batch_id,
+                    lineage.source_table,
+                    lineage.source_identifier,
+                    lineage.source_row_number,
+                    MIN(
+                        CASE
+                            WHEN lineage.source_table IN ('tbsprepay', 'tbsspay') THEN 'payment_history'
+                            WHEN lineage.source_table = 'tbsslipdtj' THEN 'receiving_audit'
+                            ELSE lineage.canonical_table
+                        END
+                    ) AS domain_name,
+                    CASE
+                        WHEN COUNT(*) = 1 THEN MIN(lineage.canonical_table)
+                        ELSE NULL
+                    END AS canonical_table,
+                    CASE
+                        WHEN COUNT(*) = 1 THEN MIN(lineage.canonical_id::text)::uuid
+                        ELSE NULL
+                    END AS canonical_id,
+                    CASE
+                        WHEN COUNT(*) = 1 THEN NULL
+                        ELSE 'Resolved to multiple canonical targets; consult canonical_record_lineage.'
+                    END AS notes,
+                    (
+                        ARRAY_AGG(
+                            lineage.import_run_id
+                            ORDER BY
+                                lineage.created_at DESC,
+                                lineage.canonical_table DESC,
+                                lineage.canonical_id::text DESC
+                        )
+                    )[1] AS import_run_id,
+                    MAX(lineage.created_at) AS resolved_at
+                FROM raw_legacy.canonical_record_lineage AS lineage
+                WHERE lineage.canonical_table <> '__holding__'
                 GROUP BY
-                    tenant_id,
-                    batch_id,
-                    source_table,
-                    source_identifier,
-                    source_row_number
-                HAVING COUNT(*) > 1
-            ) AS duplicate_groups;
-
-            IF duplicate_count > 0 THEN
-                RAISE EXCEPTION
-                    'source_row_resolution backfill found % ambiguous canonical lineage identities. Resolve duplicate canonical targets per (tenant_id, batch_id, source_table, source_identifier, source_row_number) before re-running this migration.',
-                    duplicate_count;
-            END IF;
-
-            SELECT COUNT(*)
-            INTO overlap_count
-            FROM (
-                SELECT 1
-                FROM raw_legacy.unsupported_history_holding AS holding
-                JOIN raw_legacy.canonical_record_lineage AS lineage
-                    ON lineage.tenant_id = holding.tenant_id
-                    AND lineage.batch_id = holding.batch_id
-                    AND lineage.source_table = holding.source_table
-                    AND lineage.source_identifier = holding.source_identifier
-                    AND lineage.source_row_number = holding.source_row_number
-                    AND lineage.canonical_table <> '__holding__'
-            ) AS overlap_groups;
-
-            IF overlap_count > 0 THEN
-                RAISE EXCEPTION
-                    'source_row_resolution backfill found % identities present in both unsupported_history_holding and canonical_record_lineage. Resolve the conflicting rows before re-running this migration.',
-                    overlap_count;
-            END IF;
-        END
-        $$;
-        """
-    )
-    op.execute(
-        """
-        INSERT INTO raw_legacy.source_row_resolution (
-            tenant_id,
-            batch_id,
-            source_table,
-            source_identifier,
-            source_row_number,
-            domain_name,
-            status,
-            holding_id,
-            canonical_table,
-            canonical_id,
-            notes,
-            import_run_id,
-            created_at,
-            updated_at
+                    lineage.tenant_id,
+                    lineage.batch_id,
+                    lineage.source_table,
+                    lineage.source_identifier,
+                    lineage.source_row_number
+            )
+            INSERT INTO raw_legacy.source_row_resolution (
+                tenant_id,
+                batch_id,
+                source_table,
+                source_identifier,
+                source_row_number,
+                domain_name,
+                status,
+                holding_id,
+                canonical_table,
+                canonical_id,
+                notes,
+                import_run_id,
+                created_at,
+                updated_at
+            )
+            SELECT
+                tenant_id,
+                batch_id,
+                source_table,
+                source_identifier,
+                source_row_number,
+                domain_name,
+                'resolved',
+                NULL,
+                canonical_table,
+                canonical_id,
+                notes,
+                import_run_id,
+                resolved_at,
+                resolved_at
+            FROM lineage_state
+            ON CONFLICT (
+                tenant_id,
+                batch_id,
+                source_table,
+                source_identifier,
+                source_row_number
+            ) DO NOTHING;
+            """
         )
-        SELECT
-            holding.tenant_id,
-            holding.batch_id,
-            holding.source_table,
-            holding.source_identifier,
-            holding.source_row_number,
-            holding.domain_name,
-            'holding',
-            holding.id,
-            NULL,
-            NULL,
-            holding.notes,
-            holding.import_run_id,
-            holding.created_at,
-            holding.updated_at
-        FROM raw_legacy.unsupported_history_holding AS holding
-        ON CONFLICT (
-            tenant_id,
-            batch_id,
-            source_table,
-            source_identifier,
-            source_row_number
-        ) DO NOTHING;
-        """
-    )
-    op.execute(
-        """
-        INSERT INTO raw_legacy.source_row_resolution (
-            tenant_id,
-            batch_id,
-            source_table,
-            source_identifier,
-            source_row_number,
-            domain_name,
-            status,
-            holding_id,
-            canonical_table,
-            canonical_id,
-            notes,
-            import_run_id,
-            created_at,
-            updated_at
-        )
-        SELECT
-            lineage.tenant_id,
-            lineage.batch_id,
-            lineage.source_table,
-            lineage.source_identifier,
-            lineage.source_row_number,
-            CASE
-                WHEN lineage.source_table IN ('tbsprepay', 'tbsspay') THEN 'payment_history'
-                WHEN lineage.source_table = 'tbsslipdtj' THEN 'receiving_audit'
-                ELSE lineage.canonical_table
-            END,
-            'resolved',
-            NULL,
-            lineage.canonical_table,
-            lineage.canonical_id,
-            NULL,
-            lineage.import_run_id,
-            lineage.created_at,
-            lineage.created_at
-        FROM raw_legacy.canonical_record_lineage AS lineage
-        WHERE lineage.canonical_table <> '__holding__'
-        ON CONFLICT (
-            tenant_id,
-            batch_id,
-            source_table,
-            source_identifier,
-            source_row_number
-        ) DO NOTHING;
-        """
-    )
-    op.execute(
-        """
-        INSERT INTO raw_legacy.source_row_resolution_events (
+        op.execute(
+            """
+            INSERT INTO raw_legacy.source_row_resolution_events (
             event_id,
             tenant_id,
             batch_id,
@@ -300,94 +332,106 @@ def upgrade() -> None:
             import_run_id,
             created_at
         )
-        SELECT
-            (
-                SUBSTR(md5(CONCAT_WS(
-                    '|',
-                    'source-resolution-backfill',
-                    'holding',
-                    holding.tenant_id::text,
-                    holding.batch_id,
-                    holding.source_table,
-                    holding.source_identifier,
-                    holding.source_row_number::text,
-                    holding.id::text,
-                    holding.import_run_id::text
-                )), 1, 8)
-                || '-'
-                || SUBSTR(md5(CONCAT_WS(
-                    '|',
-                    'source-resolution-backfill',
-                    'holding',
-                    holding.tenant_id::text,
-                    holding.batch_id,
-                    holding.source_table,
-                    holding.source_identifier,
-                    holding.source_row_number::text,
-                    holding.id::text,
-                    holding.import_run_id::text
-                )), 9, 4)
-                || '-'
-                || SUBSTR(md5(CONCAT_WS(
-                    '|',
-                    'source-resolution-backfill',
-                    'holding',
-                    holding.tenant_id::text,
-                    holding.batch_id,
-                    holding.source_table,
-                    holding.source_identifier,
-                    holding.source_row_number::text,
-                    holding.id::text,
-                    holding.import_run_id::text
-                )), 13, 4)
-                || '-'
-                || SUBSTR(md5(CONCAT_WS(
-                    '|',
-                    'source-resolution-backfill',
-                    'holding',
-                    holding.tenant_id::text,
-                    holding.batch_id,
-                    holding.source_table,
-                    holding.source_identifier,
-                    holding.source_row_number::text,
-                    holding.id::text,
-                    holding.import_run_id::text
-                )), 17, 4)
-                || '-'
-                || SUBSTR(md5(CONCAT_WS(
-                    '|',
-                    'source-resolution-backfill',
-                    'holding',
-                    holding.tenant_id::text,
-                    holding.batch_id,
-                    holding.source_table,
-                    holding.source_identifier,
-                    holding.source_row_number::text,
-                    holding.id::text,
-                    holding.import_run_id::text
-                )), 21, 12)
-            )::uuid,
-            holding.tenant_id,
-            holding.batch_id,
-            holding.source_table,
-            holding.source_identifier,
-            holding.source_row_number,
-            holding.domain_name,
-            NULL,
-            'holding',
-            holding.id,
-            NULL,
-            NULL,
-            holding.notes,
-            holding.import_run_id,
-            holding.created_at
-        FROM raw_legacy.unsupported_history_holding AS holding
-        ON CONFLICT (event_id) DO NOTHING;
-        """
-    )
-    op.execute(
-        """
-        INSERT INTO raw_legacy.source_row_resolution_events (
+            SELECT
+                (
+                    SUBSTR(md5(CONCAT_WS(
+                        '|',
+                        'source-resolution-backfill',
+                        'resolved',
+                        lineage.tenant_id::text,
+                        lineage.batch_id,
+                        lineage.source_table,
+                        lineage.source_identifier,
+                        lineage.source_row_number::text,
+                        lineage.canonical_table,
+                        lineage.canonical_id::text,
+                        lineage.import_run_id::text
+                    )), 1, 8)
+                    || '-'
+                    || SUBSTR(md5(CONCAT_WS(
+                        '|',
+                        'source-resolution-backfill',
+                        'resolved',
+                        lineage.tenant_id::text,
+                        lineage.batch_id,
+                        lineage.source_table,
+                        lineage.source_identifier,
+                        lineage.source_row_number::text,
+                        lineage.canonical_table,
+                        lineage.canonical_id::text,
+                        lineage.import_run_id::text
+                    )), 9, 4)
+                    || '-'
+                    || SUBSTR(md5(CONCAT_WS(
+                        '|',
+                        'source-resolution-backfill',
+                        'resolved',
+                        lineage.tenant_id::text,
+                        lineage.batch_id,
+                        lineage.source_table,
+                        lineage.source_identifier,
+                        lineage.source_row_number::text,
+                        lineage.canonical_table,
+                        lineage.canonical_id::text,
+                        lineage.import_run_id::text
+                    )), 13, 4)
+                    || '-'
+                    || SUBSTR(md5(CONCAT_WS(
+                        '|',
+                        'source-resolution-backfill',
+                        'resolved',
+                        lineage.tenant_id::text,
+                        lineage.batch_id,
+                        lineage.source_table,
+                        lineage.source_identifier,
+                        lineage.source_row_number::text,
+                        lineage.canonical_table,
+                        lineage.canonical_id::text,
+                        lineage.import_run_id::text
+                    )), 17, 4)
+                    || '-'
+                    || SUBSTR(md5(CONCAT_WS(
+                        '|',
+                        'source-resolution-backfill',
+                        'resolved',
+                        lineage.tenant_id::text,
+                        lineage.batch_id,
+                        lineage.source_table,
+                        lineage.source_identifier,
+                        lineage.source_row_number::text,
+                        lineage.canonical_table,
+                        lineage.canonical_id::text,
+                        lineage.import_run_id::text
+                    )), 21, 12)
+                )::uuid,
+                lineage.tenant_id,
+                lineage.batch_id,
+                lineage.source_table,
+                lineage.source_identifier,
+                lineage.source_row_number,
+                CASE
+                    WHEN lineage.source_table IN ('tbsprepay', 'tbsspay') THEN 'payment_history'
+                    WHEN lineage.source_table = 'tbsslipdtj' THEN 'receiving_audit'
+                    ELSE lineage.canonical_table
+                END,
+                NULL,
+                'resolved',
+                NULL,
+                lineage.canonical_table,
+                lineage.canonical_id,
+                NULL,
+                lineage.import_run_id,
+                lineage.created_at
+            FROM raw_legacy.canonical_record_lineage AS lineage
+            WHERE lineage.canonical_table <> '__holding__'
+            ON CONFLICT (event_id) DO NOTHING;
+            """
+        )
+
+    if holding_exists:
+        op.execute(
+            """
+            INSERT INTO raw_legacy.source_row_resolution_events (
             event_id,
             tenant_id,
             batch_id,
@@ -404,104 +448,96 @@ def upgrade() -> None:
             import_run_id,
             created_at
         )
-        SELECT
-            (
-                SUBSTR(md5(CONCAT_WS(
-                    '|',
-                    'source-resolution-backfill',
-                    'resolved',
-                    lineage.tenant_id::text,
-                    lineage.batch_id,
-                    lineage.source_table,
-                    lineage.source_identifier,
-                    lineage.source_row_number::text,
-                    lineage.canonical_table,
-                    lineage.canonical_id::text,
-                    lineage.import_run_id::text
-                )), 1, 8)
-                || '-'
-                || SUBSTR(md5(CONCAT_WS(
-                    '|',
-                    'source-resolution-backfill',
-                    'resolved',
-                    lineage.tenant_id::text,
-                    lineage.batch_id,
-                    lineage.source_table,
-                    lineage.source_identifier,
-                    lineage.source_row_number::text,
-                    lineage.canonical_table,
-                    lineage.canonical_id::text,
-                    lineage.import_run_id::text
-                )), 9, 4)
-                || '-'
-                || SUBSTR(md5(CONCAT_WS(
-                    '|',
-                    'source-resolution-backfill',
-                    'resolved',
-                    lineage.tenant_id::text,
-                    lineage.batch_id,
-                    lineage.source_table,
-                    lineage.source_identifier,
-                    lineage.source_row_number::text,
-                    lineage.canonical_table,
-                    lineage.canonical_id::text,
-                    lineage.import_run_id::text
-                )), 13, 4)
-                || '-'
-                || SUBSTR(md5(CONCAT_WS(
-                    '|',
-                    'source-resolution-backfill',
-                    'resolved',
-                    lineage.tenant_id::text,
-                    lineage.batch_id,
-                    lineage.source_table,
-                    lineage.source_identifier,
-                    lineage.source_row_number::text,
-                    lineage.canonical_table,
-                    lineage.canonical_id::text,
-                    lineage.import_run_id::text
-                )), 17, 4)
-                || '-'
-                || SUBSTR(md5(CONCAT_WS(
-                    '|',
-                    'source-resolution-backfill',
-                    'resolved',
-                    lineage.tenant_id::text,
-                    lineage.batch_id,
-                    lineage.source_table,
-                    lineage.source_identifier,
-                    lineage.source_row_number::text,
-                    lineage.canonical_table,
-                    lineage.canonical_id::text,
-                    lineage.import_run_id::text
-                )), 21, 12)
-            )::uuid,
-            lineage.tenant_id,
-            lineage.batch_id,
-            lineage.source_table,
-            lineage.source_identifier,
-            lineage.source_row_number,
-            CASE
-                WHEN lineage.source_table IN ('tbsprepay', 'tbsspay') THEN 'payment_history'
-                WHEN lineage.source_table = 'tbsslipdtj' THEN 'receiving_audit'
-                ELSE lineage.canonical_table
-            END,
-            NULL,
-            'resolved',
-            NULL,
-            lineage.canonical_table,
-            lineage.canonical_id,
-            NULL,
-            lineage.import_run_id,
-            lineage.created_at
-        FROM raw_legacy.canonical_record_lineage AS lineage
-        WHERE lineage.canonical_table <> '__holding__'
-        ON CONFLICT (event_id) DO NOTHING;
-        """
-    )
+            SELECT
+                (
+                    SUBSTR(md5(CONCAT_WS(
+                        '|',
+                        'source-resolution-backfill',
+                        'holding',
+                        holding.tenant_id::text,
+                        holding.batch_id,
+                        holding.source_table,
+                        holding.source_identifier,
+                        holding.source_row_number::text,
+                        holding.id::text,
+                        holding.import_run_id::text
+                    )), 1, 8)
+                    || '-'
+                    || SUBSTR(md5(CONCAT_WS(
+                        '|',
+                        'source-resolution-backfill',
+                        'holding',
+                        holding.tenant_id::text,
+                        holding.batch_id,
+                        holding.source_table,
+                        holding.source_identifier,
+                        holding.source_row_number::text,
+                        holding.id::text,
+                        holding.import_run_id::text
+                    )), 9, 4)
+                    || '-'
+                    || SUBSTR(md5(CONCAT_WS(
+                        '|',
+                        'source-resolution-backfill',
+                        'holding',
+                        holding.tenant_id::text,
+                        holding.batch_id,
+                        holding.source_table,
+                        holding.source_identifier,
+                        holding.source_row_number::text,
+                        holding.id::text,
+                        holding.import_run_id::text
+                    )), 13, 4)
+                    || '-'
+                    || SUBSTR(md5(CONCAT_WS(
+                        '|',
+                        'source-resolution-backfill',
+                        'holding',
+                        holding.tenant_id::text,
+                        holding.batch_id,
+                        holding.source_table,
+                        holding.source_identifier,
+                        holding.source_row_number::text,
+                        holding.id::text,
+                        holding.import_run_id::text
+                    )), 17, 4)
+                    || '-'
+                    || SUBSTR(md5(CONCAT_WS(
+                        '|',
+                        'source-resolution-backfill',
+                        'holding',
+                        holding.tenant_id::text,
+                        holding.batch_id,
+                        holding.source_table,
+                        holding.source_identifier,
+                        holding.source_row_number::text,
+                        holding.id::text,
+                        holding.import_run_id::text
+                    )), 21, 12)
+                )::uuid,
+                holding.tenant_id,
+                holding.batch_id,
+                holding.source_table,
+                holding.source_identifier,
+                holding.source_row_number,
+                holding.domain_name,
+                NULL,
+                'holding',
+                holding.id,
+                NULL,
+                NULL,
+                holding.notes,
+                holding.import_run_id,
+                holding.created_at
+            FROM raw_legacy.unsupported_history_holding AS holding
+            ON CONFLICT (event_id) DO NOTHING;
+            """
+        )
 
 
 def downgrade() -> None:
+    lineage_exists = _table_exists("raw_legacy", "canonical_record_lineage")
+
     op.execute(
         """
         DROP TABLE IF EXISTS raw_legacy.source_row_resolution_events;
@@ -512,45 +548,46 @@ def downgrade() -> None:
         DROP TABLE IF EXISTS raw_legacy.source_row_resolution;
         """
     )
-    op.execute(
-        """
-        DO $$
-        DECLARE
-            duplicate_count INTEGER;
-        BEGIN
-            SELECT COUNT(*)
-            INTO duplicate_count
-            FROM (
-                SELECT 1
-                FROM raw_legacy.canonical_record_lineage
-                GROUP BY
-                    batch_id,
-                    tenant_id,
-                    canonical_table,
-                    source_table,
-                    source_identifier
-                HAVING COUNT(*) > 1
-            ) AS duplicate_groups;
+    if lineage_exists:
+        op.execute(
+            """
+            DO $$
+            DECLARE
+                duplicate_count INTEGER;
+            BEGIN
+                SELECT COUNT(*)
+                INTO duplicate_count
+                FROM (
+                    SELECT 1
+                    FROM raw_legacy.canonical_record_lineage
+                    GROUP BY
+                        batch_id,
+                        tenant_id,
+                        canonical_table,
+                        source_table,
+                        source_identifier
+                    HAVING COUNT(*) > 1
+                ) AS duplicate_groups;
 
-            IF duplicate_count > 0 THEN
-                RAISE EXCEPTION
-                    'Downgrade cannot restore the previous canonical_record_lineage PK because % duplicate tuples exist once source_row_number is removed. Deduplicate before downgrading.',
-                    duplicate_count;
-            END IF;
-        END
-        $$;
-        """
-    )
-    op.execute(
-        """
-        ALTER TABLE raw_legacy.canonical_record_lineage
-        DROP CONSTRAINT IF EXISTS canonical_record_lineage_pkey,
-        ADD PRIMARY KEY (
-            batch_id,
-            tenant_id,
-            canonical_table,
-            source_table,
-            source_identifier
-        );
-        """
-    )
+                IF duplicate_count > 0 THEN
+                    RAISE EXCEPTION
+                        'Downgrade cannot restore the previous canonical_record_lineage PK because % duplicate tuples exist once source_row_number is removed. Deduplicate before downgrading.',
+                        duplicate_count;
+                END IF;
+            END
+            $$;
+            """
+        )
+        op.execute(
+            """
+            ALTER TABLE raw_legacy.canonical_record_lineage
+            DROP CONSTRAINT IF EXISTS canonical_record_lineage_pkey,
+            ADD PRIMARY KEY (
+                batch_id,
+                tenant_id,
+                canonical_table,
+                source_table,
+                source_identifier
+            );
+            """
+        )

@@ -91,7 +91,7 @@ def _collect_product_counts(
     for row in rows:
         product_code = str(row.get("product_code") or "").strip()
         if not product_code:
-            raise ValueError("Sales-detail row missing product_code")
+            continue
 
         row_count = int(row.get("row_count") or 1)
         if row_count < 1:

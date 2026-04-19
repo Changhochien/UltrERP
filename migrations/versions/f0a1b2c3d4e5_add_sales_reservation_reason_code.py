@@ -15,11 +15,11 @@ depends_on: str | tuple[str, ...] | None = None
 
 def upgrade() -> None:
     with op.get_context().autocommit_block():
-        # Add sales_reservation value to the reason_code_enum.
+        # Add SALES_RESERVATION to the reason_code_enum.
         # PostgreSQL requires ALTER TYPE ... ADD VALUE to be run inside a
         # transaction block when using autocommit_block().
         op.execute(
-            "ALTER TYPE reason_code_enum ADD VALUE IF NOT EXISTS 'sales_reservation'"
+            "ALTER TYPE reason_code_enum ADD VALUE IF NOT EXISTS 'SALES_RESERVATION'"
         )
 
 
@@ -28,7 +28,7 @@ def downgrade() -> None:
     # PostgreSQL does not support REMOVE VALUE inside a transaction.
     # Marking as not supported — remove manually with care.
     raise NotImplementedError(
-        "Removing 'sales_reservation' from reason_code_enum is not supported "
+        "Removing 'SALES_RESERVATION' from reason_code_enum is not supported "
         "automatically because existing rows may reference it. "
         "Drop rows or migrate data first if truly needed."
     )

@@ -25,6 +25,7 @@ from common.tenant import DEFAULT_TENANT_ID
 _IDENTIFIER_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _MANIFEST_ROW_RE = re.compile(r"^\|\s*([a-z0-9_]+)\s*\|\s*([0-9,]+)\s*\|")
 _NUMERIC_LITERAL_RE = re.compile(r"^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][-+]?\d+)?$")
+_READ_ONLY_SQL_RE = re.compile(r"^(SELECT|SHOW)\b", re.IGNORECASE | re.DOTALL)
 _STAGE_COPY_BATCH_SIZE = 25_000
 _LIVE_SOURCE_CURSOR_PREFETCH = 1_000
 _SUPPORTED_LEGACY_SOURCE_DATA_TYPES = frozenset(
@@ -42,6 +43,11 @@ _SUPPORTED_LEGACY_SOURCE_DATA_TYPES = frozenset(
 )
 _RAW_CONNECTION_POOL: asyncpg.Pool | None = None
 _RAW_CONNECTION_POOL_LOCK = asyncio.Lock()
+_LEGACY_PYTHON_CODEC_ALIASES = {
+    "big5": "big5hkscs",
+    "big5-hkscs": "big5hkscs",
+    "cp950": "big5hkscs",
+}
 
 
 @dataclass(slots=True, frozen=True)
@@ -114,6 +120,55 @@ async def _assert_read_only_transaction_async(connection: LegacySourceConnection
         raise LegacySourceCompatibilityError(
             "Legacy live-stage reads require a read-only transaction."
         )
+
+
+async def _assert_read_only_legacy_session_async(
+    connection: LegacySourceConnection,
+) -> None:
+    default_transaction_read_only = str(
+        await connection.fetchval("SHOW default_transaction_read_only")
+    ).strip()
+    if default_transaction_read_only.lower() != "on":
+        raise LegacySourceCompatibilityError(
+            "Legacy live-stage connections must default to read-only transactions."
+        )
+
+
+def _assert_read_only_legacy_sql(query: str) -> None:
+    normalized = query.lstrip()
+    if _READ_ONLY_SQL_RE.match(normalized):
+        return
+    raise LegacySourceCompatibilityError(
+        "Legacy live-stage allows only read-only SHOW/SELECT queries on the "
+        "legacy source connection."
+    )
+
+
+class _ReadOnlyLegacySourceConnection:
+    def __init__(self, connection: asyncpg.Connection) -> None:
+        self._connection = connection
+
+    async def fetch(self, query: str, *args: object):
+        _assert_read_only_legacy_sql(query)
+        return await self._connection.fetch(query, *args)
+
+    async def fetchval(self, query: str, *args: object):
+        _assert_read_only_legacy_sql(query)
+        return await self._connection.fetchval(query, *args)
+
+    def cursor(self, query: str, *args: object, prefetch: int | None = None):
+        _assert_read_only_legacy_sql(query)
+        return self._connection.cursor(query, *args, prefetch=prefetch)
+
+    def transaction(self, *, readonly: bool = False) -> Any:
+        if not readonly:
+            raise LegacySourceCompatibilityError(
+                "Legacy live-stage requires explicitly read-only transactions."
+            )
+        return self._connection.transaction(readonly=True)
+
+    async def close(self) -> None:
+        await self._connection.close()
 
 
 @dataclass(slots=True, frozen=True)
@@ -622,11 +677,37 @@ def serialize_legacy_source_record(
     return serialized
 
 
+def _legacy_python_codec_name(client_encoding: str) -> str:
+    normalized = client_encoding.strip().lower().replace("_", "-")
+    return _LEGACY_PYTHON_CODEC_ALIASES.get(normalized, normalized)
+
+
+async def _configure_legacy_text_codec(
+    raw_connection: asyncpg.Connection,
+    *,
+    client_encoding: str,
+) -> None:
+    python_codec = _legacy_python_codec_name(client_encoding)
+
+    def _decode_text(value: str | bytes | bytearray | memoryview) -> str:
+        if isinstance(value, str):
+            return value
+        return bytes(value).decode(python_codec, errors="replace")
+
+    await raw_connection.set_type_codec(
+        "text",
+        schema="pg_catalog",
+        encoder=lambda value: str(value).encode(python_codec, errors="replace"),
+        decoder=_decode_text,
+        format="binary",
+    )
+
+
 async def _open_legacy_source_connection(
     connection_settings: LegacySourceConnectionSettings | None = None,
 ) -> LegacySourceConnection:
     resolved_settings = connection_settings or _read_legacy_source_connection_settings()
-    return await asyncpg.connect(
+    raw_connection = await asyncpg.connect(
         host=resolved_settings.host,
         port=resolved_settings.port,
         user=resolved_settings.user,
@@ -639,6 +720,17 @@ async def _open_legacy_source_connection(
             "client_encoding": resolved_settings.client_encoding,
         },
     )
+    await _configure_legacy_text_codec(
+        raw_connection,
+        client_encoding=resolved_settings.client_encoding,
+    )
+    connection = _ReadOnlyLegacySourceConnection(raw_connection)
+    try:
+        await _assert_read_only_legacy_session_async(connection)
+    except Exception:
+        await connection.close()
+        raise
+    return connection
 
 
 async def _discover_live_source_tables(
@@ -1267,14 +1359,14 @@ async def stage_table(
             records=batch_records,
             timeout=None,
         )
-    if row_count == 0:
-        raise ValueError(f"No importable rows found in {table.source_name}")
-    validation_message = await _validate_staged_table(
-        connection,
-        schema_name=schema_name,
-        table_name=table.table_name,
-        batch_id=batch_id,
-    )
+    validation_message = None
+    if row_count > 0:
+        validation_message = await _validate_staged_table(
+            connection,
+            schema_name=schema_name,
+            table_name=table.table_name,
+            batch_id=batch_id,
+        )
     return StageTableResult(
         table_name=table.table_name,
         row_count=row_count,
@@ -1430,6 +1522,7 @@ async def run_stage_import_from_source(
 ) -> StageBatchResult:
     resolved_schema = schema_name or settings.legacy_import_schema
     selected_scope = _dedupe_table_sequence(selected_tables)
+    fail_fast_tables = set(selected_scope or settings.legacy_import_required_tables)
     requested_tables = list(selected_scope) if selected_scope else None
     results: list[StageTableResult] = []
     table_audits: list[AttemptTableAudit] = []
@@ -1501,7 +1594,13 @@ async def run_stage_import_from_source(
                     except Exception as exc:
                         table_audit.status = "failed"
                         table_audit.error_message = str(exc)
-                        raise
+                        table_run.status = "failed"
+                        table_run.error_message = str(exc)
+                        table_run.completed_at = datetime.now(tz=UTC)
+                        await session.flush()
+                        if table.table_name in fail_fast_tables:
+                            raise
+                        continue
 
                     table_audit.status = "completed"
                     table_audit.loaded_row_count = result.row_count

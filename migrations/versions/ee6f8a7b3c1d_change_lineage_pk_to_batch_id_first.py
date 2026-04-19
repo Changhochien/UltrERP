@@ -6,6 +6,7 @@ Create Date: 2026-04-18
 """
 from collections.abc import Sequence
 
+import sqlalchemy as sa
 from alembic import op
 
 
@@ -16,7 +17,15 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
+def _table_exists(schema_name: str, table_name: str) -> bool:
+    inspector = sa.inspect(op.get_bind())
+    return inspector.has_table(table_name, schema=schema_name)
+
+
 def upgrade() -> None:
+    if not _table_exists("raw_legacy", "canonical_record_lineage"):
+        return
+
     op.execute(
         """
         DO $$
@@ -56,6 +65,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if not _table_exists("raw_legacy", "canonical_record_lineage"):
+        return
+
     op.execute(
         """
         ALTER TABLE raw_legacy.canonical_record_lineage

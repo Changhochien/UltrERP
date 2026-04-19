@@ -11,6 +11,7 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
 
 revision: str = "9f2b6c4d1e77"
@@ -20,9 +21,14 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.execute(
-        "CREATE TYPE supplier_invoice_status_enum AS ENUM ('open', 'paid', 'voided')"
+    supplier_invoice_status_enum = postgresql.ENUM(
+        "open",
+        "paid",
+        "voided",
+        name="supplier_invoice_status_enum",
+        create_type=False,
     )
+    supplier_invoice_status_enum.create(op.get_bind(), checkfirst=True)
 
     op.create_table(
         "supplier_invoices",

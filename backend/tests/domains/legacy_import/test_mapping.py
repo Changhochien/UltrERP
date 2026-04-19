@@ -116,9 +116,18 @@ def test_corrected_orphan_baseline_constants_remain_authoritative() -> None:
     assert CORRECTED_ORPHAN_CODE_BASELINE != 660
 
 
-def test_seed_product_code_mappings_requires_product_code() -> None:
-    with pytest.raises(ValueError, match="missing product_code"):
-        seed_product_code_mappings(rows=({"warehouse_code": "1138"},), known_product_codes=())
+def test_seed_product_code_mappings_ignores_blank_product_codes() -> None:
+    result = seed_product_code_mappings(
+        rows=(
+            {"warehouse_code": "1138"},
+            {"product_code": "P5V-1250 OH", "row_count": 2},
+        ),
+        known_product_codes={"P5V-1250 OH"},
+    )
+
+    assert result.exact_match_count == 1
+    assert result.orphan_code_count == 0
+    assert result.orphan_row_count == 0
 
 
 @pytest.mark.asyncio

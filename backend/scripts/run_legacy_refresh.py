@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from common.config import PROJECT_ROOT
+from common.model_registry import register_all_models
 from common.time import utc_now
 from domains.legacy_import.canonical import run_canonical_import
 from domains.legacy_import.mapping import (
@@ -34,6 +35,9 @@ from scripts.legacy_refresh_common import (
     parse_tenant_uuid,
 )
 from scripts.verify_reconciliation import verify as verify_reconciliation
+
+
+register_all_models()
 
 DEFAULT_SUMMARY_ROOT = PROJECT_ROOT / "_bmad-output" / "operations" / "legacy-refresh"
 STEP_ORDER = (

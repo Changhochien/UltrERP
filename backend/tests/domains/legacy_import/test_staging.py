@@ -113,6 +113,7 @@ class FakeLegacySourceConnection:
         self.fetchvals_by_query = fetchvals_by_query or {}
         self.cursor_rows_by_query = cursor_rows_by_query or {}
         self.cursor_calls: list[dict[str, object]] = []
+        self.type_codec_calls: list[dict[str, object]] = []
         self.transaction_readonly_args: list[bool] = []
         self.closed = False
 
@@ -144,6 +145,25 @@ class FakeLegacySourceConnection:
     def transaction(self, *, readonly: bool = False):
         self.transaction_readonly_args.append(readonly)
         return FakeLegacySourceTransaction()
+
+    async def set_type_codec(
+        self,
+        type_name: str,
+        *,
+        schema: str,
+        encoder,
+        decoder,
+        format: str,
+    ) -> None:
+        self.type_codec_calls.append(
+            {
+                "type_name": type_name,
+                "schema": schema,
+                "encoder": encoder,
+                "decoder": decoder,
+                "format": format,
+            }
+        )
 
     async def close(self) -> None:
         self.closed = True
@@ -492,7 +512,9 @@ async def test_open_raw_connection_disables_command_timeout(monkeypatch) -> None
 @pytest.mark.asyncio
 async def test_open_legacy_source_connection_uses_big5_and_read_only(monkeypatch) -> None:
     captured: dict[str, object] = {}
-    sentinel_conn = object()
+    sentinel_conn = FakeLegacySourceConnection(
+        fetchvals_by_query={"SHOW default_transaction_read_only": "on"},
+    )
 
     async def fake_connect(**kwargs):
         captured.update(kwargs)
@@ -511,7 +533,7 @@ async def test_open_legacy_source_connection_uses_big5_and_read_only(monkeypatch
         )
     )
 
-    assert result is sentinel_conn
+    assert result._connection is sentinel_conn
     assert captured["host"] == "100.77.54.101"
     assert captured["port"] == 5432
     assert captured["user"] == "postgres"
@@ -522,6 +544,54 @@ async def test_open_legacy_source_connection_uses_big5_and_read_only(monkeypatch
         "default_transaction_read_only": "on",
         "client_encoding": "BIG5",
     }
+    assert sentinel_conn.type_codec_calls[0]["type_name"] == "text"
+    assert sentinel_conn.type_codec_calls[0]["schema"] == "pg_catalog"
+    assert sentinel_conn.type_codec_calls[0]["format"] == "binary"
+    decoded = sentinel_conn.type_codec_calls[0]["decoder"](b"\xffA")
+    assert decoded.endswith("A")
+
+
+@pytest.mark.asyncio
+async def test_open_legacy_source_connection_allows_superuser_when_session_is_guarded(
+    monkeypatch,
+) -> None:
+    sentinel_conn = FakeLegacySourceConnection(
+        fetchvals_by_query={"SHOW default_transaction_read_only": "on"},
+    )
+
+    async def fake_connect(**kwargs):
+        return sentinel_conn
+
+    monkeypatch.setattr(staging.asyncpg, "connect", fake_connect)
+
+    result = await staging._open_legacy_source_connection(
+        LegacySourceConnectionSettings(
+            host="100.77.54.101",
+            port=5432,
+            user="postgres",
+            password="secret",
+            database="cao50001",
+            client_encoding="BIG5",
+        )
+    )
+
+    assert result._connection is sentinel_conn
+    assert sentinel_conn.closed is False
+
+
+@pytest.mark.asyncio
+async def test_read_only_legacy_source_connection_rejects_write_like_queries() -> None:
+    connection = staging._ReadOnlyLegacySourceConnection(FakeLegacySourceConnection())
+
+    with pytest.raises(LegacySourceCompatibilityError, match="SHOW/SELECT"):
+        await connection.fetch("UPDATE tbscust SET scustno = 'X'")
+
+
+def test_read_only_legacy_source_connection_requires_explicit_readonly_transaction() -> None:
+    connection = staging._ReadOnlyLegacySourceConnection(FakeLegacySourceConnection())
+
+    with pytest.raises(LegacySourceCompatibilityError, match="explicitly read-only"):
+        connection.transaction()
 
 
 @pytest.mark.asyncio
@@ -992,6 +1062,35 @@ async def test_stage_table_fails_on_manifest_row_count_mismatch(tmp_path: Path) 
 
 
 @pytest.mark.asyncio
+async def test_stage_table_allows_zero_row_live_source_tables() -> None:
+    class EmptyLiveStageTable:
+        table_name = "opdaevent"
+        source_name = "public.opdaevent"
+        expected_row_count = None
+
+        async def get_column_count(self) -> int:
+            return 2
+
+        async def iter_rows(self):
+            if False:
+                yield 0, []
+
+    connection = FakeRawStageConnection()
+
+    result = await stage_table(
+        connection,
+        table=EmptyLiveStageTable(),
+        schema_name="raw_legacy",
+        batch_id="batch-001",
+    )
+
+    assert result.row_count == 0
+    assert result.column_count == 2
+    assert result.validation_message is None
+    assert connection.copy_calls == []
+
+
+@pytest.mark.asyncio
 async def test_run_stage_import_only_drops_overlapping_tables_on_partial_rerun(
     monkeypatch,
 ) -> None:
@@ -1156,6 +1255,88 @@ async def test_run_stage_import_records_failed_attempt_after_rollback(
     assert failed_run.attempt_number == 3
     assert failed_run.source_path == "legacy-db:cao50001/public"
     assert failed_run.error_message == "Malformed legacy row in tbsstock.csv at line 1"
+    assert source.closed is True
+
+
+@pytest.mark.asyncio
+async def test_run_stage_import_continues_after_optional_table_failure(monkeypatch) -> None:
+    connection = FakeRawStageConnection()
+    session = FakeSession()
+    source = InlineStageSourceAdapter(
+        source_descriptor=StageSourceDescriptor.live(
+            database="cao50001",
+            schema_name="public",
+        ),
+        tables=[
+            InlineStageTable(
+                table_name="tbscust",
+                source_name="public.tbscust",
+                rows=(("1", "A"),),
+                expected_row_count=1,
+            ),
+            InlineStageTable(
+                table_name="tbabank",
+                source_name="public.tbabank",
+                rows=(("bank",),),
+                expected_row_count=1,
+            ),
+        ],
+    )
+
+    patch_control_table_models(monkeypatch)
+    monkeypatch.setattr(staging, "AsyncSessionLocal", lambda: FakeSessionContext(session))
+
+    async def fake_load_existing_batch_table_names(*args, **kwargs) -> tuple[str, ...]:
+        return ()
+
+    async def fake_next_batch_attempt_number(*args, **kwargs) -> int:
+        return 5
+
+    async def fake_raw_stage_connection_from_session(*args, **kwargs) -> FakeRawStageConnection:
+        return connection
+
+    async def fake_stage_table(
+        connection: FakeRawStageConnection,
+        *,
+        table,
+        schema_name: str,
+        batch_id: str,
+    ) -> staging.StageTableResult:
+        if table.table_name == "tbabank":
+            raise ValueError("decode failure in tbabank")
+        return staging.StageTableResult(
+            table_name=table.table_name,
+            row_count=1,
+            column_count=2,
+            source_file=table.source_name,
+        )
+
+    monkeypatch.setattr(
+        staging,
+        "_load_existing_batch_table_names",
+        fake_load_existing_batch_table_names,
+    )
+    monkeypatch.setattr(staging, "_next_batch_attempt_number", fake_next_batch_attempt_number)
+    monkeypatch.setattr(
+        staging,
+        "_raw_stage_connection_from_session",
+        fake_raw_stage_connection_from_session,
+    )
+    monkeypatch.setattr(staging, "stage_table", fake_stage_table)
+    monkeypatch.setattr(staging.settings, "legacy_import_required_tables", ("tbscust",))
+
+    result = await staging.run_stage_import_from_source(
+        batch_id="batch-001",
+        source=source,
+    )
+
+    assert tuple(table.table_name for table in result.tables) == ("tbscust",)
+    failed_table_run = next(
+        obj
+        for obj in session.added
+        if getattr(obj, "table_name", None) == "tbabank" and getattr(obj, "status", None) == "failed"
+    )
+    assert failed_table_run.error_message == "decode failure in tbabank"
     assert source.closed is True
 
 

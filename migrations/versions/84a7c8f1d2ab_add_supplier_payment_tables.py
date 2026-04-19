@@ -11,6 +11,7 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
 revision: str = "84a7c8f1d2ab"
 down_revision: str | None = "9f2b6c4d1e77"
@@ -19,15 +20,33 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.execute(
-        "CREATE TYPE supplier_payment_kind_enum AS ENUM ('prepayment', 'special_payment', 'adjustment')"
+    supplier_payment_kind_enum = postgresql.ENUM(
+        "prepayment",
+        "special_payment",
+        "adjustment",
+        name="supplier_payment_kind_enum",
+        create_type=False,
     )
-    op.execute(
-        "CREATE TYPE supplier_payment_status_enum AS ENUM ('unapplied', 'partially_applied', 'applied', 'voided')"
+    supplier_payment_kind_enum.create(op.get_bind(), checkfirst=True)
+
+    supplier_payment_status_enum = postgresql.ENUM(
+        "unapplied",
+        "partially_applied",
+        "applied",
+        "voided",
+        name="supplier_payment_status_enum",
+        create_type=False,
     )
-    op.execute(
-        "CREATE TYPE supplier_payment_allocation_kind_enum AS ENUM ('invoice_settlement', 'prepayment_application', 'reversal')"
+    supplier_payment_status_enum.create(op.get_bind(), checkfirst=True)
+
+    supplier_payment_allocation_kind_enum = postgresql.ENUM(
+        "invoice_settlement",
+        "prepayment_application",
+        "reversal",
+        name="supplier_payment_allocation_kind_enum",
+        create_type=False,
     )
+    supplier_payment_allocation_kind_enum.create(op.get_bind(), checkfirst=True)
 
     op.create_table(
         "supplier_payments",

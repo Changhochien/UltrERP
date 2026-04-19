@@ -20,6 +20,8 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    op.execute("CREATE SCHEMA IF NOT EXISTS raw_legacy")
+
     op.execute(
         "CREATE TABLE raw_legacy.product_code_mapping ("
         "    id uuid NOT NULL DEFAULT gen_random_uuid(),"

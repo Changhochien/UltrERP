@@ -1,6 +1,7 @@
 # Story 15.21: Canonical Source Resolution State Model Refactor
 
 Status: done
+**Note: Code changes are in the working tree but not yet committed. Review in progress.**
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 

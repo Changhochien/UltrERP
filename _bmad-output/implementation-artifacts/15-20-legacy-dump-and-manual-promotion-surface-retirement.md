@@ -1,6 +1,6 @@
 # Story 15.20: Legacy Dump And Manual-Promotion Surface Retirement
 
-Status: ready-for-dev
+Status: in-progress
 
 ## Story
 

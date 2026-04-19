@@ -7,14 +7,14 @@ import asyncio
 import csv
 import json
 import sys
-import uuid
 from collections.abc import Sequence
 from pathlib import Path
 
 import asyncpg
 
-from common.tenant import DEFAULT_TENANT_ID
 from common.cli_args import parse_non_negative_int, parse_tenant_uuid
+from common.model_registry import register_all_models
+from common.tenant import DEFAULT_TENANT_ID
 from domains.legacy_import.ap_payment_import import (
     SupplierPaymentImportResult,
     run_ap_payment_import,
@@ -46,6 +46,9 @@ from domains.legacy_import.staging import (
     run_stage_import,
 )
 from domains.legacy_import.validation import MigrationBatchValidationResult, validate_import_batch
+
+
+register_all_models()
 
 
 def build_parser() -> argparse.ArgumentParser:
