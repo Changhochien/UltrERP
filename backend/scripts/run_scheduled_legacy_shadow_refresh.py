@@ -5,13 +5,17 @@ from __future__ import annotations
 import argparse
 import asyncio
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from common.time import utc_now
+from domains.legacy_import.incremental_state import (
+    ELIGIBLE_PROMOTION_CLASSIFICATION,
+    reseed_incremental_state_from_full_refresh,
+)
 from domains.legacy_import.promotion_policy import evaluate_overlap_policy
 from scripts.legacy_refresh_common import (
     RefreshDisposition,
@@ -243,6 +247,22 @@ def _print_operator_summary(result: ScheduledShadowRefreshExecution) -> None:
         print(f"Latest success unchanged: {result.latest_success_path}")
 
 
+def _promotion_classification(state_record: Mapping[str, Any]) -> str | None:
+    promotion_policy = state_record.get("promotion_policy")
+    if not isinstance(promotion_policy, dict):
+        return None
+    classification = promotion_policy.get("classification")
+    return classification if isinstance(classification, str) else None
+
+
+async def _write_json_atomically_async(path: Path, payload: dict[str, Any]) -> None:
+    await asyncio.to_thread(write_json_atomically, path, payload)
+
+
+async def _read_json_file_async(path: Path) -> dict[str, Any] | None:
+    return await asyncio.to_thread(read_json_file, path)
+
+
 async def run_scheduled_shadow_refresh(
     *,
     tenant_id: uuid.UUID,
@@ -353,7 +373,37 @@ async def run_scheduled_shadow_refresh(
             state_record["final_disposition"] in SUCCESS_DISPOSITIONS
         )
         if latest_success_updated:
-            write_json_atomically(latest_success_path, state_record)
+            promotion_eligible = (
+                _promotion_classification(state_record)
+                == ELIGIBLE_PROMOTION_CLASSIFICATION
+            )
+            publication_tasks = [
+                _write_json_atomically_async(latest_success_path, state_record)
+            ]
+            if promotion_eligible:
+                publication_tasks.append(
+                    _write_json_atomically_async(
+                        lane_paths.nightly_rebaseline_path,
+                        state_record,
+                    )
+                )
+            await asyncio.gather(*publication_tasks)
+
+            if promotion_eligible:
+                incremental_state_record = reseed_incremental_state_from_full_refresh(
+                    tenant_id=tenant_id,
+                    schema_name=schema_name,
+                    source_schema=source_schema,
+                    latest_success_state=state_record,
+                    latest_promoted_state=await _read_json_file_async(
+                        lane_paths.latest_promoted_path
+                    ),
+                    recorded_at=completed_at,
+                )
+                await _write_json_atomically_async(
+                    lane_paths.incremental_state_path,
+                    incremental_state_record,
+                )
 
         return ScheduledShadowRefreshExecution(
             exit_code=refresh_execution.exit_code,

@@ -22,6 +22,8 @@ class LegacyRefreshLanePaths:
     latest_run_path: Path
     latest_success_path: Path
     latest_promoted_path: Path
+    incremental_state_path: Path
+    nightly_rebaseline_path: Path
     lock_path: Path
     promotion_lock_path: Path
     promotion_results_root: Path
@@ -57,6 +59,8 @@ def build_lane_state_paths(
         latest_run_path=lane_root / "latest-run.json",
         latest_success_path=lane_root / "latest-success.json",
         latest_promoted_path=lane_root / "latest-promoted.json",
+        incremental_state_path=lane_root / "incremental-state.json",
+        nightly_rebaseline_path=lane_root / "nightly-full-rebaseline.json",
         lock_path=lane_root / "scheduler.lock",
         promotion_lock_path=lane_root / "promotion.lock",
         promotion_results_root=lane_root / "promotion-results",

@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+import domains.legacy_import.incremental_state as incremental_state
 from scripts import run_scheduled_legacy_shadow_refresh as scheduled
 from scripts.run_legacy_refresh import LegacyRefreshExecution
 
@@ -189,6 +190,12 @@ def test_completed_review_required_still_advances_latest_success(
     )
 
     latest_success = json.loads(result.latest_success_path.read_text(encoding="utf-8"))
+    lane_paths = scheduled.build_lane_state_paths(
+        tenant_id=TENANT_ID,
+        schema_name="raw_legacy",
+        source_schema="public",
+        summary_root=summary_root,
+    )
 
     assert result.exit_code == 0
     assert result.latest_success_updated is True
@@ -197,6 +204,76 @@ def test_completed_review_required_still_advances_latest_success(
     assert latest_success["promotion_readiness"] is False
     assert latest_success["promotion_policy"]["classification"] == "exception-required"
     assert latest_success["promotion_policy"]["reason_codes"] == ["analyst-review"]
+    assert lane_paths.incremental_state_path.exists() is False
+    assert lane_paths.nightly_rebaseline_path.exists() is False
+
+
+def test_successful_full_refresh_reseeds_incremental_state_and_rebaseline_reference(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    summary_root = tmp_path / "ops"
+    fixed_now = datetime(2026, 4, 18, 2, 7, 0, tzinfo=timezone.utc)
+    batch_id = "legacy-shadow-20260418T020700Z"
+    refresh_execution = _build_execution(
+        summary_root,
+        batch_id=batch_id,
+        final_disposition="completed",
+        exit_code=0,
+        validation_status="passed",
+        blocking_issue_count=0,
+        reconciliation_gap_count=0,
+        analyst_review_required=False,
+        promotion_readiness=True,
+        summary_name="refresh-rebaseline.json",
+    )
+
+    monkeypatch.setattr(scheduled, "utc_now", lambda: fixed_now)
+
+    async def fake_run_legacy_refresh(**kwargs):
+        return refresh_execution
+
+    monkeypatch.setattr(scheduled, "run_legacy_refresh", fake_run_legacy_refresh)
+
+    result = asyncio.run(
+        scheduled.run_scheduled_shadow_refresh(
+            tenant_id=TENANT_ID,
+            schema_name="raw_legacy",
+            source_schema="public",
+            lookback_days=10000,
+            reconciliation_threshold=0,
+            batch_prefix="legacy-shadow",
+            summary_root=summary_root,
+        )
+    )
+
+    lane_paths = scheduled.build_lane_state_paths(
+        tenant_id=TENANT_ID,
+        schema_name="raw_legacy",
+        source_schema="public",
+        summary_root=summary_root,
+    )
+    incremental_snapshot = json.loads(
+        lane_paths.incremental_state_path.read_text(encoding="utf-8")
+    )
+    nightly_rebaseline = json.loads(
+        lane_paths.nightly_rebaseline_path.read_text(encoding="utf-8")
+    )
+
+    assert result.latest_success_updated is True
+    assert nightly_rebaseline["batch_id"] == batch_id
+    assert incremental_snapshot["current_shadow_candidate"]["batch_id"] == batch_id
+    assert incremental_snapshot["last_successful_shadow_candidate"]["batch_id"] == batch_id
+    assert incremental_snapshot["last_nightly_full_rebaseline"]["batch_id"] == batch_id
+    assert incremental_snapshot["latest_promoted_working_batch"] is None
+    assert set(incremental_snapshot["domains"]) == {
+        contract.name for contract in incremental_state.supported_incremental_domain_contracts()
+    }
+    assert all(
+        domain_state["bootstrap_required"] is True
+        and domain_state["last_successful_watermark"] is None
+        for domain_state in incremental_snapshot["domains"].values()
+    )
 
 
 @pytest.mark.parametrize(
@@ -496,11 +573,19 @@ def test_shadow_refresh_only_writes_inside_shadow_artifact_tree(
         for path in tmp_path.rglob("*")
         if path.is_file()
     }
+    lane_paths = scheduled.build_lane_state_paths(
+        tenant_id=TENANT_ID,
+        schema_name="raw_legacy",
+        source_schema="public",
+        summary_root=summary_root,
+    )
 
     assert written_files == {
         refresh_execution.summary_path.relative_to(tmp_path).as_posix(),
         result.latest_run_path.relative_to(tmp_path).as_posix(),
         result.latest_success_path.relative_to(tmp_path).as_posix(),
+        lane_paths.incremental_state_path.relative_to(tmp_path).as_posix(),
+        lane_paths.nightly_rebaseline_path.relative_to(tmp_path).as_posix(),
     }
     assert all("promotion" not in path for path in written_files)
     assert all("approval" not in path for path in written_files)
