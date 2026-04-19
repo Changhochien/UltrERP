@@ -1,14 +1,13 @@
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
-import { PageHeader, SectionCard, SurfaceMessage } from "../../components/layout/PageLayout";
+import { PageHeader, PageTabs, SectionCard, SurfaceMessage } from "../../components/layout/PageLayout";
 import { Badge } from "../../components/ui/badge";
-import { Button } from "../../components/ui/button";
 import { WarehouseSelector } from "../../domain/inventory/components/WarehouseSelector";
 import { WarehouseProvider, useWarehouseContext } from "../../domain/inventory/context/WarehouseContext";
 import { useInventoryValuation } from "../../domain/inventory/hooks/useInventoryValuation";
 import type { InventoryValuationItem } from "../../domain/inventory/types";
-import { INVENTORY_ROUTE } from "../../lib/routes";
+import { buildInventorySectionTabs, getInventorySectionRoute, type InventorySectionTabValue } from "./inventoryPageTabs";
 
 function CostSourceBadge({ source }: { source: InventoryValuationItem["cost_source"] }) {
   const { t } = useTranslation("common", { keyPrefix: "inventory.inventoryValuationPage" });
@@ -27,8 +26,10 @@ function CostSourceBadge({ source }: { source: InventoryValuationItem["cost_sour
 
 function InventoryValuationWorkspace() {
   const { t } = useTranslation("common", { keyPrefix: "inventory.inventoryValuationPage" });
+  const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
   const { selectedWarehouse, setSelectedWarehouse } = useWarehouseContext();
+  const inventoryTabs = buildInventorySectionTabs(tCommon);
   const {
     items,
     warehouseTotals,
@@ -50,10 +51,15 @@ function InventoryValuationWorkspace() {
         actions={(
           <div className="flex flex-wrap items-center gap-2">
             <WarehouseSelector value={selectedWarehouse} onChange={setSelectedWarehouse} />
-            <Button type="button" variant="outline" onClick={() => navigate(INVENTORY_ROUTE)}>
-              {t("backToInventory")}
-            </Button>
           </div>
+        )}
+        tabs={(
+          <PageTabs
+            items={inventoryTabs}
+            value="valuation"
+            ariaLabel={tCommon("inventory.page.title")}
+            onValueChange={(next) => navigate(getInventorySectionRoute(next as InventorySectionTabValue))}
+          />
         )}
       />
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
-import { PageHeader, SectionCard, SurfaceMessage } from "../../components/layout/PageLayout";
+import { PageHeader, PageTabs, SectionCard, SurfaceMessage } from "../../components/layout/PageLayout";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { SupplierOrderForm, type SupplierOrderDraftLine } from "../../domain/inventory/components/SupplierOrderForm";
@@ -17,7 +17,7 @@ import type {
   ReorderSuggestionItem,
 } from "../../domain/inventory/types";
 import { usePermissions } from "../../hooks/usePermissions";
-import { INVENTORY_ROUTE } from "../../lib/routes";
+import { buildInventorySectionTabs, getInventorySectionRoute, type InventorySectionTabValue } from "./inventoryPageTabs";
 
 function selectionKey(item: ReorderSuggestionItem): string {
   return `${item.product_id}:${item.warehouse_id}`;
@@ -69,9 +69,11 @@ function CreatedOrdersSummary({
 
 function ReorderSuggestionsWorkspace() {
   const { t } = useTranslation("common", { keyPrefix: "inventory.reorderSuggestionsPage" });
+  const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
   const { selectedWarehouse, setSelectedWarehouse } = useWarehouseContext();
   const { canWrite } = usePermissions();
+  const inventoryTabs = buildInventorySectionTabs(tCommon);
   const { suggestions, total, loading, error, reload } = useReorderSuggestions({
     warehouseId: selectedWarehouse?.id,
   });
@@ -148,10 +150,15 @@ function ReorderSuggestionsWorkspace() {
         actions={(
           <div className="flex flex-wrap items-center gap-2">
             <WarehouseSelector value={selectedWarehouse} onChange={setSelectedWarehouse} />
-            <Button type="button" variant="outline" onClick={() => navigate(INVENTORY_ROUTE)}>
-              {t("backToInventory")}
-            </Button>
           </div>
+        )}
+        tabs={(
+          <PageTabs
+            items={inventoryTabs}
+            value="reorder-suggestions"
+            ariaLabel={tCommon("inventory.page.title")}
+            onValueChange={(next) => navigate(getInventorySectionRoute(next as InventorySectionTabValue))}
+          />
         )}
       />
 

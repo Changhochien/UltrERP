@@ -3,3 +3,7 @@ inherit = "core"
 
 [shell_environment_policy.set]
 CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = "1"
+
+[models]
+model = "gpt-5.4"
+model_reasoning_effort = "high"

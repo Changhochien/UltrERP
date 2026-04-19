@@ -2,19 +2,21 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
-import { PageHeader, SectionCard, SurfaceMessage } from "../../components/layout/PageLayout";
+import { PageHeader, PageTabs, SectionCard, SurfaceMessage } from "../../components/layout/PageLayout";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { WarehouseSelector } from "../../domain/inventory/components/WarehouseSelector";
 import { WarehouseProvider, useWarehouseContext } from "../../domain/inventory/context/WarehouseContext";
 import { useBelowReorderReport } from "../../domain/inventory/hooks/useBelowReorderReport";
 import { exportBelowReorderReport } from "../../lib/api/inventory";
-import { INVENTORY_ROUTE } from "../../lib/routes";
+import { buildInventorySectionTabs, getInventorySectionRoute, type InventorySectionTabValue } from "./inventoryPageTabs";
 
 function BelowReorderReportWorkspace() {
   const { t } = useTranslation("common", { keyPrefix: "inventory.belowReorderReportPage" });
+  const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
   const { selectedWarehouse, setSelectedWarehouse } = useWarehouseContext();
+  const inventoryTabs = buildInventorySectionTabs(tCommon);
   const { items, total, loading, error } = useBelowReorderReport({
     warehouseId: selectedWarehouse?.id,
   });
@@ -45,13 +47,18 @@ function BelowReorderReportWorkspace() {
         actions={(
           <div className="flex flex-wrap items-center gap-2">
             <WarehouseSelector value={selectedWarehouse} onChange={setSelectedWarehouse} />
-            <Button type="button" variant="outline" onClick={() => navigate(INVENTORY_ROUTE)}>
-              {t("backToInventory")}
-            </Button>
             <Button type="button" onClick={() => void handleExport()} disabled={exporting}>
               {exporting ? t("exporting") : t("exportCsv")}
             </Button>
           </div>
+        )}
+        tabs={(
+          <PageTabs
+            items={inventoryTabs}
+            value="below-reorder"
+            ariaLabel={tCommon("inventory.page.title")}
+            onValueChange={(next) => navigate(getInventorySectionRoute(next as InventorySectionTabValue))}
+          />
         )}
       />
 

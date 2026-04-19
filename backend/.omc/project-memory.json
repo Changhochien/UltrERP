@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1776486047211,
+  "lastScanned": 1775749956982,
   "projectRoot": "/Volumes/2T_SSD_App/Projects/UltrERP/backend",
   "techStack": {
     "languages": [
@@ -46,35 +46,31 @@
     "workspaces": [],
     "mainDirectories": [
       "app",
-      "docs",
       "scripts",
       "tests"
     ],
-    "gitBranches": {
-      "defaultBranch": "improve/frontend_bundle_size",
-      "branchingStrategy": null
-    }
+    "gitBranches": null
   },
   "customNotes": [],
   "directoryMap": {
     "app": {
       "path": "app",
       "purpose": "Application code",
-      "fileCount": 6,
-      "lastAccessed": 1776486047200,
+      "fileCount": 5,
+      "lastAccessed": 1775749956971,
       "keyFiles": [
         "__init__.py",
         "main.py",
         "mcp_auth.py",
-        "mcp_identity.py",
-        "mcp_server.py"
+        "mcp_server.py",
+        "mcp_setup.py"
       ]
     },
     "common": {
       "path": "common",
       "purpose": null,
-      "fileCount": 10,
-      "lastAccessed": 1776486047200,
+      "fileCount": 9,
+      "lastAccessed": 1775749956971,
       "keyFiles": [
         "__init__.py",
         "auth.py",
@@ -83,20 +79,11 @@
         "errors.py"
       ]
     },
-    "docs": {
-      "path": "docs",
-      "purpose": "Documentation",
-      "fileCount": 1,
-      "lastAccessed": 1776486047201,
-      "keyFiles": [
-        "SPEC-dual-source-staging.md"
-      ]
-    },
     "domains": {
       "path": "domains",
       "purpose": null,
       "fileCount": 1,
-      "lastAccessed": 1776486047201,
+      "lastAccessed": 1775749956972,
       "keyFiles": [
         "__init__.py"
       ]
@@ -104,21 +91,17 @@
     "scripts": {
       "path": "scripts",
       "purpose": "Build/utility scripts",
-      "fileCount": 10,
-      "lastAccessed": 1776486047201,
+      "fileCount": 1,
+      "lastAccessed": 1775749956972,
       "keyFiles": [
-        "_legacy_stock_adjustments.py",
-        "apply_reconciliation_corrections.py",
-        "backfill_invoice_unit_cost.py",
-        "backfill_purchase_receipts.py",
         "backfill_sales_reservations.py"
       ]
     },
     "tests": {
       "path": "tests",
       "purpose": "Test files",
-      "fileCount": 31,
-      "lastAccessed": 1776486047202,
+      "fileCount": 23,
+      "lastAccessed": 1775749956973,
       "keyFiles": [
         "__init__.py",
         "conftest.py",
@@ -130,8 +113,8 @@
     "common/models": {
       "path": "common/models",
       "purpose": "Data models",
-      "fileCount": 19,
-      "lastAccessed": 1776486047202,
+      "fileCount": 18,
+      "lastAccessed": 1775749956973,
       "keyFiles": [
         "__init__.py",
         "approval_request.py",
@@ -141,22 +124,16 @@
     "tests/api": {
       "path": "tests/api",
       "purpose": "API routes",
-      "fileCount": 9,
-      "lastAccessed": 1776486047203,
+      "fileCount": 5,
+      "lastAccessed": 1775749956974,
       "keyFiles": [
         "__init__.py",
-        "test_categories.py",
-        "test_create_customer.py"
+        "test_create_customer.py",
+        "test_create_invoice.py"
       ]
     }
   },
   "hotPaths": [
-    {
-      "path": "domains/inventory/services.py",
-      "accessCount": 60,
-      "lastAccessed": 1776489789503,
-      "type": "directory"
-    },
     {
       "path": "domains/dashboard/services.py",
       "accessCount": 59,
@@ -164,9 +141,15 @@
       "type": "directory"
     },
     {
+      "path": "domains/inventory/services.py",
+      "accessCount": 35,
+      "lastAccessed": 1776518266162,
+      "type": "directory"
+    },
+    {
       "path": "",
-      "accessCount": 31,
-      "lastAccessed": 1776488117891,
+      "accessCount": 34,
+      "lastAccessed": 1776517270623,
       "type": "directory"
     },
     {
@@ -177,8 +160,8 @@
     },
     {
       "path": "app/main.py",
-      "accessCount": 20,
-      "lastAccessed": 1776485569554,
+      "accessCount": 25,
+      "lastAccessed": 1776517309225,
       "type": "directory"
     },
     {
@@ -194,6 +177,12 @@
       "type": "file"
     },
     {
+      "path": "domains/inventory/routes.py",
+      "accessCount": 9,
+      "lastAccessed": 1776518266248,
+      "type": "file"
+    },
+    {
       "path": "domains/dashboard/routes.py",
       "accessCount": 8,
       "lastAccessed": 1775808573517,
@@ -206,9 +195,9 @@
       "type": "file"
     },
     {
-      "path": "domains/invoices/service.py",
+      "path": "domains/inventory/schemas.py",
       "accessCount": 7,
-      "lastAccessed": 1776484556689,
+      "lastAccessed": 1776518250423,
       "type": "file"
     },
     {
@@ -218,16 +207,16 @@
       "type": "directory"
     },
     {
-      "path": "domains/inventory/routes.py",
+      "path": "domains/invoices/service.py",
       "accessCount": 6,
-      "lastAccessed": 1776488156722,
+      "lastAccessed": 1776076587852,
       "type": "file"
     },
     {
-      "path": "domains/legacy_import/staging.py",
+      "path": "common/models",
       "accessCount": 5,
-      "lastAccessed": 1776499672689,
-      "type": "file"
+      "lastAccessed": 1776518245759,
+      "type": "directory"
     },
     {
       "path": "domains/users",
@@ -242,6 +231,36 @@
       "type": "file"
     },
     {
+      "path": "domains/inventory",
+      "accessCount": 4,
+      "lastAccessed": 1776506351222,
+      "type": "directory"
+    },
+    {
+      "path": "common",
+      "accessCount": 4,
+      "lastAccessed": 1776506615601,
+      "type": "directory"
+    },
+    {
+      "path": "common/config.py",
+      "accessCount": 4,
+      "lastAccessed": 1776506694150,
+      "type": "file"
+    },
+    {
+      "path": "app",
+      "accessCount": 4,
+      "lastAccessed": 1776517280972,
+      "type": "directory"
+    },
+    {
+      "path": "common/database.py",
+      "accessCount": 4,
+      "lastAccessed": 1776517285246,
+      "type": "file"
+    },
+    {
       "path": "domains/users/service.py",
       "accessCount": 3,
       "lastAccessed": 1775749977022,
@@ -252,18 +271,6 @@
       "accessCount": 3,
       "lastAccessed": 1775787118753,
       "type": "file"
-    },
-    {
-      "path": "common",
-      "accessCount": 3,
-      "lastAccessed": 1776041217234,
-      "type": "directory"
-    },
-    {
-      "path": "domains/inventory",
-      "accessCount": 3,
-      "lastAccessed": 1776485555984,
-      "type": "directory"
     },
     {
       "path": "domains",
@@ -284,12 +291,6 @@
       "type": "directory"
     },
     {
-      "path": "common/models",
-      "accessCount": 2,
-      "lastAccessed": 1775750015903,
-      "type": "directory"
-    },
-    {
       "path": "domains/settings/seed.py",
       "accessCount": 2,
       "lastAccessed": 1775751162815,
@@ -302,22 +303,16 @@
       "type": "directory"
     },
     {
-      "path": "common/config.py",
-      "accessCount": 2,
-      "lastAccessed": 1775752275831,
-      "type": "file"
-    },
-    {
       "path": "domains/legacy_import/cli.py",
       "accessCount": 2,
       "lastAccessed": 1775869362745,
       "type": "directory"
     },
     {
-      "path": "app",
+      "path": "domains/legacy_import/staging.py",
       "accessCount": 2,
-      "lastAccessed": 1775893160964,
-      "type": "directory"
+      "lastAccessed": 1775869475604,
+      "type": "file"
     },
     {
       "path": "domains/invoices/models.py",
@@ -383,18 +378,6 @@
       "path": "tests/domains/inventory/test_reorder_alerts.py",
       "accessCount": 1,
       "lastAccessed": 1775714110893,
-      "type": "file"
-    },
-    {
-      "path": "domains/inventory/schemas.py",
-      "accessCount": 1,
-      "lastAccessed": 1775718600373,
-      "type": "file"
-    },
-    {
-      "path": "common/database.py",
-      "accessCount": 1,
-      "lastAccessed": 1775718703032,
       "type": "file"
     },
     {

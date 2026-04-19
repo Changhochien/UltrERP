@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
-import { PageHeader, SectionCard } from "../../components/layout/PageLayout";
+import { PageHeader, PageTabs, SectionCard } from "../../components/layout/PageLayout";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { useWarehouses } from "../../domain/inventory/hooks/useWarehouses";
@@ -13,14 +13,16 @@ import {
   fetchPhysicalCountSessions,
 } from "../../lib/api/inventory";
 import {
-  INVENTORY_ROUTE,
   buildCountSessionDetailPath,
 } from "../../lib/routes";
+import { buildInventorySectionTabs, getInventorySectionRoute, type InventorySectionTabValue } from "./inventoryPageTabs";
 
 export function CountSessionsPage() {
   const { t } = useTranslation("common", { keyPrefix: "inventory.countSessionsPage" });
+  const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
   const { warehouses, loading: warehousesLoading } = useWarehouses();
+  const inventoryTabs = buildInventorySectionTabs(tCommon);
 
   const [sessions, setSessions] = useState<PhysicalCountSessionSummary[]>([]);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
@@ -98,9 +100,6 @@ export function CountSessionsPage() {
         description={t("description")}
         actions={(
           <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="outline" onClick={() => navigate(INVENTORY_ROUTE)}>
-              {t("backToInventory")}
-            </Button>
             <Button
               type="button"
               onClick={() => void handleCreateSession()}
@@ -109,6 +108,14 @@ export function CountSessionsPage() {
               {creating ? t("creating") : t("create")}
             </Button>
           </div>
+        )}
+        tabs={(
+          <PageTabs
+            items={inventoryTabs}
+            value="count-sessions"
+            ariaLabel={tCommon("inventory.page.title")}
+            onValueChange={(next) => navigate(getInventorySectionRoute(next as InventorySectionTabValue))}
+          />
         )}
       />
 

@@ -11,6 +11,7 @@ export const INVENTORY_BELOW_REORDER_REPORT_ROUTE = "/inventory/reports/below-re
 export const INVENTORY_VALUATION_ROUTE = "/inventory/reports/valuation";
 export const INVENTORY_REORDER_SUGGESTIONS_ROUTE = "/inventory/reorder-suggestions";
 export const INVENTORY_SUPPLIERS_ROUTE = "/inventory/suppliers";
+export const SUPPLIER_DETAIL_ROUTE = "/inventory/suppliers/:supplierId";
 export const PRODUCT_DETAIL_ROUTE = "/inventory/:productId";
 export const PURCHASES_ROUTE = "/purchases";
 export const CUSTOMERS_ROUTE = "/customers";
@@ -39,6 +40,8 @@ export type AppRoute =
   | typeof INVENTORY_BELOW_REORDER_REPORT_ROUTE
   | typeof INVENTORY_VALUATION_ROUTE
   | typeof INVENTORY_REORDER_SUGGESTIONS_ROUTE
+  | typeof INVENTORY_SUPPLIERS_ROUTE
+  | typeof SUPPLIER_DETAIL_ROUTE
   | typeof PRODUCT_DETAIL_ROUTE
   | typeof PURCHASES_ROUTE
   | typeof CUSTOMERS_ROUTE
@@ -57,7 +60,7 @@ export type AppRoute =
   | typeof OWNER_DASHBOARD_ROUTE;
 
 export function buildSupplierDetailPath(supplierId: string): string {
-  return `/inventory/suppliers/${encodeURIComponent(supplierId)}`;
+  return SUPPLIER_DETAIL_ROUTE.replace(":supplierId", encodeURIComponent(supplierId));
 }
 
 export function buildCountSessionDetailPath(sessionId: string): string {

@@ -44,6 +44,7 @@ vi.mock("../domain/inventory/components/MetricCards", () => ({
 
 vi.mock("../components/layout/PageLayout", () => ({
   PageHeader: ({ title }: { title: string }) => <div>{title}</div>,
+  PageTabs: () => null,
 }));
 
 vi.mock("../domain/inventory/components/ProductDetailDrawer", () => ({

@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ArrowRightLeft, ArrowLeft, ShoppingCart, SlidersHorizontal } from "lucide-react";
 
+import { PageTabs } from "@/components/layout/PageLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SectionCard } from "@/components/layout/PageLayout";
@@ -13,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { EditProductForm } from "@/domain/inventory/components/EditProductForm";
 import { useProductDetail } from "@/domain/inventory/hooks/useProductDetail";
 import { useStockHistory } from "@/domain/inventory/hooks/useStockHistory";
@@ -154,7 +155,7 @@ function AuditLogTabContent({ productId }: { productId: string }) {
 function ProductDetailContent({ productId }: { productId: string }) {
   const { t } = useTranslation("common", { keyPrefix: "inventory.productDetail" });
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -162,11 +163,17 @@ function ProductDetailContent({ productId }: { productId: string }) {
   const { product, loading, error, reload, applyLocalUpdate } = useProductDetail(productId);
   const { selectedWarehouse } = useWarehouseContext();
   const requestedTab = searchParams.get("tab");
-  const defaultTab = requestedTab === "analytics"
+  const activeTab = requestedTab === "analytics"
     || requestedTab === "settings"
     || requestedTab === "audit"
     ? requestedTab
     : "overview";
+  const detailTabs = [
+    { value: "overview", label: t("overview") },
+    { value: "analytics", label: t("analytics") },
+    { value: "settings", label: t("settings") },
+    { value: "audit", label: t("auditLog") },
+  ];
 
   const stockId = selectedWarehouse?.id
     ? product?.warehouses.find((w) => w.warehouse_id === selectedWarehouse.id)?.stock_id
@@ -196,6 +203,16 @@ function ProductDetailContent({ productId }: { productId: string }) {
     }
     await reload();
     setStatusSubmitting(false);
+  }
+
+  function handleTabChange(nextTab: string) {
+    const nextParams = new URLSearchParams(searchParams);
+    if (nextTab === "overview") {
+      nextParams.delete("tab");
+    } else {
+      nextParams.set("tab", nextTab);
+    }
+    setSearchParams(nextParams, { replace: true });
   }
 
   return (
@@ -332,14 +349,14 @@ function ProductDetailContent({ productId }: { productId: string }) {
         </div>
       )}
 
-      <Tabs defaultValue={defaultTab}>
-        <TabsList>
-          <TabsTrigger value="overview">{t("overview")}</TabsTrigger>
-          <TabsTrigger value="analytics">{t("analytics")}</TabsTrigger>
-          <TabsTrigger value="settings">{t("settings")}</TabsTrigger>
-          <TabsTrigger value="audit">{t("auditLog")}</TabsTrigger>
-        </TabsList>
+      <PageTabs
+        items={detailTabs}
+        value={activeTab}
+        ariaLabel={t("title")}
+        onValueChange={handleTabChange}
+      />
 
+      <Tabs value={activeTab}>
         <TabsContent value="overview">
           {!loading && product && (
             <div className="space-y-6">

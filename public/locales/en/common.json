@@ -98,6 +98,14 @@
       "description": "Review low-stock replenishment suggestions and create draft supplier orders.",
       "label": "Reorder Suggestions"
     },
+    "inventorySuppliers": {
+      "description": "Manage supplier master data and replenishment contacts used by inventory workflows.",
+      "label": "Suppliers"
+    },
+    "supplierDetail": {
+      "description": "Review one supplier profile, status, and planning defaults.",
+      "label": "Supplier Detail"
+    },
     "intelligence": {
       "description": "Review AI-ready customer and product intelligence signals.",
       "label": "Intelligence"
@@ -1098,6 +1106,62 @@
       "addProduct": "Add Product",
       "warehouseScope": "Warehouse Scope",
       "warehouseScopeDescription": "Filter stock view by warehouse."
+    },
+    "suppliersPage": {
+      "eyebrow": "Inventory",
+      "title": "Suppliers",
+      "description": "Manage supplier partners used for replenishment and purchasing.",
+      "createTitle": "New Supplier",
+      "formDescription": "Capture supplier contacts and default lead times used by inventory planning.",
+      "readOnly": "You can review supplier records here, but only inventory editors can create or update them.",
+      "directoryTitle": "Supplier Directory",
+      "directoryDescription": "Search suppliers, review contact details, and change active status.",
+      "searchPlaceholder": "Search suppliers…",
+      "showInactive": "Show Inactive",
+      "loading": "Loading suppliers…",
+      "empty": "No suppliers found",
+      "emptyDescription": "Create a supplier or widen your search to review the directory.",
+      "save": "Save Supplier",
+      "saving": "Saving…",
+      "total": "{{count}} suppliers",
+      "name": "Supplier",
+      "contact": "Contact",
+      "leadTime": "Lead Time",
+      "status": "Status",
+      "actions": "Actions",
+      "noContact": "No contact details",
+      "notSet": "Not set",
+      "active": "Active",
+      "inactive": "Inactive",
+      "view": "View",
+      "activate": "Activate",
+      "deactivate": "Deactivate"
+    },
+    "supplierDetail": {
+      "eyebrow": "Supplier",
+      "title": "Supplier",
+      "description": "Review supplier defaults and keep replenishment contacts current.",
+      "backToSuppliers": "Back to Suppliers",
+      "loadError": "Unable to load supplier.",
+      "loading": "Loading supplier…",
+      "retry": "Retry",
+      "summaryTitle": "Supplier Overview",
+      "summaryDescription": "Reference status, contact details, and planning defaults before editing.",
+      "status": "Status",
+      "active": "Active",
+      "inactive": "Inactive",
+      "leadTime": "Default Lead Time",
+      "contactEmail": "Contact Email",
+      "phone": "Phone",
+      "address": "Address",
+      "createdAt": "Created",
+      "notSet": "Not set",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "editTitle": "Edit Supplier",
+      "editDescription": "Update contact details, lead time, or address information.",
+      "save": "Save Changes",
+      "saving": "Saving…"
     },
     "transferForm": {
       "loadingWarehouses": "Loading warehouses…",

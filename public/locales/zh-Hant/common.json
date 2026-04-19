@@ -99,6 +99,14 @@
       "description": "檢視低庫存補貨建議並直接建立供應商草稿訂單。",
       "label": "補貨建議"
     },
+    "inventorySuppliers": {
+      "description": "管理供應商主檔與補貨聯絡資訊。",
+      "label": "供應商"
+    },
+    "supplierDetail": {
+      "description": "檢視單一供應商主檔、狀態與補貨預設。",
+      "label": "供應商詳情"
+    },
     "intelligence": {
       "description": "檢視可供 AI 與業務使用的客戶與商品洞察訊號。",
       "label": "商業洞察"
@@ -1095,6 +1103,62 @@
       "addProduct": "新增產品",
       "warehouseScope": "倉庫範圍",
       "warehouseScopeDescription": "依倉庫篩選庫存檢視。"
+    },
+    "suppliersPage": {
+      "eyebrow": "庫存",
+      "title": "供應商",
+      "description": "管理補貨與採購流程使用的供應商主檔。",
+      "createTitle": "新增供應商",
+      "formDescription": "維護供應商聯絡方式與預設前置時間，供庫存規劃使用。",
+      "readOnly": "您可以在此查看供應商資料，但只有可編輯庫存的使用者能建立或更新供應商。",
+      "directoryTitle": "供應商清單",
+      "directoryDescription": "搜尋供應商、查看聯絡資訊，並調整啟用狀態。",
+      "searchPlaceholder": "搜尋供應商…",
+      "showInactive": "顯示停用",
+      "loading": "載入供應商中…",
+      "empty": "找不到供應商",
+      "emptyDescription": "新增供應商，或放寬搜尋條件以查看清單。",
+      "save": "儲存供應商",
+      "saving": "儲存中…",
+      "total": "共 {{count}} 家供應商",
+      "name": "供應商",
+      "contact": "聯絡方式",
+      "leadTime": "前置時間",
+      "status": "狀態",
+      "actions": "操作",
+      "noContact": "尚無聯絡資訊",
+      "notSet": "未設定",
+      "active": "啟用",
+      "inactive": "停用",
+      "view": "查看",
+      "activate": "啟用",
+      "deactivate": "停用"
+    },
+    "supplierDetail": {
+      "eyebrow": "供應商",
+      "title": "供應商",
+      "description": "檢視供應商預設資料並維護補貨聯絡資訊。",
+      "backToSuppliers": "返回供應商",
+      "loadError": "無法載入供應商資料。",
+      "loading": "載入供應商中…",
+      "retry": "重新載入",
+      "summaryTitle": "供應商總覽",
+      "summaryDescription": "編輯前先確認狀態、聯絡方式與規劃預設。",
+      "status": "狀態",
+      "active": "啟用",
+      "inactive": "停用",
+      "leadTime": "預設前置時間",
+      "contactEmail": "聯絡 Email",
+      "phone": "電話",
+      "address": "地址",
+      "createdAt": "建立日期",
+      "notSet": "未設定",
+      "activate": "啟用",
+      "deactivate": "停用",
+      "editTitle": "編輯供應商",
+      "editDescription": "更新聯絡方式、前置時間與地址資訊。",
+      "save": "儲存變更",
+      "saving": "儲存中…"
     },
     "transferForm": {
       "loadingWarehouses": "載入倉庫中…",

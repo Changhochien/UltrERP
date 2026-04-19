@@ -25,6 +25,7 @@ import {
   INVENTORY_TRANSFERS_ROUTE,
   INVENTORY_UNITS_ROUTE,
   INVENTORY_REORDER_SUGGESTIONS_ROUTE,
+  INVENTORY_SUPPLIERS_ROUTE,
   INVENTORY_VALUATION_ROUTE,
   INVENTORY_ROUTE,
   INTELLIGENCE_ROUTE,
@@ -166,6 +167,7 @@ export const ROUTE_CONTEXT_KEYS = [
   { match: INVENTORY_BELOW_REORDER_REPORT_ROUTE, labelKey: "routes.belowReorderReport.label", descriptionKey: "routes.belowReorderReport.description" },
   { match: INVENTORY_VALUATION_ROUTE, labelKey: "routes.inventoryValuation.label", descriptionKey: "routes.inventoryValuation.description" },
   { match: INVENTORY_REORDER_SUGGESTIONS_ROUTE, labelKey: "routes.reorderSuggestions.label", descriptionKey: "routes.reorderSuggestions.description" },
+  { match: INVENTORY_SUPPLIERS_ROUTE, labelKey: "routes.inventorySuppliers.label", descriptionKey: "routes.inventorySuppliers.description" },
   { match: PURCHASES_ROUTE, labelKey: "routes.purchases.label", descriptionKey: "routes.purchases.description" },
   { match: ADMIN_ROUTE, labelKey: "routes.admin.label", descriptionKey: "routes.admin.description" },
   { match: OWNER_DASHBOARD_ROUTE, labelKey: "routes.ownerDashboard.label", descriptionKey: "routes.ownerDashboard.description" },
@@ -222,6 +224,14 @@ export function getRouteContext(pathname: string) {
     };
   }
 
+  if (pathname === INVENTORY_SUPPLIERS_ROUTE) {
+    return {
+      labelKey: "routes.inventorySuppliers.label",
+      descriptionKey: "routes.inventorySuppliers.description",
+      sectionKey: "nav.operations",
+    };
+  }
+
   if (pathname === INVENTORY_COUNT_SESSIONS_ROUTE) {
     return {
       labelKey: "routes.inventoryCountSessions.label",
@@ -234,6 +244,14 @@ export function getRouteContext(pathname: string) {
     return {
       labelKey: "routes.inventoryCountSessionDetail.label",
       descriptionKey: "routes.inventoryCountSessionDetail.description",
+      sectionKey: "nav.operations",
+    };
+  }
+
+  if (pathname.startsWith(INVENTORY_SUPPLIERS_ROUTE + "/")) {
+    return {
+      labelKey: "routes.supplierDetail.label",
+      descriptionKey: "routes.supplierDetail.description",
       sectionKey: "nav.operations",
     };
   }
@@ -251,7 +269,8 @@ export function getRouteContext(pathname: string) {
     pathname !== INVENTORY_ROUTE &&
     !pathname.startsWith(INVENTORY_CATEGORIES_ROUTE) &&
     !pathname.startsWith(INVENTORY_TRANSFERS_ROUTE) &&
-    !pathname.startsWith(INVENTORY_COUNT_SESSIONS_ROUTE)
+    !pathname.startsWith(INVENTORY_COUNT_SESSIONS_ROUTE) &&
+    !pathname.startsWith(INVENTORY_SUPPLIERS_ROUTE)
   ) {
     return {
       labelKey: "routes.productDetail.label",

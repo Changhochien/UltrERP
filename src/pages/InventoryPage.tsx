@@ -7,23 +7,15 @@ import { WarehouseProvider, useWarehouseContext } from "../domain/inventory/cont
 import { ProductTable } from "../domain/inventory/components/ProductTable";
 import { AlertPanel } from "../domain/inventory/components/AlertPanel";
 import { MetricCards } from "../domain/inventory/components/MetricCards";
-import { PageHeader } from "../components/layout/PageLayout";
+import { PageHeader, PageTabs } from "../components/layout/PageLayout";
 import { ProductDetailDrawer } from "../domain/inventory/components/ProductDetailDrawer";
 import { CreateProductForm } from "../domain/inventory/components/CreateProductForm";
 import { ReorderPointAdmin } from "../domain/inventory/components/ReorderPointAdmin";
 import { StockAdjustmentForm } from "../domain/inventory/components/StockAdjustmentForm";
 import { Button } from "../components/ui/button";
 import { usePermissions } from "../hooks/usePermissions";
-import {
-  buildInventoryTransfersPath,
-  INVENTORY_BELOW_REORDER_REPORT_ROUTE,
-  INVENTORY_CATEGORIES_ROUTE,
-  INVENTORY_COUNT_SESSIONS_ROUTE,
-  INVENTORY_TRANSFERS_ROUTE,
-  INVENTORY_REORDER_SUGGESTIONS_ROUTE,
-  INVENTORY_UNITS_ROUTE,
-  INVENTORY_VALUATION_ROUTE,
-} from "../lib/routes";
+import { buildInventoryTransfersPath } from "../lib/routes";
+import { buildInventorySectionTabs, getInventorySectionRoute, type InventorySectionTabValue } from "./inventory/inventoryPageTabs";
 
 function InventoryWorkspace() {
   const { t } = useTranslation("common");
@@ -34,6 +26,7 @@ function InventoryWorkspace() {
   const [adjustProductId, setAdjustProductId] = useState<string | null>(null);
   const [showCreateProduct, setShowCreateProduct] = useState(false);
   const [createdProductKey, setCreatedProductKey] = useState(0);
+  const inventoryTabs = buildInventorySectionTabs(t);
 
   return (
     <div className="space-y-6">
@@ -42,69 +35,34 @@ function InventoryWorkspace() {
         title={t("inventory.page.title")}
         description={t("inventory.page.description")}
         actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <WarehouseSelector
-              value={selectedWarehouse}
-              onChange={setSelectedWarehouse}
-            />
+          <div className="grid w-full gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end xl:w-[32rem]">
+            <div className="space-y-2">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+                {t("inventory.page.warehouseScope")}
+              </div>
+              <WarehouseSelector
+                value={selectedWarehouse}
+                onChange={setSelectedWarehouse}
+              />
+              <p className="text-xs text-muted-foreground">
+                {t("inventory.page.warehouseScopeDescription")}
+              </p>
+            </div>
             {canWrite("inventory") && (
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate(INVENTORY_BELOW_REORDER_REPORT_ROUTE)}
-                >
-                  {t("inventory.page.belowReorderReport")}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate(INVENTORY_VALUATION_ROUTE)}
-                >
-                  {t("inventory.page.inventoryValuation")}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate(INVENTORY_REORDER_SUGGESTIONS_ROUTE)}
-                >
-                  {t("inventory.page.reviewSuggestions")}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate(INVENTORY_COUNT_SESSIONS_ROUTE)}
-                >
-                  {t("inventory.page.manageCountSessions")}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate(INVENTORY_UNITS_ROUTE)}
-                >
-                  {t("inventory.page.manageUnits")}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate(INVENTORY_TRANSFERS_ROUTE)}
-                >
-                  {t("inventory.page.manageTransfers")}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate(INVENTORY_CATEGORIES_ROUTE)}
-                >
-                  {t("inventory.page.manageCategories")}
-                </Button>
-                <Button type="button" onClick={() => setShowCreateProduct(true)}>
-                  {t("inventory.page.addProduct")}
-                </Button>
-              </>
+              <Button type="button" className="h-10 rounded-full px-5" onClick={() => setShowCreateProduct(true)}>
+                {t("inventory.page.addProduct")}
+              </Button>
             )}
           </div>
         }
+        tabs={(
+          <PageTabs
+            items={inventoryTabs}
+            value="overview"
+            ariaLabel={t("inventory.page.title")}
+            onValueChange={(next) => navigate(getInventorySectionRoute(next as InventorySectionTabValue))}
+          />
+        )}
       />
 
       <MetricCards warehouseId={selectedWarehouse?.id} />

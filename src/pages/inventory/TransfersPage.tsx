@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { ProductCombobox } from "@/components/products/ProductCombobox";
-import { PageHeader, SectionCard } from "@/components/layout/PageLayout";
+import { PageHeader, PageTabs, SectionCard } from "@/components/layout/PageLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,12 +15,12 @@ import {
 } from "@/components/ui/sheet";
 import { usePermissions } from "@/hooks/usePermissions";
 import { fetchTransferDetail, fetchTransferHistory } from "@/lib/api/inventory";
-import { INVENTORY_ROUTE } from "@/lib/routes";
 import { formatForDisplayWithTime } from "@/lib/time";
 
 import { StockTransferForm } from "../../domain/inventory/components/StockTransferForm";
 import { useWarehouses } from "../../domain/inventory/hooks/useWarehouses";
 import type { TransferHistoryItem } from "../../domain/inventory/types";
+import { buildInventorySectionTabs, getInventorySectionRoute, type InventorySectionTabValue } from "./inventoryPageTabs";
 
 function TransferMetadataRow({
   label,
@@ -39,10 +39,12 @@ function TransferMetadataRow({
 
 export function TransfersPage() {
   const { t } = useTranslation("common", { keyPrefix: "inventory.transfersPage" });
+  const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { canWrite } = usePermissions();
   const { warehouses, loading: warehousesLoading } = useWarehouses();
+  const inventoryTabs = buildInventorySectionTabs(tCommon);
 
   const [productId, setProductId] = useState(searchParams.get("productId") ?? "");
   const [warehouseId, setWarehouseId] = useState(searchParams.get("warehouseId") ?? "");
@@ -160,10 +162,13 @@ export function TransfersPage() {
         eyebrow={t("eyebrow")}
         title={t("title")}
         description={t("description")}
-        actions={(
-          <Button type="button" variant="outline" onClick={() => navigate(INVENTORY_ROUTE)}>
-            {t("backToInventory")}
-          </Button>
+        tabs={(
+          <PageTabs
+            items={inventoryTabs}
+            value="transfers"
+            ariaLabel={tCommon("inventory.page.title")}
+            onValueChange={(next) => navigate(getInventorySectionRoute(next as InventorySectionTabValue))}
+          />
         )}
       />
 
