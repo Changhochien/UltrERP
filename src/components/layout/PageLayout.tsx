@@ -10,22 +10,52 @@ interface PageHeaderProps {
   title: string;
   description: string;
   actions?: ReactNode;
+  tabs?: ReactNode;
 }
 
-export function PageHeader({ eyebrow, title, description, actions }: PageHeaderProps) {
+interface PageHeroProps {
+  eyebrow?: string;
+  title: string;
+  description: string;
+}
+
+export function PageHero({ eyebrow, title, description }: PageHeroProps) {
   return (
-    <Card className="surface-hero overflow-hidden border-border/80 shadow-sm">
-      <CardContent className="flex flex-col gap-6 p-6 lg:flex-row lg:items-end lg:justify-between">
-        <div className="space-y-3">
-          {eyebrow ? (
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary/80">{eyebrow}</p>
-          ) : null}
-          <div className="space-y-2">
-            <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">{title}</h1>
-            <p className="max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">{description}</p>
-          </div>
+    <div className="max-w-3xl space-y-4">
+      {eyebrow ? (
+        <div className="inline-flex items-center rounded-full border border-border/70 bg-background/55 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.32em] text-primary/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm">
+          {eyebrow}
         </div>
-        {actions ? <div className="flex flex-wrap items-center gap-3">{actions}</div> : null}
+      ) : null}
+      <div className="space-y-3">
+        <h1 className="text-3xl font-semibold tracking-tight text-balance text-foreground sm:text-[2.7rem] sm:leading-none">{title}</h1>
+        <p className="max-w-[68ch] text-sm leading-6 text-muted-foreground sm:text-base">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+export function PageHeader({ eyebrow, title, description, actions, tabs }: PageHeaderProps) {
+  return (
+    <Card className="surface-hero relative overflow-hidden border-border/70 shadow-[0_34px_90px_-64px_rgba(15,23,42,0.78)]">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -right-16 top-0 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute left-0 top-0 h-px w-full bg-white/8" />
+      </div>
+      <CardContent className="relative p-0">
+        <div className="flex flex-col gap-8 p-6 sm:p-8 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0 flex-1">
+            <PageHero eyebrow={eyebrow} title={title} description={description} />
+          </div>
+          {actions ? (
+            <div className="w-full rounded-[1.75rem] border border-border/70 bg-background/58 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md xl:w-auto xl:max-w-[34rem]">
+              <div className="flex w-full flex-wrap items-center gap-3">
+                {actions}
+              </div>
+            </div>
+          ) : null}
+        </div>
+        {tabs ? <div className="border-t border-border/55 bg-background/26 backdrop-blur-sm">{tabs}</div> : null}
       </CardContent>
     </Card>
   );
@@ -184,3 +214,6 @@ export function SurfaceMessage({ children, tone = "default", className, ...props
     </div>
   );
 }
+
+export { PageTabs } from "./PageTabs";
+export type { PageTabItem } from "./PageTabs";
