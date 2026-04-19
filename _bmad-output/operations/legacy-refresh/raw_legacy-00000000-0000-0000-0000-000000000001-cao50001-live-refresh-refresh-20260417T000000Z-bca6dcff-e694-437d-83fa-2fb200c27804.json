@@ -1,0 +1,205 @@
+{
+  "analyst_review_export_path": "/Volumes/2T_SSD_App/Projects/UltrERP/_bmad-output/operations/legacy-refresh/product-review/raw_legacy-00000000-0000-0000-0000-000000000001-cao50001-live-refresh-product-review.csv",
+  "analyst_review_imported": false,
+  "analyst_review_required": true,
+  "analyst_review_supplied": false,
+  "approved_review_input_path": null,
+  "batch_id": "cao50001-live-refresh",
+  "canonical_attempt_number": 3,
+  "completed_at": "2026-04-17T00:00:00+00:00",
+  "correction_proposals_path": null,
+  "exit_code": 1,
+  "failed_step": null,
+  "final_disposition": "reconciliation-blocked",
+  "last_completed_step": "verify_reconciliation",
+  "orchestrator_run_id": "bca6dcff-e694-437d-83fa-2fb200c27804",
+  "partial_state_preserved": false,
+  "promotion_gate_status": {
+    "analyst_review": {
+      "export_path": "/Volumes/2T_SSD_App/Projects/UltrERP/_bmad-output/operations/legacy-refresh/product-review/raw_legacy-00000000-0000-0000-0000-000000000001-cao50001-live-refresh-product-review.csv",
+      "imported": false,
+      "outstanding": true,
+      "required": true,
+      "status": "review-required",
+      "supplied": false,
+      "unknown_count": 191
+    },
+    "promotion_ready": false,
+    "reconciliation": {
+      "gap_count": 2846,
+      "status": "blocked",
+      "threshold": 0
+    },
+    "validation": {
+      "blocking_issue_count": 0,
+      "json_path": "/Volumes/2T_SSD_App/Projects/UltrERP/_bmad-output/validation/legacy-import/raw_legacy-00000000-0000-0000-0000-000000000001-cao50001-live-refresh-attempt-3-validation.json",
+      "markdown_path": "/Volumes/2T_SSD_App/Projects/UltrERP/_bmad-output/validation/legacy-import/raw_legacy-00000000-0000-0000-0000-000000000001-cao50001-live-refresh-attempt-3-validation.md",
+      "status": "warning"
+    }
+  },
+  "promotion_policy": {
+    "analyst_review_required": true,
+    "batch_id": "cao50001-live-refresh",
+    "blocking_issue_count": 0,
+    "candidate_final_disposition": "completed-review-required",
+    "classification": "blocked",
+    "gate_details": {
+      "analyst_review": {
+        "required": true,
+        "status": "review-required"
+      },
+      "lane": {
+        "lock_active": false
+      },
+      "promotion_readiness": false,
+      "reconciliation": {
+        "gap_count": 2846,
+        "status": "blocked",
+        "threshold": 0
+      },
+      "validation": {
+        "blocking_issue_count": 0,
+        "status": "warning"
+      }
+    },
+    "message": "Batch cao50001-live-refresh cannot be promoted because validation is warning with 0 blocking issues.",
+    "override_allowed": false,
+    "promotion_readiness": false,
+    "reason_codes": [
+      "validation"
+    ],
+    "reconciliation_gap_count": 2846,
+    "reconciliation_threshold": 0,
+    "summary_path": "/Volumes/2T_SSD_App/Projects/UltrERP/_bmad-output/operations/legacy-refresh/raw_legacy-00000000-0000-0000-0000-000000000001-cao50001-live-refresh-refresh-20260417T000000Z-bca6dcff-e694-437d-83fa-2fb200c27804.json",
+    "validation_status": "warning"
+  },
+  "promotion_readiness": false,
+  "reconciliation_gap_count": 2846,
+  "reconciliation_threshold_used": 0,
+  "schema_name": "raw_legacy",
+  "source_schema": "public",
+  "started_at": "2026-04-17T00:00:00+00:00",
+  "steps": [
+    {
+      "completed_at": "2026-04-17T00:00:00+00:00",
+      "details": {
+        "source": "legacy-db:cao50001/public",
+        "table_count": 528
+      },
+      "error": null,
+      "name": "live-stage",
+      "started_at": "2026-04-17T00:00:00+00:00",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-04-17T00:00:00+00:00",
+      "details": {
+        "inventory_count": 6675,
+        "party_count": 1045,
+        "product_count": 6698,
+        "warehouse_count": 1
+      },
+      "error": null,
+      "name": "normalize",
+      "started_at": "2026-04-17T00:00:00+00:00",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-04-17T00:00:00+00:00",
+      "details": {
+        "candidate_count": 103,
+        "mapping_count": 6214,
+        "orphan_code_count": 191,
+        "orphan_row_count": 524,
+        "unknown_count": 191
+      },
+      "error": null,
+      "name": "map-products",
+      "started_at": "2026-04-17T00:00:00+00:00",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-04-17T00:00:00+00:00",
+      "details": {
+        "exported_row_count": 228,
+        "output_path": "/Volumes/2T_SSD_App/Projects/UltrERP/_bmad-output/operations/legacy-refresh/product-review/raw_legacy-00000000-0000-0000-0000-000000000001-cao50001-live-refresh-product-review.csv"
+      },
+      "error": null,
+      "name": "export-product-review",
+      "started_at": "2026-04-17T00:00:00+00:00",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-04-17T00:00:00+00:00",
+      "details": {
+        "reason": "no approved review input"
+      },
+      "error": null,
+      "name": "import-product-review",
+      "started_at": null,
+      "status": "skipped"
+    },
+    {
+      "completed_at": "2026-04-17T00:00:00+00:00",
+      "details": {
+        "attempt_number": 3,
+        "holding_count": 514,
+        "lineage_count": 1642234
+      },
+      "error": null,
+      "name": "canonical-import",
+      "started_at": "2026-04-17T00:00:00+00:00",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-04-17T00:00:00+00:00",
+      "details": {
+        "blocking_issue_count": 0,
+        "json_path": "/Volumes/2T_SSD_App/Projects/UltrERP/_bmad-output/validation/legacy-import/raw_legacy-00000000-0000-0000-0000-000000000001-cao50001-live-refresh-attempt-3-validation.json",
+        "markdown_path": "/Volumes/2T_SSD_App/Projects/UltrERP/_bmad-output/validation/legacy-import/raw_legacy-00000000-0000-0000-0000-000000000001-cao50001-live-refresh-attempt-3-validation.md",
+        "scope_key": "9fa6339358d35550",
+        "status": "warning"
+      },
+      "error": null,
+      "name": "validate-import",
+      "started_at": "2026-04-17T00:00:00+00:00",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-04-17T00:00:00+00:00",
+      "details": {
+        "dry_run": false,
+        "lookback_days": 10000
+      },
+      "error": null,
+      "name": "backfill_purchase_receipts",
+      "started_at": "2026-04-17T00:00:00+00:00",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-04-17T00:00:00+00:00",
+      "details": {
+        "dry_run": false,
+        "lookback_days": 10000
+      },
+      "error": null,
+      "name": "backfill_sales_reservations",
+      "started_at": "2026-04-17T00:00:00+00:00",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-04-17T00:00:00+00:00",
+      "details": {
+        "gap_count": 2846,
+        "threshold": 0
+      },
+      "error": null,
+      "name": "verify_reconciliation",
+      "started_at": "2026-04-17T00:00:00+00:00",
+      "status": "blocked"
+    }
+  ],
+  "tenant_id": "00000000-0000-0000-0000-000000000001",
+  "validation_json_path": "/Volumes/2T_SSD_App/Projects/UltrERP/_bmad-output/validation/legacy-import/raw_legacy-00000000-0000-0000-0000-000000000001-cao50001-live-refresh-attempt-3-validation.json",
+  "validation_markdown_path": "/Volumes/2T_SSD_App/Projects/UltrERP/_bmad-output/validation/legacy-import/raw_legacy-00000000-0000-0000-0000-000000000001-cao50001-live-refresh-attempt-3-validation.md"
+}

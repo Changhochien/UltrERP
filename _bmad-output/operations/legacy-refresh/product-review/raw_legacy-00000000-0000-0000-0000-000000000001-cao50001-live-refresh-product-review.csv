@@ -1,0 +1,229 @@
+batch_id,legacy_code,affected_row_count,current_target_code,current_resolution_type,current_confidence,candidate_rank,candidate_code,candidate_confidence,candidate_heuristic,review_status,approved_target_code,review_notes
+cao50001-live-refresh,運費,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,000,2,UNKNOWN,unknown,0.00,1,0000,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,000,2,UNKNOWN,unknown,0.00,2,0001,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,000,2,UNKNOWN,unknown,0.00,3,0005,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,000,2,UNKNOWN,unknown,0.00,4,0006,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,000,2,UNKNOWN,unknown,0.00,5,1000VC 31-28,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,225L*22M/M,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,23100-0040,5,UNKNOWN,unknown,0.00,1,0000,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,23100-0040,5,UNKNOWN,unknown,0.00,2,004,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,23100-9010-M1,4,UNKNOWN,unknown,0.00,1,009,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,23100-9010-M1,4,UNKNOWN,unknown,0.00,2,010,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,23100GAKA9010,2,UNKNOWN,unknown,0.00,1,010,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,3V-0630-M,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,3V-0710-M,3,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,3V0710-2,27,UNKNOWN,unknown,0.00,1,3V0710-2R,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,3V0750-2,21,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,3V0800-1,6,UNKNOWN,unknown,0.00,1,001,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,670VA 22-22,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,850VB,1,UNKNOWN,unknown,0.00,1,850VB 30-22,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,8M-560*25M/M3,1,UNKNOWN,unknown,0.00,1,8M-560*25M/M,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,8M-800*21M/M,1,UNKNOWN,unknown,0.00,1,002,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,925VB 30-22,8,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,BMT,1,UNKNOWN,unknown,0.00,1,BMT-04C02,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,BMT,1,UNKNOWN,unknown,0.00,2,BMT-17.2*716,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,BMT,1,UNKNOWN,unknown,0.00,3,BMT-17.5*715,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,BMT,1,UNKNOWN,unknown,0.00,4,BMT-18*725,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,BMT,1,UNKNOWN,unknown,0.00,5,BMT-19.5*750,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,BMT-GE8達可達,2,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,BMT-GMO,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,BMT-GWD-23100,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,BMT-GWO-23100,1,UNKNOWN,unknown,0.00,1,BMT-GWO,0.85,strip-trailing-hyphen-segment,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,BS022,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,J6-550,1,UNKNOWN,unknown,0.00,1,J6-550 LJ,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA015-3,3,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA015-4,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA016-1,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA016-3,10,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA017-1,2,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA017-3,29,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA019-3,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA027-1,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA029-5,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA033-4,2,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA033-5,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA036-1,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA036-5,2,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA038-1,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA039-5,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA042-1,2,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA045-5,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA046-1,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA047-1,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA052-1,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA052-5,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA056-1,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA057-1,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA059-1,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA061-1,2,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA061-4,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA067-5,2,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA074-5,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA115-5,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA118-5,3,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA120-5,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LA188-4,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LB039-5,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LB052-4,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LB059-4,2,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LB062-5,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LB063-5,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LB064-5,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LB076-5,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LB096-5,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LB113-4,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LB143-5,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LB144-5,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LB168-5,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LB169-5,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LB375,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LB380-3,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LC038-1,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LC040-4,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LC047-4,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LC048-4,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LC069-A8,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LC081-4,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LC089-5,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LC110-4,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LC130-5,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LC190-5,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LE140-3,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LE140-5,4,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LF033-1,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LF073-5,7,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LK011.8,1,UNKNOWN,unknown,0.00,1,011,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LK013,6,UNKNOWN,unknown,0.00,1,LK013-3,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LK024,2,UNKNOWN,unknown,0.00,1,LK024-3,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LK024,2,UNKNOWN,unknown,0.00,2,LK024-4,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LK027.5-4,14,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LM014-5,16,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LM018.4-5,16,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LM019.5,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LM021.5-5,6,UNKNOWN,unknown,0.00,1,LM021-5,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LM028-1,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LM031-5,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,LM032-1,5,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N1 OA041,1,UNKNOWN,unknown,0.00,1,A041,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N1 OH M-31,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N1 PA050,1,UNKNOWN,unknown,0.00,1,PA050,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N1 PB050,2,UNKNOWN,unknown,0.00,1,PB050,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N1A038-1,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N1B046-1,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N3 OA043,4,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N3 OC090,2,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N3 OM026,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N3 OM027,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N3 PA050,2,UNKNOWN,unknown,0.00,1,PA050,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N3 PA225,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N3 PB050,3,UNKNOWN,unknown,0.00,1,PB050,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N3 PC-168,1,UNKNOWN,unknown,0.00,1,PC168,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N33V-820,7,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N3C242,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N3OHB108,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N3OHB120,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N3OHC113,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N3PE-140,3,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N3SPA-1232,1,UNKNOWN,unknown,0.00,1,PA123,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N3SPC-3250,2,UNKNOWN,unknown,0.00,1,PC325,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N4A220,2,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N4B103,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N5A046,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N5A067,2,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N5A118,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N5A120,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N5B087,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N5B091,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N5B098,1,UNKNOWN,unknown,0.00,1,098,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N5BO050,1,UNKNOWN,unknown,0.00,1,BO050,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N5C118,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N5C119,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N5C137,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N5K035,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,N5M058,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,NAO081-3,1,UNKNOWN,unknown,0.00,1,AO081,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,NM018.4-5,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,NM019.5-5,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,NOM020.5-5,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,NOM021.5-5,2,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,NVT-100*1610,1,UNKNOWN,unknown,0.00,1,001,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,NVT-193,2,UNKNOWN,unknown,0.00,1,NVT-193 1400,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,NVT-193,2,UNKNOWN,unknown,0.00,2,NVT-193 1610,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,NVT-193,2,UNKNOWN,unknown,0.00,3,NVT-193 1905,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,NVT-193,2,UNKNOWN,unknown,0.00,4,NVT-193 2159,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,NVT-193,2,UNKNOWN,unknown,0.00,5,NVT-193 2160,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,OC119,1,UNKNOWN,unknown,0.00,1,OC119-3,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,OC130,1,UNKNOWN,unknown,0.00,1,OC130-3,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,P3VX-0475OH,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,P5V-0600,1,UNKNOWN,unknown,0.00,1,P5V-0600 OH,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,P5V-0850,1,UNKNOWN,unknown,0.00,1,P5V-0850 OH,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,P5V-0850,1,UNKNOWN,unknown,0.00,2,P5V-0850-3R,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,P5V-0890,1,UNKNOWN,unknown,0.00,1,P5V-0890 OH,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,P5V-0900,2,UNKNOWN,unknown,0.00,1,P5V-0900 OH,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,P5V-0900,2,UNKNOWN,unknown,0.00,2,P5V-0900-3R,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,P5V-1120,1,UNKNOWN,unknown,0.00,1,P5V-1120 OH,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,P5V-1120,1,UNKNOWN,unknown,0.00,2,P5V-1120-3R,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,P5V-1320,1,UNKNOWN,unknown,0.00,1,P5V-1320 OH,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,P5V-1400,1,UNKNOWN,unknown,0.00,1,P5V-1400 OH,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,P5V-1400,1,UNKNOWN,unknown,0.00,2,P5V-1400-3R,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,P5V-1500,1,UNKNOWN,unknown,0.00,1,P5V-1500 OH,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,P5V-1600,4,UNKNOWN,unknown,0.00,1,P5V-1600 OH,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,P8V-4750 OH,1,UNKNOWN,unknown,0.00,1,P8V-4750,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,PB025.5-1,1,UNKNOWN,unknown,0.00,1,PB025.5,0.85,strip-trailing-hyphen-segment,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,PB025.5-1,1,UNKNOWN,unknown,0.00,2,PB025,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,PB025.5-1,1,UNKNOWN,unknown,0.00,3,圓綠帶 5*1米粗面,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,PP0103-I,4,UNKNOWN,unknown,0.00,1,PP0103,0.85,strip-trailing-hyphen-segment,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,PP0103-I,4,UNKNOWN,unknown,0.00,2,010,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,PPM019.5,1,UNKNOWN,unknown,0.00,1,PM019,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,PPM019.5,1,UNKNOWN,unknown,0.00,2,PM019.5,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,PSPA-0950 OH,1,UNKNOWN,unknown,0.00,1,PA095,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,PSPB-2400,2,UNKNOWN,unknown,0.00,1,PB240,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,PSPB-2400,2,UNKNOWN,unknown,0.00,2,PSPB-2400 OH,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,PSPB-3150,3,UNKNOWN,unknown,0.00,1,PB315,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,PSPB-3150,3,UNKNOWN,unknown,0.00,2,PSPB-3150 OH,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,PSPB-3350,5,UNKNOWN,unknown,0.00,1,PB335,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,PSPB-3350,5,UNKNOWN,unknown,0.00,2,PSPB-3350 OH,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,PSPB-3350,5,UNKNOWN,unknown,0.00,3,SPB-3350,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,PSPB-3550,3,UNKNOWN,unknown,0.00,1,PSPB-3550 OH,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,PSPB-3650,1,UNKNOWN,unknown,0.00,1,PSPB-3650 OH,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,PSPB-3750,1,UNKNOWN,unknown,0.00,1,PSPB-3750 OH,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,PSPB-4000,1,UNKNOWN,unknown,0.00,1,PSPB-4000 OH,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,PSPB-4500,1,UNKNOWN,unknown,0.00,1,PSPB-4500 OH,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,PSPC-3350,2,UNKNOWN,unknown,0.00,1,PSPC-3350 OH,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,PSPC-4250,1,UNKNOWN,unknown,0.00,1,PSPC-4250 OH,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,RB023,3,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,RB038-3,3,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,RB045-3,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,RB052-6,101,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,RB101-6,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,RC083-3,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,RC095,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,RH280*26M/M,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,RL150*21M/M,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,RL263*28m/m,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,S-2 9*2230,1,UNKNOWN,unknown,0.00,1,S-2 9*2230MM,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,S4.5M-504,1,UNKNOWN,unknown,0.00,1,S4.5M-504*25,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,S8M-1120*19M/M,1,UNKNOWN,unknown,0.00,1,8M-1120*19M/M,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,S8M-1120*19M/M,1,UNKNOWN,unknown,0.00,2,S8M-1120*19,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,SPA-1457,2,UNKNOWN,unknown,0.00,1,PA145,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,SPA-1457,2,UNKNOWN,unknown,0.00,2,PSPA-1457 OH,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,SPA-1700-5,1,UNKNOWN,unknown,0.00,1,SPA-1700,0.85,strip-trailing-hyphen-segment,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,SPA-1700-5,1,UNKNOWN,unknown,0.00,2,005,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,SPA-1700-5,1,UNKNOWN,unknown,0.00,3,PA170,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,SPC-6000,1,UNKNOWN,unknown,0.00,1,PSPC-6000 OH,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,SPC-6000,1,UNKNOWN,unknown,0.00,2,SPC-6000-3,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,SPZ-1000,1,UNKNOWN,unknown,0.00,1,PSPZ-1000 OH,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,SPZ-1000,1,UNKNOWN,unknown,0.00,2,SPZ-1000-3,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,SPZ-1000,1,UNKNOWN,unknown,0.00,3,SPZ-1000-P,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,SPZ-1462,3,UNKNOWN,unknown,0.00,1,PSPZ-1462 OH,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,SPZ-1462,3,UNKNOWN,unknown,0.00,2,SPZ-1462-3,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,SPZ-1462,3,UNKNOWN,unknown,0.00,3,SPZ-1462-P,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,SPZ-1487-2,1,UNKNOWN,unknown,0.00,1,SPZ-1487,0.85,strip-trailing-hyphen-segment,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,SPZ-1900,2,UNKNOWN,unknown,0.00,1,PSPZ-1900 OH,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,SPZ-1900,2,UNKNOWN,unknown,0.00,2,SPZ-1900-3,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,VA915,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,VD740 41,1,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,VMB030,2,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,VS16*573,2,UNKNOWN,unknown,0.00,,,,,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
+cao50001-live-refresh,XL120*5M/M PU,1,UNKNOWN,unknown,0.00,1,XL120*5M/M,0.60,normalized-substring,,,Seeded from tbsslipdtx.col_7 orphan analysis; retained on UNKNOWN until an analyst approves a mapping.
