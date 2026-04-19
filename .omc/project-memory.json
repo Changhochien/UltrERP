@@ -394,6 +394,12 @@
       "type": "directory"
     },
     {
+      "path": "src/pages/inventory",
+      "accessCount": 3,
+      "lastAccessed": 1776527632089,
+      "type": "directory"
+    },
+    {
       "path": "backend/pyproject.toml",
       "accessCount": 2,
       "lastAccessed": 1776500865045,
@@ -596,12 +602,6 @@
       "accessCount": 1,
       "lastAccessed": 1776501996132,
       "type": "file"
-    },
-    {
-      "path": "src/pages/inventory",
-      "accessCount": 1,
-      "lastAccessed": 1776502530194,
-      "type": "directory"
     },
     {
       "path": "src/domain/inventory/components",
