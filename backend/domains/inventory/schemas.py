@@ -64,6 +64,27 @@ class TransferResponse(BaseModel):
     notes: str | None
     created_at: datetime
 
+class TransferHistoryItem(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    product_id: uuid.UUID
+    product_code: str
+    product_name: str
+    from_warehouse_id: uuid.UUID
+    from_warehouse_name: str
+    from_warehouse_code: str
+    to_warehouse_id: uuid.UUID
+    to_warehouse_name: str
+    to_warehouse_code: str
+    quantity: int
+    actor_id: str
+    notes: str | None
+    created_at: datetime
+
+class TransferHistoryListResponse(BaseModel):
+    items: list[TransferHistoryItem]
+    total: int
+
 
 # --- Inventory stock schemas ---
 
@@ -199,6 +220,36 @@ class ProductSupplierResponse(BaseModel):
     default_lead_time_days: int | None = None
 
 
+class ProductSupplierAssociationCreate(BaseModel):
+    supplier_id: uuid.UUID
+    unit_cost: float | None = Field(None, ge=0)
+    lead_time_days: int | None = Field(None, ge=0)
+    is_default: bool = False
+
+
+class ProductSupplierAssociationUpdate(BaseModel):
+    unit_cost: float | None = Field(None, ge=0)
+    lead_time_days: int | None = Field(None, ge=0)
+    is_default: bool | None = None
+
+
+class ProductSupplierAssociationResponse(BaseModel):
+    id: uuid.UUID
+    product_id: uuid.UUID
+    supplier_id: uuid.UUID
+    supplier_name: str
+    unit_cost: float | None = None
+    lead_time_days: int | None = None
+    is_default: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class ProductSupplierAssociationListResponse(BaseModel):
+    items: list[ProductSupplierAssociationResponse]
+    total: int
+
+
 # --- Category schemas ---
 
 
@@ -207,11 +258,12 @@ class CategoryBase(BaseModel):
 
 
 class CategoryCreate(CategoryBase):
-    pass
+    translations: dict[str, str] = Field(default_factory=dict)
 
 
-class CategoryUpdate(CategoryBase):
-    pass
+class CategoryUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    translations: dict[str, str] | None = None
 
 
 class CategoryStatusUpdate(BaseModel):
@@ -219,11 +271,12 @@ class CategoryStatusUpdate(BaseModel):
 
 
 class CategoryResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
     id: uuid.UUID
     tenant_id: uuid.UUID
     name: str
+    name_en: str
+    name_zh_hant: str | None = None
+    translations: dict[str, str]
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -234,6 +287,45 @@ class CategoryListResponse(BaseModel):
     total: int
 
 
+# --- Unit of measure schemas ---
+
+
+class UnitOfMeasureBase(BaseModel):
+    code: str = Field(..., min_length=1, max_length=50)
+    name: str = Field(..., min_length=1, max_length=200)
+    decimal_places: int = Field(default=0, ge=0, le=6)
+
+
+class UnitOfMeasureCreate(UnitOfMeasureBase):
+    pass
+
+
+class UnitOfMeasureUpdate(UnitOfMeasureBase):
+    pass
+
+
+class UnitOfMeasureStatusUpdate(BaseModel):
+    is_active: bool
+
+
+class UnitOfMeasureResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    code: str
+    name: str
+    decimal_places: int
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class UnitOfMeasureListResponse(BaseModel):
+    items: list[UnitOfMeasureResponse]
+    total: int
+
+
 # --- Product search schemas ---
 
 
@@ -241,6 +333,7 @@ class ProductSearchResult(BaseModel):
     id: uuid.UUID
     code: str
     name: str
+    category_id: uuid.UUID | None = None
     category: str | None
     status: str
     current_stock: int
@@ -258,17 +351,19 @@ class ProductSearchResponse(BaseModel):
 class ProductCreate(BaseModel):
     code: str = Field(..., min_length=1, max_length=100)
     name: str = Field(..., min_length=1, max_length=500)
-    category: str | None = Field(None, max_length=200)
+    category_id: uuid.UUID | None = None
     description: str | None = None
     unit: str = Field(default="pcs", max_length=50)
+    standard_cost: Decimal | None = Field(default=None, ge=0, max_digits=19, decimal_places=4)
 
 
 class ProductUpdate(BaseModel):
     code: str = Field(..., min_length=1, max_length=100)
     name: str = Field(..., min_length=1, max_length=500)
-    category: str | None = Field(None, max_length=200)
+    category_id: uuid.UUID | None = None
     description: str | None = None
     unit: str = Field(..., min_length=1, max_length=50)
+    standard_cost: Decimal | None = Field(default=None, ge=0, max_digits=19, decimal_places=4)
 
 
 class ProductStatusUpdate(BaseModel):
@@ -281,9 +376,11 @@ class ProductResponse(BaseModel):
     id: uuid.UUID
     code: str
     name: str
+    category_id: uuid.UUID | None = None
     category: str | None
     description: str | None
     unit: str
+    standard_cost: Decimal | None = None
     status: str
     created_at: datetime
 
@@ -323,9 +420,11 @@ class ProductDetailResponse(BaseModel):
     id: uuid.UUID
     code: str
     name: str
+    category_id: uuid.UUID | None = None
     category: str | None
     description: str | None
     unit: str
+    standard_cost: Decimal | None = None
     status: str
     legacy_master_snapshot: dict[str, Any] | None = None
     total_stock: int
@@ -374,6 +473,57 @@ class ReasonCodeListResponse(BaseModel):
     items: list[ReasonCodeItem]
 
 
+# --- Physical count schemas ---
+
+
+class PhysicalCountSessionCreate(BaseModel):
+    warehouse_id: uuid.UUID
+
+
+class PhysicalCountLineUpdateRequest(BaseModel):
+    counted_qty: int = Field(..., ge=0)
+    notes: str | None = Field(None, max_length=1000)
+
+
+class PhysicalCountLineResponse(BaseModel):
+    id: uuid.UUID
+    product_id: uuid.UUID
+    product_code: str | None = None
+    product_name: str | None = None
+    system_qty_snapshot: int
+    counted_qty: int | None
+    variance_qty: int | None
+    notes: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class PhysicalCountSessionSummary(BaseModel):
+    id: uuid.UUID
+    warehouse_id: uuid.UUID
+    warehouse_name: str | None = None
+    status: Literal["in_progress", "submitted", "approved"]
+    created_by: str
+    submitted_by: str | None
+    submitted_at: datetime | None
+    approved_by: str | None
+    approved_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+    total_lines: int
+    counted_lines: int
+    variance_total: int
+
+
+class PhysicalCountSessionResponse(PhysicalCountSessionSummary):
+    lines: list[PhysicalCountLineResponse]
+
+
+class PhysicalCountSessionListResponse(BaseModel):
+    items: list[PhysicalCountSessionSummary]
+    total: int
+
+
 # --- Reorder alert schemas ---
 
 
@@ -418,6 +568,104 @@ class ReorderAlertListResponse(BaseModel):
     total: int
 
 
+class ReorderSuggestionSupplierHint(BaseModel):
+    supplier_id: uuid.UUID
+    name: str
+    unit_cost: float | None = None
+    default_lead_time_days: int | None = None
+
+
+class ReorderSuggestionItem(BaseModel):
+    product_id: uuid.UUID
+    product_code: str
+    product_name: str
+    warehouse_id: uuid.UUID
+    warehouse_name: str
+    current_stock: int
+    reorder_point: int
+    inventory_position: int
+    target_stock_qty: int | None
+    suggested_qty: int
+    supplier_hint: ReorderSuggestionSupplierHint | None = None
+
+
+class ReorderSuggestionListResponse(BaseModel):
+    items: list[ReorderSuggestionItem]
+    total: int
+
+
+class ReorderSuggestionOrderRequestItem(BaseModel):
+    product_id: uuid.UUID
+    warehouse_id: uuid.UUID
+    suggested_qty: int = Field(..., gt=0)
+
+
+class CreateReorderSuggestionOrdersRequest(BaseModel):
+    items: list[ReorderSuggestionOrderRequestItem] = Field(..., min_length=1)
+
+
+class ReorderSuggestionCreatedOrder(BaseModel):
+    order_id: uuid.UUID
+    order_number: str
+    supplier_id: uuid.UUID
+    supplier_name: str
+    line_count: int
+
+
+class CreateReorderSuggestionOrdersResponse(BaseModel):
+    created_orders: list[ReorderSuggestionCreatedOrder]
+    unresolved_rows: list[ReorderSuggestionItem]
+
+
+class BelowReorderReportItem(BaseModel):
+    product_id: uuid.UUID
+    product_code: str
+    product_name: str
+    category: str | None = None
+    warehouse_id: uuid.UUID
+    warehouse_name: str
+    current_stock: int
+    reorder_point: int
+    shortage_qty: int
+    on_order_qty: int
+    in_transit_qty: int
+    default_supplier: str | None = None
+
+
+class BelowReorderReportResponse(BaseModel):
+    items: list[BelowReorderReportItem]
+    total: int
+
+
+class InventoryValuationItem(BaseModel):
+    product_id: uuid.UUID
+    product_code: str
+    product_name: str
+    category: str | None = None
+    warehouse_id: uuid.UUID
+    warehouse_name: str
+    quantity: int
+    unit_cost: Decimal | None = None
+    extended_value: Decimal
+    cost_source: Literal["standard_cost", "latest_purchase", "missing"]
+
+
+class InventoryValuationWarehouseTotal(BaseModel):
+    warehouse_id: uuid.UUID
+    warehouse_name: str
+    total_quantity: int
+    total_value: Decimal
+    row_count: int
+
+
+class InventoryValuationResponse(BaseModel):
+    items: list[InventoryValuationItem]
+    warehouse_totals: list[InventoryValuationWarehouseTotal]
+    grand_total_value: Decimal
+    grand_total_quantity: int
+    total_rows: int
+
+
 class AcknowledgeAlertResponse(BaseModel):
     id: uuid.UUID
     status: str
@@ -444,6 +692,26 @@ class DismissAlertResponse(BaseModel):
 
 
 # --- Supplier schemas ---
+
+
+class SupplierBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=300)
+    contact_email: str | None = Field(default=None, max_length=255)
+    phone: str | None = Field(default=None, max_length=50)
+    address: str | None = Field(default=None, max_length=500)
+    default_lead_time_days: int | None = Field(default=None, ge=0)
+
+
+class SupplierCreate(SupplierBase):
+    pass
+
+
+class SupplierUpdate(SupplierBase):
+    pass
+
+
+class SupplierStatusUpdate(BaseModel):
+    is_active: bool
 
 
 class SupplierResponse(BaseModel):

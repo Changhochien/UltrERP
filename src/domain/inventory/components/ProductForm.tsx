@@ -4,6 +4,7 @@ import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Textarea } from "../../../components/ui/textarea";
 import { CategoryCombobox } from "./CategoryCombobox";
+import { UnitCombobox } from "./UnitCombobox";
 import type { ProductResponse, ProductUpdate } from "../types";
 
 export interface ProductFormFieldError {
@@ -18,9 +19,11 @@ export type ProductFormSubmitResult =
 export interface ProductFormValues {
   code: string;
   name: string;
-  category: string;
+  category_id: string | null;
+  category_name: string;
   description: string;
   unit: string;
+  standard_cost: string;
 }
 
 interface ProductFormProps {
@@ -35,9 +38,11 @@ interface ProductFormProps {
 const DEFAULT_VALUES: ProductFormValues = {
   code: "",
   name: "",
-  category: "",
+  category_id: null,
+  category_name: "",
   description: "",
   unit: "pcs",
+  standard_cost: "",
 };
 
 function toErrorMap(errors: ProductFormFieldError[]): Record<string, string> {
@@ -66,17 +71,21 @@ export function ProductForm({
     setFormData({
       code: initialValues?.code ?? DEFAULT_VALUES.code,
       name: initialValues?.name ?? DEFAULT_VALUES.name,
-      category: initialValues?.category ?? DEFAULT_VALUES.category,
+      category_id: initialValues?.category_id ?? DEFAULT_VALUES.category_id,
+      category_name: initialValues?.category_name ?? DEFAULT_VALUES.category_name,
       description: initialValues?.description ?? DEFAULT_VALUES.description,
       unit: initialValues?.unit ?? DEFAULT_VALUES.unit,
+      standard_cost: initialValues?.standard_cost ?? DEFAULT_VALUES.standard_cost,
     });
     setErrors({});
     setServerError(null);
   }, [
-    initialValues?.category,
+    initialValues?.category_id,
+    initialValues?.category_name,
     initialValues?.code,
     initialValues?.description,
     initialValues?.name,
+    initialValues?.standard_cost,
     initialValues?.unit,
   ]);
 
@@ -90,6 +99,15 @@ export function ProductForm({
     }
     if (!values.unit.trim()) {
       nextErrors.unit = "Unit is required";
+    }
+    const standardCost = values.standard_cost.trim();
+    if (standardCost) {
+      const parsedValue = Number(standardCost);
+      if (!Number.isFinite(parsedValue)) {
+        nextErrors.standard_cost = "Standard cost must be a valid number";
+      } else if (parsedValue < 0) {
+        nextErrors.standard_cost = "Standard cost must be greater than or equal to 0";
+      }
     }
     return nextErrors;
   }
@@ -109,9 +127,10 @@ export function ProductForm({
       const result = await onSubmit({
         code: formData.code.trim(),
         name: formData.name.trim(),
-        category: formData.category.trim(),
+        category_id: formData.category_id,
         description: formData.description.trim(),
         unit: formData.unit.trim(),
+        standard_cost: formData.standard_cost.trim() ? formData.standard_cost.trim() : null,
       });
 
       if (result.ok) {
@@ -173,9 +192,12 @@ export function ProductForm({
           <CategoryCombobox
             inputId="product-category-trigger"
             ariaLabelledBy="product-category-label"
-            value={formData.category}
-            onChange={(category) => setFormData((current) => ({ ...current, category }))}
-            onClear={() => setFormData((current) => ({ ...current, category: "" }))}
+            value={formData.category_id}
+            valueLabel={formData.category_name}
+            onChange={(category_id, category_name) =>
+              setFormData((current) => ({ ...current, category_id, category_name }))
+            }
+            onClear={() => setFormData((current) => ({ ...current, category_id: null, category_name: "" }))}
             placeholder="Search or create category…"
             allowCreate
             disabled={isSubmitting}
@@ -198,18 +220,37 @@ export function ProductForm({
       </div>
 
       <div>
-        <label htmlFor="product-unit" className="block text-sm font-medium">
+        <label id="product-unit-label" className="block text-sm font-medium">
           Unit <span className="text-destructive">*</span>
         </label>
+        <div id="product-unit" className="mt-1">
+          <UnitCombobox
+            inputId="product-unit-trigger"
+            ariaLabelledBy="product-unit-label"
+            value={formData.unit}
+            onChange={(unit) => setFormData((current) => ({ ...current, unit }))}
+            onClear={() => setFormData((current) => ({ ...current, unit: "" }))}
+            placeholder="Search unit…"
+            disabled={isSubmitting}
+          />
+        </div>
+        {errors.unit && <p className="mt-1 text-sm text-destructive">{errors.unit}</p>}
+      </div>
+
+      <div>
+        <label htmlFor="product-standard-cost" className="block text-sm font-medium">
+          Standard Cost
+        </label>
         <Input
-          id="product-unit"
+          id="product-standard-cost"
           type="text"
-          value={formData.unit}
-          onChange={(event) => setFormData((current) => ({ ...current, unit: event.target.value }))}
-          aria-invalid={Boolean(errors.unit)}
+          inputMode="decimal"
+          value={formData.standard_cost}
+          onChange={(event) => setFormData((current) => ({ ...current, standard_cost: event.target.value }))}
+          aria-invalid={Boolean(errors.standard_cost)}
           disabled={isSubmitting}
         />
-        {errors.unit && <p className="mt-1 text-sm text-destructive">{errors.unit}</p>}
+        {errors.standard_cost && <p className="mt-1 text-sm text-destructive">{errors.standard_cost}</p>}
       </div>
 
       <div className="flex gap-2">

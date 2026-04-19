@@ -25,21 +25,10 @@ import { SettingsTab } from "@/domain/inventory/components/SettingsTab";
 import { AuditLogTable } from "@/domain/inventory/components/AuditLogTable";
 import { useProductAuditLog } from "@/domain/inventory/hooks/useProductAuditLog";
 import { setProductStatus } from "@/lib/api/inventory";
-import { INVENTORY_ROUTE } from "@/lib/routes";
+import { buildInventoryTransfersPath, INVENTORY_ROUTE } from "@/lib/routes";
 import { parseBackendDate } from "@/lib/time";
+import { getStatusVariant } from "@/domain/inventory/utils";
 import type { WarehouseStockInfo } from "@/domain/inventory/types";
-
-function getStatusVariant(
-  stock: number,
-  reorderPoint: number,
-  productStatus: string,
-): "healthy" | "warning" | "critical" | "inactive" {
-  if (productStatus !== "active") return "inactive";
-  if (stock === 0) return "critical";
-  if (stock < reorderPoint * 0.5) return "critical";
-  if (stock < reorderPoint) return "warning";
-  return "healthy";
-}
 
 function StockHealthBar({ warehouses }: { warehouses: WarehouseStockInfo[] }) {
   const { t } = useTranslation("common", { keyPrefix: "inventory.productDetail" });
@@ -280,6 +269,18 @@ function ProductDetailContent({ productId }: { productId: string }) {
                 >
                   {t(`statuses.${product.status}`, { defaultValue: product.status })}
                 </Badge>
+                <Badge
+                  variant="outline"
+                  style={{
+                    borderColor: "var(--inv-border)",
+                    color: "var(--inv-muted)",
+                    background: "transparent",
+                  }}
+                >
+                  {product.standard_cost
+                    ? t("standardCost", { amount: product.standard_cost })
+                    : t("missingStandardCost")}
+                </Badge>
               </div>
               {product.description && (
                 <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
@@ -367,6 +368,14 @@ function ProductDetailContent({ productId }: { productId: string }) {
                       {t("unitLabel")}
                     </dt>
                     <dd className="mt-1 text-sm font-medium text-foreground">{product.unit}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      {t("standardCostLabel")}
+                    </dt>
+                    <dd className="mt-1 text-sm font-medium text-foreground">
+                      {product.standard_cost ?? t("missingStandardCost")}
+                    </dd>
                   </div>
                   <div className="sm:col-span-2">
                     <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -465,7 +474,16 @@ function ProductDetailContent({ productId }: { productId: string }) {
                     <SlidersHorizontal size={14} />
                     {t("adjustStock")}
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(
+                      buildInventoryTransfersPath(
+                        product.id,
+                        selectedWarehouse?.id ?? product.warehouses[0]?.warehouse_id,
+                      ),
+                    )}
+                  >
                     <ArrowRightLeft size={14} />
                     {t("transfer")}
                   </Button>

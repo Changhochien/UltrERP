@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import csv
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
+from io import StringIO
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,12 +19,15 @@ from common.database import get_db
 from common.errors import (
     DuplicateCategoryNameError,
     DuplicateProductCodeError,
+    DuplicateUnitCodeError,
     ValidationError,
     duplicate_category_name_response,
     duplicate_product_code_response,
+    duplicate_unit_code_response,
     error_response,
 )
 from common.models.inventory_stock import InventoryStock
+from common.models.physical_count_session import PhysicalCountSessionStatus
 from common.models.product import Product
 from common.models.stock_adjustment import ReasonCode
 from common.tenant import get_tenant_id
@@ -39,6 +44,16 @@ from domains.inventory.schemas import (
     USER_SELECTABLE_REASON_CODES,
     AcknowledgeAlertResponse,
     AuditLogListResponse,
+    BelowReorderReportItem,
+    BelowReorderReportResponse,
+    InventoryValuationItem,
+    InventoryValuationResponse,
+    InventoryValuationWarehouseTotal,
+    PhysicalCountLineUpdateRequest,
+    PhysicalCountSessionCreate,
+    PhysicalCountSessionListResponse,
+    PhysicalCountSessionResponse,
+    PhysicalCountSessionSummary,
     CategoryCreate,
     CategoryListResponse,
     CategoryResponse,
@@ -48,11 +63,17 @@ from domains.inventory.schemas import (
     InventoryStockResponse,
     MonthlyDemandResponse,
     PlanningSupportResponse,
+    CreateReorderSuggestionOrdersRequest,
+    CreateReorderSuggestionOrdersResponse,
     ProductCreate,
     ProductDetailResponse,
     ProductResponse,
     ProductSearchResponse,
     ProductSearchResult,
+    ProductSupplierAssociationCreate,
+    ProductSupplierAssociationListResponse,
+    ProductSupplierAssociationResponse,
+    ProductSupplierAssociationUpdate,
     ProductStatusUpdate,
     ProductSupplierResponse,
     ProductUpdate,
@@ -61,6 +82,8 @@ from domains.inventory.schemas import (
     ReceiveOrderRequest,
     ReorderAlertItem,
     ReorderAlertListResponse,
+    ReorderSuggestionItem,
+    ReorderSuggestionListResponse,
     ReorderPointApplyRequest,
     ReorderPointApplyResponse,
     ReorderPointComputeRequest,
@@ -75,13 +98,23 @@ from domains.inventory.schemas import (
     StockHistoryResponse,
     StockSettingsUpdateRequest,
     SupplierListResponse,
+    SupplierCreate,
     SupplierOrderCreate,
     SupplierOrderListResponse,
     SupplierOrderResponse,
     SupplierResponse,
+    SupplierStatusUpdate,
+    SupplierUpdate,
     TopCustomerResponse,
     TransferRequest,
     TransferResponse,
+    TransferHistoryItem,
+    TransferHistoryListResponse,
+    UnitOfMeasureCreate,
+    UnitOfMeasureListResponse,
+    UnitOfMeasureResponse,
+    UnitOfMeasureStatusUpdate,
+    UnitOfMeasureUpdate,
     UpdateOrderStatusRequest,
     WarehouseCreate,
     WarehouseList,
@@ -89,44 +122,87 @@ from domains.inventory.schemas import (
 )
 from domains.inventory.services import (
     InsufficientStockError,
+    PhysicalCountConflictError,
+    PhysicalCountNotFoundError,
+    PhysicalCountStateError,
     TransferValidationError,
     acknowledge_alert,
+    approve_physical_count_session,
     create_category,
     create_product,
+    create_physical_count_session,
     create_stock_adjustment,
     create_supplier_order,
     create_warehouse,
+    get_inventory_valuation,
+    list_below_reorder_products,
+    create_reorder_suggestion_orders,
     dismiss_alert,
+    delete_product_supplier,
+    create_supplier,
+    create_product_supplier,
+    get_physical_count_session,
     get_category,
     get_inventory_stocks,
     get_monthly_demand,
+    get_unit,
+    get_transfer,
     get_planning_support,
     get_product_audit_log,
     get_product_detail,
     get_product_supplier,
     get_sales_history,
     get_stock_history,
+    get_supplier,
     get_supplier_order,
     get_top_customer,
     get_warehouse,
+    list_physical_count_sessions,
     list_categories,
+    list_product_suppliers,
     list_reorder_alerts,
+    list_reorder_suggestions,
     list_supplier_orders,
     list_suppliers,
+    list_transfers,
+    list_units,
     list_warehouses,
     receive_supplier_order,
+    resolve_category_locale,
     search_products,
+    serialize_category,
     set_category_status,
     set_product_status,
+    set_supplier_status,
+    set_unit_status,
     snooze_alert,
+    submit_physical_count_session,
     transfer_stock,
+    update_physical_count_line,
     update_category,
     update_product,
+    update_product_supplier,
+    update_supplier,
+    update_unit,
     update_stock_settings,
     update_supplier_order_status,
+    create_unit,
 )
 
 router = APIRouter()
+
+_BELOW_REORDER_CSV_HEADERS = [
+    "Product Code",
+    "Product Name",
+    "Category",
+    "Warehouse",
+    "Current Stock",
+    "Reorder Point",
+    "Shortage Qty",
+    "On Order Qty",
+    "In Transit Qty",
+    "Default Supplier",
+]
 
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
@@ -135,6 +211,17 @@ ReadUser = Annotated[dict, Depends(require_role("admin", "warehouse", "sales"))]
 WriteUser = Annotated[dict, Depends(require_role("admin", "warehouse"))]
 
 ACTOR_ID = "system"
+
+
+def _requested_category_locale(
+    locale: str | None,
+    accept_language: str | None,
+) -> str:
+    return resolve_category_locale(locale, accept_language)
+
+
+def _current_actor_id(user: dict) -> str:
+    return str(user.get("sub") or ACTOR_ID)
 
 
 def _require_feature_enabled(enabled: bool, detail: str) -> None:
@@ -148,6 +235,30 @@ def _api_reason_code(value: str) -> str:
 
 def _enum_reason_code(value: str) -> ReasonCode:
     return ReasonCode(value.upper())
+
+
+def _build_below_reorder_csv(items: list[dict]) -> bytes:
+    output = StringIO(newline="")
+    writer = csv.writer(output)
+    writer.writerow(_BELOW_REORDER_CSV_HEADERS)
+    for item in items:
+        writer.writerow(
+            [
+                item["product_code"],
+                item["product_name"],
+                item.get("category") or "",
+                item["warehouse_name"],
+                item["current_stock"],
+                item["reorder_point"],
+                item["shortage_qty"],
+                item["on_order_qty"],
+                item["in_transit_qty"],
+                item.get("default_supplier") or "",
+            ]
+        )
+    return ("\ufeff" + output.getvalue()).encode("utf-8")
+
+
 # ── Warehouse endpoints ───────────────────────────────────────
 
 
@@ -226,7 +337,7 @@ async def create_warehouse_endpoint(
 async def create_transfer_endpoint(
     data: TransferRequest,
     session: DbSession,
-    _user: WriteUser,
+    user: WriteUser,
     tenant_id: CurrentTenant,
 ) -> TransferResponse:
     try:
@@ -237,7 +348,7 @@ async def create_transfer_endpoint(
             to_warehouse_id=data.to_warehouse_id,
             product_id=data.product_id,
             quantity=data.quantity,
-            actor_id=ACTOR_ID,
+            actor_id=_current_actor_id(user),
             notes=data.notes,
         )
         await session.commit()
@@ -256,6 +367,205 @@ async def create_transfer_endpoint(
                 "requested": exc.requested,
             },
         ) from exc
+
+
+@router.get(
+    "/transfers",
+    response_model=TransferHistoryListResponse,
+)
+async def list_transfers_endpoint(
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+    product_id: uuid.UUID | None = Query(default=None),
+    warehouse_id: uuid.UUID | None = Query(default=None),
+    limit: int = Query(100, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+) -> TransferHistoryListResponse:
+    items, total = await list_transfers(
+        session,
+        tenant_id,
+        product_id=product_id,
+        warehouse_id=warehouse_id,
+        limit=limit,
+        offset=offset,
+    )
+    return TransferHistoryListResponse(
+        items=[TransferHistoryItem(**item) for item in items],
+        total=total,
+    )
+
+
+@router.get(
+    "/transfers/{transfer_id}",
+    response_model=TransferHistoryItem,
+)
+async def get_transfer_endpoint(
+    transfer_id: uuid.UUID,
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+) -> TransferHistoryItem:
+    transfer = await get_transfer(session, tenant_id, transfer_id)
+    if transfer is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transfer not found")
+    return TransferHistoryItem(**transfer)
+
+
+# ── Physical count endpoints ──────────────────────────────────
+
+
+@router.post(
+    "/count-sessions",
+    response_model=PhysicalCountSessionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_count_session_endpoint(
+    data: PhysicalCountSessionCreate,
+    session: DbSession,
+    user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> PhysicalCountSessionResponse:
+    try:
+        result = await create_physical_count_session(
+            session,
+            tenant_id,
+            warehouse_id=data.warehouse_id,
+            actor_id=_current_actor_id(user),
+        )
+        await session.commit()
+        return PhysicalCountSessionResponse.model_validate(result)
+    except PhysicalCountNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PhysicalCountConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+
+@router.get(
+    "/count-sessions",
+    response_model=PhysicalCountSessionListResponse,
+)
+async def list_count_sessions_endpoint(
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+    warehouse_id: uuid.UUID | None = Query(None),
+    status: PhysicalCountSessionStatus | None = Query(
+        None,
+        alias="status",
+    ),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+) -> PhysicalCountSessionListResponse:
+    items, total = await list_physical_count_sessions(
+        session,
+        tenant_id,
+        warehouse_id=warehouse_id,
+        status=status.value if status else None,
+        limit=limit,
+        offset=offset,
+    )
+    return PhysicalCountSessionListResponse(
+        items=[PhysicalCountSessionSummary.model_validate(item) for item in items],
+        total=total,
+    )
+
+
+@router.get(
+    "/count-sessions/{session_id}",
+    response_model=PhysicalCountSessionResponse,
+)
+async def get_count_session_endpoint(
+    session_id: uuid.UUID,
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+) -> PhysicalCountSessionResponse:
+    result = await get_physical_count_session(session, tenant_id, session_id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Physical count session not found")
+    return PhysicalCountSessionResponse.model_validate(result)
+
+
+@router.patch(
+    "/count-sessions/{session_id}/lines/{line_id}",
+    response_model=PhysicalCountSessionResponse,
+)
+async def update_count_session_line_endpoint(
+    session_id: uuid.UUID,
+    line_id: uuid.UUID,
+    data: PhysicalCountLineUpdateRequest,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> PhysicalCountSessionResponse:
+    try:
+        result = await update_physical_count_line(
+            session,
+            tenant_id,
+            session_id,
+            line_id,
+            counted_qty=data.counted_qty,
+            notes=data.notes,
+        )
+        await session.commit()
+        return PhysicalCountSessionResponse.model_validate(result)
+    except PhysicalCountNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PhysicalCountStateError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
+
+
+@router.post(
+    "/count-sessions/{session_id}/submit",
+    response_model=PhysicalCountSessionResponse,
+)
+async def submit_count_session_endpoint(
+    session_id: uuid.UUID,
+    session: DbSession,
+    user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> PhysicalCountSessionResponse:
+    try:
+        result = await submit_physical_count_session(
+            session,
+            tenant_id,
+            session_id,
+            actor_id=_current_actor_id(user),
+        )
+        await session.commit()
+        return PhysicalCountSessionResponse.model_validate(result)
+    except PhysicalCountNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PhysicalCountStateError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
+
+
+@router.post(
+    "/count-sessions/{session_id}/approve",
+    response_model=PhysicalCountSessionResponse,
+)
+async def approve_count_session_endpoint(
+    session_id: uuid.UUID,
+    session: DbSession,
+    user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> PhysicalCountSessionResponse:
+    try:
+        result = await approve_physical_count_session(
+            session,
+            tenant_id,
+            session_id,
+            actor_id=_current_actor_id(user),
+        )
+        await session.commit()
+        return PhysicalCountSessionResponse.model_validate(result)
+    except PhysicalCountNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PhysicalCountStateError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
+    except PhysicalCountConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
 
 # ── Reorder point endpoints ────────────────────────────────────
@@ -514,13 +824,16 @@ async def search_products_endpoint(
     _user: ReadUser,
     tenant_id: CurrentTenant,
     q: str = Query("", max_length=100),
+    category_id: uuid.UUID | None = Query(None),
     category: str | None = Query(None, max_length=200),
+    locale: str | None = Query(None, max_length=10),
     limit: int = Query(20, ge=1, le=500),
     offset: int = Query(0, ge=0),
     warehouse_id: uuid.UUID | None = Query(None),
     include_inactive: bool = Query(False),
     sort_by: str = Query("code", pattern="^(code|name|category|status|current_stock)$"),
     sort_dir: str = Query("asc", pattern="^(asc|desc)$"),
+    accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> ProductSearchResponse:
     stripped = q.strip()
     results, total = await search_products(
@@ -528,7 +841,9 @@ async def search_products_endpoint(
         tenant_id,
         stripped,
         warehouse_id=warehouse_id,
+        category_id=category_id,
         category=category,
+        locale=_requested_category_locale(locale, accept_language),
         include_inactive=include_inactive,
         limit=limit,
         offset=offset,
@@ -556,17 +871,21 @@ async def list_categories_endpoint(
     active_only: bool = Query(True),
     limit: int = Query(100, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    locale: str | None = Query(None, max_length=10),
+    accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> CategoryListResponse:
+    requested_locale = _requested_category_locale(locale, accept_language)
     items, total = await list_categories(
         session,
         tenant_id,
+        locale=requested_locale,
         q=q,
         active_only=active_only,
         limit=limit,
         offset=offset,
     )
     return CategoryListResponse(
-        items=[CategoryResponse.model_validate(item) for item in items],
+        items=[CategoryResponse(**serialize_category(item, requested_locale)) for item in items],
         total=total,
     )
 
@@ -581,16 +900,19 @@ async def create_category_endpoint(
     session: DbSession,
     _user: WriteUser,
     tenant_id: CurrentTenant,
+    locale: str | None = Query(None, max_length=10),
+    accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> CategoryResponse:
+    requested_locale = _requested_category_locale(locale, accept_language)
     try:
-        category = await create_category(session, tenant_id, data)
+        category = await create_category(session, tenant_id, data, locale=requested_locale)
         await session.commit()
     except DuplicateCategoryNameError as exc:
         return JSONResponse(status_code=409, content=duplicate_category_name_response(exc))
     except ValidationError as exc:
         return JSONResponse(status_code=422, content=error_response(exc.errors))
 
-    return CategoryResponse.model_validate(category)
+    return CategoryResponse(**serialize_category(category, requested_locale))
 
 
 @router.get(
@@ -602,14 +924,17 @@ async def get_category_endpoint(
     session: DbSession,
     _user: ReadUser,
     tenant_id: CurrentTenant,
+    locale: str | None = Query(None, max_length=10),
+    accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> CategoryResponse:
+    requested_locale = _requested_category_locale(locale, accept_language)
     category = await get_category(session, tenant_id, category_id)
     if category is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Category not found",
         )
-    return CategoryResponse.model_validate(category)
+    return CategoryResponse(**serialize_category(category, requested_locale))
 
 
 @router.put(
@@ -622,9 +947,18 @@ async def update_category_endpoint(
     session: DbSession,
     _user: WriteUser,
     tenant_id: CurrentTenant,
+    locale: str | None = Query(None, max_length=10),
+    accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> CategoryResponse:
+    requested_locale = _requested_category_locale(locale, accept_language)
     try:
-        category = await update_category(session, tenant_id, category_id, data)
+        category = await update_category(
+            session,
+            tenant_id,
+            category_id,
+            data,
+            locale=requested_locale,
+        )
         if category is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -636,7 +970,7 @@ async def update_category_endpoint(
     except ValidationError as exc:
         return JSONResponse(status_code=422, content=error_response(exc.errors))
 
-    return CategoryResponse.model_validate(category)
+    return CategoryResponse(**serialize_category(category, requested_locale))
 
 
 @router.patch(
@@ -649,7 +983,10 @@ async def update_category_status_endpoint(
     session: DbSession,
     _user: WriteUser,
     tenant_id: CurrentTenant,
+    locale: str | None = Query(None, max_length=10),
+    accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> CategoryResponse:
+    requested_locale = _requested_category_locale(locale, accept_language)
     category = await set_category_status(
         session,
         tenant_id,
@@ -660,10 +997,132 @@ async def update_category_status_endpoint(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Category not found",
+    )
+
+    await session.commit()
+    return CategoryResponse(**serialize_category(category, requested_locale))
+
+
+@router.get(
+    "/units",
+    response_model=UnitOfMeasureListResponse,
+)
+async def list_units_endpoint(
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+    q: str = Query("", max_length=200),
+    active_only: bool = Query(True),
+    limit: int = Query(100, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+) -> UnitOfMeasureListResponse:
+    items, total = await list_units(
+        session,
+        tenant_id,
+        q=q,
+        active_only=active_only,
+        limit=limit,
+        offset=offset,
+    )
+    return UnitOfMeasureListResponse(
+        items=[UnitOfMeasureResponse.model_validate(item) for item in items],
+        total=total,
+    )
+
+
+@router.post(
+    "/units",
+    response_model=UnitOfMeasureResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_unit_endpoint(
+    data: UnitOfMeasureCreate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> UnitOfMeasureResponse | JSONResponse:
+    try:
+        unit = await create_unit(session, tenant_id, data)
+        await session.commit()
+    except DuplicateUnitCodeError as exc:
+        return JSONResponse(status_code=409, content=duplicate_unit_code_response(exc))
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+
+    return UnitOfMeasureResponse.model_validate(unit)
+
+
+@router.get(
+    "/units/{unit_id}",
+    response_model=UnitOfMeasureResponse,
+)
+async def get_unit_endpoint(
+    unit_id: uuid.UUID,
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+) -> UnitOfMeasureResponse:
+    unit = await get_unit(session, tenant_id, unit_id)
+    if unit is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Unit of measure not found",
+        )
+    return UnitOfMeasureResponse.model_validate(unit)
+
+
+@router.put(
+    "/units/{unit_id}",
+    response_model=UnitOfMeasureResponse,
+)
+async def update_unit_endpoint(
+    unit_id: uuid.UUID,
+    data: UnitOfMeasureUpdate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> UnitOfMeasureResponse | JSONResponse:
+    try:
+        unit = await update_unit(session, tenant_id, unit_id, data)
+        if unit is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Unit of measure not found",
+            )
+        await session.commit()
+    except DuplicateUnitCodeError as exc:
+        return JSONResponse(status_code=409, content=duplicate_unit_code_response(exc))
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+
+    return UnitOfMeasureResponse.model_validate(unit)
+
+
+@router.patch(
+    "/units/{unit_id}/status",
+    response_model=UnitOfMeasureResponse,
+)
+async def update_unit_status_endpoint(
+    unit_id: uuid.UUID,
+    data: UnitOfMeasureStatusUpdate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> UnitOfMeasureResponse:
+    unit = await set_unit_status(
+        session,
+        tenant_id,
+        unit_id,
+        is_active=data.is_active,
+    )
+    if unit is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Unit of measure not found",
         )
 
     await session.commit()
-    return CategoryResponse.model_validate(category)
+    return UnitOfMeasureResponse.model_validate(unit)
 
 
 # ── Product creation endpoint ──────────────────────────────────
@@ -751,11 +1210,14 @@ async def get_product_detail_endpoint(
     tenant_id: CurrentTenant,
     history_limit: int = Query(100, ge=1, le=500),
     history_offset: int = Query(0, ge=0),
+    locale: str | None = Query(None, max_length=10),
+    accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> ProductDetailResponse:
     detail = await get_product_detail(
         session,
         tenant_id,
         product_id,
+        locale=_requested_category_locale(locale, accept_language),
         history_limit=history_limit,
         history_offset=history_offset,
     )
@@ -1028,6 +1490,118 @@ async def dismiss_alert_endpoint(
     return DismissAlertResponse(**result)
 
 
+@router.get(
+    "/reorder-suggestions",
+    response_model=ReorderSuggestionListResponse,
+)
+async def list_reorder_suggestions_endpoint(
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+    warehouse_id: uuid.UUID | None = Query(None),
+) -> ReorderSuggestionListResponse:
+    items, total = await list_reorder_suggestions(
+        session,
+        tenant_id,
+        warehouse_id=warehouse_id,
+    )
+    return ReorderSuggestionListResponse(
+        items=[ReorderSuggestionItem(**item) for item in items],
+        total=total,
+    )
+
+
+@router.post(
+    "/reorder-suggestions/orders",
+    response_model=CreateReorderSuggestionOrdersResponse,
+)
+async def create_reorder_suggestion_orders_endpoint(
+    data: CreateReorderSuggestionOrdersRequest,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> CreateReorderSuggestionOrdersResponse:
+    result = await create_reorder_suggestion_orders(
+        session,
+        tenant_id,
+        items=[item.model_dump() for item in data.items],
+        actor_id=_current_actor_id(_user),
+    )
+    await session.commit()
+    return CreateReorderSuggestionOrdersResponse(
+        created_orders=result["created_orders"],
+        unresolved_rows=result["unresolved_rows"],
+    )
+
+
+@router.get(
+    "/reports/below-reorder",
+    response_model=BelowReorderReportResponse,
+)
+async def list_below_reorder_report_endpoint(
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+    warehouse_id: uuid.UUID | None = Query(None),
+) -> BelowReorderReportResponse:
+    items, total = await list_below_reorder_products(
+        session,
+        tenant_id,
+        warehouse_id=warehouse_id,
+    )
+    return BelowReorderReportResponse(
+        items=[BelowReorderReportItem(**item) for item in items],
+        total=total,
+    )
+
+
+@router.get("/reports/below-reorder/export")
+async def export_below_reorder_report_endpoint(
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+    warehouse_id: uuid.UUID | None = Query(None),
+) -> Response:
+    items, _total = await list_below_reorder_products(
+        session,
+        tenant_id,
+        warehouse_id=warehouse_id,
+    )
+    filename = f'below-reorder-report-{datetime.now(UTC):%Y%m%d}.csv'
+    return Response(
+        content=_build_below_reorder_csv(items),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get(
+    "/reports/valuation",
+    response_model=InventoryValuationResponse,
+)
+async def get_inventory_valuation_report_endpoint(
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+    warehouse_id: uuid.UUID | None = Query(None),
+) -> InventoryValuationResponse:
+    report = await get_inventory_valuation(
+        session,
+        tenant_id,
+        warehouse_id=warehouse_id,
+    )
+    return InventoryValuationResponse(
+        items=[InventoryValuationItem(**item) for item in report["items"]],
+        warehouse_totals=[
+            InventoryValuationWarehouseTotal(**item)
+            for item in report["warehouse_totals"]
+        ],
+        grand_total_value=report["grand_total_value"],
+        grand_total_quantity=report["grand_total_quantity"],
+        total_rows=report["total_rows"],
+    )
+
+
 # ── Supplier endpoints ────────────────────────────────────────
 
 
@@ -1039,17 +1613,114 @@ async def list_suppliers_endpoint(
     session: DbSession,
     _user: ReadUser,
     tenant_id: CurrentTenant,
+    q: str | None = Query(None),
     active_only: bool = Query(True),
+    limit: int = Query(100, ge=1, le=200),
+    offset: int = Query(0, ge=0),
 ) -> SupplierListResponse:
-    suppliers = await list_suppliers(
+    suppliers, total = await list_suppliers(
         session,
         tenant_id,
+        q=q,
         active_only=active_only,
+        limit=limit,
+        offset=offset,
     )
     return SupplierListResponse(
-        items=[SupplierResponse(**s) for s in suppliers],
-        total=len(suppliers),
+        items=[SupplierResponse.model_validate(s) for s in suppliers],
+        total=total,
     )
+
+
+@router.post(
+    "/suppliers",
+    response_model=SupplierResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_supplier_endpoint(
+    data: SupplierCreate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> SupplierResponse | JSONResponse:
+    try:
+        supplier = await create_supplier(session, tenant_id, data)
+        await session.commit()
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+
+    return SupplierResponse.model_validate(supplier)
+
+
+@router.get(
+    "/suppliers/{supplier_id}",
+    response_model=SupplierResponse,
+)
+async def get_supplier_endpoint(
+    supplier_id: uuid.UUID,
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+) -> SupplierResponse:
+    supplier = await get_supplier(session, tenant_id, supplier_id)
+    if supplier is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Supplier not found",
+        )
+    return SupplierResponse.model_validate(supplier)
+
+
+@router.put(
+    "/suppliers/{supplier_id}",
+    response_model=SupplierResponse,
+)
+async def update_supplier_endpoint(
+    supplier_id: uuid.UUID,
+    data: SupplierUpdate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> SupplierResponse | JSONResponse:
+    try:
+        supplier = await update_supplier(session, tenant_id, supplier_id, data)
+        if supplier is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Supplier not found",
+            )
+        await session.commit()
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+
+    return SupplierResponse.model_validate(supplier)
+
+
+@router.patch(
+    "/suppliers/{supplier_id}/status",
+    response_model=SupplierResponse,
+)
+async def update_supplier_status_endpoint(
+    supplier_id: uuid.UUID,
+    data: SupplierStatusUpdate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> SupplierResponse:
+    supplier = await set_supplier_status(
+        session,
+        tenant_id,
+        supplier_id,
+        is_active=data.is_active,
+    )
+    if supplier is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Supplier not found",
+        )
+
+    await session.commit()
+    return SupplierResponse.model_validate(supplier)
 
 
 # ── Supplier order endpoints ──────────────────────────────────
@@ -1297,6 +1968,108 @@ async def get_top_customer_endpoint(
 
 
 # ── Product supplier endpoint ────────────────────────────────────
+
+
+@router.get(
+    "/products/{product_id}/suppliers",
+    response_model=ProductSupplierAssociationListResponse,
+)
+async def list_product_suppliers_endpoint(
+    product_id: uuid.UUID,
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+) -> ProductSupplierAssociationListResponse:
+    items = await list_product_suppliers(session, tenant_id, product_id)
+    return ProductSupplierAssociationListResponse(
+        items=[ProductSupplierAssociationResponse(**item) for item in items],
+        total=len(items),
+    )
+
+
+@router.post(
+    "/products/{product_id}/suppliers",
+    response_model=ProductSupplierAssociationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_product_supplier_endpoint(
+    product_id: uuid.UUID,
+    data: ProductSupplierAssociationCreate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> ProductSupplierAssociationResponse:
+    try:
+        item = await create_product_supplier(
+            session,
+            tenant_id,
+            product_id,
+            supplier_id=data.supplier_id,
+            unit_cost=data.unit_cost,
+            lead_time_days=data.lead_time_days,
+            is_default=data.is_default,
+        )
+    except ValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=exc.errors,
+        ) from exc
+
+    await session.commit()
+    return ProductSupplierAssociationResponse(**item)
+
+
+@router.patch(
+    "/products/{product_id}/suppliers/{supplier_id}",
+    response_model=ProductSupplierAssociationResponse,
+)
+async def update_product_supplier_endpoint(
+    product_id: uuid.UUID,
+    supplier_id: uuid.UUID,
+    data: ProductSupplierAssociationUpdate,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> ProductSupplierAssociationResponse:
+    item = await update_product_supplier(
+        session,
+        tenant_id,
+        product_id,
+        supplier_id,
+        unit_cost=data.unit_cost,
+        lead_time_days=data.lead_time_days,
+        is_default=data.is_default,
+    )
+    if item is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product supplier association not found",
+        )
+
+    await session.commit()
+    return ProductSupplierAssociationResponse(**item)
+
+
+@router.delete(
+    "/products/{product_id}/suppliers/{supplier_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_product_supplier_endpoint(
+    product_id: uuid.UUID,
+    supplier_id: uuid.UUID,
+    session: DbSession,
+    _user: WriteUser,
+    tenant_id: CurrentTenant,
+) -> Response:
+    deleted = await delete_product_supplier(session, tenant_id, product_id, supplier_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product supplier association not found",
+        )
+
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(

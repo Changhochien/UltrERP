@@ -7,7 +7,10 @@ from common.models.inventory_stock import InventoryStock
 from common.models.legacy_import import LegacyImportRun, LegacyImportTableRun
 from common.models.order import Order
 from common.models.order_line import OrderLine
+from common.models.physical_count_line import PhysicalCountLine
+from common.models.physical_count_session import PhysicalCountSession, PhysicalCountSessionStatus
 from common.models.product import Product
+from common.models.product_supplier import ProductSupplier
 from common.models.reorder_alert import ReorderAlert
 from common.models.stock_adjustment import ReasonCode, StockAdjustment
 from common.models.stock_transfer import StockTransferHistory
@@ -15,6 +18,7 @@ from common.models.supplier import Supplier
 from common.models.supplier_invoice import SupplierInvoice, SupplierInvoiceLine
 from common.models.supplier_order import SupplierOrder, SupplierOrderLine
 from common.models.supplier_payment import SupplierPayment, SupplierPaymentAllocation
+from common.models.unit_of_measure import UnitOfMeasure
 from common.models.user import User
 from common.models.warehouse import Warehouse
 
@@ -27,7 +31,11 @@ __all__ = [
 	"LegacyImportTableRun",
 	"Order",
 	"OrderLine",
+	"PhysicalCountLine",
+	"PhysicalCountSession",
+	"PhysicalCountSessionStatus",
 	"Product",
+	"ProductSupplier",
 	"ReasonCode",
 	"ReorderAlert",
 	"StockAdjustment",
@@ -39,6 +47,7 @@ __all__ = [
 	"SupplierPaymentAllocation",
 	"SupplierOrder",
 	"SupplierOrderLine",
+	"UnitOfMeasure",
 	"User",
 	"Warehouse",
 ]

@@ -28,7 +28,8 @@ interface ProductComboboxProps {
   onClear?: () => void;
   placeholder?: string;
   disabled?: boolean;
-  "aria-label"?: string;
+  ariaLabel?: string;
+  ariaLabelledBy?: string;
 }
 
 export function ProductCombobox({
@@ -38,7 +39,8 @@ export function ProductCombobox({
   onClear,
   placeholder = "Search product by name or code…",
   disabled,
-  "aria-label": ariaLabel,
+  ariaLabel,
+  ariaLabelledBy,
 }: ProductComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -105,6 +107,7 @@ export function ProductCombobox({
               id: result.data.id,
               code: result.data.code,
               name: result.data.name,
+              category_id: result.data.category_id,
               category: result.data.category,
               status: result.data.status,
               current_stock: result.data.total_stock ?? 0,
@@ -147,8 +150,9 @@ export function ProductCombobox({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            disabled={disabled}
             aria-label={ariaLabel}
+            aria-labelledby={ariaLabelledBy}
+            disabled={disabled}
             className={cn(
               "w-full justify-start text-left font-normal",
               !selectedProduct && "text-muted-foreground",

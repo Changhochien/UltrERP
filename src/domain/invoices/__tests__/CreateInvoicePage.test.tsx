@@ -1,13 +1,28 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter } from "react-router-dom";
 
 import CreateInvoicePage from "../../../pages/invoices/CreateInvoicePage";
+
+const mocks = vi.hoisted(() => ({
+	listCustomers: vi.fn(),
+	createInvoice: vi.fn(),
+}));
+
+vi.mock("../../../lib/api/customers", () => ({
+	listCustomers: (...args: unknown[]) => mocks.listCustomers(...args),
+}));
+
+vi.mock("../../../lib/api/invoices", () => ({
+	createInvoice: (...args: unknown[]) => mocks.createInvoice(...args),
+}));
 
 afterEach(() => {
 	cleanup();
 	vi.restoreAllMocks();
 	localStorage.clear();
+	mocks.listCustomers.mockReset();
+	mocks.createInvoice.mockReset();
 });
 
 const customersResponse = {
@@ -28,70 +43,67 @@ const customersResponse = {
 
 function mockInvoiceCreateFlow() {
 	let createPayload: Record<string, unknown> | null = null;
-	vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
-		const url = typeof input === "string" ? input : input.toString();
-		if (url.includes("/api/v1/customers")) {
-			return {
-				ok: true,
-				json: async () => customersResponse,
-			} as Response;
-		}
-		if (url === "/api/v1/invoices") {
-			createPayload = JSON.parse(String(init?.body));
-			return {
-				ok: true,
-				json: async () => ({
-					id: "inv-1",
-					invoice_number: "AA00000001",
-					invoice_date: "2026-04-03",
-					customer_id: "cust-1",
-					buyer_type: "b2b",
-					buyer_identifier_snapshot: "12345678",
-					currency_code: "TWD",
-					subtotal_amount: "200.00",
-					tax_amount: "10.00",
-					total_amount: "210.00",
-					status: "issued",
-					version: 1,
-					voided_at: null,
-					void_reason: null,
-					created_at: "2026-04-03T00:00:00Z",
-					updated_at: "2026-04-03T00:00:00Z",
-					lines: [],
-				}),
-			} as Response;
-		}
-		throw new Error(`Unexpected fetch: ${url}`);
+	mocks.listCustomers.mockResolvedValue(customersResponse);
+	mocks.createInvoice.mockImplementation(async (payload: Record<string, unknown>) => {
+		createPayload = payload;
+		return {
+			ok: true,
+			data: {
+				id: "inv-1",
+				invoice_number: "AA00000001",
+				invoice_date: "2026-04-03",
+				customer_id: "cust-1",
+				buyer_type: "b2b",
+				buyer_identifier_snapshot: "12345678",
+				currency_code: "TWD",
+				subtotal_amount: "200.00",
+				tax_amount: "10.00",
+				total_amount: "210.00",
+				status: "issued",
+				version: 1,
+				voided_at: null,
+				void_reason: null,
+				created_at: "2026-04-03T00:00:00Z",
+				updated_at: "2026-04-03T00:00:00Z",
+				lines: [],
+			},
+		};
 	});
 	return () => createPayload;
 }
 
+async function selectCustomer() {
+	const customerCombobox = screen.getAllByRole("combobox")[0];
+	fireEvent.click(customerCombobox);
+
+	await waitFor(() => {
+		expect(screen.getByText("Acme Corp")).toBeTruthy();
+	});
+
+	fireEvent.click(screen.getByText("Acme Corp"));
+
+	await waitFor(() => {
+		expect(
+			screen.getAllByRole("combobox")[0].textContent,
+		).toContain("Acme Corp (12345678)");
+	});
+}
+
 describe("CreateInvoicePage", () => {
 	it("renders preview totals as line values change", async () => {
-		vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-			const url = typeof input === "string" ? input : input.toString();
-			if (url.includes("/api/v1/customers")) {
-				return {
-					ok: true,
-					json: async () => customersResponse,
-				} as Response;
-			}
-			throw new Error(`Unexpected fetch: ${url}`);
-		});
+		mocks.listCustomers.mockResolvedValue(customersResponse);
 
 		render(<MemoryRouter><CreateInvoicePage /></MemoryRouter>);
 
-		await waitFor(() => {
-			expect(screen.getByText("Acme Corp (12345678)")).toBeTruthy();
-		});
+		await selectCustomer();
 
-		fireEvent.change(screen.getByLabelText("Description"), {
+		fireEvent.change(screen.getByLabelText(/Description/i), {
 			target: { value: "Invoice line" },
 		});
-		fireEvent.change(screen.getByLabelText("Quantity"), {
+		fireEvent.change(screen.getByLabelText(/Quantity/i), {
 			target: { value: "2" },
 		});
-		fireEvent.change(screen.getByLabelText("Unit Price"), {
+		fireEvent.change(screen.getByLabelText(/Unit Price/i), {
 			target: { value: "100" },
 		});
 
@@ -106,27 +118,22 @@ describe("CreateInvoicePage", () => {
 
 		render(<MemoryRouter><CreateInvoicePage /></MemoryRouter>);
 
-		await waitFor(() => {
-			expect(screen.getByText("Acme Corp (12345678)")).toBeTruthy();
-		});
+		await selectCustomer();
 
-		fireEvent.change(screen.getByLabelText("Customer"), {
-			target: { value: "cust-1" },
-		});
-		fireEvent.change(screen.getByLabelText("Description"), {
+		fireEvent.change(screen.getByLabelText(/Description/i), {
 			target: { value: "Invoice line" },
 		});
-		fireEvent.change(screen.getByLabelText("Quantity"), {
+		fireEvent.change(screen.getByLabelText(/Quantity/i), {
 			target: { value: "2" },
 		});
-		fireEvent.change(screen.getByLabelText("Unit Price"), {
+		fireEvent.change(screen.getByLabelText(/Unit Price/i), {
 			target: { value: "100" },
 		});
 
 		fireEvent.click(screen.getByRole("button", { name: "Create Invoice" }));
 
 		await waitFor(() => {
-			expect(screen.getByText("Invoice Created")).toBeTruthy();
+			expect(screen.getByRole("heading", { level: 1, name: "Invoice Created" })).toBeTruthy();
 		});
 
 		const payload = readPayload();
@@ -138,6 +145,7 @@ describe("CreateInvoicePage", () => {
 		});
 		expect(payload?.lines).toEqual([
 			{
+				product_id: null,
 				product_code: null,
 				description: "Invoice line",
 				quantity: "2",

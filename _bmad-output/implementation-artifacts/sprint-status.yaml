@@ -261,31 +261,31 @@ development_status:
         prerequisites: []
       4-13-supplier-crud-ui:
         title: "Supplier CRUD UI"
-        status: "backlog"
+        status: "completed"
         story_id: "4.13"
         story_file: "4-13-supplier-crud-ui.md"
-        validation: "none"
+        validation: "Supplier management is implemented with tenant-scoped create/detail/update/status APIs, searchable supplier directory and detail screens, active-only supplier combobox reuse in supplier orders, and focused validations passing (16 backend tests and 7 frontend tests)."
         prerequisites: []
       4-14-reorder-suggestions:
         title: "Reorder Suggestions Generation"
-        status: "backlog"
+        status: "completed"
         story_id: "4.14"
         story_file: "4-14-reorder-suggestions.md"
-        validation: "none"
+        validation: "Derived reorder suggestions, grouped draft-order creation, unresolved-row handoff, warehouse-aware UI route linking, and focused backend/frontend validations are implemented and passing (5 backend tests and 4 frontend tests)."
         prerequisites: []
       4-15-below-reorder-report:
         title: "Below-Reorder-Point Reporting (CSV Export)"
-        status: "backlog"
+        status: "completed"
         story_id: "4.15"
         story_file: "4-15-below-reorder-report.md"
-        validation: "none"
+        validation: "Below-reorder preview/export reporting is implemented with a shared warehouse-scoped query, BOM-prefixed CSV export, lightweight report UI, and focused backend/frontend validations passing (2 backend tests and 1 frontend test)."
         prerequisites: []
       4-16-inventory-valuation:
         title: "Inventory Valuation and Cost Tracking"
-        status: "backlog"
+        status: "completed"
         story_id: "4.16"
         story_file: "4-16-inventory-valuation.md"
-        validation: "none"
+        validation: "Inventory valuation is implemented with decimal-safe standard cost persistence, latest-purchase fallback metadata, warehouse subtotals, a valuation report page, and focused backend/frontend validations passing (27 backend assertions and 15 frontend assertions)."
         prerequisites: []
       4-17-inventory-audit:
         title: "Physical Count / Inventory Audit"

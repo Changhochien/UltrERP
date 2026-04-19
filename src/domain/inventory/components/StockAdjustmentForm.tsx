@@ -32,8 +32,8 @@ export function StockAdjustmentForm({ defaultProductId = "", defaultWarehouseId 
   const { submit, submitting, result, error, clearError } =
     useStockAdjustment();
 
-  const { product } = useProductDetail(defaultProductId || null);
   const [productId, setProductId] = useState(defaultProductId);
+  const { product } = useProductDetail(productId || null);
   const [warehouseId, setWarehouseId] = useState(defaultWarehouseId);
   const [quantityChange, setQuantityChange] = useState(0);
   const [reasonCode, setReasonCode] = useState("");

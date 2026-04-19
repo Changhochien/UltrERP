@@ -6,6 +6,7 @@ import { Save } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { SectionCard } from "@/components/layout/PageLayout";
+import { ProductSuppliersPanel } from "./ProductSuppliersPanel";
 import { useProductDetail } from "../hooks/useProductDetail";
 import { useStockHistory } from "../hooks/useStockHistory";
 import { useUpdateStockSettings } from "../hooks/useUpdateStockSettings";
@@ -23,6 +24,8 @@ interface WarehouseSettings {
 
 interface SettingsTabProps {
   productId: string;
+  warehouseFilterId?: string;
+  onSaveSuccess?: () => void | Promise<void>;
 }
 
 interface WarehouseSettingsCardProps {
@@ -195,7 +198,7 @@ function WarehouseSettingsCard({
   );
 }
 
-export function SettingsTab({ productId }: SettingsTabProps) {
+export function SettingsTab({ productId, warehouseFilterId, onSaveSuccess }: SettingsTabProps) {
   const { t } = useTranslation("common", { keyPrefix: "inventory.productDetail.settingsTab" });
   const { product, loading: productLoading, reload } = useProductDetail(productId);
   const { update, submitting: saving } = useUpdateStockSettings();
@@ -203,7 +206,12 @@ export function SettingsTab({ productId }: SettingsTabProps) {
   const [warehouseSettings, setWarehouseSettings] = useState<Record<string, WarehouseSettings>>({});
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
 
-  const warehouses: WarehouseStockInfo[] = product?.warehouses ?? [];
+  const warehouses: WarehouseStockInfo[] = (product?.warehouses ?? []).filter((warehouse) => {
+    if (!warehouseFilterId) {
+      return true;
+    }
+    return warehouse.warehouse_id === warehouseFilterId;
+  });
 
   const getDefaultSettings = (warehouse: WarehouseStockInfo): WarehouseSettings => ({
     warehouseId: warehouse.warehouse_id,
@@ -268,6 +276,11 @@ export function SettingsTab({ productId }: SettingsTabProps) {
       return next;
     });
     await reload();
+    if (onSaveSuccess) {
+      await onSaveSuccess();
+      return;
+    }
+
     setSavedMessage(t("saved", { warehouse: warehouse.warehouse_name }));
     setTimeout(() => setSavedMessage(null), 3000);
   };
@@ -301,10 +314,7 @@ export function SettingsTab({ productId }: SettingsTabProps) {
           onSave={handleSave}
         />
       ))}
-
-      <SectionCard title={t("supplierInfo")}>
-        <p className="text-sm text-muted-foreground">{t("noSupplierConfigured")}</p>
-      </SectionCard>
+      <ProductSuppliersPanel productId={productId} />
     </div>
   );
 }

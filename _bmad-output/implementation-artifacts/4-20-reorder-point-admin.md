@@ -1,6 +1,6 @@
 # Story 4.20: Reorder Point Bulk Admin UI
 
-**Status:** backlog
+**Status:** done
 
 **Story ID:** 4.20
 
@@ -32,23 +32,23 @@ so that reorder points stay accurate without editing every stock row manually.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Align the story to existing backend contracts** (AC: 1, 2, 3, 4)
-  - [ ] Reuse `compute_reorder_points_preview()` and `apply_reorder_points()` in `backend/domains/inventory/reorder_point.py`.
-  - [ ] Reuse `PATCH /api/v1/inventory/stocks/{stock_id}` for manual overrides instead of inventing a separate bulk-update endpoint for single-row edits.
-  - [ ] Extend preview rows only if additional display data is truly missing.
+- [x] **Task 1: Align the story to existing backend contracts** (AC: 1, 2, 3, 4)
+  - [x] Reuse `compute_reorder_points_preview()` and `apply_reorder_points()` in `backend/domains/inventory/reorder_point.py`.
+  - [x] Reuse `PATCH /api/v1/inventory/stocks/{stock_id}` for manual overrides instead of inventing a separate bulk-update endpoint for single-row edits.
+  - [x] Extend preview rows only if additional display data is truly missing.
 
-- [ ] **Task 2: Mature the existing admin UI** (AC: 1, 2, 4, 5)
-  - [ ] Extend `src/domain/inventory/components/ReorderPointAdmin.tsx` rather than creating a second reorder admin screen.
-  - [ ] Make the delta between current and computed values obvious.
-  - [ ] Preserve warehouse filter context while moving between preview results and manual settings edits.
+- [x] **Task 2: Mature the existing admin UI** (AC: 1, 2, 4, 5)
+  - [x] Extend `src/domain/inventory/components/ReorderPointAdmin.tsx` rather than creating a second reorder admin screen.
+  - [x] Make the delta between current and computed values obvious.
+  - [x] Preserve warehouse filter context while moving between preview results and manual settings edits.
 
-- [ ] **Task 3: Tighten manual override flow** (AC: 3, 5)
-  - [ ] Reuse the existing settings surface for row-level edits where possible.
-  - [ ] Refresh preview data after a manual override so the comparison remains trustworthy.
+- [x] **Task 3: Tighten manual override flow** (AC: 3, 5)
+  - [x] Reuse the existing settings surface for row-level edits where possible.
+  - [x] Refresh preview data after a manual override so the comparison remains trustworthy.
 
-- [ ] **Task 4: Add focused regression tests** (AC: 1, 2, 3, 4, 5)
-  - [ ] Backend tests for apply counts and manual stock-setting patch behavior.
-  - [ ] Frontend tests for preview rendering, row selection, skipped-row visibility, and manual-override refresh behavior.
+- [x] **Task 4: Add focused regression tests** (AC: 1, 2, 3, 4, 5)
+  - [x] Backend tests for apply counts and manual stock-setting patch behavior.
+  - [x] Frontend tests for preview rendering, row selection, skipped-row visibility, and manual-override refresh behavior.
 
 ## Dev Notes
 
@@ -86,3 +86,29 @@ so that reorder points stay accurate without editing every stock row manually.
 - `backend/domains/inventory/services.py`
 - `src/domain/inventory/components/ReorderPointAdmin.tsx`
 - `src/domain/inventory/hooks/useReorderPointAdmin.ts`
+
+## Dev Agent Record
+
+### Completion Notes
+
+- Reused the existing reorder-point preview/apply flow and surfaced the missing current-vs-computed delta directly in `ReorderPointAdmin`.
+- Added row-level `Planning settings` actions for both candidate and skipped rows, opening the existing `SettingsTab` editor inline instead of creating a second stock-settings write flow.
+- Preserved warehouse scope while moving from preview into the manual override editor by filtering the reused settings surface to the selected warehouse and rerunning preview after save.
+- Made low-confidence and skipped rows easier to interpret by exposing confidence state and translated skip reasons instead of hiding them.
+- Added focused regression coverage for frontend preview/manual-override behavior and backend apply/stock-settings route behavior.
+
+### Validation
+
+- Frontend: `pnpm vitest run src/domain/inventory/components/ReorderPointAdmin.test.tsx src/domain/inventory/components/SettingsTab.test.tsx src/pages/InventoryPage.test.tsx`
+- Backend: `/Users/changtom/Downloads/UltrERP/backend/.venv/bin/python -m pytest tests/api/test_reorder_point_admin.py -q`
+- Diagnostics: no new editor errors in touched Story 4.20 frontend files or backend test file.
+
+### Files Changed
+
+- `src/domain/inventory/components/ReorderPointAdmin.tsx`
+- `src/domain/inventory/components/SettingsTab.tsx`
+- `src/domain/inventory/components/ReorderPointAdmin.test.tsx`
+- `src/domain/inventory/components/SettingsTab.test.tsx`
+- `backend/tests/api/test_reorder_point_admin.py`
+- `public/locales/en/common.json`
+- `public/locales/zh-Hant/common.json`

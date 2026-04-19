@@ -6,29 +6,19 @@ import { useTranslation } from "react-i18next";
 import "../inventory.css";
 
 import { Badge } from "@/components/ui/badge";
-import { buildProductDetailPath } from "@/lib/routes";
+import { buildInventoryTransfersPath, buildProductDetailPath } from "@/lib/routes";
 import { useProductDetail } from "../hooks/useProductDetail";
 import { useWarehouseContext } from "../context/WarehouseContext";
-import type { AdjustmentHistoryItem, WarehouseStockInfo } from "../types";
+import { getStatusVariant } from "../utils";
+import { AdjustmentTimeline } from "../components/AdjustmentTimeline";
+import type { WarehouseStockInfo } from "../types";
 
 interface ProductDetailDrawerProps {
   productId: string | null;
   onClose: () => void;
   onAdjustStock?: (productId: string, warehouseId: string) => void;
-  onTransfer?: (productId: string) => void;
+  onTransfer?: (productId: string, warehouseId: string) => void;
   onNewOrder?: (productId: string) => void;
-}
-
-function getStatusVariant(
-  stock: number,
-  reorderPoint: number,
-  productStatus: string,
-): "healthy" | "warning" | "critical" | "inactive" {
-  if (productStatus !== "active") return "inactive";
-  if (stock === 0) return "critical";
-  if (stock < reorderPoint * 0.5) return "critical";
-  if (stock < reorderPoint) return "warning";
-  return "healthy";
 }
 
 function StockHealthBar({ warehouses }: { warehouses: WarehouseStockInfo[] }) {
@@ -52,24 +42,16 @@ function StockHealthBar({ warehouses }: { warehouses: WarehouseStockInfo[] }) {
     );
   }
 
-  const healthy = warehouses
-    .filter((w) => {
+  const { healthy, warning, critical } = warehouses.reduce(
+    (acc, w) => {
       const status = getStatusVariant(w.current_stock, w.reorder_point, "active");
-      return status === "healthy";
-    })
-    .reduce((sum, w) => sum + w.current_stock, 0);
-  const warning = warehouses
-    .filter((w) => {
-      const status = getStatusVariant(w.current_stock, w.reorder_point, "active");
-      return status === "warning";
-    })
-    .reduce((sum, w) => sum + w.current_stock, 0);
-  const critical = warehouses
-    .filter((w) => {
-      const status = getStatusVariant(w.current_stock, w.reorder_point, "active");
-      return status === "critical";
-    })
-    .reduce((sum, w) => sum + w.current_stock, 0);
+      if (status === "healthy") acc.healthy += w.current_stock;
+      else if (status === "warning") acc.warning += w.current_stock;
+      else if (status === "critical") acc.critical += w.current_stock;
+      return acc;
+    },
+    { healthy: 0, warning: 0, critical: 0 },
+  );
 
   const pct = (n: number) => `${Math.round((n / totalStock) * 100)}%`;
 
@@ -115,52 +97,6 @@ function StockHealthBar({ warehouses }: { warehouses: WarehouseStockInfo[] }) {
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-function AdjustmentTimeline({
-  history,
-}: {
-  history: AdjustmentHistoryItem[];
-}) {
-  if (history.length === 0) {
-    return (
-      <p style={{ fontSize: 13, color: "var(--inv-muted)" }}>
-        No adjustment history available.
-      </p>
-    );
-  }
-
-  return (
-    <div className="adjustment-timeline">
-      {history.map((item) => {
-        const isPositive = item.quantity_change > 0;
-        const isNeutral = item.quantity_change === 0;
-        return (
-          <div
-            key={item.id}
-            className={`timeline-item ${isPositive ? "positive" : isNeutral ? "neutral" : "negative"}`}
-          >
-            <div className="timeline-item-header">
-              <span
-                className={`timeline-item-change ${isPositive ? "positive" : "negative"}`}
-              >
-                {isPositive ? "+" : ""}
-                {item.quantity_change}
-              </span>
-              <span className="timeline-item-date">
-                {new Date(item.created_at).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </span>
-            </div>
-            <div className="timeline-item-reason">{item.reason_code}</div>
-          </div>
-        );
-      })}
     </div>
   );
 }
@@ -396,7 +332,14 @@ export function ProductDetailDrawer({
             <button
               type="button"
               className="drawer-action-btn"
-              onClick={() => onTransfer?.(product.id)}
+              onClick={() => {
+                const nextWarehouseId = selectedWarehouse?.id ?? product.warehouses[0]?.warehouse_id ?? "";
+                if (onTransfer) {
+                  onTransfer(product.id, nextWarehouseId);
+                  return;
+                }
+                navigate(buildInventoryTransfersPath(product.id, nextWarehouseId));
+              }}
             >
               <ArrowRightLeft size={14} />
               Transfer

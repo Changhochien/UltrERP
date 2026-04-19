@@ -29,7 +29,8 @@ export function ProductTable({ warehouseId, onProductClick, createdProductKey }:
     loading,
     error,
     includeInactive,
-    category,
+    categoryId,
+    categoryLabel,
     search,
     nextPage,
     prevPage,
@@ -39,16 +40,16 @@ export function ProductTable({ warehouseId, onProductClick, createdProductKey }:
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    search("", warehouseId, 1, sortState ?? undefined, includeInactive, category);
-  }, [category, createdProductKey, includeInactive, search, sortState, warehouseId]);
+    search("", warehouseId, 1, sortState ?? undefined, includeInactive, categoryId, categoryLabel);
+  }, [categoryId, categoryLabel, createdProductKey, includeInactive, search, sortState, warehouseId]);
 
   const handleSearchChange = (value: string) => {
     setQuery(value);
-    search(value, warehouseId, 1, sortState ?? undefined, includeInactive, category);
+    search(value, warehouseId, 1, sortState ?? undefined, includeInactive, categoryId, categoryLabel);
   };
 
-  const handleCategoryChange = (nextCategory: string) => {
-    search(query, warehouseId, 1, sortState ?? undefined, includeInactive, nextCategory);
+  const handleCategoryChange = (nextCategoryId: string, nextCategoryLabel: string) => {
+    search(query, warehouseId, 1, sortState ?? undefined, includeInactive, nextCategoryId, nextCategoryLabel);
   };
 
   return (
@@ -151,7 +152,7 @@ export function ProductTable({ warehouseId, onProductClick, createdProductKey }:
               <span>{error}</span>
               <button
                 type="button"
-                onClick={() => search(query, warehouseId, page, sortState ?? undefined, includeInactive, category)}
+                onClick={() => search(query, warehouseId, page, sortState ?? undefined, includeInactive, categoryId, categoryLabel)}
                 className="text-sm underline"
               >
                 {t("retry")}
@@ -195,9 +196,10 @@ export function ProductTable({ warehouseId, onProductClick, createdProductKey }:
               </div>
               <div className="min-w-[14rem]">
                 <CategoryCombobox
-                  value={category}
+                  value={categoryId || null}
+                  valueLabel={categoryLabel || null}
                   onChange={handleCategoryChange}
-                  onClear={() => handleCategoryChange("")}
+                  onClear={() => handleCategoryChange("", "")}
                   placeholder={t("filterCategory")}
                 />
               </div>
@@ -206,7 +208,7 @@ export function ProductTable({ warehouseId, onProductClick, createdProductKey }:
                 variant={includeInactive ? "default" : "outline"}
                 size="sm"
                 aria-pressed={includeInactive}
-                onClick={() => search(query, warehouseId, 1, sortState ?? undefined, !includeInactive, category)}
+                onClick={() => search(query, warehouseId, 1, sortState ?? undefined, !includeInactive, categoryId, categoryLabel)}
               >
                 {t("showInactive")}
               </Button>

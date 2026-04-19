@@ -497,6 +497,24 @@
       "accessCount": 1,
       "lastAccessed": 1776524884463,
       "type": "file"
+    },
+    {
+      "path": ".agents/skills/ultr-erp-dump-import/SKILL.md",
+      "accessCount": 1,
+      "lastAccessed": 1776565415611,
+      "type": "file"
+    },
+    {
+      "path": "src/components/products/ProductCombobox.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1776565415987,
+      "type": "file"
+    },
+    {
+      "path": "src/domain/inventory/components/SupplierOrderForm.test.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1776565416200,
+      "type": "file"
     }
   ],
   "userDirectives": []

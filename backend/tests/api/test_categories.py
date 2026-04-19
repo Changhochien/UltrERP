@@ -42,11 +42,17 @@ class FakeCategory:
         category_id: uuid.UUID | None = None,
         name: str = "Hardware",
         is_active: bool = True,
+        translations: dict[str, str] | None = None,
     ) -> None:
         self.id = category_id or uuid.uuid4()
         self.tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
         self.name = name
         self.is_active = is_active
+        translation_map = translations or {"en": name}
+        self.translations = [
+            type("FakeTranslation", (), {"locale": locale, "name": translation_name})()
+            for locale, translation_name in translation_map.items()
+        ]
         now = datetime.now(tz=UTC)
         self.created_at = now
         self.updated_at = now
@@ -136,6 +142,8 @@ async def test_create_category_success() -> None:
         assert resp.status_code == 201, resp.json()
         body = resp.json()
         assert body["name"] == "Hardware"
+        assert body["name_en"] == "Hardware"
+        assert body["translations"] == {"en": "Hardware"}
         assert body["is_active"] is True
     finally:
         _teardown(previous)
@@ -191,7 +199,6 @@ async def test_create_category_duplicate_returns_409() -> None:
 async def test_list_categories_returns_items() -> None:
     category = FakeCategory(name="Hardware")
     session = FakeAsyncSession()
-    session.queue_count(1)
     session.queue_scalars([category])
     previous = _setup(session)
 
@@ -208,6 +215,31 @@ async def test_list_categories_returns_items() -> None:
         body = resp.json()
         assert body["total"] == 1
         assert body["items"][0]["name"] == "Hardware"
+        assert body["items"][0]["name_en"] == "Hardware"
+    finally:
+        _teardown(previous)
+
+
+async def test_list_categories_localizes_name_from_accept_language() -> None:
+    category = FakeCategory(name="Hardware", translations={"en": "Hardware", "zh-Hant": "五金"})
+    session = FakeAsyncSession()
+    session.queue_scalars([category])
+    previous = _setup(session)
+
+    try:
+        transport = ASGITransport(app=app)
+        headers = {**auth_header(), "Accept-Language": "zh-Hant"}
+        async with AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+            headers=headers,
+        ) as client:
+            resp = await client.get("/api/v1/inventory/categories")
+
+        assert resp.status_code == 200, resp.json()
+        body = resp.json()
+        assert body["items"][0]["name"] == "五金"
+        assert body["items"][0]["name_zh_hant"] == "五金"
     finally:
         _teardown(previous)
 

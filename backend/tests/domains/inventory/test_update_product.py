@@ -26,6 +26,7 @@ class FakeProduct:
         self.code = code
         self.name = name
         self.category = category
+        self.category_id = None
         self.description = description
         self.unit = unit
         self.status = status
@@ -69,7 +70,7 @@ async def test_update_product_returns_none_when_missing() -> None:
         session,
         uuid.uuid4(),
         uuid.uuid4(),
-        ProductUpdate(code="SKU-1", name="Widget", category="Hardware", description="", unit="pcs"),
+        ProductUpdate(code="SKU-1", name="Widget", category_id=None, description="", unit="pcs"),
     )
 
     assert result is None
@@ -89,7 +90,7 @@ async def test_update_product_allows_same_code_and_updates_fields() -> None:
         ProductUpdate(
             code="SKU-1",
             name="Widget Pro",
-            category=" Updated Hardware ",
+            category_id=None,
             description=" Updated description ",
             unit=" box ",
         ),
@@ -98,7 +99,8 @@ async def test_update_product_allows_same_code_and_updates_fields() -> None:
     assert result is product
     assert product.code == "SKU-1"
     assert product.name == "Widget Pro"
-    assert product.category == "Updated Hardware"
+    assert product.category is None
+    assert product.category_id is None
     assert product.description == "Updated description"
     assert product.unit == "box"
     assert product.status == "active"
@@ -120,7 +122,7 @@ async def test_update_product_updates_to_unique_code() -> None:
         ProductUpdate(
             code="SKU-2",
             name="Widget",
-            category="Hardware",
+            category_id=None,
             description="Updated",
             unit="pcs",
         ),
@@ -146,7 +148,7 @@ async def test_update_product_raises_duplicate_conflict() -> None:
             ProductUpdate(
                 code="SKU-2",
                 name="Widget",
-                category="Hardware",
+                category_id=None,
                 description="Updated",
                 unit="pcs",
             ),
@@ -171,7 +173,7 @@ async def test_update_product_rejects_code_reuse_from_inactive_product() -> None
             ProductUpdate(
                 code="SKU-2",
                 name="Widget",
-                category="Hardware",
+                category_id=None,
                 description="Updated",
                 unit="pcs",
             ),
@@ -191,7 +193,7 @@ async def test_update_product_rejects_whitespace_required_fields() -> None:
             ProductUpdate(
                 code="   ",
                 name="\t",
-                category="Hardware",
+                category_id=None,
                 description="",
                 unit=" ",
             ),

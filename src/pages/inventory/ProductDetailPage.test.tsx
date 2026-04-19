@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 const mocks = vi.hoisted(() => ({
+  navigate: vi.fn(),
   product: {
     id: "product-1",
     code: "SKU-1",
@@ -10,6 +11,7 @@ const mocks = vi.hoisted(() => ({
     category: "Hardware",
     description: "Original description",
     unit: "pcs",
+    standard_cost: "5.2500",
     status: "active",
     total_stock: 12,
     warehouses: [
@@ -41,6 +43,7 @@ const mocks = vi.hoisted(() => ({
     category: "Hardware",
     description: "Updated description",
     unit: "box",
+    standard_cost: "7.1250",
     status: "active",
     created_at: "2026-04-01T00:00:00Z",
   },
@@ -54,6 +57,14 @@ vi.mock("react-i18next", () => ({
     t: (key: string) => (options?.keyPrefix ? `${options.keyPrefix}.${key}` : key),
   }),
 }));
+
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
+  return {
+    ...actual,
+    useNavigate: () => mocks.navigate,
+  };
+});
 
 vi.mock("recharts", async () => {
   const actual = await vi.importActual<typeof import("recharts")>("recharts");
@@ -82,6 +93,9 @@ vi.mock("@/domain/inventory/hooks/useProductDetail", () => ({
 
 vi.mock("@/lib/api/inventory", () => ({
   setProductStatus: (...args: unknown[]) => mocks.setProductStatus(...args),
+  listProductSuppliers: vi.fn().mockResolvedValue({ ok: true, data: { items: [], total: 0 } }),
+  fetchSuppliers: vi.fn().mockResolvedValue({ ok: true, data: { items: [], total: 0 } }),
+  fetchSupplier: vi.fn().mockResolvedValue({ ok: true, data: null }),
 }));
 
 vi.mock("@/domain/inventory/components/EditProductForm", () => ({
@@ -150,6 +164,16 @@ vi.mock("@/domain/inventory/hooks/useProductAuditLog", () => ({
   })),
 }));
 
+vi.mock("@/domain/inventory/hooks/useSuppliers", () => ({
+  useSuppliers: vi.fn(() => ({
+    suppliers: [],
+    total: 0,
+    loading: false,
+    error: null,
+    reload: vi.fn(),
+  })),
+}));
+
 vi.mock("@/domain/inventory/components/StockTrendChart", () => ({
   StockTrendChart: () => <div>stock-trend-chart</div>,
 }));
@@ -171,7 +195,7 @@ afterEach(() => {
   mocks.reload.mockReset();
   mocks.applyLocalUpdate.mockReset();
   mocks.setProductStatus.mockReset();
-  vi.restoreAllMocks();
+  mocks.navigate.mockReset();
 });
 
 describe("ProductDetailPage", () => {
@@ -213,7 +237,7 @@ describe("ProductDetailPage", () => {
     );
 
     expect(screen.getByText("inventory.productDetail.settingsTab.reorderPoint")).toBeTruthy();
-    expect(screen.getByText("inventory.productDetail.settingsTab.planningHorizon")).toBeTruthy();
+    expect(screen.getByText("inventory.productDetail.settingsTab.reviewCycle")).toBeTruthy();
   });
 
   it("opens the edit dialog and refreshes the product detail after save", async () => {
@@ -272,5 +296,21 @@ describe("ProductDetailPage", () => {
     await waitFor(() => {
       expect(mocks.reload).toHaveBeenCalled();
     });
+  });
+
+  it("routes transfer actions to the transfers page with the current product", async () => {
+    const { ProductDetailPage } = await import("./ProductDetailPage");
+
+    render(
+      <MemoryRouter initialEntries={["/inventory/product-1"]}>
+        <Routes>
+          <Route path="/inventory/:productId" element={<ProductDetailPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "inventory.productDetail.transfer" }));
+
+    expect(mocks.navigate).toHaveBeenCalledWith("/inventory/transfers?productId=product-1&warehouseId=warehouse-1");
   });
 });

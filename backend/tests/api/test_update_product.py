@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 from httpx import ASGITransport, AsyncClient
@@ -30,6 +31,7 @@ class FakeProduct:
         category: str | None = "Hardware",
         description: str | None = "Original description",
         unit: str = "pcs",
+        standard_cost: Decimal | None = Decimal("5.2500"),
     ) -> None:
         self.id = product_id or uuid.uuid4()
         self.code = code
@@ -38,6 +40,7 @@ class FakeProduct:
         self.category = category
         self.description = description
         self.unit = unit
+        self.standard_cost = standard_cost
         self.status = "active"
         self.created_at = datetime.now(tz=UTC)
         self.updated_at = datetime.now(tz=UTC)
@@ -92,9 +95,10 @@ def _valid_body() -> dict[str, object]:
     return {
         "code": "SKU-2",
         "name": "Widget Pro",
-        "category": "Hardware",
+        "category_id": None,
         "description": "Updated description",
         "unit": "box",
+        "standard_cost": "7.1250",
     }
 
 
@@ -121,7 +125,28 @@ async def test_update_product_success() -> None:
         assert body["name"] == "Widget Pro"
         assert body["description"] == "Updated description"
         assert body["unit"] == "box"
+        assert body["standard_cost"] == "7.1250"
         assert body["status"] == "active"
+    finally:
+        _teardown(previous)
+
+
+async def test_update_product_negative_standard_cost_returns_422() -> None:
+    session = FakeAsyncSession()
+    previous = _setup(session)
+
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+            headers=auth_header(),
+        ) as client:
+            payload = _valid_body()
+            payload["standard_cost"] = "-1.0000"
+            resp = await client.put(f"/api/v1/inventory/products/{uuid.uuid4()}", json=payload)
+
+        assert resp.status_code == 422
     finally:
         _teardown(previous)
 

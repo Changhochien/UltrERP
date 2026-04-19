@@ -40,10 +40,10 @@ describe("useVisitorStats", () => {
 
     await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledTimes(1));
     expect(capturedSignal).not.toBeNull();
-    expect(capturedSignal?.aborted).toBe(false);
+    expect((capturedSignal as AbortSignal | null)?.aborted).toBe(false);
 
     unmount();
 
-    expect(capturedSignal?.aborted).toBe(true);
+    expect((capturedSignal as AbortSignal | null)?.aborted).toBe(true);
   });
 });
