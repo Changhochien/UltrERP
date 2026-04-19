@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
-import { PageHeader, SectionCard } from "../../components/layout/PageLayout";
+import { PageHeader, PageTabs, SectionCard } from "../../components/layout/PageLayout";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -13,8 +13,8 @@ import {
   setUnitStatus,
   updateUnit,
 } from "../../lib/api/inventory";
-import { INVENTORY_ROUTE } from "../../lib/routes";
 import type { UnitOfMeasure } from "../../domain/inventory/types";
+import { buildInventorySectionTabs, getInventorySectionRoute, type InventorySectionTabValue } from "./inventoryPageTabs";
 
 function toFieldError(field: string, errors?: Array<{ field: string; message: string }>) {
   return errors?.find((error) => error.field === field)?.message ?? null;
@@ -22,8 +22,10 @@ function toFieldError(field: string, errors?: Array<{ field: string; message: st
 
 export function UnitsPage() {
   const { t } = useTranslation("common", { keyPrefix: "inventory.unitsPage" });
+  const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
   const { canWrite } = usePermissions();
+  const inventoryTabs = buildInventorySectionTabs(tCommon);
   const [query, setQuery] = useState("");
   const [showInactive, setShowInactive] = useState(false);
   const [items, setItems] = useState<UnitOfMeasure[]>([]);
@@ -166,10 +168,13 @@ export function UnitsPage() {
         eyebrow={t("eyebrow")}
         title={t("title")}
         description={t("description")}
-        actions={(
-          <Button type="button" variant="outline" onClick={() => navigate(INVENTORY_ROUTE)}>
-            {t("backToInventory")}
-          </Button>
+        tabs={(
+          <PageTabs
+            items={inventoryTabs}
+            value="units"
+            ariaLabel={tCommon("inventory.page.title")}
+            onValueChange={(next) => navigate(getInventorySectionRoute(next as InventorySectionTabValue))}
+          />
         )}
       />
 

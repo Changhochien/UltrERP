@@ -2,11 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { PageHeader, SectionCard } from "../../components/layout/PageLayout";
-import { Badge } from "../../components/ui/badge";
+import { PageHeader, PageTabs, SectionCard } from "../../components/layout/PageLayout";
 import { Button } from "../../components/ui/button";
 import type { PhysicalCountSession } from "../../domain/inventory/types";
-import { countSessionStatusVariant } from "../../domain/inventory/utils";
 import {
   approvePhysicalCountSession,
   fetchPhysicalCountSession,
@@ -14,6 +12,7 @@ import {
   updatePhysicalCountLine,
 } from "../../lib/api/inventory";
 import { INVENTORY_COUNT_SESSIONS_ROUTE } from "../../lib/routes";
+import { buildInventorySectionTabs, getInventorySectionRoute, type InventorySectionTabValue } from "./inventoryPageTabs";
 
 type DraftMap = Record<string, { countedQty: string; notes: string }>;
 
@@ -31,9 +30,11 @@ function buildDrafts(session: PhysicalCountSession): DraftMap {
 
 export function CountSessionDetailPage() {
   const { t } = useTranslation("common", { keyPrefix: "inventory.countSessionDetailPage" });
+  const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
   const params = useParams<{ sessionId: string }>();
   const sessionId = params.sessionId ?? "";
+  const inventoryTabs = buildInventorySectionTabs(tCommon);
 
   const [session, setSession] = useState<PhysicalCountSession | null>(null);
   const [drafts, setDrafts] = useState<DraftMap>({});
@@ -161,12 +162,15 @@ export function CountSessionDetailPage() {
             <Button type="button" variant="outline" onClick={() => navigate(INVENTORY_COUNT_SESSIONS_ROUTE)}>
               {t("backToList")}
             </Button>
-            {session ? (
-              <Badge variant={countSessionStatusVariant(session.status)} className="normal-case tracking-normal">
-                {t(`status.${session.status}`)}
-              </Badge>
-            ) : null}
           </div>
+        )}
+        tabs={(
+          <PageTabs
+            items={inventoryTabs}
+            value="count-sessions"
+            ariaLabel={tCommon("inventory.page.title")}
+            onValueChange={(next) => navigate(getInventorySectionRoute(next as InventorySectionTabValue))}
+          />
         )}
       />
 

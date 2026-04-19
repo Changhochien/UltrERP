@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { PageHeader, SectionCard } from "../../components/layout/PageLayout";
+import { PageHeader, PageTabs, SectionCard } from "../../components/layout/PageLayout";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { usePermissions } from "../../hooks/usePermissions";
@@ -10,6 +10,7 @@ import { setSupplierStatus, updateSupplier } from "../../lib/api/inventory";
 import { INVENTORY_SUPPLIERS_ROUTE } from "../../lib/routes";
 import { SupplierForm, type SupplierFormFieldError } from "../../domain/inventory/components/SupplierForm";
 import { useSupplierDetail } from "../../domain/inventory/hooks/useSuppliers";
+import { buildInventorySectionTabs, getInventorySectionRoute, type InventorySectionTabValue } from "./inventoryPageTabs";
 
 function toFieldErrors(
   errors?: Array<{ field: string; message: string }>,
@@ -22,12 +23,14 @@ function toFieldErrors(
 
 export function SupplierDetailPage() {
   const { t } = useTranslation("common", { keyPrefix: "inventory.supplierDetail" });
+  const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
   const { supplierId } = useParams<{ supplierId: string }>();
   const { canWrite } = usePermissions();
   const { supplier, loading, error, reload } = useSupplierDetail(supplierId ?? null);
   const [statusPending, setStatusPending] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
+  const inventoryTabs = buildInventorySectionTabs(tCommon);
 
   if (!supplierId) {
     return <p className="text-sm text-destructive">{t("loadError")}</p>;
@@ -61,6 +64,14 @@ export function SupplierDetailPage() {
           <Button type="button" variant="outline" onClick={() => navigate(INVENTORY_SUPPLIERS_ROUTE)}>
             {t("backToSuppliers")}
           </Button>
+        )}
+        tabs={(
+          <PageTabs
+            items={inventoryTabs}
+            value="suppliers"
+            ariaLabel={tCommon("inventory.page.title")}
+            onValueChange={(next) => navigate(getInventorySectionRoute(next as InventorySectionTabValue))}
+          />
         )}
       />
 

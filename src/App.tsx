@@ -10,7 +10,6 @@ import { ThemeProvider } from "./components/theme/ThemeProvider";
 import { ThemeToggle } from "./components/theme/ThemeToggle";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ShortcutLayer } from "./components/shortcuts/ShortcutLayer";
-import { Separator } from "./components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "./components/ui/sidebar";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { usePostHogPageView } from "./hooks/usePostHogPageView";
@@ -31,6 +30,7 @@ import {
   INVENTORY_UNITS_ROUTE,
   INVENTORY_VALUATION_ROUTE,
   INVENTORY_REORDER_SUGGESTIONS_ROUTE,
+  INVENTORY_SUPPLIERS_ROUTE,
   INVENTORY_ROUTE,
   INTELLIGENCE_ROUTE,
   PRODUCT_DETAIL_ROUTE,
@@ -45,6 +45,7 @@ import {
   PAYMENTS_ROUTE,
   PURCHASES_ROUTE,
   SETTINGS_ROUTE,
+  SUPPLIER_DETAIL_ROUTE,
 } from "./lib/routes";
 import { AdminPage } from "./pages/AdminPage";
 import CreateCustomerPage from "./pages/customers/CreateCustomerPage";
@@ -60,6 +61,8 @@ import { CountSessionsPage } from "./pages/inventory/CountSessionsPage";
 import { InventoryValuationPage } from "./pages/inventory/InventoryValuationPage";
 import { ProductDetailPage } from "./pages/inventory/ProductDetailPage";
 import { ReorderSuggestionsPage } from "./pages/inventory/ReorderSuggestionsPage";
+import { SupplierDetailPage } from "./pages/inventory/SupplierDetailPage";
+import { SuppliersPage } from "./pages/inventory/SuppliersPage";
 import { TransfersPage } from "./pages/inventory/TransfersPage";
 import { UnitsPage } from "./pages/inventory/UnitsPage";
 import CreateInvoicePage from "./pages/invoices/CreateInvoicePage";
@@ -97,27 +100,29 @@ function ShellHeader() {
   const { t } = useTranslation("common");
 
   return (
-    <header className="sticky top-0 z-20 border-b border-border/80 bg-background/95 shadow-sm">
-      <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
+    <header className="sticky top-0 z-20 border-b border-border/55 bg-background/78 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="rounded-full border border-border/70 bg-card/78 p-1 shadow-sm backdrop-blur-sm">
             <SidebarTrigger />
-            <Separator orientation="vertical" className="hidden h-6 sm:block" />
-            <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-                {t(context.sectionKey)}
-              </p>
-              <p className="truncate text-sm font-semibold sm:text-base">{t(context.labelKey)}</p>
-            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden rounded-full border border-border/80 bg-card/80 px-3 py-1.5 text-xs text-muted-foreground sm:block">
-              {formatWorkspaceDate()}
+          <div className="min-w-0 space-y-1">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="inline-flex items-center rounded-full border border-border/70 bg-card/74 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                {t(context.sectionKey)}
+              </span>
+              <p className="truncate text-sm font-medium text-foreground/88 sm:text-[0.95rem]">
+                {t(context.labelKey)}
+              </p>
             </div>
-            <ThemeToggle />
           </div>
         </div>
-        <p className="max-w-3xl text-sm text-muted-foreground">{t(context.descriptionKey)}</p>
+        <div className="flex shrink-0 items-center gap-2.5">
+          <div className="hidden rounded-full border border-border/70 bg-card/74 px-3 py-1.5 text-xs text-muted-foreground sm:block">
+            {formatWorkspaceDate()}
+          </div>
+          <ThemeToggle />
+        </div>
       </div>
     </header>
   );
@@ -131,8 +136,8 @@ function RoutedPage({ children }: { children: ReactNode }) {
           <DesktopTrayController />
           <ShortcutLayer />
           <ShellHeader />
-          <main className="px-4 py-6 sm:px-6 lg:px-8">
-            <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">{children}</div>
+          <main className="px-4 py-8 sm:px-6 lg:px-8">
+            <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6">{children}</div>
           </main>
         </SidebarInset>
     </SidebarProvider>
@@ -286,6 +291,26 @@ export default function App() {
               <ProtectedAppRoute requiredFeature="inventory">
                 <RoutedPage>
                   <ReorderSuggestionsPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={INVENTORY_SUPPLIERS_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="inventory">
+                <RoutedPage>
+                  <SuppliersPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={SUPPLIER_DETAIL_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="inventory">
+                <RoutedPage>
+                  <SupplierDetailPage />
                 </RoutedPage>
               </ProtectedAppRoute>
             }
