@@ -107,6 +107,10 @@ const EMPTY_AUDIT_FILTERS: AuditFilterState = {
 const AUDIT_PRESET_STORAGE_KEY = "ultrerp_admin_audit_presets";
 const AUDIT_PAGE_SIZE = 20;
 const MATRIX_ROLES: MatrixRole[] = ["admin", "owner", "finance", "warehouse", "sales"];
+const DEFAULT_AUDIT_SORT_STATE: DataTableSortState = {
+  columnId: "created_at",
+  direction: "desc",
+};
 const AUDIT_ACTION_SUGGESTIONS = [
   "user.create",
   "user.update",
@@ -312,10 +316,7 @@ export function AdminPage() {
   const [auditFilters, setAuditFilters] = useState<AuditFilterState>(EMPTY_AUDIT_FILTERS);
   const [auditPage, setAuditPage] = useState(1);
   const [auditTotal, setAuditTotal] = useState(0);
-  const [auditSortState, setAuditSortState] = useState<DataTableSortState>({
-    columnId: "created_at",
-    direction: "desc",
-  });
+  const [auditSortState, setAuditSortState] = useState<DataTableSortState | null>(DEFAULT_AUDIT_SORT_STATE);
   const [selectedAuditLog, setSelectedAuditLog] = useState<AuditLogEntry | null>(null);
   const [savedAuditPresetName, setSavedAuditPresetName] = useState("");
   const [savedAuditPresets, setSavedAuditPresets] = useState<SavedAuditPreset[]>(() => loadSavedAuditPresets());
@@ -400,8 +401,8 @@ export function AdminPage() {
         entity_id: auditFilters.entityId || undefined,
         created_after: toAuditDateBoundary(auditFilters.createdAfter, "start"),
         created_before: toAuditDateBoundary(auditFilters.createdBefore, "end"),
-        sort_by: auditSortState.columnId as "created_at" | "actor_id" | "actor_type" | "action" | "entity_id",
-        sort_direction: auditSortState.direction,
+        sort_by: auditSortState?.columnId as "created_at" | "actor_id" | "actor_type" | "action" | "entity_id" | undefined,
+        sort_direction: auditSortState?.direction,
       });
       const items = Array.isArray(response) ? response : response.items ?? [];
       const total = Array.isArray(response) ? items.length : response.total ?? items.length;
@@ -421,8 +422,8 @@ export function AdminPage() {
     auditFilters.entityId,
     auditFilters.entityType,
     auditPage,
-    auditSortState.columnId,
-    auditSortState.direction,
+    auditSortState?.columnId,
+    auditSortState?.direction,
     t,
   ]);
 
@@ -511,7 +512,7 @@ export function AdminPage() {
     persistSavedAuditPresets(next);
   }
 
-  function handleAuditSortChange(nextSortState: DataTableSortState) {
+  function handleAuditSortChange(nextSortState: DataTableSortState | null) {
     setAuditPage(1);
     setAuditSortState(nextSortState);
   }
