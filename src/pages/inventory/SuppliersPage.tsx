@@ -59,6 +59,7 @@ export function SuppliersPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumb={[{ label: tCommon("routes.inventorySuppliers.label") }]}
         eyebrow={t("eyebrow")}
         title={t("title")}
         description={t("description")}

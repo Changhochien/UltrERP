@@ -57,6 +57,10 @@ export function SupplierDetailPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumb={[
+          { label: tCommon("routes.inventorySuppliers.label"), href: INVENTORY_SUPPLIERS_ROUTE },
+          { label: supplier?.name ?? t("title") },
+        ]}
         eyebrow={t("eyebrow")}
         title={supplier?.name ?? t("title")}
         description={t("description")}

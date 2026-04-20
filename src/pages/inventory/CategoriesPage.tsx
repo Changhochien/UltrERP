@@ -129,6 +129,7 @@ export function CategoriesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumb={[{ label: tCommon("routes.inventoryCategories.label") }]}
         eyebrow={t("eyebrow")}
         title={t("title")}
         description={t("description")}

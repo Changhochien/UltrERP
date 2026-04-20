@@ -23,6 +23,7 @@ export function InvoicesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumb={[{ label: t("routes.invoices.label") }]}
         eyebrow={t("invoice.listPage.eyebrow")}
         title={t("invoice.listPage.title")}
         description={t("invoice.listPage.description")}

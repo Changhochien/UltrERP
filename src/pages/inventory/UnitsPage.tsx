@@ -165,6 +165,7 @@ export function UnitsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumb={[{ label: tCommon("routes.inventoryUnits.label") }]}
         eyebrow={t("eyebrow")}
         title={t("title")}
         description={t("description")}

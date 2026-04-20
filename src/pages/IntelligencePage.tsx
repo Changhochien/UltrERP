@@ -15,6 +15,7 @@ export function IntelligencePage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumb={[{ label: t("routes.intelligence.label") }]}
         eyebrow={t("intelligence.page.eyebrow")}
         title={t("intelligence.page.title")}
         description={t("intelligence.page.description")}

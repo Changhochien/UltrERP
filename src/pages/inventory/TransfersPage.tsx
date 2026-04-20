@@ -93,7 +93,6 @@ export function TransfersPage() {
         if (cancelled) {
           return;
         }
-
         if (!result.ok) {
           setItems([]);
           setTotal(0);
@@ -159,6 +158,7 @@ export function TransfersPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumb={[{ label: tCommon("routes.inventoryTransfers.label") }]}
         eyebrow={t("eyebrow")}
         title={t("title")}
         description={t("description")}

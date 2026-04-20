@@ -7,10 +7,12 @@ import { useTranslation } from "react-i18next";
 import { DataTable } from "../../../components/layout/DataTable";
 import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayout";
 import { Badge } from "../../../components/ui/badge";
+import { Breadcrumb } from "../../../components/ui/Breadcrumb";
 import { Button } from "../../../components/ui/button";
 import { useToast } from "../../../hooks/useToast";
 import { useOrderDetail, statusBadgeVariant, statusLabel } from "../hooks/useOrders";
 import { updateOrderStatus } from "../../../lib/api/orders";
+import { ORDERS_ROUTE } from "../../../lib/routes";
 import type { OrderStatus } from "../types";
 
 interface StatusAction {
@@ -43,19 +45,14 @@ function buildStatusToastCopy(
   t: ReturnType<typeof useTranslation>["t"],
   targetStatus: OrderStatus,
   orderNumber: string,
-  invoiceNumber: string | null,
+  invoiceNumber?: string | null,
 ) {
   if (targetStatus === "confirmed") {
-    if (invoiceNumber) {
-      return {
-        title: t("orders.detail.toast.confirmedTitle"),
-        description: t("orders.detail.toast.confirmedDescription", { invoiceNumber }),
-      };
-    }
-
     return {
       title: t("orders.detail.toast.confirmedTitle"),
-      description: t("orders.detail.toast.confirmedDescriptionFallback", { orderNumber }),
+      description: invoiceNumber
+        ? t("orders.detail.toast.confirmedDescription", { invoiceNumber })
+        : t("orders.detail.toast.confirmedDescriptionFallback", { orderNumber }),
     };
   }
 
@@ -89,7 +86,7 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
   const [activeAction, setActiveAction] = useState<StatusAction | null>(null);
   const [showInvoiceSuccess, setShowInvoiceSuccess] = useState<{
     invoiceId: string | null;
-    invoiceNumber: string;
+    invoiceNumber: string | null;
   } | null>(null);
 
   const handleStatusChange = async (targetStatus: OrderStatus) => {
@@ -106,7 +103,7 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
         result.data.invoice_number,
       );
       showSuccessToast(toastCopy.title, toastCopy.description);
-      if (activeAction?.isConfirmOrder && result.data?.invoice_number) {
+      if (activeAction?.isConfirmOrder && result.data.invoice_id) {
         setShowInvoiceSuccess({
           invoiceId: result.data.invoice_id,
           invoiceNumber: result.data.invoice_number,
@@ -126,10 +123,30 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
   const actions = STATUS_ACTIONS[order.status] ?? [];
 
   const isConfirmed = order.status === "confirmed" || order.status === "shipped" || order.status === "fulfilled";
-  const exec = order.execution;
+
+  const exec = (() => {
+    if (!isConfirmed || !order.lines.length) return null;
+    const backorderLines = order.lines.filter((l) => l.backorder_note != null);
+    const allHaveStock = order.lines.every(
+      (l) => l.available_stock_snapshot != null && l.available_stock_snapshot >= Number(l.quantity),
+    );
+    return {
+      ready_to_ship: allHaveStock,
+      has_backorder: backorderLines.length > 0,
+      backorder_line_count: backorderLines.length,
+      reservation_status: allHaveStock ? "reserved" : "not_reserved",
+    };
+  })();
 
   return (
     <section aria-label="Order detail" className="space-y-5">
+      <Breadcrumb
+        items={[
+          { label: t("routes.orders.label"), href: ORDERS_ROUTE },
+          { label: `${t("orders.detail.orderTitle")} ${order.order_number}` },
+        ]}
+      />
+
       <Button type="button" variant="outline" onClick={onBack}>
         {t("orders.detail.backToList")}
       </Button>
@@ -138,13 +155,13 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
         <SectionCard title={t("orders.detail.confirmed")}>
           <div className="space-y-3">
             <SurfaceMessage tone="success">
-              {t("orders.detail.invoiceCreated", { number: showInvoiceSuccess.invoiceNumber })}
+              {t("orders.detail.invoiceCreated", { number: showInvoiceSuccess.invoiceNumber ?? "" })}
             </SurfaceMessage>
             <Button
               type="button"
               onClick={() => navigate(`/invoices/${showInvoiceSuccess.invoiceId}`)}
             >
-              {t("orders.detail.viewInvoice", { number: showInvoiceSuccess.invoiceNumber })}
+              {t("orders.detail.viewInvoice", { number: showInvoiceSuccess.invoiceNumber ?? "" })}
             </Button>
           </div>
         </SectionCard>
@@ -221,7 +238,7 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
       {isConfirmed && exec ? (
         <SectionCard title={t("orders.detail.billingContext")}>
           <div className="space-y-2 text-sm">
-            {order.invoice_id && order.invoice_number ? (
+            {order.invoice_id ? (
               <p>
                 <span className="font-medium">{t("orders.detail.invoice")}:</span>{" "}
                 <button
@@ -229,19 +246,13 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
                   className="appearance-none border-0 bg-transparent p-0 text-foreground underline-offset-4 hover:text-foreground/80 hover:underline focus-visible:underline"
                   onClick={() => navigate(`/invoices/${order.invoice_id}`)}
                 >
-                  {order.invoice_number}
+                  {t("orders.detail.viewInvoice", { number: order.invoice_number ?? "" })}
                 </button>
               </p>
             ) : (
               <p>
                 <span className="font-medium">{t("orders.detail.invoice")}:</span>{" "}
                 {t("orders.list.invoiceOnConfirmation")}
-              </p>
-            )}
-            {order.invoice_payment_status && (
-              <p>
-                <span className="font-medium">{t("orders.list.unpaid")}:</span>{" "}
-                {order.invoice_payment_status}
               </p>
             )}
           </div>

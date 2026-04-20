@@ -106,6 +106,7 @@ export function CustomerListPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumb={[{ label: t("routes.customers.label") }]}
         eyebrow={t("customer.listPage.eyebrow")}
         title={t("customer.listPage.title")}
         description={t("customer.listPage.description")}

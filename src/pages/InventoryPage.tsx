@@ -31,6 +31,7 @@ function InventoryWorkspace() {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumb={[{ label: t("routes.inventory.label") }]}
         eyebrow={t("inventory.page.eyebrow")}
         title={t("inventory.page.title")}
         description={t("inventory.page.description")}

@@ -56,6 +56,10 @@ export default function CreateCustomerPage({ onNavigate }: CreateCustomerPagePro
     return (
       <div className="space-y-6">
         <PageHeader
+          breadcrumb={[
+            { label: t("routes.customers.label"), href: CUSTOMERS_ROUTE },
+            { label: t("routes.createCustomer.label") },
+          ]}
           eyebrow={t("customer.createPage.eyebrow")}
           title={t("customer.createPage.titleCreated")}
           description={t("customer.createPage.descriptionCreated")}
@@ -81,6 +85,10 @@ export default function CreateCustomerPage({ onNavigate }: CreateCustomerPagePro
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumb={[
+          { label: t("routes.customers.label"), href: CUSTOMERS_ROUTE },
+          { label: t("routes.createCustomer.label") },
+        ]}
         eyebrow={t("customer.createPage.eyebrow")}
         title={t("customer.createPage.title")}
         description={t("customer.createPage.description")}

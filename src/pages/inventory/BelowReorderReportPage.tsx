@@ -41,6 +41,7 @@ function BelowReorderReportWorkspace() {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumb={[{ label: tCommon("routes.belowReorderReport.label") }]}
         eyebrow={t("eyebrow")}
         title={t("title")}
         description={t("description")}

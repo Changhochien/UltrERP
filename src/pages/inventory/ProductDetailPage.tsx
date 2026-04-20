@@ -5,6 +5,7 @@ import { ArrowRightLeft, ArrowLeft, ShoppingCart, SlidersHorizontal } from "luci
 
 import { PageTabs } from "@/components/layout/PageLayout";
 import { Badge } from "@/components/ui/badge";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { Button } from "@/components/ui/button";
 import { SectionCard } from "@/components/layout/PageLayout";
 import {
@@ -154,6 +155,7 @@ function AuditLogTabContent({ productId }: { productId: string }) {
 
 function ProductDetailContent({ productId }: { productId: string }) {
   const { t } = useTranslation("common", { keyPrefix: "inventory.productDetail" });
+  const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -223,6 +225,14 @@ function ProductDetailContent({ productId }: { productId: string }) {
           <ArrowLeft size={16} />
         </Button>
         <div className="flex-1">
+          {product ? (
+            <Breadcrumb
+              items={[
+                { label: tCommon("routes.inventory.label"), href: INVENTORY_ROUTE },
+                { label: product.name },
+              ]}
+            />
+          ) : null}
           {loading ? (
             <div>
               <div

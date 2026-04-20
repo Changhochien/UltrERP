@@ -2,9 +2,11 @@
 
 import { startTransition, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { SectionCard } from "../../../components/layout/PageLayout";
 import { Badge } from "../../../components/ui/badge";
+import { Breadcrumb } from "../../../components/ui/Breadcrumb";
 import { Button } from "../../../components/ui/button";
 import {
   eguiStatusBadgeVariant,
@@ -25,6 +27,7 @@ import {
   type InvoicePrintPreviewContext,
   type InvoicePrintPreviewMeasurement,
 } from "../../../lib/print/invoices";
+import { INVOICES_ROUTE } from "../../../lib/routes";
 import PaymentHistory from "../../payments/components/PaymentHistory";
 
 type InvoicePrintPreviewModalComponent = Awaited<ReturnType<typeof loadInvoicePrintPreviewModal>>["default"];
@@ -36,6 +39,7 @@ interface InvoiceDetailProps {
 
 export function InvoiceDetail({ invoiceId, onBack }: InvoiceDetailProps) {
   const navigate = useNavigate();
+  const { t } = useTranslation("common");
   const {
     invoice,
     loading,
@@ -228,6 +232,12 @@ export function InvoiceDetail({ invoiceId, onBack }: InvoiceDetailProps) {
     <section aria-label="Invoice detail" className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2">
+          <Breadcrumb
+            items={[
+              { label: t("routes.invoices.label"), href: INVOICES_ROUTE },
+              { label: invoice.invoice_number },
+            ]}
+          />
           <Button type="button" variant="outline" onClick={onBack}>
             Back
           </Button>

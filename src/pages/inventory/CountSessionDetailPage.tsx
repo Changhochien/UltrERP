@@ -154,6 +154,10 @@ export function CountSessionDetailPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumb={[
+          { label: tCommon("routes.inventoryCountSessions.label"), href: INVENTORY_COUNT_SESSIONS_ROUTE },
+          { label: session ? t("title", { id: session.id.slice(0, 8) }) : t("titleLoading") },
+        ]}
         eyebrow={t("eyebrow")}
         title={session ? t("title", { id: session.id.slice(0, 8) }) : t("titleLoading")}
         description={t("description")}

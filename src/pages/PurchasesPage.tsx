@@ -13,6 +13,7 @@ export function PurchasesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumb={[{ label: t("routes.purchases.label") }]}
         eyebrow={t("purchase.page.eyebrow")}
         title={t("purchase.page.title")}
         description={t("purchase.page.description")}

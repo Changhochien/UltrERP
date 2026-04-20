@@ -138,6 +138,10 @@ export function CustomerDetailPage({ onBack }: CustomerDetailPageProps) {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumb={[
+          { label: t("routes.customers.label"), href: CUSTOMERS_ROUTE },
+          { label: customer.company_name },
+        ]}
         eyebrow={t("customer.detail.eyebrow")}
         title={customer.company_name}
         description={`${customer.normalized_business_number} · ${statusLabel}`}

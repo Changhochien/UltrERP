@@ -3,9 +3,11 @@ import type { HTMLAttributes, ReactNode } from "react";
 
 import { cn } from "../../lib/utils";
 import { Badge } from "../ui/badge";
+import { Breadcrumb, type BreadcrumbItem } from "../ui/Breadcrumb";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 
 interface PageHeaderProps {
+  breadcrumb?: BreadcrumbItem[];
   eyebrow?: string;
   title: string;
   description: string;
@@ -35,7 +37,7 @@ export function PageHero({ eyebrow, title, description }: PageHeroProps) {
   );
 }
 
-export function PageHeader({ eyebrow, title, description, actions, tabs }: PageHeaderProps) {
+export function PageHeader({ breadcrumb, eyebrow, title, description, actions, tabs }: PageHeaderProps) {
   return (
     <Card className="surface-hero relative overflow-hidden border-border/70 shadow-[0_34px_90px_-64px_rgba(15,23,42,0.78)]">
       <div className="pointer-events-none absolute inset-0">
@@ -44,7 +46,8 @@ export function PageHeader({ eyebrow, title, description, actions, tabs }: PageH
       </div>
       <CardContent className="relative p-0">
         <div className="flex flex-col gap-8 p-6 sm:p-8 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 space-y-5">
+            {breadcrumb?.length ? <Breadcrumb items={breadcrumb} /> : null}
             <PageHero eyebrow={eyebrow} title={title} description={description} />
           </div>
           {actions ? (

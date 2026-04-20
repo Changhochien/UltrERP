@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SupplierDetailPage } from "./SupplierDetailPage";
@@ -68,7 +69,15 @@ afterEach(() => {
 
 describe("SupplierDetailPage", () => {
   it("updates supplier details from the detail page", async () => {
-    render(<SupplierDetailPage />);
+    render(
+      <MemoryRouter>
+        <SupplierDetailPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("navigation", { name: "Breadcrumb" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "routes.inventorySuppliers.label" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "routes.inventorySuppliers.label" })).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText(/supplier name/i), {
       target: { value: "Beta Supply" },

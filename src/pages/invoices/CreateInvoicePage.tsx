@@ -25,6 +25,7 @@ import {
 import { useToast } from "../../hooks/useToast";
 import { listCustomers } from "../../lib/api/customers";
 import { createInvoice } from "../../lib/api/invoices";
+import { INVOICES_ROUTE } from "../../lib/routes";
 
 interface DraftLine extends InvoiceDraftLine {
   id: number;
@@ -197,6 +198,10 @@ export default function CreateInvoicePage() {
     return (
       <div className="space-y-6">
         <PageHeader
+          breadcrumb={[
+            { label: t("routes.invoices.label"), href: INVOICES_ROUTE },
+            { label: t("routes.createInvoice.label") },
+          ]}
           eyebrow={t("invoice.createPage.eyebrow")}
           title={t("invoice.createPage.titleCreated")}
           description={t("invoice.createPage.descriptionCreated")}
@@ -232,6 +237,10 @@ export default function CreateInvoicePage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumb={[
+          { label: t("routes.invoices.label"), href: INVOICES_ROUTE },
+          { label: t("routes.createInvoice.label") },
+        ]}
         eyebrow={t("invoice.createPage.eyebrow")}
         title={t("invoice.createPage.title")}
         description={t("invoice.createPage.description")}

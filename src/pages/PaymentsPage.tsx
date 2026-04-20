@@ -5,6 +5,7 @@ export function PaymentsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        breadcrumb={[{ label: "Payments" }]}
         eyebrow="Payments"
         title="Payments"
         description="Reconcile inbound payments, confirm system suggestions, and manually resolve remaining exceptions."
