@@ -19,6 +19,9 @@ export interface DataTableColumn<TData> {
   cell: (row: TData) => ReactNode;
   sortable?: boolean;
   getSortValue?: (row: TData) => string | number | null | undefined;
+  size?: number;
+  minSize?: number;
+  enableResizing?: boolean;
   className?: string;
   headerClassName?: string;
   onClick?: (event: React.MouseEvent, row: TData) => void;
@@ -41,7 +44,7 @@ interface DataTableProps<TData> {
   totalItems?: number;
   onPageChange?: (page: number) => void;
   sortState?: DataTableSortState | null;
-  onSortChange?: (next: DataTableSortState) => void;
+  onSortChange?: (next: DataTableSortState | null) => void;
   onRowClick?: (row: TData) => void;
   getRowId?: (row: TData) => string;
   rowLabel?: (row: TData) => string;

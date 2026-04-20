@@ -12,6 +12,8 @@ const permissionMock = vi.hoisted(() => ({
   canWrite: vi.fn<(feature: string) => boolean>(),
 }));
 
+const useOrdersMock = vi.hoisted(() => vi.fn());
+
 let detailOrder = {
   id: "order-1",
   tenant_id: "tenant-1",
@@ -153,15 +155,7 @@ vi.mock("../../domain/orders/hooks/useOrders", () => ({
     error: null,
     reload: vi.fn(),
   }),
-  useOrders: () => ({
-    items: listItems,
-    total: listItems.length,
-    page: 1,
-    pageSize: 20,
-    loading: false,
-    error: null,
-    reload: vi.fn(),
-  }),
+  useOrders: (options: unknown) => useOrdersMock(options),
   statusBadgeVariant: () => "neutral",
   statusLabel: (status: string) => status,
 }));
@@ -204,6 +198,16 @@ function LocationProbe() {
 beforeEach(() => {
   permissionMock.canWrite.mockReset();
   permissionMock.canWrite.mockImplementation((feature) => feature === "orders");
+  useOrdersMock.mockReset();
+  useOrdersMock.mockImplementation(() => ({
+    items: listItems,
+    total: listItems.length,
+    page: 1,
+    pageSize: 20,
+    loading: false,
+    error: null,
+    reload: vi.fn(),
+  }));
   detailOrder = {
     ...detailOrder,
     status: "confirmed",
@@ -301,6 +305,14 @@ describe("Order workflow presentation", () => {
     fireEvent.click(createdHeader);
     expect(screen.getByTestId("location-search").textContent).not.toContain("sort_by=");
     expect(screen.getByTestId("location-search").textContent).not.toContain("sort_order=");
+
+    const latestUseOrdersOptions = useOrdersMock.mock.lastCall?.[0] as {
+      sortBy?: string;
+      sortOrder?: string;
+    } | undefined;
+
+    expect(latestUseOrdersOptions?.sortBy).toBeUndefined();
+    expect(latestUseOrdersOptions?.sortOrder).toBeUndefined();
   });
 
   it("keeps row activation after the table-foundation migration", () => {

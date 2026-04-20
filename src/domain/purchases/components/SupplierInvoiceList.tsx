@@ -24,15 +24,15 @@ export function SupplierInvoiceList({ onSelect }: SupplierInvoiceListProps) {
   const { t } = useTranslation("common");
   const statusLabel = useSupplierInvoiceStatusLabel();
   const [statusFilter, setStatusFilter] = useState<"" | SupplierInvoiceStatus>("");
-  const [sortState, setSortState] = useState<DataTableSortState>({
+  const [sortState, setSortState] = useState<DataTableSortState | null>({
     columnId: "invoice_date",
     direction: "desc",
   });
 
   const { items, statusTotals, total, page, pageSize, loading, error, reload } = useSupplierInvoices({
     status: statusFilter || undefined,
-    sort_by: sortState.columnId as "created_at" | "invoice_date" | "total_amount",
-    sort_order: sortState.direction,
+    sort_by: sortState?.columnId as "created_at" | "invoice_date" | "total_amount" | undefined,
+    sort_order: sortState?.direction,
   });
   const allStatusCount = statusTotals.open + statusTotals.paid + statusTotals.voided;
 

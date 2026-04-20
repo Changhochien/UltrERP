@@ -27,6 +27,7 @@ const PAYMENT_STATUS_OPTIONS = [
 export function InvoiceList({ onSelect }: InvoiceListProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [customerSummaries, setCustomerSummaries] = useState<CustomerSummary[]>([]);
+  const sortableColumns = ["invoice_date", "outstanding_balance", "created_at"] as const;
 
   // Derive filter state from URL params
   const statusValues = searchParams.getAll("payment_status") as string[];
@@ -34,14 +35,18 @@ export function InvoiceList({ onSelect }: InvoiceListProps) {
   const dateFrom = searchParams.get("date_from") ?? "";
   const dateTo = searchParams.get("date_to") ?? "";
   const search = searchParams.get("search") ?? "";
-  const sortBy = searchParams.get("sort_by") ?? "invoice_date";
-  const sortOrder = (searchParams.get("sort_order") as "asc" | "desc") ?? "desc";
+  const sortBy = sortableColumns.includes(searchParams.get("sort_by") as (typeof sortableColumns)[number])
+    ? (searchParams.get("sort_by") as (typeof sortableColumns)[number])
+    : undefined;
+  const sortOrder = (searchParams.get("sort_order") as "asc" | "desc" | null) ?? "desc";
 
   // Build sort state for DataTable
-  const sortState: DataTableSortState = {
-    columnId: sortBy,
-    direction: sortOrder,
-  };
+  const sortState: DataTableSortState | null = sortBy
+    ? {
+        columnId: sortBy,
+        direction: sortOrder,
+      }
+    : null;
 
   // Build active filter list for ActiveFilterBar
   const activeFilters: { key: string; label: string }[] = [
@@ -69,7 +74,7 @@ export function InvoiceList({ onSelect }: InvoiceListProps) {
     date_to: dateTo || undefined,
     search: search || undefined,
     sort_by: sortBy,
-    sort_order: sortOrder,
+    sort_order: sortBy ? sortOrder : undefined,
   });
 
   function updateParam(key: string, value: string) {
@@ -113,9 +118,23 @@ export function InvoiceList({ onSelect }: InvoiceListProps) {
   }
 
   const handleSortChange = useCallback(
-    (newSortState: DataTableSortState) => {
-      updateParam("sort_by", newSortState.columnId);
-      updateParam("sort_order", newSortState.direction);
+    (newSortState: DataTableSortState | null) => {
+      if (!newSortState) {
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("sort_by");
+          next.delete("sort_order");
+          return next;
+        });
+        return;
+      }
+
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("sort_by", newSortState.columnId);
+        next.set("sort_order", newSortState.direction);
+        return next;
+      });
     },
     [],
   );

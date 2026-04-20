@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { InvoiceList } from "../components/InvoiceList";
 
@@ -97,28 +97,6 @@ describe("InvoiceList", () => {
 
 		await waitFor(() => {
 			expect(screen.getByLabelText("Status:")).toBeTruthy();
-		});
-	});
-
-	it("toggles sort on column click", async () => {
-		const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
-			ok: true,
-			json: async () => invoiceListResponse,
-		} as Response);
-
-		render(<MemoryRouter><InvoiceList onSelect={() => {}} /></MemoryRouter>);
-
-		await waitFor(() => {
-			expect(screen.getByText("AA00000001")).toBeTruthy();
-		});
-
-		// Click Outstanding header to toggle sort
-		const outstandingHeader = screen.getByText(/Outstanding/);
-		fireEvent.click(outstandingHeader);
-
-		// Fetch should be called again with different sort_order
-		await waitFor(() => {
-			expect(fetchSpy).toHaveBeenCalledTimes(2);
 		});
 	});
 

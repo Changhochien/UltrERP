@@ -241,7 +241,7 @@ export function TanStackDataTable<TData>({
       : undefined,
     enableRowSelection,
     enableSortingRemoval: true,
-    columnResizeMode: "onChange",
+    columnResizeMode: "onEnd",
     getRowId: getRowId ? (row) => getRowId(row) : undefined,
     onRowSelectionChange: setRowSelection,
     onPaginationChange: controlledPagination ? undefined : setInternalPagination,

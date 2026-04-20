@@ -96,6 +96,7 @@ GPT-5.4
 
 - `pnpm test src/components/layout/TanStackDataTable.test.tsx src/tests/orders/OrderWorkflowPresentation.test.tsx src/pages/orders/OrdersPage.test.tsx`
 - VS Code diagnostics on the touched Story 22.7 files reported no errors after the final fixes.
+- Post-commit BMAD review triage rejected one unrelated wrong-target review result, used TanStack Table docs and web-grounded references for sorting, column sizing, and row selection, and added a request-level regression for cleared sorting.
 
 ### Completion Notes List
 
@@ -105,6 +106,13 @@ GPT-5.4
 - Preserved order-row labels, row click and keyboard activation, active-filter summary, workflow cues, and existing cell rendering.
 - Fixed the orders-list sort integration so clearing the sort also clears the request sort params instead of silently forcing the prior default sort.
 - Added focused table tests plus order-list migration regressions for row activation and clear-sort URL behavior.
+- Follow-up review fixes aligned the shared `DataTableColumn` contract with the resize props already consumed by `TanStackDataTable` and switched column resizing to TanStack's safer documented `onEnd` default for non-memoized React tables.
+
+### Review Findings
+
+- [x] Added a request-level regression proving that clearing order-list sorting removes both `sortBy` and `sortOrder` before the data hook runs again.
+- [x] Declared `size`, `minSize`, and `enableResizing` on the shared `DataTableColumn` contract so the public API matches the TanStack wrapper's actual supported surface.
+- [x] Switched column resizing to TanStack's `onEnd` mode to avoid unnecessary resize-time re-render pressure in this non-memoized wrapper.
 
 ### File List
 
