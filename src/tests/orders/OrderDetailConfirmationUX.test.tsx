@@ -10,6 +10,9 @@ import { ToastProvider } from "../../providers/ToastProvider";
 const navigateMock = vi.fn();
 const reloadMock = vi.fn();
 const updateOrderStatusMock = vi.fn();
+const permissionMock = vi.hoisted(() => ({
+  canWrite: vi.fn<(feature: string) => boolean>(),
+}));
 
 let mockOrder = {
   id: "order-123",
@@ -87,10 +90,18 @@ vi.mock("../../lib/api/orders", () => ({
   updateOrderStatus: (...args: unknown[]) => updateOrderStatusMock(...args),
 }));
 
+vi.mock("../../hooks/usePermissions", () => ({
+  usePermissions: () => ({
+    canWrite: permissionMock.canWrite,
+  }),
+}));
+
 beforeEach(() => {
   navigateMock.mockReset();
   reloadMock.mockReset();
   updateOrderStatusMock.mockReset();
+  permissionMock.canWrite.mockReset();
+  permissionMock.canWrite.mockImplementation((feature) => feature === "orders");
   reloadMock.mockResolvedValue(undefined);
   mockOrder = {
     ...mockOrder,
@@ -246,5 +257,38 @@ describe("OrderDetail confirmation UX", () => {
     expect(screen.getByText("Order update failed")).toBeTruthy();
     expect(screen.getByText(/adjust quantities or replenish stock/i)).toBeTruthy();
     expect(screen.getByText(/confirm status change/i)).toBeTruthy();
+  });
+
+  it("hides workflow mutation actions for read-only order roles", () => {
+    permissionMock.canWrite.mockReturnValue(false);
+    mockOrder = {
+      ...mockOrder,
+      status: "confirmed",
+      invoice_id: "invoice-123",
+      invoice_number: "AA00000001",
+      confirmed_at: "2026-01-02T00:00:00Z",
+      execution: {
+        commercial_status: "committed",
+        fulfillment_status: "ready_to_ship",
+        billing_status: "unpaid",
+        reservation_status: "reserved",
+        ready_to_ship: true,
+        has_backorder: false,
+        backorder_line_count: 0,
+      },
+    };
+
+    render(
+      <ToastProvider>
+        <MemoryRouter>
+          <OrderDetail orderId="order-123" onBack={() => undefined} />
+        </MemoryRouter>
+      </ToastProvider>,
+    );
+
+    expect(screen.queryByRole("button", { name: /ship order/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /create invoice/i })).toBeNull();
+    expect(screen.getAllByText("This order is read-only for your role. Sales and admin users can change its workflow state.").length).toBe(2);
+    expect(screen.getByRole("button", { name: /view AA00000001/i })).toBeTruthy();
   });
 });

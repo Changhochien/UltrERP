@@ -545,8 +545,17 @@ async def test_confirm_order_creates_audit_logs() -> None:
         from common.models.audit_log import AuditLog
 
         audits = [o for o in session.added if isinstance(o, AuditLog)]
-        actions = {a.action for a in audits}
-        assert "ORDER_STATUS_CHANGED" in actions
-        assert "INVOICE_CREATED" in actions
+        order_audit = next(audit for audit in audits if audit.action == "ORDER_STATUS_CHANGED")
+        invoice_audit = next(audit for audit in audits if audit.action == "INVOICE_CREATED")
+
+        assert order_audit.before_state == {"status": "pending"}
+        assert order_audit.after_state == {
+            "status": "confirmed",
+            "invoice_id": invoice_audit.entity_id,
+        }
+        assert order_audit.correlation_id == str(order.id)
+
+        assert invoice_audit.after_state["order_id"] == str(order.id)
+        assert invoice_audit.correlation_id == str(order.id)
     finally:
         _teardown(prev)

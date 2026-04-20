@@ -14,9 +14,13 @@ from ._helpers import (
     FakeCustomer,
     FakeOrder,
     FakeOrderLine,
+    auth_header,
 )
 from ._helpers import (
     http_get as _get,
+)
+from ._helpers import (
+    http_patch as _patch,
 )
 from ._helpers import (
     http_post as _post,
@@ -93,6 +97,34 @@ async def test_list_orders_with_items() -> None:
         assert len(body["items"]) == 2
         assert body["items"][0]["execution"]["commercial_status"] == "pre_commit"
         assert body["items"][1]["execution"]["commercial_status"] == "committed"
+    finally:
+        _teardown(prev)
+
+
+async def test_list_orders_allows_warehouse_read_access() -> None:
+    order = FakeOrder(status="pending")
+
+    session = FakeAsyncSession()
+    session.queue_scalar(None)
+    session.queue_count(1)
+    session.queue_scalars([order])
+
+    prev = _setup(session)
+    try:
+        resp = await _get("/api/v1/orders", headers=auth_header("warehouse"))
+        assert resp.status_code == 200
+        assert resp.json()["total"] == 1
+    finally:
+        _teardown(prev)
+
+
+async def test_list_orders_denies_finance_read_access() -> None:
+    session = FakeAsyncSession()
+
+    prev = _setup(session)
+    try:
+        resp = await _get("/api/v1/orders", headers=auth_header("finance"))
+        assert resp.status_code == 403
     finally:
         _teardown(prev)
 
@@ -448,6 +480,13 @@ async def test_create_order_with_sales_team_commission() -> None:
                 "allocated_amount": "10.00",
             },
         ]
+
+        from common.models.audit_log import AuditLog
+
+        audit = next(obj for obj in session.added if isinstance(obj, AuditLog))
+        assert audit.action == "ORDER_CREATED"
+        assert audit.after_state["total_commission"] == "40.00"
+        assert audit.after_state["sales_team"] == created_order.sales_team
     finally:
         _teardown(prev)
 
@@ -539,6 +578,36 @@ async def test_create_order_rejects_sales_team_over_100_percent() -> None:
         assert resp.status_code == 422
         body = resp.json()
         assert body["detail"][0]["field"] == "sales_team"
+    finally:
+        _teardown(prev)
+
+
+async def test_create_order_denies_warehouse_write_access() -> None:
+    session = FakeAsyncSession()
+
+    prev = _setup(session)
+    try:
+        resp = await _post(
+            "/api/v1/orders",
+            json=_valid_order_payload(),
+            headers=auth_header("warehouse"),
+        )
+        assert resp.status_code == 403
+    finally:
+        _teardown(prev)
+
+
+async def test_update_order_status_denies_warehouse_write_access() -> None:
+    session = FakeAsyncSession()
+
+    prev = _setup(session)
+    try:
+        resp = await _patch(
+            f"/api/v1/orders/{uuid.uuid4()}/status",
+            json={"new_status": "confirmed"},
+            headers=auth_header("warehouse"),
+        )
+        assert resp.status_code == 403
     finally:
         _teardown(prev)
 

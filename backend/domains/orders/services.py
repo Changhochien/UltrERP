@@ -304,6 +304,7 @@ async def create_order(
                 "status": OrderStatus.PENDING.value,
                 "line_count": len(data.lines),
                 "total_amount": str(order.total_amount),
+                "sales_team": sales_team_snapshot,
                 "total_commission": str(order.total_commission),
             },
             correlation_id=str(order.id),

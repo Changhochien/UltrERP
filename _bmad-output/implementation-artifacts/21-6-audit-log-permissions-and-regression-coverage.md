@@ -1,6 +1,6 @@
 # Story 21.6: Audit, Permissions, and Regression Coverage
 
-Status: ready-for-dev
+Status: completed
 
 ## Story
 
@@ -81,16 +81,31 @@ Epic 21 keeps the working confirmation flow and expands the order surface around
 
 ### Agent Model Used
 
-Record the model and version used during implementation.
+GPT-5.4
 
 ### Debug Log References
 
-Record focused validation commands and any review artifacts produced during implementation.
+- `backend/.venv/bin/python -m pytest backend/tests/domains/orders/test_order_confirmation.py backend/tests/domains/orders/test_order_status.py backend/tests/domains/orders/test_orders_api.py`
+- `pnpm vitest run src/tests/orders/OrderDetailConfirmationUX.test.tsx src/tests/orders/OrderWorkflowPresentation.test.tsx src/pages/orders/OrdersPage.test.tsx`
 
 ### Completion Notes List
 
-Summarize audit, permission, and regression outcomes here once implementation is done.
+- Confirmation audit coverage now proves the order status change and invoice creation stay linked under the same `correlation_id`, and the order audit points at the created invoice while the invoice audit points back at the source order.
+- Order creation audit payloads now include the normalized `sales_team` snapshot alongside `total_commission`, so Epic 21 commission writes remain visible in the audit trail.
+- Order route regressions now lock the current permission baseline: warehouse retains read access, finance is denied order reads, and warehouse is denied create and status-write endpoints.
+- Frontend order surfaces now honor the same write baseline: read-only roles no longer see workflow mutation controls and cannot use the `/orders/new` route to access the create form.
+- Existing rollback and billing-semantics protections remain in place; this story added audit and permission regressions without shifting invoice-on-confirmation behavior.
 
 ### File List
 
-List every file created or modified during implementation.
+- `backend/domains/orders/services.py`
+- `backend/tests/domains/orders/test_order_confirmation.py`
+- `backend/tests/domains/orders/test_order_status.py`
+- `backend/tests/domains/orders/test_orders_api.py`
+- `src/domain/orders/components/OrderDetail.tsx`
+- `src/pages/orders/OrdersPage.tsx`
+- `src/pages/orders/OrdersPage.test.tsx`
+- `src/tests/orders/OrderDetailConfirmationUX.test.tsx`
+- `src/tests/orders/OrderWorkflowPresentation.test.tsx`
+- `public/locales/en/common.json`
+- `public/locales/zh-Hant/common.json`

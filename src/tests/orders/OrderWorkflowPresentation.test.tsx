@@ -8,6 +8,10 @@ import { OrderDetail } from "../../domain/orders/components/OrderDetail";
 import { OrderList } from "../../domain/orders/components/OrderList";
 import { ToastProvider } from "../../providers/ToastProvider";
 
+const permissionMock = vi.hoisted(() => ({
+  canWrite: vi.fn<(feature: string) => boolean>(),
+}));
+
 let detailOrder = {
   id: "order-1",
   tenant_id: "tenant-1",
@@ -166,6 +170,12 @@ vi.mock("../../lib/api/orders", () => ({
   updateOrderStatus: vi.fn(),
 }));
 
+vi.mock("../../hooks/usePermissions", () => ({
+  usePermissions: () => ({
+    canWrite: permissionMock.canWrite,
+  }),
+}));
+
 vi.mock("../../components/customers/CustomerCombobox", () => ({
   CustomerCombobox: () => <div>Customer filter</div>,
 }));
@@ -192,6 +202,8 @@ function LocationProbe() {
 }
 
 beforeEach(() => {
+  permissionMock.canWrite.mockReset();
+  permissionMock.canWrite.mockImplementation((feature) => feature === "orders");
   detailOrder = {
     ...detailOrder,
     status: "confirmed",

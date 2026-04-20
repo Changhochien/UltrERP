@@ -279,6 +279,7 @@ async def test_status_change_creates_audit_log() -> None:
         assert audits[0].action == "ORDER_STATUS_CHANGED"
         assert audits[0].before_state == {"status": "confirmed"}
         assert audits[0].after_state == {"status": "shipped"}
+        assert audits[0].correlation_id == str(order.id)
     finally:
         _teardown(prev)
 

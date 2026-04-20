@@ -9,6 +9,7 @@ import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayo
 import { Badge } from "../../../components/ui/badge";
 import { Breadcrumb } from "../../../components/ui/Breadcrumb";
 import { Button } from "../../../components/ui/button";
+import { usePermissions } from "../../../hooks/usePermissions";
 import { useToast } from "../../../hooks/useToast";
 import { useOrderDetail, statusBadgeVariant, statusLabel } from "../hooks/useOrders";
 import { updateOrderStatus } from "../../../lib/api/orders";
@@ -107,6 +108,7 @@ function buildStatusToastCopy(
 
 export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
   const { t } = useTranslation("common");
+  const { canWrite } = usePermissions();
   const { error: showErrorToast, success: showSuccessToast } = useToast();
   const navigate = useNavigate();
   const { order, loading, error, reload } = useOrderDetail(orderId);
@@ -117,8 +119,12 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
     invoiceId: string | null;
     invoiceNumber: string | null;
   } | null>(null);
+  const canWriteOrders = canWrite("orders");
 
   const handleStatusChange = async (targetStatus: OrderStatus) => {
+    if (!canWriteOrders) {
+      return;
+    }
     setUpdating(true);
     setUpdateError(null);
     const result = await updateOrderStatus(orderId, targetStatus);
@@ -305,7 +311,9 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
                 title={t("orders.detail.commercialActions")}
                 description={t("orders.detail.commercialActionsDescription")}
               >
-                {commercialActions.length > 0 ? commercialActions.map((action) => (
+                {!canWriteOrders ? (
+                  <p className="text-sm text-muted-foreground">{t("orders.detail.readOnlyActions")}</p>
+                ) : commercialActions.length > 0 ? commercialActions.map((action) => (
                   <Button key={action.targetStatus} type="button" onClick={() => setActiveAction(action)}>
                     {t(action.labelKey)}
                   </Button>
@@ -316,7 +324,9 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
                 title={t("orders.detail.warehouseActions")}
                 description={t("orders.detail.warehouseActionsDescription")}
               >
-                {warehouseActions.length > 0 ? warehouseActions.map((action) => (
+                {!canWriteOrders ? (
+                  <p className="text-sm text-muted-foreground">{t("orders.detail.readOnlyActions")}</p>
+                ) : warehouseActions.length > 0 ? warehouseActions.map((action) => (
                   <Button key={action.targetStatus} type="button" onClick={() => setActiveAction(action)}>
                     {t(action.labelKey)}
                   </Button>
@@ -351,7 +361,7 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
         </SectionCard>
       </div>
 
-      {activeAction ? (
+      {activeAction && canWriteOrders ? (
         <SectionCard title={t("orders.detail.confirmStatusChange")}>
           <div role="dialog" aria-label="Confirm status change" className="space-y-4">
             <p className="text-sm text-muted-foreground">
