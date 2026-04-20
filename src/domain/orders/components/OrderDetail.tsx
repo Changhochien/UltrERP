@@ -150,6 +150,7 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
   if (!order) return <p>{t("orders.detail.notFound")}</p>;
 
   const actions = STATUS_ACTIONS[order.status] ?? [];
+  const salesTeam = order.sales_team ?? [];
 
   const isConfirmed = order.status === "confirmed" || order.status === "shipped" || order.status === "fulfilled";
   const exec = isConfirmed ? order.execution : null;
@@ -450,6 +451,12 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
           <dd>${order.tax_amount}</dd>
           <dt>{t("orders.detail.total")}</dt>
           <dd><strong>${order.total_amount}</strong></dd>
+          {salesTeam.length > 0 ? (
+            <>
+              <dt>{t("orders.detail.totalCommission")}</dt>
+              <dd><strong>${order.total_commission}</strong></dd>
+            </>
+          ) : null}
           {order.notes ? (
             <>
               <dt>{t("orders.detail.notes")}</dt>
@@ -466,6 +473,39 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
           ) : null}
         </dl>
       </SectionCard>
+
+      {salesTeam.length > 0 ? (
+        <SectionCard title={t("orders.detail.commissionTitle")} description={t("orders.detail.commissionDescription")}>
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-border/70 bg-background/50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                {t("orders.detail.totalCommission")}
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-foreground">${order.total_commission}</p>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              {salesTeam.map((member) => (
+                <div key={`${member.sales_person}-${member.allocated_percentage}-${member.commission_rate}`} className="rounded-2xl border border-border/70 bg-background/50 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-base font-semibold text-foreground">{member.sales_person}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {t("orders.detail.commissionSplit", {
+                          allocation: member.allocated_percentage,
+                          rate: member.commission_rate,
+                        })}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="normal-case tracking-normal">
+                      ${member.allocated_amount}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </SectionCard>
+      ) : null}
 
       <SectionCard title={t("orders.detail.lineItems")} description={t("orders.detail.lineItemsDescription")}>
         <DataTable

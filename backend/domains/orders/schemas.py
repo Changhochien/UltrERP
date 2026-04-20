@@ -80,12 +80,26 @@ class OrderCreateLine(BaseModel):
     tax_policy_code: str = Field(..., min_length=1, max_length=20)
 
 
+class OrderSalesTeamAssignmentCreate(BaseModel):
+    sales_person: str = Field(..., min_length=1, max_length=120)
+    allocated_percentage: Decimal = Field(..., gt=0, le=100, max_digits=5, decimal_places=2)
+    commission_rate: Decimal = Field(..., ge=0, le=100, max_digits=5, decimal_places=2)
+
+
+class OrderSalesTeamAssignment(BaseModel):
+    sales_person: str
+    allocated_percentage: Decimal
+    commission_rate: Decimal
+    allocated_amount: Decimal
+
+
 class OrderCreate(BaseModel):
     customer_id: uuid.UUID
     payment_terms_code: PaymentTermsCode = PaymentTermsCode.NET_30
     discount_amount: Decimal = Field(default=Decimal("0.00"), ge=0, max_digits=20, decimal_places=2)
     discount_percent: Decimal = Field(default=Decimal("0.0000"), ge=0, le=1, max_digits=5, decimal_places=4)
     notes: str | None = Field(default=None, max_length=2000)
+    sales_team: list[OrderSalesTeamAssignmentCreate] = Field(default_factory=list, max_length=10)
     lines: list[OrderCreateLine] = Field(..., min_length=1, max_length=200)
 
     @model_validator(mode="after")
@@ -142,6 +156,8 @@ class OrderResponse(BaseModel):
     discount_percent: Decimal | None
     tax_amount: Decimal | None
     total_amount: Decimal | None
+    sales_team: list[OrderSalesTeamAssignment] = Field(default_factory=list)
+    total_commission: Decimal = Field(default=Decimal("0.00"))
     invoice_id: uuid.UUID | None
     invoice_number: str | None = None
     invoice_payment_status: OrderBillingStatus | None = None
@@ -165,6 +181,8 @@ class OrderListItem(BaseModel):
     status: OrderStatus
     payment_terms_code: str
     total_amount: Decimal | None
+    sales_team: list[OrderSalesTeamAssignment] = Field(default_factory=list)
+    total_commission: Decimal = Field(default=Decimal("0.00"))
     invoice_number: str | None = None
     invoice_payment_status: OrderBillingStatus | None = None
     execution: OrderExecutionSummary

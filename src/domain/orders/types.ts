@@ -42,12 +42,26 @@ export interface OrderLineCreate {
   tax_policy_code: string;
 }
 
+export interface OrderSalesTeamAssignmentCreate {
+  sales_person: string;
+  allocated_percentage: number;
+  commission_rate: number;
+}
+
+export interface OrderSalesTeamAssignment {
+  sales_person: string;
+  allocated_percentage: string;
+  commission_rate: string;
+  allocated_amount: string;
+}
+
 export interface OrderCreatePayload {
   customer_id: string;
   payment_terms_code?: PaymentTermsCode;
   discount_amount?: number;
   discount_percent?: number;
   notes?: string;
+  sales_team?: OrderSalesTeamAssignmentCreate[];
   lines: OrderLineCreate[];
 }
 
@@ -93,6 +107,8 @@ export interface OrderResponse {
   discount_percent: string | null;
   tax_amount: string;
   total_amount: string;
+  sales_team: OrderSalesTeamAssignment[];
+  total_commission: string;
   invoice_id: string | null;
   invoice_number: string | null;
   invoice_payment_status: OrderBillingStatus | null;
@@ -111,6 +127,8 @@ export interface OrderListItem {
   status: OrderStatus;
   customer_id: string;
   total_amount: string;
+  sales_team: OrderSalesTeamAssignment[];
+  total_commission: string;
   invoice_number: string | null;
   invoice_payment_status: OrderBillingStatus | null;
   execution: OrderExecutionSummary;

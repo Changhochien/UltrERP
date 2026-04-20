@@ -42,6 +42,49 @@ logger = logging.getLogger(__name__)
 
 TENANT_ID = DEFAULT_TENANT_ID
 ACTOR_ID = str(DEFAULT_TENANT_ID)
+_COMMISSION_QUANT = Decimal("0.01")
+
+
+def _build_sales_team_snapshot(
+    sales_team: Sequence[object],
+    *,
+    commissionable_amount: Decimal,
+) -> tuple[list[dict[str, str]], Decimal]:
+    if not sales_team:
+        return [], Decimal("0.00")
+
+    total_allocated_percentage = sum(member.allocated_percentage for member in sales_team)
+    if total_allocated_percentage > Decimal("100.00"):
+        raise HTTPException(
+            status_code=422,
+            detail=[
+                {
+                    "field": "sales_team",
+                    "message": "Sales team allocation cannot exceed 100%.",
+                }
+            ],
+        )
+
+    normalized_team: list[dict[str, str]] = []
+    total_commission = Decimal("0.00")
+    for member in sales_team:
+        allocated_amount = (
+            commissionable_amount
+            * member.allocated_percentage
+            * member.commission_rate
+            / Decimal("10000")
+        ).quantize(_COMMISSION_QUANT)
+        normalized_team.append(
+            {
+                "sales_person": member.sales_person,
+                "allocated_percentage": str(member.allocated_percentage),
+                "commission_rate": str(member.commission_rate),
+                "allocated_amount": str(allocated_amount),
+            }
+        )
+        total_commission += allocated_amount
+
+    return normalized_team, total_commission.quantize(_COMMISSION_QUANT)
 
 
 async def check_stock_availability(
@@ -241,6 +284,12 @@ async def create_order(
         order.subtotal_amount = totals["subtotal_amount"]
         order.tax_amount = totals["tax_amount"]
         order.total_amount = totals["total_amount"]
+        sales_team_snapshot, total_commission = _build_sales_team_snapshot(
+            data.sales_team,
+            commissionable_amount=order.subtotal_amount or Decimal("0.00"),
+        )
+        order.sales_team = sales_team_snapshot or None
+        order.total_commission = total_commission
 
         # Audit log
         audit = AuditLog(
@@ -255,6 +304,7 @@ async def create_order(
                 "status": OrderStatus.PENDING.value,
                 "line_count": len(data.lines),
                 "total_amount": str(order.total_amount),
+                "total_commission": str(order.total_commission),
             },
             correlation_id=str(order.id),
         )

@@ -123,6 +123,8 @@ class FakeOrder:
         lines: list[FakeOrderLine] | None = None,
         invoice_id: uuid.UUID | None = None,
         customer: FakeCustomer | None = None,
+        sales_team: list[dict[str, str]] | None = None,
+        total_commission: Decimal = Decimal("0.00"),
     ):
         self.id = uuid.uuid4()
         self.tenant_id = tenant_id
@@ -137,6 +139,8 @@ class FakeOrder:
         self.tax_amount = Decimal("50.00")
         self.total_amount = Decimal("1050.00")
         self.invoice_id = invoice_id
+        self.sales_team = sales_team
+        self.total_commission = total_commission
         self.notes = None
         self.created_by = "00000000-0000-0000-0000-000000000001"
         self.created_at = datetime.now(tz=UTC)

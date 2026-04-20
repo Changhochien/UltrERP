@@ -11,12 +11,15 @@ from sqlalchemy import delete, func, or_, select, tuple_
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from common.order_reporting import (
+    commercially_committed_order_filter,
+    commercially_committed_timestamp_expr,
+)
 from common.models.order import Order
 from common.models.order_line import OrderLine
 from common.tenant import set_tenant
 from domains.product_analytics.models import SalesMonthly
 
-COUNTABLE_ORDER_STATUSES = ("confirmed", "shipped", "fulfilled")
 _MONEY_QUANT = Decimal("0.01")
 _QUANTITY_QUANT = Decimal("0.001")
 _UNIT_PRICE_QUANT = Decimal("0.0001")
@@ -67,14 +70,6 @@ class SalesMonthlyReadResult:
 
 def normalize_month_start(value: date) -> date:
     return value.replace(day=1)
-
-
-def canonical_analytics_timestamp_expr():
-    return func.coalesce(Order.confirmed_at, Order.created_at)
-
-
-def canonical_analytics_timestamp_value(order: Order) -> datetime:
-    return order.confirmed_at or order.created_at
 
 
 def _next_month_start(month_start: date) -> date:
@@ -132,7 +127,7 @@ async def _load_aggregate_points(
     source: str,
 ) -> list[SalesMonthlyPoint]:
     window_start, window_end = _month_bounds(month_start)
-    analytics_timestamp = canonical_analytics_timestamp_expr()
+    analytics_timestamp = commercially_committed_timestamp_expr()
     rows = (
         await session.execute(
             select(
@@ -147,7 +142,7 @@ async def _load_aggregate_points(
             .where(
                 Order.tenant_id == tenant_id,
                 OrderLine.tenant_id == tenant_id,
-                Order.status.in_(COUNTABLE_ORDER_STATUSES),
+                commercially_committed_order_filter(),
                 analytics_timestamp >= window_start,
                 analytics_timestamp < window_end,
                 OrderLine.product_name_snapshot.is_not(None),
@@ -187,7 +182,7 @@ async def _load_skipped_lines(
     month_start: date,
 ) -> tuple[SalesMonthlySkippedLine, ...]:
     window_start, window_end = _month_bounds(month_start)
-    analytics_timestamp = canonical_analytics_timestamp_expr()
+    analytics_timestamp = commercially_committed_timestamp_expr()
     rows = (
         await session.execute(
             select(
@@ -199,7 +194,7 @@ async def _load_skipped_lines(
             .where(
                 Order.tenant_id == tenant_id,
                 OrderLine.tenant_id == tenant_id,
-                Order.status.in_(COUNTABLE_ORDER_STATUSES),
+                commercially_committed_order_filter(),
                 analytics_timestamp >= window_start,
                 analytics_timestamp < window_end,
                 or_(

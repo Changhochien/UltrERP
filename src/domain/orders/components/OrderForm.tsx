@@ -3,14 +3,14 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { SurfaceMessage } from "../../../components/layout/PageLayout";
+import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayout";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { CustomerCombobox } from "../../../components/customers/CustomerCombobox";
 import { ProductCombobox } from "../../../components/products/ProductCombobox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table";
 import { usePaymentTerms, useCreateOrder } from "../hooks/useOrders";
-import type { OrderCreatePayload, OrderLineCreate } from "../types";
+import type { OrderCreatePayload, OrderLineCreate, OrderSalesTeamAssignmentCreate } from "../types";
 import { trackEvent, AnalyticsEvents } from "../../../lib/analytics";
 
 interface OrderFormProps {
@@ -20,6 +20,10 @@ interface OrderFormProps {
 
 function emptyLine(): OrderLineCreate {
   return { product_id: "", description: "", quantity: 1, list_unit_price: 0, unit_price: 0, discount_amount: 0, tax_policy_code: "standard" };
+}
+
+function emptySalesTeamMember(): OrderSalesTeamAssignmentCreate {
+  return { sales_person: "", allocated_percentage: 0, commission_rate: 0 };
 }
 
 export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
@@ -33,6 +37,7 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
   const [discountPercent, setDiscountPercent] = useState(0);
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<OrderLineCreate[]>([emptyLine()]);
+  const [salesTeam, setSalesTeam] = useState<OrderSalesTeamAssignmentCreate[]>([]);
   const submittingRef = useRef(false);
 
 
@@ -49,11 +54,36 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
     setLines((prev) => prev.filter((_, i) => i !== idx));
   };
 
+  const updateSalesTeamMember = (idx: number, patch: Partial<OrderSalesTeamAssignmentCreate>) => {
+    setSalesTeam((prev) => prev.map((member, i) => (i === idx ? { ...member, ...patch } : member)));
+  };
+
+  const removeSalesTeamMember = (idx: number) => {
+    setSalesTeam((prev) => prev.filter((_, i) => i !== idx));
+  };
+
   const validLines = lines.filter(
     (l) => l.product_id && l.description && l.quantity > 0,
   );
+  const validSalesTeam = salesTeam.filter(
+    (member) => member.sales_person.trim() && member.allocated_percentage > 0,
+  );
   const hasInvalidLines = lines.length > 0 && validLines.length < lines.length;
-  const canSubmit = customerId && validLines.length > 0;
+  const hasInvalidSalesTeam = salesTeam.length > 0 && validSalesTeam.length < salesTeam.length;
+  const salesTeamAllocationTotal = validSalesTeam.reduce(
+    (sum, member) => sum + Number(member.allocated_percentage || 0),
+    0,
+  );
+  const hasAllocationOverflow = salesTeamAllocationTotal > 100;
+  const commissionBasis = validLines.reduce(
+    (sum, line) => sum + (Number(line.quantity || 0) * Number(line.unit_price || 0)) - Number(line.discount_amount || 0),
+    0,
+  );
+  const estimatedCommission = validSalesTeam.reduce(
+    (sum, member) => sum + (commissionBasis * Number(member.allocated_percentage || 0) * Number(member.commission_rate || 0)) / 10000,
+    0,
+  );
+  const canSubmit = customerId && validLines.length > 0 && !hasInvalidSalesTeam && !hasAllocationOverflow;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,6 +96,7 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
         discount_amount: discountAmount || undefined,
         discount_percent: discountPercent || undefined,
         notes: notes || undefined,
+        sales_team: validSalesTeam.length > 0 ? validSalesTeam : undefined,
         lines: validLines,
       };
       const result = await create(payload);
@@ -146,6 +177,94 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
             />
           </label>
         </div>
+
+        <SectionCard
+          title={t("orders.form.commissionTitle")}
+          description={t("orders.form.commissionDescription")}
+        >
+          <div className="space-y-4">
+            {salesTeam.length > 0 ? (
+              <div className="grid gap-3">
+                {salesTeam.map((member, idx) => (
+                  <div key={`sales-team-${idx}`} className="grid gap-3 rounded-2xl border border-border/70 bg-background/50 p-4 md:grid-cols-[minmax(0,1.3fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_auto]">
+                    <label className="space-y-2">
+                      <span>{t("orders.form.salesPerson")}</span>
+                      <Input
+                        type="text"
+                        value={member.sales_person}
+                        onChange={(e) => updateSalesTeamMember(idx, { sales_person: e.target.value })}
+                        aria-label={`Commission rep ${idx + 1} salesperson`}
+                        placeholder={t("orders.form.salesPersonPlaceholder")}
+                      />
+                    </label>
+                    <label className="space-y-2">
+                      <span>{t("orders.form.allocatedPercentage")}</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step="0.01"
+                        value={member.allocated_percentage}
+                        onChange={(e) => updateSalesTeamMember(idx, { allocated_percentage: Number(e.target.value) })}
+                        aria-label={`Commission rep ${idx + 1} allocation percentage`}
+                      />
+                    </label>
+                    <label className="space-y-2">
+                      <span>{t("orders.form.commissionRate")}</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step="0.01"
+                        value={member.commission_rate}
+                        onChange={(e) => updateSalesTeamMember(idx, { commission_rate: Number(e.target.value) })}
+                        aria-label={`Commission rep ${idx + 1} commission rate`}
+                      />
+                    </label>
+                    <div className="flex items-end">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeSalesTeamMember(idx)}
+                        aria-label={`Remove commission rep ${idx + 1}`}
+                      >
+                        {t("common.delete")}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">{t("orders.form.commissionEmpty")}</p>
+            )}
+
+            <div className="grid gap-3 rounded-2xl border border-dashed border-border/70 bg-background/40 p-4 md:grid-cols-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                  {t("orders.form.commissionBasis")}
+                </p>
+                <p className="mt-1 text-lg font-semibold text-foreground">${commissionBasis.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                  {t("orders.form.allocatedTotal")}
+                </p>
+                <p className="mt-1 text-lg font-semibold text-foreground">{salesTeamAllocationTotal.toFixed(2)}%</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                  {t("orders.form.estimatedCommission")}
+                </p>
+                <p className="mt-1 text-lg font-semibold text-foreground">${estimatedCommission.toFixed(2)}</p>
+              </div>
+            </div>
+
+            <Button type="button" variant="outline" onClick={() => setSalesTeam((prev) => [...prev, emptySalesTeamMember()])}>
+              {t("orders.form.addSalesPerson")}
+            </Button>
+          </div>
+        </SectionCard>
 
         <div className="overflow-x-auto rounded-2xl border border-border/80 bg-card/90 shadow-sm">
           <Table aria-label="Order line items" className="min-w-[640px]">
@@ -248,6 +367,18 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
         {hasInvalidLines ? (
           <SurfaceMessage tone="warning">
             {lines.length - validLines.length} line(s) incomplete — fill in product ID, description, and quantity (&gt; 0).
+          </SurfaceMessage>
+        ) : null}
+
+        {hasInvalidSalesTeam ? (
+          <SurfaceMessage tone="warning">
+            {t("orders.form.salesTeamIncomplete")}
+          </SurfaceMessage>
+        ) : null}
+
+        {hasAllocationOverflow ? (
+          <SurfaceMessage tone="danger">
+            {t("orders.form.salesTeamOverflow")}
           </SurfaceMessage>
         ) : null}
 

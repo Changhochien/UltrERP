@@ -10,6 +10,10 @@ from typing import Literal
 from sqlalchemy import String, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from common.order_reporting import (
+    commercially_committed_order_filter,
+    commercially_committed_timestamp_expr,
+)
 from common.time import today as get_today
 from common.models.inventory_stock import InventoryStock
 from common.models.order import Order
@@ -35,8 +39,6 @@ from domains.dashboard.schemas import (
 from domains.invoices.enums import InvoiceStatus
 from domains.invoices.models import Invoice, InvoiceLine
 from domains.payments.models import Payment
-
-_COUNTABLE_STATUSES = ("confirmed", "shipped", "fulfilled")
 
 
 async def get_revenue_summary(
@@ -233,6 +235,7 @@ async def get_top_products(
 
         qty_sold = func.sum(OrderLine.quantity).label("quantity_sold")
         revenue = func.sum(OrderLine.total_amount).label("revenue")
+        analytics_timestamp = commercially_committed_timestamp_expr()
 
         stmt = (
             select(
@@ -244,9 +247,12 @@ async def get_top_products(
             .join(OrderLine, OrderLine.product_id == Product.id)
             .join(Order, Order.id == OrderLine.order_id)
             .where(
-                Order.status.in_(_COUNTABLE_STATUSES),
-                Order.created_at >= start_ts,
-                Order.created_at < end_ts,
+                Product.tenant_id == tenant_id,
+                OrderLine.tenant_id == tenant_id,
+                Order.tenant_id == tenant_id,
+                commercially_committed_order_filter(),
+                analytics_timestamp >= start_ts,
+                analytics_timestamp < end_ts,
             )
             .group_by(Product.id, Product.name)
             .order_by(qty_sold.desc())

@@ -1,6 +1,6 @@
 # Story 21.5: Commission Tracking, Order Metadata, and Reporting Alignment
 
-Status: ready-for-dev
+Status: completed
 
 ## Story
 
@@ -86,16 +86,46 @@ The validated research identified commission tracking as a low-effort order-doma
 
 ### Agent Model Used
 
-Record the model and version used during implementation.
+GPT-5.4
 
 ### Debug Log References
 
-Record focused validation commands and any review artifacts produced during implementation.
+- `pnpm vitest run src/tests/orders/OrderWorkflowPresentation.test.tsx src/tests/orders/OrderDetailConfirmationUX.test.tsx src/tests/orders/OrderCommissionEntry.test.tsx`
+- `/Users/changtom/Downloads/UltrERP/backend/.venv/bin/python -m pytest backend/tests/domains/orders/test_orders_api.py -k 'sales_team or list_orders_with_items or list_orders_includes_invoice_payment_cues or get_order_found'`
+- `/Users/changtom/Downloads/UltrERP/backend/.venv/bin/python -m pytest backend/tests/domains/intelligence/test_reporting_semantics.py`
+- `/Users/changtom/Downloads/UltrERP/backend/.venv/bin/python -m pytest backend/tests/domains/dashboard/test_top_products.py`
 
 ### Completion Notes List
 
-Summarize commission support, metadata decisions, reporting changes, and validation results here once implementation is done.
+- Added additive order commission support via `sales_team` and `total_commission` on the order model, migration, schemas, routes, and services without changing confirmation, reservation, invoice linkage, or fulfillment behavior.
+- Normalized commission assignments at order creation time, persisted per-rep allocated amounts, and rejected sales-team payloads whose allocation total exceeds 100%.
+- Exposed commission data on order create/detail/list UI surfaces: order entry, list commission summary, and detail commission split.
+- Deliberately deferred optional metadata such as UTM fields because Epic 21 had no concrete consumer for them in this story.
+- Centralized commercially committed reporting semantics in `backend/common/order_reporting.py` so touched reporting paths key off committed lifecycle states and `coalesce(confirmed_at, created_at)` rather than pending intake or raw creation-time assumptions.
+- Updated touched reporting consumers to use the shared committed-order helper in `backend/domains/intelligence/service.py`, `backend/domains/product_analytics/service.py`, and `backend/domains/dashboard/services.py`.
+- Review pass found and fixed one regression in the touched dashboard surface: `get_top_products()` had adopted the shared committed timestamp but was missing explicit tenant filters after the refactor.
+- Focused validation passed after the review repair: order UI tests, order API tests, reporting semantics guard, and dashboard top-products tests are green.
 
 ### File List
 
-List every file created or modified during implementation.
+- `backend/common/models/order.py`
+- `backend/common/order_reporting.py`
+- `backend/domains/dashboard/services.py`
+- `backend/domains/intelligence/service.py`
+- `backend/domains/orders/routes.py`
+- `backend/domains/orders/schemas.py`
+- `backend/domains/orders/services.py`
+- `backend/domains/product_analytics/service.py`
+- `backend/tests/domains/dashboard/test_top_products.py`
+- `backend/tests/domains/intelligence/test_reporting_semantics.py`
+- `backend/tests/domains/orders/_helpers.py`
+- `backend/tests/domains/orders/test_orders_api.py`
+- `migrations/versions/16b4c3d2e1f0_add_order_sales_team_commission.py`
+- `public/locales/en/common.json`
+- `public/locales/zh-Hant/common.json`
+- `src/domain/orders/components/OrderDetail.tsx`
+- `src/domain/orders/components/OrderForm.tsx`
+- `src/domain/orders/components/OrderList.tsx`
+- `src/domain/orders/types.ts`
+- `src/tests/orders/OrderCommissionEntry.test.tsx`
+- `src/tests/orders/OrderWorkflowPresentation.test.tsx`

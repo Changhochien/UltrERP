@@ -22,6 +22,21 @@ let detailOrder = {
   discount_percent: "0.00",
   tax_amount: "50.00",
   total_amount: "1050.00",
+  sales_team: [
+    {
+      sales_person: "Alice Chen",
+      allocated_percentage: "60.00",
+      commission_rate: "5.00",
+      allocated_amount: "30.00",
+    },
+    {
+      sales_person: "Bob Lin",
+      allocated_percentage: "40.00",
+      commission_rate: "2.50",
+      allocated_amount: "10.00",
+    },
+  ],
+  total_commission: "40.00",
   invoice_id: "invoice-1",
   invoice_number: "AA00000001",
   invoice_payment_status: "unpaid",
@@ -68,6 +83,8 @@ let listItems = [
     status: "pending",
     customer_id: "customer-1",
     total_amount: "420.00",
+    sales_team: [],
+    total_commission: "0.00",
     invoice_number: null,
     invoice_payment_status: null,
     created_at: "2026-01-01T00:00:00Z",
@@ -87,6 +104,21 @@ let listItems = [
     status: "confirmed",
     customer_id: "customer-2",
     total_amount: "1050.00",
+    sales_team: [
+      {
+        sales_person: "Alice Chen",
+        allocated_percentage: "60.00",
+        commission_rate: "5.00",
+        allocated_amount: "30.00",
+      },
+      {
+        sales_person: "Bob Lin",
+        allocated_percentage: "40.00",
+        commission_rate: "2.50",
+        allocated_amount: "10.00",
+      },
+    ],
+    total_commission: "40.00",
     invoice_number: "AA00000001",
     invoice_payment_status: "unpaid",
     created_at: "2026-01-02T00:00:00Z",
@@ -197,6 +229,9 @@ describe("Order workflow presentation", () => {
     expect(screen.getByText("Commercial actions")).toBeTruthy();
     expect(screen.getByText("Warehouse actions")).toBeTruthy();
     expect(screen.getByText("Billing navigation")).toBeTruthy();
+    expect(screen.getByText("Commission split")).toBeTruthy();
+    expect(screen.getByText("Alice Chen")).toBeTruthy();
+    expect(screen.getAllByText("$40.00").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Ship Order" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "View AA00000001" })).toBeTruthy();
     expect(screen.getAllByText(/unpaid/i).length).toBeGreaterThan(0);
@@ -216,6 +251,8 @@ describe("Order workflow presentation", () => {
     expect(screen.getByText("Reserved")).toBeTruthy();
     expect(screen.getByText("Backorder risk: 1 line")).toBeTruthy();
     expect(screen.getByText("Invoice on confirmation")).toBeTruthy();
+    expect(screen.getByText("Commission")).toBeTruthy();
+    expect(screen.getByText("2 reps")).toBeTruthy();
     expect(screen.getAllByText("Unpaid").length).toBeGreaterThan(0);
   });
 

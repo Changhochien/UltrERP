@@ -12,6 +12,10 @@ from typing import Literal
 from sqlalchemy import Float, Numeric, String, and_, case, cast, func, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from common.order_reporting import (
+    commercially_committed_order_filter,
+    commercially_committed_timestamp_expr,
+)
 from common.models.order import Order
 from common.models.order_line import OrderLine
 from common.models.product import Product
@@ -53,7 +57,6 @@ from domains.intelligence.schemas import (
     TopProductByRevenue,
 )
 
-_COUNTABLE_STATUSES = ("confirmed", "shipped", "fulfilled")
 _MONEY_QUANT = Decimal("0.01")
 _QUANTITY_QUANT = Decimal("0.001")
 _RATIO_QUANT = Decimal("0.0001")
@@ -325,12 +328,13 @@ async def get_market_opportunities(
     prior_start_dt = datetime.combine(prior_start, time.min, tzinfo=UTC)
     next_day_dt = datetime.combine(end + timedelta(days=1), time.min, tzinfo=UTC)
     generated_at = datetime.now(tz=UTC)
+    analytics_timestamp = commercially_committed_timestamp_expr()
 
     async with session.begin():
         await set_tenant(session, tenant_id)
 
-        current_order_window = and_(Order.created_at >= current_start_dt, Order.created_at < next_day_dt)
-        prior_order_window = and_(Order.created_at >= prior_start_dt, Order.created_at < current_start_dt)
+        current_order_window = and_(analytics_timestamp >= current_start_dt, analytics_timestamp < next_day_dt)
+        prior_order_window = and_(analytics_timestamp >= prior_start_dt, analytics_timestamp < current_start_dt)
 
         customer_revenue_rows = (
             await session.execute(
@@ -365,9 +369,9 @@ async def get_market_opportunities(
                 .join(Customer, Customer.id == Order.customer_id)
                 .where(
                     Order.tenant_id == tenant_id,
-                    Order.status.in_(_COUNTABLE_STATUSES),
-                    Order.created_at >= prior_start_dt,
-                    Order.created_at < next_day_dt,
+                    commercially_committed_order_filter(),
+                    analytics_timestamp >= prior_start_dt,
+                    analytics_timestamp < next_day_dt,
                 )
                 .group_by(Order.customer_id, Customer.company_name)
             )
@@ -515,12 +519,13 @@ async def get_category_trends(
     prior_start_dt = datetime.combine(prior_start, time.min, tzinfo=UTC)
     next_day_dt = datetime.combine(end + timedelta(days=1), time.min, tzinfo=UTC)
     generated_at = datetime.now(tz=UTC)
+    analytics_timestamp = commercially_committed_timestamp_expr()
 
     async with session.begin():
         await set_tenant(session, tenant_id)
 
-        current_order_window = and_(Order.created_at >= current_start_dt, Order.created_at < next_day_dt)
-        prior_order_window = and_(Order.created_at >= prior_start_dt, Order.created_at < current_start_dt)
+        current_order_window = and_(analytics_timestamp >= current_start_dt, analytics_timestamp < next_day_dt)
+        prior_order_window = and_(analytics_timestamp >= prior_start_dt, analytics_timestamp < current_start_dt)
 
         category_metric_rows = (
             await session.execute(
@@ -562,10 +567,10 @@ async def get_category_trends(
                 .where(
                     Order.tenant_id == tenant_id,
                     Product.tenant_id == tenant_id,
-                    Order.status.in_(_COUNTABLE_STATUSES),
+                    commercially_committed_order_filter(),
                     Product.category.is_not(None),
-                    Order.created_at >= prior_start_dt,
-                    Order.created_at < next_day_dt,
+                    analytics_timestamp >= prior_start_dt,
+                    analytics_timestamp < next_day_dt,
                 )
                 .group_by(Product.category)
             )
@@ -584,7 +589,7 @@ async def get_category_trends(
                 .where(
                     Order.tenant_id == tenant_id,
                     Product.tenant_id == tenant_id,
-                    Order.status.in_(_COUNTABLE_STATUSES),
+                    commercially_committed_order_filter(),
                     Product.category.is_not(None),
                     current_order_window,
                 )
@@ -605,10 +610,10 @@ async def get_category_trends(
             .where(
                 Order.tenant_id == tenant_id,
                 Product.tenant_id == tenant_id,
-                Order.status.in_(_COUNTABLE_STATUSES),
+                commercially_committed_order_filter(),
                 Product.category.is_not(None),
-                Order.created_at >= prior_start_dt,
-                Order.created_at < next_day_dt,
+                analytics_timestamp >= prior_start_dt,
+                analytics_timestamp < next_day_dt,
             )
             .group_by(Order.customer_id, Product.category)
             .subquery()
@@ -618,14 +623,14 @@ async def get_category_trends(
             select(
                 Order.customer_id.label("customer_id"),
                 Product.category.label("category"),
-                func.min(Order.created_at).label("first_purchase_at"),
+                func.min(analytics_timestamp).label("first_purchase_at"),
             )
             .join(OrderLine, OrderLine.order_id == Order.id)
             .join(Product, Product.id == OrderLine.product_id)
             .where(
                 Order.tenant_id == tenant_id,
                 Product.tenant_id == tenant_id,
-                Order.status.in_(_COUNTABLE_STATUSES),
+                commercially_committed_order_filter(),
                 Product.category.is_not(None),
             )
             .group_by(Order.customer_id, Product.category)
@@ -782,6 +787,7 @@ async def get_customer_risk_signals(
     window_current_start = _subtract_months(now, 12)
     window_prior_start = _subtract_months(now, 24)
     normalized_limit = max(1, limit)
+    analytics_timestamp = commercially_committed_timestamp_expr()
 
     async with session.begin():
         await set_tenant(session, tenant_id)
@@ -794,10 +800,10 @@ async def get_customer_risk_signals(
             )
         ).all()
 
-        current_order_window = Order.created_at >= window_current_start
+        current_order_window = analytics_timestamp >= window_current_start
         prior_order_window = and_(
-            Order.created_at >= window_prior_start,
-            Order.created_at < window_current_start,
+            analytics_timestamp >= window_prior_start,
+            analytics_timestamp < window_current_start,
         )
 
         order_metrics_rows = (
@@ -828,12 +834,12 @@ async def get_customer_risk_signals(
                     func.count(
                         func.distinct(case((prior_order_window, Order.id), else_=None))
                     ).label("order_count_prior"),
-                    func.min(Order.created_at).label("first_order_at"),
-                    func.max(Order.created_at).label("last_order_at"),
+                    func.min(analytics_timestamp).label("first_order_at"),
+                    func.max(analytics_timestamp).label("last_order_at"),
                 )
                 .where(
                     Order.tenant_id == tenant_id,
-                    Order.status.in_(_COUNTABLE_STATUSES),
+                    commercially_committed_order_filter(),
                 )
                 .group_by(Order.customer_id)
             )
@@ -852,9 +858,9 @@ async def get_customer_risk_signals(
                 .where(
                     Order.tenant_id == tenant_id,
                     Product.tenant_id == tenant_id,
-                    Order.status.in_(_COUNTABLE_STATUSES),
+                    commercially_committed_order_filter(),
                     Product.category.is_not(None),
-                    Order.created_at >= window_prior_start,
+                    analytics_timestamp >= window_prior_start,
                 )
                 .group_by(Order.customer_id, Product.category)
             )
@@ -1017,6 +1023,7 @@ async def get_prospect_gaps(
     now = datetime.now(tz=UTC)
     recent_window_start = _subtract_months(now, 12)
     customer_type_filter = true() if customer_type == "all" else Customer.customer_type == customer_type
+    analytics_timestamp = commercially_committed_timestamp_expr()
 
     async with session.begin():
         await set_tenant(session, tenant_id)
@@ -1027,20 +1034,18 @@ async def get_prospect_gaps(
                 .add_columns(
                     func.count(func.distinct(Order.id)).label("order_count_total"),
                     func.count(
-                        func.distinct(
-                            case((Order.created_at >= recent_window_start, Order.id), else_=None)
-                        )
+                        func.distinct(case((analytics_timestamp >= recent_window_start, Order.id), else_=None))
                     ).label("order_count_recent"),
                     func.coalesce(func.sum(func.coalesce(Order.total_amount, 0)), 0).label("total_revenue"),
-                    func.min(Order.created_at).label("first_order_at"),
-                    func.max(Order.created_at).label("last_order_at"),
+                    func.min(analytics_timestamp).label("first_order_at"),
+                    func.max(analytics_timestamp).label("last_order_at"),
                 )
                 .join(Order, Order.customer_id == Customer.id)
                 .where(
                     Customer.tenant_id == tenant_id,
                     customer_type_filter,
                     Order.tenant_id == tenant_id,
-                    Order.status.in_(_COUNTABLE_STATUSES),
+                    commercially_committed_order_filter(),
                 )
                 .group_by(Customer.id, Customer.company_name)
                 .order_by(Customer.company_name)
@@ -1052,7 +1057,7 @@ async def get_prospect_gaps(
                 select(
                     Order.customer_id.label("customer_id"),
                     Product.category.label("category"),
-                    func.max(case((Order.created_at >= recent_window_start, 1), else_=0)).label("in_recent"),
+                    func.max(case((analytics_timestamp >= recent_window_start, 1), else_=0)).label("in_recent"),
                 )
                 .join(Customer, Customer.id == Order.customer_id)
                 .join(OrderLine, OrderLine.order_id == Order.id)
@@ -1062,7 +1067,7 @@ async def get_prospect_gaps(
                     customer_type_filter,
                     Order.tenant_id == tenant_id,
                     Product.tenant_id == tenant_id,
-                    Order.status.in_(_COUNTABLE_STATUSES),
+                    commercially_committed_order_filter(),
                     Product.category.is_not(None),
                 )
                 .group_by(Order.customer_id, Product.category)
@@ -1084,7 +1089,7 @@ async def get_prospect_gaps(
                     customer_type_filter,
                     Order.tenant_id == tenant_id,
                     Product.tenant_id == tenant_id,
-                    Order.status.in_(_COUNTABLE_STATUSES),
+                    commercially_committed_order_filter(),
                     Product.category == target_category,
                 )
             )
@@ -1103,7 +1108,7 @@ async def get_prospect_gaps(
                 customer_type_filter,
                 Order.tenant_id == tenant_id,
                 Product.tenant_id == tenant_id,
-                Order.status.in_(_COUNTABLE_STATUSES),
+                commercially_committed_order_filter(),
                 Product.category.is_not(None),
             )
             .distinct()
@@ -1340,7 +1345,7 @@ async def get_product_affinity_map(
             .where(
                 Order.tenant_id == tenant_id,
                 Product.tenant_id == tenant_id,
-                Order.status.in_(_COUNTABLE_STATUSES),
+                commercially_committed_order_filter(),
             )
             .distinct()
             .cte("qualifying_rows")
@@ -1556,6 +1561,7 @@ async def get_customer_product_profile(
     window_prior_12m_start = _subtract_months(now, 24)
     window_prior_3m_start = _subtract_months(now, 6)
     recent_category_cutoff = now - timedelta(days=90)
+    analytics_timestamp = commercially_committed_timestamp_expr()
 
     async with session.begin():
         await set_tenant(session, tenant_id)
@@ -1574,22 +1580,22 @@ async def get_customer_product_profile(
             func.coalesce(
                 func.sum(
                     case(
-                        (Order.created_at >= window_12m_start, func.coalesce(Order.total_amount, 0)),
+                        (analytics_timestamp >= window_12m_start, func.coalesce(Order.total_amount, 0)),
                         else_=0,
                     )
                 ),
                 0,
             ).label("total_revenue_12m"),
             func.coalesce(
-                func.sum(case((Order.created_at >= window_12m_start, 1), else_=0)),
+                func.sum(case((analytics_timestamp >= window_12m_start, 1), else_=0)),
                 0,
             ).label("order_count_12m"),
             func.coalesce(
-                func.sum(case((Order.created_at >= window_6m_start, 1), else_=0)),
+                func.sum(case((analytics_timestamp >= window_6m_start, 1), else_=0)),
                 0,
             ).label("order_count_6m"),
             func.coalesce(
-                func.sum(case((Order.created_at >= window_3m_start, 1), else_=0)),
+                func.sum(case((analytics_timestamp >= window_3m_start, 1), else_=0)),
                 0,
             ).label("order_count_3m"),
             func.coalesce(
@@ -1597,8 +1603,8 @@ async def get_customer_product_profile(
                     case(
                         (
                             and_(
-                                Order.created_at >= window_prior_12m_start,
-                                Order.created_at < window_12m_start,
+                                analytics_timestamp >= window_prior_12m_start,
+                                analytics_timestamp < window_12m_start,
                             ),
                             1,
                         ),
@@ -1612,8 +1618,8 @@ async def get_customer_product_profile(
                     case(
                         (
                             and_(
-                                Order.created_at >= window_prior_12m_start,
-                                Order.created_at < window_12m_start,
+                                analytics_timestamp >= window_prior_12m_start,
+                                analytics_timestamp < window_12m_start,
                             ),
                             func.coalesce(Order.total_amount, 0),
                         ),
@@ -1627,8 +1633,8 @@ async def get_customer_product_profile(
                     case(
                         (
                             and_(
-                                Order.created_at >= window_prior_3m_start,
-                                Order.created_at < window_3m_start,
+                                analytics_timestamp >= window_prior_3m_start,
+                                analytics_timestamp < window_3m_start,
                             ),
                             1,
                         ),
@@ -1637,11 +1643,11 @@ async def get_customer_product_profile(
                 ),
                 0,
             ).label("order_count_prior_3m"),
-            func.max(Order.created_at).label("last_order_at"),
+            func.max(analytics_timestamp).label("last_order_at"),
         ).where(
             Order.tenant_id == tenant_id,
             Order.customer_id == customer_id,
-            Order.status.in_(_COUNTABLE_STATUSES),
+            commercially_committed_order_filter(),
         )
         order_metrics = (await session.execute(order_metrics_stmt)).first()
 
@@ -1671,8 +1677,8 @@ async def get_customer_product_profile(
             .where(
                 Order.tenant_id == tenant_id,
                 Order.customer_id == customer_id,
-                Order.status.in_(_COUNTABLE_STATUSES),
-                Order.created_at >= window_12m_start,
+                commercially_committed_order_filter(),
+                analytics_timestamp >= window_12m_start,
                 Product.category.is_not(None),
             )
             .group_by(Product.category)
@@ -1698,14 +1704,14 @@ async def get_customer_product_profile(
         first_category_stmt = (
             select(
                 Product.category.label("category"),
-                func.min(Order.created_at).label("first_order_at"),
+                func.min(analytics_timestamp).label("first_order_at"),
             )
             .join(OrderLine, OrderLine.product_id == Product.id)
             .join(Order, OrderLine.order_id == Order.id)
             .where(
                 Order.tenant_id == tenant_id,
                 Order.customer_id == customer_id,
-                Order.status.in_(_COUNTABLE_STATUSES),
+                commercially_committed_order_filter(),
                 Product.category.is_not(None),
             )
             .group_by(Product.category)
@@ -1731,8 +1737,8 @@ async def get_customer_product_profile(
             .where(
                 Order.tenant_id == tenant_id,
                 Order.customer_id == customer_id,
-                Order.status.in_(_COUNTABLE_STATUSES),
-                Order.created_at >= window_12m_start,
+                commercially_committed_order_filter(),
+                analytics_timestamp >= window_12m_start,
             )
             .group_by(Product.id, Product.name, Product.category)
             .order_by(
@@ -2157,7 +2163,7 @@ async def _load_product_performance_evidence(
     if not product_ids:
         return {}
 
-    analytics_timestamp = func.coalesce(Order.confirmed_at, Order.created_at)
+    analytics_timestamp = commercially_committed_timestamp_expr()
     current_window_start_dt = datetime.combine(current_window_start, time.min, tzinfo=UTC)
     included_window_start_dt = datetime.combine(included_window_start, time.min, tzinfo=UTC)
     included_window_end_dt = datetime.combine(
@@ -2185,7 +2191,7 @@ async def _load_product_performance_evidence(
                     Order.tenant_id == tenant_id,
                     OrderLine.tenant_id == tenant_id,
                     OrderLine.product_id.in_(product_ids),
-                    Order.status.in_(_COUNTABLE_STATUSES),
+                    commercially_committed_order_filter(),
                 )
                 .group_by(OrderLine.product_id)
             )
@@ -2205,7 +2211,7 @@ async def _load_product_performance_evidence(
             Order.tenant_id == tenant_id,
             OrderLine.tenant_id == tenant_id,
             OrderLine.product_id.in_(product_ids),
-            Order.status.in_(_COUNTABLE_STATUSES),
+            commercially_committed_order_filter(),
             analytics_timestamp >= included_window_start_dt,
             analytics_timestamp < included_window_end_dt,
             OrderLine.product_name_snapshot.is_not(None),
@@ -2415,7 +2421,7 @@ async def get_customer_buying_behavior(
     window_end_exclusive = _shift_month_start(window_end, 1)
     analytics_start = datetime.combine(window_start, time.min, tzinfo=UTC)
     analytics_end = datetime.combine(window_end_exclusive, time.min, tzinfo=UTC)
-    analytics_timestamp = func.coalesce(Order.confirmed_at, Order.created_at)
+    analytics_timestamp = commercially_committed_timestamp_expr()
     async with session.begin():
         await set_tenant(session, tenant_id)
         rows = (
@@ -2435,7 +2441,7 @@ async def get_customer_buying_behavior(
                     Customer.tenant_id == tenant_id,
                     Order.tenant_id == tenant_id,
                     OrderLine.tenant_id == tenant_id,
-                    Order.status.in_(_COUNTABLE_STATUSES),
+                    commercially_committed_order_filter(),
                     analytics_timestamp >= analytics_start,
                     analytics_timestamp < analytics_end,
                 )

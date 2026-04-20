@@ -20,6 +20,7 @@ from domains.orders.schemas import (
     OrderListItem,
     OrderListResponse,
     OrderResponse,
+    OrderSalesTeamAssignment,
     OrderStatus,
     OrderStatusUpdate,
     PaymentTermsItem,
@@ -41,6 +42,10 @@ router = APIRouter()
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 ReadUser = Annotated[dict, Depends(require_role("admin", "warehouse", "sales"))]
 WriteUser = Annotated[dict, Depends(require_role("admin", "sales"))]
+
+
+def _serialize_sales_team(raw_sales_team: list[dict[str, object]] | None) -> list[OrderSalesTeamAssignment]:
+    return [OrderSalesTeamAssignment.model_validate(item) for item in (raw_sales_team or [])]
 
 
 # ── Payment Terms reference ──────────────────────────────────
@@ -232,6 +237,8 @@ def _to_order_list_item(order, meta: dict | None = None) -> OrderListItem:
         customer_id=order.customer_id,
         payment_terms_code=order.payment_terms_code,
         total_amount=order.total_amount,
+        sales_team=_serialize_sales_team(getattr(order, "sales_team", None)),
+        total_commission=getattr(order, "total_commission", 0),
         invoice_number=meta.get("invoice_number"),
         invoice_payment_status=meta.get("invoice_payment_status"),
         execution=OrderExecutionSummary(**meta.get("execution", {})),
@@ -263,6 +270,8 @@ async def _to_order_response(
         discount_percent=order.discount_percent,
         tax_amount=order.tax_amount,
         total_amount=order.total_amount,
+        sales_team=_serialize_sales_team(getattr(order, "sales_team", None)),
+        total_commission=getattr(order, "total_commission", 0),
         invoice_id=order.invoice_id,
         invoice_number=meta.get("invoice_number"),
         invoice_payment_status=meta.get("invoice_payment_status"),

@@ -258,6 +258,32 @@ export function OrderList({ onSelect }: OrderListProps) {
             cell: (item) => `$${item.total_amount}`,
           },
           {
+            id: "commission",
+            header: t("orders.list.commission"),
+            cell: (item) => {
+              const salesTeam = item.sales_team ?? [];
+              if (salesTeam.length === 0) {
+                return <span className="text-sm text-muted-foreground">{t("orders.list.noCommission")}</span>;
+              }
+
+              return (
+                <div className="space-y-1">
+                  <div className="text-sm font-medium text-foreground">${item.total_commission}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {salesTeam.length === 1
+                      ? salesTeam[0].sales_person
+                      : t(
+                        salesTeam.length === 2
+                          ? "orders.list.salesTeamCount_two"
+                          : "orders.list.salesTeamCount_other",
+                        { count: salesTeam.length },
+                      )}
+                  </div>
+                </div>
+              );
+            },
+          },
+          {
             id: "created_at",
             header: t("orders.list.created"),
             sortable: true,

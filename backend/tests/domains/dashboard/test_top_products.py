@@ -6,6 +6,7 @@ import uuid
 from decimal import Decimal
 
 import pytest
+from sqlalchemy.dialects import postgresql
 
 from domains.dashboard.services import get_top_products
 from tests.domains.orders._helpers import FakeAsyncSession, FakeResult
@@ -71,6 +72,30 @@ async def test_top_products_empty() -> None:
     result = await get_top_products(session, TENANT, period="day")
 
     assert result.items == []
+
+
+@pytest.mark.asyncio
+async def test_top_products_uses_confirmation_timestamp_window() -> None:
+    session = FakeAsyncSession()
+    _queue_top_products(session, [])
+
+    await get_top_products(session, TENANT, period="day")
+
+    executed_sql = "\n".join(
+        str(statement.compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}))
+        for statement, _params in session.executed_statements
+        if hasattr(statement, "compile")
+    )
+    normalized_sql = executed_sql.lower()
+
+    assert "coalesce(orders.confirmed_at, orders.created_at)" in normalized_sql
+    assert "product.tenant_id = '00000000-0000-0000-0000-000000000001'" in normalized_sql
+    assert "order_lines.tenant_id = '00000000-0000-0000-0000-000000000001'" in normalized_sql
+    assert "orders.tenant_id = '00000000-0000-0000-0000-000000000001'" in normalized_sql
+    assert "'confirmed'" in normalized_sql
+    assert "'shipped'" in normalized_sql
+    assert "'fulfilled'" in normalized_sql
+    assert "'pending'" not in normalized_sql
 
 
 @pytest.mark.asyncio

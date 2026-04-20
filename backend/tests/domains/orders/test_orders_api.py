@@ -187,6 +187,15 @@ async def test_get_order_found() -> None:
         customer_id=customer.id,
         lines=[line],
         customer=customer,
+        sales_team=[
+            {
+                "sales_person": "Alice Chen",
+                "allocated_percentage": "60.00",
+                "commission_rate": "5.00",
+                "allocated_amount": "30.00",
+            }
+        ],
+        total_commission=Decimal("30.00"),
     )
 
     session = FakeAsyncSession()
@@ -202,6 +211,9 @@ async def test_get_order_found() -> None:
         assert body["status"] == "pending"
         assert body["execution"]["commercial_status"] == "pre_commit"
         assert body["invoice_payment_status"] is None
+        assert body["total_commission"] == "30.00"
+        assert body["sales_team"][0]["sales_person"] == "Alice Chen"
+        assert body["sales_team"][0]["allocated_amount"] == "30.00"
         assert len(body["lines"]) == 1
         assert body["lines"][0]["description"] == "Test product"
     finally:
@@ -357,6 +369,92 @@ async def test_create_order_with_cod_terms() -> None:
 
 
 async def test_create_order_persists_header_discounts() -> None:
+
+
+async def test_create_order_with_sales_team_commission() -> None:
+    customer = FakeCustomer()
+    product = FakeProduct(product_id=uuid.UUID(_PRODUCT_ID))
+
+    line = FakeOrderLine(product_id=product.id)
+    order = FakeOrder(
+        customer_id=customer.id,
+        lines=[line],
+        customer=customer,
+        sales_team=[
+            {
+                "sales_person": "Alice Chen",
+                "allocated_percentage": "60.00",
+                "commission_rate": "5.00",
+                "allocated_amount": "30.00",
+            },
+            {
+                "sales_person": "Bob Lin",
+                "allocated_percentage": "40.00",
+                "commission_rate": "2.50",
+                "allocated_amount": "10.00",
+            },
+        ],
+        total_commission=Decimal("40.00"),
+    )
+
+    session = FakeAsyncSession()
+    session.queue_scalar(None)  # set_tenant
+    session.queue_scalar(customer)  # customer lookup
+    session.queue_scalars([product.id])  # product check
+    session.queue_count(100)  # stock availability for line
+    session.queue_scalar(None)  # set_tenant (get_order)
+    session.queue_scalar(order)  # get_order
+>>>>>>> fb09df5 (feat(orders): add commission tracking and reporting alignment)
+
+    prev = _setup(session)
+    try:
+        payload = _valid_order_payload(customer_id=str(customer.id))
+        payload["lines"][0]["product_id"] = str(product.id)
+        payload["sales_team"] = [
+            {
+                "sales_person": "Alice Chen",
+                "allocated_percentage": "60.00",
+                "commission_rate": "5.00",
+            },
+            {
+                "sales_person": "Bob Lin",
+                "commission_rate": "2.50",
+            },
+        ]
+        resp = await _post("/api/v1/orders", json=payload)
+        assert resp.status_code == 201
+        body = resp.json()
+        assert body["total_commission"] == "40.00"
+        assert [member["sales_person"] for member in body["sales_team"]] == [
+            "Alice Chen",
+            "Bob Lin",
+        ]
+        assert body["sales_team"][0]["allocated_amount"] == "30.00"
+        assert body["sales_team"][1]["allocated_amount"] == "10.00"
+
+        created_order = next(obj for obj in session.added if isinstance(obj, Order))
+        assert created_order.total_commission == Decimal("40.00")
+        assert created_order.sales_team == [
+            {
+                "sales_person": "Alice Chen",
+                "allocated_percentage": "60.00",
+                "commission_rate": "5.00",
+                "allocated_amount": "30.00",
+            },
+            {
+                "sales_person": "Bob Lin",
+                "allocated_percentage": "40.00",
+                "commission_rate": "2.50",
+                "allocated_amount": "10.00",
+            },
+        ]
+    finally:
+        _teardown(prev)
+
+
+
+
+async def test_create_order_persists_header_discounts() -> None:
     customer = FakeCustomer()
     product = FakeProduct(product_id=uuid.UUID(_PRODUCT_ID))
 
@@ -409,6 +507,38 @@ async def test_create_order_rejects_multiple_header_discount_modes() -> None:
         assert resp.status_code == 422
         detail = resp.json()["detail"]
         assert any("discount_amount and discount_percent" in item["msg"] for item in detail)
+
+
+async def test_create_order_rejects_sales_team_over_100_percent() -> None:
+    customer = FakeCustomer()
+    product = FakeProduct(product_id=uuid.UUID(_PRODUCT_ID))
+
+    session = FakeAsyncSession()
+    session.queue_scalar(None)  # set_tenant
+    session.queue_scalar(customer)  # customer lookup
+    session.queue_scalars([product.id])  # product check
+    session.queue_count(100)  # stock availability for line
+
+    prev = _setup(session)
+    try:
+        payload = _valid_order_payload(customer_id=str(customer.id))
+        payload["lines"][0]["product_id"] = str(product.id)
+        payload["sales_team"] = [
+            {
+                "sales_person": "Alice Chen",
+                "allocated_percentage": "60.00",
+                "commission_rate": "5.00",
+            },
+            {
+                "sales_person": "Bob Lin",
+                "allocated_percentage": "50.00",
+                "commission_rate": "2.50",
+            },
+        ]
+        resp = await _post("/api/v1/orders", json=payload)
+        assert resp.status_code == 422
+        body = resp.json()
+        assert body["detail"][0]["field"] == "sales_team"
     finally:
         _teardown(prev)
 

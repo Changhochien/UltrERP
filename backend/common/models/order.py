@@ -51,6 +51,12 @@ class Order(Base):
 		ForeignKey("invoices.id", name="fk_orders_invoice_id_invoices"),
 		nullable=True,
 	)
+	sales_team: Mapped[list[dict[str, object]] | None] = mapped_column(JSON, nullable=True)
+	total_commission: Mapped[Decimal] = mapped_column(
+		Numeric(20, 2),
+		nullable=False,
+		default=Decimal("0.00"),
+	)
 	notes: Mapped[str | None] = mapped_column(Text)
 	legacy_header_snapshot: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
 	created_by: Mapped[str] = mapped_column(String(100), nullable=False)
