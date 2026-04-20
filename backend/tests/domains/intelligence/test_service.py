@@ -116,6 +116,7 @@ async def _create_order(
     *,
     customer: Customer,
     created_at: datetime,
+    confirmed_at: datetime | None = None,
     status: str,
     lines: list[tuple[Product, Decimal]],
     tenant_id: uuid.UUID | None = None,
@@ -139,7 +140,7 @@ async def _create_order(
         created_by="test-suite",
         created_at=created_at,
         updated_at=created_at,
-        confirmed_at=created_at if status != "pending" else None,
+        confirmed_at=confirmed_at if confirmed_at is not None else (created_at if status != "pending" else None),
     )
     session.add(order)
     await session.flush()
@@ -766,6 +767,43 @@ async def test_get_category_trends_excludes_future_rows_and_ranks_newly_active_b
     assert [trend.category for trend in trends.trends] == ["Zulu", "Alpha"]
     assert trends.trends[0].current_period_revenue == Decimal("200.00")
     assert trends.trends[1].current_period_revenue == Decimal("100.00")
+
+
+@pytest.mark.asyncio
+async def test_get_category_trends_uses_confirmation_time_for_committed_orders(
+    db_session: AsyncSession,
+) -> None:
+    tenant_id = uuid.uuid4()
+    now = datetime.now(tz=UTC)
+    customer = await _create_customer_for_tenant(db_session, "Timing Buyer", tenant_id)
+    product = await _create_product_for_tenant(db_session, "Printer Ink", "Supplies", tenant_id)
+
+    await _create_order(
+        db_session,
+        customer=customer,
+        created_at=now - timedelta(days=45),
+        confirmed_at=now - timedelta(days=5),
+        status="confirmed",
+        lines=[(product, Decimal("120.00"))],
+        tenant_id=tenant_id,
+    )
+    await _create_order(
+        db_session,
+        customer=customer,
+        created_at=now - timedelta(days=4),
+        status="pending",
+        lines=[(product, Decimal("900.00"))],
+        tenant_id=tenant_id,
+    )
+    await db_session.commit()
+
+    trends = await get_category_trends(db_session, tenant_id, period="last_30d")
+
+    assert len(trends.trends) == 1
+    assert trends.trends[0].category == "Supplies"
+    assert trends.trends[0].current_period_revenue == Decimal("120.00")
+    assert trends.trends[0].current_period_orders == 1
+    assert trends.trends[0].customer_count == 1
 
 
 @pytest.mark.asyncio

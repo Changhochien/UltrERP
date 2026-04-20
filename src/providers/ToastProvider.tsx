@@ -69,12 +69,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const dismiss = useCallback((id?: string) => {
     if (!id) {
-      const currentIds = toasts.map((toast) => toast.id);
-      setToasts((current) => current.map((toast) => ({ ...toast, open: false })));
-      currentIds.forEach((toastId) => {
-        dismissTimersRef.current[toastId] = window.setTimeout(() => {
-          removeToast(toastId);
-        }, EXIT_DURATION_MS);
+      setToasts((current) => {
+        const ids = current.map((t) => t.id);
+        ids.forEach((toastId) => {
+          dismissTimersRef.current[toastId] = window.setTimeout(() => {
+            removeToast(toastId);
+          }, EXIT_DURATION_MS);
+        });
+        return current.map((toast) => ({ ...toast, open: false }));
       });
       return;
     }
@@ -82,10 +84,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts((current) =>
       current.map((toast) => (toast.id === id ? { ...toast, open: false } : toast)),
     );
+    if (dismissTimersRef.current[id]) {
+      window.clearTimeout(dismissTimersRef.current[id]);
+    }
     dismissTimersRef.current[id] = window.setTimeout(() => {
       removeToast(id);
     }, EXIT_DURATION_MS);
-  }, [removeToast, toasts]);
+  }, [removeToast]);
 
   const handleOpenChange = useCallback((id: string, open: boolean) => {
     if (open) {
