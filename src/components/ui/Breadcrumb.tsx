@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 
@@ -61,10 +60,9 @@ export function Breadcrumb({ items, separator = "/", className }: BreadcrumbProp
   }
 
   const shouldCollapseOnMobile = items.length > 2;
-  const collapsedItems = useMemo(
-    () => (shouldCollapseOnMobile ? [{ label: "…" }, ...items.slice(-2)] : items),
-    [shouldCollapseOnMobile, items],
-  );
+  const collapsedItems = shouldCollapseOnMobile
+    ? [{ label: "…" }, ...items.slice(-2)]
+    : items;
 
   return (
     <nav aria-label="Breadcrumb" className={className}>
