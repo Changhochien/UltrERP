@@ -13,6 +13,7 @@ import type {
   OrderListItem,
   OrderResponse,
   OrderStatus,
+  OrderWorkflowView,
   PaymentTermsItem,
 } from "../types";
 
@@ -40,6 +41,7 @@ export function usePaymentTerms() {
 
 export function useOrders(options?: {
   status?: string | string[];
+  workflowView?: OrderWorkflowView;
   customerId?: string;
   dateFrom?: string;
   dateTo?: string;
@@ -60,6 +62,7 @@ export function useOrders(options?: {
     try {
       const res = await fetchOrders({
         status: options?.status,
+        workflow_view: options?.workflowView,
         customer_id: options?.customerId,
         date_from: options?.dateFrom,
         date_to: options?.dateTo,
@@ -77,7 +80,7 @@ export function useOrders(options?: {
     } finally {
       setLoading(false);
     }
-  }, [options?.status, options?.customerId, options?.dateFrom, options?.dateTo, options?.search, options?.sortBy, options?.sortOrder]);
+  }, [options?.status, options?.workflowView, options?.customerId, options?.dateFrom, options?.dateTo, options?.search, options?.sortBy, options?.sortOrder]);
 
   useEffect(() => {
     void reload();

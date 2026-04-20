@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from common.models.order import Order
+from domains.orders.services import list_orders
 
 from ._helpers import (
     FakeAsyncSession,
@@ -89,6 +91,8 @@ async def test_list_orders_with_items() -> None:
         body = resp.json()
         assert body["total"] == 2
         assert len(body["items"]) == 2
+        assert body["items"][0]["execution"]["commercial_status"] == "pre_commit"
+        assert body["items"][1]["execution"]["commercial_status"] == "committed"
     finally:
         _teardown(prev)
 
@@ -109,6 +113,68 @@ async def test_list_orders_with_status_filter() -> None:
         assert body["total"] == 1
     finally:
         _teardown(prev)
+
+
+async def test_list_orders_includes_invoice_payment_cues() -> None:
+    class FakeInvoice:
+        def __init__(self, *, invoice_id: uuid.UUID, order_id: uuid.UUID) -> None:
+            self.id = invoice_id
+            self.order_id = order_id
+            self.invoice_number = "AA00000001"
+            self.invoice_date = date.today()
+            self.customer_id = uuid.uuid4()
+            self.currency_code = "TWD"
+            self.total_amount = Decimal("1050.00")
+            self.status = "issued"
+            self.created_at = datetime.now(tz=UTC)
+
+    invoice_id = uuid.uuid4()
+    ready_line = FakeOrderLine(product_id=uuid.uuid4(), available_stock_snapshot=25)
+    order = FakeOrder(status="confirmed", lines=[ready_line], invoice_id=invoice_id)
+    invoice = FakeInvoice(invoice_id=invoice_id, order_id=order.id)
+
+    session = FakeAsyncSession()
+    session.queue_scalar(None)  # set_tenant
+    session.queue_count(1)
+    session.queue_scalars([order])
+    session.queue_scalar(None)  # set_tenant for workspace meta
+    session.queue_scalars([invoice])
+    session.queue_rows([(invoice.id, Decimal("100.00"))])
+    session.queue_rows([(order.id, 30)])
+
+    prev = _setup(session)
+    try:
+        resp = await _get("/api/v1/orders")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["items"][0]["invoice_number"] == "AA00000001"
+        assert body["items"][0]["invoice_payment_status"] == "partial"
+        assert body["items"][0]["execution"]["fulfillment_status"] == "ready_to_ship"
+        assert body["items"][0]["execution"]["reservation_status"] == "reserved"
+    finally:
+        _teardown(prev)
+
+
+async def test_list_orders_invoiced_not_paid_view_uses_payment_state_filter() -> None:
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    session = FakeAsyncSession()
+    session.queue_scalar(None)
+    session.queue_count(0)
+    session.queue_scalars([])
+
+    await list_orders(
+        session,
+        tenant_id=tenant_id,
+        workflow_view="invoiced_not_paid",
+    )
+
+    executed_sql = "\n".join(str(statement) for statement, _params in session.executed_statements)
+    normalized_sql = executed_sql.lower()
+
+    assert "payments" in normalized_sql
+    assert "match_status" in normalized_sql
+    assert "total_amount" in normalized_sql
+    assert "invoice_id" in normalized_sql
 
 
 # ── Order detail tests ───────────────────────────────────────
@@ -134,6 +200,8 @@ async def test_get_order_found() -> None:
         body = resp.json()
         assert body["order_number"] == order.order_number
         assert body["status"] == "pending"
+        assert body["execution"]["commercial_status"] == "pre_commit"
+        assert body["invoice_payment_status"] is None
         assert len(body["lines"]) == 1
         assert body["lines"][0]["description"] == "Test product"
     finally:

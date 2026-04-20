@@ -25,6 +25,35 @@ class OrderStatus(str, enum.Enum):
     CANCELLED = "cancelled"
 
 
+class OrderCommercialStatus(str, enum.Enum):
+    PRE_COMMIT = "pre_commit"
+    COMMITTED = "committed"
+    CANCELLED = "cancelled"
+
+
+class OrderFulfillmentStatus(str, enum.Enum):
+    NOT_STARTED = "not_started"
+    READY_TO_SHIP = "ready_to_ship"
+    SHIPPED = "shipped"
+    FULFILLED = "fulfilled"
+    CANCELLED = "cancelled"
+
+
+class OrderBillingStatus(str, enum.Enum):
+    NOT_INVOICED = "not_invoiced"
+    UNPAID = "unpaid"
+    PARTIAL = "partial"
+    PAID = "paid"
+    OVERDUE = "overdue"
+    VOIDED = "voided"
+
+
+class OrderReservationStatus(str, enum.Enum):
+    NOT_RESERVED = "not_reserved"
+    RESERVED = "reserved"
+    RELEASED = "released"
+
+
 ALLOWED_TRANSITIONS: dict[OrderStatus, frozenset[OrderStatus]] = {
     OrderStatus.PENDING: frozenset({OrderStatus.CONFIRMED, OrderStatus.CANCELLED}),
     OrderStatus.CONFIRMED: frozenset({OrderStatus.SHIPPED}),
@@ -87,6 +116,16 @@ class OrderLineResponse(BaseModel):
     backorder_note: str | None
 
 
+class OrderExecutionSummary(BaseModel):
+    commercial_status: OrderCommercialStatus
+    fulfillment_status: OrderFulfillmentStatus
+    billing_status: OrderBillingStatus
+    reservation_status: OrderReservationStatus
+    ready_to_ship: bool
+    has_backorder: bool
+    backorder_line_count: int
+
+
 class OrderResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -104,6 +143,9 @@ class OrderResponse(BaseModel):
     tax_amount: Decimal | None
     total_amount: Decimal | None
     invoice_id: uuid.UUID | None
+    invoice_number: str | None = None
+    invoice_payment_status: OrderBillingStatus | None = None
+    execution: OrderExecutionSummary
     notes: str | None
     legacy_header_snapshot: dict[str, Any] | None = None
     created_by: str
@@ -123,6 +165,9 @@ class OrderListItem(BaseModel):
     status: OrderStatus
     payment_terms_code: str
     total_amount: Decimal | None
+    invoice_number: str | None = None
+    invoice_payment_status: OrderBillingStatus | None = None
+    execution: OrderExecutionSummary
     legacy_header_snapshot: dict[str, Any] | None = None
     created_at: datetime
     updated_at: datetime

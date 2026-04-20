@@ -1,5 +1,6 @@
 import type {
   OrderBillingStatus,
+  OrderCommercialStatus,
   OrderFulfillmentStatus,
   OrderReservationStatus,
 } from "./types";
@@ -34,6 +35,24 @@ export const FULFILLMENT_STATUS_META: Record<
   },
   cancelled: {
     labelKey: "orders.workflow.fulfillment.cancelled",
+    variant: "outline",
+  },
+};
+
+export const COMMERCIAL_STATUS_META: Record<
+  OrderCommercialStatus,
+  { labelKey: string; variant: OrderWorkflowBadgeVariant }
+> = {
+  pre_commit: {
+    labelKey: "orders.workflow.commercial.preCommit",
+    variant: "outline",
+  },
+  committed: {
+    labelKey: "orders.workflow.commercial.committed",
+    variant: "info",
+  },
+  cancelled: {
+    labelKey: "orders.workflow.commercial.cancelled",
     variant: "outline",
   },
 };

@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import logging
 import uuid
+from collections.abc import Sequence
 from datetime import UTC, date, datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -21,13 +22,21 @@ from common.models.order import Order
 from common.models.order_line import OrderLine
 from common.models.warehouse import Warehouse
 from common.tenant import DEFAULT_TENANT_ID, set_tenant
+from domains.invoices.enums import InvoiceStatus
+from domains.invoices.models import Invoice
+from domains.invoices.service import enrich_invoices_with_payment_status
 from domains.invoices.tax import TaxPolicyCode, aggregate_invoice_totals, calculate_line_amounts
 from domains.orders.schemas import (
     ALLOWED_TRANSITIONS,
     PAYMENT_TERMS_CONFIG,
+    OrderBillingStatus,
+    OrderCommercialStatus,
     OrderCreate,
+    OrderFulfillmentStatus,
+    OrderReservationStatus,
     OrderStatus,
 )
+from domains.payments.models import Payment
 
 logger = logging.getLogger(__name__)
 
@@ -507,11 +516,18 @@ async def list_orders(
     session: AsyncSession,
     tenant_id: uuid.UUID | None = None,
     *,
-    status: str | None = None,
+    status: str | Sequence[str] | None = None,
     customer_id: uuid.UUID | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
     search: str | None = None,
+    workflow_view: Literal[
+        "pending_intake",
+        "ready_to_ship",
+        "shipped_not_completed",
+        "invoiced_not_paid",
+    ]
+    | None = None,
     sort_by: Literal["created_at", "order_number", "total_amount", "status"] | None = None,
     sort_order: str = "desc",
     page: int = 1,
@@ -520,7 +536,11 @@ async def list_orders(
     tid = tenant_id or TENANT_ID
 
     filters = [Order.tenant_id == tid]
-    if status:
+    if isinstance(status, Sequence) and not isinstance(status, str):
+        status_values = [value for value in status if value]
+        if status_values:
+            filters.append(Order.status.in_(status_values))
+    elif status:
         filters.append(Order.status == status)
     if customer_id:
         filters.append(Order.customer_id == customer_id)
@@ -534,6 +554,53 @@ async def list_orders(
         )
     if search:
         filters.append(Order.order_number.ilike(f"%{search}%"))
+
+    if workflow_view == "pending_intake":
+        filters.append(Order.status == OrderStatus.PENDING.value)
+    elif workflow_view == "ready_to_ship":
+        blocking_line_exists = (
+            select(OrderLine.id)
+            .where(
+                OrderLine.order_id == Order.id,
+                OrderLine.tenant_id == tid,
+                or_(
+                    OrderLine.backorder_note.is_not(None),
+                    OrderLine.available_stock_snapshot.is_(None),
+                    OrderLine.quantity > OrderLine.available_stock_snapshot,
+                ),
+            )
+            .exists()
+        )
+        filters.extend(
+            [
+                Order.status == OrderStatus.CONFIRMED.value,
+                ~blocking_line_exists,
+            ]
+        )
+    elif workflow_view == "shipped_not_completed":
+        filters.append(Order.status == OrderStatus.SHIPPED.value)
+    elif workflow_view == "invoiced_not_paid":
+        matched_payment_total = (
+            select(func.coalesce(func.sum(Payment.amount), 0))
+            .where(
+                Payment.invoice_id == Order.invoice_id,
+                Payment.tenant_id == tid,
+                Payment.match_status == "matched",
+            )
+            .scalar_subquery()
+        )
+        open_invoice_exists = (
+            select(Invoice.id)
+            .where(
+                Invoice.id == Order.invoice_id,
+                Invoice.tenant_id == tid,
+                Invoice.status != InvoiceStatus.VOIDED.value,
+                Invoice.status != InvoiceStatus.PAID.value,
+                matched_payment_total < Invoice.total_amount,
+            )
+            .exists()
+        )
+        filters.extend([Order.invoice_id.is_not(None), open_invoice_exists])
 
     # Sorting
     sort_column = {
@@ -554,6 +621,7 @@ async def list_orders(
     offset = (page - 1) * page_size
     stmt = (
         select(Order)
+        .options(selectinload(Order.lines))
         .where(*filters)
         .order_by(sort_column)
         .offset(offset)
@@ -594,3 +662,110 @@ async def get_order(
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found.")
     return order
+
+
+def derive_order_execution(
+    order: Order,
+    *,
+    invoice_payment_status: str | None = None,
+) -> dict[str, Any]:
+    lines = list(getattr(order, "lines", []) or [])
+    backorder_line_count = sum(1 for line in lines if getattr(line, "backorder_note", None))
+    has_backorder = backorder_line_count > 0
+    ready_line_count = sum(
+        1
+        for line in lines
+        if getattr(line, "available_stock_snapshot", None) is not None
+        and line.quantity <= line.available_stock_snapshot
+        and not getattr(line, "backorder_note", None)
+    )
+    ready_to_ship = bool(
+        order.status == OrderStatus.CONFIRMED.value
+        and lines
+        and ready_line_count == len(lines)
+        and not has_backorder
+    )
+
+    if order.status == OrderStatus.CANCELLED.value:
+        commercial_status = OrderCommercialStatus.CANCELLED.value
+        fulfillment_status = OrderFulfillmentStatus.CANCELLED.value
+        reservation_status = OrderReservationStatus.RELEASED.value
+    elif order.status == OrderStatus.PENDING.value:
+        commercial_status = OrderCommercialStatus.PRE_COMMIT.value
+        fulfillment_status = OrderFulfillmentStatus.NOT_STARTED.value
+        reservation_status = OrderReservationStatus.NOT_RESERVED.value
+    else:
+        commercial_status = OrderCommercialStatus.COMMITTED.value
+        reservation_status = OrderReservationStatus.RESERVED.value
+        if order.status == OrderStatus.SHIPPED.value:
+            fulfillment_status = OrderFulfillmentStatus.SHIPPED.value
+        elif order.status == OrderStatus.FULFILLED.value:
+            fulfillment_status = OrderFulfillmentStatus.FULFILLED.value
+        elif ready_to_ship:
+            fulfillment_status = OrderFulfillmentStatus.READY_TO_SHIP.value
+        else:
+            fulfillment_status = OrderFulfillmentStatus.NOT_STARTED.value
+
+    billing_status = (
+        invoice_payment_status
+        if order.invoice_id and invoice_payment_status
+        else OrderBillingStatus.NOT_INVOICED.value
+    )
+
+    return {
+        "commercial_status": commercial_status,
+        "fulfillment_status": fulfillment_status,
+        "billing_status": billing_status,
+        "reservation_status": reservation_status,
+        "ready_to_ship": ready_to_ship,
+        "has_backorder": has_backorder,
+        "backorder_line_count": backorder_line_count,
+    }
+
+
+async def build_order_workspace_meta(
+    session: AsyncSession,
+    orders: Sequence[Order],
+    *,
+    tenant_id: uuid.UUID,
+) -> dict[uuid.UUID, dict[str, Any]]:
+    if not orders:
+        return {}
+
+    invoice_ids = list({order.invoice_id for order in orders if order.invoice_id is not None})
+    invoice_by_id: dict[uuid.UUID, Invoice] = {}
+    payment_summary_by_invoice_id: dict[uuid.UUID, dict[str, Any]] = {}
+
+    if invoice_ids:
+        async with session.begin():
+            await set_tenant(session, tenant_id)
+            result = await session.execute(
+                select(Invoice).where(
+                    Invoice.id.in_(invoice_ids),
+                    Invoice.tenant_id == tenant_id,
+                )
+            )
+            invoices = list(result.scalars().all())
+            invoice_by_id = {invoice.id: invoice for invoice in invoices}
+            payment_summaries = await enrich_invoices_with_payment_status(session, invoices, tenant_id)
+            payment_summary_by_invoice_id = {
+                summary["id"]: summary for summary in payment_summaries
+            }
+
+    meta_by_order_id: dict[uuid.UUID, dict[str, Any]] = {}
+    for order in orders:
+        invoice = invoice_by_id.get(order.invoice_id) if order.invoice_id else None
+        payment_summary = (
+            payment_summary_by_invoice_id.get(invoice.id, {}) if invoice is not None else {}
+        )
+        invoice_payment_status = payment_summary.get("payment_status")
+        meta_by_order_id[order.id] = {
+            "invoice_number": invoice.invoice_number if invoice is not None else None,
+            "invoice_payment_status": invoice_payment_status,
+            "execution": derive_order_execution(
+                order,
+                invoice_payment_status=invoice_payment_status,
+            ),
+        }
+
+    return meta_by_order_id

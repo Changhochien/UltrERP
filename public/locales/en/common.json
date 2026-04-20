@@ -1993,7 +1993,14 @@
   "orders": {
     "create": "Create Order",
     "detail": {
+      "backorderCallout_one": "Backorder risk remains on {count} line. Rebalance stock before shipping.",
+      "backorderCallout_other": "Backorder risk remains on {count} lines. Rebalance stock before shipping.",
       "backToList": "Back to list",
+      "billingNavigation": "Billing navigation",
+      "billingNavigationDescription": "Invoice access and collection posture stay visible without mixing with warehouse steps.",
+      "billingPending": "The invoice will appear here after the order is confirmed.",
+      "commercialActions": "Commercial actions",
+      "commercialActionsDescription": "Commit the order commercially or stop it before warehouse work begins.",
       "fulfillment": "Fulfillment",
       "billingContext": "Billing Context",
       "shipOrder": "Ship Order",
@@ -2017,15 +2024,32 @@
       "markFulfilledMessage": "Mark this order as fulfilled?",
       "markShipped": "Mark Shipped",
       "markShippedMessage": "Mark this order as shipped?",
+      "nextActions": "Grouped actions",
+      "nextActionsDescription": "Commercial, warehouse, and billing actions stay separated so the workflow is legible at a glance.",
+      "noCommercialActions": "No commercial action is available from the current state.",
       "noLineItems": "No line items",
       "noLineItemsDescription": "This order has no line items.",
+      "noWarehouseActions": "Warehouse action becomes available after the order is committed.",
       "notFound": "Order not found.",
       "notes": "Notes",
       "orderSummary": "Order Summary",
       "orderSummaryDescription": "Key details and totals for this order.",
       "orderTitle": "Order",
       "paymentTerms": "Payment Terms",
+      "readyToShipCallout": "This order is commercially committed, reserved, and ready for warehouse action.",
+      "reservationCallout": "Inventory reservation is incomplete. Recheck stock before shipping.",
       "subtotal": "Subtotal",
+      "timeline": {
+        "cancelled": "Cancelled",
+        "commit": "Commercial commit",
+        "completed": "Completed",
+        "current": "Current",
+        "fulfill": "Fulfill",
+        "intake": "Pending intake",
+        "invoiceLinked": "Invoice {number} linked",
+        "ship": "Ship",
+        "upcoming": "Upcoming"
+      },
       "toast": {
         "cancelledDescription": "Order {orderNumber} was cancelled.",
         "cancelledTitle": "Order cancelled",
@@ -2042,7 +2066,11 @@
       "listPrice": "List Price",
       "tax": "Tax",
       "total": "Total",
-      "updating": "Updating…"
+      "updating": "Updating…",
+      "warehouseActions": "Warehouse actions",
+      "warehouseActionsDescription": "Move the order forward only when readiness, reservation, and backorder cues are clear.",
+      "workflowTimeline": "Workflow timeline",
+      "workflowTimelineDescription": "Track the commercial, warehouse, and billing milestones without decoding overloaded status labels."
     },
     "form": {
       "addLine": "Add line",
@@ -2072,26 +2100,60 @@
     "list": {
       "adjustFilter": "Adjust the search or filter criteria and try again.",
       "allStatuses": "All statuses",
+      "allOrders": "All orders",
+      "backorderLines_one": "Backorder risk: {count} line",
+      "backorderLines_other": "Backorder risk: {count} lines",
+      "billing": "Billing",
       "cancelled": "Cancelled",
       "confirmed": "Confirmed",
       "created": "Created",
       "description": "Browse and manage your sales orders.",
       "fulfilled": "Fulfilled",
+      "invoicedNotPaid": "Invoiced not paid",
       "noOrders": "No orders found.",
       "orderNumber": "Order #",
       "pending": "Pending",
+      "pendingIntake": "Pending intake",
+      "readyToShipView": "Ready to ship",
       "shipped": "Shipped",
+      "shippedNotCompleted": "Shipped not completed",
       "status": "Status",
       "statusLabel": "Status:",
       "title": "Orders",
       "total": "Total",
       "fulfillment": "Fulfillment",
-      "billing": "Billing",
       "backorderRisk": "Backorder risk",
       "invoiceOnConfirmation": "Invoice on confirmation",
       "readyToShip": "Ready to ship",
       "stockReserved": "Stock reserved",
       "unpaid": "Unpaid"
+    },
+    "workflow": {
+      "commercial": {
+        "cancelled": "Cancelled",
+        "committed": "Commercially committed",
+        "preCommit": "Pre-commit intake"
+      },
+      "billing": {
+        "notInvoiced": "Not invoiced",
+        "overdue": "Overdue",
+        "paid": "Paid",
+        "partial": "Partially paid",
+        "unpaid": "Unpaid",
+        "voided": "Voided"
+      },
+      "fulfillment": {
+        "cancelled": "Cancelled",
+        "fulfilled": "Fulfilled",
+        "notStarted": "Not started",
+        "readyToShip": "Ready to ship",
+        "shipped": "Shipped"
+      },
+      "reservation": {
+        "notReserved": "Not reserved",
+        "released": "Released",
+        "reserved": "Reserved"
+      }
     }
   },
   "infoPopover": {

@@ -1,8 +1,8 @@
 import "../helpers/i18n";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { MemoryRouter, useLocation } from "react-router-dom";
 
 import { OrderDetail } from "../../domain/orders/components/OrderDetail";
 import { OrderList } from "../../domain/orders/components/OrderList";
@@ -154,6 +154,11 @@ vi.mock("../../components/filters/ActiveFilterBar", () => ({
   ActiveFilterBar: () => <div>Active filters</div>,
 }));
 
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="location-search">{location.search}</output>;
+}
+
 beforeEach(() => {
   detailOrder = {
     ...detailOrder,
@@ -187,9 +192,14 @@ describe("Order workflow presentation", () => {
     );
 
     expect(screen.getAllByText("Billing Context").length).toBeGreaterThan(0);
+    expect(screen.getByText("Workflow timeline")).toBeTruthy();
+    expect(screen.getByText("Grouped actions")).toBeTruthy();
+    expect(screen.getByText("Commercial actions")).toBeTruthy();
+    expect(screen.getByText("Warehouse actions")).toBeTruthy();
+    expect(screen.getByText("Billing navigation")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Ship Order" })).toBeTruthy();
-    expect(screen.getAllByText("AA00000001").length).toBeGreaterThan(0);
-    expect(screen.getByText("unpaid")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "View AA00000001" })).toBeTruthy();
+    expect(screen.getAllByText(/unpaid/i).length).toBeGreaterThan(0);
   });
 
   it("shows fulfillment and billing cues separately on the list surface", () => {
@@ -201,5 +211,24 @@ describe("Order workflow presentation", () => {
 
     expect(screen.getByText("ORD-PENDING-001")).toBeTruthy();
     expect(screen.getByText("ORD-CONFIRMED-001")).toBeTruthy();
+    expect(screen.getByText("Pre-commit intake")).toBeTruthy();
+    expect(screen.getByText("Commercially committed")).toBeTruthy();
+    expect(screen.getByText("Reserved")).toBeTruthy();
+    expect(screen.getByText("Backorder risk: 1 line")).toBeTruthy();
+    expect(screen.getByText("Invoice on confirmation")).toBeTruthy();
+    expect(screen.getAllByText("Unpaid").length).toBeGreaterThan(0);
+  });
+
+  it("syncs quick views into the URL state", () => {
+    render(
+      <MemoryRouter initialEntries={["/orders"]}>
+        <LocationProbe />
+        <OrderList onSelect={() => undefined} />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Ready to ship" }));
+
+    expect(screen.getByTestId("location-search").textContent).toContain("view=ready_to_ship");
   });
 });

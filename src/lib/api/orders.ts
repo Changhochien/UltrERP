@@ -6,6 +6,7 @@ import type {
   OrderListResponse,
   OrderResponse,
   OrderStatus,
+  OrderWorkflowView,
   PaymentTermsListResponse,
   StockCheckResponse,
 } from "../../domain/orders/types";
@@ -51,6 +52,7 @@ export async function createOrder(
 
 export async function fetchOrders(params?: {
   status?: string | string[];
+  workflow_view?: OrderWorkflowView;
   customer_id?: string;
   date_from?: string;
   date_to?: string;
@@ -68,6 +70,7 @@ export async function fetchOrders(params?: {
       qs.set("status", params.status);
     }
   }
+  if (params?.workflow_view) qs.set("workflow_view", params.workflow_view);
   if (params?.customer_id) qs.set("customer_id", params.customer_id);
   if (params?.date_from) qs.set("date_from", params.date_from);
   if (params?.date_to) qs.set("date_to", params.date_to);

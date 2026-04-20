@@ -1,6 +1,6 @@
 /** Read-only order detail view with line items and status actions. */
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
@@ -14,6 +14,7 @@ import { useOrderDetail, statusBadgeVariant, statusLabel } from "../hooks/useOrd
 import { updateOrderStatus } from "../../../lib/api/orders";
 import { ORDERS_ROUTE } from "../../../lib/routes";
 import type { OrderStatus } from "../types";
+import { BILLING_STATUS_META } from "../workflowMeta";
 
 interface StatusAction {
   labelKey: string;
@@ -39,6 +40,34 @@ const STATUS_ACTIONS: Record<string, StatusAction[]> = {
 interface OrderDetailProps {
   orderId: string;
   onBack: () => void;
+}
+
+const ORDER_PROGRESS_INDEX: Record<OrderStatus, number> = {
+  pending: 0,
+  confirmed: 1,
+  shipped: 2,
+  fulfilled: 3,
+  cancelled: 0,
+};
+
+function ActionGroup({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-border/70 bg-background/55 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+      <div className="space-y-1">
+        <h4 className="text-sm font-semibold tracking-tight text-foreground">{title}</h4>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+      <div className="mt-4 space-y-2">{children}</div>
+    </div>
+  );
 }
 
 function buildStatusToastCopy(
@@ -123,20 +152,44 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
   const actions = STATUS_ACTIONS[order.status] ?? [];
 
   const isConfirmed = order.status === "confirmed" || order.status === "shipped" || order.status === "fulfilled";
-
-  const exec = (() => {
-    if (!isConfirmed || !order.lines.length) return null;
-    const backorderLines = order.lines.filter((l) => l.backorder_note != null);
-    const allHaveStock = order.lines.every(
-      (l) => l.available_stock_snapshot != null && l.available_stock_snapshot >= Number(l.quantity),
-    );
-    return {
-      ready_to_ship: allHaveStock,
-      has_backorder: backorderLines.length > 0,
-      backorder_line_count: backorderLines.length,
-      reservation_status: allHaveStock ? "reserved" : "not_reserved",
-    };
-  })();
+  const exec = isConfirmed ? order.execution : null;
+  const billingMeta = exec ? BILLING_STATUS_META[exec.billing_status] : null;
+  const commercialActions = actions.filter((action) =>
+    action.targetStatus === "confirmed" || action.targetStatus === "cancelled",
+  );
+  const warehouseActions = actions.filter((action) =>
+    action.targetStatus === "shipped" || action.targetStatus === "fulfilled",
+  );
+  const timelineSteps = [
+    {
+      key: "intake",
+      label: t("orders.detail.timeline.intake"),
+      detail: new Date(order.created_at).toLocaleString(),
+    },
+    {
+      key: "commit",
+      label: t("orders.detail.timeline.commit"),
+      detail: order.invoice_number
+        ? t("orders.detail.timeline.invoiceLinked", { number: order.invoice_number })
+        : t("orders.list.invoiceOnConfirmation"),
+    },
+    {
+      key: "ship",
+      label: t("orders.detail.timeline.ship"),
+      detail: exec?.has_backorder
+        ? t("orders.list.backorderRisk")
+        : exec?.ready_to_ship
+          ? t("orders.list.readyToShip")
+          : t("orders.workflow.fulfillment.notStarted"),
+    },
+    {
+      key: "fulfill",
+      label: t("orders.detail.timeline.fulfill"),
+      detail: order.status === "fulfilled"
+        ? new Date(order.updated_at).toLocaleString()
+        : t("orders.workflow.fulfillment.notStarted"),
+    },
+  ] as const;
 
   return (
     <section aria-label="Order detail" className="space-y-5">
@@ -174,15 +227,127 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
             {statusLabel(order.status as OrderStatus)}
           </Badge>
         </div>
-        {actions.length > 0 && !activeAction ? (
-          <div className="flex flex-wrap gap-2">
-            {actions.map((action) => (
-              <Button key={action.targetStatus} type="button" onClick={() => setActiveAction(action)}>
-                {t(action.labelKey)}
-              </Button>
-            ))}
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        <SectionCard
+          title={t("orders.detail.workflowTimeline")}
+          description={t("orders.detail.workflowTimelineDescription")}
+        >
+          <ol className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {timelineSteps.map((step, index) => {
+              const state = order.status === "cancelled"
+                ? index === 0
+                  ? "completed"
+                  : "cancelled"
+                : index < ORDER_PROGRESS_INDEX[order.status as OrderStatus]
+                  ? "completed"
+                  : index === ORDER_PROGRESS_INDEX[order.status as OrderStatus]
+                    ? "current"
+                    : "upcoming";
+
+              const badgeVariant = state === "completed"
+                ? "success"
+                : state === "current"
+                  ? "info"
+                  : state === "cancelled"
+                    ? "destructive"
+                    : "outline";
+
+              return (
+                <li key={step.key} className="rounded-2xl border border-border/70 bg-background/50 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                        {step.label}
+                      </p>
+                      <p className="text-sm text-foreground">{step.detail}</p>
+                    </div>
+                    <Badge variant={badgeVariant} className="normal-case tracking-normal">
+                      {t(`orders.detail.timeline.${state}`)}
+                    </Badge>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </SectionCard>
+
+        <SectionCard
+          title={t("orders.detail.nextActions")}
+          description={t("orders.detail.nextActionsDescription")}
+        >
+          <div className="space-y-3">
+            {exec?.has_backorder ? (
+              <SurfaceMessage tone="warning">
+                {t(
+                  exec.backorder_line_count === 1
+                    ? "orders.detail.backorderCallout_one"
+                    : "orders.detail.backorderCallout_other",
+                  { count: exec.backorder_line_count },
+                )}
+              </SurfaceMessage>
+            ) : null}
+            {isConfirmed && exec && exec.reservation_status !== "reserved" ? (
+              <SurfaceMessage tone="warning">
+                {t("orders.detail.reservationCallout")}
+              </SurfaceMessage>
+            ) : null}
+            {exec?.ready_to_ship ? (
+              <SurfaceMessage tone="success">
+                {t("orders.detail.readyToShipCallout")}
+              </SurfaceMessage>
+            ) : null}
+
+            <div className="grid gap-4 lg:grid-cols-3">
+              <ActionGroup
+                title={t("orders.detail.commercialActions")}
+                description={t("orders.detail.commercialActionsDescription")}
+              >
+                {commercialActions.length > 0 ? commercialActions.map((action) => (
+                  <Button key={action.targetStatus} type="button" onClick={() => setActiveAction(action)}>
+                    {t(action.labelKey)}
+                  </Button>
+                )) : <p className="text-sm text-muted-foreground">{t("orders.detail.noCommercialActions")}</p>}
+              </ActionGroup>
+
+              <ActionGroup
+                title={t("orders.detail.warehouseActions")}
+                description={t("orders.detail.warehouseActionsDescription")}
+              >
+                {warehouseActions.length > 0 ? warehouseActions.map((action) => (
+                  <Button key={action.targetStatus} type="button" onClick={() => setActiveAction(action)}>
+                    {t(action.labelKey)}
+                  </Button>
+                )) : <p className="text-sm text-muted-foreground">{t("orders.detail.noWarehouseActions")}</p>}
+              </ActionGroup>
+
+              <ActionGroup
+                title={t("orders.detail.billingNavigation")}
+                description={t("orders.detail.billingNavigationDescription")}
+              >
+                {order.invoice_id ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => navigate(`/invoices/${order.invoice_id}`)}
+                    >
+                      {t("orders.detail.viewInvoice", { number: order.invoice_number ?? "" })}
+                    </Button>
+                    {billingMeta ? (
+                      <Badge variant={billingMeta.variant} className="w-fit normal-case tracking-normal">
+                        {t(billingMeta.labelKey)}
+                      </Badge>
+                    ) : null}
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">{t("orders.detail.billingPending")}</p>
+                )}
+              </ActionGroup>
+            </div>
           </div>
-        ) : null}
+        </SectionCard>
       </div>
 
       {activeAction ? (
@@ -224,7 +389,12 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
             </p>
             {exec.has_backorder && (
               <p className="text-destructive">
-                {t("orders.list.backorderRisk")}: {exec.backorder_line_count} line(s)
+                {t(
+                  exec.backorder_line_count === 1
+                    ? "orders.list.backorderLines_one"
+                    : "orders.list.backorderLines_other",
+                  { count: exec.backorder_line_count },
+                )}
               </p>
             )}
             <p>
@@ -241,13 +411,7 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
             {order.invoice_id ? (
               <p>
                 <span className="font-medium">{t("orders.detail.invoice")}:</span>{" "}
-                <button
-                  type="button"
-                  className="appearance-none border-0 bg-transparent p-0 text-foreground underline-offset-4 hover:text-foreground/80 hover:underline focus-visible:underline"
-                  onClick={() => navigate(`/invoices/${order.invoice_id}`)}
-                >
-                  {t("orders.detail.viewInvoice", { number: order.invoice_number ?? "" })}
-                </button>
+                {order.invoice_number ?? order.invoice_id}
               </p>
             ) : (
               <p>
@@ -255,6 +419,12 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
                 {t("orders.list.invoiceOnConfirmation")}
               </p>
             )}
+            {billingMeta ? (
+              <p>
+                <span className="font-medium">{t("orders.list.billing")}:</span>{" "}
+                {t(billingMeta.labelKey)}
+              </p>
+            ) : null}
           </div>
         </SectionCard>
       ) : null}

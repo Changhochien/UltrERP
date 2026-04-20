@@ -15,6 +15,7 @@ from domains.line.notification import notify_new_order
 from domains.orders.schemas import (
     PAYMENT_TERMS_CONFIG,
     OrderCreate,
+    OrderExecutionSummary,
     OrderLineResponse,
     OrderListItem,
     OrderListResponse,
@@ -27,6 +28,7 @@ from domains.orders.schemas import (
     WarehouseStockInfo,
 )
 from domains.orders.services import (
+    build_order_workspace_meta,
     check_stock_availability,
     create_order,
     get_order,
@@ -104,7 +106,7 @@ async def create_order_endpoint(
 ) -> OrderResponse:
     tenant_id = uuid.UUID(_user["tenant_id"])
     order = await create_order(session, data, tenant_id=tenant_id)
-    response = _to_order_response(order)
+    response = await _to_order_response(session, order, tenant_id=tenant_id)
     background_tasks.add_task(
         notify_new_order,
         order_number=order.order_number,
@@ -122,7 +124,14 @@ async def create_order_endpoint(
 async def list_orders_endpoint(
     session: DbSession,
     _user: ReadUser,
-    status: OrderStatus | None = Query(None),
+    status: list[OrderStatus] | None = Query(None),
+    workflow_view: Literal[
+        "pending_intake",
+        "ready_to_ship",
+        "shipped_not_completed",
+        "invoiced_not_paid",
+    ]
+    | None = Query(default=None),
     customer_id: uuid.UUID | None = Query(None),
     date_from: date | None = Query(None),
     date_to: date | None = Query(None),
@@ -138,32 +147,20 @@ async def list_orders_endpoint(
     orders, total = await list_orders(
         session,
         tenant_id=tenant_id,
-        status=status.value if status else None,
+        status=[item.value for item in status] if status else None,
         customer_id=customer_id,
         date_from=date_from,
         date_to=date_to,
         search=search,
+        workflow_view=workflow_view,
         sort_by=sort_by,
         sort_order=sort_order,
         page=page,
         page_size=page_size,
     )
+    meta_by_order_id = await build_order_workspace_meta(session, orders, tenant_id=tenant_id)
     return OrderListResponse(
-        items=[
-            OrderListItem(
-                id=o.id,
-                tenant_id=o.tenant_id,
-                order_number=o.order_number,
-                status=o.status,
-                customer_id=o.customer_id,
-                payment_terms_code=o.payment_terms_code,
-                total_amount=o.total_amount,
-                legacy_header_snapshot=getattr(o, "legacy_header_snapshot", None),
-                created_at=o.created_at,
-                updated_at=o.updated_at,
-            )
-            for o in orders
-        ],
+        items=[_to_order_list_item(o, meta_by_order_id.get(o.id)) for o in orders],
         total=total,
         page=page,
         page_size=page_size,
@@ -181,7 +178,7 @@ async def get_order_endpoint(
 ) -> OrderResponse:
     tenant_id = uuid.UUID(_user["tenant_id"])
     order = await get_order(session, order_id, tenant_id=tenant_id)
-    return _to_order_response(order)
+    return await _to_order_response(session, order, tenant_id=tenant_id)
 
 
 @router.patch(
@@ -202,7 +199,7 @@ async def update_order_status_endpoint(
         tenant_id=tenant_id,
         actor_id="system",
     )
-    return _to_order_response(order)
+    return await _to_order_response(session, order, tenant_id=tenant_id)
 
 
 @router.delete(
@@ -222,10 +219,36 @@ async def cancel_order_endpoint(
         tenant_id=tenant_id,
         actor_id="system",
     )
-    return _to_order_response(order)
+    return await _to_order_response(session, order, tenant_id=tenant_id)
 
 
-def _to_order_response(order) -> OrderResponse:
+def _to_order_list_item(order, meta: dict | None = None) -> OrderListItem:
+    meta = meta or {}
+    return OrderListItem(
+        id=order.id,
+        tenant_id=order.tenant_id,
+        order_number=order.order_number,
+        status=order.status,
+        customer_id=order.customer_id,
+        payment_terms_code=order.payment_terms_code,
+        total_amount=order.total_amount,
+        invoice_number=meta.get("invoice_number"),
+        invoice_payment_status=meta.get("invoice_payment_status"),
+        execution=OrderExecutionSummary(**meta.get("execution", {})),
+        legacy_header_snapshot=getattr(order, "legacy_header_snapshot", None),
+        created_at=order.created_at,
+        updated_at=order.updated_at,
+    )
+
+
+async def _to_order_response(
+    session: DbSession,
+    order,
+    *,
+    tenant_id: uuid.UUID,
+) -> OrderResponse:
+    meta_by_order_id = await build_order_workspace_meta(session, [order], tenant_id=tenant_id)
+    meta = meta_by_order_id.get(order.id, {})
     return OrderResponse(
         id=order.id,
         tenant_id=order.tenant_id,
@@ -241,6 +264,9 @@ def _to_order_response(order) -> OrderResponse:
         tax_amount=order.tax_amount,
         total_amount=order.total_amount,
         invoice_id=order.invoice_id,
+        invoice_number=meta.get("invoice_number"),
+        invoice_payment_status=meta.get("invoice_payment_status"),
+        execution=OrderExecutionSummary(**meta.get("execution", {})),
         notes=order.notes,
         legacy_header_snapshot=getattr(order, "legacy_header_snapshot", None),
         created_by=order.created_by,

@@ -1988,7 +1988,14 @@
   },
   "orders": {
     "detail": {
+      "backorderCallout_one": "仍有 {count} 筆明細存在缺貨風險。請先調整庫存再出貨。",
+      "backorderCallout_other": "仍有 {count} 筆明細存在缺貨風險。請先調整庫存再出貨。",
       "backToList": "返回列表",
+      "billingNavigation": "帳務導覽",
+      "billingNavigationDescription": "將發票連結與收款狀態獨立呈現，不與倉儲步驟混在一起。",
+      "billingPending": "訂單確認後，發票會顯示於此。",
+      "commercialActions": "商務動作",
+      "commercialActionsDescription": "在倉儲作業開始前，先完成商務承諾或終止訂單。",
       "cancelOrder": "取消訂單",
       "cancelOrderMessage": "確定要取消此訂單嗎？此動作無法撤銷。",
       "confirmOrder": "確認訂單",
@@ -2004,15 +2011,32 @@
       "markFulfilledMessage": "將此訂單標記為已完成？",
       "markShipped": "標記為已出貨",
       "markShippedMessage": "將此訂單標記為已出貨？",
+      "nextActions": "分組動作",
+      "nextActionsDescription": "將商務、倉儲與帳務動作分開顯示，讓流程一眼可讀。",
+      "noCommercialActions": "目前狀態沒有可執行的商務動作。",
       "noLineItems": "尚無明細",
       "noLineItemsDescription": "此訂單尚無任何明細。",
+      "noWarehouseActions": "完成商務承諾後才會出現倉儲動作。",
       "notFound": "找不到訂單。",
       "notes": "備註",
       "orderSummary": "訂單摘要",
       "orderSummaryDescription": "此訂單的關鍵詳情與合計。",
       "orderTitle": "訂單",
       "paymentTerms": "付款條件",
+      "readyToShipCallout": "此訂單已完成商務承諾、庫存保留完成，可交由倉儲出貨。",
+      "reservationCallout": "庫存保留尚未完成，出貨前請重新確認可用量。",
       "subtotal": "未稅金額",
+      "timeline": {
+        "cancelled": "已取消",
+        "commit": "商務承諾",
+        "completed": "已完成",
+        "current": "目前節點",
+        "fulfill": "結案",
+        "intake": "待承接",
+        "invoiceLinked": "已連結發票 {number}",
+        "ship": "出貨",
+        "upcoming": "待進行"
+      },
       "toast": {
         "cancelledDescription": "訂單 {orderNumber} 已取消。",
         "cancelledTitle": "訂單已取消",
@@ -2029,7 +2053,11 @@
       "listPrice": "牌價",
       "tax": "稅額",
       "total": "總計",
-      "updating": "更新中…"
+      "updating": "更新中…",
+      "warehouseActions": "倉儲動作",
+      "warehouseActionsDescription": "只有在可出貨、保留與缺貨訊號明確時才往下一步推進。",
+      "workflowTimeline": "流程時間軸",
+      "workflowTimelineDescription": "用商務、倉儲與帳務節點快速看懂訂單狀態，不再只靠單一狀態字樣判讀。"
     },
     "form": {
       "addLine": "新增明細",
@@ -2058,19 +2086,60 @@
     "list": {
       "adjustFilter": "請調整搜尋或篩選條件後再試一次。",
       "allStatuses": "所有狀態",
+      "allOrders": "全部訂單",
+      "backorderLines_one": "缺貨風險：{count} 筆明細",
+      "backorderLines_other": "缺貨風險：{count} 筆明細",
+      "billing": "帳務",
       "cancelled": "已取消",
       "confirmed": "已確認",
       "created": "建立時間",
       "description": "瀏覽並管理您的銷售訂單。",
       "fulfilled": "已完成",
+      "invoicedNotPaid": "已開票待收款",
       "noOrders": "查無訂單。",
       "orderNumber": "訂單編號",
       "pending": "待處理",
+      "pendingIntake": "待承接",
+      "readyToShipView": "可出貨",
       "shipped": "已出貨",
+      "shippedNotCompleted": "已出貨未結案",
       "status": "狀態",
       "statusLabel": "狀態：",
       "title": "訂單",
-      "total": "合計"
+      "total": "合計",
+      "fulfillment": "履約",
+      "backorderRisk": "缺貨風險",
+      "invoiceOnConfirmation": "確認後開票",
+      "readyToShip": "可出貨",
+      "stockReserved": "已保留庫存",
+      "unpaid": "未收款"
+    },
+    "workflow": {
+      "commercial": {
+        "cancelled": "已取消",
+        "committed": "已商務承諾",
+        "preCommit": "承接前審核"
+      },
+      "billing": {
+        "notInvoiced": "未開票",
+        "overdue": "已逾期",
+        "paid": "已收款",
+        "partial": "部分收款",
+        "unpaid": "未收款",
+        "voided": "已作廢"
+      },
+      "fulfillment": {
+        "cancelled": "已取消",
+        "fulfilled": "已完成",
+        "notStarted": "尚未開始",
+        "readyToShip": "可出貨",
+        "shipped": "已出貨"
+      },
+      "reservation": {
+        "notReserved": "未保留",
+        "released": "已釋放",
+        "reserved": "已保留"
+      }
     }
   },
   "infoPopover": {

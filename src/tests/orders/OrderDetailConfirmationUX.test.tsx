@@ -116,6 +116,22 @@ afterEach(() => {
 });
 
 describe("OrderDetail confirmation UX", () => {
+  it("keeps commercial, warehouse, and billing actions visually grouped", () => {
+    render(
+      <ToastProvider>
+        <MemoryRouter>
+          <OrderDetail orderId="order-123" onBack={() => undefined} />
+        </MemoryRouter>
+      </ToastProvider>,
+    );
+
+    expect(screen.getByText("Grouped actions")).toBeTruthy();
+    expect(screen.getByText("Commercial actions")).toBeTruthy();
+    expect(screen.getByText("Warehouse actions")).toBeTruthy();
+    expect(screen.getByText("Billing navigation")).toBeTruthy();
+    expect(screen.getByText("The invoice will appear here after the order is confirmed.")).toBeTruthy();
+  });
+
   it("uses explicit invoice and stock reservation confirmation copy", () => {
     render(
       <ToastProvider>
@@ -130,6 +146,37 @@ describe("OrderDetail confirmation UX", () => {
 
     expect(screen.getByText(/create the invoice/i)).toBeTruthy();
     expect(screen.getByText(/reserve stock/i)).toBeTruthy();
+  });
+
+  it("surfaces warehouse exceptions where shipping decisions are made", () => {
+    mockOrder = {
+      ...mockOrder,
+      status: "confirmed",
+      invoice_id: "invoice-123",
+      invoice_number: "AA00000001",
+      invoice_payment_status: "unpaid",
+      confirmed_at: "2026-01-02T00:00:00Z",
+      execution: {
+        commercial_status: "committed",
+        fulfillment_status: "not_started",
+        billing_status: "unpaid",
+        reservation_status: "not_reserved",
+        ready_to_ship: false,
+        has_backorder: true,
+        backorder_line_count: 2,
+      },
+    };
+
+    render(
+      <ToastProvider>
+        <MemoryRouter>
+          <OrderDetail orderId="order-123" onBack={() => undefined} />
+        </MemoryRouter>
+      </ToastProvider>,
+    );
+
+    expect(screen.getByText("Backorder risk remains on 2 lines. Rebalance stock before shipping.")).toBeTruthy();
+    expect(screen.getByText("Inventory reservation is incomplete. Recheck stock before shipping.")).toBeTruthy();
   });
 
   it("shows success feedback and invoice continuity after confirmation", async () => {
