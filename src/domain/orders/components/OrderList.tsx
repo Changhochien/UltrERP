@@ -7,10 +7,11 @@ import { useState } from "react";
 import { ActiveFilterBar } from "../../../components/filters/ActiveFilterBar";
 import { CustomerCombobox } from "../../../components/customers/CustomerCombobox";
 import type { CustomerSummary } from "../../customers/types";
-import { DataTable, DataTableToolbar, type DataTableSortState } from "../../../components/layout/DataTable";
+import { DataTableToolbar, type DataTableSortState } from "../../../components/layout/DataTable";
 import { DateRangeFilter } from "../../../components/filters/DateRangeFilter";
 import { SearchInput } from "../../../components/filters/SearchInput";
 import { StatusMultiSelect } from "../../../components/filters/StatusMultiSelect";
+import { TanStackDataTable } from "../../../components/layout/TanStackDataTable";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { useOrders, statusBadgeVariant, statusLabel } from "../hooks/useOrders";
@@ -127,12 +128,22 @@ export function OrderList({ onSelect }: OrderListProps) {
   }
 
   // ── Sort state for DataTable ────────────────────────────────────────────
-  const sortState: DataTableSortState = {
-    columnId: sortBy ?? "created_at",
-    direction: sortOrder,
-  };
+  const sortState = sortBy
+    ? {
+        columnId: sortBy,
+        direction: sortOrder,
+      }
+    : null;
 
-  function handleSortChange(next: DataTableSortState) {
+  function handleSortChange(next: DataTableSortState | null) {
+    if (!next) {
+      const current = new URLSearchParams(searchParams);
+      current.delete("sort_by");
+      current.delete("sort_order");
+      setSearchParams(current);
+      return;
+    }
+
     if (next.columnId === sortBy && next.direction === sortOrder) return;
     setSort(next.columnId as typeof SORTABLE_COLUMNS[number], next.direction);
   }
@@ -169,13 +180,13 @@ export function OrderList({ onSelect }: OrderListProps) {
     dateFrom,
     dateTo,
     search,
-    sortBy: sortBy ?? "created_at",
-    sortOrder,
+    sortBy,
+    sortOrder: sortBy ? sortOrder : undefined,
   });
 
   return (
     <section aria-label="Order list">
-      <DataTable
+      <TanStackDataTable
         columns={[
           {
             id: "order_number",
@@ -371,6 +382,8 @@ export function OrderList({ onSelect }: OrderListProps) {
         getRowId={(item) => item.id}
         rowLabel={(item) => `Order ${item.order_number}`}
         onRowClick={(item) => onSelect(item.id)}
+        stickyHeader
+        enableColumnResizing
       />
     </section>
   );

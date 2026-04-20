@@ -280,4 +280,44 @@ describe("Order workflow presentation", () => {
 
     expect(screen.getByTestId("location-search").textContent).toContain("view=ready_to_ship");
   });
+
+  it("clears sort params on the third sortable-header click", () => {
+    render(
+      <MemoryRouter initialEntries={["/orders"]}>
+        <LocationProbe />
+        <OrderList onSelect={() => undefined} />
+      </MemoryRouter>,
+    );
+
+    const createdHeader = screen.getByRole("button", { name: "Created" });
+
+    fireEvent.click(createdHeader);
+    expect(screen.getByTestId("location-search").textContent).toContain("sort_by=created_at");
+    expect(screen.getByTestId("location-search").textContent).toContain("sort_order=asc");
+
+    fireEvent.click(createdHeader);
+    expect(screen.getByTestId("location-search").textContent).toContain("sort_order=desc");
+
+    fireEvent.click(createdHeader);
+    expect(screen.getByTestId("location-search").textContent).not.toContain("sort_by=");
+    expect(screen.getByTestId("location-search").textContent).not.toContain("sort_order=");
+  });
+
+  it("keeps row activation after the table-foundation migration", () => {
+    const onSelect = vi.fn();
+
+    render(
+      <MemoryRouter>
+        <OrderList onSelect={onSelect} />
+      </MemoryRouter>,
+    );
+
+    const row = screen.getByRole("button", { name: "Order ORD-CONFIRMED-001" });
+
+    fireEvent.click(row);
+    fireEvent.keyDown(row, { key: "Enter" });
+
+    expect(onSelect).toHaveBeenCalledWith("order-confirmed");
+    expect(onSelect).toHaveBeenCalledTimes(2);
+  });
 });

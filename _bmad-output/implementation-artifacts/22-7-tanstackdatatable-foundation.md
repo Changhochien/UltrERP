@@ -1,6 +1,6 @@
 # Story 22.7: TanStackDataTable Foundation
 
-**Status:** ready-for-dev
+**Status:** completed
 
 **Story ID:** 22.7
 
@@ -25,26 +25,26 @@ so that large domain workspaces can evolve without outgrowing the current table 
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Build the shared TanStack table wrapper on the existing dependency. (AC: 1, 2)
-  - [ ] Create `src/components/layout/TanStackDataTable.tsx` using the already-installed `@tanstack/react-table` package.
-  - [ ] Keep the public API as close as practical to the existing `DataTable` component to reduce migration friction.
-  - [ ] Support the row models needed for the current roadmap: core, sorting, filtering, and pagination.
-- [ ] Task 2: Preserve current visual treatment and behavior contracts. (AC: 1, 2, 6)
-  - [ ] Reuse the current table, toolbar, summary, loading, empty, and pagination visual language rather than shipping a surprising redesign.
-  - [ ] Preserve `rowLabel`, `getRowClassName`, `onRowClick`, and existing per-cell click behavior where applicable.
-  - [ ] Keep client-side pagination as the initial behavior unless the touched consumer already needs server-side control.
-- [ ] Task 3: Add the missing table capabilities. (AC: 3, 4, 5)
-  - [ ] Enable column resizing with a minimum width guard.
-  - [ ] Add sticky-header support.
-  - [ ] Add opt-in row selection and bulk-action bar rendering.
-- [ ] Task 4: Migrate the first real consumer. (AC: 1-6)
-  - [ ] Replace the current order-list consumer with `TanStackDataTable` as the first production migration.
-  - [ ] Keep the current sorting, filter bar, active-filter summary, and page-change behavior intact.
-  - [ ] Preserve any order-specific workflow cues, filters, and row interactions already defined by Epic 21 rather than moving that UX ownership into this foundation story.
-  - [ ] Preserve the current status-cell rendering while allowing later stories to adopt the shared StatusBadge.
-- [ ] Task 5: Add focused regression coverage. (AC: 1-6)
-  - [ ] Add tests for sorting, pagination callbacks, sticky-header rendering, column resize hooks, and row selection.
-  - [ ] Add a migration regression for the order-list consumer proving row activation and conditional styling still work.
+- [x] Task 1: Build the shared TanStack table wrapper on the existing dependency. (AC: 1, 2)
+  - [x] Create `src/components/layout/TanStackDataTable.tsx` using the already-installed `@tanstack/react-table` package.
+  - [x] Keep the public API as close as practical to the existing `DataTable` component to reduce migration friction.
+  - [x] Support the row models needed for the current roadmap: core, sorting, filtering, and pagination.
+- [x] Task 2: Preserve current visual treatment and behavior contracts. (AC: 1, 2, 6)
+  - [x] Reuse the current table, toolbar, summary, loading, empty, and pagination visual language rather than shipping a surprising redesign.
+  - [x] Preserve `rowLabel`, `getRowClassName`, `onRowClick`, and existing per-cell click behavior where applicable.
+  - [x] Keep client-side pagination as the initial behavior unless the touched consumer already needs server-side control.
+- [x] Task 3: Add the missing table capabilities. (AC: 3, 4, 5)
+  - [x] Enable column resizing with a minimum width guard.
+  - [x] Add sticky-header support.
+  - [x] Add opt-in row selection and bulk-action bar rendering.
+- [x] Task 4: Migrate the first real consumer. (AC: 1-6)
+  - [x] Replace the current order-list consumer with `TanStackDataTable` as the first production migration.
+  - [x] Keep the current sorting, filter bar, active-filter summary, and page-change behavior intact.
+  - [x] Preserve any order-specific workflow cues, filters, and row interactions already defined by Epic 21 rather than moving that UX ownership into this foundation story.
+  - [x] Preserve the current status-cell rendering while allowing later stories to adopt the shared StatusBadge.
+- [x] Task 5: Add focused regression coverage. (AC: 1-6)
+  - [x] Add tests for sorting, pagination callbacks, sticky-header rendering, column resize hooks, and row selection.
+  - [x] Add a migration regression for the order-list consumer proving row activation and conditional styling still work.
 
 ## Dev Notes
 
@@ -90,19 +90,25 @@ so that large domain workspaces can evolve without outgrowing the current table 
 
 ### Agent Model Used
 
-Record the implementation model and version here.
+GPT-5.4
 
 ### Debug Log References
 
-Record focused frontend validation commands and any interactive verification notes here.
+- `pnpm test src/components/layout/TanStackDataTable.test.tsx src/tests/orders/OrderWorkflowPresentation.test.tsx src/pages/orders/OrdersPage.test.tsx`
+- VS Code diagnostics on the touched Story 22.7 files reported no errors after the final fixes.
 
 ### Completion Notes List
 
-Summarize the shared table API, the migrated consumer, and the preserved behavior contracts here once implementation is done.
+- Added `TanStackDataTable` as a shared wrapper around `@tanstack/react-table` while keeping the existing table shell and most of the current `DataTable` prop ergonomics.
+- Implemented tri-state sorting, client and controlled pagination support, column resize handles with minimum-width guards, sticky-header mode, optional row selection, and bulk-action rendering.
+- Migrated `OrderList` as the pilot consumer without moving order-workflow UX ownership into the shared table layer.
+- Preserved order-row labels, row click and keyboard activation, active-filter summary, workflow cues, and existing cell rendering.
+- Fixed the orders-list sort integration so clearing the sort also clears the request sort params instead of silently forcing the prior default sort.
+- Added focused table tests plus order-list migration regressions for row activation and clear-sort URL behavior.
 
 ### File List
 
 - `src/components/layout/TanStackDataTable.tsx`
-- touched table utilities or wrappers
+- `src/components/layout/TanStackDataTable.test.tsx`
 - `src/domain/orders/components/OrderList.tsx`
-- any focused frontend tests added for TanStackDataTable behavior
+- `src/tests/orders/OrderWorkflowPresentation.test.tsx`
