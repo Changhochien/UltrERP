@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal
+
+from common.models.order import Order
 
 from ._helpers import (
     FakeAsyncSession,
@@ -281,6 +284,63 @@ async def test_create_order_with_cod_terms() -> None:
         body = resp.json()
         assert body["payment_terms_code"] == "COD"
         assert body["payment_terms_days"] == 0
+    finally:
+        _teardown(prev)
+
+
+async def test_create_order_persists_header_discounts() -> None:
+    customer = FakeCustomer()
+    product = FakeProduct(product_id=uuid.UUID(_PRODUCT_ID))
+
+    line = FakeOrderLine(product_id=product.id)
+    order = FakeOrder(
+        customer_id=customer.id,
+        lines=[line],
+        customer=customer,
+    )
+    order.discount_amount = Decimal("100.00")
+    order.discount_percent = Decimal("0.0000")
+    order.total_amount = Decimal("950.00")
+
+    session = FakeAsyncSession()
+    session.queue_scalar(None)
+    session.queue_scalar(customer)
+    session.queue_scalars([product.id])
+    session.queue_count(100)
+    session.queue_scalar(None)
+    session.queue_scalar(order)
+
+    prev = _setup(session)
+    try:
+        payload = _valid_order_payload(customer_id=str(customer.id))
+        payload["discount_amount"] = 100.0
+        payload["lines"][0]["product_id"] = str(product.id)
+        resp = await _post("/api/v1/orders", json=payload)
+        assert resp.status_code == 201
+        body = resp.json()
+        assert body["discount_amount"] == "100.00"
+        assert body["discount_percent"] == "0.0000"
+        assert body["total_amount"] == "950.00"
+
+        created_order = next(obj for obj in session.added if isinstance(obj, Order))
+        assert created_order.discount_amount == Decimal("100.00")
+        assert created_order.discount_percent == Decimal("0.0000")
+        assert created_order.total_amount == Decimal("950.00")
+    finally:
+        _teardown(prev)
+
+
+async def test_create_order_rejects_multiple_header_discount_modes() -> None:
+    session = FakeAsyncSession()
+    prev = _setup(session)
+    try:
+        payload = _valid_order_payload()
+        payload["discount_amount"] = 100.0
+        payload["discount_percent"] = 0.1
+        resp = await _post("/api/v1/orders", json=payload)
+        assert resp.status_code == 422
+        detail = resp.json()["detail"]
+        assert any("discount_amount and discount_percent" in item["msg"] for item in detail)
     finally:
         _teardown(prev)
 

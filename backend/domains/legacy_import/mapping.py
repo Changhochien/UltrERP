@@ -19,8 +19,11 @@ from domains.legacy_import.staging import _open_raw_connection, _quoted_identifi
 CORRECTED_ORPHAN_CODE_BASELINE = 190
 CORRECTED_ORPHAN_ROW_BASELINE = 523
 UNKNOWN_PRODUCT_CODE = "UNKNOWN"
+AUTO_APPROVED_RESOLUTION_TYPES = frozenset({"exact_match", "normalized_exact_match"})
 
 _NORMALIZED_TOKEN_RE = re.compile(r"[^A-Z0-9]+")
+_LEADING_NOTE_PREFIX_RE = re.compile(r"^N[13]\s+(.+)$", re.IGNORECASE)
+_TRAILING_DIGIT_SUFFIX_RE = re.compile(r"^(.*\D)\d$")
 
 
 @dataclass(slots=True, frozen=True)
@@ -133,11 +136,102 @@ def _derive_candidate_matches(
     return proposals[:5]
 
 
+def _find_unique_normalized_exact_match(
+    legacy_code: str,
+    normalized_known_codes: Mapping[str, tuple[str, ...]],
+) -> str | None:
+    legacy_token = _normalize_code_token(legacy_code)
+    if not legacy_token:
+        return None
+
+    matches = normalized_known_codes.get(legacy_token, ())
+    if len(matches) != 1:
+        return None
+
+    return matches[0]
+
+
+def _find_unique_deterministic_exact_match(
+    legacy_code: str,
+    known_product_codes: set[str],
+    omitted_oh_exact_matches: Mapping[str, str] | None = None,
+    dash_three_exact_matches: Mapping[str, str] | None = None,
+) -> tuple[str, str] | None:
+    known_upper_map = {code.upper(): code for code in known_product_codes}
+    stripped_legacy_code = legacy_code.strip()
+
+    prefix_match = _LEADING_NOTE_PREFIX_RE.match(stripped_legacy_code)
+    if prefix_match is not None:
+        candidate_code = prefix_match.group(1).strip()
+        resolved_code = known_upper_map.get(candidate_code.upper())
+        if resolved_code is not None:
+            return resolved_code, "strip-leading-note-prefix"
+
+    trailing_digit_match = _TRAILING_DIGIT_SUFFIX_RE.match(stripped_legacy_code)
+    if trailing_digit_match is not None:
+        candidate_code = trailing_digit_match.group(1).strip()
+        resolved_code = known_upper_map.get(candidate_code.upper())
+        if resolved_code is not None:
+            return resolved_code, "strip-trailing-digit"
+
+    if "-" in stripped_legacy_code:
+        base_code, suffix = stripped_legacy_code.rsplit("-", 1)
+        resolved_code = known_upper_map.get(base_code.strip().upper())
+        if resolved_code is not None and (
+            "-" in base_code or "." in base_code or suffix.isalpha()
+        ):
+            return resolved_code, "strip-trailing-hyphen-segment-exact"
+
+    if omitted_oh_exact_matches is not None:
+        resolved_code = omitted_oh_exact_matches.get(stripped_legacy_code.upper())
+        if resolved_code is not None:
+            return resolved_code, "append-oh-descriptor"
+
+    if dash_three_exact_matches is not None:
+        resolved_code = dash_three_exact_matches.get(stripped_legacy_code.upper())
+        if resolved_code is not None:
+            return resolved_code, "append-dash-three-suffix"
+
+    return None
+
+
+def _build_sole_family_suffix_matches(
+    known_upper_map: Mapping[str, str],
+    suffix: str,
+) -> dict[str, str]:
+    matches: dict[str, str] = {}
+    for known_code_upper, known_code in known_upper_map.items():
+        if not known_code_upper.endswith(suffix):
+            continue
+
+        base_code_upper = known_code_upper[: -len(suffix)].rstrip()
+        family_matches = [
+            candidate_upper
+            for candidate_upper in known_upper_map
+            if candidate_upper.startswith(base_code_upper)
+        ]
+        if len(family_matches) == 1:
+            matches[base_code_upper] = known_code
+
+    return matches
+
+
 def seed_product_code_mappings(
     rows: list[Mapping[str, object]] | tuple[Mapping[str, object], ...],
     known_product_codes: set[str] | list[str] | tuple[str, ...],
 ) -> ProductMappingSeedResult:
     known_codes = {code.strip() for code in known_product_codes if str(code).strip()}
+    known_upper_map = {code.upper(): code for code in known_codes}
+    normalized_known_codes: dict[str, list[str]] = {}
+    for code in sorted(known_codes):
+        token = _normalize_code_token(code)
+        if not token:
+            continue
+        normalized_known_codes.setdefault(token, []).append(code)
+
+    omitted_oh_exact_matches = _build_sole_family_suffix_matches(known_upper_map, " OH")
+    dash_three_exact_matches = _build_sole_family_suffix_matches(known_upper_map, "-3")
+
     product_counts = _collect_product_counts(rows)
 
     mappings: list[ProductMappingRecord] = []
@@ -160,6 +254,52 @@ def seed_product_code_mappings(
                 )
             )
             exact_match_count += 1
+            continue
+
+        deterministic_exact_match = _find_unique_deterministic_exact_match(
+            legacy_code,
+            known_codes,
+            omitted_oh_exact_matches,
+            dash_three_exact_matches,
+        )
+        if deterministic_exact_match is not None:
+            target_code, heuristic = deterministic_exact_match
+            mappings.append(
+                ProductMappingRecord(
+                    legacy_code=legacy_code,
+                    target_code=target_code,
+                    resolution_type="normalized_exact_match",
+                    confidence=Decimal("0.95"),
+                    affected_row_count=affected_row_count,
+                    notes=(
+                        "Seeded from tbsslipdtx.col_7 deterministic exact product-code "
+                        f"cleanup ({heuristic})."
+                    ),
+                )
+            )
+            continue
+
+        normalized_exact_match = _find_unique_normalized_exact_match(
+            legacy_code,
+            {
+                token: tuple(codes)
+                for token, codes in normalized_known_codes.items()
+            },
+        )
+        if normalized_exact_match:
+            mappings.append(
+                ProductMappingRecord(
+                    legacy_code=legacy_code,
+                    target_code=normalized_exact_match,
+                    resolution_type="normalized_exact_match",
+                    confidence=Decimal("0.95"),
+                    affected_row_count=affected_row_count,
+                    notes=(
+                        "Seeded from tbsslipdtx.col_7 unique normalized product-code "
+                        "match."
+                    ),
+                )
+            )
             continue
 
         orphan_code_count += 1
@@ -226,6 +366,116 @@ async def _fetch_normalized_product_codes(
         for row in rows
         if str(_coerce_mapping(row)["legacy_code"]).strip()
     }
+
+
+async def _fetch_sales_detail_product_context(
+    connection,
+    schema_name: str,
+    batch_id: str,
+    legacy_code: str,
+) -> dict[str, object]:
+    quoted_schema = _quoted_identifier(schema_name)
+    rows = await connection.fetch(
+        f"""
+		SELECT
+			NULLIF(TRIM(col_8), '') AS name,
+			NULLIF(TRIM(col_18), '') AS unit,
+			_source_row_number AS source_row_number
+		FROM {quoted_schema}.tbsslipdtx
+		WHERE _batch_id = $1
+		  AND TRIM(col_7) = $2
+		ORDER BY
+			CASE WHEN NULLIF(TRIM(col_8), '') IS NULL THEN 1 ELSE 0 END,
+			CASE WHEN NULLIF(TRIM(col_18), '') IS NULL THEN 1 ELSE 0 END,
+			_source_row_number
+		LIMIT 1
+		""",
+        batch_id,
+        legacy_code,
+    )
+    if not rows:
+        return {
+            "name": legacy_code,
+            "unit": "unknown",
+            "source_row_number": 0,
+        }
+
+    row = _coerce_mapping(rows[0])
+    return {
+        "name": str(row.get("name") or "").strip() or legacy_code,
+        "unit": str(row.get("unit") or "").strip() or "unknown",
+        "source_row_number": int(row.get("source_row_number") or 0),
+    }
+
+
+async def _ensure_reviewed_synthetic_normalized_product(
+    connection,
+    schema_name: str,
+    batch_id: str,
+    tenant_id,
+    legacy_code: str,
+    name: str,
+    unit: str,
+    source_row_number: int,
+) -> None:
+    quoted_schema = _quoted_identifier(schema_name)
+    await connection.execute(
+        f"""
+		INSERT INTO {quoted_schema}.normalized_products (
+			batch_id,
+			tenant_id,
+			deterministic_id,
+			legacy_code,
+			name,
+			category,
+			supplier_legacy_code,
+			supplier_deterministic_id,
+			origin,
+			unit,
+			status,
+			created_date,
+			last_sale_date,
+			avg_cost,
+			source_table,
+			source_row_number
+		)
+		VALUES (
+			$1,
+			$2,
+			$3,
+			$4,
+			$5,
+			$6,
+			$7,
+			$8,
+			$9,
+			$10,
+			$11,
+			$12,
+			$13,
+			$14,
+			$15,
+			$16
+		)
+		ON CONFLICT DO NOTHING
+		""",
+        batch_id,
+        tenant_id,
+        deterministic_legacy_uuid("product", legacy_code),
+        legacy_code,
+        name,
+        None,
+        None,
+        None,
+        None,
+        unit,
+        "synthetic-review",
+        None,
+        None,
+        None,
+        "product_code_mapping_review",
+        source_row_number,
+    )
 
 
 async def _ensure_unknown_normalized_product(
@@ -407,8 +657,12 @@ async def _upsert_product_code_mappings(
             resolution_type = mapping.resolution_type
             confidence = mapping.confidence
             review_notes = mapping.notes
-            if resolution_type == "exact_match":
-                approval_source = "seed-exact-match"
+            if resolution_type in AUTO_APPROVED_RESOLUTION_TYPES:
+                approval_source = (
+                    "seed-exact-match"
+                    if resolution_type == "exact_match"
+                    else "seed-normalized-exact-match"
+                )
                 approved_at = approved_at or datetime.now(UTC)
 
         await connection.execute(
@@ -626,7 +880,8 @@ async def export_product_mapping_review(
 				affected_row_count,
 				review_notes
 			FROM {quoted_schema}.product_code_mapping
-			WHERE tenant_id = $1 AND last_seen_batch_id = $2 AND resolution_type <> 'exact_match'
+            WHERE tenant_id = $1 AND last_seen_batch_id = $2
+              AND resolution_type NOT IN ('exact_match', 'normalized_exact_match')
 			ORDER BY legacy_code
 			""",
             tenant_id,
@@ -721,10 +976,29 @@ async def import_product_mapping_review(
                             f"Approved review row for {legacy_code} is missing approved_target_code"
                         )
                     if target_code not in known_codes:
-                        raise ValueError(
-                            "Approved target_code is not available in normalized "
-                            f"products: {target_code}"
+                        if target_code != legacy_code:
+                            raise ValueError(
+                                "Approved target_code is not available in normalized "
+                                f"products: {target_code}"
+                            )
+
+                        product_context = await _fetch_sales_detail_product_context(
+                            connection,
+                            schema_name,
+                            batch_id,
+                            legacy_code,
                         )
+                        await _ensure_reviewed_synthetic_normalized_product(
+                            connection,
+                            schema_name,
+                            batch_id,
+                            tenant_id,
+                            legacy_code=target_code,
+                            name=str(product_context["name"]),
+                            unit=str(product_context["unit"]),
+                            source_row_number=int(product_context["source_row_number"]),
+                        )
+                        known_codes.add(target_code)
                     resolution_type = "analyst_review"
                     confidence = Decimal(decision["candidate_confidence"])
                 else:

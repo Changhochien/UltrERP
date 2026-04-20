@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from decimal import Decimal
 from typing import cast
 
 import pytest
@@ -52,6 +53,7 @@ class FakeCanonicalConnection:
         # Track inserted rows so fetchrow can find them after INSERT
         self._fake_customers: dict[tuple[object, object], dict] = {}
         self._fake_suppliers: dict[tuple[object, object], dict] = {}
+        self._fake_categories: dict[tuple[object, str], dict[str, object]] = {}
         self._fake_stock_adjustments: dict[uuid.UUID, dict[str, object]] = {}
         self._fake_lineage_rows: dict[tuple[object, ...], dict[str, object]] = {}
         self._fake_order_lines: dict[uuid.UUID, dict[str, object]] = {}
@@ -103,6 +105,8 @@ class FakeCanonicalConnection:
                 }
                 for row in rows
             ]
+        if "FROM category" in query:
+            return list(self._fake_categories.values())
         return []
 
     async def fetchrow(self, query: str, *args: object):
@@ -113,6 +117,20 @@ class FakeCanonicalConnection:
         if "FROM suppliers WHERE tenant_id" in query and "normalized_business_number" in query:
             tenant_id, business_number = args[0], args[1]
             return self._fake_suppliers.get((tenant_id, business_number))
+        if "INSERT INTO category" in query and "RETURNING id, name" in query:
+            call = (query, args)
+            self.execute_calls.append(call)
+            if self.transaction_buffers:
+                self.transaction_buffers[-1].append(call)
+            else:
+                self.committed_execute_calls.append(call)
+            category_id, tenant_id, name = args[0], args[1], args[2]
+            key = (tenant_id, str(name).casefold())
+            existing = self._fake_categories.get(key)
+            if existing is None:
+                existing = {"id": category_id, "name": name}
+                self._fake_categories[key] = existing
+            return existing
         if 'FROM "raw_legacy".source_row_resolution' in query:
             key = (args[0], args[1], args[2], args[3], args[4])
             row = self._fake_resolution_rows.get(key)
@@ -721,6 +739,14 @@ async def test_run_canonical_import_orders_dependencies_and_holding(
     )
     assert _find_query_index(connection.execute_calls, "INSERT INTO supplier") < _find_query_index(
         connection.execute_calls,
+        "INSERT INTO category (",
+    )
+    assert _find_query_index(connection.execute_calls, "INSERT INTO category (") < _find_query_index(
+        connection.execute_calls,
+        "INSERT INTO category_translation (",
+    )
+    assert _find_query_index(connection.execute_calls, "INSERT INTO category_translation (") < _find_query_index(
+        connection.execute_calls,
         "INSERT INTO product",
     )
     assert _find_query_index(connection.execute_calls, "INSERT INTO product") < _find_query_index(
@@ -750,8 +776,8 @@ async def test_run_canonical_import_orders_dependencies_and_holding(
     product_args = next(
         args for query, args in connection.execute_calls if "INSERT INTO product" in query
     )
-    order_args = next(
-        args for query, args in connection.execute_calls if "INSERT INTO orders" in query
+    order_query, order_args = next(
+        (query, args) for query, args in connection.execute_calls if "INSERT INTO orders" in query
     )
     invoice_args = next(
         args for query, args in connection.execute_calls if "INSERT INTO invoices" in query
@@ -759,13 +785,18 @@ async def test_run_canonical_import_orders_dependencies_and_holding(
     assert customer_args[10] == "unknown"
     customer_snapshot = json.loads(cast(str, customer_args[11]))
     supplier_snapshot = json.loads(cast(str, supplier_args[6]))
-    product_snapshot = json.loads(cast(str, product_args[8]))
+    product_snapshot = json.loads(cast(str, product_args[9]))
     assert order_args[4] == "fulfilled"
+    assert "discount_amount" in order_query
+    assert "discount_percent" in order_query
+    assert "0.00" in order_query
+    assert "0.0000" in order_query
     assert invoice_args[10] == "issued"
     order_snapshot = json.loads(cast(str, order_args[9]))
     invoice_snapshot = json.loads(cast(str, invoice_args[11]))
     assert customer_snapshot["legacy_code"] == "C001"
     assert supplier_snapshot["role"] == "supplier"
+    assert product_args[5] is not None
     assert product_snapshot["legacy_code"] == "P001"
     assert product_snapshot["legacy_category"] == "Legacy Belt"
     assert product_snapshot["category_source"] == "manual_override"

@@ -83,6 +83,7 @@ _V_BELT_NAME_TOKENS = (
     "第一 B",
     "外齒",
 )
+_V_BELT_SECTION_CONTEXT_TOKENS = ("皮帶", "耐油", "耐熱", "齒型", "大山", "三五", "三星")
 _FLAT_SPECIALTY_NAME_TOKENS = (
     "牛皮",
     "平皮帶",
@@ -100,7 +101,7 @@ _FLAT_SPECIALTY_NAME_TOKENS = (
     "關結帶",
     "V-LINK",
 )
-_VARIABLE_SPEED_CODE_PREFIXES = ("VB", "VD", "YM", "YK", "MF")
+_VARIABLE_SPEED_CODE_PREFIXES = ("VB", "VD", "YM", "YK", "MF", "VS")
 _RIBBED_CODE_PREFIXES = ("J4", "J5", "J6", "J8")
 _RIBBED_SERIES_RE = re.compile(
     r"^(?:\d+(?:PK|PL|PJ)-|PK\d+-|J\d+(?:-|$)|\d+J(?:-|$)|\d+-J\d+)"
@@ -114,8 +115,11 @@ _TIMING_CODE_PREFIXES = (
     "DXL",
     "DH",
     "DL",
+    "S2M",
+    "S3M",
     "S5M",
     "S8M",
+    "S14M",
     "5GT",
     "8GT",
     "3GT",
@@ -123,9 +127,11 @@ _TIMING_CODE_PREFIXES = (
     "8YU",
 )
 _TIMING_SERIES_RE = re.compile(
-    r"^(?:\d{1,2}M-|\d+XL(?:[-*]|$)|\d+H(?:[-*]|$)|\d+GT(?:[-* ]|$)|\d+-\d+M(?:[-*]|$))"
+    r"^(?:(?:S)?\d{1,2}(?:\.\d+)?M(?:[-*]|$)|\d+XL(?:[-*]|$)|\d+H(?:[-*]|$)|\d+GT(?:[-* ]|$)|\d+-\d+M(?:[-*]|$))"
 )
-_VEHICLE_CODE_PREFIXES = ("BMT", "3NW", "3GF", "SRCV")
+_TIMING_PITCH_RE = re.compile(r"(?:^| )(?:S)?\d{1,2}(?:\.\d+)?M(?:[-*]|$)")
+_TIMING_FAMILY_RE = re.compile(r"^(?:H\d+-|L(?:\d|-[0-9])|LS-|PU\d+(?:XL|L)|225L|240L|R240L|T2\.5|U10|YU\d+)")
+_VEHICLE_CODE_PREFIXES = ("BMT", "MBT", "3NW", "3GF", "SRCV", "AVX", "17641")
 _V_BELT_CODE_PREFIXES = (
     "PA",
     "PB",
@@ -154,6 +160,8 @@ _V_BELT_CODE_PREFIXES = (
     "LM",
     "LC",
     "MO",
+    "XPC",
+    "LINK",
 )
 _V_BELT_SPECIAL_CODE_PREFIXES = ("OA", "OM", "OC", "VA", "AA", "BB", "AX", "BR")
 _V_BELT_FAMILY_RE = re.compile(r"^(?:FON|FOZ(?:\s|$)|FO037$)")
@@ -174,8 +182,12 @@ _FLAT_SPECIALTY_CODE_PREFIXES = (
     "CFL",
 )
 _FLAT_SPECIALTY_SERIES_RE = re.compile(r"^(?:\d+-TU\d+|[AB]-V-LINK|A-[23]LT(?:\s|-))")
+_FLAT_SPECIALTY_FAMILY_RE = re.compile(
+    r"^(?:F-\d|G-\d|FK(?:\s|[-]|$)|TS-|PV10|HAM-|S-\d|SP(?:100|180|250)|SE15|S250|TC20|ENU)"
+)
 _BELT_SUPPLIES_CODE_PREFIXES = ("PPPP",)
-_V_BELT_SERIES_RE = re.compile(r"^(?:[358]V|[ABCDM]O?\d)")
+_V_BELT_SERIES_RE = re.compile(r"^(?:[358]V|[ABCDM]O?\d|HA\d)")
+_V_BELT_SECTION_NAME_RE = re.compile(r"(?:LA|[ABCDE])-?\d+")
 _CATEGORY_REVIEW_CONFIDENCE_THRESHOLD = Decimal("0.80")
 _MATCHING_NOISE_TOKENS = ("進口",)
 _MATCHING_TEXT_RE = re.compile(r"[^A-Z0-9\u4E00-\u9FFF]+")
@@ -311,6 +323,7 @@ def _derive_product_category(
         )
 
     normalized_code = legacy_code.upper()
+    raw_combined = f"{normalized_code} {name.upper()}".strip()
     cleaned_name = _clean_product_text_for_matching(name)
     combined = f"{normalized_code} {cleaned_name}".strip()
 
@@ -382,6 +395,8 @@ def _derive_product_category(
     if (
         _starts_with_any_prefix(normalized_code, _TIMING_CODE_PREFIXES)
         or _TIMING_SERIES_RE.match(normalized_code) is not None
+        or _TIMING_PITCH_RE.search(raw_combined) is not None
+        or _TIMING_FAMILY_RE.match(normalized_code) is not None
         or any(token in normalized_code for token in ("5GT", "8GT", "3GT", "14MGT", "RPP", "8YU"))
         or any(token in combined for token in ("5M-", "8M-", "14M-", "3M-"))
     ):
@@ -428,8 +443,13 @@ def _derive_product_category(
             "code-prefix-v-belts",
             "0.98",
         )
-    if _contains_any_token(combined, _V_BELT_NAME_TOKENS) or any(
-        token in combined for token in ("3V", "5V", "8V")
+    if (
+        _contains_any_token(combined, _V_BELT_NAME_TOKENS)
+        or any(token in combined for token in ("3V", "5V", "8V"))
+        or (
+            _V_BELT_SECTION_NAME_RE.search(combined) is not None
+            and any(token in combined for token in _V_BELT_SECTION_CONTEXT_TOKENS)
+        )
     ):
         return _category_derivation(
             "V-Belts",
@@ -441,6 +461,7 @@ def _derive_product_category(
     if (
         _starts_with_any_prefix(normalized_code, _FLAT_SPECIALTY_CODE_PREFIXES)
         or _FLAT_SPECIALTY_SERIES_RE.match(normalized_code) is not None
+        or _FLAT_SPECIALTY_FAMILY_RE.match(normalized_code) is not None
     ):
         return _category_derivation(
             "Flat / Specialty Belts",
@@ -933,6 +954,76 @@ async def _fetch_stage_rows(
     return await connection.fetch(query, batch_id)
 
 
+async def _fetch_existing_synthetic_product_records(
+    connection,
+    schema_name: str,
+    batch_id: str,
+    tenant_id: uuid.UUID,
+) -> list[tuple[object, ...]]:
+    quoted_schema = _quoted_identifier(schema_name)
+    quoted_table = _quoted_identifier("normalized_products")
+    rows = await connection.fetch(
+        f"""
+        SELECT
+            batch_id,
+            tenant_id,
+            deterministic_id,
+            legacy_code,
+            name,
+            category,
+            legacy_category,
+            stock_kind,
+            category_source,
+            category_rule_id,
+            category_confidence,
+            supplier_legacy_code,
+            supplier_deterministic_id,
+            origin,
+            unit,
+            status,
+            created_date,
+            last_sale_date,
+            avg_cost,
+            source_table,
+            source_row_number
+        FROM {quoted_schema}.{quoted_table}
+        WHERE batch_id = $1 AND tenant_id = $2 AND status = 'synthetic-review'
+        ORDER BY legacy_code
+        """,
+        batch_id,
+        tenant_id,
+    )
+    return [tuple(_coerce_mapping(row).values()) for row in rows]
+
+
+async def _fetch_current_synthetic_review_codes(
+    connection,
+    schema_name: str,
+    batch_id: str,
+    tenant_id: uuid.UUID,
+) -> set[str]:
+    quoted_schema = _quoted_identifier(schema_name)
+    rows = await connection.fetch(
+        f"""
+        SELECT legacy_code
+        FROM {quoted_schema}.product_code_mapping
+        WHERE tenant_id = $1
+          AND last_seen_batch_id = $2
+          AND approval_source = 'review-import'
+          AND resolution_type = 'analyst_review'
+          AND target_code = legacy_code
+        """,
+        tenant_id,
+        batch_id,
+    )
+    return {
+        legacy_code
+        for row in rows
+        for legacy_code in [str(_coerce_mapping(row).get("legacy_code") or "").strip()]
+        if legacy_code
+    }
+
+
 def _validate_inventory_product_codes(
     product_rows: list[Mapping[str, object]],
     inventory_rows: list[Mapping[str, object]],
@@ -1076,6 +1167,18 @@ async def run_normalization(
                             int(row.get("source_row_number") or 0),
                         )
                     )
+            synthetic_product_records = await _fetch_existing_synthetic_product_records(
+                connection,
+                resolved_schema,
+                batch_id,
+                tenant_id,
+            )
+            synthetic_review_codes = await _fetch_current_synthetic_review_codes(
+                connection,
+                resolved_schema,
+                batch_id,
+                tenant_id,
+            )
             warehouse_records = _normalized_warehouse_records(
                 inventory_rows,
                 batch_id,
@@ -1083,6 +1186,14 @@ async def run_normalization(
             )
             inventory_records = [
                 _normalize_inventory_record(row, batch_id, tenant_id) for row in inventory_rows
+            ]
+
+            known_product_codes = {str(record[3]) for record in product_records}
+            preserved_synthetic_records = [
+                record
+                for record in synthetic_product_records
+                if str(record[3]) not in known_product_codes
+                and str(record[3]) in synthetic_review_codes
             ]
 
             await _clear_batch_rows(connection, resolved_schema, batch_id, tenant_id)
@@ -1147,7 +1258,7 @@ async def run_normalization(
                     "source_table",
                     "source_row_number",
                 ),
-                records=product_records,
+                records=[*product_records, *preserved_synthetic_records],
             )
             await connection.copy_records_to_table(
                 "normalized_warehouses",

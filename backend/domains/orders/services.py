@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import UTC, date, datetime
+from decimal import Decimal
 from typing import Literal
 
 from fastapi import HTTPException
@@ -133,6 +134,14 @@ async def create_order(
 
         # Resolve payment terms
         terms_config = PAYMENT_TERMS_CONFIG[data.payment_terms_code]
+        normalized_discount_amount = (
+            data.discount_amount if data.discount_amount > 0 else Decimal("0.00")
+        )
+        normalized_discount_percent = (
+            data.discount_percent
+            if normalized_discount_amount == 0 and data.discount_percent > 0
+            else Decimal("0.0000")
+        )
 
         order = Order(
             tenant_id=tid,
@@ -141,6 +150,8 @@ async def create_order(
             status=OrderStatus.PENDING.value,
             payment_terms_code=data.payment_terms_code.value,
             payment_terms_days=int(terms_config["days"]),
+            discount_amount=normalized_discount_amount,
+            discount_percent=normalized_discount_percent,
             notes=data.notes,
             created_by=ACTOR_ID,
         )
@@ -211,7 +222,13 @@ async def create_order(
         await session.flush()
 
         # Aggregate totals
-        totals = aggregate_invoice_totals(line_amounts_list)
+        discount_amount = normalized_discount_amount if normalized_discount_amount > 0 else None
+        discount_percent = normalized_discount_percent if normalized_discount_percent > 0 else None
+        totals = aggregate_invoice_totals(
+            line_amounts_list,
+            discount_amount=discount_amount,
+            discount_percent=discount_percent,
+        )
         order.subtotal_amount = totals["subtotal_amount"]
         order.tax_amount = totals["tax_amount"]
         order.total_amount = totals["total_amount"]

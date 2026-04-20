@@ -47,7 +47,7 @@ class FakeMappingConnection:
             return self.rows_by_key.get("tbsslipdtx", [])
         if 'FROM "raw_legacy".product_code_mapping_candidates' in query:
             return self.rows_by_key.get("review_candidates", [])
-        if "resolution_type <> 'exact_match'" in query:
+        if "resolution_type NOT IN ('exact_match', 'normalized_exact_match')" in query:
             return self.rows_by_key.get("review_mappings", [])
         if 'FROM "raw_legacy".product_code_mapping' in query:
             return self.rows_by_key.get("product_code_mapping", [])
@@ -108,6 +108,127 @@ def test_seed_product_code_mappings_keeps_fuzzy_matches_as_review_only() -> None
     assert all(mapping.target_code == UNKNOWN_PRODUCT_CODE for mapping in result.mappings)
     assert {candidate.legacy_code for candidate in result.candidates} == {"SPZ-1900", "BMT"}
     assert {candidate.confidence for candidate in result.candidates} == {Decimal("0.60")}
+
+
+def test_seed_product_code_mappings_auto_resolves_unique_normalized_exact_match() -> None:
+    result = seed_product_code_mappings(
+        rows=(
+            {"product_code": "P3VX-0475OH", "row_count": 2},
+            {"product_code": "RB052-6", "row_count": 3},
+        ),
+        known_product_codes={"P3VX-0475 OH", "RB052"},
+    )
+
+    mapping_by_code = {mapping.legacy_code: mapping for mapping in result.mappings}
+
+    assert mapping_by_code["P3VX-0475OH"].target_code == "P3VX-0475 OH"
+    assert mapping_by_code["P3VX-0475OH"].resolution_type == "normalized_exact_match"
+    assert mapping_by_code["P3VX-0475OH"].confidence == Decimal("0.95")
+    assert mapping_by_code["RB052-6"].target_code == UNKNOWN_PRODUCT_CODE
+    assert result.exact_match_count == 0
+    assert result.unknown_count == 1
+    assert result.orphan_code_count == 1
+    assert result.orphan_row_count == 3
+
+
+def test_seed_product_code_mappings_auto_resolves_deterministic_exact_cleanup() -> None:
+    result = seed_product_code_mappings(
+        rows=(
+            {"product_code": "N3 PB050", "row_count": 3},
+            {"product_code": "N1 PA050", "row_count": 1},
+            {"product_code": "8M-560*25M/M3", "row_count": 1},
+            {"product_code": "PP0103-I", "row_count": 4},
+            {"product_code": "BMT-GWO-23100", "row_count": 1},
+            {"product_code": "PB025.5-1", "row_count": 1},
+            {"product_code": "SPA-1700-5", "row_count": 1},
+            {"product_code": "SPZ-1487-2", "row_count": 1},
+            {"product_code": "RB052-6", "row_count": 2},
+        ),
+        known_product_codes={
+            "PB050",
+            "PA050",
+            "8M-560*25M/M",
+            "PP0103",
+            "BMT-GWO",
+            "PB025.5",
+            "SPA-1700",
+            "SPZ-1487",
+            "RB052",
+        },
+    )
+
+    mapping_by_code = {mapping.legacy_code: mapping for mapping in result.mappings}
+
+    assert mapping_by_code["N3 PB050"].target_code == "PB050"
+    assert mapping_by_code["N3 PB050"].resolution_type == "normalized_exact_match"
+    assert mapping_by_code["N1 PA050"].target_code == "PA050"
+    assert mapping_by_code["8M-560*25M/M3"].target_code == "8M-560*25M/M"
+    assert mapping_by_code["PP0103-I"].target_code == "PP0103"
+    assert mapping_by_code["BMT-GWO-23100"].target_code == "BMT-GWO"
+    assert mapping_by_code["PB025.5-1"].target_code == "PB025.5"
+    assert mapping_by_code["SPA-1700-5"].target_code == "SPA-1700"
+    assert mapping_by_code["SPZ-1487-2"].target_code == "SPZ-1487"
+    assert mapping_by_code["RB052-6"].target_code == UNKNOWN_PRODUCT_CODE
+    assert result.unknown_count == 1
+    assert result.orphan_code_count == 1
+    assert result.orphan_row_count == 2
+
+
+def test_seed_product_code_mappings_auto_resolves_unique_omitted_oh_descriptor() -> None:
+    result = seed_product_code_mappings(
+        rows=(
+            {"product_code": "P5V-1600", "row_count": 4},
+            {"product_code": "PSPB-3550", "row_count": 3},
+            {"product_code": "PSPC-3350", "row_count": 2},
+            {"product_code": "P5V-0900", "row_count": 2},
+        ),
+        known_product_codes={
+            "P5V-1600 OH",
+            "PSPB-3550 OH",
+            "PSPC-3350 OH",
+            "P5V-0900 OH",
+            "P5V-0900-3R",
+        },
+    )
+
+    mapping_by_code = {mapping.legacy_code: mapping for mapping in result.mappings}
+
+    assert mapping_by_code["P5V-1600"].target_code == "P5V-1600 OH"
+    assert mapping_by_code["P5V-1600"].resolution_type == "normalized_exact_match"
+    assert mapping_by_code["PSPB-3550"].target_code == "PSPB-3550 OH"
+    assert mapping_by_code["PSPC-3350"].target_code == "PSPC-3350 OH"
+    assert mapping_by_code["P5V-0900"].target_code == UNKNOWN_PRODUCT_CODE
+    assert result.unknown_count == 1
+    assert result.orphan_code_count == 1
+    assert result.orphan_row_count == 2
+
+
+def test_seed_product_code_mappings_auto_resolves_unique_dash_three_suffix() -> None:
+    result = seed_product_code_mappings(
+        rows=(
+            {"product_code": "LK013", "row_count": 6},
+            {"product_code": "OC119", "row_count": 1},
+            {"product_code": "OC130", "row_count": 1},
+            {"product_code": "3V0710-2", "row_count": 27},
+        ),
+        known_product_codes={
+            "LK013-3",
+            "OC119-3",
+            "OC130-3",
+            "3V0710-2R",
+        },
+    )
+
+    mapping_by_code = {mapping.legacy_code: mapping for mapping in result.mappings}
+
+    assert mapping_by_code["LK013"].target_code == "LK013-3"
+    assert mapping_by_code["LK013"].resolution_type == "normalized_exact_match"
+    assert mapping_by_code["OC119"].target_code == "OC119-3"
+    assert mapping_by_code["OC130"].target_code == "OC130-3"
+    assert mapping_by_code["3V0710-2"].target_code == UNKNOWN_PRODUCT_CODE
+    assert result.unknown_count == 1
+    assert result.orphan_code_count == 1
+    assert result.orphan_row_count == 27
 
 
 def test_corrected_orphan_baseline_constants_remain_authoritative() -> None:
@@ -392,3 +513,94 @@ async def test_import_product_mapping_review_ensures_unknown_placeholder_for_kee
     ]
     assert upsert_calls[0][2] == "UNKNOWN"
     assert upsert_calls[0][3] == "unknown"
+
+
+@pytest.mark.asyncio
+async def test_import_product_mapping_review_synthesizes_missing_self_target(monkeypatch, tmp_path) -> None:
+    input_path = tmp_path / "review.csv"
+    input_path.write_text(
+        (
+            "batch_id,legacy_code,review_status,approved_target_code,"
+            "candidate_confidence,review_notes\n"
+            "batch-003,RB052-6,approved,RB052-6,0.60,Create synthetic reviewed product\n"
+        ),
+        encoding="utf-8",
+    )
+    connection = FakeMappingConnection(
+        {
+            "normalized_products": [
+                {"legacy_code": "UNKNOWN"},
+            ],
+            "tbsslipdtx": [
+                {
+                    "name": "日本齒帶 B-52",
+                    "unit": "條",
+                    "source_row_number": 42,
+                }
+            ],
+        }
+    )
+
+    async def fake_open_raw_connection() -> FakeMappingConnection:
+        return connection
+
+    monkeypatch.setattr(mapping, "_open_raw_connection", fake_open_raw_connection)
+
+    result = await mapping.import_product_mapping_review(
+        batch_id="batch-003",
+        input_path=input_path,
+        approved_by="analyst@example.com",
+    )
+
+    assert result.applied_decision_count == 1
+    synthetic_insert_calls = [
+        args
+        for query, args in connection.execute_calls
+        if 'INSERT INTO "raw_legacy".normalized_products' in query and args[3] == "RB052-6"
+    ]
+    assert synthetic_insert_calls
+    assert synthetic_insert_calls[0][4] == "日本齒帶 B-52"
+    assert synthetic_insert_calls[0][9] == "條"
+    assert synthetic_insert_calls[0][10] == "synthetic-review"
+    upsert_calls = [
+        args
+        for query, args in connection.execute_calls
+        if 'INSERT INTO "raw_legacy".product_code_mapping' in query
+    ]
+    assert upsert_calls[0][2] == "RB052-6"
+    assert upsert_calls[0][3] == "analyst_review"
+
+
+@pytest.mark.asyncio
+async def test_import_product_mapping_review_rejects_missing_non_self_target(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    input_path = tmp_path / "review.csv"
+    input_path.write_text(
+        (
+            "batch_id,legacy_code,review_status,approved_target_code,"
+            "candidate_confidence,review_notes\n"
+            "batch-003,RB052-6,approved,RB052-T,0.60,Target still missing upstream\n"
+        ),
+        encoding="utf-8",
+    )
+    connection = FakeMappingConnection(
+        {
+            "normalized_products": [
+                {"legacy_code": "UNKNOWN"},
+            ],
+        }
+    )
+
+    async def fake_open_raw_connection() -> FakeMappingConnection:
+        return connection
+
+    monkeypatch.setattr(mapping, "_open_raw_connection", fake_open_raw_connection)
+
+    with pytest.raises(ValueError, match="Approved target_code is not available in normalized products"):
+        await mapping.import_product_mapping_review(
+            batch_id="batch-003",
+            input_path=input_path,
+            approved_by="analyst@example.com",
+        )

@@ -334,6 +334,88 @@ def _tenant_scoped_uuid(tenant_id: uuid.UUID, kind: str, *parts: str) -> uuid.UU
     return deterministic_legacy_uuid(kind, str(tenant_id), *parts)
 
 
+async def _load_category_cache(
+    connection,
+    tenant_id: uuid.UUID,
+) -> dict[str, tuple[uuid.UUID, str]]:
+    rows = await connection.fetch(
+        """
+		SELECT id, name
+		FROM category
+		WHERE tenant_id = $1
+		""",
+        tenant_id,
+    )
+    cache: dict[str, tuple[uuid.UUID, str]] = {}
+    for row in rows:
+        category_id = cast(uuid.UUID, row["id"])
+        category_name = _as_text(row["name"])
+        if not category_name:
+            continue
+        cache[category_name.casefold()] = (category_id, category_name)
+    return cache
+
+
+async def _ensure_product_category(
+    connection,
+    tenant_id: uuid.UUID,
+    category_name: str | None,
+    *,
+    category_cache: dict[str, tuple[uuid.UUID, str]],
+) -> tuple[uuid.UUID | None, str | None]:
+    normalized_name = _as_text(category_name)
+    if not normalized_name:
+        return None, None
+
+    cache_key = normalized_name.casefold()
+    cached = category_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    category_row = await connection.fetchrow(
+        """
+		INSERT INTO category (
+			id,
+			tenant_id,
+			name,
+			is_active,
+			created_at,
+			updated_at
+		)
+		VALUES ($1::uuid, $2::uuid, $3::varchar, TRUE, NOW(), NOW())
+		ON CONFLICT (tenant_id, name) DO UPDATE SET
+			is_active = TRUE,
+			updated_at = NOW()
+		RETURNING id, name
+		""",
+        _tenant_scoped_uuid(tenant_id, "category", cache_key),
+        tenant_id,
+        normalized_name,
+    )
+    resolved_category_id = cast(uuid.UUID, category_row["id"])
+    resolved_category_name = _as_text(category_row["name"])
+
+    await connection.execute(
+        """
+		INSERT INTO category_translation (
+			id,
+			category_id,
+			locale,
+			name
+		)
+		VALUES ($1::uuid, $2::uuid, 'en', $3::varchar)
+		ON CONFLICT (category_id, locale) DO UPDATE SET
+			name = EXCLUDED.name
+		""",
+        _tenant_scoped_uuid(tenant_id, "category-translation", str(resolved_category_id), "en"),
+        resolved_category_id,
+        resolved_category_name,
+    )
+
+    category_cache[cache_key] = (resolved_category_id, resolved_category_name)
+    return resolved_category_id, resolved_category_name
+
+
 def _step_row_count(step_name: str, counts: Mapping[str, int]) -> int:
     if step_name == "sales_history":
         return counts.get("order_line_count", 0) + counts.get("invoice_line_count", 0)
@@ -1289,6 +1371,7 @@ async def _import_products(
     product_by_code: dict[str, uuid.UUID] = {}
     product_snapshot_by_code: dict[str, dict[str, str | None]] = {}
     unknown_product_present = False
+    category_cache = await _load_category_cache(connection, tenant_id)
 
     async def _upsert_product_row(row: dict[str, object]) -> None:
         nonlocal count, lineage_count, unknown_product_present
@@ -1298,7 +1381,12 @@ async def _import_products(
         product_id = _tenant_scoped_uuid(tenant_id, "product", legacy_code)
         legacy_master_snapshot = _build_product_master_snapshot(row)
         product_name = _as_text(row.get("name")) or legacy_code
-        product_category = _as_text(row.get("category")) or None
+        product_category_id, product_category = await _ensure_product_category(
+            connection,
+            tenant_id,
+            _as_text(row.get("category")) or None,
+            category_cache=category_cache,
+        )
         status = (
             "inactive"
             if legacy_code == UNKNOWN_PRODUCT_CODE
@@ -1316,6 +1404,7 @@ async def _import_products(
 				code,
 				name,
 				category,
+                category_id,
 				description,
 				unit,
 				status,
@@ -1325,8 +1414,8 @@ async def _import_products(
 				updated_at
 			)
 			VALUES (
-				$1::uuid, $2::uuid, $3::varchar, $4::varchar, $5::varchar, $6::text,
-                $7::varchar, $8::varchar, $9::json,
+                $1::uuid, $2::uuid, $3::varchar, $4::varchar, $5::varchar, $6::uuid, $7::text,
+                $8::varchar, $9::varchar, $10::json,
                 to_tsvector(
                     'simple',
                     coalesce($3::text, '')
@@ -1341,6 +1430,7 @@ async def _import_products(
 				code = EXCLUDED.code,
 				name = EXCLUDED.name,
 				category = EXCLUDED.category,
+                category_id = EXCLUDED.category_id,
 				description = EXCLUDED.description,
 				unit = EXCLUDED.unit,
 				status = EXCLUDED.status,
@@ -1353,6 +1443,7 @@ async def _import_products(
             legacy_code,
             product_name,
             product_category,
+            product_category_id,
             _as_text(row.get("description")) if row.get("description") else None,
             _as_text(row.get("unit")) or "pcs",
             status,
@@ -1762,6 +1853,8 @@ async def _import_sales_history(
 				payment_terms_code,
 				payment_terms_days,
 				subtotal_amount,
+                discount_amount,
+                discount_percent,
 				tax_amount,
 				total_amount,
 				invoice_id,
@@ -1781,6 +1874,8 @@ async def _import_sales_history(
                 'NET_30',
                 30,
                 $6,
+                0.00,
+                0.0000,
                 $7,
                 $8,
                 NULL,
@@ -1796,6 +1891,8 @@ async def _import_sales_history(
 				order_number = EXCLUDED.order_number,
 				status = EXCLUDED.status,
 				subtotal_amount = EXCLUDED.subtotal_amount,
+                discount_amount = EXCLUDED.discount_amount,
+                discount_percent = EXCLUDED.discount_percent,
 				tax_amount = EXCLUDED.tax_amount,
 				total_amount = EXCLUDED.total_amount,
 				notes = EXCLUDED.notes,

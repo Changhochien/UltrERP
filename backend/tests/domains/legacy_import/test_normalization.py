@@ -76,6 +76,18 @@ class FakeNormalizationConnection:
                 for row in self.staged_rows.get("product_category_override", [])
                 if row.get("tenant_id", tenant_id) == tenant_id
             ]
+        if 'FROM "raw_legacy".product_code_mapping' in query:
+            tenant_id = args[0] if args else None
+            batch_id = args[1] if len(args) > 1 else None
+            return [
+                row
+                for row in self.staged_rows.get("product_code_mapping", [])
+                if row.get("tenant_id", tenant_id) == tenant_id
+                and row.get("last_seen_batch_id", batch_id) == batch_id
+                and row.get("approval_source") == "review-import"
+                and row.get("resolution_type") == "analyst_review"
+                and row.get("target_code") == row.get("legacy_code")
+            ]
         return []
 
     async def copy_records_to_table(
@@ -374,6 +386,18 @@ def test_derive_product_category_handles_numeric_timing_series_examples() -> Non
         legacy_category=None,
         stock_kind="0",
     )
+    s2m_derivation = normalization._derive_product_category(
+        "S2M-144*4M/M",
+        "S2M-144*4M/M",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    s_pitch_derivation = normalization._derive_product_category(
+        "S4.5-450*11",
+        "04.5M-450*11M/M",
+        legacy_category=None,
+        stock_kind="0",
+    )
 
     assert spaced_gt_derivation.category == "Timing Belts"
     assert spaced_gt_derivation.source == "heuristic_rule"
@@ -387,6 +411,68 @@ def test_derive_product_category_handles_numeric_timing_series_examples() -> Non
     assert dashed_pitch_derivation.source == "heuristic_rule"
     assert dashed_pitch_derivation.rule_id == "code-prefix-timing-belts"
     assert dashed_pitch_derivation.confidence == Decimal("0.98")
+    assert s2m_derivation.category == "Timing Belts"
+    assert s2m_derivation.source == "heuristic_rule"
+    assert s2m_derivation.rule_id == "code-prefix-timing-belts"
+    assert s2m_derivation.confidence == Decimal("0.98")
+    assert s_pitch_derivation.category == "Timing Belts"
+    assert s_pitch_derivation.source == "heuristic_rule"
+    assert s_pitch_derivation.rule_id == "code-prefix-timing-belts"
+    assert s_pitch_derivation.confidence == Decimal("0.98")
+
+
+def test_derive_product_category_handles_h_l_and_t_timing_families() -> None:
+    h_series_derivation = normalization._derive_product_category(
+        "H4-2030",
+        "H4-2030",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    l_series_derivation = normalization._derive_product_category(
+        "L10F 50*1790",
+        "L10F 50*1790",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    l_dash_derivation = normalization._derive_product_category(
+        "L-500 180*600",
+        "L-500 180*600",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    t2_5_derivation = normalization._derive_product_category(
+        "T2.5*160*4M/M",
+        "T2.5*160*4M/M",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    u10_derivation = normalization._derive_product_category(
+        "U10AG140*770",
+        "140*2*770",
+        legacy_category=None,
+        stock_kind="0",
+    )
+
+    assert h_series_derivation.category == "Timing Belts"
+    assert h_series_derivation.source == "heuristic_rule"
+    assert h_series_derivation.rule_id == "code-prefix-timing-belts"
+    assert h_series_derivation.confidence == Decimal("0.98")
+    assert l_series_derivation.category == "Timing Belts"
+    assert l_series_derivation.source == "heuristic_rule"
+    assert l_series_derivation.rule_id == "code-prefix-timing-belts"
+    assert l_series_derivation.confidence == Decimal("0.98")
+    assert l_dash_derivation.category == "Timing Belts"
+    assert l_dash_derivation.source == "heuristic_rule"
+    assert l_dash_derivation.rule_id == "code-prefix-timing-belts"
+    assert l_dash_derivation.confidence == Decimal("0.98")
+    assert t2_5_derivation.category == "Timing Belts"
+    assert t2_5_derivation.source == "heuristic_rule"
+    assert t2_5_derivation.rule_id == "code-prefix-timing-belts"
+    assert t2_5_derivation.confidence == Decimal("0.98")
+    assert u10_derivation.category == "Timing Belts"
+    assert u10_derivation.source == "heuristic_rule"
+    assert u10_derivation.rule_id == "code-prefix-timing-belts"
+    assert u10_derivation.confidence == Decimal("0.98")
 
 
 def test_derive_product_category_handles_classic_special_v_belt_examples() -> None:
@@ -484,11 +570,81 @@ def test_derive_product_category_handles_specialty_belt_families() -> None:
         legacy_category=None,
         stock_kind="0",
     )
+    f_series_derivation = normalization._derive_product_category(
+        "F-1 12*1005",
+        "F-1 12*1005MM",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    g_series_derivation = normalization._derive_product_category(
+        "G-1 30*3000",
+        "G-1 30*3000M/M",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    fk_derivation = normalization._derive_product_category(
+        "FK 120*2195",
+        "平面 120*2195 直切",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    ts_derivation = normalization._derive_product_category(
+        "TS-55 25*780",
+        "TS-55 25*780",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    pv10_derivation = normalization._derive_product_category(
+        "PV10 100*1622",
+        "PV10 100*1622",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    tc20_derivation = normalization._derive_product_category(
+        "TC20 25*1253",
+        "TC20/25EF 25*1253",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    enu_derivation = normalization._derive_product_category(
+        "ENU 45*5985",
+        "ENU-50A 450*5985",
+        legacy_category=None,
+        stock_kind="0",
+    )
 
     assert a2lt_derivation.category == "Flat / Specialty Belts"
     assert a2lt_derivation.source == "heuristic_rule"
     assert a2lt_derivation.rule_id == "code-prefix-flat-specialty-belts"
     assert a2lt_derivation.confidence == Decimal("0.98")
+    assert f_series_derivation.category == "Flat / Specialty Belts"
+    assert f_series_derivation.source == "heuristic_rule"
+    assert f_series_derivation.rule_id == "code-prefix-flat-specialty-belts"
+    assert f_series_derivation.confidence == Decimal("0.98")
+    assert g_series_derivation.category == "Flat / Specialty Belts"
+    assert g_series_derivation.source == "heuristic_rule"
+    assert g_series_derivation.rule_id == "code-prefix-flat-specialty-belts"
+    assert g_series_derivation.confidence == Decimal("0.98")
+    assert fk_derivation.category == "Flat / Specialty Belts"
+    assert fk_derivation.source == "heuristic_rule"
+    assert fk_derivation.rule_id == "code-prefix-flat-specialty-belts"
+    assert fk_derivation.confidence == Decimal("0.98")
+    assert ts_derivation.category == "Flat / Specialty Belts"
+    assert ts_derivation.source == "heuristic_rule"
+    assert ts_derivation.rule_id == "code-prefix-flat-specialty-belts"
+    assert ts_derivation.confidence == Decimal("0.98")
+    assert pv10_derivation.category == "Flat / Specialty Belts"
+    assert pv10_derivation.source == "heuristic_rule"
+    assert pv10_derivation.rule_id == "code-prefix-flat-specialty-belts"
+    assert pv10_derivation.confidence == Decimal("0.98")
+    assert tc20_derivation.category == "Flat / Specialty Belts"
+    assert tc20_derivation.source == "heuristic_rule"
+    assert tc20_derivation.rule_id == "code-prefix-flat-specialty-belts"
+    assert tc20_derivation.confidence == Decimal("0.98")
+    assert enu_derivation.category == "Flat / Specialty Belts"
+    assert enu_derivation.source == "heuristic_rule"
+    assert enu_derivation.rule_id == "code-prefix-flat-specialty-belts"
+    assert enu_derivation.confidence == Decimal("0.98")
 
 
 def test_derive_product_category_handles_variable_speed_name_variants() -> None:
@@ -505,7 +661,139 @@ def test_derive_product_category_handles_variable_speed_name_variants() -> None:
     assert derivation.confidence == Decimal("0.90")
 
 
+def test_derive_product_category_handles_standardized_vehicle_and_v_belt_families() -> None:
+    avx_derivation = normalization._derive_product_category(
+        "AVX-10*625M/M",
+        "AVX-10*625M/M",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    xpc_derivation = normalization._derive_product_category(
+        "XPC-2500",
+        "XPC-2500 OPTI",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    link_derivation = normalization._derive_product_category(
+        "LINK-A",
+        "鱗片帶 A 型",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    section_name_derivation = normalization._derive_product_category(
+        "LB125-P",
+        "皮帶 B-125",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    heat_resistant_derivation = normalization._derive_product_category(
+        "OLA065-3",
+        "三星 耐熱 LA-65",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    banded_derivation = normalization._derive_product_category(
+        "HA1000 16*1368",
+        "保力皮帶 16*1368",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    mbt_derivation = normalization._derive_product_category(
+        "MBT-778*21.9",
+        "4CW-778*21.9",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    oem_vehicle_derivation = normalization._derive_product_category(
+        "17641-00",
+        "4CW- 迅光",
+        legacy_category=None,
+        stock_kind="0",
+    )
+
+    assert avx_derivation.category == "Vehicle Belts"
+    assert avx_derivation.source == "heuristic_rule"
+    assert avx_derivation.rule_id == "code-prefix-vehicle-belts"
+    assert avx_derivation.confidence == Decimal("0.98")
+    assert mbt_derivation.category == "Vehicle Belts"
+    assert mbt_derivation.source == "heuristic_rule"
+    assert mbt_derivation.rule_id == "code-prefix-vehicle-belts"
+    assert mbt_derivation.confidence == Decimal("0.98")
+    assert oem_vehicle_derivation.category == "Vehicle Belts"
+    assert oem_vehicle_derivation.source == "heuristic_rule"
+    assert oem_vehicle_derivation.rule_id == "code-prefix-vehicle-belts"
+    assert oem_vehicle_derivation.confidence == Decimal("0.98")
+    assert xpc_derivation.category == "V-Belts"
+    assert xpc_derivation.source == "heuristic_rule"
+    assert xpc_derivation.rule_id == "code-prefix-v-belts"
+    assert xpc_derivation.confidence == Decimal("0.98")
+    assert link_derivation.category == "V-Belts"
+    assert link_derivation.source == "heuristic_rule"
+    assert link_derivation.rule_id == "code-prefix-v-belts"
+    assert link_derivation.confidence == Decimal("0.98")
+    assert section_name_derivation.category == "V-Belts"
+    assert section_name_derivation.source == "heuristic_rule"
+    assert section_name_derivation.rule_id == "name-token-v-belts"
+    assert section_name_derivation.confidence == Decimal("0.90")
+    assert heat_resistant_derivation.category == "V-Belts"
+    assert heat_resistant_derivation.source == "heuristic_rule"
+    assert heat_resistant_derivation.rule_id == "name-token-v-belts"
+    assert heat_resistant_derivation.confidence == Decimal("0.90")
+    assert banded_derivation.category == "V-Belts"
+    assert banded_derivation.source == "heuristic_rule"
+    assert banded_derivation.rule_id == "code-prefix-v-belts"
+    assert banded_derivation.confidence == Decimal("0.98")
+
+
 def test_derive_product_category_handles_grounded_remaining_family_tails() -> None:
+    vs_derivation = normalization._derive_product_category(
+        "VS-16*573",
+        "VS-16*573",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    ham_derivation = normalization._derive_product_category(
+        "HAM-25*5425MM",
+        "HAM-25*5425M/M",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    yu_derivation = normalization._derive_product_category(
+        "YU145-22",
+        "145YU-22",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    ls_derivation = normalization._derive_product_category(
+        "LS-2 18*2337",
+        "LS-2 18*2337",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    pu_l_derivation = normalization._derive_product_category(
+        "PU210L*13M/M",
+        "210L*1325M/M-PU",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    pu_xl_derivation = normalization._derive_product_category(
+        "PU210XL*25M/M",
+        "210XL*25M/M-PU",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    imperial_l_derivation = normalization._derive_product_category(
+        "225L*13M/M PU",
+        "鋼絲 225L*13M/M",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    r240_derivation = normalization._derive_product_category(
+        "R240L*23R",
+        "240L*23M/M 紅(厚)",
+        legacy_category=None,
+        stock_kind="0",
+    )
     fon_derivation = normalization._derive_product_category(
         "FON 5*435",
         "FON 5*435",
@@ -525,6 +813,38 @@ def test_derive_product_category_handles_grounded_remaining_family_tails() -> No
         stock_kind="0",
     )
 
+    assert vs_derivation.category == "Variable-Speed Belts"
+    assert vs_derivation.source == "heuristic_rule"
+    assert vs_derivation.rule_id == "code-prefix-variable-speed-belts"
+    assert vs_derivation.confidence == Decimal("0.98")
+    assert ham_derivation.category == "Flat / Specialty Belts"
+    assert ham_derivation.source == "heuristic_rule"
+    assert ham_derivation.rule_id == "code-prefix-flat-specialty-belts"
+    assert ham_derivation.confidence == Decimal("0.98")
+    assert yu_derivation.category == "Timing Belts"
+    assert yu_derivation.source == "heuristic_rule"
+    assert yu_derivation.rule_id == "code-prefix-timing-belts"
+    assert yu_derivation.confidence == Decimal("0.98")
+    assert ls_derivation.category == "Timing Belts"
+    assert ls_derivation.source == "heuristic_rule"
+    assert ls_derivation.rule_id == "code-prefix-timing-belts"
+    assert ls_derivation.confidence == Decimal("0.98")
+    assert pu_l_derivation.category == "Timing Belts"
+    assert pu_l_derivation.source == "heuristic_rule"
+    assert pu_l_derivation.rule_id == "code-prefix-timing-belts"
+    assert pu_l_derivation.confidence == Decimal("0.98")
+    assert pu_xl_derivation.category == "Timing Belts"
+    assert pu_xl_derivation.source == "heuristic_rule"
+    assert pu_xl_derivation.rule_id == "code-prefix-timing-belts"
+    assert pu_xl_derivation.confidence == Decimal("0.98")
+    assert imperial_l_derivation.category == "Timing Belts"
+    assert imperial_l_derivation.source == "heuristic_rule"
+    assert imperial_l_derivation.rule_id == "code-prefix-timing-belts"
+    assert imperial_l_derivation.confidence == Decimal("0.98")
+    assert r240_derivation.category == "Timing Belts"
+    assert r240_derivation.source == "heuristic_rule"
+    assert r240_derivation.rule_id == "code-prefix-timing-belts"
+    assert r240_derivation.confidence == Decimal("0.98")
     assert fon_derivation.category == "V-Belts"
     assert fon_derivation.source == "heuristic_rule"
     assert fon_derivation.rule_id == "code-prefix-v-belts"
@@ -537,6 +857,50 @@ def test_derive_product_category_handles_grounded_remaining_family_tails() -> No
     assert fo037_derivation.source == "heuristic_rule"
     assert fo037_derivation.rule_id == "code-prefix-v-belts"
     assert fo037_derivation.confidence == Decimal("0.98")
+
+
+def test_derive_product_category_handles_habasit_tangential_family_codes() -> None:
+    s_family_derivation = normalization._derive_product_category(
+        "S-2 20*630MM",
+        "S-2 20*630M/M",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    sp_family_derivation = normalization._derive_product_category(
+        "SP180/23 20*1105",
+        "SP180/23 20*1105",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    se15_derivation = normalization._derive_product_category(
+        "SE15LL 15*1630",
+        "SE15LL 15*1630",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    s250_derivation = normalization._derive_product_category(
+        "S250 25*1778",
+        "S250 25*1778",
+        legacy_category=None,
+        stock_kind="0",
+    )
+
+    assert s_family_derivation.category == "Flat / Specialty Belts"
+    assert s_family_derivation.source == "heuristic_rule"
+    assert s_family_derivation.rule_id == "code-prefix-flat-specialty-belts"
+    assert s_family_derivation.confidence == Decimal("0.98")
+    assert sp_family_derivation.category == "Flat / Specialty Belts"
+    assert sp_family_derivation.source == "heuristic_rule"
+    assert sp_family_derivation.rule_id == "code-prefix-flat-specialty-belts"
+    assert sp_family_derivation.confidence == Decimal("0.98")
+    assert se15_derivation.category == "Flat / Specialty Belts"
+    assert se15_derivation.source == "heuristic_rule"
+    assert se15_derivation.rule_id == "code-prefix-flat-specialty-belts"
+    assert se15_derivation.confidence == Decimal("0.98")
+    assert s250_derivation.category == "Flat / Specialty Belts"
+    assert s250_derivation.source == "heuristic_rule"
+    assert s250_derivation.rule_id == "code-prefix-flat-specialty-belts"
+    assert s250_derivation.confidence == Decimal("0.98")
 
 
 @pytest.mark.asyncio
@@ -865,6 +1229,220 @@ async def test_run_normalization_does_not_clear_rows_before_stage_validation(mon
     assert connection.transaction_started is True
     assert connection.transaction_rolled_back is True
     assert connection.closed is True
+
+
+@pytest.mark.asyncio
+async def test_run_normalization_preserves_existing_synthetic_products(monkeypatch) -> None:
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000321")
+    connection = FakeNormalizationConnection(
+        {
+            "tbscust": [
+                {
+                    "legacy_code": "S001",
+                    "legacy_type": "1",
+                    "company_name": "Supplier One",
+                    "status_code": "A",
+                    "record_status": "A",
+                    "source_row_number": 1,
+                }
+            ],
+            "tbsstock": [
+                {
+                    "legacy_code": "PC096",
+                    "name": "三角皮帶 C-96",
+                    "legacy_category": None,
+                    "stock_kind": "0",
+                    "supplier_code": "S001",
+                    "origin": "TW",
+                    "unit": "條",
+                    "created_date": "2025-04-07",
+                    "last_sale_date": "2025-04-07",
+                    "avg_cost": "12.50",
+                    "status": "A",
+                    "source_row_number": 2,
+                }
+            ],
+            "tbsstkhouse": [
+                {
+                    "product_code": "PC096",
+                    "warehouse_code": "A",
+                    "qty_on_hand": "8.0000",
+                    "source_row_number": 4,
+                }
+            ],
+            "normalized_products": [
+                {
+                    "batch_id": "batch-synthetic",
+                    "tenant_id": tenant_id,
+                    "deterministic_id": deterministic_legacy_uuid("product", "RB052-6"),
+                    "legacy_code": "RB052-6",
+                    "name": "RB052-6",
+                    "category": None,
+                    "legacy_category": None,
+                    "stock_kind": None,
+                    "category_source": "product_code_mapping_review",
+                    "category_rule_id": None,
+                    "category_confidence": None,
+                    "supplier_legacy_code": None,
+                    "supplier_deterministic_id": None,
+                    "origin": None,
+                    "unit": "unknown",
+                    "status": "synthetic-review",
+                    "created_date": None,
+                    "last_sale_date": None,
+                    "avg_cost": None,
+                    "source_table": "product_code_mapping_review",
+                    "source_row_number": 99,
+                }
+            ],
+            "product_code_mapping": [
+                {
+                    "tenant_id": tenant_id,
+                    "last_seen_batch_id": "batch-synthetic",
+                    "legacy_code": "RB052-6",
+                    "target_code": "RB052-6",
+                    "approval_source": "review-import",
+                    "resolution_type": "analyst_review",
+                }
+            ],
+        },
+        stage_run_rows=[
+            {
+                "tenant_id": tenant_id,
+                "status": "completed",
+                "batch_id": "batch-synthetic",
+                "target_schema": "raw_legacy",
+            }
+        ],
+    )
+
+    async def fake_open_raw_connection() -> FakeNormalizationConnection:
+        return connection
+
+    monkeypatch.setattr(normalization, "_open_raw_connection", fake_open_raw_connection)
+
+    await normalization.run_normalization(
+        batch_id="batch-synthetic",
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+    )
+
+    product_copy = next(
+        call for call in connection.copy_calls if call["table_name"] == "normalized_products"
+    )
+    copied_rows = [dict(zip(product_copy["columns"], row, strict=False)) for row in product_copy["rows"]]
+
+    assert {row["legacy_code"] for row in copied_rows} == {"PC096", "RB052-6"}
+    synthetic_row = next(row for row in copied_rows if row["legacy_code"] == "RB052-6")
+    assert synthetic_row["status"] == "synthetic-review"
+    assert synthetic_row["source_table"] == "product_code_mapping_review"
+    assert synthetic_row["unit"] == "unknown"
+
+
+@pytest.mark.asyncio
+async def test_run_normalization_drops_stale_synthetic_products_without_self_target_review(
+    monkeypatch,
+) -> None:
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000321")
+    connection = FakeNormalizationConnection(
+        {
+            "tbscust": [
+                {
+                    "legacy_code": "S001",
+                    "legacy_type": "1",
+                    "company_name": "Supplier One",
+                    "status_code": "A",
+                    "record_status": "A",
+                    "source_row_number": 1,
+                }
+            ],
+            "tbsstock": [
+                {
+                    "legacy_code": "PC096",
+                    "name": "三角皮帶 C-96",
+                    "legacy_category": None,
+                    "stock_kind": "0",
+                    "supplier_code": "S001",
+                    "origin": "TW",
+                    "unit": "條",
+                    "created_date": "2025-04-07",
+                    "last_sale_date": "2025-04-07",
+                    "avg_cost": "12.50",
+                    "status": "A",
+                    "source_row_number": 2,
+                }
+            ],
+            "tbsstkhouse": [
+                {
+                    "product_code": "PC096",
+                    "warehouse_code": "A",
+                    "qty_on_hand": "8.0000",
+                    "source_row_number": 4,
+                }
+            ],
+            "normalized_products": [
+                {
+                    "batch_id": "batch-synthetic",
+                    "tenant_id": tenant_id,
+                    "deterministic_id": deterministic_legacy_uuid("product", "RB052-6"),
+                    "legacy_code": "RB052-6",
+                    "name": "RB052-6",
+                    "category": None,
+                    "legacy_category": None,
+                    "stock_kind": None,
+                    "category_source": "product_code_mapping_review",
+                    "category_rule_id": None,
+                    "category_confidence": None,
+                    "supplier_legacy_code": None,
+                    "supplier_deterministic_id": None,
+                    "origin": None,
+                    "unit": "unknown",
+                    "status": "synthetic-review",
+                    "created_date": None,
+                    "last_sale_date": None,
+                    "avg_cost": None,
+                    "source_table": "product_code_mapping_review",
+                    "source_row_number": 99,
+                }
+            ],
+            "product_code_mapping": [
+                {
+                    "tenant_id": tenant_id,
+                    "last_seen_batch_id": "batch-synthetic",
+                    "legacy_code": "RB052-6",
+                    "target_code": "RB052",
+                    "approval_source": "review-import",
+                    "resolution_type": "analyst_review",
+                }
+            ],
+        },
+        stage_run_rows=[
+            {
+                "tenant_id": tenant_id,
+                "status": "completed",
+                "batch_id": "batch-synthetic",
+                "target_schema": "raw_legacy",
+            }
+        ],
+    )
+
+    async def fake_open_raw_connection() -> FakeNormalizationConnection:
+        return connection
+
+    monkeypatch.setattr(normalization, "_open_raw_connection", fake_open_raw_connection)
+
+    await normalization.run_normalization(
+        batch_id="batch-synthetic",
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+    )
+
+    product_copy = next(
+        call for call in connection.copy_calls if call["table_name"] == "normalized_products"
+    )
+    copied_rows = [dict(zip(product_copy["columns"], row, strict=False)) for row in product_copy["rows"]]
+
+    assert {row["legacy_code"] for row in copied_rows} == {"PC096"}
 
 
 @pytest.mark.asyncio

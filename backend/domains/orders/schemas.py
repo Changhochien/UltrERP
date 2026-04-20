@@ -8,7 +8,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class PaymentTermsCode(str, enum.Enum):
@@ -58,6 +58,12 @@ class OrderCreate(BaseModel):
     discount_percent: Decimal = Field(default=Decimal("0.0000"), ge=0, le=1, max_digits=5, decimal_places=4)
     notes: str | None = Field(default=None, max_length=2000)
     lines: list[OrderCreateLine] = Field(..., min_length=1, max_length=200)
+
+    @model_validator(mode="after")
+    def validate_header_discounts(self) -> "OrderCreate":
+        if self.discount_amount > 0 and self.discount_percent > 0:
+            raise ValueError("discount_amount and discount_percent cannot both be greater than zero")
+        return self
 
 
 class OrderLineResponse(BaseModel):
