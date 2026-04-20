@@ -10,7 +10,6 @@ import pytest_asyncio
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from common.database import AsyncSessionLocal, engine
 from common.models.order import Order
 from common.models.order_line import OrderLine
 from common.models.product import Product
@@ -21,6 +20,7 @@ from domains.product_analytics.service import (
     refresh_sales_monthly,
     refresh_sales_monthly_range,
 )
+from tests.db import isolated_async_session
 
 _BUSINESS_NUMBER_COUNTER = count(20_000_000)
 
@@ -53,9 +53,8 @@ async def _next_business_number(session: AsyncSession, tenant_id: uuid.UUID) -> 
 
 @pytest_asyncio.fixture
 async def db_session() -> AsyncSession:
-    async with AsyncSessionLocal() as session:
+    async with isolated_async_session() as session:
         yield session
-    await engine.dispose()
 
 
 @pytest.fixture

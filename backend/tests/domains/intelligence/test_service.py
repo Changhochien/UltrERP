@@ -13,7 +13,6 @@ import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from common.database import AsyncSessionLocal, engine
 from common.models.order import Order
 from common.models.order_line import OrderLine
 from common.models.product import Product
@@ -28,6 +27,7 @@ from domains.intelligence.service import (
     get_product_affinity_map,
     get_prospect_gaps,
 )
+from tests.db import isolated_async_session
 
 TENANT = DEFAULT_TENANT_ID
 _BUSINESS_NUMBER_COUNTER = count(10_000_000)
@@ -50,9 +50,8 @@ async def _next_business_number(session: AsyncSession, tenant_id: uuid.UUID) -> 
 
 @pytest_asyncio.fixture
 async def db_session() -> AsyncSession:
-    async with AsyncSessionLocal() as session:
+    async with isolated_async_session() as session:
         yield session
-    await engine.dispose()
 
 
 async def _create_customer(session: AsyncSession, company_name: str) -> Customer:
@@ -169,6 +168,107 @@ async def _create_order(
 
     await session.flush()
     return order
+
+
+async def _seed_affinity_orders(
+    session: AsyncSession,
+    *,
+    tenant_id: uuid.UUID,
+    product_a: Product,
+    product_b: Product,
+    now: datetime,
+    shared_count: int,
+    a_only_count: int,
+    b_only_count: int,
+    prefix: str,
+) -> None:
+    customers: list[Customer] = []
+    orders: list[Order] = []
+    order_lines: list[OrderLine] = []
+    line_total = Decimal("10.00")
+
+    def build_customer(company_name: str) -> Customer:
+        customer = Customer(
+            id=uuid.uuid4(),
+            tenant_id=tenant_id,
+            company_name=company_name,
+            normalized_business_number=f"{next(_BUSINESS_NUMBER_COUNTER):08d}",
+            billing_address="Taipei",
+            contact_name="Owner",
+            contact_phone="0912345678",
+            contact_email=f"{uuid.uuid4().hex[:8]}@example.com",
+            credit_limit=Decimal("100000.00"),
+            customer_type="dealer",
+            status="active",
+            version=1,
+        )
+        customers.append(customer)
+        return customer
+
+    def build_order(customer: Customer, created_at: datetime, products: tuple[Product, ...]) -> None:
+        order_id = uuid.uuid4()
+        total_amount = line_total * len(products)
+        orders.append(
+            Order(
+                id=order_id,
+                tenant_id=tenant_id,
+                customer_id=customer.id,
+                order_number=f"ORD-{uuid.uuid4().hex[:8].upper()}",
+                status="confirmed",
+                payment_terms_code="NET_30",
+                payment_terms_days=30,
+                subtotal_amount=total_amount,
+                discount_amount=Decimal("0.00"),
+                discount_percent=Decimal("0.0000"),
+                tax_amount=Decimal("0.00"),
+                total_amount=total_amount,
+                notes=None,
+                created_by="test-suite",
+                created_at=created_at,
+                updated_at=created_at,
+                confirmed_at=created_at,
+            )
+        )
+
+        for index, product in enumerate(products, start=1):
+            order_lines.append(
+                OrderLine(
+                    id=uuid.uuid4(),
+                    tenant_id=tenant_id,
+                    order_id=order_id,
+                    product_id=product.id,
+                    line_number=index,
+                    quantity=Decimal("1.000"),
+                    list_unit_price=line_total,
+                    unit_price=line_total,
+                    unit_cost=None,
+                    discount_amount=Decimal("0.00"),
+                    tax_policy_code="standard",
+                    tax_type=1,
+                    tax_rate=Decimal("0.0000"),
+                    tax_amount=Decimal("0.00"),
+                    subtotal_amount=line_total,
+                    total_amount=line_total,
+                    description=product.name,
+                )
+            )
+
+    for index in range(shared_count):
+        customer = build_customer(f"{prefix} Shared {index}")
+        build_order(customer, now - timedelta(days=10), (product_a, product_b))
+
+    for index in range(a_only_count):
+        customer = build_customer(f"{prefix} A Only {index}")
+        build_order(customer, now - timedelta(days=9), (product_a,))
+
+    for index in range(b_only_count):
+        customer = build_customer(f"{prefix} B Only {index}")
+        build_order(customer, now - timedelta(days=8), (product_b,))
+
+    session.add_all(customers)
+    session.add_all(orders)
+    session.add_all(order_lines)
+    await session.flush()
 
 
 @pytest.mark.asyncio
@@ -566,36 +666,17 @@ async def test_get_product_affinity_map_emits_half_up_affinity_scores_at_roundin
     product_a = await _create_product_for_tenant(db_session, "Boundary A", "Office", tenant_id)
     product_b = await _create_product_for_tenant(db_session, "Boundary B", "Office", tenant_id)
 
-    for index in range(1333):
-        customer = await _create_customer_for_tenant(db_session, f"Boundary Shared {index}", tenant_id)
-        await _create_order(
-            db_session,
-            customer=customer,
-            created_at=now - timedelta(days=10),
-            status="confirmed",
-            lines=[(product_a, Decimal("10.00")), (product_b, Decimal("10.00"))],
-            tenant_id=tenant_id,
-        )
-    for index in range(1333):
-        customer = await _create_customer_for_tenant(db_session, f"Boundary A Only {index}", tenant_id)
-        await _create_order(
-            db_session,
-            customer=customer,
-            created_at=now - timedelta(days=9),
-            status="confirmed",
-            lines=[(product_a, Decimal("10.00"))],
-            tenant_id=tenant_id,
-        )
-    for index in range(1334):
-        customer = await _create_customer_for_tenant(db_session, f"Boundary B Only {index}", tenant_id)
-        await _create_order(
-            db_session,
-            customer=customer,
-            created_at=now - timedelta(days=8),
-            status="confirmed",
-            lines=[(product_b, Decimal("10.00"))],
-            tenant_id=tenant_id,
-        )
+    await _seed_affinity_orders(
+        db_session,
+        tenant_id=tenant_id,
+        product_a=product_a,
+        product_b=product_b,
+        now=now,
+        shared_count=1333,
+        a_only_count=1333,
+        b_only_count=1334,
+        prefix="Boundary",
+    )
     await db_session.commit()
 
     affinity_map = await get_product_affinity_map(db_session, tenant_id, min_shared=1, limit=10)

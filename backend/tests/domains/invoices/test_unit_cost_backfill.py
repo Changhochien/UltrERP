@@ -7,7 +7,6 @@ from decimal import Decimal
 import pytest
 import pytest_asyncio
 
-from common.database import AsyncSessionLocal, engine
 from common.models.product import Product
 from common.models.supplier import Supplier
 from common.models.supplier_invoice import SupplierInvoice, SupplierInvoiceLine
@@ -20,6 +19,7 @@ from domains.invoices.service import (
     _resolve_latest_unit_cost,
     backfill_missing_invoice_line_unit_costs,
 )
+from tests.db import isolated_async_session
 
 
 async def _commit(session) -> None:
@@ -33,13 +33,8 @@ def tenant_id() -> uuid.UUID:
 
 @pytest_asyncio.fixture
 async def db_session():
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-        finally:
-            await session.rollback()
-            await session.close()
-    await engine.dispose()
+    async with isolated_async_session() as session:
+        yield session
 
 
 async def _make_product(session, *, tenant_id: uuid.UUID) -> Product:

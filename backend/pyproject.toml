@@ -32,6 +32,7 @@ package = false
 [dependency-groups]
 dev = [
 	"alembic>=1.18.4",
+	"freezegun>=1.5.5",
 	"httpx>=0.28.1",
 	"pytest>=8.3.5",
 	"pytest-asyncio>=0.26.0",

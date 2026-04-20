@@ -8,31 +8,33 @@ from datetime import datetime, timedelta
 import pytest
 import pytest_asyncio
 
-from common.database import AsyncSessionLocal, engine
 from common.models.inventory_stock import InventoryStock
 from common.models.product import Product
 from common.models.stock_adjustment import ReasonCode, StockAdjustment
 from common.models.warehouse import Warehouse
-from common.tenant import DEFAULT_TENANT_ID
 from domains.inventory.reorder_point import (
     apply_reorder_points,
     compute_reorder_point_preview_row,
     compute_reorder_points_preview,
 )
-
-TENANT_ID = DEFAULT_TENANT_ID
+from tests.db import isolated_async_session
 
 
 @pytest_asyncio.fixture
 async def db_session():
-    async with AsyncSessionLocal() as session:
+    async with isolated_async_session() as session:
         yield session
-    await engine.dispose()
+
+
+@pytest.fixture
+def tenant_id() -> uuid.UUID:
+    return uuid.uuid4()
 
 
 async def _seed_stock(
     session,
     *,
+    tenant_id: uuid.UUID,
     quantity: int = 5,
     reorder_point: int = 0,
     safety_factor: float = 0.0,
@@ -41,14 +43,14 @@ async def _seed_stock(
 ) -> tuple[Product, Warehouse, InventoryStock]:
     warehouse = Warehouse(
         id=uuid.uuid4(),
-        tenant_id=TENANT_ID,
+        tenant_id=tenant_id,
         name=f"ROP Test WH {uuid.uuid4().hex[:6]}",
         code=f"RWH{uuid.uuid4().hex[:6].upper()}",
         is_active=True,
     )
     product = Product(
         id=uuid.uuid4(),
-        tenant_id=TENANT_ID,
+        tenant_id=tenant_id,
         code=f"SKU{uuid.uuid4().hex[:6].upper()}",
         name="Policy Test Product",
         category="Test",
@@ -56,7 +58,7 @@ async def _seed_stock(
     )
     stock = InventoryStock(
         id=uuid.uuid4(),
-        tenant_id=TENANT_ID,
+        tenant_id=tenant_id,
         product_id=product.id,
         warehouse_id=warehouse.id,
         quantity=quantity,
@@ -74,6 +76,7 @@ async def _seed_stock(
 async def _add_sales_history(
     session,
     *,
+    tenant_id: uuid.UUID,
     product_id,
     warehouse_id,
     quantities: list[int],
@@ -82,7 +85,7 @@ async def _add_sales_history(
         session.add(
             StockAdjustment(
                 id=uuid.uuid4(),
-                tenant_id=TENANT_ID,
+                tenant_id=tenant_id,
                 product_id=product_id,
                 warehouse_id=warehouse_id,
                 quantity_change=-quantity,
@@ -95,10 +98,15 @@ async def _add_sales_history(
 
 
 @pytest.mark.asyncio
-async def test_preview_uses_review_cycle_for_target_stock_and_order_qty(db_session):
-    product, warehouse, _stock = await _seed_stock(db_session, quantity=5)
+async def test_preview_uses_review_cycle_for_target_stock_and_order_qty(db_session, tenant_id):
+    product, warehouse, _stock = await _seed_stock(
+        db_session,
+        tenant_id=tenant_id,
+        quantity=5,
+    )
     await _add_sales_history(
         db_session,
+        tenant_id=tenant_id,
         product_id=product.id,
         warehouse_id=warehouse.id,
         quantities=[9, 9],
@@ -106,7 +114,7 @@ async def test_preview_uses_review_cycle_for_target_stock_and_order_qty(db_sessi
 
     preview = await compute_reorder_point_preview_row(
         db_session,
-        TENANT_ID,
+        tenant_id,
         product.id,
         warehouse.id,
         safety_factor=0.5,
@@ -123,15 +131,17 @@ async def test_preview_uses_review_cycle_for_target_stock_and_order_qty(db_sessi
 
 
 @pytest.mark.asyncio
-async def test_preview_prefers_persisted_overrides_for_batch_compute(db_session):
+async def test_preview_prefers_persisted_overrides_for_batch_compute(db_session, tenant_id):
     product, warehouse, _stock = await _seed_stock(
         db_session,
+        tenant_id=tenant_id,
         safety_factor=0.8,
         lead_time_days=12,
         review_cycle_days=60,
     )
     await _add_sales_history(
         db_session,
+        tenant_id=tenant_id,
         product_id=product.id,
         warehouse_id=warehouse.id,
         quantities=[9, 9],
@@ -139,7 +149,7 @@ async def test_preview_prefers_persisted_overrides_for_batch_compute(db_session)
 
     candidates, skipped = await compute_reorder_points_preview(
         db_session,
-        TENANT_ID,
+        tenant_id,
         safety_factor=0.5,
         demand_lookback_days=90,
         lead_time_lookback_days=180,
@@ -159,12 +169,16 @@ async def test_preview_prefers_persisted_overrides_for_batch_compute(db_session)
 
 
 @pytest.mark.asyncio
-async def test_apply_persists_replenishment_settings(db_session):
-    product, warehouse, stock = await _seed_stock(db_session, quantity=5)
+async def test_apply_persists_replenishment_settings(db_session, tenant_id):
+    product, warehouse, stock = await _seed_stock(
+        db_session,
+        tenant_id=tenant_id,
+        quantity=5,
+    )
 
     result = await apply_reorder_points(
         db_session,
-        TENANT_ID,
+        tenant_id,
         selected_rows=[
             {
                 "product_id": product.id,

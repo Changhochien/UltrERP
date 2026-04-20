@@ -6,6 +6,8 @@ against the real FastAPI app. Each test is fully independent.
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 import uuid
 from datetime import UTC, date, datetime, timedelta
 
@@ -14,9 +16,10 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport
 from httpx import AsyncClient as HttpxAsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.main import create_app
-from common.database import AsyncSessionLocal, engine
+from common.database import get_db
 from common.models.inventory_stock import InventoryStock
 from common.models.product import Product
 from common.models.stock_adjustment import ReasonCode, StockAdjustment
@@ -27,26 +30,26 @@ from common.models.supplier_order import (
     SupplierOrderStatus,
 )
 from common.models.warehouse import Warehouse
-from common.tenant import DEFAULT_TENANT_ID
 from domains.customers.models import Customer
 from domains.inventory.reorder_point import (
     DEFAULT_LEAD_TIME_DAYS,
     compute_reorder_points_preview,
 )
 from domains.invoices.models import InvoiceNumberRange
+from tests.db import isolated_async_session
 
-TENANT = DEFAULT_TENANT_ID
+_MISSING_OVERRIDE = object()
 
 
 # ── Auth header helper ──────────────────────────────────────────
 
 
-def auth_header(role: str = "owner") -> dict[str, str]:
+def auth_header(tenant_id: uuid.UUID, role: str = "owner") -> dict[str, str]:
     """Return a valid auth header with a real JWT for testing."""
     from common.config import settings
     payload = {
         "sub": "00000000-0000-0000-0000-000000000111",
-        "tenant_id": "00000000-0000-0000-0000-000000000001",
+        "tenant_id": str(tenant_id),
         "role": role,
         "exp": datetime.now(tz=UTC) + timedelta(hours=8),
     }
@@ -54,15 +57,56 @@ def auth_header(role: str = "owner") -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+def _override_db(app, session: AsyncSession) -> object:
+    async def _override() -> AsyncIterator[AsyncSession]:
+        yield session
+
+    previous = app.dependency_overrides.get(get_db, _MISSING_OVERRIDE)
+    app.dependency_overrides[get_db] = _override
+    return previous
+
+
+def _restore_db(app, previous: object) -> None:
+    if previous is _MISSING_OVERRIDE:
+        app.dependency_overrides.pop(get_db, None)
+    else:
+        app.dependency_overrides[get_db] = previous
+
+
+@asynccontextmanager
+async def _api_client(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+) -> AsyncIterator[HttpxAsyncClient]:
+    app = create_app()
+    previous = _override_db(app, session)
+    try:
+        transport = ASGITransport(app=app)
+        async with HttpxAsyncClient(
+            transport=transport,
+            base_url="http://test",
+            headers=auth_header(tenant_id),
+        ) as client:
+            yield client
+    finally:
+        _restore_db(app, previous)
+
+
 
 # ── Helpers ────────────────────────────────────────────────────
 
 
 async def _make_adjustment(
-    session, product_id, warehouse_id, quantity_change, reason, days_ago=1
+    session,
+    tenant_id,
+    product_id,
+    warehouse_id,
+    quantity_change,
+    reason,
+    days_ago=1,
 ):
     adj = StockAdjustment(
-        tenant_id=TENANT,
+        tenant_id=tenant_id,
         product_id=product_id,
         warehouse_id=warehouse_id,
         quantity_change=quantity_change,
@@ -75,10 +119,17 @@ async def _make_adjustment(
 
 
 async def _make_received_order(
-    session, supplier_id, product_id, warehouse_id, order_date, received_date, quantity=50
+    session,
+    tenant_id,
+    supplier_id,
+    product_id,
+    warehouse_id,
+    order_date,
+    received_date,
+    quantity=50,
 ):
     order = SupplierOrder(
-        tenant_id=TENANT,
+        tenant_id=tenant_id,
         supplier_id=supplier_id,
         order_number=f"PO-TEST-{uuid.uuid4().hex[:6]}",
         status=SupplierOrderStatus.RECEIVED,
@@ -110,14 +161,13 @@ async def _commit(session):
 
 @pytest.fixture
 def tenant_id():
-    return DEFAULT_TENANT_ID
+    return uuid.uuid4()
 
 
 @pytest_asyncio.fixture
 async def db_session():
-    async with AsyncSessionLocal() as session:
+    async with isolated_async_session() as session:
         yield session
-    await engine.dispose()
 
 
 @pytest_asyncio.fixture
@@ -171,6 +221,7 @@ async def product_with_history(db_session, tenant_id, warehouse):
 
     await _make_received_order(
         db_session,
+        tenant_id,
         supplier.id,
         p.id,
         warehouse.id,
@@ -181,7 +232,10 @@ async def product_with_history(db_session, tenant_id, warehouse):
 
     for days in [10, 20, 30]:
         await _make_adjustment(
-            db_session, p.id, warehouse.id,
+            db_session,
+            tenant_id,
+            p.id,
+            warehouse.id,
             quantity_change=-10,
             reason=ReasonCode.SALES_RESERVATION,
             days_ago=days,
@@ -234,12 +288,7 @@ async def test_compute_endpoint_returns_candidate_and_skipped(
     and skipped rows, with candidate rows having computed_reorder_point
     and skipped rows having a non-null skip_reason.
     """
-    app = create_app()
-    transport = ASGITransport(app=app)
-
-    async with HttpxAsyncClient(
-        transport=transport, base_url="http://test", headers=auth_header()
-    ) as client:
+    async with _api_client(db_session, tenant_id) as client:
         resp = await client.post(
             "/api/v1/inventory/reorder-points/compute",
             json={
@@ -315,12 +364,7 @@ async def test_apply_endpoint_only_updates_selected_rows(
     PUT /api/v1/inventory/reorder-points/apply with a specific product_id
     only updates that row and does not affect others.
     """
-    app = create_app()
-    transport = ASGITransport(app=app)
-
-    async with HttpxAsyncClient(
-        transport=transport, base_url="http://test", headers=auth_header()
-    ) as client:
+    async with _api_client(db_session, tenant_id) as client:
         # First compute preview
         compute_resp = await client.post(
             "/api/v1/inventory/reorder-points/compute",
@@ -378,9 +422,6 @@ async def test_skipped_rows_are_not_overwritten(
     """
     from sqlalchemy import select
 
-    app = create_app()
-    transport = ASGITransport(app=app)
-
     # Get original reorder_point for product_without_history
     orig_stmt = select(InventoryStock.reorder_point).where(
         InventoryStock.product_id == product_without_history.id
@@ -388,9 +429,7 @@ async def test_skipped_rows_are_not_overwritten(
     result = await db_session.execute(orig_stmt)
     orig_rop = result.scalar_one()
 
-    async with HttpxAsyncClient(
-        transport=transport, base_url="http://test", headers=auth_header()
-    ) as client:
+    async with _api_client(db_session, tenant_id) as client:
         compute_resp = await client.post(
             "/api/v1/inventory/reorder-points/compute",
             json={
@@ -475,18 +514,29 @@ async def product_multi_supplier(db_session, tenant_id, warehouse):
 
     # Equal received lines from both suppliers — 50/50, not >60% threshold
     await _make_received_order(
-        db_session, supplier_a.id, p.id, warehouse.id,
+        db_session,
+        tenant_id,
+        supplier_a.id,
+        p.id,
+        warehouse.id,
         date.today() - timedelta(days=30), date.today() - timedelta(days=23), quantity=10,
     )
     await _make_received_order(
-        db_session, supplier_b.id, p.id, warehouse.id,
+        db_session,
+        tenant_id,
+        supplier_b.id,
+        p.id,
+        warehouse.id,
         date.today() - timedelta(days=20), date.today() - timedelta(days=13), quantity=10,
     )
 
     # Sufficient demand history
     for days in [5, 10, 15, 20]:
         await _make_adjustment(
-            db_session, p.id, warehouse.id,
+            db_session,
+            tenant_id,
+            p.id,
+            warehouse.id,
             quantity_change=-5,
             reason=ReasonCode.SALES_RESERVATION,
             days_ago=days,
@@ -533,7 +583,10 @@ async def product_supplier_default_fallback(db_session, tenant_id, warehouse):
     # Sufficient demand history, no supplier order history
     for days in [5, 10, 15, 20]:
         await _make_adjustment(
-            db_session, p.id, warehouse.id,
+            db_session,
+            tenant_id,
+            p.id,
+            warehouse.id,
             quantity_change=-5,
             reason=ReasonCode.SALES_RESERVATION,
             days_ago=days,
@@ -558,12 +611,7 @@ async def test_source_unresolved_uses_fallback_lead_time(
     the preview should still include the row, but supplier resolution stays unresolved
     and lead time falls back to the configured default contract.
     """
-    app = create_app()
-    transport = ASGITransport(app=app)
-
-    async with HttpxAsyncClient(
-        transport=transport, base_url="http://test", headers=auth_header()
-    ) as client:
+    async with _api_client(db_session, tenant_id) as client:
         resp = await client.post(
             "/api/v1/inventory/reorder-points/compute",
             json={
@@ -622,7 +670,10 @@ async def test_lead_time_fallback_chain(
     # Sufficient demand history, NO supplier orders
     for days in [5, 10, 15, 20]:
         await _make_adjustment(
-            db_session, p.id, warehouse.id,
+            db_session,
+            tenant_id,
+            p.id,
+            warehouse.id,
             quantity_change=-5,
             reason=ReasonCode.SALES_RESERVATION,
             days_ago=days,
@@ -682,12 +733,7 @@ async def test_preview_candidate_has_all_explanation_columns(
     lead_time_days, safety_stock, demand_reason, movement_count,
     lead_time_source, skip_reason (None for candidates).
     """
-    app = create_app()
-    transport = ASGITransport(app=app)
-
-    async with HttpxAsyncClient(
-        transport=transport, base_url="http://test", headers=auth_header()
-    ) as client:
+    async with _api_client(db_session, tenant_id) as client:
         resp = await client.post(
             "/api/v1/inventory/reorder-points/compute",
             json={
@@ -862,25 +908,11 @@ async def test_confirm_order_persists_product_snapshots_after_product_master_ren
 ):
     from decimal import Decimal
 
-    from sqlalchemy import select, text
+    from sqlalchemy import select
 
     from common.models.order_line import OrderLine
     from domains.orders.schemas import OrderCreate, OrderCreateLine, PaymentTermsCode
     from domains.orders.services import confirm_order, create_order
-
-    await db_session.execute(
-        text(
-            "ALTER TABLE order_lines "
-            "ADD COLUMN IF NOT EXISTS product_name_snapshot VARCHAR(500)"
-        )
-    )
-    await db_session.execute(
-        text(
-            "ALTER TABLE order_lines "
-            "ADD COLUMN IF NOT EXISTS product_category_snapshot VARCHAR(200)"
-        )
-    )
-    await db_session.commit()
 
     product = Product(
         id=uuid.uuid4(),

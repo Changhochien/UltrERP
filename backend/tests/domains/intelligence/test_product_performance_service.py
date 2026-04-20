@@ -10,10 +10,10 @@ from freezegun import freeze_time
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from common.database import AsyncSessionLocal, engine
 from common.models.order_line import OrderLine
 from domains.intelligence.service import get_product_performance
 from domains.product_analytics.models import SalesMonthly
+from tests.db import isolated_async_session
 from tests.domains.intelligence.test_service import (
     _create_customer_for_tenant,
     _create_order,
@@ -27,9 +27,8 @@ def _month_start(value: date) -> date:
 
 @pytest_asyncio.fixture
 async def db_session() -> AsyncSession:
-    async with AsyncSessionLocal() as session:
+    async with isolated_async_session() as session:
         yield session
-    await engine.dispose()
 
 
 @pytest.fixture

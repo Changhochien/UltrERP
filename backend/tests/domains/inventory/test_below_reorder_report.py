@@ -6,21 +6,20 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from common.database import AsyncSessionLocal, engine
 from common.model_registry import register_all_models
 from common.models.inventory_stock import InventoryStock
 from common.models.product import Product
 from common.models.warehouse import Warehouse
 from domains.inventory import services as inventory_services
+from tests.db import isolated_async_session
 
 register_all_models()
 
 
 @pytest_asyncio.fixture
 async def db_session() -> AsyncSession:
-    async with AsyncSessionLocal() as session:
+    async with isolated_async_session() as session:
         yield session
-    await engine.dispose()
 
 
 @pytest.fixture

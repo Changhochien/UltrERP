@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.main import app
-from common.database import AsyncSessionLocal, engine
+from common.database import get_db
 from common.models.inventory_stock import InventoryStock
 from common.models.order import Order
 from common.models.order_line import OrderLine
@@ -25,9 +25,11 @@ from domains.inventory.reorder_point import compute_reorder_points_preview
 from domains.inventory import routes as inventory_routes
 from domains.inventory.services import get_planning_support
 from domains.product_analytics.service import refresh_sales_monthly
+from tests.db import isolated_async_session
 from tests.domains.orders._helpers import make_test_token
 
 _BUSINESS_NUMBER_COUNTER = count(30_000_000)
+_MISSING_OVERRIDE = object()
 
 
 def _month_start(value: date) -> date:
@@ -45,11 +47,26 @@ def _auth_header(tenant_id: uuid.UUID) -> dict[str, str]:
     return {"Authorization": f"Bearer {make_test_token(tenant_id=str(tenant_id))}"}
 
 
+def _override_db(session: AsyncSession) -> object:
+    async def _override():
+        yield session
+
+    previous = app.dependency_overrides.get(get_db, _MISSING_OVERRIDE)
+    app.dependency_overrides[get_db] = _override
+    return previous
+
+
+def _restore_db(previous: object) -> None:
+    if previous is _MISSING_OVERRIDE:
+        app.dependency_overrides.pop(get_db, None)
+    else:
+        app.dependency_overrides[get_db] = previous
+
+
 @pytest_asyncio.fixture
 async def db_session() -> AsyncSession:
-    async with AsyncSessionLocal() as session:
+    async with isolated_async_session() as session:
         yield session
-    await engine.dispose()
 
 
 @pytest.fixture
@@ -559,15 +576,19 @@ async def test_planning_support_endpoint_returns_aggregate_only_window(
     await db_session.commit()
     await refresh_sales_monthly(db_session, tenant_id, previous_month)
 
-    transport = ASGITransport(app=app)
-    async with HttpxAsyncClient(
-        transport=transport,
-        base_url="http://test",
-        headers=_auth_header(tenant_id),
-    ) as client:
-        response = await client.get(
-            f"/api/v1/inventory/products/{product.id}/planning-support?months=1&include_current_month=false"
-        )
+    previous = _override_db(db_session)
+    try:
+        transport = ASGITransport(app=app)
+        async with HttpxAsyncClient(
+            transport=transport,
+            base_url="http://test",
+            headers=_auth_header(tenant_id),
+        ) as client:
+            response = await client.get(
+                f"/api/v1/inventory/products/{product.id}/planning-support?months=1&include_current_month=false"
+            )
+    finally:
+        _restore_db(previous)
 
     assert response.status_code == 200, response.text
     body = response.json()

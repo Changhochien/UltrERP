@@ -9,7 +9,6 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from common.database import AsyncSessionLocal, engine
 from common.models.inventory_stock import InventoryStock
 from common.models.product import Product
 from common.models.stock_adjustment import ReasonCode, StockAdjustment
@@ -27,6 +26,7 @@ from domains.inventory.reorder_point import (
     get_lead_time_days,
     resolve_replenishment_source,
 )
+from tests.db import isolated_async_session
 
 # ── Fixtures ──────────────────────────────────────────────────────
 
@@ -34,9 +34,8 @@ from domains.inventory.reorder_point import (
 @pytest_asyncio.fixture
 async def db_session():
     """Provide a real async session for reorder point calculation tests."""
-    async with AsyncSessionLocal() as session:
+    async with isolated_async_session() as session:
         yield session
-    await engine.dispose()
 
 
 @pytest.fixture
@@ -597,7 +596,16 @@ class TestOrderConfirmationDemandHistory:
             session.queue_scalar(None)  # set_tenant
             session.queue_scalar(order)  # order lookup with lines
             product_rows = [
-                type("Row", (), {"id": line.product_id, "code": f"PROD-{i}"})()
+                type(
+                    "Row",
+                    (),
+                    {
+                        "id": line.product_id,
+                        "code": f"PROD-{i}",
+                        "name": f"Product {i}",
+                        "category": f"Category {i}",
+                    },
+                )()
                 for i, line in enumerate(order.lines)
             ]
             session.queue_rows(product_rows)  # product code lookup
@@ -677,7 +685,18 @@ class TestOrderConfirmationDemandHistory:
         session = FakeAsyncSession()
         session.queue_scalar(None)  # set_tenant
         session.queue_scalar(order)  # order lookup
-        product_rows = [type("Row", (), {"id": line.product_id, "code": "PROD-1"})()]
+        product_rows = [
+            type(
+                "Row",
+                (),
+                {
+                    "id": line.product_id,
+                    "code": "PROD-1",
+                    "name": "Product 1",
+                    "category": "Category 1",
+                },
+            )()
+        ]
         session.queue_rows(product_rows)
         session.queue_scalar(customer)
         session.queue_scalar(customer)
