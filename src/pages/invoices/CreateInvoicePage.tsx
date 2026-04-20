@@ -22,6 +22,7 @@ import {
   type InvoiceDraftLine,
   type InvoiceResponse,
 } from "../../domain/invoices/types";
+import { useToast } from "../../hooks/useToast";
 import { listCustomers } from "../../lib/api/customers";
 import { createInvoice } from "../../lib/api/invoices";
 
@@ -66,6 +67,7 @@ function buildLinePreview(line: InvoiceDraftLine) {
 
 export default function CreateInvoicePage() {
   const { t } = useTranslation("common");
+  const { error: showErrorToast, success: showSuccessToast } = useToast();
   const [customers, setCustomers] = useState<CustomerSummary[]>([]);
   const [customerId, setCustomerId] = useState("");
   const [buyerType, setBuyerType] = useState<InvoiceBuyerType>("b2b");
@@ -174,10 +176,18 @@ export default function CreateInvoicePage() {
     try {
       const result = await createInvoice(payload);
       if (result.ok) {
+        showSuccessToast(
+          t("invoice.createPage.toast.successTitle"),
+          t("invoice.createPage.toast.successDescription", { invoiceNumber: result.data.invoice_number }),
+        );
         setCreated(result.data);
         return;
       }
       setServerErrors(result.errors);
+      showErrorToast(
+        t("invoice.createPage.toast.errorTitle"),
+        result.errors[0]?.message ?? t("invoice.createPage.toast.errorDescription"),
+      );
     } finally {
       setSubmitting(false);
     }

@@ -1,6 +1,9 @@
+import "../../../tests/helpers/i18n";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import RecordUnmatchedPayment from "../components/RecordUnmatchedPayment";
+import { ToastProvider } from "../../../providers/ToastProvider";
 
 const MOCK_CUSTOMERS = {
 	items: [
@@ -36,7 +39,11 @@ describe("RecordUnmatchedPayment", () => {
 	});
 
 	it("renders form fields", async () => {
-		render(<RecordUnmatchedPayment onSuccess={noop} onCancel={noop} />);
+		render(
+			<ToastProvider>
+				<RecordUnmatchedPayment onSuccess={noop} onCancel={noop} />
+			</ToastProvider>,
+		);
 		await waitFor(() => expect(screen.getByLabelText("Customer")).toBeTruthy());
 		expect(screen.getByLabelText("Amount")).toBeTruthy();
 		expect(screen.getByLabelText("Payment Method")).toBeTruthy();
@@ -46,13 +53,21 @@ describe("RecordUnmatchedPayment", () => {
 	});
 
 	it("disables submit when required fields are empty", () => {
-		render(<RecordUnmatchedPayment onSuccess={noop} onCancel={noop} />);
+		render(
+			<ToastProvider>
+				<RecordUnmatchedPayment onSuccess={noop} onCancel={noop} />
+			</ToastProvider>,
+		);
 		const submitBtn = screen.getByRole("button", { name: "Record Payment" });
 		expect((submitBtn as HTMLButtonElement).disabled).toBe(true);
 	});
 
 	it("enables submit when customer and amount provided", async () => {
-		render(<RecordUnmatchedPayment onSuccess={noop} onCancel={noop} />);
+		render(
+			<ToastProvider>
+				<RecordUnmatchedPayment onSuccess={noop} onCancel={noop} />
+			</ToastProvider>,
+		);
 		await waitFor(() => expect(screen.getByText("Test Corp (12345678)")).toBeTruthy());
 
 		fireEvent.change(screen.getByLabelText("Customer"), { target: { value: "cust-123" } });
@@ -87,7 +102,11 @@ describe("RecordUnmatchedPayment", () => {
 			}),
 		});
 
-		render(<RecordUnmatchedPayment onSuccess={onSuccess} onCancel={noop} />);
+		render(
+			<ToastProvider>
+				<RecordUnmatchedPayment onSuccess={onSuccess} onCancel={noop} />
+			</ToastProvider>,
+		);
 		await waitFor(() => expect(screen.getByText("Test Corp (12345678)")).toBeTruthy());
 
 		fireEvent.change(screen.getByLabelText("Customer"), { target: { value: "cust-123" } });
@@ -96,6 +115,8 @@ describe("RecordUnmatchedPayment", () => {
 		fireEvent.click(screen.getByRole("button", { name: "Record Payment" }));
 
 		await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+		expect(screen.getByText("Unmatched payment recorded")).toBeTruthy();
+		expect(screen.getByText("Receipt PAY-20260401-0001 is ready for reconciliation.")).toBeTruthy();
 	});
 
 	it("shows error on failure", async () => {
@@ -107,7 +128,11 @@ describe("RecordUnmatchedPayment", () => {
 			}),
 		});
 
-		render(<RecordUnmatchedPayment onSuccess={noop} onCancel={noop} />);
+		render(
+			<ToastProvider>
+				<RecordUnmatchedPayment onSuccess={noop} onCancel={noop} />
+			</ToastProvider>,
+		);
 		await waitFor(() => expect(screen.getByText("Test Corp (12345678)")).toBeTruthy());
 
 		fireEvent.change(screen.getByLabelText("Customer"), { target: { value: "cust-123" } });
@@ -117,13 +142,18 @@ describe("RecordUnmatchedPayment", () => {
 
 		await waitFor(() => {
 			expect(screen.getByRole("alert")).toBeTruthy();
-			expect(screen.getByText("Invalid amount")).toBeTruthy();
+			expect(screen.getAllByText("Invalid amount").length).toBe(2);
 		});
+		expect(screen.getByText("Payment could not be recorded")).toBeTruthy();
 	});
 
 	it("calls onCancel when cancel clicked", () => {
 		const onCancel = vi.fn();
-		render(<RecordUnmatchedPayment onSuccess={noop} onCancel={onCancel} />);
+		render(
+			<ToastProvider>
+				<RecordUnmatchedPayment onSuccess={noop} onCancel={onCancel} />
+			</ToastProvider>,
+		);
 		fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 		expect(onCancel).toHaveBeenCalled();
 	});

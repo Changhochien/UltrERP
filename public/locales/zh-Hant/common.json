@@ -444,6 +444,12 @@
       "eyebrow": "客戶",
       "formDescription": "輸入客戶的營業資訊與聯絡方式。",
       "formTitle": "客戶資訊",
+      "toast": {
+        "errorDescription": "請檢查客戶資料後再試一次。",
+        "errorTitle": "無法建立客戶",
+        "successDescription": "{name} 已可開始建立訂單與發票。",
+        "successTitle": "客戶已建立"
+      },
       "title": "建立客戶",
       "titleCreated": "客戶已建立"
     },
@@ -479,6 +485,12 @@
       },
       "cannotDelete": {
         "message": "無法刪除尚有應收帳款的客戶。"
+      },
+      "toast": {
+        "updateErrorDescription": "請檢查客戶變更後再試一次。",
+        "updateErrorTitle": "客戶更新失敗",
+        "updatedDescription": "{name} 的資料已儲存。",
+        "updatedTitle": "客戶已更新"
       },
       "tabs": {
         "overview": "概覽",
@@ -1011,6 +1023,12 @@
       "invoiceDate": "發票日期",
       "invoiceLines": "發票明細",
       "noActiveCustomers": "目前沒有可用的有效客戶。",
+      "toast": {
+        "errorDescription": "請檢查發票內容後再試一次。",
+        "errorTitle": "無法建立發票",
+        "successDescription": "發票 {invoiceNumber} 已可開立。",
+        "successTitle": "發票已建立"
+      },
       "title": "開立發票",
       "titleCreated": "發票已開立"
     },
@@ -1086,6 +1104,18 @@
       "close": "關閉",
       "exporting": "匯出中…",
       "exportPdf": "Export PDF"
+    }
+  },
+  "payments": {
+    "form": {
+      "amountExceeded": "金額超過未收餘額（{amount}）",
+      "toast": {
+        "errorTitle": "無法記錄付款",
+        "recordedDescription": "已為此發票記錄收款單 {paymentRef}。",
+        "recordedTitle": "付款已記錄",
+        "unmatchedRecordedDescription": "收款單 {paymentRef} 已可進入對帳流程。",
+        "unmatchedRecordedTitle": "未對帳付款已記錄"
+      }
     }
   },
   "inventory": {
@@ -1983,6 +2013,18 @@
       "orderTitle": "訂單",
       "paymentTerms": "付款條件",
       "subtotal": "未稅金額",
+      "toast": {
+        "cancelledDescription": "訂單 {orderNumber} 已取消。",
+        "cancelledTitle": "訂單已取消",
+        "confirmedDescription": "已建立發票 {invoiceNumber} 並完成庫存保留。",
+        "confirmedDescriptionFallback": "訂單 {orderNumber} 已確認，可進入開票流程。",
+        "confirmedTitle": "訂單已確認",
+        "errorTitle": "訂單更新失敗",
+        "fulfilledDescription": "訂單 {orderNumber} 已標記為完成。",
+        "fulfilledTitle": "訂單已完成",
+        "shippedDescription": "訂單 {orderNumber} 已標記為出貨。",
+        "shippedTitle": "訂單已出貨"
+      },
       "discount": "折扣",
       "listPrice": "牌價",
       "tax": "稅額",

@@ -8,6 +8,7 @@ import { DataTable } from "../../../components/layout/DataTable";
 import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayout";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
+import { useToast } from "../../../hooks/useToast";
 import { useOrderDetail, statusBadgeVariant, statusLabel } from "../hooks/useOrders";
 import { updateOrderStatus } from "../../../lib/api/orders";
 import type { OrderStatus } from "../types";
@@ -16,15 +17,17 @@ interface StatusAction {
   labelKey: string;
   targetStatus: OrderStatus;
   confirmMessageKey: string;
+  /** Set true for confirmOrder which shows explicit invoice+stock message */
+  isConfirmOrder?: boolean;
 }
 
 const STATUS_ACTIONS: Record<string, StatusAction[]> = {
   pending: [
-    { labelKey: "orders.detail.confirmOrder", targetStatus: "confirmed" as OrderStatus, confirmMessageKey: "orders.detail.confirmOrderMessage" },
+    { labelKey: "orders.detail.confirmOrder", targetStatus: "confirmed" as OrderStatus, confirmMessageKey: "orders.detail.createsInvoice", isConfirmOrder: true },
     { labelKey: "orders.detail.cancelOrder", targetStatus: "cancelled" as OrderStatus, confirmMessageKey: "orders.detail.cancelOrderMessage" },
   ],
   confirmed: [
-    { labelKey: "orders.detail.markShipped", targetStatus: "shipped" as OrderStatus, confirmMessageKey: "orders.detail.markShippedMessage" },
+    { labelKey: "orders.detail.shipOrder", targetStatus: "shipped" as OrderStatus, confirmMessageKey: "orders.detail.markShippedMessage" },
   ],
   shipped: [
     { labelKey: "orders.detail.markFulfilled", targetStatus: "fulfilled" as OrderStatus, confirmMessageKey: "orders.detail.markFulfilledMessage" },
@@ -36,13 +39,58 @@ interface OrderDetailProps {
   onBack: () => void;
 }
 
+function buildStatusToastCopy(
+  t: ReturnType<typeof useTranslation>["t"],
+  targetStatus: OrderStatus,
+  orderNumber: string,
+  invoiceNumber: string | null,
+) {
+  if (targetStatus === "confirmed") {
+    if (invoiceNumber) {
+      return {
+        title: t("orders.detail.toast.confirmedTitle"),
+        description: t("orders.detail.toast.confirmedDescription", { invoiceNumber }),
+      };
+    }
+
+    return {
+      title: t("orders.detail.toast.confirmedTitle"),
+      description: t("orders.detail.toast.confirmedDescriptionFallback", { orderNumber }),
+    };
+  }
+
+  if (targetStatus === "shipped") {
+    return {
+      title: t("orders.detail.toast.shippedTitle"),
+      description: t("orders.detail.toast.shippedDescription", { orderNumber }),
+    };
+  }
+
+  if (targetStatus === "fulfilled") {
+    return {
+      title: t("orders.detail.toast.fulfilledTitle"),
+      description: t("orders.detail.toast.fulfilledDescription", { orderNumber }),
+    };
+  }
+
+  return {
+    title: t("orders.detail.toast.cancelledTitle"),
+    description: t("orders.detail.toast.cancelledDescription", { orderNumber }),
+  };
+}
+
 export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
   const { t } = useTranslation("common");
+  const { error: showErrorToast, success: showSuccessToast } = useToast();
   const navigate = useNavigate();
   const { order, loading, error, reload } = useOrderDetail(orderId);
   const [updating, setUpdating] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [activeAction, setActiveAction] = useState<StatusAction | null>(null);
+  const [showInvoiceSuccess, setShowInvoiceSuccess] = useState<{
+    invoiceId: string | null;
+    invoiceNumber: string;
+  } | null>(null);
 
   const handleStatusChange = async (targetStatus: OrderStatus) => {
     setUpdating(true);
@@ -51,9 +99,23 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
     setUpdating(false);
     if (result.ok) {
       setActiveAction(null);
+      const toastCopy = buildStatusToastCopy(
+        t,
+        targetStatus,
+        result.data.order_number,
+        result.data.invoice_number,
+      );
+      showSuccessToast(toastCopy.title, toastCopy.description);
+      if (activeAction?.isConfirmOrder && result.data?.invoice_number) {
+        setShowInvoiceSuccess({
+          invoiceId: result.data.invoice_id,
+          invoiceNumber: result.data.invoice_number,
+        });
+      }
       reload();
     } else {
       setUpdateError(result.error);
+      showErrorToast(t("orders.detail.toast.errorTitle"), result.error);
     }
   };
 
@@ -63,11 +125,30 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
 
   const actions = STATUS_ACTIONS[order.status] ?? [];
 
+  const isConfirmed = order.status === "confirmed" || order.status === "shipped" || order.status === "fulfilled";
+  const exec = order.execution;
+
   return (
     <section aria-label="Order detail" className="space-y-5">
       <Button type="button" variant="outline" onClick={onBack}>
         {t("orders.detail.backToList")}
       </Button>
+
+      {showInvoiceSuccess ? (
+        <SectionCard title={t("orders.detail.confirmed")}>
+          <div className="space-y-3">
+            <SurfaceMessage tone="success">
+              {t("orders.detail.invoiceCreated", { number: showInvoiceSuccess.invoiceNumber })}
+            </SurfaceMessage>
+            <Button
+              type="button"
+              onClick={() => navigate(`/invoices/${showInvoiceSuccess.invoiceId}`)}
+            >
+              {t("orders.detail.viewInvoice", { number: showInvoiceSuccess.invoiceNumber })}
+            </Button>
+          </div>
+        </SectionCard>
+      ) : null}
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
@@ -88,9 +169,23 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
       </div>
 
       {activeAction ? (
-        <SectionCard title={t("orders.detail.confirmStatusChange")} description={t(activeAction.confirmMessageKey)}>
+        <SectionCard title={t("orders.detail.confirmStatusChange")}>
           <div role="dialog" aria-label="Confirm status change" className="space-y-4">
-            {updateError ? <SurfaceMessage tone="danger">{updateError}</SurfaceMessage> : null}
+            <p className="text-sm text-muted-foreground">
+              {activeAction.isConfirmOrder
+                ? t("orders.detail.createsInvoice")
+                : t(activeAction.confirmMessageKey)}
+            </p>
+            {updateError ? (
+              <SurfaceMessage tone="danger">
+                {updateError.includes("stock") || updateError.includes("Stock")
+                  ? t("orders.detail.stockReservationFailed")
+                  : updateError}
+                {updateError.includes("stock") && (
+                  <span> — {t("orders.detail.adjustQuantities")}</span>
+                )}
+              </SurfaceMessage>
+            ) : null}
             <div className="flex gap-3">
               <Button type="button" onClick={() => handleStatusChange(activeAction.targetStatus)} disabled={updating}>
                 {updating ? t("orders.detail.updating") : `${t("common.yes")}, ${t(activeAction.labelKey)}`}
@@ -99,6 +194,56 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
                 {t("common.cancel")}
               </Button>
             </div>
+          </div>
+        </SectionCard>
+      ) : null}
+
+      {isConfirmed && exec ? (
+        <SectionCard title={t("orders.detail.fulfillment")}>
+          <div className="space-y-2 text-sm">
+            <p>
+              <span className="font-medium">{t("orders.list.readyToShip")}:</span>{" "}
+              {exec.ready_to_ship ? t("common.yes") : t("common.no")}
+            </p>
+            {exec.has_backorder && (
+              <p className="text-destructive">
+                {t("orders.list.backorderRisk")}: {exec.backorder_line_count} line(s)
+              </p>
+            )}
+            <p>
+              <span className="font-medium">{t("orders.list.stockReserved")}:</span>{" "}
+              {exec.reservation_status === "reserved" ? t("common.yes") : t("common.no")}
+            </p>
+          </div>
+        </SectionCard>
+      ) : null}
+
+      {isConfirmed && exec ? (
+        <SectionCard title={t("orders.detail.billingContext")}>
+          <div className="space-y-2 text-sm">
+            {order.invoice_id && order.invoice_number ? (
+              <p>
+                <span className="font-medium">{t("orders.detail.invoice")}:</span>{" "}
+                <button
+                  type="button"
+                  className="appearance-none border-0 bg-transparent p-0 text-foreground underline-offset-4 hover:text-foreground/80 hover:underline focus-visible:underline"
+                  onClick={() => navigate(`/invoices/${order.invoice_id}`)}
+                >
+                  {order.invoice_number}
+                </button>
+              </p>
+            ) : (
+              <p>
+                <span className="font-medium">{t("orders.detail.invoice")}:</span>{" "}
+                {t("orders.list.invoiceOnConfirmation")}
+              </p>
+            )}
+            {order.invoice_payment_status && (
+              <p>
+                <span className="font-medium">{t("orders.list.unpaid")}:</span>{" "}
+                {order.invoice_payment_status}
+              </p>
+            )}
           </div>
         </SectionCard>
       ) : null}
@@ -124,20 +269,6 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
           <dd>${order.tax_amount}</dd>
           <dt>{t("orders.detail.total")}</dt>
           <dd><strong>${order.total_amount}</strong></dd>
-          {order.invoice_id ? (
-            <>
-              <dt>{t("orders.detail.invoice")}</dt>
-              <dd>
-                <button
-                  type="button"
-                  className="appearance-none border-0 bg-transparent p-0 text-foreground underline-offset-4 hover:text-foreground/80 hover:underline focus-visible:underline"
-                  onClick={() => navigate(`/invoices/${order.invoice_id}`)}
-                >
-                  {order.invoice_id}
-                </button>
-              </dd>
-            </>
-          ) : null}
           {order.notes ? (
             <>
               <dt>{t("orders.detail.notes")}</dt>

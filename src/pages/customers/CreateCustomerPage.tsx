@@ -11,6 +11,7 @@ import { createCustomer, type DuplicateInfo } from "../../lib/api/customers";
 import CustomerForm from "../../components/customers/CustomerForm";
 import DuplicateCustomerWarning from "../../components/customers/DuplicateCustomerWarning";
 import { trackEvent, AnalyticsEvents } from "../../lib/analytics";
+import { useToast } from "../../hooks/useToast";
 
 export interface CreateCustomerPageProps {
   onNavigate?: (path: AppRoute) => void;
@@ -18,6 +19,7 @@ export interface CreateCustomerPageProps {
 
 export default function CreateCustomerPage({ onNavigate }: CreateCustomerPageProps) {
   const { t } = useTranslation("common");
+  const { error: showErrorToast, success: showSuccessToast } = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [serverErrors, setServerErrors] = useState<Array<{ field: string; message: string }>>([]);
   const [created, setCreated] = useState<CustomerResponse | null>(null);
@@ -31,11 +33,19 @@ export default function CreateCustomerPage({ onNavigate }: CreateCustomerPagePro
       const result = await createCustomer(payload);
       if (result.ok) {
         trackEvent(AnalyticsEvents.CUSTOMER_CREATED, { source_page: "/customers" });
+        showSuccessToast(
+          t("customer.createPage.toast.successTitle"),
+          t("customer.createPage.toast.successDescription", { name: result.data.company_name }),
+        );
         setCreated(result.data);
       } else if (result.duplicate) {
         setDuplicate(result.duplicate);
       } else {
         setServerErrors(result.errors);
+        showErrorToast(
+          t("customer.createPage.toast.errorTitle"),
+          result.errors[0]?.message ?? t("customer.createPage.toast.errorDescription"),
+        );
       }
     } finally {
       setSubmitting(false);

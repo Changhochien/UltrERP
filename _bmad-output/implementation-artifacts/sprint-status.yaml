@@ -1169,4 +1169,67 @@ development_status:
         validation: "Validated on 2026-04-16 with `cd /Volumes/2T_SSD_App/Projects/UltrERP/backend && uv run pytest tests/domains/product_analytics/test_service.py tests/domains/intelligence/test_revenue_diagnosis_service.py tests/domains/intelligence/test_product_performance_service.py tests/domains/intelligence/test_customer_buying_behavior_service.py tests/domains/intelligence/test_routes.py tests/domains/inventory/test_planning_support.py tests/test_mcp_intelligence.py tests/test_mcp_auth.py -q` (`109 passed in 2.78s`). Story 20.9 adds shared-foundation regressions for countable-status filtering, per-snapshot monthly grain aggregation, tenant isolation, and immutable sale-time snapshots; adds Epic 20 route auth and query-validation coverage; and extends centralized MCP auth with explicit insufficient-scope checks for the new revenue diagnosis, product performance, and customer buying behavior tools while reusing the existing owner-domain inventory and intelligence suites."
         prerequisites: ["20.3", "20.4", "20.5", "20.6", "20.7", "20.8"]
 
-last_updated: "2026-04-18"
+  # Epic 22 - UI Foundation System
+  epic-22:
+    status: "in-progress"
+    validation_note: "Epic 22 started on 2026-04-20 with Story 22.1 implemented as the first shared dependency for the later orders-workspace redesign. The new toast foundation adds a shared Radix provider and hook at the app root, keeps persistent blocking states inline, and integrates transient mutation feedback for order confirmation, customer create or update, invoice creation, and matched or unmatched payment recording. Focused frontend validation passed with `pnpm exec vitest run src/tests/ui/ToastProvider.test.tsx src/tests/orders/OrderDetailConfirmationUX.test.tsx src/domain/invoices/__tests__/CreateInvoicePage.test.tsx src/domain/payments/__tests__/RecordPaymentForm.test.tsx src/domain/payments/__tests__/RecordUnmatchedPayment.test.tsx` (`20 passed`). The Story 22.1 review follow-up also added provider timer cleanup on unmount, localized payment toast copy, and direct payment failure coverage."
+    recommended_execution_order:
+      - "22.1 Toast Notification System"
+      - "22.2 DatePicker and DateRangePicker Components"
+      - "22.3 Breadcrumb Navigation"
+      - "22.7 TanStackDataTable Foundation"
+      - "22.4 Zod Schema Centralization and Form Migration"
+      - "22.6 Spinner, QuickEntryDialog, and StatusBadge"
+      - "22.5 CSS Cleanup - AlertFeed and CommandBar"
+    stories:
+      22-1-toast-notification-system:
+        status: "done"
+        story_id: "22.1"
+        title: "Toast Notification System"
+        story_file: "22-1-toast-notification-system.md"
+        validation: "Implemented on 2026-04-20 with a shared Radix toast provider and hook, root `App.tsx` wiring, additive order/customer/invoice/payment integrations, and focused frontend validation via `pnpm exec vitest run src/tests/ui/ToastProvider.test.tsx src/tests/orders/OrderDetailConfirmationUX.test.tsx src/domain/invoices/__tests__/CreateInvoicePage.test.tsx src/domain/payments/__tests__/RecordPaymentForm.test.tsx src/domain/payments/__tests__/RecordUnmatchedPayment.test.tsx` (`20 passed`). Review follow-up fixes added provider timer cleanup on unmount, localized payment toast copy, and direct `RecordPaymentForm` failure coverage."
+        prerequisites: []
+      22-2-datepicker-component:
+        status: "ready-for-dev"
+        story_id: "22.2"
+        title: "DatePicker and DateRangePicker Components"
+        story_file: "22-2-datepicker-component.md"
+        validation: "Story artifact created."
+        prerequisites: ["22.1"]
+      22-3-breadcrumb-navigation:
+        status: "ready-for-dev"
+        story_id: "22.3"
+        title: "Breadcrumb Navigation"
+        story_file: "22-3-breadcrumb-navigation.md"
+        validation: "Story artifact created."
+        prerequisites: ["22.1"]
+      22-4-zod-schema-centralization-and-form-migration:
+        status: "ready-for-dev"
+        story_id: "22.4"
+        title: "Zod Schema Centralization and Form Migration"
+        story_file: "22-4-zod-schema-centralization-and-form-migration.md"
+        validation: "Story artifact created."
+        prerequisites: ["22.1", "22.2"]
+      22-5-css-cleanup-alertfeed-and-commandbar:
+        status: "ready-for-dev"
+        story_id: "22.5"
+        title: "CSS Cleanup - AlertFeed and CommandBar"
+        story_file: "22-5-css-cleanup-alertfeed-and-commandbar.md"
+        validation: "Story artifact created."
+        prerequisites: []
+      22-6-quickentrydialog-and-spinner:
+        status: "ready-for-dev"
+        story_id: "22.6"
+        title: "Spinner, QuickEntryDialog, and StatusBadge"
+        story_file: "22-6-quickentrydialog-and-spinner.md"
+        validation: "Story artifact created."
+        prerequisites: ["22.1", "22.4"]
+      22-7-tanstackdatatable-foundation:
+        status: "ready-for-dev"
+        story_id: "22.7"
+        title: "TanStackDataTable Foundation"
+        story_file: "22-7-tanstackdatatable-foundation.md"
+        validation: "Story artifact created."
+        prerequisites: ["22.1", "22.3"]
+
+last_updated: "2026-04-20"

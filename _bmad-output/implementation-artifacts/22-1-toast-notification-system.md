@@ -1,6 +1,6 @@
 # Story 22.1: Toast Notification System
 
-**Status:** ready-for-dev
+**Status:** done
 
 **Story ID:** 22.1
 
@@ -24,26 +24,26 @@ so that important mutations never complete silently while persistent page states
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add the toast infrastructure. (AC: 1, 2, 4, 5)
-  - [ ] Add `@radix-ui/react-toast` to `package.json`.
-  - [ ] Create `src/components/ui/Toast.tsx` as the Radix wrapper with UltrERP variants, stacking, portal rendering, and dismissal controls.
-  - [ ] Create `src/providers/ToastProvider.tsx` and a new `src/hooks/useToast.ts` hook.
-  - [ ] Reuse the already-installed `framer-motion` package for enter and exit animation.
-- [ ] Task 2: Wire the provider at the app root. (AC: 1, 2)
-  - [ ] Insert `ToastProvider` into the existing root tree in `src/App.tsx` without disturbing `AuthProvider`, `ThemeProvider`, `AuthGate`, or `SidebarProvider` behavior.
-  - [ ] Ensure every routed page can call `useToast()` safely after the provider is mounted.
-- [ ] Task 3: Define the API and message boundary. (AC: 2, 3, 5)
-  - [ ] Implement `toast`, `success`, `error`, `warning`, and `info` helpers from `useToast()`.
-  - [ ] Map toast variants to the current token system: success, destructive, warning, and info.
-  - [ ] Audit current `SurfaceMessage` usage and document the boundary between transient mutation feedback and persistent inline state in the story implementation notes.
-- [ ] Task 4: Apply the first integration slice to high-value mutations. (AC: 1, 2, 3)
-  - [ ] Add toast callbacks to the highest-impact mutation paths first: order confirmation, customer create or update, invoice creation, and both payment-recording flows.
-  - [ ] Keep persistent fetch errors and blocking warnings inline.
-  - [ ] Avoid introducing a new global mutation abstraction unless the touched hooks already share one.
-- [ ] Task 5: Add focused test coverage. (AC: 1-5)
-  - [ ] Add component tests for provider wiring, variant rendering, stack limits, and manual dismissal.
-  - [ ] Add focused integration coverage for at least one success path and one failure path.
-  - [ ] Validate keyboard and assistive-technology behavior on the rendered toast viewport.
+- [x] Task 1: Add the toast infrastructure. (AC: 1, 2, 4, 5)
+  - [x] Add `@radix-ui/react-toast` to `package.json`.
+  - [x] Create `src/components/ui/Toast.tsx` as the Radix wrapper with UltrERP variants, stacking, portal rendering, and dismissal controls.
+  - [x] Create `src/providers/ToastProvider.tsx` and a new `src/hooks/useToast.ts` hook.
+  - [x] Reuse the already-installed `framer-motion` package for enter and exit animation.
+- [x] Task 2: Wire the provider at the app root. (AC: 1, 2)
+  - [x] Insert `ToastProvider` into the existing root tree in `src/App.tsx` without disturbing `AuthProvider`, `ThemeProvider`, `AuthGate`, or `SidebarProvider` behavior.
+  - [x] Ensure every routed page can call `useToast()` safely after the provider is mounted.
+- [x] Task 3: Define the API and message boundary. (AC: 2, 3, 5)
+  - [x] Implement `toast`, `success`, `error`, `warning`, and `info` helpers from `useToast()`.
+  - [x] Map toast variants to the current token system: success, destructive, warning, and info.
+  - [x] Audit current `SurfaceMessage` usage and document the boundary between transient mutation feedback and persistent inline state in the story implementation notes.
+- [x] Task 4: Apply the first integration slice to high-value mutations. (AC: 1, 2, 3)
+  - [x] Add toast callbacks to the highest-impact mutation paths first: order confirmation, customer create or update, invoice creation, and both payment-recording flows.
+  - [x] Keep persistent fetch errors and blocking warnings inline.
+  - [x] Avoid introducing a new global mutation abstraction unless the touched hooks already share one.
+- [x] Task 5: Add focused test coverage. (AC: 1-5)
+  - [x] Add component tests for provider wiring, variant rendering, stack limits, and manual dismissal.
+  - [x] Add focused integration coverage for at least one success path and one failure path.
+  - [x] Validate keyboard and assistive-technology behavior on the rendered toast viewport.
 
 ## Dev Notes
 
@@ -91,22 +91,40 @@ so that important mutations never complete silently while persistent page states
 
 ### Agent Model Used
 
-Record the implementation model and version here.
+GPT-5.4
 
 ### Debug Log References
 
-Record focused frontend test commands and any validation artifacts here.
+- `pnpm install`
+- `pnpm exec vitest run src/tests/ui/ToastProvider.test.tsx src/tests/orders/OrderDetailConfirmationUX.test.tsx src/domain/invoices/__tests__/CreateInvoicePage.test.tsx src/domain/payments/__tests__/RecordPaymentForm.test.tsx src/domain/payments/__tests__/RecordUnmatchedPayment.test.tsx`
+- Review follow-up rerun on the same focused suite after provider cleanup, payment i18n, and failure-path coverage fixes (`20 passed`)
 
 ### Completion Notes List
 
-Summarize the provider wiring, the message-boundary decisions, and the touched mutation hooks here once implementation is done.
+- Added a shared Radix toast foundation with a portal-mounted viewport, framer-motion enter and exit transitions, helper APIs (`toast`, `success`, `error`, `warning`, `info`), stack capping at the newest five toasts, and timer cleanup on provider unmount.
+- Mounted `ToastProvider` at the app root in `src/App.tsx`, keeping the existing auth, theme, protected-route, and sidebar wiring intact.
+- Wired transient toast feedback into order confirmation, customer create and update, invoice creation, and matched or unmatched payment recording, while leaving blocking inline warnings, duplicate-customer flows, version conflicts, and field-level error states in `SurfaceMessage` or dialog UI.
+- Added focused frontend coverage for provider behavior plus integration success and failure paths across order confirmation, invoice creation, and payment recording flows.
 
 ### File List
 
 - `package.json`
+- `pnpm-lock.yaml`
 - `src/App.tsx`
+- `src/components/customers/EditCustomerDialog.tsx`
 - `src/components/ui/Toast.tsx`
-- `src/providers/ToastProvider.tsx`
+- `src/domain/orders/components/OrderDetail.tsx`
+- `src/domain/payments/components/RecordPaymentForm.tsx`
+- `src/domain/payments/components/RecordUnmatchedPayment.tsx`
+- `src/domain/payments/__tests__/RecordPaymentForm.test.tsx`
+- `src/domain/payments/__tests__/RecordUnmatchedPayment.test.tsx`
+- `src/domain/invoices/__tests__/CreateInvoicePage.test.tsx`
 - `src/hooks/useToast.ts`
-- touched mutation hooks under `src/domain/**/hooks/`
-- any focused frontend tests added for toast behavior
+- `src/pages/customers/CreateCustomerPage.tsx`
+- `src/pages/invoices/CreateInvoicePage.tsx`
+- `src/providers/ToastProvider.tsx`
+- `src/tests/orders/OrderDetailConfirmationUX.test.tsx`
+- `src/tests/orders/OrderWorkflowPresentation.test.tsx`
+- `src/tests/ui/ToastProvider.test.tsx`
+- `public/locales/en/common.json`
+- `public/locales/zh-Hant/common.json`

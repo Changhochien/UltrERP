@@ -1,11 +1,13 @@
 /** Modal dialog for editing an existing customer. */
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { CustomerCreatePayload, CustomerResponse } from "../../domain/customers/types";
 import { getCustomer, updateCustomer } from "../../lib/api/customers";
 import type { DuplicateInfo } from "../../lib/api/customers";
 import CustomerForm from "./CustomerForm";
 import DuplicateCustomerWarning from "./DuplicateCustomerWarning";
+import { useToast } from "../../hooks/useToast";
 
 interface Props {
   customerId: string;
@@ -15,6 +17,8 @@ interface Props {
 }
 
 export function EditCustomerDialog({ customerId, onClose, onSaved, onViewCustomer }: Props) {
+  const { t } = useTranslation("common");
+  const { error: showErrorToast, success: showSuccessToast } = useToast();
   const [customer, setCustomer] = useState<CustomerResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -61,6 +65,10 @@ export function EditCustomerDialog({ customerId, onClose, onSaved, onViewCustome
     }
 
     if (result.ok) {
+      showSuccessToast(
+        t("customer.detail.toast.updatedTitle"),
+        t("customer.detail.toast.updatedDescription", { name: result.data.company_name }),
+      );
       onSaved();
       return;
     }
@@ -76,6 +84,10 @@ export function EditCustomerDialog({ customerId, onClose, onSaved, onViewCustome
     }
 
     setServerErrors(result.errors);
+    showErrorToast(
+      t("customer.detail.toast.updateErrorTitle"),
+      result.errors[0]?.message ?? t("customer.detail.toast.updateErrorDescription"),
+    );
   }
 
   function toFormValues(c: CustomerResponse): CustomerCreatePayload {

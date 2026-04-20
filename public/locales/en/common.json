@@ -444,6 +444,12 @@
       "eyebrow": "Customers",
       "formDescription": "Enter the customer's business information and contact details.",
       "formTitle": "Customer Information",
+      "toast": {
+        "errorDescription": "Please review the customer details and try again.",
+        "errorTitle": "Customer could not be created",
+        "successDescription": "{name} is ready for orders and invoices.",
+        "successTitle": "Customer created"
+      },
       "title": "Create Customer",
       "titleCreated": "Customer Created"
     },
@@ -485,6 +491,12 @@
       },
       "cannotDelete": {
         "message": "Customers with outstanding balances cannot be deleted."
+      },
+      "toast": {
+        "updateErrorDescription": "Please review the customer changes and try again.",
+        "updateErrorTitle": "Customer update failed",
+        "updatedDescription": "{name} has been saved.",
+        "updatedTitle": "Customer updated"
       },
       "tabs": {
         "overview": "Overview",
@@ -534,7 +546,8 @@
         "title": "Orders",
         "description": "Orders placed by this customer.",
         "emptyTitle": "No orders found",
-        "emptyDescription": "This customer does not have any orders yet."
+        "emptyDescription": "This customer does not have any orders yet.",
+        "createOrder": "Create Order"
       },
       "outstanding": {
         "title": "Outstanding Balance",
@@ -1014,6 +1027,12 @@
       "invoiceDate": "Invoice Date",
       "invoiceLines": "Invoice Lines",
       "noActiveCustomers": "No active customers available.",
+      "toast": {
+        "errorDescription": "Please review the invoice details and try again.",
+        "errorTitle": "Invoice could not be created",
+        "successDescription": "Invoice {invoiceNumber} is ready to issue.",
+        "successTitle": "Invoice created"
+      },
       "title": "Create Invoice",
       "titleCreated": "Invoice Created"
     },
@@ -1089,6 +1108,18 @@
       "close": "Close",
       "exporting": "Exporting...",
       "exportPdf": "Export PDF"
+    }
+  },
+  "payments": {
+    "form": {
+      "amountExceeded": "Amount exceeds outstanding balance ({amount})",
+      "toast": {
+        "errorTitle": "Payment could not be recorded",
+        "recordedDescription": "Receipt {paymentRef} was recorded for this invoice.",
+        "recordedTitle": "Payment recorded",
+        "unmatchedRecordedDescription": "Receipt {paymentRef} is ready for reconciliation.",
+        "unmatchedRecordedTitle": "Unmatched payment recorded"
+      }
     }
   },
   "inventory": {
@@ -1960,17 +1991,26 @@
     }
   },
   "orders": {
+    "create": "Create Order",
     "detail": {
       "backToList": "Back to list",
+      "fulfillment": "Fulfillment",
+      "billingContext": "Billing Context",
+      "shipOrder": "Ship Order",
       "cancelOrder": "Cancel Order",
       "cancelOrderMessage": "Are you sure you want to cancel this order? This action cannot be undone.",
-      "confirmOrder": "Confirm Order",
+      "confirmOrder": "Create Invoice",
       "confirmOrderMessage": "This will auto-generate an invoice for this order.",
       "confirmStatusChange": "Confirm Status Change",
       "confirmed": "Confirmed",
       "created": "Created",
       "customer": "Customer",
       "invoice": "Invoice",
+      "invoiceCreated": "Invoice {number} was created.",
+      "viewInvoice": "View {number}",
+      "createsInvoice": "This will create the invoice and reserve stock.",
+      "stockReservationFailed": "Stock reservation failed",
+      "adjustQuantities": "Adjust quantities or replenish stock before trying again.",
       "lineItems": "Line Items",
       "lineItemsDescription": "Products and services in this order.",
       "markFulfilled": "Mark Fulfilled",
@@ -1986,6 +2026,18 @@
       "orderTitle": "Order",
       "paymentTerms": "Payment Terms",
       "subtotal": "Subtotal",
+      "toast": {
+        "cancelledDescription": "Order {orderNumber} was cancelled.",
+        "cancelledTitle": "Order cancelled",
+        "confirmedDescription": "Invoice {invoiceNumber} was created and stock was reserved.",
+        "confirmedDescriptionFallback": "Order {orderNumber} was confirmed and is ready for billing.",
+        "confirmedTitle": "Order confirmed",
+        "errorTitle": "Order update failed",
+        "fulfilledDescription": "Order {orderNumber} is now marked as fulfilled.",
+        "fulfilledTitle": "Order fulfilled",
+        "shippedDescription": "Order {orderNumber} is now marked as shipped.",
+        "shippedTitle": "Order shipped"
+      },
       "discount": "Discount",
       "listPrice": "List Price",
       "tax": "Tax",
@@ -2004,6 +2056,7 @@
       "lineStock": "Line {index} stock",
       "loading": "Loading…",
       "newOrderDescription": "Create a new sales order for your customer.",
+      "preselectedCustomer": "Customer context: this customer is preselected and the order will stay pending until you confirm it.",
       "newOrderTitle": "New Order",
       "notes": "Notes",
       "paymentTerms": "Payment Terms",
@@ -2031,7 +2084,14 @@
       "status": "Status",
       "statusLabel": "Status:",
       "title": "Orders",
-      "total": "Total"
+      "total": "Total",
+      "fulfillment": "Fulfillment",
+      "billing": "Billing",
+      "backorderRisk": "Backorder risk",
+      "invoiceOnConfirmation": "Invoice on confirmation",
+      "readyToShip": "Ready to ship",
+      "stockReserved": "Stock reserved",
+      "unpaid": "Unpaid"
     }
   },
   "infoPopover": {

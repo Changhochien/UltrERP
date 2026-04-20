@@ -1,10 +1,12 @@
 /** Form for recording a payment without a specific invoice (for reconciliation). */
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { SurfaceMessage } from "../../../components/layout/PageLayout";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
+import { useToast } from "../../../hooks/useToast";
 import type { PaymentMethod } from "../types";
 import type { CustomerSummary } from "../../customers/types";
 import { createUnmatchedPayment } from "../../../lib/api/payments";
@@ -27,6 +29,8 @@ export default function RecordUnmatchedPayment({
 	onSuccess,
 	onCancel,
 }: RecordUnmatchedPaymentProps) {
+	const { t } = useTranslation("common");
+	const { error: showErrorToast, success: showSuccessToast } = useToast();
 	const [customerId, setCustomerId] = useState("");
 	const [customers, setCustomers] = useState<CustomerSummary[]>([]);
 	const [amount, setAmount] = useState("");
@@ -69,9 +73,15 @@ export default function RecordUnmatchedPayment({
 
 		setIsLoading(false);
 		if (result.ok) {
+			showSuccessToast(
+				t("payments.form.toast.unmatchedRecordedTitle"),
+				t("payments.form.toast.unmatchedRecordedDescription", { paymentRef: result.data.payment_ref }),
+			);
 			onSuccess();
 		} else {
-			setFormError(result.errors.map((e) => e.message).join("; "));
+			const message = result.errors.map((e) => e.message).join("; ");
+			setFormError(message);
+			showErrorToast(t("payments.form.toast.errorTitle"), message);
 		}
 	};
 

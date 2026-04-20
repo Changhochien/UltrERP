@@ -1,8 +1,11 @@
+import "../helpers/i18n";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 import { OrderDetail } from "../../domain/orders/components/OrderDetail";
+import { ToastProvider } from "../../providers/ToastProvider";
 
 const navigateMock = vi.fn();
 const reloadMock = vi.fn();
@@ -115,16 +118,18 @@ afterEach(() => {
 describe("OrderDetail confirmation UX", () => {
   it("uses explicit invoice and stock reservation confirmation copy", () => {
     render(
-      <MemoryRouter>
-        <OrderDetail orderId="order-123" onBack={() => undefined} />
-      </MemoryRouter>,
+      <ToastProvider>
+        <MemoryRouter>
+          <OrderDetail orderId="order-123" onBack={() => undefined} />
+        </MemoryRouter>
+      </ToastProvider>,
     );
 
     expect(screen.getByRole("button", { name: /create invoice/i })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /create invoice/i }));
 
-    expect(screen.getByText(/creates the invoice/i)).toBeTruthy();
-    expect(screen.getByText(/reserves stock/i)).toBeTruthy();
+    expect(screen.getByText(/create the invoice/i)).toBeTruthy();
+    expect(screen.getByText(/reserve stock/i)).toBeTruthy();
   });
 
   it("shows success feedback and invoice continuity after confirmation", async () => {
@@ -150,9 +155,11 @@ describe("OrderDetail confirmation UX", () => {
     });
 
     render(
-      <MemoryRouter>
-        <OrderDetail orderId="order-123" onBack={() => undefined} />
-      </MemoryRouter>,
+      <ToastProvider>
+        <MemoryRouter>
+          <OrderDetail orderId="order-123" onBack={() => undefined} />
+        </MemoryRouter>
+      </ToastProvider>,
     );
 
     fireEvent.click(screen.getByRole("button", { name: /create invoice/i }));
@@ -161,7 +168,9 @@ describe("OrderDetail confirmation UX", () => {
     await waitFor(() => {
       expect(reloadMock).toHaveBeenCalled();
     });
-    expect(screen.getByText(/Invoice AA00000001 was created/i)).toBeTruthy();
+    expect(screen.getByText("Invoice AA00000001 was created.")).toBeTruthy();
+    expect(screen.getByText("Order confirmed")).toBeTruthy();
+    expect(screen.getByText("Invoice AA00000001 was created and stock was reserved.")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /view AA00000001/i }));
     expect(navigateMock).toHaveBeenCalledWith("/invoices/invoice-123");
@@ -174,9 +183,11 @@ describe("OrderDetail confirmation UX", () => {
     });
 
     render(
-      <MemoryRouter>
-        <OrderDetail orderId="order-123" onBack={() => undefined} />
-      </MemoryRouter>,
+      <ToastProvider>
+        <MemoryRouter>
+          <OrderDetail orderId="order-123" onBack={() => undefined} />
+        </MemoryRouter>
+      </ToastProvider>,
     );
 
     fireEvent.click(screen.getByRole("button", { name: /create invoice/i }));
@@ -185,6 +196,7 @@ describe("OrderDetail confirmation UX", () => {
     await waitFor(() => {
       expect(screen.getByText(/stock reservation failed/i)).toBeTruthy();
     });
+    expect(screen.getByText("Order update failed")).toBeTruthy();
     expect(screen.getByText(/adjust quantities or replenish stock/i)).toBeTruthy();
     expect(screen.getByText(/confirm status change/i)).toBeTruthy();
   });

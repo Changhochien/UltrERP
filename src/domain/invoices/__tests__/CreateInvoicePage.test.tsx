@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { MemoryRouter } from "react-router-dom";
 
 import CreateInvoicePage from "../../../pages/invoices/CreateInvoicePage";
+import { ToastProvider } from "../../../providers/ToastProvider";
 
 const mocks = vi.hoisted(() => ({
 	listCustomers: vi.fn(),
@@ -93,7 +94,11 @@ describe("CreateInvoicePage", () => {
 	it("renders preview totals as line values change", async () => {
 		mocks.listCustomers.mockResolvedValue(customersResponse);
 
-		render(<MemoryRouter><CreateInvoicePage /></MemoryRouter>);
+		render(
+			<ToastProvider>
+				<MemoryRouter><CreateInvoicePage /></MemoryRouter>
+			</ToastProvider>,
+		);
 
 		await selectCustomer();
 
@@ -116,7 +121,11 @@ describe("CreateInvoicePage", () => {
 	it("submits the create-invoice payload and shows the created state", async () => {
 		const readPayload = mockInvoiceCreateFlow();
 
-		render(<MemoryRouter><CreateInvoicePage /></MemoryRouter>);
+		render(
+			<ToastProvider>
+				<MemoryRouter><CreateInvoicePage /></MemoryRouter>
+			</ToastProvider>,
+		);
 
 		await selectCustomer();
 
@@ -135,6 +144,7 @@ describe("CreateInvoicePage", () => {
 		await waitFor(() => {
 			expect(screen.getByRole("heading", { level: 1, name: "Invoice Created" })).toBeTruthy();
 		});
+		expect(screen.getByText("Invoice AA00000001 is ready to issue.")).toBeTruthy();
 
 		const payload = readPayload();
 		expect(payload).toMatchObject({

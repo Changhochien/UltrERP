@@ -15,6 +15,7 @@ import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { usePostHogPageView } from "./hooks/usePostHogPageView";
 import { getRouteContext } from "./lib/navigation";
 import { formatWorkspaceDate } from "./lib/utils";
+import { ToastProvider } from "./providers/ToastProvider";
 
 import {
   ADMIN_ROUTE,
@@ -193,61 +194,62 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <Routes>
-          <Route path={LOGIN_ROUTE} element={<LoginPage />} />
-          <Route
-            path={HOME_ROUTE}
-            element={
-              <ProtectedAppRoute requiredFeature="dashboard">
-                <RoutedPage>
-                  <DashboardPage />
-                </RoutedPage>
-              </ProtectedAppRoute>
-            }
-          />
-          <Route
-            path={INVENTORY_ROUTE}
-            element={
-              <ProtectedAppRoute requiredFeature="inventory">
-                <RoutedPage>
-                  <InventoryPage />
-                </RoutedPage>
-              </ProtectedAppRoute>
-            }
-          />
-          <Route
-            path={INVENTORY_CATEGORIES_ROUTE}
-            element={
-              <ProtectedAppRoute requiredFeature="inventory">
-                <RoutedPage>
-                  <CategoriesPage />
-                </RoutedPage>
-              </ProtectedAppRoute>
-            }
-          />
-          <Route
-            path={INVENTORY_UNITS_ROUTE}
-            element={
-              <ProtectedAppRoute requiredFeature="inventory">
-                <RoutedPage>
-                  <UnitsPage />
-                </RoutedPage>
-              </ProtectedAppRoute>
-            }
-          />
-          <Route
-            path={INVENTORY_TRANSFERS_ROUTE}
-            element={
-              <ProtectedAppRoute requiredFeature="inventory">
-                <RoutedPage>
-                  <TransfersPage />
-                </RoutedPage>
-              </ProtectedAppRoute>
-            }
-          />
-          <Route
-            path={INVENTORY_COUNT_SESSIONS_ROUTE}
-            element={
+        <ToastProvider>
+          <Routes>
+            <Route path={LOGIN_ROUTE} element={<LoginPage />} />
+            <Route
+              path={HOME_ROUTE}
+              element={
+                <ProtectedAppRoute requiredFeature="dashboard">
+                  <RoutedPage>
+                    <DashboardPage />
+                  </RoutedPage>
+                </ProtectedAppRoute>
+              }
+            />
+            <Route
+              path={INVENTORY_ROUTE}
+              element={
+                <ProtectedAppRoute requiredFeature="inventory">
+                  <RoutedPage>
+                    <InventoryPage />
+                  </RoutedPage>
+                </ProtectedAppRoute>
+              }
+            />
+            <Route
+              path={INVENTORY_CATEGORIES_ROUTE}
+              element={
+                <ProtectedAppRoute requiredFeature="inventory">
+                  <RoutedPage>
+                    <CategoriesPage />
+                  </RoutedPage>
+                </ProtectedAppRoute>
+              }
+            />
+            <Route
+              path={INVENTORY_UNITS_ROUTE}
+              element={
+                <ProtectedAppRoute requiredFeature="inventory">
+                  <RoutedPage>
+                    <UnitsPage />
+                  </RoutedPage>
+                </ProtectedAppRoute>
+              }
+            />
+            <Route
+              path={INVENTORY_TRANSFERS_ROUTE}
+              element={
+                <ProtectedAppRoute requiredFeature="inventory">
+                  <RoutedPage>
+                    <TransfersPage />
+                  </RoutedPage>
+                </ProtectedAppRoute>
+              }
+            />
+            <Route
+              path={INVENTORY_COUNT_SESSIONS_ROUTE}
+              element={
               <ProtectedAppRoute requiredFeature="inventory">
                 <RoutedPage>
                   <CountSessionsPage />
@@ -468,7 +470,8 @@ export default function App() {
             }
           />
           <Route path="*" element={<Navigate to={HOME_ROUTE} replace />} />
-        </Routes>
+          </Routes>
+        </ToastProvider>
       </AuthProvider>
     </ThemeProvider>
   );

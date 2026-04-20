@@ -1,10 +1,12 @@
 /** Form for recording a payment against an invoice. */
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { SurfaceMessage } from "../../../components/layout/PageLayout";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
+import { useToast } from "../../../hooks/useToast";
 import type { PaymentMethod } from "../types";
 import { useCreatePayment } from "../hooks/usePayments";
 
@@ -29,6 +31,8 @@ export default function RecordPaymentForm({
 	onSuccess,
 	onCancel,
 }: RecordPaymentFormProps) {
+	const { t } = useTranslation("common");
+	const { error: showErrorToast, success: showSuccessToast } = useToast();
 	const [amount, setAmount] = useState(String(outstandingBalance));
 	const [method, setMethod] = useState<PaymentMethod>("BANK_TRANSFER");
 	const [paymentDate, setPaymentDate] = useState(
@@ -46,6 +50,9 @@ export default function RecordPaymentForm({
 		parsedAmount > 0 &&
 		parsedAmount <= outstandingBalance &&
 		paymentDate.length > 0;
+	const amountWarningId = parsedAmount > outstandingBalance ? "payment-amount-warning" : undefined;
+	const formErrorId = formError ? "record-payment-form-error" : undefined;
+	const amountDescribedBy = [formErrorId, amountWarningId].filter(Boolean).join(" ") || undefined;
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -61,9 +68,15 @@ export default function RecordPaymentForm({
 			notes: notes || undefined,
 		});
 		if (result && result.ok) {
+			showSuccessToast(
+				t("payments.form.toast.recordedTitle"),
+				t("payments.form.toast.recordedDescription", { paymentRef: result.data.payment_ref }),
+			);
 			onSuccess();
 		} else if (result && !result.ok) {
-			setFormError(result.errors.map((e) => e.message).join("; "));
+			const message = result.errors.map((e) => e.message).join("; ");
+			setFormError(message);
+			showErrorToast(t("payments.form.toast.errorTitle"), message);
 		}
 	};
 
@@ -72,7 +85,7 @@ export default function RecordPaymentForm({
 			<h3 className="text-base font-semibold tracking-tight">Record Payment</h3>
 
 			{formError ? (
-				<SurfaceMessage tone="danger" role="alert">
+				<SurfaceMessage id={formErrorId} tone="danger" role="alert">
 					{formError}
 				</SurfaceMessage>
 			) : null}
@@ -82,6 +95,7 @@ export default function RecordPaymentForm({
 				<Input
 					id="payment-amount"
 					type="number"
+					aria-describedby={amountDescribedBy}
 					step="0.01"
 					min="0.01"
 					max={outstandingBalance}
@@ -90,8 +104,8 @@ export default function RecordPaymentForm({
 					required
 				/>
 				{parsedAmount > outstandingBalance ? (
-					<span className="text-sm text-destructive">
-						Amount exceeds outstanding balance ({outstandingBalance})
+					<span id={amountWarningId} className="text-sm text-destructive">
+						{t("payments.form.amountExceeded", { amount: outstandingBalance })}
 					</span>
 				) : null}
 			</div>
