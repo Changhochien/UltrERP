@@ -6,6 +6,9 @@ const navigateMock = vi.fn();
 const permissionMock = vi.hoisted(() => ({
   canWrite: vi.fn<(feature: string) => boolean>(),
 }));
+const orderFormMock = vi.hoisted(() => ({
+  lastInitialCustomerId: undefined as string | undefined,
+}));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -49,7 +52,10 @@ vi.mock("../../components/ui/button", () => ({
 }));
 
 vi.mock("../../domain/orders/components/OrderForm", () => ({
-  OrderForm: () => <div>order-form</div>,
+  OrderForm: ({ initialCustomerId }: { initialCustomerId?: string }) => {
+    orderFormMock.lastInitialCustomerId = initialCustomerId;
+    return <div>order-form</div>;
+  },
 }));
 
 vi.mock("../../domain/orders/components/OrderList", () => ({
@@ -64,6 +70,7 @@ afterEach(() => {
   cleanup();
   navigateMock.mockReset();
   permissionMock.canWrite.mockReset();
+  orderFormMock.lastInitialCustomerId = undefined;
 });
 
 describe("OrdersPage", () => {
@@ -98,5 +105,21 @@ describe("OrdersPage", () => {
     expect(screen.queryByText("order-form")).toBeNull();
     expect(screen.getByText("orders.form.readOnly")).toBeTruthy();
     expect(screen.getByRole("button", { name: "orders.detail.backToList" })).toBeTruthy();
+  });
+
+  it("forwards a preselected customer from the create-order query string", async () => {
+    permissionMock.canWrite.mockReturnValue(true);
+    const { OrdersPage } = await import("./OrdersPage");
+
+    render(
+      <MemoryRouter initialEntries={["/orders/new?customer_id=cust-123"]}>
+        <Routes>
+          <Route path="*" element={<OrdersPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("order-form")).toBeTruthy();
+    expect(orderFormMock.lastInitialCustomerId).toBe("cust-123");
   });
 });

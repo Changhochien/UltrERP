@@ -29,6 +29,8 @@ export function OrdersPage() {
   }
 
   if (location.pathname === ORDER_CREATE_ROUTE) {
+    const initialCustomerId = new URLSearchParams(location.search).get("customer_id") ?? undefined;
+
     if (!canWriteOrders) {
       return (
         <div className="space-y-6">
@@ -49,6 +51,7 @@ export function OrdersPage() {
 
     return (
       <OrderForm
+        initialCustomerId={initialCustomerId}
         onCreated={(id) => navigate(`/orders/${id}`)}
         onCancel={() => navigate(ORDERS_ROUTE)}
       />

@@ -1,6 +1,6 @@
 /** Form to create a new sales order with dynamic line items. */
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayout";
@@ -14,6 +14,7 @@ import type { OrderCreatePayload, OrderLineCreate, OrderSalesTeamAssignmentCreat
 import { trackEvent, AnalyticsEvents } from "../../../lib/analytics";
 
 interface OrderFormProps {
+  initialCustomerId?: string;
   onCreated: (orderId: string) => void;
   onCancel: () => void;
 }
@@ -26,12 +27,12 @@ function emptySalesTeamMember(): OrderSalesTeamAssignmentCreate {
   return { sales_person: "", allocated_percentage: 0, commission_rate: 0 };
 }
 
-export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
+export function OrderForm({ initialCustomerId, onCreated, onCancel }: OrderFormProps) {
   const { t } = useTranslation("common");
   const { items: paymentTerms, loading: termsLoading, error: termsError } = usePaymentTerms();
   const { create, submitting, error } = useCreateOrder();
 
-  const [customerId, setCustomerId] = useState("");
+  const [customerId, setCustomerId] = useState(initialCustomerId ?? "");
   const [paymentTermsCode, setPaymentTermsCode] = useState("NET_30");
   const [discountAmount, setDiscountAmount] = useState(0);
   const [discountPercent, setDiscountPercent] = useState(0);
@@ -39,6 +40,10 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
   const [lines, setLines] = useState<OrderLineCreate[]>([emptyLine()]);
   const [salesTeam, setSalesTeam] = useState<OrderSalesTeamAssignmentCreate[]>([]);
   const submittingRef = useRef(false);
+
+  useEffect(() => {
+    setCustomerId(initialCustomerId ?? "");
+  }, [initialCustomerId]);
 
 
   if (termsLoading) return <p aria-busy="true">{t("orders.form.loading")}</p>;
@@ -115,6 +120,10 @@ export function OrderForm({ onCreated, onCancel }: OrderFormProps) {
         <h2 className="text-xl font-semibold tracking-tight">{t("orders.form.newOrderTitle")}</h2>
         <p className="text-sm text-muted-foreground">{t("orders.form.newOrderDescription")}</p>
       </div>
+
+      {initialCustomerId ? (
+        <SurfaceMessage>{t("orders.form.preselectedCustomer")}</SurfaceMessage>
+      ) : null}
 
       {error ? <SurfaceMessage tone="danger">{error}</SurfaceMessage> : null}
 
