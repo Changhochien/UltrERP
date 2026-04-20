@@ -1,0 +1,4318 @@
+{
+  "attempt_number": 22,
+  "batch_id": "cao50001-live-refresh",
+  "blocking_issue_count": 0,
+  "category_review_summary": {
+    "candidate_count": 0,
+    "candidates": [],
+    "excluded_count": 0,
+    "fallback_count": 0,
+    "low_confidence_count": 0
+  },
+  "counts": {
+    "category_review_candidate_count": 0,
+    "category_review_excluded_count": 0,
+    "category_review_fallback_count": 0,
+    "category_review_low_confidence_count": 0,
+    "customer_count": 953,
+    "customer_type_dealer_count": 0,
+    "customer_type_end_user_count": 0,
+    "customer_type_unknown_count": 936,
+    "holding_count": 514,
+    "inventory_count": 6675,
+    "invoice_count": 136828,
+    "invoice_line_count": 609208,
+    "invoice_snapshot_count": 136828,
+    "legacy_header_snapshot_count": 283098,
+    "legacy_header_snapshot_document_count": 283098,
+    "legacy_header_snapshot_missing_count": 0,
+    "lineage_count": 1642373,
+    "order_count": 136828,
+    "order_line_count": 609208,
+    "order_snapshot_count": 136828,
+    "product_count": 6838,
+    "receiving_audit_count": 63150,
+    "resolution_holding_count": 514,
+    "resolution_resolved_count": 829212,
+    "supplier_count": 92,
+    "supplier_invoice_count": 9442,
+    "supplier_invoice_line_count": 63150,
+    "supplier_invoice_snapshot_count": 9442,
+    "warehouse_count": 1
+  },
+  "epic13_handoff": {
+    "boundary": "Story 15.5 emits batch-scoped import evidence only. Epic 13 owns longer-horizon shadow-mode reconciliation.",
+    "comparison_inputs": [
+      "stage_reconciliation",
+      "mapping_summary",
+      "failed_stages",
+      "counts",
+      "snapshot_coverage",
+      "resolution_status_counts"
+    ],
+    "holding_count": 514,
+    "legacy_header_snapshot_count": 283098,
+    "legacy_header_snapshot_missing_count": 0,
+    "lineage_count": 1642373,
+    "resolution_status_counts": {
+      "resolution_holding_count": 514,
+      "resolution_resolved_count": 829212
+    },
+    "scope_cutoff_date": "2026-04-17",
+    "scope_key": "60dca8e096295fcd"
+  },
+  "failed_stages": [],
+  "issues": [],
+  "mapping_summary": {
+    "candidate_count": 62,
+    "mapping_count": 6214,
+    "orphan_code_count": 0,
+    "orphan_row_count": 0,
+    "unknown_count": 0
+  },
+  "replay": {
+    "disposition": "new-scope",
+    "previous_attempt_number": null,
+    "previous_batch_id": null,
+    "previous_status": null,
+    "scope_cutoff_date": "2026-04-17",
+    "scope_key": "60dca8e096295fcd"
+  },
+  "schema_name": "raw_legacy",
+  "snapshot_coverage": {
+    "invoice_count": 136828,
+    "invoice_snapshot_count": 136828,
+    "order_count": 136828,
+    "order_snapshot_count": 136828,
+    "supplier_invoice_count": 9442,
+    "supplier_invoice_snapshot_count": 9442
+  },
+  "stage_reconciliation": [
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.opdaevent",
+      "status": "completed",
+      "table_name": "opdaevent"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbaapay",
+      "status": "completed",
+      "table_name": "otbaapay"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbabkdl",
+      "status": "completed",
+      "table_name": "otbabkdl"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbacash",
+      "status": "completed",
+      "table_name": "otbacash"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbacashdt",
+      "status": "completed",
+      "table_name": "otbacashdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbacomminvo",
+      "status": "completed",
+      "table_name": "otbacomminvo"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbafixdepost",
+      "status": "completed",
+      "table_name": "otbafixdepost"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbainvodetail",
+      "status": "completed",
+      "table_name": "otbainvodetail"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbainvorail",
+      "status": "completed",
+      "table_name": "otbainvorail"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbanotes",
+      "status": "completed",
+      "table_name": "otbanotes"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbapetty",
+      "status": "completed",
+      "table_name": "otbapetty"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbasalary",
+      "status": "completed",
+      "table_name": "otbasalary"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbasetinvoice",
+      "status": "completed",
+      "table_name": "otbasetinvoice"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbashortnote",
+      "status": "completed",
+      "table_name": "otbashortnote"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbaslip",
+      "status": "completed",
+      "table_name": "otbaslip"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbaspecinvo",
+      "status": "completed",
+      "table_name": "otbaspecinvo"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbazerodetail",
+      "status": "completed",
+      "table_name": "otbazerodetail"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbazeroinvo",
+      "status": "completed",
+      "table_name": "otbazeroinvo"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbcdev",
+      "status": "completed",
+      "table_name": "otbcdev"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbcdevdt",
+      "status": "completed",
+      "table_name": "otbcdevdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsbomslip",
+      "status": "completed",
+      "table_name": "otbsbomslip"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsbomslipdt",
+      "status": "completed",
+      "table_name": "otbsbomslipdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbscxagiodt",
+      "status": "completed",
+      "table_name": "otbscxagiodt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbscxback",
+      "status": "completed",
+      "table_name": "otbscxback"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbscxdt",
+      "status": "completed",
+      "table_name": "otbscxdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbscxmain",
+      "status": "completed",
+      "table_name": "otbscxmain"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsheypath",
+      "status": "completed",
+      "table_name": "otbsheypath"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbslocationdl",
+      "status": "completed",
+      "table_name": "otbslocationdl"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsmobileslipnote",
+      "status": "completed",
+      "table_name": "otbsmobileslipnote"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbssaleplan",
+      "status": "completed",
+      "table_name": "otbssaleplan"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbssaleplandt",
+      "status": "completed",
+      "table_name": "otbssaleplandt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipbf",
+      "status": "completed",
+      "table_name": "otbsslipbf"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipcdb",
+      "status": "completed",
+      "table_name": "otbsslipcdb"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipcpd",
+      "status": "completed",
+      "table_name": "otbsslipcpd"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipctz",
+      "status": "completed",
+      "table_name": "otbsslipctz"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipdtbf",
+      "status": "completed",
+      "table_name": "otbsslipdtbf"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipdtcdb",
+      "status": "completed",
+      "table_name": "otbsslipdtcdb"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipdtcpd",
+      "status": "completed",
+      "table_name": "otbsslipdtcpd"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipdtctz",
+      "status": "completed",
+      "table_name": "otbsslipdtctz"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipdth",
+      "status": "completed",
+      "table_name": "otbsslipdth"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipdthey",
+      "status": "completed",
+      "table_name": "otbsslipdthey"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipdtj",
+      "status": "completed",
+      "table_name": "otbsslipdtj"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipdto",
+      "status": "completed",
+      "table_name": "otbsslipdto"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipdtp",
+      "status": "completed",
+      "table_name": "otbsslipdtp"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipdtpc",
+      "status": "completed",
+      "table_name": "otbsslipdtpc"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipdtq",
+      "status": "completed",
+      "table_name": "otbsslipdtq"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipdtv",
+      "status": "completed",
+      "table_name": "otbsslipdtv"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipdtx",
+      "status": "completed",
+      "table_name": "otbsslipdtx"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipdty",
+      "status": "completed",
+      "table_name": "otbsslipdty"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipdtzj",
+      "status": "completed",
+      "table_name": "otbsslipdtzj"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbssliph",
+      "status": "completed",
+      "table_name": "otbssliph"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbssliphey",
+      "status": "completed",
+      "table_name": "otbssliphey"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipj",
+      "status": "completed",
+      "table_name": "otbsslipj"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipo",
+      "status": "completed",
+      "table_name": "otbsslipo"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipotherfee",
+      "status": "completed",
+      "table_name": "otbsslipotherfee"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipp",
+      "status": "completed",
+      "table_name": "otbsslipp"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslippc",
+      "status": "completed",
+      "table_name": "otbsslippc"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipq",
+      "status": "completed",
+      "table_name": "otbsslipq"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslips",
+      "status": "completed",
+      "table_name": "otbsslips"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipv",
+      "status": "completed",
+      "table_name": "otbsslipv"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipw",
+      "status": "completed",
+      "table_name": "otbsslipw"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipx",
+      "status": "completed",
+      "table_name": "otbsslipx"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipxems",
+      "status": "completed",
+      "table_name": "otbsslipxems"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsslipy",
+      "status": "completed",
+      "table_name": "otbsslipy"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsspay",
+      "status": "completed",
+      "table_name": "otbsspay"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsstkserial",
+      "status": "completed",
+      "table_name": "otbsstkserial"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsstkserialdt",
+      "status": "completed",
+      "table_name": "otbsstkserialdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsstockfactory",
+      "status": "completed",
+      "table_name": "otbsstockfactory"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsstockinfofactory",
+      "status": "completed",
+      "table_name": "otbsstockinfofactory"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbsstockmaterial",
+      "status": "completed",
+      "table_name": "otbsstockmaterial"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbstestreport",
+      "status": "completed",
+      "table_name": "otbstestreport"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.otbstestreportdt",
+      "status": "completed",
+      "table_name": "otbstestreportdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.pdaevent",
+      "status": "completed",
+      "table_name": "pdaevent"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 30,
+      "source_file": "public.rpt01tmptb1191513",
+      "status": "completed",
+      "table_name": "rpt01tmptb1191513"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 134,
+      "source_file": "public.rptstkstore1358528773729",
+      "status": "completed",
+      "table_name": "rptstkstore1358528773729"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 259,
+      "source_file": "public.rptstkstore140456666849",
+      "status": "completed",
+      "table_name": "rptstkstore140456666849"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 174,
+      "source_file": "public.rptstkstore143513184334",
+      "status": "completed",
+      "table_name": "rptstkstore143513184334"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 110,
+      "source_file": "public.rptstkstore1658101829508",
+      "status": "completed",
+      "table_name": "rptstkstore1658101829508"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 135,
+      "source_file": "public.rptstkstore1658551809853",
+      "status": "completed",
+      "table_name": "rptstkstore1658551809853"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 103,
+      "source_file": "public.rptstkstore1659526813632",
+      "status": "completed",
+      "table_name": "rptstkstore1659526813632"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 50,
+      "source_file": "public.rptstkstore183938119442",
+      "status": "completed",
+      "table_name": "rptstkstore183938119442"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 92,
+      "source_file": "public.rptstkstore185644248808",
+      "status": "completed",
+      "table_name": "rptstkstore185644248808"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 103,
+      "source_file": "public.rptstkstore19215121160",
+      "status": "completed",
+      "table_name": "rptstkstore19215121160"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 135,
+      "source_file": "public.rptstkstore1922422096315",
+      "status": "completed",
+      "table_name": "rptstkstore1922422096315"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 110,
+      "source_file": "public.rptstkstore192466699812",
+      "status": "completed",
+      "table_name": "rptstkstore192466699812"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 72,
+      "source_file": "public.rptstkstore1925148669989",
+      "status": "completed",
+      "table_name": "rptstkstore1925148669989"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 95,
+      "source_file": "public.rptstkstore1926408367323",
+      "status": "completed",
+      "table_name": "rptstkstore1926408367323"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.scr_check",
+      "status": "completed",
+      "table_name": "scr_check"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.scr_editdt",
+      "status": "completed",
+      "table_name": "scr_editdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.scr_editdtuser",
+      "status": "completed",
+      "table_name": "scr_editdtuser"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.scr_editmain",
+      "status": "completed",
+      "table_name": "scr_editmain"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.scr_grdcol",
+      "status": "completed",
+      "table_name": "scr_grdcol"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.scr_grdmaster",
+      "status": "completed",
+      "table_name": "scr_grdmaster"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.scr_language",
+      "status": "completed",
+      "table_name": "scr_language"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.scr_rptlist",
+      "status": "completed",
+      "table_name": "scr_rptlist"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.scr_tabrelation",
+      "status": "completed",
+      "table_name": "scr_tabrelation"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 1,
+      "source_file": "public.tbaaccounts",
+      "status": "completed",
+      "table_name": "tbaaccounts"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaacsub",
+      "status": "completed",
+      "table_name": "tbaacsub"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 5,
+      "source_file": "public.tbaadjust",
+      "status": "completed",
+      "table_name": "tbaadjust"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 232,
+      "source_file": "public.tbaamnt",
+      "status": "completed",
+      "table_name": "tbaamnt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaamnt_ac",
+      "status": "completed",
+      "table_name": "tbaamnt_ac"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaamnt_curr",
+      "status": "completed",
+      "table_name": "tbaamnt_curr"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaamnt_dept",
+      "status": "completed",
+      "table_name": "tbaamnt_dept"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaapay",
+      "status": "completed",
+      "table_name": "tbaapay"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaapaycxdt",
+      "status": "completed",
+      "table_name": "tbaapaycxdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaapayfeedt",
+      "status": "completed",
+      "table_name": "tbaapayfeedt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 24,
+      "source_file": "public.tbaarapctlsub",
+      "status": "completed",
+      "table_name": "tbaarapctlsub"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaarapral",
+      "status": "completed",
+      "table_name": "tbaarapral"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaarapraldt",
+      "status": "completed",
+      "table_name": "tbaarapraldt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaaset",
+      "status": "completed",
+      "table_name": "tbaaset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaasetcopy",
+      "status": "completed",
+      "table_name": "tbaasetcopy"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaasetdept",
+      "status": "completed",
+      "table_name": "tbaasetdept"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaasetitem",
+      "status": "completed",
+      "table_name": "tbaasetitem"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaasetlr",
+      "status": "completed",
+      "table_name": "tbaasetlr"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaasetlrdt",
+      "status": "completed",
+      "table_name": "tbaasetlrdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaasetmove",
+      "status": "completed",
+      "table_name": "tbaasetmove"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaasetmovedt",
+      "status": "completed",
+      "table_name": "tbaasetmovedt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaasetpd",
+      "status": "completed",
+      "table_name": "tbaasetpd"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaasetpddt",
+      "status": "completed",
+      "table_name": "tbaasetpddt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaassetalte",
+      "status": "completed",
+      "table_name": "tbaassetalte"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbabacktaxamt",
+      "status": "completed",
+      "table_name": "tbabacktaxamt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 7831,
+      "source_file": "public.tbabank",
+      "status": "completed",
+      "table_name": "tbabank"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbabankact",
+      "status": "completed",
+      "table_name": "tbabankact"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 4,
+      "source_file": "public.tbabankitem",
+      "status": "completed",
+      "table_name": "tbabankitem"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbabankyjctconserve",
+      "status": "completed",
+      "table_name": "tbabankyjctconserve"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 261,
+      "source_file": "public.tbabankzh",
+      "status": "completed",
+      "table_name": "tbabankzh"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbabasscrset",
+      "status": "completed",
+      "table_name": "tbabasscrset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbabkamt",
+      "status": "completed",
+      "table_name": "tbabkamt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbabkdl",
+      "status": "completed",
+      "table_name": "tbabkdl"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbabkmode",
+      "status": "completed",
+      "table_name": "tbabkmode"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbacase",
+      "status": "completed",
+      "table_name": "tbacase"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbacash",
+      "status": "completed",
+      "table_name": "tbacash"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbacashdt",
+      "status": "completed",
+      "table_name": "tbacashdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 103,
+      "source_file": "public.tbacashflow",
+      "status": "completed",
+      "table_name": "tbacashflow"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbacashpaycase",
+      "status": "completed",
+      "table_name": "tbacashpaycase"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 4,
+      "source_file": "public.tbacashpaytype",
+      "status": "completed",
+      "table_name": "tbacashpaytype"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaccellcontent",
+      "status": "completed",
+      "table_name": "tbaccellcontent"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 1,
+      "source_file": "public.tbacodefmt",
+      "status": "completed",
+      "table_name": "tbacodefmt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbacomminvo",
+      "status": "completed",
+      "table_name": "tbacomminvo"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbacomminvobf",
+      "status": "completed",
+      "table_name": "tbacomminvobf"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaconvtoinv",
+      "status": "completed",
+      "table_name": "tbaconvtoinv"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 69,
+      "source_file": "public.tbacost",
+      "status": "completed",
+      "table_name": "tbacost"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 18,
+      "source_file": "public.tbacostdetail",
+      "status": "completed",
+      "table_name": "tbacostdetail"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbacrptcolqrydt",
+      "status": "completed",
+      "table_name": "tbacrptcolqrydt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbacrptcolquery",
+      "status": "completed",
+      "table_name": "tbacrptcolquery"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbacrptlist",
+      "status": "completed",
+      "table_name": "tbacrptlist"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbacrptprnpageset",
+      "status": "completed",
+      "table_name": "tbacrptprnpageset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 49,
+      "source_file": "public.tbactlsub",
+      "status": "completed",
+      "table_name": "tbactlsub"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt",
+      "status": "completed",
+      "table_name": "tbadclrpt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt01",
+      "status": "completed",
+      "table_name": "tbadclrpt01"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt111",
+      "status": "completed",
+      "table_name": "tbadclrpt111"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt121",
+      "status": "completed",
+      "table_name": "tbadclrpt121"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt121dt",
+      "status": "completed",
+      "table_name": "tbadclrpt121dt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt131",
+      "status": "completed",
+      "table_name": "tbadclrpt131"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt131dt",
+      "status": "completed",
+      "table_name": "tbadclrpt131dt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt141",
+      "status": "completed",
+      "table_name": "tbadclrpt141"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt151a",
+      "status": "completed",
+      "table_name": "tbadclrpt151a"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt151b",
+      "status": "completed",
+      "table_name": "tbadclrpt151b"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt151c",
+      "status": "completed",
+      "table_name": "tbadclrpt151c"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt161",
+      "status": "completed",
+      "table_name": "tbadclrpt161"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt171",
+      "status": "completed",
+      "table_name": "tbadclrpt171"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt181",
+      "status": "completed",
+      "table_name": "tbadclrpt181"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt191",
+      "status": "completed",
+      "table_name": "tbadclrpt191"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt201",
+      "status": "completed",
+      "table_name": "tbadclrpt201"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt211",
+      "status": "completed",
+      "table_name": "tbadclrpt211"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt31",
+      "status": "completed",
+      "table_name": "tbadclrpt31"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt32",
+      "status": "completed",
+      "table_name": "tbadclrpt32"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt33",
+      "status": "completed",
+      "table_name": "tbadclrpt33"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt34",
+      "status": "completed",
+      "table_name": "tbadclrpt34"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt35",
+      "status": "completed",
+      "table_name": "tbadclrpt35"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt36",
+      "status": "completed",
+      "table_name": "tbadclrpt36"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt43",
+      "status": "completed",
+      "table_name": "tbadclrpt43"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt44",
+      "status": "completed",
+      "table_name": "tbadclrpt44"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt51",
+      "status": "completed",
+      "table_name": "tbadclrpt51"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt52",
+      "status": "completed",
+      "table_name": "tbadclrpt52"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt53",
+      "status": "completed",
+      "table_name": "tbadclrpt53"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt54",
+      "status": "completed",
+      "table_name": "tbadclrpt54"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt55",
+      "status": "completed",
+      "table_name": "tbadclrpt55"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt56",
+      "status": "completed",
+      "table_name": "tbadclrpt56"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt57",
+      "status": "completed",
+      "table_name": "tbadclrpt57"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt58",
+      "status": "completed",
+      "table_name": "tbadclrpt58"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt61",
+      "status": "completed",
+      "table_name": "tbadclrpt61"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt62",
+      "status": "completed",
+      "table_name": "tbadclrpt62"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt78",
+      "status": "completed",
+      "table_name": "tbadclrpt78"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadclrpt91",
+      "status": "completed",
+      "table_name": "tbadclrpt91"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadelno",
+      "status": "completed",
+      "table_name": "tbadelno"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadepostzjhk",
+      "status": "completed",
+      "table_name": "tbadepostzjhk"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadept",
+      "status": "completed",
+      "table_name": "tbadept"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadeptsub",
+      "status": "completed",
+      "table_name": "tbadeptsub"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadissinvo",
+      "status": "completed",
+      "table_name": "tbadissinvo"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadlgzjday",
+      "status": "completed",
+      "table_name": "tbadlgzjday"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 1,
+      "source_file": "public.tbadoevent",
+      "status": "completed",
+      "table_name": "tbadoevent"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbadpctamt",
+      "status": "completed",
+      "table_name": "tbadpctamt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaedurem",
+      "status": "completed",
+      "table_name": "tbaedurem"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaeinvtranlog",
+      "status": "completed",
+      "table_name": "tbaeinvtranlog"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaemplopr",
+      "status": "completed",
+      "table_name": "tbaemplopr"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 1,
+      "source_file": "public.tbaemploy",
+      "status": "completed",
+      "table_name": "tbaemploy"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaemploy1",
+      "status": "completed",
+      "table_name": "tbaemploy1"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 25,
+      "source_file": "public.tbaemployitem",
+      "status": "completed",
+      "table_name": "tbaemployitem"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaemployitemdt",
+      "status": "completed",
+      "table_name": "tbaemployitemdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaemployset",
+      "status": "completed",
+      "table_name": "tbaemployset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaemploytab",
+      "status": "completed",
+      "table_name": "tbaemploytab"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 62,
+      "source_file": "public.tbaemplt",
+      "status": "completed",
+      "table_name": "tbaemplt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaempset",
+      "status": "completed",
+      "table_name": "tbaempset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaendperiodsala",
+      "status": "completed",
+      "table_name": "tbaendperiodsala"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 1,
+      "source_file": "public.tbaetgood",
+      "status": "completed",
+      "table_name": "tbaetgood"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaetgooddata",
+      "status": "completed",
+      "table_name": "tbaetgooddata"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaexratecheck",
+      "status": "completed",
+      "table_name": "tbaexratecheck"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaexratechecksub",
+      "status": "completed",
+      "table_name": "tbaexratechecksub"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbafixdepost",
+      "status": "completed",
+      "table_name": "tbafixdepost"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbafixdepostdjy",
+      "status": "completed",
+      "table_name": "tbafixdepostdjy"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbafixdepostdl",
+      "status": "completed",
+      "table_name": "tbafixdepostdl"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbafixdepostdt",
+      "status": "completed",
+      "table_name": "tbafixdepostdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbafixdepostfx",
+      "status": "completed",
+      "table_name": "tbafixdepostfx"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbafixdepostwake",
+      "status": "completed",
+      "table_name": "tbafixdepostwake"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbafixdepostzj",
+      "status": "completed",
+      "table_name": "tbafixdepostzj"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 28,
+      "source_file": "public.tbaflagdc",
+      "status": "completed",
+      "table_name": "tbaflagdc"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbafnccomego",
+      "status": "completed",
+      "table_name": "tbafnccomego"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbafnccx",
+      "status": "completed",
+      "table_name": "tbafnccx"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbafnccxdt",
+      "status": "completed",
+      "table_name": "tbafnccxdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbafncmain",
+      "status": "completed",
+      "table_name": "tbafncmain"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbafncratealte",
+      "status": "completed",
+      "table_name": "tbafncratealte"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbafncrefund",
+      "status": "completed",
+      "table_name": "tbafncrefund"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbafnctranstion",
+      "status": "completed",
+      "table_name": "tbafnctranstion"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 6,
+      "source_file": "public.tbafncuse",
+      "status": "completed",
+      "table_name": "tbafncuse"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbafncwake",
+      "status": "completed",
+      "table_name": "tbafncwake"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaforelsesala",
+      "status": "completed",
+      "table_name": "tbaforelsesala"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbagbrepstyle",
+      "status": "completed",
+      "table_name": "tbagbrepstyle"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbagroupset",
+      "status": "completed",
+      "table_name": "tbagroupset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 50,
+      "source_file": "public.tbahealth",
+      "status": "completed",
+      "table_name": "tbahealth"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 7305,
+      "source_file": "public.tbaholiday",
+      "status": "completed",
+      "table_name": "tbaholiday"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 50,
+      "source_file": "public.tbahosthealth",
+      "status": "completed",
+      "table_name": "tbahosthealth"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 810,
+      "source_file": "public.tbahostlbtb",
+      "status": "completed",
+      "table_name": "tbahostlbtb"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbainvimpstk",
+      "status": "completed",
+      "table_name": "tbainvimpstk"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbainvodetail",
+      "status": "completed",
+      "table_name": "tbainvodetail"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 90,
+      "source_file": "public.tbainvorail",
+      "status": "completed",
+      "table_name": "tbainvorail"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbainvstock",
+      "status": "completed",
+      "table_name": "tbainvstock"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbainvtaxadt",
+      "status": "completed",
+      "table_name": "tbainvtaxadt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 9,
+      "source_file": "public.tbaiotypeset",
+      "status": "completed",
+      "table_name": "tbaiotypeset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaisb",
+      "status": "completed",
+      "table_name": "tbaisb"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaisbcode",
+      "status": "completed",
+      "table_name": "tbaisbcode"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaisbcodewake",
+      "status": "completed",
+      "table_name": "tbaisbcodewake"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaisbdt",
+      "status": "completed",
+      "table_name": "tbaisbdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 810,
+      "source_file": "public.tbalbtb",
+      "status": "completed",
+      "table_name": "tbalbtb"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 9,
+      "source_file": "public.tbalog",
+      "status": "completed",
+      "table_name": "tbalog"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbalogbk",
+      "status": "completed",
+      "table_name": "tbalogbk"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbamakesala",
+      "status": "completed",
+      "table_name": "tbamakesala"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbamonrate",
+      "status": "completed",
+      "table_name": "tbamonrate"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbanewaset",
+      "status": "completed",
+      "table_name": "tbanewaset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbanewasetdept",
+      "status": "completed",
+      "table_name": "tbanewasetdept"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbanewasetdt",
+      "status": "completed",
+      "table_name": "tbanewasetdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbanewasetdtcopy",
+      "status": "completed",
+      "table_name": "tbanewasetdtcopy"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbanewdpctamt",
+      "status": "completed",
+      "table_name": "tbanewdpctamt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbano",
+      "status": "completed",
+      "table_name": "tbano"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbano1",
+      "status": "completed",
+      "table_name": "tbano1"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbanotes",
+      "status": "completed",
+      "table_name": "tbanotes"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbanotesdis",
+      "status": "completed",
+      "table_name": "tbanotesdis"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbanotesdl",
+      "status": "completed",
+      "table_name": "tbanotesdl"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbanoteset",
+      "status": "completed",
+      "table_name": "tbanoteset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaothersala",
+      "status": "completed",
+      "table_name": "tbaothersala"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbapasswd",
+      "status": "completed",
+      "table_name": "tbapasswd"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbapetty",
+      "status": "completed",
+      "table_name": "tbapetty"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaplan",
+      "status": "completed",
+      "table_name": "tbaplan"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaprnset",
+      "status": "completed",
+      "table_name": "tbaprnset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaprorate",
+      "status": "completed",
+      "table_name": "tbaprorate"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 25,
+      "source_file": "public.tbarate",
+      "status": "completed",
+      "table_name": "tbarate"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 15,
+      "source_file": "public.tbaraterefer",
+      "status": "completed",
+      "table_name": "tbaraterefer"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 49,
+      "source_file": "public.tbareptlst",
+      "status": "completed",
+      "table_name": "tbareptlst"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbareptset",
+      "status": "completed",
+      "table_name": "tbareptset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 8,
+      "source_file": "public.tbarichkind",
+      "status": "completed",
+      "table_name": "tbarichkind"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 26,
+      "source_file": "public.tbarptitvset",
+      "status": "completed",
+      "table_name": "tbarptitvset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbarunfuninfo",
+      "status": "completed",
+      "table_name": "tbarunfuninfo"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 127,
+      "source_file": "public.tbasadset",
+      "status": "completed",
+      "table_name": "tbasadset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbasadsetdt",
+      "status": "completed",
+      "table_name": "tbasadsetdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbasalary",
+      "status": "completed",
+      "table_name": "tbasalary"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbasalaryitem",
+      "status": "completed",
+      "table_name": "tbasalaryitem"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 1,
+      "source_file": "public.tbasalaryset",
+      "status": "completed",
+      "table_name": "tbasalaryset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 63,
+      "source_file": "public.tbasecondlang",
+      "status": "completed",
+      "table_name": "tbasecondlang"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 74,
+      "source_file": "public.tbasetinfo",
+      "status": "completed",
+      "table_name": "tbasetinfo"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbasetinvoice",
+      "status": "completed",
+      "table_name": "tbasetinvoice"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbashirefund",
+      "status": "completed",
+      "table_name": "tbashirefund"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbashirefunddt",
+      "status": "completed",
+      "table_name": "tbashirefunddt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbashortnote",
+      "status": "completed",
+      "table_name": "tbashortnote"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbashortnotedl",
+      "status": "completed",
+      "table_name": "tbashortnotedl"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbashortnotedt",
+      "status": "completed",
+      "table_name": "tbashortnotedt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbashortnotewake",
+      "status": "completed",
+      "table_name": "tbashortnotewake"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbashortnotework",
+      "status": "completed",
+      "table_name": "tbashortnotework"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaslip",
+      "status": "completed",
+      "table_name": "tbaslip"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaslipcx",
+      "status": "completed",
+      "table_name": "tbaslipcx"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaslipcxfornote",
+      "status": "completed",
+      "table_name": "tbaslipcxfornote"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaslipgz",
+      "status": "completed",
+      "table_name": "tbaslipgz"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaslipisb",
+      "status": "completed",
+      "table_name": "tbaslipisb"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaslipisbdt",
+      "status": "completed",
+      "table_name": "tbaslipisbdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaslipjump",
+      "status": "completed",
+      "table_name": "tbaslipjump"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbasliplog",
+      "status": "completed",
+      "table_name": "tbasliplog"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaslipmodel",
+      "status": "completed",
+      "table_name": "tbaslipmodel"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaslipselfset",
+      "status": "completed",
+      "table_name": "tbaslipselfset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaspecinvo",
+      "status": "completed",
+      "table_name": "tbaspecinvo"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 248,
+      "source_file": "public.tbastktokj",
+      "status": "completed",
+      "table_name": "tbastktokj"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbastst",
+      "status": "completed",
+      "table_name": "tbastst"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbasub",
+      "status": "completed",
+      "table_name": "tbasub"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 9,
+      "source_file": "public.tbasubbase",
+      "status": "completed",
+      "table_name": "tbasubbase"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 25,
+      "source_file": "public.tbasubclass",
+      "status": "completed",
+      "table_name": "tbasubclass"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 232,
+      "source_file": "public.tbasubject",
+      "status": "completed",
+      "table_name": "tbasubject"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbasybbc",
+      "status": "completed",
+      "table_name": "tbasybbc"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 1,
+      "source_file": "public.tbasyspara",
+      "status": "completed",
+      "table_name": "tbasyspara"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbasztype",
+      "status": "completed",
+      "table_name": "tbasztype"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 840,
+      "source_file": "public.tbatax",
+      "status": "completed",
+      "table_name": "tbatax"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbausrctl",
+      "status": "completed",
+      "table_name": "tbausrctl"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbausropr",
+      "status": "completed",
+      "table_name": "tbausropr"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbavirement",
+      "status": "completed",
+      "table_name": "tbavirement"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbavirementdt",
+      "status": "completed",
+      "table_name": "tbavirementdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbaxjllbc",
+      "status": "completed",
+      "table_name": "tbaxjllbc"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbayjct",
+      "status": "completed",
+      "table_name": "tbayjct"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbazdygroupset",
+      "status": "completed",
+      "table_name": "tbazdygroupset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbazerodetail",
+      "status": "completed",
+      "table_name": "tbazerodetail"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbazeroinvo",
+      "status": "completed",
+      "table_name": "tbazeroinvo"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbazg",
+      "status": "completed",
+      "table_name": "tbazg"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbazj",
+      "status": "completed",
+      "table_name": "tbazj"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbazjrpt",
+      "status": "completed",
+      "table_name": "tbazjrpt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 3,
+      "source_file": "public.tbazjrptaddi",
+      "status": "completed",
+      "table_name": "tbazjrptaddi"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 518,
+      "source_file": "public.tbazjrptfml",
+      "status": "completed",
+      "table_name": "tbazjrptfml"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 187,
+      "source_file": "public.tbazjsub",
+      "status": "completed",
+      "table_name": "tbazjsub"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 3643,
+      "source_file": "public.tbcaddress",
+      "status": "completed",
+      "table_name": "tbcaddress"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 6,
+      "source_file": "public.tbcarapcon",
+      "status": "completed",
+      "table_name": "tbcarapcon"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbcbackstore",
+      "status": "completed",
+      "table_name": "tbcbackstore"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 2,
+      "source_file": "public.tbcbaseno",
+      "status": "completed",
+      "table_name": "tbcbaseno"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbccredit",
+      "status": "completed",
+      "table_name": "tbccredit"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbcdailyevt",
+      "status": "completed",
+      "table_name": "tbcdailyevt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbcdev",
+      "status": "completed",
+      "table_name": "tbcdev"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbcdevdt",
+      "status": "completed",
+      "table_name": "tbcdevdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbcdoevent",
+      "status": "completed",
+      "table_name": "tbcdoevent"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbcimage",
+      "status": "completed",
+      "table_name": "tbcimage"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbcmaindb",
+      "status": "completed",
+      "table_name": "tbcmaindb"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 1,
+      "source_file": "public.tbcpasswd",
+      "status": "completed",
+      "table_name": "tbcpasswd"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 54,
+      "source_file": "public.tbcphrase",
+      "status": "completed",
+      "table_name": "tbcphrase"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 10,
+      "source_file": "public.tbcpubsyspara",
+      "status": "completed",
+      "table_name": "tbcpubsyspara"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 2,
+      "source_file": "public.tbctacdef",
+      "status": "completed",
+      "table_name": "tbctacdef"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 3,
+      "source_file": "public.tbcversion",
+      "status": "completed",
+      "table_name": "tbcversion"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 648,
+      "source_file": "public.tbhsyspara",
+      "status": "completed",
+      "table_name": "tbhsyspara"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbplog",
+      "status": "completed",
+      "table_name": "tbplog"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbplogbk",
+      "status": "completed",
+      "table_name": "tbplogbk"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbpusrctl",
+      "status": "completed",
+      "table_name": "tbpusrctl"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 2,
+      "source_file": "public.tbsagio",
+      "status": "completed",
+      "table_name": "tbsagio"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsbad",
+      "status": "completed",
+      "table_name": "tbsbad"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsbatchno",
+      "status": "completed",
+      "table_name": "tbsbatchno"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsbom",
+      "status": "completed",
+      "table_name": "tbsbom"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsbomdt",
+      "status": "completed",
+      "table_name": "tbsbomdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsbomslip",
+      "status": "completed",
+      "table_name": "tbsbomslip"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsbomslipdt",
+      "status": "completed",
+      "table_name": "tbsbomslipdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbscheck",
+      "status": "completed",
+      "table_name": "tbscheck"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbscheckact",
+      "status": "completed",
+      "table_name": "tbscheckact"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbscheckdt",
+      "status": "completed",
+      "table_name": "tbscheckdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbscheckset",
+      "status": "completed",
+      "table_name": "tbscheckset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbschecksetdt",
+      "status": "completed",
+      "table_name": "tbschecksetdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbscodehouse",
+      "status": "completed",
+      "table_name": "tbscodehouse"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbscodehousedt",
+      "status": "completed",
+      "table_name": "tbscodehousedt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbscommunication",
+      "status": "completed",
+      "table_name": "tbscommunication"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbscontraststock",
+      "status": "completed",
+      "table_name": "tbscontraststock"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbscorpcode",
+      "status": "completed",
+      "table_name": "tbscorpcode"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbscorpcodedt",
+      "status": "completed",
+      "table_name": "tbscorpcodedt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbscosemploy",
+      "status": "completed",
+      "table_name": "tbscosemploy"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 6,
+      "source_file": "public.tbscurrency",
+      "status": "completed",
+      "table_name": "tbscurrency"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 81,
+      "source_file": "public.tbscusfunkey",
+      "status": "completed",
+      "table_name": "tbscusfunkey"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 1045,
+      "source_file": "public.tbscust",
+      "status": "completed",
+      "table_name": "tbscust"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbscustadd",
+      "status": "completed",
+      "table_name": "tbscustadd"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbscustconn",
+      "status": "completed",
+      "table_name": "tbscustconn"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbscustname",
+      "status": "completed",
+      "table_name": "tbscustname"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbscustompage",
+      "status": "completed",
+      "table_name": "tbscustompage"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbscustompagegroup",
+      "status": "completed",
+      "table_name": "tbscustompagegroup"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbscustompageitem",
+      "status": "completed",
+      "table_name": "tbscustompageitem"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 73,
+      "source_file": "public.tbscustreptdef",
+      "status": "completed",
+      "table_name": "tbscustreptdef"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 73,
+      "source_file": "public.tbscustreptset",
+      "status": "completed",
+      "table_name": "tbscustreptset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbscusttel",
+      "status": "completed",
+      "table_name": "tbscusttel"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbscxagiodt",
+      "status": "completed",
+      "table_name": "tbscxagiodt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbscxback",
+      "status": "completed",
+      "table_name": "tbscxback"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 10,
+      "source_file": "public.tbscxdt",
+      "status": "completed",
+      "table_name": "tbscxdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 10,
+      "source_file": "public.tbscxmain",
+      "status": "completed",
+      "table_name": "tbscxmain"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsdeliverytime",
+      "status": "completed",
+      "table_name": "tbsdeliverytime"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 1,
+      "source_file": "public.tbsdoevent",
+      "status": "completed",
+      "table_name": "tbsdoevent"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsempplan",
+      "status": "completed",
+      "table_name": "tbsempplan"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 378,
+      "source_file": "public.tbsexpdefdt",
+      "status": "completed",
+      "table_name": "tbsexpdefdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 24,
+      "source_file": "public.tbsexpdefmain",
+      "status": "completed",
+      "table_name": "tbsexpdefmain"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsftpserver",
+      "status": "completed",
+      "table_name": "tbsftpserver"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsftpserverdt",
+      "status": "completed",
+      "table_name": "tbsftpserverdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 61,
+      "source_file": "public.tbsfunkey",
+      "status": "completed",
+      "table_name": "tbsfunkey"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsheypath",
+      "status": "completed",
+      "table_name": "tbsheypath"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbshplbplan",
+      "status": "completed",
+      "table_name": "tbshplbplan"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsinout",
+      "status": "completed",
+      "table_name": "tbsinout"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 1,
+      "source_file": "public.tbslocation",
+      "status": "completed",
+      "table_name": "tbslocation"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbslocationdl",
+      "status": "completed",
+      "table_name": "tbslocationdl"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 337767,
+      "source_file": "public.tbslog",
+      "status": "completed",
+      "table_name": "tbslog"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbslogbk",
+      "status": "completed",
+      "table_name": "tbslogbk"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsmarketingmix",
+      "status": "completed",
+      "table_name": "tbsmarketingmix"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsmarketingmixdt",
+      "status": "completed",
+      "table_name": "tbsmarketingmixdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsmarketingmixkey",
+      "status": "completed",
+      "table_name": "tbsmarketingmixkey"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsmemorandum",
+      "status": "completed",
+      "table_name": "tbsmemorandum"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsmobileclassset",
+      "status": "completed",
+      "table_name": "tbsmobileclassset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsmobileclassstock",
+      "status": "completed",
+      "table_name": "tbsmobileclassstock"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsmobilecust",
+      "status": "completed",
+      "table_name": "tbsmobilecust"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsmobilelimitqty",
+      "status": "completed",
+      "table_name": "tbsmobilelimitqty"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsmobilelocation",
+      "status": "completed",
+      "table_name": "tbsmobilelocation"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsmobilemessage",
+      "status": "completed",
+      "table_name": "tbsmobilemessage"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsmobileset",
+      "status": "completed",
+      "table_name": "tbsmobileset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsmobilesetmain",
+      "status": "completed",
+      "table_name": "tbsmobilesetmain"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsmobileslipnote",
+      "status": "completed",
+      "table_name": "tbsmobileslipnote"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsmobilestockb2b",
+      "status": "completed",
+      "table_name": "tbsmobilestockb2b"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsmobilestockcos",
+      "status": "completed",
+      "table_name": "tbsmobilestockcos"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsmobilestockec",
+      "status": "completed",
+      "table_name": "tbsmobilestockec"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsnavigation",
+      "status": "completed",
+      "table_name": "tbsnavigation"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 6560,
+      "source_file": "public.tbsno",
+      "status": "completed",
+      "table_name": "tbsno"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsnolock",
+      "status": "completed",
+      "table_name": "tbsnolock"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbspackage",
+      "status": "completed",
+      "table_name": "tbspackage"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbspackagedt",
+      "status": "completed",
+      "table_name": "tbspackagedt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbspasswd",
+      "status": "completed",
+      "table_name": "tbspasswd"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsplancust",
+      "status": "completed",
+      "table_name": "tbsplancust"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsplansale",
+      "status": "completed",
+      "table_name": "tbsplansale"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsplansaledt",
+      "status": "completed",
+      "table_name": "tbsplansaledt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsplu",
+      "status": "completed",
+      "table_name": "tbsplu"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbspludt",
+      "status": "completed",
+      "table_name": "tbspludt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsplumain",
+      "status": "completed",
+      "table_name": "tbsplumain"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbspluset",
+      "status": "completed",
+      "table_name": "tbspluset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsplusetdt",
+      "status": "completed",
+      "table_name": "tbsplusetdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 12,
+      "source_file": "public.tbsplusetsec",
+      "status": "completed",
+      "table_name": "tbsplusetsec"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsposlog",
+      "status": "completed",
+      "table_name": "tbsposlog"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsposlogbk",
+      "status": "completed",
+      "table_name": "tbsposlogbk"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbspospasswd",
+      "status": "completed",
+      "table_name": "tbspospasswd"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsposusrctl",
+      "status": "completed",
+      "table_name": "tbsposusrctl"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 508,
+      "source_file": "public.tbsprepay",
+      "status": "completed",
+      "table_name": "tbsprepay"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbspromulgate",
+      "status": "completed",
+      "table_name": "tbspromulgate"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsqzcust",
+      "status": "completed",
+      "table_name": "tbsqzcust"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 60,
+      "source_file": "public.tbsratio",
+      "status": "completed",
+      "table_name": "tbsratio"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 2220,
+      "source_file": "public.tbsremark",
+      "status": "completed",
+      "table_name": "tbsremark"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsreplist",
+      "status": "completed",
+      "table_name": "tbsreplist"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbssaleplan",
+      "status": "completed",
+      "table_name": "tbssaleplan"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbssaleplandt",
+      "status": "completed",
+      "table_name": "tbssaleplandt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsshopinfo",
+      "status": "completed",
+      "table_name": "tbsshopinfo"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsslipbf",
+      "status": "completed",
+      "table_name": "tbsslipbf"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsslipcdb",
+      "status": "completed",
+      "table_name": "tbsslipcdb"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 4,
+      "source_file": "public.tbsslipcpd",
+      "status": "completed",
+      "table_name": "tbsslipcpd"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 499,
+      "source_file": "public.tbsslipctz",
+      "status": "completed",
+      "table_name": "tbsslipctz"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsslipdtbf",
+      "status": "completed",
+      "table_name": "tbsslipdtbf"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsslipdtcdb",
+      "status": "completed",
+      "table_name": "tbsslipdtcdb"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 13,
+      "source_file": "public.tbsslipdtcpd",
+      "status": "completed",
+      "table_name": "tbsslipdtcpd"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 5461,
+      "source_file": "public.tbsslipdtctz",
+      "status": "completed",
+      "table_name": "tbsslipdtctz"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsslipdtdvr",
+      "status": "completed",
+      "table_name": "tbsslipdtdvr"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsslipdth",
+      "status": "completed",
+      "table_name": "tbsslipdth"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsslipdthey",
+      "status": "completed",
+      "table_name": "tbsslipdthey"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 63165,
+      "source_file": "public.tbsslipdtj",
+      "status": "completed",
+      "table_name": "tbsslipdtj"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 913,
+      "source_file": "public.tbsslipdto",
+      "status": "completed",
+      "table_name": "tbsslipdto"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsslipdtp",
+      "status": "completed",
+      "table_name": "tbsslipdtp"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsslipdtpc",
+      "status": "completed",
+      "table_name": "tbsslipdtpc"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsslipdtq",
+      "status": "completed",
+      "table_name": "tbsslipdtq"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsslipdtv",
+      "status": "completed",
+      "table_name": "tbsslipdtv"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 605233,
+      "source_file": "public.tbsslipdtx",
+      "status": "completed",
+      "table_name": "tbsslipdtx"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsslipdty",
+      "status": "completed",
+      "table_name": "tbsslipdty"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsslipdtzj",
+      "status": "completed",
+      "table_name": "tbsslipdtzj"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsslipdvr",
+      "status": "completed",
+      "table_name": "tbsslipdvr"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 117,
+      "source_file": "public.tbsslipexp",
+      "status": "completed",
+      "table_name": "tbsslipexp"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbssliph",
+      "status": "completed",
+      "table_name": "tbssliph"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbssliphey",
+      "status": "completed",
+      "table_name": "tbssliphey"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 9454,
+      "source_file": "public.tbsslipj",
+      "status": "completed",
+      "table_name": "tbsslipj"
+    },
+    {
+      "error_message": "fk_warning: supplier_code -> tbscust [1000-G27, 1103, 1104, 1122, 1122-G55, 1122-G83, 1132, 11321, 1137, 1138, 11381, 1142, 1142-G11, 1143, 1148, 1149, 1150, 1151, 1152, 1154, 1155, 1157, 1158, 1160, 1164, 11641, 1169, 1174, 1176, 1178, 1180, 1182, 1183, 1184, 1188, 1192, 2000, 2007, 20801, 20821, 2103, 2114, 2127, 2129, 2130, 2132, 2137, 2139, 2148, 21501, 2151, 2154, 2155, 2156, 2230, 2234, 2235, 2238, 2240, 22401, 2242, 2313, 2314, 2504, 2506, 2507, 2514, 25252, 2585, 2592, 2618, 2620, 2638, 2704, 2711, 2718, 2720, 2735, 2736, 2749, 2751, 2764, 2801, 2804, 2806, 2815, 2818, 2838, 2845, 2903, 2906, 2915, 3111, 3118, 3121, 3128, 3207, 3309, 3310, 3311, 3405, 3407, 3411, 3414, 3415, 3416, 3418, 3508, 3509, 3511, 3515, 3517, 3520, 3526, 3531, 3533]",
+      "expected_row_count": null,
+      "loaded_row_count": 298,
+      "source_file": "public.tbsslipo",
+      "status": "completed",
+      "table_name": "tbsslipo"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsslipotherfee",
+      "status": "completed",
+      "table_name": "tbsslipotherfee"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsslipp",
+      "status": "completed",
+      "table_name": "tbsslipp"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsslippc",
+      "status": "completed",
+      "table_name": "tbsslippc"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsslipq",
+      "status": "completed",
+      "table_name": "tbsslipq"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsslips",
+      "status": "completed",
+      "table_name": "tbsslips"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsslipv",
+      "status": "completed",
+      "table_name": "tbsslipv"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsslipw",
+      "status": "completed",
+      "table_name": "tbsslipw"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 136828,
+      "source_file": "public.tbsslipx",
+      "status": "completed",
+      "table_name": "tbsslipx"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsslipxems",
+      "status": "completed",
+      "table_name": "tbsslipxems"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsslipy",
+      "status": "completed",
+      "table_name": "tbsslipy"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 6,
+      "source_file": "public.tbsspay",
+      "status": "completed",
+      "table_name": "tbsspay"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsstkblback",
+      "status": "completed",
+      "table_name": "tbsstkblback"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsstkclass",
+      "status": "completed",
+      "table_name": "tbsstkclass"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsstkclassset",
+      "status": "completed",
+      "table_name": "tbsstkclassset"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 6675,
+      "source_file": "public.tbsstkhouse",
+      "status": "completed",
+      "table_name": "tbsstkhouse"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsstkinvoice",
+      "status": "completed",
+      "table_name": "tbsstkinvoice"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsstklendqty",
+      "status": "completed",
+      "table_name": "tbsstklendqty"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsstklocation",
+      "status": "completed",
+      "table_name": "tbsstklocation"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsstklock",
+      "status": "completed",
+      "table_name": "tbsstklock"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsstkmeans",
+      "status": "completed",
+      "table_name": "tbsstkmeans"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 1734,
+      "source_file": "public.tbsstkpave",
+      "status": "completed",
+      "table_name": "tbsstkpave"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsstkrpl",
+      "status": "completed",
+      "table_name": "tbsstkrpl"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsstkserial",
+      "status": "completed",
+      "table_name": "tbsstkserial"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsstkserialdt",
+      "status": "completed",
+      "table_name": "tbsstkserialdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsstkyard",
+      "status": "completed",
+      "table_name": "tbsstkyard"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 6698,
+      "source_file": "public.tbsstock",
+      "status": "completed",
+      "table_name": "tbsstock"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsstockdt",
+      "status": "completed",
+      "table_name": "tbsstockdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsstockfactory",
+      "status": "completed",
+      "table_name": "tbsstockfactory"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsstockinfofactory",
+      "status": "completed",
+      "table_name": "tbsstockinfofactory"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsstockmaterial",
+      "status": "completed",
+      "table_name": "tbsstockmaterial"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 1,
+      "source_file": "public.tbsstorehouse",
+      "status": "completed",
+      "table_name": "tbsstorehouse"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 1180,
+      "source_file": "public.tbssyspara",
+      "status": "completed",
+      "table_name": "tbssyspara"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbstel",
+      "status": "completed",
+      "table_name": "tbstel"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbstestreport",
+      "status": "completed",
+      "table_name": "tbstestreport"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbstestreportdt",
+      "status": "completed",
+      "table_name": "tbstestreportdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbstimeperiod",
+      "status": "completed",
+      "table_name": "tbstimeperiod"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbstmphouseno",
+      "status": "completed",
+      "table_name": "tbstmphouseno"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 4,
+      "source_file": "public.tbstmpqty",
+      "status": "completed",
+      "table_name": "tbstmpqty"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbstrans",
+      "status": "completed",
+      "table_name": "tbstrans"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbstranscorp",
+      "status": "completed",
+      "table_name": "tbstranscorp"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbstransdt",
+      "status": "completed",
+      "table_name": "tbstransdt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbstransmemo",
+      "status": "completed",
+      "table_name": "tbstransmemo"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsusrctl",
+      "status": "completed",
+      "table_name": "tbsusrctl"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 1,
+      "source_file": "public.tbsusrempl",
+      "status": "completed",
+      "table_name": "tbsusrempl"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 1,
+      "source_file": "public.tbsusrhouse",
+      "status": "completed",
+      "table_name": "tbsusrhouse"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsvocation",
+      "status": "completed",
+      "table_name": "tbsvocation"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsxhmodel",
+      "status": "completed",
+      "table_name": "tbsxhmodel"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbsxhmodeldt",
+      "status": "completed",
+      "table_name": "tbsxhmodeldt"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbwlog",
+      "status": "completed",
+      "table_name": "tbwlog"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbwlogbk",
+      "status": "completed",
+      "table_name": "tbwlogbk"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbwpasswd",
+      "status": "completed",
+      "table_name": "tbwpasswd"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbwusrctl",
+      "status": "completed",
+      "table_name": "tbwusrctl"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbwusrempl",
+      "status": "completed",
+      "table_name": "tbwusrempl"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbwusrhouse",
+      "status": "completed",
+      "table_name": "tbwusrhouse"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbylog",
+      "status": "completed",
+      "table_name": "tbylog"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbylogbk",
+      "status": "completed",
+      "table_name": "tbylogbk"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbypasswd",
+      "status": "completed",
+      "table_name": "tbypasswd"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbyusrctl",
+      "status": "completed",
+      "table_name": "tbyusrctl"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbyusrempl",
+      "status": "completed",
+      "table_name": "tbyusrempl"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tbyusrhouse",
+      "status": "completed",
+      "table_name": "tbyusrhouse"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tmp_stock",
+      "status": "completed",
+      "table_name": "tmp_stock"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tmp_stock_kind",
+      "status": "completed",
+      "table_name": "tmp_stock_kind"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tmp_stock_kind1",
+      "status": "completed",
+      "table_name": "tmp_stock_kind1"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 6652,
+      "source_file": "public.tmp_stock1",
+      "status": "completed",
+      "table_name": "tmp_stock1"
+    },
+    {
+      "error_message": null,
+      "expected_row_count": null,
+      "loaded_row_count": 0,
+      "source_file": "public.tmptbacomminvo",
+      "status": "completed",
+      "table_name": "tmptbacomminvo"
+    }
+  ],
+  "status": "clean",
+  "tenant_id": "00000000-0000-0000-0000-000000000001"
+}

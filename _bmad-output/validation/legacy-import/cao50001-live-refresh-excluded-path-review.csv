@@ -1,0 +1,11 @@
+batch_id,legacy_code,name,legacy_category,stock_kind,current_category,category_source,category_rule_id,category_confidence,review_reason,review_status,approved_category,review_notes
+cao50001-live-refresh,011,Brother MFC-2770原廠碳粉,,0,Non-Merchandise,exclusion_rule,name-token-non-merchandise,0.95,excluded_path,keep_current,Non-Merchandise,High-confidence office consumable
+cao50001-live-refresh,012,EPSON LQ-690C 原廠色帶,,0,Non-Merchandise,exclusion_rule,name-token-non-merchandise,0.95,excluded_path,keep_current,Non-Merchandise,High-confidence office consumable
+cao50001-live-refresh,60000,大小通用紙套,,0,Non-Merchandise,exclusion_rule,name-token-non-merchandise,0.95,excluded_path,keep_current,Non-Merchandise,High-confidence paper consumable
+cao50001-live-refresh,9 1/2*11*1P白中1刀,電腦連續報表紙,,0,Non-Merchandise,exclusion_rule,name-token-non-merchandise,0.95,excluded_path,keep_current,Non-Merchandise,High-confidence paper consumable
+cao50001-live-refresh,PK-59,化學藥品 PK-59,,0,Non-Merchandise,exclusion_rule,code-prefix-non-merchandise,0.98,excluded_path,keep_current,Non-Merchandise,High-confidence packaging or chemical consumable
+cao50001-live-refresh,PK-91,化學藥品 PK-91,,0,Non-Merchandise,exclusion_rule,code-prefix-non-merchandise,0.98,excluded_path,keep_current,Non-Merchandise,High-confidence packaging or chemical consumable
+cao50001-live-refresh,PK-92,化學藥品 PK-92,,0,Non-Merchandise,exclusion_rule,code-prefix-non-merchandise,0.98,excluded_path,keep_current,Non-Merchandise,High-confidence packaging or chemical consumable
+cao50001-live-refresh,PK-FILM-20U,FILM-20U,,0,Non-Merchandise,exclusion_rule,code-prefix-non-merchandise,0.98,excluded_path,keep_current,Non-Merchandise,High-confidence packaging film consumable
+cao50001-live-refresh,PK-FILM-30U,FILM-30U,,0,Non-Merchandise,exclusion_rule,code-prefix-non-merchandise,0.98,excluded_path,keep_current,Non-Merchandise,High-confidence packaging film consumable
+cao50001-live-refresh,PK-HISHIRON,HISHIRON,,0,Non-Merchandise,exclusion_rule,code-prefix-non-merchandise,0.98,excluded_path,keep_current,Non-Merchandise,High-confidence packaging or plastics consumable

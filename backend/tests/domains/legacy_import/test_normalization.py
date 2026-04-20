@@ -229,6 +229,50 @@ def test_derive_product_category_routes_belt_joint_supplies_to_belt_supplies() -
     assert derivation.confidence == Decimal("0.98")
 
 
+def test_derive_product_category_routes_consumables_and_belt_hooks_out_of_fallback() -> None:
+    pk_derivation = normalization._derive_product_category(
+        "PK-FILM-20U",
+        "FILM-20U",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    toner_derivation = normalization._derive_product_category(
+        "011",
+        "Brother MFC-2770原廠碳粉",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    paper_derivation = normalization._derive_product_category(
+        "9 1/2*11*1P白中1刀",
+        "電腦連續報表紙",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    hook_derivation = normalization._derive_product_category(
+        "003",
+        "皮帶勾",
+        legacy_category=None,
+        stock_kind="0",
+    )
+
+    assert pk_derivation.category == "Non-Merchandise"
+    assert pk_derivation.source == "exclusion_rule"
+    assert pk_derivation.rule_id == "code-prefix-non-merchandise"
+    assert pk_derivation.confidence == Decimal("0.98")
+    assert toner_derivation.category == "Non-Merchandise"
+    assert toner_derivation.source == "exclusion_rule"
+    assert toner_derivation.rule_id == "name-token-non-merchandise"
+    assert toner_derivation.confidence == Decimal("0.95")
+    assert paper_derivation.category == "Non-Merchandise"
+    assert paper_derivation.source == "exclusion_rule"
+    assert paper_derivation.rule_id == "name-token-non-merchandise"
+    assert paper_derivation.confidence == Decimal("0.95")
+    assert hook_derivation.category == "Belt Supplies"
+    assert hook_derivation.source == "heuristic_rule"
+    assert hook_derivation.rule_id == "name-token-belt-supplies"
+    assert hook_derivation.confidence == Decimal("0.90")
+
+
 def test_derive_product_category_handles_story_v_belt_examples() -> None:
     spa_derivation = normalization._derive_product_category(
         "SPA-1432 OH",
@@ -459,6 +503,40 @@ def test_derive_product_category_handles_variable_speed_name_variants() -> None:
     assert derivation.source == "heuristic_rule"
     assert derivation.rule_id == "name-token-variable-speed-belts"
     assert derivation.confidence == Decimal("0.90")
+
+
+def test_derive_product_category_handles_grounded_remaining_family_tails() -> None:
+    fon_derivation = normalization._derive_product_category(
+        "FON 5*435",
+        "FON 5*435",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    foz_derivation = normalization._derive_product_category(
+        "FOZ 8*560",
+        "FOZ 8*560",
+        legacy_category=None,
+        stock_kind="0",
+    )
+    fo037_derivation = normalization._derive_product_category(
+        "FO037",
+        "OH FM-37",
+        legacy_category=None,
+        stock_kind="0",
+    )
+
+    assert fon_derivation.category == "V-Belts"
+    assert fon_derivation.source == "heuristic_rule"
+    assert fon_derivation.rule_id == "code-prefix-v-belts"
+    assert fon_derivation.confidence == Decimal("0.98")
+    assert foz_derivation.category == "V-Belts"
+    assert foz_derivation.source == "heuristic_rule"
+    assert foz_derivation.rule_id == "code-prefix-v-belts"
+    assert foz_derivation.confidence == Decimal("0.98")
+    assert fo037_derivation.category == "V-Belts"
+    assert fo037_derivation.source == "heuristic_rule"
+    assert fo037_derivation.rule_id == "code-prefix-v-belts"
+    assert fo037_derivation.confidence == Decimal("0.98")
 
 
 @pytest.mark.asyncio

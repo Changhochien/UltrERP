@@ -24,6 +24,7 @@ _KNOWN_WAREHOUSE_NAMES = {
     "A": "Legacy General Warehouse (總倉)",
 }
 _NON_MERCHANDISE_CATEGORY = "Non-Merchandise"
+_NON_MERCHANDISE_CODE_PREFIXES = ("PK-",)
 _NON_MERCHANDISE_NAME_TOKENS = (
     "運費",
     "郵寄",
@@ -33,8 +34,12 @@ _NON_MERCHANDISE_NAME_TOKENS = (
     "出貨單",
     "帳單本",
     "信封",
+    "原廠碳粉",
+    "原廠色帶",
+    "報表紙",
+    "紙套",
 )
-_BELT_SUPPLIES_NAME_TOKENS = ("現場接頭",)
+_BELT_SUPPLIES_NAME_TOKENS = ("現場接頭", "皮帶勾")
 _VARIABLE_SPEED_NAME_TOKENS = ("變速皮帶", "變速帶")
 _RIBBED_NAME_TOKENS = ("多溝", "POLY")
 _TIMING_NAME_TOKENS = (
@@ -151,6 +156,7 @@ _V_BELT_CODE_PREFIXES = (
     "MO",
 )
 _V_BELT_SPECIAL_CODE_PREFIXES = ("OA", "OM", "OC", "VA", "AA", "BB", "AX", "BR")
+_V_BELT_FAMILY_RE = re.compile(r"^(?:FON|FOZ(?:\s|$)|FO037$)")
 _FLAT_SPECIALTY_CODE_PREFIXES = (
     "TU",
     "VT",
@@ -308,6 +314,14 @@ def _derive_product_category(
     cleaned_name = _clean_product_text_for_matching(name)
     combined = f"{normalized_code} {cleaned_name}".strip()
 
+    if _starts_with_any_prefix(normalized_code, _NON_MERCHANDISE_CODE_PREFIXES):
+        return _category_derivation(
+            _NON_MERCHANDISE_CATEGORY,
+            "exclusion_rule",
+            "code-prefix-non-merchandise",
+            "0.98",
+        )
+
     if _contains_any_token(combined, _NON_MERCHANDISE_NAME_TOKENS):
         return _category_derivation(
             _NON_MERCHANDISE_CATEGORY,
@@ -406,6 +420,7 @@ def _derive_product_category(
         _starts_with_any_prefix(normalized_code, _V_BELT_CODE_PREFIXES)
         or _starts_with_any_prefix(normalized_code, _V_BELT_SPECIAL_CODE_PREFIXES)
         or _V_BELT_SERIES_RE.match(normalized_code) is not None
+        or _V_BELT_FAMILY_RE.match(normalized_code) is not None
     ):
         return _category_derivation(
             "V-Belts",

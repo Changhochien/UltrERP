@@ -1,0 +1,654 @@
+# Legacy Import Validation Report - cao50001-live-refresh
+
+Status: warning
+Attempt: 21
+Replay disposition: new-scope
+Scope key: f3c2d4e045c003ed
+Scope cutoff date: 2026-04-17
+Previous scope status: n/a
+
+## Row Count Reconciliation
+
+- opdaevent: expected=None, loaded=0, status=completed
+- otbaapay: expected=None, loaded=0, status=completed
+- otbabkdl: expected=None, loaded=0, status=completed
+- otbacash: expected=None, loaded=0, status=completed
+- otbacashdt: expected=None, loaded=0, status=completed
+- otbacomminvo: expected=None, loaded=0, status=completed
+- otbafixdepost: expected=None, loaded=0, status=completed
+- otbainvodetail: expected=None, loaded=0, status=completed
+- otbainvorail: expected=None, loaded=0, status=completed
+- otbanotes: expected=None, loaded=0, status=completed
+- otbapetty: expected=None, loaded=0, status=completed
+- otbasalary: expected=None, loaded=0, status=completed
+- otbasetinvoice: expected=None, loaded=0, status=completed
+- otbashortnote: expected=None, loaded=0, status=completed
+- otbaslip: expected=None, loaded=0, status=completed
+- otbaspecinvo: expected=None, loaded=0, status=completed
+- otbazerodetail: expected=None, loaded=0, status=completed
+- otbazeroinvo: expected=None, loaded=0, status=completed
+- otbcdev: expected=None, loaded=0, status=completed
+- otbcdevdt: expected=None, loaded=0, status=completed
+- otbsbomslip: expected=None, loaded=0, status=completed
+- otbsbomslipdt: expected=None, loaded=0, status=completed
+- otbscxagiodt: expected=None, loaded=0, status=completed
+- otbscxback: expected=None, loaded=0, status=completed
+- otbscxdt: expected=None, loaded=0, status=completed
+- otbscxmain: expected=None, loaded=0, status=completed
+- otbsheypath: expected=None, loaded=0, status=completed
+- otbslocationdl: expected=None, loaded=0, status=completed
+- otbsmobileslipnote: expected=None, loaded=0, status=completed
+- otbssaleplan: expected=None, loaded=0, status=completed
+- otbssaleplandt: expected=None, loaded=0, status=completed
+- otbsslipbf: expected=None, loaded=0, status=completed
+- otbsslipcdb: expected=None, loaded=0, status=completed
+- otbsslipcpd: expected=None, loaded=0, status=completed
+- otbsslipctz: expected=None, loaded=0, status=completed
+- otbsslipdtbf: expected=None, loaded=0, status=completed
+- otbsslipdtcdb: expected=None, loaded=0, status=completed
+- otbsslipdtcpd: expected=None, loaded=0, status=completed
+- otbsslipdtctz: expected=None, loaded=0, status=completed
+- otbsslipdth: expected=None, loaded=0, status=completed
+- otbsslipdthey: expected=None, loaded=0, status=completed
+- otbsslipdtj: expected=None, loaded=0, status=completed
+- otbsslipdto: expected=None, loaded=0, status=completed
+- otbsslipdtp: expected=None, loaded=0, status=completed
+- otbsslipdtpc: expected=None, loaded=0, status=completed
+- otbsslipdtq: expected=None, loaded=0, status=completed
+- otbsslipdtv: expected=None, loaded=0, status=completed
+- otbsslipdtx: expected=None, loaded=0, status=completed
+- otbsslipdty: expected=None, loaded=0, status=completed
+- otbsslipdtzj: expected=None, loaded=0, status=completed
+- otbssliph: expected=None, loaded=0, status=completed
+- otbssliphey: expected=None, loaded=0, status=completed
+- otbsslipj: expected=None, loaded=0, status=completed
+- otbsslipo: expected=None, loaded=0, status=completed
+- otbsslipotherfee: expected=None, loaded=0, status=completed
+- otbsslipp: expected=None, loaded=0, status=completed
+- otbsslippc: expected=None, loaded=0, status=completed
+- otbsslipq: expected=None, loaded=0, status=completed
+- otbsslips: expected=None, loaded=0, status=completed
+- otbsslipv: expected=None, loaded=0, status=completed
+- otbsslipw: expected=None, loaded=0, status=completed
+- otbsslipx: expected=None, loaded=0, status=completed
+- otbsslipxems: expected=None, loaded=0, status=completed
+- otbsslipy: expected=None, loaded=0, status=completed
+- otbsspay: expected=None, loaded=0, status=completed
+- otbsstkserial: expected=None, loaded=0, status=completed
+- otbsstkserialdt: expected=None, loaded=0, status=completed
+- otbsstockfactory: expected=None, loaded=0, status=completed
+- otbsstockinfofactory: expected=None, loaded=0, status=completed
+- otbsstockmaterial: expected=None, loaded=0, status=completed
+- otbstestreport: expected=None, loaded=0, status=completed
+- otbstestreportdt: expected=None, loaded=0, status=completed
+- pdaevent: expected=None, loaded=0, status=completed
+- rpt01tmptb1191513: expected=None, loaded=30, status=completed
+- rptstkstore1358528773729: expected=None, loaded=134, status=completed
+- rptstkstore140456666849: expected=None, loaded=259, status=completed
+- rptstkstore143513184334: expected=None, loaded=174, status=completed
+- rptstkstore1658101829508: expected=None, loaded=110, status=completed
+- rptstkstore1658551809853: expected=None, loaded=135, status=completed
+- rptstkstore1659526813632: expected=None, loaded=103, status=completed
+- rptstkstore183938119442: expected=None, loaded=50, status=completed
+- rptstkstore185644248808: expected=None, loaded=92, status=completed
+- rptstkstore19215121160: expected=None, loaded=103, status=completed
+- rptstkstore1922422096315: expected=None, loaded=135, status=completed
+- rptstkstore192466699812: expected=None, loaded=110, status=completed
+- rptstkstore1925148669989: expected=None, loaded=72, status=completed
+- rptstkstore1926408367323: expected=None, loaded=95, status=completed
+- scr_check: expected=None, loaded=0, status=completed
+- scr_editdt: expected=None, loaded=0, status=completed
+- scr_editdtuser: expected=None, loaded=0, status=completed
+- scr_editmain: expected=None, loaded=0, status=completed
+- scr_grdcol: expected=None, loaded=0, status=completed
+- scr_grdmaster: expected=None, loaded=0, status=completed
+- scr_language: expected=None, loaded=0, status=completed
+- scr_rptlist: expected=None, loaded=0, status=completed
+- scr_tabrelation: expected=None, loaded=0, status=completed
+- tbaaccounts: expected=None, loaded=1, status=completed
+- tbaacsub: expected=None, loaded=0, status=completed
+- tbaadjust: expected=None, loaded=5, status=completed
+- tbaamnt: expected=None, loaded=232, status=completed
+- tbaamnt_ac: expected=None, loaded=0, status=completed
+- tbaamnt_curr: expected=None, loaded=0, status=completed
+- tbaamnt_dept: expected=None, loaded=0, status=completed
+- tbaapay: expected=None, loaded=0, status=completed
+- tbaapaycxdt: expected=None, loaded=0, status=completed
+- tbaapayfeedt: expected=None, loaded=0, status=completed
+- tbaarapctlsub: expected=None, loaded=24, status=completed
+- tbaarapral: expected=None, loaded=0, status=completed
+- tbaarapraldt: expected=None, loaded=0, status=completed
+- tbaaset: expected=None, loaded=0, status=completed
+- tbaasetcopy: expected=None, loaded=0, status=completed
+- tbaasetdept: expected=None, loaded=0, status=completed
+- tbaasetitem: expected=None, loaded=0, status=completed
+- tbaasetlr: expected=None, loaded=0, status=completed
+- tbaasetlrdt: expected=None, loaded=0, status=completed
+- tbaasetmove: expected=None, loaded=0, status=completed
+- tbaasetmovedt: expected=None, loaded=0, status=completed
+- tbaasetpd: expected=None, loaded=0, status=completed
+- tbaasetpddt: expected=None, loaded=0, status=completed
+- tbaassetalte: expected=None, loaded=0, status=completed
+- tbabacktaxamt: expected=None, loaded=0, status=completed
+- tbabank: expected=None, loaded=7831, status=completed
+- tbabankact: expected=None, loaded=0, status=completed
+- tbabankitem: expected=None, loaded=4, status=completed
+- tbabankyjctconserve: expected=None, loaded=0, status=completed
+- tbabankzh: expected=None, loaded=261, status=completed
+- tbabasscrset: expected=None, loaded=0, status=completed
+- tbabkamt: expected=None, loaded=0, status=completed
+- tbabkdl: expected=None, loaded=0, status=completed
+- tbabkmode: expected=None, loaded=0, status=completed
+- tbacase: expected=None, loaded=0, status=completed
+- tbacash: expected=None, loaded=0, status=completed
+- tbacashdt: expected=None, loaded=0, status=completed
+- tbacashflow: expected=None, loaded=103, status=completed
+- tbacashpaycase: expected=None, loaded=0, status=completed
+- tbacashpaytype: expected=None, loaded=4, status=completed
+- tbaccellcontent: expected=None, loaded=0, status=completed
+- tbacodefmt: expected=None, loaded=1, status=completed
+- tbacomminvo: expected=None, loaded=0, status=completed
+- tbacomminvobf: expected=None, loaded=0, status=completed
+- tbaconvtoinv: expected=None, loaded=0, status=completed
+- tbacost: expected=None, loaded=69, status=completed
+- tbacostdetail: expected=None, loaded=18, status=completed
+- tbacrptcolqrydt: expected=None, loaded=0, status=completed
+- tbacrptcolquery: expected=None, loaded=0, status=completed
+- tbacrptlist: expected=None, loaded=0, status=completed
+- tbacrptprnpageset: expected=None, loaded=0, status=completed
+- tbactlsub: expected=None, loaded=49, status=completed
+- tbadclrpt: expected=None, loaded=0, status=completed
+- tbadclrpt01: expected=None, loaded=0, status=completed
+- tbadclrpt111: expected=None, loaded=0, status=completed
+- tbadclrpt121: expected=None, loaded=0, status=completed
+- tbadclrpt121dt: expected=None, loaded=0, status=completed
+- tbadclrpt131: expected=None, loaded=0, status=completed
+- tbadclrpt131dt: expected=None, loaded=0, status=completed
+- tbadclrpt141: expected=None, loaded=0, status=completed
+- tbadclrpt151a: expected=None, loaded=0, status=completed
+- tbadclrpt151b: expected=None, loaded=0, status=completed
+- tbadclrpt151c: expected=None, loaded=0, status=completed
+- tbadclrpt161: expected=None, loaded=0, status=completed
+- tbadclrpt171: expected=None, loaded=0, status=completed
+- tbadclrpt181: expected=None, loaded=0, status=completed
+- tbadclrpt191: expected=None, loaded=0, status=completed
+- tbadclrpt201: expected=None, loaded=0, status=completed
+- tbadclrpt211: expected=None, loaded=0, status=completed
+- tbadclrpt31: expected=None, loaded=0, status=completed
+- tbadclrpt32: expected=None, loaded=0, status=completed
+- tbadclrpt33: expected=None, loaded=0, status=completed
+- tbadclrpt34: expected=None, loaded=0, status=completed
+- tbadclrpt35: expected=None, loaded=0, status=completed
+- tbadclrpt36: expected=None, loaded=0, status=completed
+- tbadclrpt43: expected=None, loaded=0, status=completed
+- tbadclrpt44: expected=None, loaded=0, status=completed
+- tbadclrpt51: expected=None, loaded=0, status=completed
+- tbadclrpt52: expected=None, loaded=0, status=completed
+- tbadclrpt53: expected=None, loaded=0, status=completed
+- tbadclrpt54: expected=None, loaded=0, status=completed
+- tbadclrpt55: expected=None, loaded=0, status=completed
+- tbadclrpt56: expected=None, loaded=0, status=completed
+- tbadclrpt57: expected=None, loaded=0, status=completed
+- tbadclrpt58: expected=None, loaded=0, status=completed
+- tbadclrpt61: expected=None, loaded=0, status=completed
+- tbadclrpt62: expected=None, loaded=0, status=completed
+- tbadclrpt78: expected=None, loaded=0, status=completed
+- tbadclrpt91: expected=None, loaded=0, status=completed
+- tbadelno: expected=None, loaded=0, status=completed
+- tbadepostzjhk: expected=None, loaded=0, status=completed
+- tbadept: expected=None, loaded=0, status=completed
+- tbadeptsub: expected=None, loaded=0, status=completed
+- tbadissinvo: expected=None, loaded=0, status=completed
+- tbadlgzjday: expected=None, loaded=0, status=completed
+- tbadoevent: expected=None, loaded=1, status=completed
+- tbadpctamt: expected=None, loaded=0, status=completed
+- tbaedurem: expected=None, loaded=0, status=completed
+- tbaeinvtranlog: expected=None, loaded=0, status=completed
+- tbaemplopr: expected=None, loaded=0, status=completed
+- tbaemploy: expected=None, loaded=1, status=completed
+- tbaemploy1: expected=None, loaded=0, status=completed
+- tbaemployitem: expected=None, loaded=25, status=completed
+- tbaemployitemdt: expected=None, loaded=0, status=completed
+- tbaemployset: expected=None, loaded=0, status=completed
+- tbaemploytab: expected=None, loaded=0, status=completed
+- tbaemplt: expected=None, loaded=62, status=completed
+- tbaempset: expected=None, loaded=0, status=completed
+- tbaendperiodsala: expected=None, loaded=0, status=completed
+- tbaetgood: expected=None, loaded=1, status=completed
+- tbaetgooddata: expected=None, loaded=0, status=completed
+- tbaexratecheck: expected=None, loaded=0, status=completed
+- tbaexratechecksub: expected=None, loaded=0, status=completed
+- tbafixdepost: expected=None, loaded=0, status=completed
+- tbafixdepostdjy: expected=None, loaded=0, status=completed
+- tbafixdepostdl: expected=None, loaded=0, status=completed
+- tbafixdepostdt: expected=None, loaded=0, status=completed
+- tbafixdepostfx: expected=None, loaded=0, status=completed
+- tbafixdepostwake: expected=None, loaded=0, status=completed
+- tbafixdepostzj: expected=None, loaded=0, status=completed
+- tbaflagdc: expected=None, loaded=28, status=completed
+- tbafnccomego: expected=None, loaded=0, status=completed
+- tbafnccx: expected=None, loaded=0, status=completed
+- tbafnccxdt: expected=None, loaded=0, status=completed
+- tbafncmain: expected=None, loaded=0, status=completed
+- tbafncratealte: expected=None, loaded=0, status=completed
+- tbafncrefund: expected=None, loaded=0, status=completed
+- tbafnctranstion: expected=None, loaded=0, status=completed
+- tbafncuse: expected=None, loaded=6, status=completed
+- tbafncwake: expected=None, loaded=0, status=completed
+- tbaforelsesala: expected=None, loaded=0, status=completed
+- tbagbrepstyle: expected=None, loaded=0, status=completed
+- tbagroupset: expected=None, loaded=0, status=completed
+- tbahealth: expected=None, loaded=50, status=completed
+- tbaholiday: expected=None, loaded=7305, status=completed
+- tbahosthealth: expected=None, loaded=50, status=completed
+- tbahostlbtb: expected=None, loaded=810, status=completed
+- tbainvimpstk: expected=None, loaded=0, status=completed
+- tbainvodetail: expected=None, loaded=0, status=completed
+- tbainvorail: expected=None, loaded=90, status=completed
+- tbainvstock: expected=None, loaded=0, status=completed
+- tbainvtaxadt: expected=None, loaded=0, status=completed
+- tbaiotypeset: expected=None, loaded=9, status=completed
+- tbaisb: expected=None, loaded=0, status=completed
+- tbaisbcode: expected=None, loaded=0, status=completed
+- tbaisbcodewake: expected=None, loaded=0, status=completed
+- tbaisbdt: expected=None, loaded=0, status=completed
+- tbalbtb: expected=None, loaded=810, status=completed
+- tbalog: expected=None, loaded=9, status=completed
+- tbalogbk: expected=None, loaded=0, status=completed
+- tbamakesala: expected=None, loaded=0, status=completed
+- tbamonrate: expected=None, loaded=0, status=completed
+- tbanewaset: expected=None, loaded=0, status=completed
+- tbanewasetdept: expected=None, loaded=0, status=completed
+- tbanewasetdt: expected=None, loaded=0, status=completed
+- tbanewasetdtcopy: expected=None, loaded=0, status=completed
+- tbanewdpctamt: expected=None, loaded=0, status=completed
+- tbano: expected=None, loaded=0, status=completed
+- tbano1: expected=None, loaded=0, status=completed
+- tbanotes: expected=None, loaded=0, status=completed
+- tbanotesdis: expected=None, loaded=0, status=completed
+- tbanotesdl: expected=None, loaded=0, status=completed
+- tbanoteset: expected=None, loaded=0, status=completed
+- tbaothersala: expected=None, loaded=0, status=completed
+- tbapasswd: expected=None, loaded=0, status=completed
+- tbapetty: expected=None, loaded=0, status=completed
+- tbaplan: expected=None, loaded=0, status=completed
+- tbaprnset: expected=None, loaded=0, status=completed
+- tbaprorate: expected=None, loaded=0, status=completed
+- tbarate: expected=None, loaded=25, status=completed
+- tbaraterefer: expected=None, loaded=15, status=completed
+- tbareptlst: expected=None, loaded=49, status=completed
+- tbareptset: expected=None, loaded=0, status=completed
+- tbarichkind: expected=None, loaded=8, status=completed
+- tbarptitvset: expected=None, loaded=26, status=completed
+- tbarunfuninfo: expected=None, loaded=0, status=completed
+- tbasadset: expected=None, loaded=127, status=completed
+- tbasadsetdt: expected=None, loaded=0, status=completed
+- tbasalary: expected=None, loaded=0, status=completed
+- tbasalaryitem: expected=None, loaded=0, status=completed
+- tbasalaryset: expected=None, loaded=1, status=completed
+- tbasecondlang: expected=None, loaded=63, status=completed
+- tbasetinfo: expected=None, loaded=74, status=completed
+- tbasetinvoice: expected=None, loaded=0, status=completed
+- tbashirefund: expected=None, loaded=0, status=completed
+- tbashirefunddt: expected=None, loaded=0, status=completed
+- tbashortnote: expected=None, loaded=0, status=completed
+- tbashortnotedl: expected=None, loaded=0, status=completed
+- tbashortnotedt: expected=None, loaded=0, status=completed
+- tbashortnotewake: expected=None, loaded=0, status=completed
+- tbashortnotework: expected=None, loaded=0, status=completed
+- tbaslip: expected=None, loaded=0, status=completed
+- tbaslipcx: expected=None, loaded=0, status=completed
+- tbaslipcxfornote: expected=None, loaded=0, status=completed
+- tbaslipgz: expected=None, loaded=0, status=completed
+- tbaslipisb: expected=None, loaded=0, status=completed
+- tbaslipisbdt: expected=None, loaded=0, status=completed
+- tbaslipjump: expected=None, loaded=0, status=completed
+- tbasliplog: expected=None, loaded=0, status=completed
+- tbaslipmodel: expected=None, loaded=0, status=completed
+- tbaslipselfset: expected=None, loaded=0, status=completed
+- tbaspecinvo: expected=None, loaded=0, status=completed
+- tbastktokj: expected=None, loaded=248, status=completed
+- tbastst: expected=None, loaded=0, status=completed
+- tbasub: expected=None, loaded=0, status=completed
+- tbasubbase: expected=None, loaded=9, status=completed
+- tbasubclass: expected=None, loaded=25, status=completed
+- tbasubject: expected=None, loaded=232, status=completed
+- tbasybbc: expected=None, loaded=0, status=completed
+- tbasyspara: expected=None, loaded=1, status=completed
+- tbasztype: expected=None, loaded=0, status=completed
+- tbatax: expected=None, loaded=840, status=completed
+- tbausrctl: expected=None, loaded=0, status=completed
+- tbausropr: expected=None, loaded=0, status=completed
+- tbavirement: expected=None, loaded=0, status=completed
+- tbavirementdt: expected=None, loaded=0, status=completed
+- tbaxjllbc: expected=None, loaded=0, status=completed
+- tbayjct: expected=None, loaded=0, status=completed
+- tbazdygroupset: expected=None, loaded=0, status=completed
+- tbazerodetail: expected=None, loaded=0, status=completed
+- tbazeroinvo: expected=None, loaded=0, status=completed
+- tbazg: expected=None, loaded=0, status=completed
+- tbazj: expected=None, loaded=0, status=completed
+- tbazjrpt: expected=None, loaded=0, status=completed
+- tbazjrptaddi: expected=None, loaded=3, status=completed
+- tbazjrptfml: expected=None, loaded=518, status=completed
+- tbazjsub: expected=None, loaded=187, status=completed
+- tbcaddress: expected=None, loaded=3643, status=completed
+- tbcarapcon: expected=None, loaded=6, status=completed
+- tbcbackstore: expected=None, loaded=0, status=completed
+- tbcbaseno: expected=None, loaded=2, status=completed
+- tbccredit: expected=None, loaded=0, status=completed
+- tbcdailyevt: expected=None, loaded=0, status=completed
+- tbcdev: expected=None, loaded=0, status=completed
+- tbcdevdt: expected=None, loaded=0, status=completed
+- tbcdoevent: expected=None, loaded=0, status=completed
+- tbcimage: expected=None, loaded=0, status=completed
+- tbcmaindb: expected=None, loaded=0, status=completed
+- tbcpasswd: expected=None, loaded=1, status=completed
+- tbcphrase: expected=None, loaded=54, status=completed
+- tbcpubsyspara: expected=None, loaded=10, status=completed
+- tbctacdef: expected=None, loaded=2, status=completed
+- tbcversion: expected=None, loaded=3, status=completed
+- tbhsyspara: expected=None, loaded=648, status=completed
+- tbplog: expected=None, loaded=0, status=completed
+- tbplogbk: expected=None, loaded=0, status=completed
+- tbpusrctl: expected=None, loaded=0, status=completed
+- tbsagio: expected=None, loaded=2, status=completed
+- tbsbad: expected=None, loaded=0, status=completed
+- tbsbatchno: expected=None, loaded=0, status=completed
+- tbsbom: expected=None, loaded=0, status=completed
+- tbsbomdt: expected=None, loaded=0, status=completed
+- tbsbomslip: expected=None, loaded=0, status=completed
+- tbsbomslipdt: expected=None, loaded=0, status=completed
+- tbscheck: expected=None, loaded=0, status=completed
+- tbscheckact: expected=None, loaded=0, status=completed
+- tbscheckdt: expected=None, loaded=0, status=completed
+- tbscheckset: expected=None, loaded=0, status=completed
+- tbschecksetdt: expected=None, loaded=0, status=completed
+- tbscodehouse: expected=None, loaded=0, status=completed
+- tbscodehousedt: expected=None, loaded=0, status=completed
+- tbscommunication: expected=None, loaded=0, status=completed
+- tbscontraststock: expected=None, loaded=0, status=completed
+- tbscorpcode: expected=None, loaded=0, status=completed
+- tbscorpcodedt: expected=None, loaded=0, status=completed
+- tbscosemploy: expected=None, loaded=0, status=completed
+- tbscurrency: expected=None, loaded=6, status=completed
+- tbscusfunkey: expected=None, loaded=81, status=completed
+- tbscust: expected=None, loaded=1045, status=completed
+- tbscustadd: expected=None, loaded=0, status=completed
+- tbscustconn: expected=None, loaded=0, status=completed
+- tbscustname: expected=None, loaded=0, status=completed
+- tbscustompage: expected=None, loaded=0, status=completed
+- tbscustompagegroup: expected=None, loaded=0, status=completed
+- tbscustompageitem: expected=None, loaded=0, status=completed
+- tbscustreptdef: expected=None, loaded=73, status=completed
+- tbscustreptset: expected=None, loaded=73, status=completed
+- tbscusttel: expected=None, loaded=0, status=completed
+- tbscxagiodt: expected=None, loaded=0, status=completed
+- tbscxback: expected=None, loaded=0, status=completed
+- tbscxdt: expected=None, loaded=10, status=completed
+- tbscxmain: expected=None, loaded=10, status=completed
+- tbsdeliverytime: expected=None, loaded=0, status=completed
+- tbsdoevent: expected=None, loaded=1, status=completed
+- tbsempplan: expected=None, loaded=0, status=completed
+- tbsexpdefdt: expected=None, loaded=378, status=completed
+- tbsexpdefmain: expected=None, loaded=24, status=completed
+- tbsftpserver: expected=None, loaded=0, status=completed
+- tbsftpserverdt: expected=None, loaded=0, status=completed
+- tbsfunkey: expected=None, loaded=61, status=completed
+- tbsheypath: expected=None, loaded=0, status=completed
+- tbshplbplan: expected=None, loaded=0, status=completed
+- tbsinout: expected=None, loaded=0, status=completed
+- tbslocation: expected=None, loaded=1, status=completed
+- tbslocationdl: expected=None, loaded=0, status=completed
+- tbslog: expected=None, loaded=337767, status=completed
+- tbslogbk: expected=None, loaded=0, status=completed
+- tbsmarketingmix: expected=None, loaded=0, status=completed
+- tbsmarketingmixdt: expected=None, loaded=0, status=completed
+- tbsmarketingmixkey: expected=None, loaded=0, status=completed
+- tbsmemorandum: expected=None, loaded=0, status=completed
+- tbsmobileclassset: expected=None, loaded=0, status=completed
+- tbsmobileclassstock: expected=None, loaded=0, status=completed
+- tbsmobilecust: expected=None, loaded=0, status=completed
+- tbsmobilelimitqty: expected=None, loaded=0, status=completed
+- tbsmobilelocation: expected=None, loaded=0, status=completed
+- tbsmobilemessage: expected=None, loaded=0, status=completed
+- tbsmobileset: expected=None, loaded=0, status=completed
+- tbsmobilesetmain: expected=None, loaded=0, status=completed
+- tbsmobileslipnote: expected=None, loaded=0, status=completed
+- tbsmobilestockb2b: expected=None, loaded=0, status=completed
+- tbsmobilestockcos: expected=None, loaded=0, status=completed
+- tbsmobilestockec: expected=None, loaded=0, status=completed
+- tbsnavigation: expected=None, loaded=0, status=completed
+- tbsno: expected=None, loaded=6560, status=completed
+- tbsnolock: expected=None, loaded=0, status=completed
+- tbspackage: expected=None, loaded=0, status=completed
+- tbspackagedt: expected=None, loaded=0, status=completed
+- tbspasswd: expected=None, loaded=0, status=completed
+- tbsplancust: expected=None, loaded=0, status=completed
+- tbsplansale: expected=None, loaded=0, status=completed
+- tbsplansaledt: expected=None, loaded=0, status=completed
+- tbsplu: expected=None, loaded=0, status=completed
+- tbspludt: expected=None, loaded=0, status=completed
+- tbsplumain: expected=None, loaded=0, status=completed
+- tbspluset: expected=None, loaded=0, status=completed
+- tbsplusetdt: expected=None, loaded=0, status=completed
+- tbsplusetsec: expected=None, loaded=12, status=completed
+- tbsposlog: expected=None, loaded=0, status=completed
+- tbsposlogbk: expected=None, loaded=0, status=completed
+- tbspospasswd: expected=None, loaded=0, status=completed
+- tbsposusrctl: expected=None, loaded=0, status=completed
+- tbsprepay: expected=None, loaded=508, status=completed
+- tbspromulgate: expected=None, loaded=0, status=completed
+- tbsqzcust: expected=None, loaded=0, status=completed
+- tbsratio: expected=None, loaded=60, status=completed
+- tbsremark: expected=None, loaded=2220, status=completed
+- tbsreplist: expected=None, loaded=0, status=completed
+- tbssaleplan: expected=None, loaded=0, status=completed
+- tbssaleplandt: expected=None, loaded=0, status=completed
+- tbsshopinfo: expected=None, loaded=0, status=completed
+- tbsslipbf: expected=None, loaded=0, status=completed
+- tbsslipcdb: expected=None, loaded=0, status=completed
+- tbsslipcpd: expected=None, loaded=4, status=completed
+- tbsslipctz: expected=None, loaded=499, status=completed
+- tbsslipdtbf: expected=None, loaded=0, status=completed
+- tbsslipdtcdb: expected=None, loaded=0, status=completed
+- tbsslipdtcpd: expected=None, loaded=13, status=completed
+- tbsslipdtctz: expected=None, loaded=5461, status=completed
+- tbsslipdtdvr: expected=None, loaded=0, status=completed
+- tbsslipdth: expected=None, loaded=0, status=completed
+- tbsslipdthey: expected=None, loaded=0, status=completed
+- tbsslipdtj: expected=None, loaded=63165, status=completed
+- tbsslipdto: expected=None, loaded=913, status=completed
+- tbsslipdtp: expected=None, loaded=0, status=completed
+- tbsslipdtpc: expected=None, loaded=0, status=completed
+- tbsslipdtq: expected=None, loaded=0, status=completed
+- tbsslipdtv: expected=None, loaded=0, status=completed
+- tbsslipdtx: expected=None, loaded=605233, status=completed
+- tbsslipdty: expected=None, loaded=0, status=completed
+- tbsslipdtzj: expected=None, loaded=0, status=completed
+- tbsslipdvr: expected=None, loaded=0, status=completed
+- tbsslipexp: expected=None, loaded=117, status=completed
+- tbssliph: expected=None, loaded=0, status=completed
+- tbssliphey: expected=None, loaded=0, status=completed
+- tbsslipj: expected=None, loaded=9454, status=completed
+- tbsslipo: expected=None, loaded=298, status=completed
+- tbsslipotherfee: expected=None, loaded=0, status=completed
+- tbsslipp: expected=None, loaded=0, status=completed
+- tbsslippc: expected=None, loaded=0, status=completed
+- tbsslipq: expected=None, loaded=0, status=completed
+- tbsslips: expected=None, loaded=0, status=completed
+- tbsslipv: expected=None, loaded=0, status=completed
+- tbsslipw: expected=None, loaded=0, status=completed
+- tbsslipx: expected=None, loaded=136828, status=completed
+- tbsslipxems: expected=None, loaded=0, status=completed
+- tbsslipy: expected=None, loaded=0, status=completed
+- tbsspay: expected=None, loaded=6, status=completed
+- tbsstkblback: expected=None, loaded=0, status=completed
+- tbsstkclass: expected=None, loaded=0, status=completed
+- tbsstkclassset: expected=None, loaded=0, status=completed
+- tbsstkhouse: expected=None, loaded=6675, status=completed
+- tbsstkinvoice: expected=None, loaded=0, status=completed
+- tbsstklendqty: expected=None, loaded=0, status=completed
+- tbsstklocation: expected=None, loaded=0, status=completed
+- tbsstklock: expected=None, loaded=0, status=completed
+- tbsstkmeans: expected=None, loaded=0, status=completed
+- tbsstkpave: expected=None, loaded=1734, status=completed
+- tbsstkrpl: expected=None, loaded=0, status=completed
+- tbsstkserial: expected=None, loaded=0, status=completed
+- tbsstkserialdt: expected=None, loaded=0, status=completed
+- tbsstkyard: expected=None, loaded=0, status=completed
+- tbsstock: expected=None, loaded=6698, status=completed
+- tbsstockdt: expected=None, loaded=0, status=completed
+- tbsstockfactory: expected=None, loaded=0, status=completed
+- tbsstockinfofactory: expected=None, loaded=0, status=completed
+- tbsstockmaterial: expected=None, loaded=0, status=completed
+- tbsstorehouse: expected=None, loaded=1, status=completed
+- tbssyspara: expected=None, loaded=1180, status=completed
+- tbstel: expected=None, loaded=0, status=completed
+- tbstestreport: expected=None, loaded=0, status=completed
+- tbstestreportdt: expected=None, loaded=0, status=completed
+- tbstimeperiod: expected=None, loaded=0, status=completed
+- tbstmphouseno: expected=None, loaded=0, status=completed
+- tbstmpqty: expected=None, loaded=4, status=completed
+- tbstrans: expected=None, loaded=0, status=completed
+- tbstranscorp: expected=None, loaded=0, status=completed
+- tbstransdt: expected=None, loaded=0, status=completed
+- tbstransmemo: expected=None, loaded=0, status=completed
+- tbsusrctl: expected=None, loaded=0, status=completed
+- tbsusrempl: expected=None, loaded=1, status=completed
+- tbsusrhouse: expected=None, loaded=1, status=completed
+- tbsvocation: expected=None, loaded=0, status=completed
+- tbsxhmodel: expected=None, loaded=0, status=completed
+- tbsxhmodeldt: expected=None, loaded=0, status=completed
+- tbwlog: expected=None, loaded=0, status=completed
+- tbwlogbk: expected=None, loaded=0, status=completed
+- tbwpasswd: expected=None, loaded=0, status=completed
+- tbwusrctl: expected=None, loaded=0, status=completed
+- tbwusrempl: expected=None, loaded=0, status=completed
+- tbwusrhouse: expected=None, loaded=0, status=completed
+- tbylog: expected=None, loaded=0, status=completed
+- tbylogbk: expected=None, loaded=0, status=completed
+- tbypasswd: expected=None, loaded=0, status=completed
+- tbyusrctl: expected=None, loaded=0, status=completed
+- tbyusrempl: expected=None, loaded=0, status=completed
+- tbyusrhouse: expected=None, loaded=0, status=completed
+- tmp_stock: expected=None, loaded=0, status=completed
+- tmp_stock_kind: expected=None, loaded=0, status=completed
+- tmp_stock_kind1: expected=None, loaded=0, status=completed
+- tmp_stock1: expected=None, loaded=6652, status=completed
+- tmptbacomminvo: expected=None, loaded=0, status=completed
+
+## Mapping Summary
+
+- mappings=6214, candidates=62, unknown=0, orphan_codes=0, orphan_rows=0
+
+## Snapshot Coverage
+
+- orders=136828/136828, invoices=136828/136828, supplier_invoices=9442/9442, missing=0
+
+## Category Review
+
+- candidates=91, fallback=91, low_confidence=0, excluded=0
+- 模具: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 0015: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 006: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 12*2*1/8*1/16: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 12*2*1/8*1/16*11M: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 12*2*1/8*1/16*7.15M: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 12*3*3*2*2.2M: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 1330K*45M/M: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 15*2P*6M: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 150CXF-N: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 151/2*1/8*: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 1562L-47M/M: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 16*703: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 18*2*1/8*1/16: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 18*2*1/8*1/16*5.7M: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 18*2*1/8/1/16*5.95M: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 1926V427: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 220*3*6940M/M: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 2EL 50*1360: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 2M12U50*2830: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 3.5'*1M: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 3100 GW3-L9H: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 346 139*193: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 400M/M*2P*2.1: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 4F 0.5*40": Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 4L*200: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 4L*420: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 600*4*4.5M: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 600*4*6.5M: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 7*3*1/8*11140: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 800*7P*6.2M: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 8Q30M綠色: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- 9*3*1/16*7500: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- A-2 25*1100: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- A-2 30*1092: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- BANDO 6*600: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- DP034: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- EAB400*3000: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- HL694*17M/M: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- JBX024: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- JBX025: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- LHS-55 5*2130: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- LHS-55 6*3120: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- LP0703: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- LT-2 10*2210: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- MAM-04H 25*975: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- MX-22: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- MX-23: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- MX024: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- MX033: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- MX036: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- MX044: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- N4 M019.5: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- NA 88*405: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- P6A 78*1590: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- PPP10: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- PPP12: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- Q30綠色: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- QQQQ: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- RM-TYPR: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- S1-11X1210: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- S2 15*525M/M: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- S321-60*2145: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- SB-180 20*1755: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- SL237*10M/M: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- SLV1344-14*50: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- SNT 22*1455: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- STOP01: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- T*8*600: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- TB2-360-PU: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- TE80 200*6500: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- TR04 18*965: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- TR04 6*1220: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- TR04 6*760: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- TR04 6*910: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- TS210 30*2650: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- TV10*4*20FT: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- U210.5/0.5: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- UI0AG1200*5M: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- UV 1180*4160: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- UV40/3AG 92*3477: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- V13*830: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- VC12504130: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- VC1320-4726: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- VC1450-38-28: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- VC900 38-30: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- X346 100*1643: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- X346 139*1840: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- X346 139*1890: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- X346 139*1930: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+- X346 140*1880: Other Power Transmission (fallback_assignment, source=fallback_rule, rule=fallback-other-power-transmission, confidence=0.40)
+
+## Discrepancies
+
+- Severity 2: 91 products still carry provisional family categories pending review.
+
+## Epic 13 Handoff
+
+- Scope key: f3c2d4e045c003ed
+- Lineage count: 1642373
+- Holding count: 514
+- Resolution states: holding=514, resolved=829212
+- Boundary: Story 15.5 emits batch-scoped import evidence only. Epic 13 owns longer-horizon shadow-mode reconciliation.
