@@ -67,12 +67,14 @@ function CustomerInvoicesTable({
       id: "invoice_number",
       header: t("invoice.listPage.invoiceNumber") ?? "Invoice #",
       sortable: true,
+      getSortValue: (item) => item.invoice_number,
       cell: (item) => <span className="font-medium">{item.invoice_number}</span>,
     },
     {
       id: "invoice_date",
       header: t("invoice.listPage.invoiceDate") ?? "Date",
       sortable: true,
+      getSortValue: (item) => item.invoice_date,
       cell: (item) => item.invoice_date,
     },
     {

@@ -5,8 +5,11 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { DataTable, DataTableToolbar, type DataTableColumn } from "../../components/layout/DataTable";
+import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
+import { usePermissions } from "../../hooks/usePermissions";
 import { fetchOrders } from "../../lib/api/orders";
+import { ORDER_CREATE_ROUTE } from "../../lib/routes";
 import { statusBadgeVariant, statusLabel } from "../../domain/orders/hooks/useOrders";
 import type { OrderListItem } from "../../domain/orders/types";
 
@@ -17,18 +20,30 @@ interface CustomerOrdersTabProps {
 export function CustomerOrdersTab({ customerId }: CustomerOrdersTabProps) {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
+  const { canWrite } = usePermissions();
+  const canCreateOrders = canWrite("orders");
 
   return (
-    <CustomerOrdersTable customerId={customerId} onSelect={(id) => navigate(`/orders/${id}`)} t={t} />
+    <CustomerOrdersTable
+      customerId={customerId}
+      canCreateOrders={canCreateOrders}
+      onCreateOrder={() => navigate(`${ORDER_CREATE_ROUTE}?customer_id=${encodeURIComponent(customerId)}`)}
+      onSelect={(id) => navigate(`/orders/${id}`)}
+      t={t}
+    />
   );
 }
 
 function CustomerOrdersTable({
+  canCreateOrders,
   customerId,
+  onCreateOrder,
   onSelect,
   t,
 }: {
+  canCreateOrders: boolean;
   customerId: string;
+  onCreateOrder: () => void;
   onSelect: (id: string) => void;
   t: ReturnType<typeof useTranslation<"common">>["t"];
 }) {
@@ -67,6 +82,7 @@ function CustomerOrdersTable({
       id: "order_number",
       header: t("orders.list.orderNumber") ?? "Order #",
       sortable: true,
+      getSortValue: (item) => item.order_number,
       cell: (item) => <span className="font-medium">{item.order_number}</span>,
     },
     {
@@ -87,6 +103,7 @@ function CustomerOrdersTable({
       id: "status",
       header: t("orders.list.status") ?? "Status",
       sortable: true,
+      getSortValue: (item) => statusLabel(item.status),
       cell: (item) => (
         <Badge
           variant={statusBadgeVariant(item.status)}
@@ -116,6 +133,11 @@ function CustomerOrdersTable({
               {t("customer.detail.orders.description") ?? "Orders placed by this customer."}
             </p>
           </div>
+          {canCreateOrders ? (
+            <Button type="button" onClick={onCreateOrder}>
+              {t("customer.detail.orders.createOrder") ?? "Create Order"}
+            </Button>
+          ) : null}
         </DataTableToolbar>
       }
       page={page}
