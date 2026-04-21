@@ -26,7 +26,8 @@ function BreadcrumbTrail({
   return (
     <ol className={cn("flex min-w-0 items-center gap-2 text-xs font-medium text-muted-foreground", className)}>
       {items.map((item, index) => {
-        const isCurrent = index === items.length - 1 || !item.href;
+        const href = item.href;
+        const isCurrent = index === items.length - 1 || !href;
 
         return (
           <li key={`${index}-${typeof item.label === "string" ? item.label : "crumb"}`} className="flex min-w-0 items-center gap-2">
@@ -41,7 +42,7 @@ function BreadcrumbTrail({
               </span>
             ) : (
               <Link
-                to={item.href}
+                to={href}
                 className="truncate transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 {item.label}

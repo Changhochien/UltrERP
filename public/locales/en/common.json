@@ -28,6 +28,20 @@
     "save": "Save",
     "yes": "Yes"
   },
+  "datePicker": {
+    "clear": "Clear",
+    "placeholder": "Select a date"
+  },
+  "dateRangePicker": {
+    "placeholder": "Select a date range"
+  },
+  "dateRangeFilter": {
+    "label": "Date range",
+    "from": "From",
+    "to": "To",
+    "fromAria": "From date",
+    "toAria": "To date"
+  },
   "messages": {
     "loading": "Loading…"
   },
@@ -1113,6 +1127,9 @@
   "payments": {
     "form": {
       "amountExceeded": "Amount exceeds outstanding balance ({amount})",
+      "fields": {
+        "paymentDate": "Payment Date"
+      },
       "toast": {
         "errorTitle": "Payment could not be recorded",
         "recordedDescription": "Receipt {paymentRef} was recorded for this invoice.",

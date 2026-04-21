@@ -184,7 +184,8 @@ export function TanStackDataTable<TData>({
             <div className="flex items-center justify-center" onClick={(event) => event.stopPropagation()}>
               <Checkbox
                 aria-label="Select all rows"
-                checked={checked}
+                checked={checked === true}
+                indeterminate={checked === "mixed"}
                 onCheckedChange={(value) => table.toggleAllRowsSelected(Boolean(value))}
               />
             </div>

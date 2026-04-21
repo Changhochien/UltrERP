@@ -29,6 +29,20 @@
     "save": "儲存",
     "yes": "是"
   },
+  "datePicker": {
+    "clear": "清除",
+    "placeholder": "選擇日期"
+  },
+  "dateRangePicker": {
+    "placeholder": "選擇日期區間"
+  },
+  "dateRangeFilter": {
+    "label": "日期區間",
+    "from": "起始",
+    "to": "截止",
+    "fromAria": "起始日期",
+    "toAria": "截止日期"
+  },
   "messages": {
     "loading": "載入中…"
   },
@@ -1109,6 +1123,9 @@
   "payments": {
     "form": {
       "amountExceeded": "金額超過未收餘額（{amount}）",
+      "fields": {
+        "paymentDate": "付款日期"
+      },
       "toast": {
         "errorTitle": "無法記錄付款",
         "recordedDescription": "已為此發票記錄收款單 {paymentRef}。",
