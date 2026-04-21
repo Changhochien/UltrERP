@@ -400,9 +400,6 @@ async def test_create_order_with_cod_terms() -> None:
         _teardown(prev)
 
 
-async def test_create_order_persists_header_discounts() -> None:
-
-
 async def test_create_order_with_sales_team_commission() -> None:
     customer = FakeCustomer()
     product = FakeProduct(product_id=uuid.UUID(_PRODUCT_ID))
@@ -436,7 +433,6 @@ async def test_create_order_with_sales_team_commission() -> None:
     session.queue_count(100)  # stock availability for line
     session.queue_scalar(None)  # set_tenant (get_order)
     session.queue_scalar(order)  # get_order
->>>>>>> fb09df5 (feat(orders): add commission tracking and reporting alignment)
 
     prev = _setup(session)
     try:
@@ -450,6 +446,7 @@ async def test_create_order_with_sales_team_commission() -> None:
             },
             {
                 "sales_person": "Bob Lin",
+                "allocated_percentage": "40.00",
                 "commission_rate": "2.50",
             },
         ]
@@ -546,6 +543,8 @@ async def test_create_order_rejects_multiple_header_discount_modes() -> None:
         assert resp.status_code == 422
         detail = resp.json()["detail"]
         assert any("discount_amount and discount_percent" in item["msg"] for item in detail)
+    finally:
+        _teardown(prev)
 
 
 async def test_create_order_rejects_sales_team_over_100_percent() -> None:

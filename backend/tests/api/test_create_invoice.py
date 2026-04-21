@@ -29,12 +29,16 @@ class FakeResult:
     def scalar(self) -> object | None:
         return self._obj
 
+    def all(self) -> list[object]:
+        return []
+
 
 class FakeAsyncSession:
     def __init__(self) -> None:
         self.added: list[Any] = []
         self._execute_results: list[FakeResult] = []
         self._execute_index = 0
+        self._in_transaction = True
 
     def add(self, instance: object) -> None:
         self.added.append(instance)
@@ -73,6 +77,9 @@ class FakeAsyncSession:
 
     def begin(self) -> FakeAsyncSession:
         return self
+
+    def in_transaction(self) -> bool:
+        return self._in_transaction
 
     async def __aenter__(self) -> FakeAsyncSession:
         return self

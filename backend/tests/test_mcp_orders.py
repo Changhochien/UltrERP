@@ -14,6 +14,7 @@ from fastapi import HTTPException
 from fastmcp.exceptions import ToolError
 
 from domains.orders.mcp import orders_get, orders_list
+from domains.orders.services import derive_order_execution
 
 _list_fn = orders_list
 _get_fn = orders_get
@@ -63,6 +64,19 @@ class FakeOrder:
     tax_amount: Decimal = Decimal("50.00")
     total_amount: Decimal = Decimal("1050.00")
     invoice_id: uuid.UUID | None = None
+    invoice_number: str | None = "INV-20260411-0001"
+    invoice_payment_status: str | None = "paid"
+    sales_team: list[dict] = field(
+        default_factory=lambda: [
+            {
+                "sales_person": "Alice Chen",
+                "allocated_percentage": "100.00",
+                "commission_rate": "5.00",
+                "allocated_amount": "50.00",
+            }
+        ]
+    )
+    total_commission: Decimal = Decimal("50.00")
     notes: str | None = "Priority order"
     legacy_header_snapshot: dict | None = field(default_factory=lambda: {"source": "legacy"})
     created_by: str = "system"
@@ -71,6 +85,13 @@ class FakeOrder:
     confirmed_at: datetime | None = None
     customer: FakeCustomer | None = field(default_factory=FakeCustomer)
     lines: list[FakeLine] = field(default_factory=lambda: [FakeLine()])
+    execution: dict = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.execution = derive_order_execution(
+            self,
+            invoice_payment_status=self.invoice_payment_status,
+        )
 
 
 class FakeSession:
@@ -102,6 +123,11 @@ async def test_orders_list_returns_paginated_results():
     assert result["page"] == 2
     assert result["orders"][0]["id"] == _ORDER_ID
     assert result["orders"][0]["legacy_header_snapshot"] == {"source": "legacy"}
+    assert result["orders"][0]["sales_team"] == fake_order.sales_team
+    assert result["orders"][0]["total_commission"] == "50.00"
+    assert result["orders"][0]["invoice_number"] == "INV-20260411-0001"
+    assert result["orders"][0]["invoice_payment_status"] == "paid"
+    assert result["orders"][0]["execution"] == fake_order.execution
 
 
 @pytest.mark.asyncio
@@ -120,6 +146,11 @@ async def test_orders_get_returns_detail():
     assert result["id"] == _ORDER_ID
     assert result["customer_name"] == "Acme Corp"
     assert result["lines"][0]["description"] == "Widget"
+    assert result["sales_team"] == fake_order.sales_team
+    assert result["total_commission"] == "50.00"
+    assert result["invoice_number"] == "INV-20260411-0001"
+    assert result["invoice_payment_status"] == "paid"
+    assert result["execution"] == fake_order.execution
 
 
 @pytest.mark.asyncio

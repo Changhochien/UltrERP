@@ -14,7 +14,7 @@ from app.mcp_server import mcp
 from common.database import AsyncSessionLocal
 from common.tenant import DEFAULT_TENANT_ID
 from domains.orders.schemas import OrderLineResponse, OrderListItem, OrderResponse
-from domains.orders.services import get_order, list_orders
+from domains.orders.services import derive_order_execution, get_order, list_orders
 
 
 def _parse_uuid(value: str, field: str) -> uuid.UUID:
@@ -47,7 +47,22 @@ def _not_found(entity_type: str, entity_id: str) -> ToolError:
     )
 
 
+def _extract_order_meta(order, invoice_payment_status: str | None) -> dict:
+    execution = getattr(order, "execution", None)
+    if execution is None:
+        execution = derive_order_execution(order, invoice_payment_status=invoice_payment_status)
+    return {
+        "sales_team": getattr(order, "sales_team", None) or [],
+        "total_commission": getattr(order, "total_commission", 0),
+        "invoice_number": getattr(order, "invoice_number", None),
+        "invoice_payment_status": invoice_payment_status,
+        "execution": execution,
+    }
+
+
 def _serialize_order_summary(order) -> dict:
+    invoice_payment_status = getattr(order, "invoice_payment_status", None)
+    meta = _extract_order_meta(order, invoice_payment_status)
     return OrderListItem(
         id=order.id,
         tenant_id=order.tenant_id,
@@ -56,6 +71,7 @@ def _serialize_order_summary(order) -> dict:
         status=order.status,
         payment_terms_code=order.payment_terms_code,
         total_amount=order.total_amount,
+        **meta,
         legacy_header_snapshot=getattr(order, "legacy_header_snapshot", None),
         created_at=order.created_at,
         updated_at=order.updated_at,
@@ -63,6 +79,8 @@ def _serialize_order_summary(order) -> dict:
 
 
 def _serialize_order(order) -> dict:
+    invoice_payment_status = getattr(order, "invoice_payment_status", None)
+    meta = _extract_order_meta(order, invoice_payment_status)
     return OrderResponse(
         id=order.id,
         tenant_id=order.tenant_id,
@@ -78,6 +96,7 @@ def _serialize_order(order) -> dict:
         tax_amount=order.tax_amount,
         total_amount=order.total_amount,
         invoice_id=order.invoice_id,
+        **meta,
         notes=order.notes,
         legacy_header_snapshot=getattr(order, "legacy_header_snapshot", None),
         created_by=order.created_by,
