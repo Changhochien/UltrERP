@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 
 import {
+  resolveStatusBadgeVariant,
+  type StatusBadgeVariant,
+} from "../../../components/ui/StatusBadge";
+import {
   createSupplierOrder,
   fetchSupplierOrder,
   fetchSupplierOrders,
@@ -231,17 +235,8 @@ export function statusLabel(s: SupplierOrderStatus): string {
   return STATUS_LABELS[s] ?? s;
 }
 
-type SupplierOrderStatusBadgeVariant = "neutral" | "info" | "success" | "warning" | "destructive";
-
-const STATUS_BADGE_VARIANTS: Record<SupplierOrderStatus, SupplierOrderStatusBadgeVariant> = {
-  pending: "neutral",
-  confirmed: "info",
-  shipped: "info",
-  partially_received: "warning",
-  received: "success",
-  cancelled: "destructive",
-};
+type SupplierOrderStatusBadgeVariant = StatusBadgeVariant;
 
 export function statusBadgeVariant(s: SupplierOrderStatus): SupplierOrderStatusBadgeVariant {
-  return STATUS_BADGE_VARIANTS[s] ?? "neutral";
+  return resolveStatusBadgeVariant(s);
 }

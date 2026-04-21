@@ -4,8 +4,8 @@ import { useState } from "react";
 
 import { DataTable, DataTableToolbar } from "../../../components/layout/DataTable";
 import { SectionCard } from "../../../components/layout/PageLayout";
-import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
+import { StatusBadge } from "../../../components/ui/StatusBadge";
 import {
   statusBadgeVariant,
   useSupplierOrders,
@@ -70,9 +70,7 @@ export function SupplierOrderList({
             sortable: true,
             getSortValue: (order) => order.status,
             cell: (order) => (
-              <Badge variant={statusBadgeVariant(order.status as SupplierOrderStatus)} className="normal-case tracking-normal">
-                {statusLabel(order.status as SupplierOrderStatus)}
-              </Badge>
+              <StatusBadge status={order.status} label={statusLabel(order.status as SupplierOrderStatus)} />
             ),
           },
           {

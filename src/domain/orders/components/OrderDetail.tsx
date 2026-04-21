@@ -9,6 +9,7 @@ import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayo
 import { Badge } from "../../../components/ui/badge";
 import { Breadcrumb } from "../../../components/ui/Breadcrumb";
 import { Button } from "../../../components/ui/button";
+import { StatusBadge } from "../../../components/ui/StatusBadge";
 import { usePermissions } from "../../../hooks/usePermissions";
 import { useToast } from "../../../hooks/useToast";
 import { useOrderDetail, statusBadgeVariant, statusLabel } from "../hooks/useOrders";
@@ -230,9 +231,7 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
           <h2 className="text-xl font-semibold tracking-tight">{t("orders.detail.orderTitle")} {order.order_number}</h2>
-          <Badge variant={statusBadgeVariant(order.status as OrderStatus)} className="normal-case tracking-normal">
-            {statusLabel(order.status as OrderStatus)}
-          </Badge>
+          <StatusBadge status={order.status} label={statusLabel(order.status as OrderStatus)} />
         </div>
       </div>
 

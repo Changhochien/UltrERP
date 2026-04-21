@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
+  resolveStatusBadgeVariant,
+  type StatusBadgeVariant,
+} from "../../../components/ui/StatusBadge";
+import {
   fetchCustomerOutstanding,
   fetchInvoice,
   fetchInvoices,
@@ -224,28 +228,12 @@ export function paymentStatusLabel(status: string): string {
   }
 }
 
-type InvoiceStatusBadgeVariant = "neutral" | "info" | "success" | "warning" | "destructive";
+type InvoiceStatusBadgeVariant = StatusBadgeVariant;
 
 export function paymentStatusBadgeVariant(status: string): InvoiceStatusBadgeVariant {
-  switch (status) {
-    case "paid": return "success";
-    case "partial": return "warning";
-    case "overdue": return "destructive";
-    case "queued":
-    case "sent":
-      return "info";
-    default: return "neutral";
-  }
+  return resolveStatusBadgeVariant(status);
 }
 
 export function eguiStatusBadgeVariant(status: string): InvoiceStatusBadgeVariant {
-  switch (status) {
-    case "ACKED": return "success";
-    case "FAILED":
-    case "DEAD_LETTER": return "destructive";
-    case "RETRYING": return "warning";
-    case "QUEUED":
-    case "SENT": return "info";
-    default: return "neutral";
-  }
+  return resolveStatusBadgeVariant(status);
 }

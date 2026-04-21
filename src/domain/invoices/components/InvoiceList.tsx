@@ -5,13 +5,14 @@ import { useSearchParams } from "react-router-dom";
 
 import { DataTable, DataTableToolbar, type DataTableSortState } from "../../../components/layout/DataTable";
 import { Badge } from "../../../components/ui/badge";
+import { StatusBadge } from "../../../components/ui/StatusBadge";
 import { ActiveFilterBar } from "../../../components/filters/ActiveFilterBar";
 import { CustomerCombobox } from "../../../components/customers/CustomerCombobox";
 import type { CustomerSummary } from "../../customers/types";
 import { DateRangeFilter } from "../../../components/filters/DateRangeFilter";
 import { SearchInput } from "../../../components/filters/SearchInput";
 import { StatusMultiSelect } from "../../../components/filters/StatusMultiSelect";
-import { useInvoices, paymentStatusBadgeVariant, paymentStatusLabel } from "../hooks/useInvoices";
+import { useInvoices, paymentStatusLabel } from "../hooks/useInvoices";
 
 interface InvoiceListProps {
   onSelect: (invoiceId: string) => void;
@@ -58,7 +59,7 @@ export function InvoiceList({ onSelect }: InvoiceListProps) {
       ? [
           {
             key: "customer_id",
-            label: `Customer: ${customerSummaries.find((c) => c.id === customerId)?.company_name ?? customerId}`,
+            label: `Customer: ${customerSummaries.find((customer) => customer.id === customerId)?.company_name ?? customerId}`,
           },
         ]
       : []),
@@ -176,9 +177,7 @@ export function InvoiceList({ onSelect }: InvoiceListProps) {
             header: "Status",
             cell: (item) => (
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={paymentStatusBadgeVariant(item.payment_status)} className="normal-case tracking-normal">
-                  {paymentStatusLabel(item.payment_status)}
-                </Badge>
+                <StatusBadge status={item.payment_status} label={paymentStatusLabel(item.payment_status)} />
                 {item.payment_status === "overdue" && item.days_overdue > 0 ? (
                   <Badge variant="destructive" className="normal-case tracking-normal">
                     {item.days_overdue}d

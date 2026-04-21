@@ -7,8 +7,8 @@ import {
   type DataTableSortState,
 } from "../../../components/layout/DataTable";
 import { Badge } from "../../../components/ui/badge";
+import { StatusBadge } from "../../../components/ui/StatusBadge";
 import {
-  supplierInvoiceStatusBadgeVariant,
   useSupplierInvoiceStatusLabel,
   useSupplierInvoices,
 } from "../hooks/useSupplierInvoices";
@@ -72,12 +72,7 @@ export function SupplierInvoiceList({ onSelect }: SupplierInvoiceListProps) {
             id: "status",
             header: t("purchase.list.columns.status"),
             cell: (item) => (
-              <Badge
-                variant={supplierInvoiceStatusBadgeVariant(item.status)}
-                className="normal-case tracking-normal"
-              >
-                {statusLabel(item.status)}
-              </Badge>
+              <StatusBadge status={item.status} label={statusLabel(item.status)} />
             ),
           },
         ]}
@@ -103,13 +98,11 @@ export function SupplierInvoiceList({ onSelect }: SupplierInvoiceListProps) {
                   {t("purchase.list.allStatuses")} {allStatusCount}
                 </Badge>
                 {STATUS_OPTIONS.map((status) => (
-                  <Badge
+                  <StatusBadge
                     key={status}
-                    variant={supplierInvoiceStatusBadgeVariant(status)}
-                    className="normal-case tracking-normal"
-                  >
-                    {statusLabel(status)} {statusTotals[status]}
-                  </Badge>
+                    status={status}
+                    label={`${statusLabel(status)} ${statusTotals[status]}`}
+                  />
                 ))}
               </div>
             </div>

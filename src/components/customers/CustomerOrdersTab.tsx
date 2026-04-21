@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 
 import { DataTable, DataTableToolbar, type DataTableColumn } from "../../components/layout/DataTable";
 import { Button } from "../../components/ui/button";
-import { Badge } from "../../components/ui/badge";
+import { StatusBadge } from "../../components/ui/StatusBadge";
 import { usePermissions } from "../../hooks/usePermissions";
 import { fetchOrders } from "../../lib/api/orders";
 import { ORDER_CREATE_ROUTE } from "../../lib/routes";
@@ -105,12 +105,7 @@ function CustomerOrdersTable({
       sortable: true,
       getSortValue: (item) => statusLabel(item.status),
       cell: (item) => (
-        <Badge
-          variant={statusBadgeVariant(item.status)}
-          className="normal-case tracking-normal"
-        >
-          {statusLabel(item.status)}
-        </Badge>
+        <StatusBadge status={item.status} label={statusLabel(item.status)} />
       ),
     },
   ];

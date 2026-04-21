@@ -2,6 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
+  resolveStatusBadgeVariant,
+  type StatusBadgeVariant,
+} from "../../../components/ui/StatusBadge";
+import {
   fetchSupplierInvoice,
   fetchSupplierInvoices,
 } from "../../../lib/api/purchases";
@@ -94,23 +98,12 @@ export function useSupplierInvoice(invoiceId: string) {
   return { invoice, loading, error, reload: load };
 }
 
-type SupplierInvoiceStatusBadgeVariant =
-  | "neutral"
-  | "success"
-  | "warning"
-  | "destructive";
+type SupplierInvoiceStatusBadgeVariant = StatusBadgeVariant;
 
 export function supplierInvoiceStatusBadgeVariant(
   status: SupplierInvoiceStatus,
 ): SupplierInvoiceStatusBadgeVariant {
-  switch (status) {
-    case "paid":
-      return "success";
-    case "voided":
-      return "destructive";
-    default:
-      return "warning";
-  }
+  return resolveStatusBadgeVariant(status, { overrides: { open: "warning" } });
 }
 
 export function useSupplierInvoiceStatusLabel() {

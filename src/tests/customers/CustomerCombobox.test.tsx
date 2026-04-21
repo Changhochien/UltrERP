@@ -1,15 +1,21 @@
 import "../helpers/i18n";
 
+import type { ReactNode } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CustomerCombobox } from "../../components/customers/CustomerCombobox";
 import { createCustomer, listCustomers } from "../../lib/api/customers";
+import { ToastProvider } from "../../providers/ToastProvider";
 
 vi.mock("../../lib/api/customers", () => ({
   createCustomer: vi.fn(),
   listCustomers: vi.fn(),
 }));
+
+function renderWithToastProvider(component: ReactNode) {
+  return render(<ToastProvider>{component}</ToastProvider>);
+}
 
 describe("CustomerCombobox", () => {
   beforeEach(() => {
@@ -48,7 +54,7 @@ describe("CustomerCombobox", () => {
   it("uses the shared customer schema for quick-create payloads", async () => {
     const onChange = vi.fn();
 
-    render(<CustomerCombobox value="" onChange={onChange} />);
+    renderWithToastProvider(<CustomerCombobox value="" onChange={onChange} />);
 
     fireEvent.click(screen.getByRole("combobox"));
 
@@ -101,7 +107,7 @@ describe("CustomerCombobox", () => {
   });
 
   it("shows quick-create field errors for invalid client-side input", async () => {
-    render(<CustomerCombobox value="" onChange={vi.fn()} />);
+    renderWithToastProvider(<CustomerCombobox value="" onChange={vi.fn()} />);
 
     fireEvent.click(screen.getByRole("combobox"));
     fireEvent.change(screen.getByPlaceholderText("Search customer by name or BAN…"), {

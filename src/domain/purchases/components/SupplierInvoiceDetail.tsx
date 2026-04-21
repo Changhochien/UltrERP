@@ -2,10 +2,9 @@ import { useTranslation } from "react-i18next";
 
 import { DataTable } from "../../../components/layout/DataTable";
 import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayout";
-import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
+import { StatusBadge } from "../../../components/ui/StatusBadge";
 import {
-  supplierInvoiceStatusBadgeVariant,
   useSupplierInvoice,
   useSupplierInvoiceStatusLabel,
 } from "../hooks/useSupplierInvoices";
@@ -46,12 +45,7 @@ export function SupplierInvoiceDetail({
             {t("purchase.detail.title", { invoiceNumber: invoice.invoice_number })}
           </h2>
         </div>
-        <Badge
-          variant={supplierInvoiceStatusBadgeVariant(invoice.status)}
-          className="normal-case tracking-normal"
-        >
-          {statusLabel(invoice.status)}
-        </Badge>
+        <StatusBadge status={invoice.status} label={statusLabel(invoice.status)} />
       </div>
 
       <SectionCard

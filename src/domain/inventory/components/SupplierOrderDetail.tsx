@@ -4,9 +4,9 @@ import { useState } from "react";
 
 import { DataTable } from "../../../components/layout/DataTable";
 import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayout";
-import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
+import { StatusBadge } from "../../../components/ui/StatusBadge";
 import {
   statusBadgeVariant,
   useSupplierOrderDetail,
@@ -98,9 +98,7 @@ export function SupplierOrderDetail({
           </Button>
           <div className="flex flex-wrap items-center gap-3">
             <h2 className="text-xl font-semibold tracking-tight">Order {order.order_number}</h2>
-            <Badge variant={statusBadgeVariant(status)} className="normal-case tracking-normal">
-              {statusLabel(status)}
-            </Badge>
+            <StatusBadge status={status} label={statusLabel(status)} />
           </div>
         </div>
         <div className="flex flex-wrap gap-2">

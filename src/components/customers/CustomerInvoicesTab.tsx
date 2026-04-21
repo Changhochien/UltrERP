@@ -5,9 +5,9 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { DataTable, DataTableToolbar, type DataTableColumn } from "../../components/layout/DataTable";
-import { Badge } from "../../components/ui/badge";
+import { StatusBadge } from "../../components/ui/StatusBadge";
 import { fetchInvoices } from "../../lib/api/invoices";
-import { paymentStatusBadgeVariant, paymentStatusLabel } from "../../domain/invoices/hooks/useInvoices";
+import { paymentStatusLabel } from "../../domain/invoices/hooks/useInvoices";
 import type { InvoiceListItem } from "../../domain/invoices/types";
 
 interface CustomerInvoicesTabProps {
@@ -86,12 +86,7 @@ function CustomerInvoicesTable({
       id: "payment_status",
       header: t("invoice.listPage.status") ?? "Status",
       cell: (item) => (
-        <Badge
-          variant={paymentStatusBadgeVariant(item.payment_status)}
-          className="normal-case tracking-normal"
-        >
-          {paymentStatusLabel(item.payment_status)}
-        </Badge>
+        <StatusBadge status={item.payment_status} label={paymentStatusLabel(item.payment_status)} />
       ),
     },
   ];

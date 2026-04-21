@@ -14,6 +14,7 @@ import { StatusMultiSelect } from "../../../components/filters/StatusMultiSelect
 import { TanStackDataTable } from "../../../components/layout/TanStackDataTable";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
+import { StatusBadge } from "../../../components/ui/StatusBadge";
 import { useOrders, statusBadgeVariant, statusLabel } from "../hooks/useOrders";
 import type { OrderBillingStatus, OrderStatus, OrderWorkflowView } from "../types";
 import { BILLING_STATUS_META, COMMERCIAL_STATUS_META, FULFILLMENT_STATUS_META, RESERVATION_STATUS_META } from "../workflowMeta";
@@ -202,9 +203,7 @@ export function OrderList({ onSelect }: OrderListProps) {
             getSortValue: (item) => item.status,
             cell: (item) => (
               <div className="space-y-2">
-                <Badge variant={statusBadgeVariant(item.status)} className="normal-case tracking-normal">
-                  {statusLabel(item.status)}
-                </Badge>
+                <StatusBadge status={item.status} label={statusLabel(item.status)} />
                 <Badge
                   variant={COMMERCIAL_STATUS_META[item.execution.commercial_status].variant}
                   className="normal-case tracking-normal"

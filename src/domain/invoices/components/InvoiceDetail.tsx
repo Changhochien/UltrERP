@@ -5,12 +5,10 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { SectionCard } from "../../../components/layout/PageLayout";
-import { Badge } from "../../../components/ui/badge";
 import { Breadcrumb } from "../../../components/ui/Breadcrumb";
 import { Button } from "../../../components/ui/button";
+import { StatusBadge } from "../../../components/ui/StatusBadge";
 import {
-  eguiStatusBadgeVariant,
-  paymentStatusBadgeVariant,
   paymentStatusLabel,
   useInvoice,
 } from "../hooks/useInvoices";
@@ -307,9 +305,7 @@ export function InvoiceDetail({ invoiceId, onBack }: InvoiceDetailProps) {
             <dl className="gap-y-4">
               <dt>Status</dt>
               <dd>
-                <Badge variant={eguiStatusBadgeVariant(egui.status)} className="normal-case tracking-normal">
-                  {egui.status}
-                </Badge>
+                <StatusBadge status={egui.status} label={egui.status} />
               </dd>
               <dt>Submission Window</dt>
               <dd>{egui.deadline_label}</dd>
@@ -357,9 +353,7 @@ export function InvoiceDetail({ invoiceId, onBack }: InvoiceDetailProps) {
               <dd>{invoice.currency_code} {invoice.outstanding_balance}</dd>
               <dt>Payment Status</dt>
               <dd>
-                <Badge variant={paymentStatusBadgeVariant(ps)} className="normal-case tracking-normal">
-                  {paymentStatusLabel(ps)}
-                </Badge>
+                <StatusBadge status={ps} label={paymentStatusLabel(ps)} />
               </dd>
               {invoice.due_date ? (
                 <>

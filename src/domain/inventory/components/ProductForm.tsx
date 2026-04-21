@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
+import { Spinner } from "../../../components/ui/Spinner";
 import { Textarea } from "../../../components/ui/textarea";
 import {
   defaultProductFormValues,
@@ -227,10 +228,17 @@ export function ProductForm({
 
       <div className="flex gap-2">
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? submittingLabel : submitLabel}
+          {isSubmitting ? (
+            <>
+              <Spinner size="sm" className="text-current" />
+              {submittingLabel}
+            </>
+          ) : (
+            submitLabel
+          )}
         </Button>
         {onCancel && (
-          <Button type="button" variant="outline" onClick={onCancel}>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
             Cancel
           </Button>
         )}

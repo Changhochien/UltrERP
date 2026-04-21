@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { InvoiceList } from "../components/InvoiceList";
+import { ToastProvider } from "../../../providers/ToastProvider";
 
 afterEach(() => {
 	cleanup();
@@ -46,6 +47,16 @@ const invoiceListResponse = {
 	page_size: 20,
 };
 
+function renderInvoiceList() {
+	return render(
+		<ToastProvider>
+			<MemoryRouter>
+				<InvoiceList onSelect={() => {}} />
+			</MemoryRouter>
+		</ToastProvider>,
+	);
+}
+
 describe("InvoiceList", () => {
 	it("renders payment columns", async () => {
 		vi.spyOn(globalThis, "fetch").mockResolvedValue({
@@ -53,7 +64,7 @@ describe("InvoiceList", () => {
 			json: async () => invoiceListResponse,
 		} as Response);
 
-		render(<MemoryRouter><InvoiceList onSelect={() => {}} /></MemoryRouter>);
+		renderInvoiceList();
 
 		await waitFor(() => {
 			expect(screen.getByText("AA00000001")).toBeTruthy();
@@ -76,7 +87,7 @@ describe("InvoiceList", () => {
 			json: async () => invoiceListResponse,
 		} as Response);
 
-		render(<MemoryRouter><InvoiceList onSelect={() => {}} /></MemoryRouter>);
+		renderInvoiceList();
 
 		await waitFor(() => {
 			expect(screen.getByText("AA00000002")).toBeTruthy();
@@ -93,7 +104,7 @@ describe("InvoiceList", () => {
 			json: async () => invoiceListResponse,
 		} as Response);
 
-		render(<MemoryRouter><InvoiceList onSelect={() => {}} /></MemoryRouter>);
+		renderInvoiceList();
 
 		await waitFor(() => {
 			expect(screen.getByLabelText("Status:")).toBeTruthy();
@@ -103,7 +114,7 @@ describe("InvoiceList", () => {
 	it("shows error on fetch failure", async () => {
 		vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Network error"));
 
-		render(<MemoryRouter><InvoiceList onSelect={() => {}} /></MemoryRouter>);
+		renderInvoiceList();
 
 		await waitFor(() => {
 			expect(screen.getByRole("alert")).toBeTruthy();
