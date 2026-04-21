@@ -10,6 +10,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 import pytest
@@ -38,7 +39,9 @@ def _make_customer(**overrides: object) -> Customer:
         "contact_phone": "0912-345-678",
         "contact_email": "a@b.com",
         "credit_limit": 1000,
+        "default_discount_percent": Decimal("0.0500"),
         "status": "active",
+        "customer_type": "dealer",
         "legacy_master_snapshot": {"legacy_code": "C001"},
         "version": 1,
         "created_at": now,
@@ -242,6 +245,7 @@ class TestGetByIdEndpoint:
             assert r.status_code == 200
             assert r.json()["id"] == str(c.id)
             assert r.json()["legacy_master_snapshot"]["legacy_code"] == "C001"
+            assert r.json()["default_discount_percent"] == "0.0500"
         finally:
             _restore_db_override(previous_override)
 
@@ -295,6 +299,7 @@ class TestLookupEndpoint:
                 r = await cl.get("/api/v1/customers/lookup", params={"business_number": "04595252"})
             assert r.status_code == 200
             assert r.json()["normalized_business_number"] == "04595252"
+            assert r.json()["default_discount_percent"] == "0.0500"
         finally:
             _restore_db_override(previous_override)
 

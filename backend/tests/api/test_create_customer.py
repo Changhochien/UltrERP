@@ -9,6 +9,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 from httpx import ASGITransport, AsyncClient
@@ -51,6 +52,8 @@ class FakeAsyncSession:
             instance.status = "active"  # type: ignore[attr-defined]
         if getattr(instance, "customer_type", None) is None:
             instance.customer_type = "unknown"  # type: ignore[attr-defined]
+        if getattr(instance, "default_discount_percent", None) is None:
+            instance.default_discount_percent = Decimal("0.0000")  # type: ignore[attr-defined]
         if getattr(instance, "version", None) is None:
             instance.version = 1  # type: ignore[attr-defined]
         if getattr(instance, "created_at", None) is None:
@@ -117,7 +120,24 @@ async def test_create_customer_success() -> None:
         assert body["version"] == 1
         assert body["status"] == "active"
         assert body["customer_type"] == "unknown"
+        assert body["default_discount_percent"] == "0.0000"
         assert "id" in body
+    finally:
+        _teardown(previous_override)
+
+
+async def test_create_customer_accepts_default_discount_percent() -> None:
+    previous_override = _setup()
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver", headers=auth_header()
+        ) as client:
+            payload = _valid_body()
+            payload["default_discount_percent"] = "0.0750"
+            resp = await client.post("/api/v1/customers", json=payload)
+        assert resp.status_code == 201
+        assert resp.json()["default_discount_percent"] == "0.0750"
     finally:
         _teardown(previous_override)
 

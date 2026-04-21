@@ -54,6 +54,7 @@ class FakeCustomer:
         self,
         *,
         tenant_id: uuid.UUID = uuid.UUID("00000000-0000-0000-0000-000000000001"),
+        default_discount_percent: Decimal = Decimal("0.0000"),
     ):
         self.id = uuid.uuid4()
         self.tenant_id = tenant_id
@@ -64,6 +65,7 @@ class FakeCustomer:
         self.contact_phone = "0912345678"
         self.contact_email = "john@test.com"
         self.credit_limit = Decimal("100000.00")
+        self.default_discount_percent = default_discount_percent
         self.status = "active"
         self.version = 1
         self.created_at = datetime.now(tz=UTC)

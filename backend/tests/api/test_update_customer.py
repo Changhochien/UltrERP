@@ -9,6 +9,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 import pytest
@@ -38,6 +39,7 @@ def _make_customer(**overrides: object) -> Customer:
         "contact_phone": "0912-345-678",
         "contact_email": "wang@example.com",
         "credit_limit": "100000.00",
+        "default_discount_percent": Decimal("0.0500"),
         "status": "active",
         "customer_type": "unknown",
         "version": 1,
@@ -141,6 +143,7 @@ async def test_update_customer_success() -> None:
         assert body["company_name"] == "新名稱"
         assert body["version"] == 2
         assert body["customer_type"] == "unknown"
+        assert body["default_discount_percent"] == "0.0500"
     finally:
         _teardown(prev)
 
@@ -242,6 +245,25 @@ async def test_update_credit_limit_only() -> None:
         assert resp.status_code == 200
         body = resp.json()
         assert body["credit_limit"] == "50000.00"
+        assert body["version"] == 2
+    finally:
+        _teardown(prev)
+
+
+@pytest.mark.anyio
+async def test_update_default_discount_percent() -> None:
+    customer = _make_customer()
+    prev = _setup(customer=customer)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://testserver", headers=auth_header()
+        ) as client:
+            resp = await client.patch(
+                _url(), json={"default_discount_percent": "0.1250", "version": 1}
+            )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["default_discount_percent"] == "0.1250"
         assert body["version"] == 2
     finally:
         _teardown(prev)

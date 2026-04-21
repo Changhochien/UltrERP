@@ -136,6 +136,7 @@ async def create_customer(
         contact_phone=data.contact_phone.strip(),
         contact_email=data.contact_email.strip(),
         credit_limit=data.credit_limit,
+        default_discount_percent=data.default_discount_percent,
         customer_type=data.customer_type,
     )
 
@@ -366,6 +367,8 @@ async def update_customer(
             customer.contact_email = data.contact_email.strip()
         if "credit_limit" in fields and data.credit_limit is not None:
             customer.credit_limit = data.credit_limit
+        if "default_discount_percent" in fields and data.default_discount_percent is not None:
+            customer.default_discount_percent = data.default_discount_percent
         if "customer_type" in fields and data.customer_type is not None:
             customer.customer_type = data.customer_type
 

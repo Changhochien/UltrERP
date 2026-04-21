@@ -186,12 +186,19 @@ async def create_order(
 
         # Resolve payment terms
         terms_config = PAYMENT_TERMS_CONFIG[data.payment_terms_code]
+        header_discount_supplied = (
+            "discount_amount" in data.model_fields_set or "discount_percent" in data.model_fields_set
+        )
         normalized_discount_amount = (
             data.discount_amount if data.discount_amount > 0 else Decimal("0.00")
         )
         normalized_discount_percent = (
             data.discount_percent
             if normalized_discount_amount == 0 and data.discount_percent > 0
+            else customer.default_discount_percent
+            if normalized_discount_amount == 0
+            and not header_discount_supplied
+            and customer.default_discount_percent > 0
             else Decimal("0.0000")
         )
 

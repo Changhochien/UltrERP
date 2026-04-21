@@ -46,6 +46,12 @@ class TestValidPayload:
         errors = _validate_customer_fields(_valid_payload(credit_limit=Decimal("0.00")))
         assert errors == []
 
+    def test_accepts_default_discount_percent(self) -> None:
+        errors = _validate_customer_fields(
+            _valid_payload(default_discount_percent=Decimal("0.0750"))
+        )
+        assert errors == []
+
 
 class TestBusinessNumberValidation:
     def test_invalid_checksum(self) -> None:
@@ -92,6 +98,10 @@ class TestCreditLimitValidation:
         errors = _validate_customer_fields(_valid_payload(credit_limit=Decimal("99999999999.99")))
         assert len(errors) == 1
         assert errors[0]["field"] == "credit_limit"
+
+    def test_default_discount_over_one_rejected_by_schema(self) -> None:
+        with pytest.raises(PydanticValidationError):
+            _valid_payload(default_discount_percent=Decimal("1.0001"))
 
 
 class TestMultipleErrors:
