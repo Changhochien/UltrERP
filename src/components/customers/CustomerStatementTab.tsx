@@ -4,7 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "../ui/button";
-import { Input } from "../ui/input";
+import { DatePicker } from "../ui/DatePicker";
+import {
+  parseDatePickerInputValue,
+  serializeDatePickerValue,
+} from "../ui/date-picker-utils";
 import {
   Table,
   TableBody,
@@ -15,6 +19,7 @@ import {
 } from "../ui/table";
 import { SurfaceMessage } from "../layout/PageLayout";
 import { getCustomerStatement, type CustomerStatementResponse, type StatementLine } from "../../lib/api/customers";
+import { appTodayISO } from "../../lib/time";
 
 interface CustomerStatementTabProps {
   customerId: string;
@@ -22,13 +27,13 @@ interface CustomerStatementTabProps {
 }
 
 function twelveMonthsAgo(): string {
-  const d = new Date();
+  const d = parseDatePickerInputValue(appTodayISO()) ?? new Date();
   d.setMonth(d.getMonth() - 12);
-  return d.toISOString().slice(0, 10);
+  return serializeDatePickerValue(d);
 }
 
 function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  return appTodayISO();
 }
 
 function formatDate(iso: string): string {
@@ -175,24 +180,30 @@ export function CustomerStatementTab({ customerId, customerName }: CustomerState
 
       {/* Filter row */}
       <div className="flex items-center gap-3">
-        <label className="flex items-center gap-2 text-sm font-medium">
-          {t("customer.detail.statement.filter.from")}
-          <Input
-            type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            className="w-40"
-          />
-        </label>
-        <label className="flex items-center gap-2 text-sm font-medium">
-          {t("customer.detail.statement.filter.to")}
-          <Input
-            type="date"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-            className="w-40"
-          />
-        </label>
+        <div className="flex items-end gap-2">
+          <label className="flex flex-col gap-1 text-sm font-medium" htmlFor="customer-statement-from-date">
+            {t("customer.detail.statement.filter.from")}
+            <DatePicker
+              id="customer-statement-from-date"
+              aria-label={t("customer.detail.statement.filter.from")}
+              placeholder={t("customer.detail.statement.filter.from")}
+              value={parseDatePickerInputValue(fromDate)}
+              onChange={(value) => setFromDate(serializeDatePickerValue(value))}
+              className="w-[10rem]"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium" htmlFor="customer-statement-to-date">
+            {t("customer.detail.statement.filter.to")}
+            <DatePicker
+              id="customer-statement-to-date"
+              aria-label={t("customer.detail.statement.filter.to")}
+              placeholder={t("customer.detail.statement.filter.to")}
+              value={parseDatePickerInputValue(toDate)}
+              onChange={(value) => setToDate(serializeDatePickerValue(value))}
+              className="w-[10rem]"
+            />
+          </label>
+        </div>
         <Button size="sm" variant="outline" onClick={() => void load()}>
           Refresh
         </Button>

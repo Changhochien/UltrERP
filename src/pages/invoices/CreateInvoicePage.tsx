@@ -6,6 +6,11 @@ import { InvoiceTotalsCard } from "../../components/invoices/InvoiceTotalsCard";
 import { CustomerCombobox } from "../../components/customers/CustomerCombobox";
 import { PageHeader, SectionCard, SurfaceMessage } from "../../components/layout/PageLayout";
 import { Button } from "../../components/ui/button";
+import { DatePicker } from "../../components/ui/DatePicker";
+import {
+  parseDatePickerInputValue,
+  serializeDatePickerValue,
+} from "../../components/ui/date-picker-utils";
 import { Input } from "../../components/ui/input";
 import {
   Select,
@@ -25,6 +30,7 @@ import {
 import { useToast } from "../../hooks/useToast";
 import { listCustomers } from "../../lib/api/customers";
 import { createInvoice } from "../../lib/api/invoices";
+import { appTodayISO } from "../../lib/time";
 import { INVOICES_ROUTE } from "../../lib/routes";
 
 interface DraftLine extends InvoiceDraftLine {
@@ -73,7 +79,7 @@ export default function CreateInvoicePage() {
   const [customerId, setCustomerId] = useState("");
   const [buyerType, setBuyerType] = useState<InvoiceBuyerType>("b2b");
   const [buyerIdentifier, setBuyerIdentifier] = useState("");
-  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
+  const [invoiceDate, setInvoiceDate] = useState(appTodayISO);
   const [lines, setLines] = useState<DraftLine[]>([makeDraftLine(1)]);
   const [nextLineId, setNextLineId] = useState(2);
   const [submitting, setSubmitting] = useState(false);
@@ -307,12 +313,12 @@ export default function CreateInvoicePage() {
               <label htmlFor="invoice-date" className="text-sm font-medium">
                 {t("invoice.createPage.invoiceDate")}
               </label>
-              <Input
+              <DatePicker
                 id="invoice-date"
-                type="date"
-                value={invoiceDate}
-                onChange={(e) => setInvoiceDate(e.target.value)}
-                required
+                aria-label={t("invoice.createPage.invoiceDate")}
+                value={parseDatePickerInputValue(invoiceDate)}
+                onChange={(value) => setInvoiceDate(serializeDatePickerValue(value))}
+                allowClear={false}
                 disabled={submitting}
               />
             </div>

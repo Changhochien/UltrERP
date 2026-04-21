@@ -5,8 +5,14 @@ import { useTranslation } from "react-i18next";
 
 import { SurfaceMessage } from "../../../components/layout/PageLayout";
 import { Button } from "../../../components/ui/button";
+import { DatePicker } from "../../../components/ui/DatePicker";
+import {
+	parseDatePickerInputValue,
+	serializeDatePickerValue,
+} from "../../../components/ui/date-picker-utils";
 import { Input } from "../../../components/ui/input";
 import { useToast } from "../../../hooks/useToast";
+import { appTodayISO } from "../../../lib/time";
 import type { PaymentMethod } from "../types";
 import { useCreatePayment } from "../hooks/usePayments";
 
@@ -35,9 +41,7 @@ export default function RecordPaymentForm({
 	const { error: showErrorToast, success: showSuccessToast } = useToast();
 	const [amount, setAmount] = useState(String(outstandingBalance));
 	const [method, setMethod] = useState<PaymentMethod>("BANK_TRANSFER");
-	const [paymentDate, setPaymentDate] = useState(
-		new Date().toISOString().slice(0, 10),
-	);
+	const [paymentDate, setPaymentDate] = useState(appTodayISO);
 	const [referenceNumber, setReferenceNumber] = useState("");
 	const [notes, setNotes] = useState("");
 	const [formError, setFormError] = useState<string | null>(null);
@@ -127,13 +131,14 @@ export default function RecordPaymentForm({
 			</div>
 
 			<div className="space-y-2">
-				<label htmlFor="payment-date">Payment Date</label>
-				<Input
+				<label htmlFor="payment-date">{t("payments.form.fields.paymentDate")}</label>
+				<DatePicker
 					id="payment-date"
-					type="date"
-					value={paymentDate}
-					onChange={(e) => setPaymentDate(e.target.value)}
-					required
+					aria-label={t("payments.form.fields.paymentDate")}
+					placeholder={t("payments.form.fields.paymentDate")}
+					value={parseDatePickerInputValue(paymentDate)}
+					onChange={(value) => setPaymentDate(serializeDatePickerValue(value))}
+					allowClear={false}
 				/>
 			</div>
 

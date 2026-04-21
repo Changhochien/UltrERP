@@ -1,3 +1,11 @@
+import { useTranslation } from "react-i18next";
+
+import { DatePicker } from "@/components/ui/DatePicker";
+import {
+  parseDatePickerInputValue,
+  serializeDatePickerValue,
+} from "@/components/ui/date-picker-utils";
+
 interface DateRangeFilterProps {
   dateFrom: string;
   dateTo: string;
@@ -11,31 +19,34 @@ export function DateRangeFilter({
   onDateFromChange,
   onDateToChange,
 }: DateRangeFilterProps) {
+  const { t } = useTranslation("common");
+
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex flex-col gap-0.5">
-        <label htmlFor="date-from" className="text-xs text-muted-foreground">
-          From
+    <div className="flex min-w-56 flex-col gap-1">
+      <span className="text-xs text-muted-foreground">{t("dateRangeFilter.label")}</span>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <label htmlFor="date-range-from" className="flex min-w-0 flex-col gap-1">
+          <span className="text-xs text-muted-foreground">{t("dateRangeFilter.from")}</span>
+          <DatePicker
+            id="date-range-from"
+            aria-label={t("dateRangeFilter.fromAria")}
+            placeholder={t("dateRangeFilter.from")}
+            value={parseDatePickerInputValue(dateFrom)}
+            onChange={(value) => onDateFromChange(serializeDatePickerValue(value))}
+            className="min-w-0"
+          />
         </label>
-        <input
-          id="date-from"
-          type="date"
-          value={dateFrom}
-          onChange={(e) => onDateFromChange(e.target.value)}
-          className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-        />
-      </div>
-      <div className="flex flex-col gap-0.5">
-        <label htmlFor="date-to" className="text-xs text-muted-foreground">
-          To
+        <label htmlFor="date-range-to" className="flex min-w-0 flex-col gap-1">
+          <span className="text-xs text-muted-foreground">{t("dateRangeFilter.to")}</span>
+          <DatePicker
+            id="date-range-to"
+            aria-label={t("dateRangeFilter.toAria")}
+            placeholder={t("dateRangeFilter.to")}
+            value={parseDatePickerInputValue(dateTo)}
+            onChange={(value) => onDateToChange(serializeDatePickerValue(value))}
+            className="min-w-0"
+          />
         </label>
-        <input
-          id="date-to"
-          type="date"
-          value={dateTo}
-          onChange={(e) => onDateToChange(e.target.value)}
-          className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-        />
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ import { DataTable, type DataTableSortState } from "../components/layout/DataTab
 import { PageHeader, SectionCard, SurfaceMessage } from "../components/layout/PageLayout";
 import { Badge } from "../components/ui/badge";
 import { buttonVariants, Button } from "../components/ui/button";
+import { DatePicker } from "../components/ui/DatePicker";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +23,11 @@ import {
 } from "../components/ui/dialog";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
+import {
+  parseDatePickerInputValue,
+  serializeDatePickerValue,
+} from "../components/ui/date-picker-utils";
+import { appTodayISO } from "../lib/time";
 import {
   Sheet,
   SheetContent,
@@ -137,15 +143,12 @@ function buildAuditFilterOptions(baseOptions: readonly string[], currentValue: s
 }
 
 function formatDateInput(date: Date): string {
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(date.getUTCDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return serializeDatePickerValue(date);
 }
 
-function shiftUtcDays(date: Date, days: number): Date {
+function shiftCalendarDays(date: Date, days: number): Date {
   const next = new Date(date);
-  next.setUTCDate(next.getUTCDate() + days);
+  next.setDate(next.getDate() + days);
   return next;
 }
 
@@ -467,8 +470,8 @@ export function AdminPage() {
   }
 
   function applyAuditDatePreset(preset: "today" | "last7Days" | "thisMonth") {
-    const today = new Date();
-    const todayValue = formatDateInput(today);
+    const todayValue = appTodayISO();
+    const today = parseDatePickerInputValue(todayValue) ?? new Date();
 
     if (preset === "today") {
       setAuditDateRange(todayValue, todayValue);
@@ -476,7 +479,7 @@ export function AdminPage() {
     }
 
     if (preset === "last7Days") {
-      setAuditDateRange(formatDateInput(shiftUtcDays(today, -6)), todayValue);
+      setAuditDateRange(formatDateInput(shiftCalendarDays(today, -6)), todayValue);
       return;
     }
 
@@ -904,22 +907,37 @@ export function AdminPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="admin-audit-created-after">{t("adminPage.auditLog.filters.createdAfter")}</Label>
-                <Input
-                  id="admin-audit-created-after"
-                  type="date"
-                  value={auditFilters.createdAfter}
-                  onChange={(event) => updateAuditFilter("createdAfter", event.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="admin-audit-created-before">{t("adminPage.auditLog.filters.createdBefore")}</Label>
-                <Input
-                  id="admin-audit-created-before"
-                  type="date"
-                  value={auditFilters.createdBefore}
-                  onChange={(event) => updateAuditFilter("createdBefore", event.target.value)}
-                />
+                <Label htmlFor="admin-audit-date-range">
+                  {t("adminPage.auditLog.filters.createdAfter")} / {t("adminPage.auditLog.filters.createdBefore")}
+                </Label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <DatePicker
+                    id="admin-audit-created-after"
+                    aria-label={t("adminPage.auditLog.filters.createdAfter")}
+                    placeholder={t("adminPage.auditLog.filters.createdAfter")}
+                    value={parseDatePickerInputValue(auditFilters.createdAfter)}
+                    onChange={(value) =>
+                      setAuditDateRange(
+                        serializeDatePickerValue(value),
+                        auditFilters.createdBefore,
+                      )
+                    }
+                    className="w-full"
+                  />
+                  <DatePicker
+                    id="admin-audit-created-before"
+                    aria-label={t("adminPage.auditLog.filters.createdBefore")}
+                    placeholder={t("adminPage.auditLog.filters.createdBefore")}
+                    value={parseDatePickerInputValue(auditFilters.createdBefore)}
+                    onChange={(value) =>
+                      setAuditDateRange(
+                        auditFilters.createdAfter,
+                        serializeDatePickerValue(value),
+                      )
+                    }
+                    className="w-full"
+                  />
+                </div>
               </div>
             </div>
 

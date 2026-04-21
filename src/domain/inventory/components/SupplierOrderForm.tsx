@@ -4,10 +4,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayout";
 import { Button } from "../../../components/ui/button";
+import { DatePicker } from "../../../components/ui/DatePicker";
+import {
+  parseDatePickerInputValue,
+  serializeDatePickerValue,
+} from "../../../components/ui/date-picker-utils";
 import { Input } from "../../../components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table";
 import { ProductCombobox } from "../../../components/products/ProductCombobox";
 import { fetchProductSupplier } from "../../../lib/api/inventory";
+import { appTodayISO } from "../../../lib/time";
 import { SupplierCombobox } from "./SupplierCombobox";
 import { useWarehouses } from "../hooks/useWarehouses";
 import {
@@ -64,7 +70,7 @@ export function SupplierOrderForm({
 
   const [supplierId, setSupplierId] = useState(initialSupplierId);
   const [orderDate, setOrderDate] = useState(
-    () => initialOrderDate ?? new Date().toISOString().slice(0, 10),
+    () => initialOrderDate ?? appTodayISO(),
   );
   const [expectedArrival, setExpectedArrival] = useState(initialExpectedArrivalDate);
   const [lines, setLines] = useState<OrderLine[]>(
@@ -81,7 +87,7 @@ export function SupplierOrderForm({
 
   useEffect(() => {
     setSupplierId(initialSupplierId);
-    setOrderDate(initialOrderDate ?? new Date().toISOString().slice(0, 10));
+    setOrderDate(initialOrderDate ?? appTodayISO());
     setExpectedArrival(initialExpectedArrivalDate);
     setLines(initialLines?.length ? initialLines.map(hydrateLine) : [emptyLine()]);
     autoResolvedSupplierId.current = initialSupplierId;
@@ -230,22 +236,22 @@ export function SupplierOrderForm({
 
             <label className="space-y-2">
               <span>Order date</span>
-              <Input
+              <DatePicker
                 id="so-date"
-                type="date"
-                required
-                value={orderDate}
-                onChange={(e) => setOrderDate(e.target.value)}
+                aria-label="Order date"
+                value={parseDatePickerInputValue(orderDate)}
+                onChange={(value) => setOrderDate(serializeDatePickerValue(value))}
+                allowClear={false}
               />
             </label>
 
             <label className="space-y-2">
               <span>Expected arrival</span>
-              <Input
+              <DatePicker
                 id="so-arrival"
-                type="date"
-                value={expectedArrival}
-                onChange={(e) => setExpectedArrival(e.target.value)}
+                aria-label="Expected arrival"
+                value={parseDatePickerInputValue(expectedArrival)}
+                onChange={(value) => setExpectedArrival(serializeDatePickerValue(value))}
               />
             </label>
           </div>

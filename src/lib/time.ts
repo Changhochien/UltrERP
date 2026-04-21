@@ -19,6 +19,25 @@ export const TIMEZONE = "Asia/Taipei";
 // Injected by tests or dev tools. Defaults to real clock.
 let _now: () => Date = () => new Date();
 
+function formatDatePartsInTimezone(value: Date, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(value);
+
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  if (!year || !month || !day) {
+    return format(value, "yyyy-MM-dd");
+  }
+
+  return `${year}-${month}-${day}`;
+}
+
 export function setAppTimeGetter(fn: () => Date): void {
   _now = fn;
 }
@@ -29,7 +48,7 @@ export function appNow(): Date {
 
 /** Returns today's date as ISO string "YYYY-MM-DD" in Taiwan time */
 export function appTodayISO(): string {
-  return format(_now(), "yyyy-MM-dd");
+  return formatDatePartsInTimezone(_now(), TIMEZONE);
 }
 
 /** Parse a backend date string that may be date-only ("YYYY-MM-DD") or
