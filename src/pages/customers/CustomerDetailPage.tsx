@@ -16,6 +16,7 @@ import { CustomerInvoicesTab } from "../../components/customers/CustomerInvoices
 import { CustomerOrdersTab } from "../../components/customers/CustomerOrdersTab";
 import { CustomerOutstandingTab } from "../../components/customers/CustomerOutstandingTab";
 import { CustomerStatementTab } from "../../components/customers/CustomerStatementTab";
+import { CUSTOMERS_ROUTE } from "../../lib/routes";
 import { CustomerAnalyticsTab } from "@/components/customers/CustomerAnalyticsTab";
 import { usePermissions } from "../../hooks/usePermissions";
 
