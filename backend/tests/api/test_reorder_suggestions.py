@@ -107,7 +107,7 @@ async def test_create_reorder_suggestion_orders_returns_created_and_unresolved_r
         actor_id: str,
     ) -> dict:
         assert len(items) == 1
-        assert actor_id == "system"
+        assert actor_id == "00000000-0000-0000-0000-000000000111"
         return {
             "created_orders": [
                 {

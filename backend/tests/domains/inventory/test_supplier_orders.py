@@ -163,6 +163,10 @@ class FakeAsyncSession:
         self.added.extend(objs)
 
     async def execute(self, _stmt: object) -> object:
+        # The stock-changed handler may query reorder alerts depending on app lifespan.
+        # Do not consume the queued order/stock results for that opportunistic lookup.
+        if "reorder_alert" in str(_stmt).lower():
+            return FakeResult(obj=None)
         if self._idx < len(self._execute_results):
             result = self._execute_results[self._idx]
             self._idx += 1
@@ -532,7 +536,7 @@ async def test_receive_order_full() -> None:
     )
 
     session = FakeAsyncSession()
-    # receive_supplier_order makes 2 queries (order, stock).
+    # receive_supplier_order makes 2 core queries (order, stock).
     # Then _serialize_order makes 2 queries (order, supplier name).
     session.queue_scalar(order)  # 1. receive_supplier_order: lock & fetch order with lines
     session.queue_scalar(stock)  # 2. receive_supplier_order: lock inventory stock

@@ -1,0 +1,1 @@
+"""Product analytics domain tests package."""

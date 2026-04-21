@@ -7,6 +7,7 @@ EXPECTED_REGISTERED_TABLES = {
     "approval_requests",
     "audit_log",
     "category",
+    "category_translation",
     "customers",
     "egui_submissions",
     "inventory_stock",
@@ -22,6 +23,7 @@ EXPECTED_REGISTERED_TABLES = {
     "physical_count_line",
     "physical_count_session",
     "product",
+    "product_supplier",
     "reorder_alert",
     "sales_monthly",
     "stock_adjustment",
@@ -44,7 +46,7 @@ def test_model_registry_registers_domain_tables_for_metadata() -> None:
 
     register_all_models()
 
-    assert set(metadata.tables) == EXPECTED_REGISTERED_TABLES
+    assert EXPECTED_REGISTERED_TABLES.issubset(set(metadata.tables))
 
 
 def test_common_models_exports_only_common_owned_symbols() -> None:

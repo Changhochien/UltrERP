@@ -14,7 +14,7 @@ from app.mcp_server import mcp
 from common.database import AsyncSessionLocal
 from common.tenant import DEFAULT_TENANT_ID
 from domains.orders.schemas import OrderLineResponse, OrderListItem, OrderResponse
-from domains.orders.services import derive_order_execution, get_order, list_orders
+from domains.orders.services import build_order_workspace_meta, derive_order_execution, get_order, list_orders
 
 
 def _parse_uuid(value: str, field: str) -> uuid.UUID:
@@ -47,22 +47,32 @@ def _not_found(entity_type: str, entity_id: str) -> ToolError:
     )
 
 
-def _extract_order_meta(order, invoice_payment_status: str | None) -> dict:
-    execution = getattr(order, "execution", None)
-    if execution is None:
-        execution = derive_order_execution(order, invoice_payment_status=invoice_payment_status)
-    return {
-        "sales_team": getattr(order, "sales_team", None) or [],
-        "total_commission": getattr(order, "total_commission", 0),
-        "invoice_number": getattr(order, "invoice_number", None),
-        "invoice_payment_status": invoice_payment_status,
-        "execution": execution,
-    }
-
-
-def _serialize_order_summary(order) -> dict:
-    invoice_payment_status = getattr(order, "invoice_payment_status", None)
-    meta = _extract_order_meta(order, invoice_payment_status)
+def _serialize_order_summary(order, meta: dict | None = None) -> dict:
+    if meta is not None:
+        execution = meta.get("execution")
+        if execution is None:
+            execution = derive_order_execution(order, invoice_payment_status=meta.get("invoice_payment_status"))
+        invoice_number = meta.get("invoice_number")
+        if invoice_number is None:
+            invoice_number = getattr(order, "invoice_number", None)
+        invoice_payment_status = meta.get("invoice_payment_status")
+        if invoice_payment_status is None:
+            invoice_payment_status = getattr(order, "invoice_payment_status", None)
+        resolved_meta = {
+            "sales_team": meta.get("sales_team") or getattr(order, "sales_team", None) or [],
+            "total_commission": meta.get("total_commission") or getattr(order, "total_commission", 0),
+            "invoice_number": invoice_number,
+            "invoice_payment_status": invoice_payment_status,
+            "execution": execution,
+        }
+    else:
+        resolved_meta = {
+            "sales_team": getattr(order, "sales_team", None) or [],
+            "total_commission": getattr(order, "total_commission", 0),
+            "invoice_number": getattr(order, "invoice_number", None),
+            "invoice_payment_status": getattr(order, "invoice_payment_status", None),
+            "execution": getattr(order, "execution", None),
+        }
     return OrderListItem(
         id=order.id,
         tenant_id=order.tenant_id,
@@ -71,16 +81,39 @@ def _serialize_order_summary(order) -> dict:
         status=order.status,
         payment_terms_code=order.payment_terms_code,
         total_amount=order.total_amount,
-        **meta,
+        **resolved_meta,
         legacy_header_snapshot=getattr(order, "legacy_header_snapshot", None),
         created_at=order.created_at,
         updated_at=order.updated_at,
     ).model_dump(mode="json")
 
 
-def _serialize_order(order) -> dict:
-    invoice_payment_status = getattr(order, "invoice_payment_status", None)
-    meta = _extract_order_meta(order, invoice_payment_status)
+def _serialize_order(order, meta: dict | None = None) -> dict:
+    if meta is not None:
+        execution = meta.get("execution")
+        if execution is None:
+            execution = derive_order_execution(order, invoice_payment_status=meta.get("invoice_payment_status"))
+        invoice_number = meta.get("invoice_number")
+        if invoice_number is None:
+            invoice_number = getattr(order, "invoice_number", None)
+        invoice_payment_status = meta.get("invoice_payment_status")
+        if invoice_payment_status is None:
+            invoice_payment_status = getattr(order, "invoice_payment_status", None)
+        resolved_meta = {
+            "sales_team": meta.get("sales_team") or getattr(order, "sales_team", None) or [],
+            "total_commission": meta.get("total_commission") or getattr(order, "total_commission", 0),
+            "invoice_number": invoice_number,
+            "invoice_payment_status": invoice_payment_status,
+            "execution": execution,
+        }
+    else:
+        resolved_meta = {
+            "sales_team": getattr(order, "sales_team", None) or [],
+            "total_commission": getattr(order, "total_commission", 0),
+            "invoice_number": getattr(order, "invoice_number", None),
+            "invoice_payment_status": getattr(order, "invoice_payment_status", None),
+            "execution": getattr(order, "execution", None),
+        }
     return OrderResponse(
         id=order.id,
         tenant_id=order.tenant_id,
@@ -96,7 +129,7 @@ def _serialize_order(order) -> dict:
         tax_amount=order.tax_amount,
         total_amount=order.total_amount,
         invoice_id=order.invoice_id,
-        **meta,
+        **resolved_meta,
         notes=order.notes,
         legacy_header_snapshot=getattr(order, "legacy_header_snapshot", None),
         created_by=order.created_by,
@@ -151,8 +184,9 @@ async def orders_list(
             page=page,
             page_size=page_size,
         )
+        meta_by_order_id = await build_order_workspace_meta(session, orders, tenant_id=DEFAULT_TENANT_ID)
         return {
-            "orders": [_serialize_order_summary(order) for order in orders],
+            "orders": [_serialize_order_summary(order, meta_by_order_id.get(order.id)) for order in orders],
             "total": total,
             "page": page,
             "page_size": page_size,
@@ -172,4 +206,5 @@ async def orders_get(
             if exc.status_code == 404:
                 raise _not_found("order", order_id) from exc
             raise
-        return _serialize_order(order)
+        meta_by_order_id = await build_order_workspace_meta(session, [order], tenant_id=DEFAULT_TENANT_ID)
+        return _serialize_order(order, meta_by_order_id.get(order.id))

@@ -124,7 +124,7 @@ async def test_search_returns_results() -> None:
 
     SearchRow = namedtuple(
         "SearchRow",
-        ["id", "code", "name", "category", "status", "current_stock", "relevance"],
+        ["id", "code", "name", "category_id", "category", "status", "current_stock", "relevance"],
     )
     session.queue_rows(
         [
@@ -132,6 +132,7 @@ async def test_search_returns_results() -> None:
                 id=pid,
                 code="WIDGET-001",
                 name="Blue Widget",
+                category_id=None,
                 category="Widgets",
                 status="active",
                 current_stock=42,
@@ -257,7 +258,7 @@ async def test_search_with_warehouse_id() -> None:
 
     SearchRow = namedtuple(
         "SearchRow",
-        ["id", "code", "name", "category", "status", "current_stock", "relevance"],
+        ["id", "code", "name", "category_id", "category", "status", "current_stock", "relevance"],
     )
     session.queue_rows(
         [
@@ -265,6 +266,7 @@ async def test_search_with_warehouse_id() -> None:
                 id=pid,
                 code="BOLT-100",
                 name="Hex Bolt M10",
+                category_id=None,
                 category="Fasteners",
                 status="active",
                 current_stock=500,
@@ -323,15 +325,15 @@ async def test_search_multiple_results_returned() -> None:
 
     SearchRow = namedtuple(
         "SearchRow",
-        ["id", "code", "name", "category", "status", "current_stock", "relevance"],
+        ["id", "code", "name", "category_id", "category", "status", "current_stock", "relevance"],
     )
 
     session = FakeAsyncSession()
     session.queue_rows(
         [
-            SearchRow(uuid.uuid4(), "WGT-001", "Blue Widget", "Widgets", "active", 10, 10.0),
-            SearchRow(uuid.uuid4(), "WGT-002", "Red Widget", "Widgets", "active", 5, 7.5),
-            SearchRow(uuid.uuid4(), "WGT-003", "Green Widget", None, "active", 0, 3.2),
+            SearchRow(uuid.uuid4(), "WGT-001", "Blue Widget", None, "Widgets", "active", 10, 10.0),
+            SearchRow(uuid.uuid4(), "WGT-002", "Red Widget", None, "Widgets", "active", 5, 7.5),
+            SearchRow(uuid.uuid4(), "WGT-003", "Green Widget", None, None, "active", 0, 3.2),
         ]
     )
 
@@ -362,13 +364,13 @@ async def test_search_result_schema_fields() -> None:
 
     SearchRow = namedtuple(
         "SearchRow",
-        ["id", "code", "name", "category", "status", "current_stock", "relevance"],
+        ["id", "code", "name", "category_id", "category", "status", "current_stock", "relevance"],
     )
     pid = uuid.uuid4()
     session = FakeAsyncSession()
     session.queue_rows(
         [
-            SearchRow(pid, "SCH-001", "Schema Test", None, "active", 99, 5.5),
+            SearchRow(pid, "SCH-001", "Schema Test", None, None, "active", 99, 5.5),
         ]
     )
 
