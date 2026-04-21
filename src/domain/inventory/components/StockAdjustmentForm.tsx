@@ -14,6 +14,11 @@ import {
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { ProductCombobox } from "../../../components/products/ProductCombobox";
+import { collectIssueMessages } from "../../../lib/collectFormErrorMessages";
+import {
+  stockAdjustmentFormSchema,
+  toStockAdjustmentPayload,
+} from "../../../lib/schemas/stock-adjustment.schema";
 import { useProductDetail } from "../hooks/useProductDetail";
 import { useWarehouses } from "../hooks/useWarehouses";
 import {
@@ -39,22 +44,45 @@ export function StockAdjustmentForm({ defaultProductId = "", defaultWarehouseId 
   const [reasonCode, setReasonCode] = useState("");
   const [notes, setNotes] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
+  const [validationMessages, setValidationMessages] = useState<string[]>([]);
 
   if (whLoading || codesLoading) return <p aria-busy="true">Loading…</p>;
 
   const canSubmit =
     productId && warehouseId && quantityChange !== 0 && reasonCode;
 
+  const parseForm = () =>
+    stockAdjustmentFormSchema.safeParse({
+      product_id: productId,
+      warehouse_id: warehouseId,
+      quantity_change: Number(quantityChange),
+      reason_code: reasonCode,
+      notes,
+    });
+
+  const handleRequestSubmit = () => {
+    const parsed = parseForm();
+    if (!parsed.success) {
+      setValidationMessages(collectIssueMessages(parsed.error.issues));
+      setShowConfirm(false);
+      return;
+    }
+
+    setValidationMessages([]);
+    setShowConfirm(true);
+  };
+
   const handleSubmit = async () => {
     setShowConfirm(false);
     clearError();
-    const data = await submit({
-      product_id: productId,
-      warehouse_id: warehouseId,
-      quantity_change: quantityChange,
-      reason_code: reasonCode,
-      notes: notes || undefined,
-    });
+    const parsed = parseForm();
+    if (!parsed.success) {
+      setValidationMessages(collectIssueMessages(parsed.error.issues));
+      return;
+    }
+
+    setValidationMessages([]);
+    const data = await submit(toStockAdjustmentPayload(parsed.data));
     if (data) {
       setProductId("");
       setQuantityChange(0);
@@ -70,6 +98,15 @@ export function StockAdjustmentForm({ defaultProductId = "", defaultWarehouseId 
       </div>
 
       {error ? <SurfaceMessage tone="danger">{error}</SurfaceMessage> : null}
+      {validationMessages.length > 0 ? (
+        <SurfaceMessage tone="warning" role="alert">
+          <div className="space-y-1">
+            {validationMessages.map((message) => (
+              <p key={message}>{message}</p>
+            ))}
+          </div>
+        </SurfaceMessage>
+      ) : null}
       {result ? (
         <SurfaceMessage tone="success" role="status">
           Adjustment recorded. Updated stock: {result.updated_stock} units.
@@ -80,7 +117,7 @@ export function StockAdjustmentForm({ defaultProductId = "", defaultWarehouseId 
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            setShowConfirm(true);
+            handleRequestSubmit();
           }}
           aria-label="Adjustment form"
           className="grid gap-4"

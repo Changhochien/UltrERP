@@ -3,6 +3,12 @@ import { useEffect, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Textarea } from "../../../components/ui/textarea";
+import {
+  defaultSupplierFormValues,
+  supplierFormSchema,
+  toSupplierCreatePayload,
+  type SupplierFormValues,
+} from "../../../lib/schemas/supplier.schema";
 import type { Supplier, SupplierCreate } from "../types";
 
 export interface SupplierFormFieldError {
@@ -14,14 +20,6 @@ export type SupplierFormSubmitResult =
   | { ok: true; supplier: Supplier }
   | { ok: false; fieldErrors?: SupplierFormFieldError[]; formError?: string };
 
-export interface SupplierFormValues {
-  name: string;
-  contact_email: string;
-  phone: string;
-  address: string;
-  default_lead_time_days: string;
-}
-
 interface SupplierFormProps {
   initialValues?: Partial<SupplierFormValues>;
   onSubmit: (values: SupplierCreate) => Promise<SupplierFormSubmitResult>;
@@ -31,18 +29,22 @@ interface SupplierFormProps {
   submittingLabel: string;
 }
 
-const DEFAULT_VALUES: SupplierFormValues = {
-  name: "",
-  contact_email: "",
-  phone: "",
-  address: "",
-  default_lead_time_days: "",
-};
-
 function toErrorMap(errors: SupplierFormFieldError[]): Record<string, string> {
   return errors.reduce<Record<string, string>>((acc, error) => {
     if (error.field) {
       acc[error.field] = error.message;
+    }
+    return acc;
+  }, {});
+}
+
+function toIssueErrorMap(
+  issues: Array<{ path: Array<string | number>; message: string }>,
+): Record<string, string> {
+  return issues.reduce<Record<string, string>>((acc, issue) => {
+    const field = typeof issue.path[0] === "string" ? issue.path[0] : "";
+    if (field && !acc[field]) {
+      acc[field] = issue.message;
     }
     return acc;
   }, {});
@@ -56,19 +58,19 @@ export function SupplierForm({
   submitLabel,
   submittingLabel,
 }: SupplierFormProps) {
-  const [formData, setFormData] = useState<SupplierFormValues>(DEFAULT_VALUES);
+  const [formData, setFormData] = useState<SupplierFormValues>(defaultSupplierFormValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     setFormData({
-      name: initialValues?.name ?? DEFAULT_VALUES.name,
-      contact_email: initialValues?.contact_email ?? DEFAULT_VALUES.contact_email,
-      phone: initialValues?.phone ?? DEFAULT_VALUES.phone,
-      address: initialValues?.address ?? DEFAULT_VALUES.address,
+      name: initialValues?.name ?? defaultSupplierFormValues.name,
+      contact_email: initialValues?.contact_email ?? defaultSupplierFormValues.contact_email,
+      phone: initialValues?.phone ?? defaultSupplierFormValues.phone,
+      address: initialValues?.address ?? defaultSupplierFormValues.address,
       default_lead_time_days:
-        initialValues?.default_lead_time_days ?? DEFAULT_VALUES.default_lead_time_days,
+        initialValues?.default_lead_time_days ?? defaultSupplierFormValues.default_lead_time_days,
     });
     setErrors({});
     setServerError(null);
@@ -80,43 +82,23 @@ export function SupplierForm({
     initialValues?.phone,
   ]);
 
-  function validate(values: SupplierFormValues): Record<string, string> {
-    const nextErrors: Record<string, string> = {};
-    if (!values.name.trim()) {
-      nextErrors.name = "Supplier name is required";
-    }
-
-    const leadTime = values.default_lead_time_days.trim();
-    if (leadTime) {
-      const numericLeadTime = Number(leadTime);
-      if (!Number.isFinite(numericLeadTime) || numericLeadTime < 0) {
-        nextErrors.default_lead_time_days = "Lead time must be zero or greater";
-      }
-    }
-
-    return nextErrors;
-  }
-
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setServerError(null);
 
-    const clientErrors = validate(formData);
-    setErrors(clientErrors);
-    if (Object.keys(clientErrors).length > 0) {
+    const parsedValues = supplierFormSchema.safeParse(formData);
+    if (!parsedValues.success) {
+      setErrors(toIssueErrorMap(parsedValues.error.issues));
+      setServerError(
+        parsedValues.error.issues.find((issue) => issue.path.length === 0)?.message ?? null,
+      );
       return;
     }
 
+    setErrors({});
     setIsSubmitting(true);
     try {
-      const leadTime = formData.default_lead_time_days.trim();
-      const result = await onSubmit({
-        name: formData.name.trim(),
-        contact_email: formData.contact_email.trim() || undefined,
-        phone: formData.phone.trim() || undefined,
-        address: formData.address.trim() || undefined,
-        default_lead_time_days: leadTime === "" ? undefined : Number(leadTime),
-      });
+      const result = await onSubmit(toSupplierCreatePayload(parsedValues.data));
 
       if (result.ok) {
         onSuccess(result.supplier);
@@ -132,7 +114,7 @@ export function SupplierForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       {serverError ? (
         <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
           {serverError}

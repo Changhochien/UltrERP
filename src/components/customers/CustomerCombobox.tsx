@@ -314,7 +314,7 @@ export function CustomerCombobox({
                 />
               </div>
               {(createFieldErrors.company_name || createFieldErrors.business_number || createFieldErrors.contact_phone || createFieldErrors.contact_name || createFieldErrors.contact_email || createFieldErrors.credit_limit) && (
-                <div className="space-y-1 text-xs text-destructive">
+                <div className="space-y-1 text-xs text-destructive" role="alert" aria-live="polite">
                   {createFieldErrors.company_name?.[0] ? <p>{createFieldErrors.company_name[0]}</p> : null}
                   {createFieldErrors.business_number?.[0] ? <p>{createFieldErrors.business_number[0]}</p> : null}
                   {createFieldErrors.contact_phone?.[0] ? <p>{createFieldErrors.contact_phone[0]}</p> : null}

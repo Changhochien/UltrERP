@@ -3,6 +3,12 @@ import { useEffect, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Textarea } from "../../../components/ui/textarea";
+import {
+  defaultProductFormValues,
+  productFormSchema,
+  toProductUpdatePayload,
+  type ProductFormValues,
+} from "../../../lib/schemas/product.schema";
 import { CategoryCombobox } from "./CategoryCombobox";
 import { UnitCombobox } from "./UnitCombobox";
 import type { ProductResponse, ProductUpdate } from "../types";
@@ -16,16 +22,6 @@ export type ProductFormSubmitResult =
   | { ok: true; product: ProductResponse }
   | { ok: false; fieldErrors?: ProductFormFieldError[]; formError?: string };
 
-export interface ProductFormValues {
-  code: string;
-  name: string;
-  category_id: string | null;
-  category_name: string;
-  description: string;
-  unit: string;
-  standard_cost: string;
-}
-
 interface ProductFormProps {
   initialValues?: Partial<ProductFormValues>;
   onSubmit: (values: ProductUpdate) => Promise<ProductFormSubmitResult>;
@@ -35,20 +31,22 @@ interface ProductFormProps {
   submittingLabel: string;
 }
 
-const DEFAULT_VALUES: ProductFormValues = {
-  code: "",
-  name: "",
-  category_id: null,
-  category_name: "",
-  description: "",
-  unit: "pcs",
-  standard_cost: "",
-};
-
 function toErrorMap(errors: ProductFormFieldError[]): Record<string, string> {
   return errors.reduce<Record<string, string>>((acc, error) => {
     if (error.field) {
       acc[error.field] = error.message;
+    }
+    return acc;
+  }, {});
+}
+
+function toIssueErrorMap(
+  issues: Array<{ path: Array<string | number>; message: string }>,
+): Record<string, string> {
+  return issues.reduce<Record<string, string>>((acc, issue) => {
+    const field = typeof issue.path[0] === "string" ? issue.path[0] : "";
+    if (field && !acc[field]) {
+      acc[field] = issue.message;
     }
     return acc;
   }, {});
@@ -62,20 +60,20 @@ export function ProductForm({
   submitLabel,
   submittingLabel,
 }: ProductFormProps) {
-  const [formData, setFormData] = useState<ProductFormValues>(DEFAULT_VALUES);
+  const [formData, setFormData] = useState<ProductFormValues>(defaultProductFormValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     setFormData({
-      code: initialValues?.code ?? DEFAULT_VALUES.code,
-      name: initialValues?.name ?? DEFAULT_VALUES.name,
-      category_id: initialValues?.category_id ?? DEFAULT_VALUES.category_id,
-      category_name: initialValues?.category_name ?? DEFAULT_VALUES.category_name,
-      description: initialValues?.description ?? DEFAULT_VALUES.description,
-      unit: initialValues?.unit ?? DEFAULT_VALUES.unit,
-      standard_cost: initialValues?.standard_cost ?? DEFAULT_VALUES.standard_cost,
+      code: initialValues?.code ?? defaultProductFormValues.code,
+      name: initialValues?.name ?? defaultProductFormValues.name,
+      category_id: initialValues?.category_id ?? defaultProductFormValues.category_id,
+      category_name: initialValues?.category_name ?? defaultProductFormValues.category_name,
+      description: initialValues?.description ?? defaultProductFormValues.description,
+      unit: initialValues?.unit ?? defaultProductFormValues.unit,
+      standard_cost: initialValues?.standard_cost ?? defaultProductFormValues.standard_cost,
     });
     setErrors({});
     setServerError(null);
@@ -89,49 +87,23 @@ export function ProductForm({
     initialValues?.unit,
   ]);
 
-  function validate(values: ProductFormValues): Record<string, string> {
-    const nextErrors: Record<string, string> = {};
-    if (!values.code.trim()) {
-      nextErrors.code = "Code is required";
-    }
-    if (!values.name.trim()) {
-      nextErrors.name = "Name is required";
-    }
-    if (!values.unit.trim()) {
-      nextErrors.unit = "Unit is required";
-    }
-    const standardCost = values.standard_cost.trim();
-    if (standardCost) {
-      const parsedValue = Number(standardCost);
-      if (!Number.isFinite(parsedValue)) {
-        nextErrors.standard_cost = "Standard cost must be a valid number";
-      } else if (parsedValue < 0) {
-        nextErrors.standard_cost = "Standard cost must be greater than or equal to 0";
-      }
-    }
-    return nextErrors;
-  }
-
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setServerError(null);
 
-    const clientErrors = validate(formData);
-    setErrors(clientErrors);
-    if (Object.keys(clientErrors).length > 0) {
+    const parsedValues = productFormSchema.safeParse(formData);
+    if (!parsedValues.success) {
+      setErrors(toIssueErrorMap(parsedValues.error.issues));
+      setServerError(
+        parsedValues.error.issues.find((issue) => issue.path.length === 0)?.message ?? null,
+      );
       return;
     }
 
+    setErrors({});
     setIsSubmitting(true);
     try {
-      const result = await onSubmit({
-        code: formData.code.trim(),
-        name: formData.name.trim(),
-        category_id: formData.category_id,
-        description: formData.description.trim(),
-        unit: formData.unit.trim(),
-        standard_cost: formData.standard_cost.trim() ? formData.standard_cost.trim() : null,
-      });
+      const result = await onSubmit(toProductUpdatePayload(parsedValues.data));
 
       if (result.ok) {
         onSuccess(result.product);
@@ -147,7 +119,7 @@ export function ProductForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       {serverError && (
         <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
           {serverError}

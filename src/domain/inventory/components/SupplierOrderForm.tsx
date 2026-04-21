@@ -13,6 +13,11 @@ import { Input } from "../../../components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table";
 import { ProductCombobox } from "../../../components/products/ProductCombobox";
 import { fetchProductSupplier } from "../../../lib/api/inventory";
+import { collectIssueMessages } from "../../../lib/collectFormErrorMessages";
+import {
+  supplierOrderFormSchema,
+  toSupplierOrderCreatePayload,
+} from "../../../lib/schemas/supplier-order.schema";
 import { appTodayISO } from "../../../lib/time";
 import { SupplierCombobox } from "./SupplierCombobox";
 import { useWarehouses } from "../hooks/useWarehouses";
@@ -77,6 +82,7 @@ export function SupplierOrderForm({
     () => initialLines?.length ? initialLines.map(hydrateLine) : [emptyLine()],
   );
   const [supplierResolutionMessage, setSupplierResolutionMessage] = useState<string | null>(null);
+  const [validationMessages, setValidationMessages] = useState<string[]>([]);
   const autoResolvedSupplierId = useRef("");
 
   const selectedProductIds = useMemo(
@@ -186,21 +192,20 @@ export function SupplierOrderForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = await create({
+    const parsed = supplierOrderFormSchema.safeParse({
       supplier_id: supplierId,
       order_date: orderDate,
-      expected_arrival_date: expectedArrival || undefined,
-      lines: validLines.map((l) => {
-        const normalizedUnitPrice = l.unit_cost.trim();
-
-        return {
-          product_id: l.product_id,
-          warehouse_id: l.warehouse_id,
-          quantity_ordered: l.quantity,
-          unit_price: normalizedUnitPrice === "" ? undefined : Number(normalizedUnitPrice),
-        };
-      }),
+      expected_arrival_date: expectedArrival,
+      lines,
     });
+
+    if (!parsed.success) {
+      setValidationMessages(collectIssueMessages(parsed.error.issues));
+      return;
+    }
+
+    setValidationMessages([]);
+    const result = await create(toSupplierOrderCreatePayload(parsed.data));
     if (result) onCreated(result.id);
   };
 
@@ -211,6 +216,15 @@ export function SupplierOrderForm({
         <p className="text-sm text-muted-foreground">Create a supplier PO with warehouse-specific receiving lines.</p>
       </div>
 
+      {validationMessages.length > 0 ? (
+        <SurfaceMessage tone="warning" role="alert">
+          <div className="space-y-1">
+            {validationMessages.map((message) => (
+              <p key={message}>{message}</p>
+            ))}
+          </div>
+        </SurfaceMessage>
+      ) : null}
       {error ? <SurfaceMessage tone="danger">{error}</SurfaceMessage> : null}
 
       <form onSubmit={(e) => void handleSubmit(e)} aria-label="Order form" className="space-y-6">
