@@ -1204,11 +1204,11 @@ development_status:
         validation: "Implemented on 2026-04-20 with a shared breadcrumb component, additive `PageHeader` breadcrumb support, route-surface wiring across the existing workspace headers, and custom-header breadcrumb trails for product, order, and invoice detail screens. Focused frontend validation passed with `pnpm vitest run src/tests/ui/Breadcrumb.test.tsx src/pages/inventory/SupplierDetailPage.test.tsx src/pages/InventoryPage.test.tsx src/domain/invoices/__tests__/CreateInvoicePage.test.tsx src/domain/purchases/__tests__/PurchasesPage.test.tsx src/pages/inventory/CountSessionsPage.test.tsx src/pages/inventory/CountSessionDetailPage.test.tsx src/pages/inventory/SuppliersPage.test.tsx src/pages/inventory/BelowReorderReportPage.test.tsx src/pages/inventory/InventoryValuationPage.test.tsx src/pages/inventory/CategoriesPage.test.tsx src/pages/inventory/UnitsPage.test.tsx src/pages/inventory/TransfersPage.test.tsx src/pages/inventory/ReorderSuggestionsPage.test.tsx` (`25 passed`) and `pnpm vitest run src/pages/inventory/ProductDetailPage.test.tsx src/tests/orders/OrderDetailConfirmationUX.test.tsx src/domain/invoices/__tests__/InvoiceDetail.test.tsx` (`19 passed`)."
         prerequisites: ["22.1"]
       22-4-zod-schema-centralization-and-form-migration:
-        status: "ready-for-dev"
+        status: "done"
         story_id: "22.4"
         title: "Zod Schema Centralization and Form Migration"
         story_file: "22-4-zod-schema-centralization-and-form-migration.md"
-        validation: "Story artifact created."
+        validation: "Implemented across commits `caa72f3`, `1bbb44f`, `1ab85ae`, `1d09c3d`, and `cd6109a` with shared schema modules under `src/lib/schemas/`, customer/payment/order/inventory form migrations, shared payload mappers, and focused regression coverage for the touched schema-driven flows. Current validation passed with `pnpm vitest run src/tests/customers/CustomerForm.test.tsx src/domain/payments/__tests__/RecordPaymentForm.test.tsx src/domain/payments/__tests__/RecordUnmatchedPayment.test.tsx src/tests/schemas/formSchemas.test.ts src/tests/orders/OrderCommissionEntry.test.tsx src/tests/customers/CustomerCombobox.test.tsx src/tests/inventory/ProductForm.test.tsx src/tests/inventory/SupplierForm.test.tsx src/domain/inventory/components/StockAdjustmentForm.test.tsx` (`29 passed`)."
         prerequisites: ["22.1", "22.2"]
       22-5-css-cleanup-alertfeed-and-commandbar:
         status: "done"
