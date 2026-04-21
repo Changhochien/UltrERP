@@ -1,0 +1,8 @@
+{
+  "batch_id": "legacy-shadow-20260421T025306Z",
+  "scheduler_run_id": "56a35684-ba21-4132-b427-cb90bae323b0",
+  "schema_name": "raw_legacy",
+  "source_schema": "public",
+  "started_at": "2026-04-21T02:53:06.451586+00:00",
+  "tenant_id": "00000000-0000-0000-0000-000000000001"
+}

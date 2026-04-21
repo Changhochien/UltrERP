@@ -1,0 +1,56 @@
+{
+  "analyst_review_required": true,
+  "batch_id": "legacy-shadow-20250601T000000Z",
+  "blocking_issue_count": null,
+  "completed_at": "2025-06-01T00:00:00+00:00",
+  "exit_code": 1,
+  "final_disposition": "failed",
+  "lane_key": "raw_legacy-00000000-0000-0000-0000-000000000001-public",
+  "promotion_policy": {
+    "analyst_review_required": true,
+    "batch_id": "legacy-shadow-20250601T000000Z",
+    "blocking_issue_count": null,
+    "candidate_final_disposition": "completed-review-required",
+    "classification": "blocked",
+    "gate_details": {
+      "analyst_review": {
+        "required": true,
+        "status": "review-required"
+      },
+      "lane": {
+        "lock_active": false
+      },
+      "promotion_readiness": false,
+      "reconciliation": {
+        "gap_count": null,
+        "status": "pending",
+        "threshold": 0
+      },
+      "validation": {
+        "blocking_issue_count": null,
+        "status": "pending"
+      }
+    },
+    "message": "Batch legacy-shadow-20250601T000000Z cannot be promoted because its summary artifact is invalid: summary.validation.blocking_issue_count is required.",
+    "override_allowed": false,
+    "promotion_readiness": false,
+    "reason_codes": [
+      "invalid-summary-artifact"
+    ],
+    "reconciliation_gap_count": null,
+    "reconciliation_threshold": 0,
+    "summary_path": "/Volumes/2T_SSD_App/Projects/UltrERP/_bmad-output/operations/legacy-refresh/raw_legacy-00000000-0000-0000-0000-000000000001-legacy-shadow-20250601T000000Z-refresh-20250601T000000Z-46f13a24-3569-46fc-8a9b-042f6a3b1efc.json",
+    "validation_status": "pending"
+  },
+  "promotion_readiness": false,
+  "reconciliation_gap_count": null,
+  "reconciliation_threshold": 0,
+  "scheduler_run_id": "8661a37d-752e-4f49-bf01-7ce7dd15c8af",
+  "schema_name": "raw_legacy",
+  "source_schema": "public",
+  "started_at": "2025-06-01T00:00:00+00:00",
+  "state_version": 1,
+  "summary_path": "/Volumes/2T_SSD_App/Projects/UltrERP/_bmad-output/operations/legacy-refresh/raw_legacy-00000000-0000-0000-0000-000000000001-legacy-shadow-20250601T000000Z-refresh-20250601T000000Z-46f13a24-3569-46fc-8a9b-042f6a3b1efc.json",
+  "tenant_id": "00000000-0000-0000-0000-000000000001",
+  "validation_status": "pending"
+}

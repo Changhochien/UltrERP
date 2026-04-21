@@ -1,0 +1,185 @@
+{
+  "analyst_review_export_path": null,
+  "analyst_review_imported": false,
+  "analyst_review_required": false,
+  "analyst_review_supplied": false,
+  "approved_review_input_path": null,
+  "batch_id": "legacy-shadow-20250601T000000Z",
+  "canonical_attempt_number": null,
+  "completed_at": "2025-06-01T00:00:00+00:00",
+  "correction_proposals_path": null,
+  "exit_code": 1,
+  "failed_step": "live-stage",
+  "final_disposition": "failed",
+  "last_completed_step": null,
+  "orchestrator_run_id": "a2cef281-360b-43d7-8657-1b66e6f12af8",
+  "partial_state_preserved": false,
+  "promotion_gate_status": {
+    "analyst_review": {
+      "export_path": null,
+      "imported": false,
+      "outstanding": false,
+      "required": false,
+      "status": "pending",
+      "supplied": false,
+      "unknown_count": null
+    },
+    "promotion_ready": false,
+    "reconciliation": {
+      "gap_count": null,
+      "status": "pending",
+      "threshold": 0
+    },
+    "validation": {
+      "blocking_issue_count": null,
+      "json_path": null,
+      "markdown_path": null,
+      "status": "pending"
+    }
+  },
+  "promotion_policy": {
+    "analyst_review_required": false,
+    "batch_id": "legacy-shadow-20250601T000000Z",
+    "blocking_issue_count": null,
+    "candidate_final_disposition": "completed",
+    "classification": "blocked",
+    "gate_details": {
+      "analyst_review": {
+        "required": false,
+        "status": "pending"
+      },
+      "lane": {
+        "lock_active": false
+      },
+      "promotion_readiness": false,
+      "reconciliation": {
+        "gap_count": null,
+        "status": "pending",
+        "threshold": 0
+      },
+      "validation": {
+        "blocking_issue_count": null,
+        "status": "pending"
+      }
+    },
+    "message": "Batch legacy-shadow-20250601T000000Z cannot be promoted because its summary artifact is invalid: summary.validation.blocking_issue_count is required.",
+    "override_allowed": false,
+    "promotion_readiness": false,
+    "reason_codes": [
+      "invalid-summary-artifact"
+    ],
+    "reconciliation_gap_count": null,
+    "reconciliation_threshold": 0,
+    "summary_path": "/Volumes/2T_SSD_App/Projects/UltrERP/_bmad-output/operations/legacy-refresh/raw_legacy-00000000-0000-0000-0000-000000000001-legacy-shadow-20250601T000000Z-refresh-20250601T000000Z-a2cef281-360b-43d7-8657-1b66e6f12af8.json",
+    "validation_status": "pending"
+  },
+  "promotion_readiness": false,
+  "reconciliation_gap_count": null,
+  "reconciliation_threshold_used": 0,
+  "schema_name": "raw_legacy",
+  "source_schema": "public",
+  "started_at": "2025-06-01T00:00:00+00:00",
+  "steps": [
+    {
+      "completed_at": "2025-06-01T00:00:00+00:00",
+      "details": {},
+      "error": "Missing legacy source settings: LEGACY_DB_HOST, LEGACY_DB_USER, LEGACY_DB_PASSWORD, LEGACY_DB_NAME",
+      "name": "live-stage",
+      "started_at": "2025-06-01T00:00:00+00:00",
+      "status": "failed"
+    },
+    {
+      "completed_at": "2025-06-01T00:00:00+00:00",
+      "details": {
+        "reason": "aborted-after-live-stage-failure"
+      },
+      "error": null,
+      "name": "normalize",
+      "started_at": null,
+      "status": "skipped"
+    },
+    {
+      "completed_at": "2025-06-01T00:00:00+00:00",
+      "details": {
+        "reason": "aborted-after-live-stage-failure"
+      },
+      "error": null,
+      "name": "map-products",
+      "started_at": null,
+      "status": "skipped"
+    },
+    {
+      "completed_at": "2025-06-01T00:00:00+00:00",
+      "details": {
+        "reason": "aborted-after-live-stage-failure"
+      },
+      "error": null,
+      "name": "export-product-review",
+      "started_at": null,
+      "status": "skipped"
+    },
+    {
+      "completed_at": "2025-06-01T00:00:00+00:00",
+      "details": {
+        "reason": "aborted-after-live-stage-failure"
+      },
+      "error": null,
+      "name": "import-product-review",
+      "started_at": null,
+      "status": "skipped"
+    },
+    {
+      "completed_at": "2025-06-01T00:00:00+00:00",
+      "details": {
+        "reason": "aborted-after-live-stage-failure"
+      },
+      "error": null,
+      "name": "canonical-import",
+      "started_at": null,
+      "status": "skipped"
+    },
+    {
+      "completed_at": "2025-06-01T00:00:00+00:00",
+      "details": {
+        "reason": "aborted-after-live-stage-failure"
+      },
+      "error": null,
+      "name": "validate-import",
+      "started_at": null,
+      "status": "skipped"
+    },
+    {
+      "completed_at": "2025-06-01T00:00:00+00:00",
+      "details": {
+        "reason": "aborted-after-live-stage-failure"
+      },
+      "error": null,
+      "name": "backfill_purchase_receipts",
+      "started_at": null,
+      "status": "skipped"
+    },
+    {
+      "completed_at": "2025-06-01T00:00:00+00:00",
+      "details": {
+        "reason": "aborted-after-live-stage-failure"
+      },
+      "error": null,
+      "name": "backfill_sales_reservations",
+      "started_at": null,
+      "status": "skipped"
+    },
+    {
+      "completed_at": "2025-06-01T00:00:00+00:00",
+      "details": {
+        "reason": "aborted-after-live-stage-failure"
+      },
+      "error": null,
+      "name": "verify_reconciliation",
+      "started_at": null,
+      "status": "skipped"
+    }
+  ],
+  "tenant_id": "00000000-0000-0000-0000-000000000001",
+  "validation_json_path": null,
+  "validation_markdown_path": null
+}
