@@ -184,9 +184,9 @@ describe("CustomerCombobox", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Create" }));
 
-    expect(await screen.findByRole("button", { name: "Use existing customer" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "View Existing Customer" })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Use existing customer" }));
+    fireEvent.click(screen.getByRole("button", { name: "View Existing Customer" }));
 
     expect(onChange).toHaveBeenCalledWith("cust-existing");
   });
