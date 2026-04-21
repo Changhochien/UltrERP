@@ -6,6 +6,11 @@ import { Search } from "lucide-react";
 import { listCustomers, createCustomer } from "../../lib/api/customers";
 import type { CustomerSummary } from "../../domain/customers/types";
 import { cn } from "../../lib/utils";
+import {
+  customerFormSchema,
+  toCustomerCreatePayload,
+  type CustomerFormValues,
+} from "../../lib/schemas/customer.schema";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import {
@@ -46,7 +51,7 @@ export function CustomerCombobox({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [showCreatePanel, setShowCreatePanel] = useState(false);
-  const [createForm, setCreateForm] = useState({
+  const [createForm, setCreateForm] = useState<CustomerFormValues>({
     company_name: "",
     business_number: "",
     contact_phone: "",
@@ -136,6 +141,10 @@ export function CustomerCombobox({
       ),
     [customers, query],
   );
+  const createValidation = useMemo(() => customerFormSchema.safeParse(createForm), [createForm]);
+  const createFieldErrors = createValidation.success
+    ? {}
+    : createValidation.error.flatten().fieldErrors;
 
   const selectedCustomer = customers.find((c) => c.id === value);
 
@@ -147,15 +156,11 @@ export function CustomerCombobox({
 
   async function handleCreateSubmit() {
     setCreateError(null);
-    const payload = {
-      company_name: createForm.company_name,
-      business_number: createForm.business_number,
-      contact_phone: createForm.contact_phone,
-      billing_address: createForm.billing_address,
-      contact_name: createForm.contact_name,
-      contact_email: createForm.contact_email,
-      credit_limit: createForm.credit_limit,
-    };
+    if (!createValidation.success) {
+      return;
+    }
+
+    const payload = toCustomerCreatePayload(createValidation.data);
     const result = await createCustomer(payload);
     if (result.ok) {
       onChange(result.data.id);
@@ -293,12 +298,12 @@ export function CustomerCombobox({
                   onChange={(e) => setCreateForm((f) => ({ ...f, billing_address: e.target.value }))}
                 />
                 <Input
-                  placeholder="Contact name"
+                  placeholder="Contact name *"
                   value={createForm.contact_name}
                   onChange={(e) => setCreateForm((f) => ({ ...f, contact_name: e.target.value }))}
                 />
                 <Input
-                  placeholder="Contact email"
+                  placeholder="Contact email *"
                   value={createForm.contact_email}
                   onChange={(e) => setCreateForm((f) => ({ ...f, contact_email: e.target.value }))}
                 />
@@ -308,6 +313,16 @@ export function CustomerCombobox({
                   onChange={(e) => setCreateForm((f) => ({ ...f, credit_limit: e.target.value }))}
                 />
               </div>
+              {(createFieldErrors.company_name || createFieldErrors.business_number || createFieldErrors.contact_phone || createFieldErrors.contact_name || createFieldErrors.contact_email || createFieldErrors.credit_limit) && (
+                <div className="space-y-1 text-xs text-destructive">
+                  {createFieldErrors.company_name?.[0] ? <p>{createFieldErrors.company_name[0]}</p> : null}
+                  {createFieldErrors.business_number?.[0] ? <p>{createFieldErrors.business_number[0]}</p> : null}
+                  {createFieldErrors.contact_phone?.[0] ? <p>{createFieldErrors.contact_phone[0]}</p> : null}
+                  {createFieldErrors.contact_name?.[0] ? <p>{createFieldErrors.contact_name[0]}</p> : null}
+                  {createFieldErrors.contact_email?.[0] ? <p>{createFieldErrors.contact_email[0]}</p> : null}
+                  {createFieldErrors.credit_limit?.[0] ? <p>{createFieldErrors.credit_limit[0]}</p> : null}
+                </div>
+              )}
               {createError && (
                 <p className="text-xs text-destructive">{createError}</p>
               )}
@@ -316,6 +331,14 @@ export function CustomerCombobox({
                   size="sm"
                   onClick={handleCreateSubmit}
                   disabled={!createForm.company_name.trim() || !createForm.business_number.trim() || !createForm.contact_phone.trim()}
+                  disabled={
+                    !createForm.company_name.trim() ||
+                    !createForm.business_number.trim() ||
+                    !createForm.contact_phone.trim() ||
+                    !createForm.contact_name.trim() ||
+                    !createForm.contact_email.trim() ||
+                    !createValidation.success
+                  }
                 >
                   Create
                 </Button>
