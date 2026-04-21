@@ -12,6 +12,7 @@ from domains.aeo.sitemap import generate_product_sitemap_xml, invalidate_sitemap
 from domains.approval.routes import router as approval_router
 from domains.audit.routes import router as audit_router
 from domains.auth.routes import router as auth_router
+from domains.crm.routes import router as crm_router
 from domains.customers.routes import router as customers_router
 from domains.dashboard.routes import router as dashboard_router
 from domains.health.routes import router as health_router
@@ -74,6 +75,7 @@ def create_app() -> FastAPI:
 	api_v1.include_router(approval_router, prefix="/admin/approvals", tags=["approvals"])
 	api_v1.include_router(audit_router, prefix="/admin/audit-logs", tags=["audit"])
 	api_v1.include_router(users_router, prefix="/admin/users", tags=["users"])
+	api_v1.include_router(crm_router, prefix="/crm/leads", tags=["crm"])
 	api_v1.include_router(customers_router, prefix="/customers", tags=["customers"])
 	api_v1.include_router(dashboard_router, prefix="/dashboard", tags=["dashboard"])
 	api_v1.include_router(intelligence_router, prefix="/intelligence", tags=["intelligence"])

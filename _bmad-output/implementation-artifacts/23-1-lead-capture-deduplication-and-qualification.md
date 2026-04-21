@@ -1,6 +1,6 @@
 # Story 23.1: Lead Capture, Deduplication, and Qualification
 
-Status: drafted
+Status: done
 
 ## Story
 
@@ -34,27 +34,27 @@ The goal is to establish a reliable pre-customer commercial record and a clean h
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add the lead domain model, schemas, and persistence contract. (AC: 1, 2, 4)
-  - [ ] Create a CRM lead model under `backend/domains/crm/` with tenant-scoped identity, organization, owner, lifecycle, qualification, communication, and attribution fields.
-  - [ ] Include the validated UTM fields (`utm_source`, `utm_medium`, `utm_campaign`, `utm_content`) and the qualification fields called out in research.
-  - [ ] Keep the write model compatible with later shared contact records instead of embedding one-off conversion-only fields.
-- [ ] Task 2: Implement lead CRUD services and lifecycle handling. (AC: 1, 2, 5)
-  - [ ] Add create, list, detail, update, and lifecycle-transition service logic for leads.
-  - [ ] Enforce the validated status set and the allowed progression rules.
-  - [ ] Add conversion endpoints or commands for lead-to-opportunity and lead-to-customer handoff without pulling Story 23.2 or Story 23.3 logic forward.
-  - [ ] Preserve conversion-safe status and qualification lineage so later CRM reporting can reconstruct how the lead advanced.
-- [ ] Task 3: Add deduplication and review guidance. (AC: 3)
-  - [ ] Check new and updated leads against existing leads and customers using business identity and primary contact channels where available.
-  - [ ] Return structured duplicate candidates so the UI can guide reuse or review.
-  - [ ] Keep the first slice on actionable review guidance rather than automatic merge automation.
-- [ ] Task 4: Build the lead UI workspace and capture form. (AC: 1-3, 5)
-  - [ ] Add lead list and detail surfaces under the new CRM area using Epic 22 breadcrumb, toast, date, and shared form primitives.
-  - [ ] Add a lead form that captures the validated core fields, attribution, and qualification state.
-  - [ ] Surface duplicate warnings and conversion actions clearly in the detail flow.
-- [ ] Task 5: Add focused tests and validation. (AC: 1-6)
-  - [ ] Add backend tests for lifecycle enforcement, dedupe detection, and conversion handoff.
-  - [ ] Add frontend tests for lead creation, duplicate guidance, and conversion actions.
-  - [ ] Validate that the touched code does not introduce quotation or order write behavior.
+- [x] Task 1: Add the lead domain model, schemas, and persistence contract. (AC: 1, 2, 4)
+  - [x] Create a CRM lead model under `backend/domains/crm/` with tenant-scoped identity, organization, owner, lifecycle, qualification, communication, and attribution fields.
+  - [x] Include the validated UTM fields (`utm_source`, `utm_medium`, `utm_campaign`, `utm_content`) and the qualification fields called out in research.
+  - [x] Keep the write model compatible with later shared contact records instead of embedding one-off conversion-only fields.
+- [x] Task 2: Implement lead CRUD services and lifecycle handling. (AC: 1, 2, 5)
+  - [x] Add create, list, detail, update, and lifecycle-transition service logic for leads.
+  - [x] Enforce the validated status set and the allowed progression rules.
+  - [x] Add conversion endpoints or commands for lead-to-opportunity and lead-to-customer handoff without pulling Story 23.2 or Story 23.3 logic forward.
+  - [x] Preserve conversion-safe status and qualification lineage so later CRM reporting can reconstruct how the lead advanced.
+- [x] Task 3: Add deduplication and review guidance. (AC: 3)
+  - [x] Check new and updated leads against existing leads and customers using business identity and primary contact channels where available.
+  - [x] Return structured duplicate candidates so the UI can guide reuse or review.
+  - [x] Keep the first slice on actionable review guidance rather than automatic merge automation.
+- [x] Task 4: Build the lead UI workspace and capture form. (AC: 1-3, 5)
+  - [x] Add lead list and detail surfaces under the new CRM area using Epic 22 breadcrumb, toast, date, and shared form primitives.
+  - [x] Add a lead form that captures the validated core fields, attribution, and qualification state.
+  - [x] Surface duplicate warnings and conversion actions clearly in the detail flow.
+- [x] Task 5: Add focused tests and validation. (AC: 1-6)
+  - [x] Add backend tests for lifecycle enforcement, dedupe detection, and conversion handoff.
+  - [x] Add frontend tests for lead creation, duplicate guidance, and conversion actions.
+  - [x] Validate that the touched code does not introduce quotation or order write behavior.
 
 ## Dev Notes
 
@@ -112,12 +112,43 @@ GPT-5.4
 
 ### Debug Log References
 
-- Story draft only; implementation and validation commands not run yet.
+- `cd /Users/changtom/Downloads/UltrERP/backend && uv run pytest tests/domains/crm/test_lead_service.py`
+- `cd /Users/changtom/Downloads/UltrERP && pnpm test -- src/tests/crm/CreateLeadPage.test.tsx src/tests/crm/LeadDetailPage.test.tsx src/tests/crm/LeadListPage.test.tsx`
+- `cd /Users/changtom/Downloads/UltrERP/backend && uv run pytest tests/domains/crm/test_lead_service.py tests/domains/crm/test_routes.py -q`
 
 ### Completion Notes List
 
 - 2026-04-21: Drafted Story 23.1 from Epic 23 and the validated CRM research, keeping Lead pre-financial, UTM-aware, dedupe-aware, and compatible with later shared-contact work.
+- 2026-04-21: Implemented the tenant-scoped CRM lead slice across migration, backend model/schema/service/route layers, and frontend list/create/detail surfaces with duplicate guidance, qualification capture, and dedicated opportunity/customer handoff seams.
+- 2026-04-21: Completed the code-review fix pass by adding explicit CRM write transactions, restricting manual lifecycle changes to stay within Story 23.1 scope, normalizing cross-table company dedupe, preserving duplicate-review drafts, and surfacing update/load conflicts in the CRM UI.
 
 ### File List
 
+- `migrations/versions/1e4b7c9d8a2f_add_crm_leads.py`
+- `backend/app/main.py`
+- `backend/common/errors.py`
+- `backend/domains/crm/__init__.py`
+- `backend/domains/crm/models.py`
+- `backend/domains/crm/schemas.py`
+- `backend/domains/crm/service.py`
+- `backend/domains/crm/routes.py`
+- `backend/tests/domains/crm/test_lead_service.py`
+- `backend/tests/domains/crm/test_routes.py`
+- `src/App.tsx`
+- `src/hooks/usePermissions.ts`
+- `src/domain/crm/types.ts`
+- `src/lib/api/crm.ts`
+- `src/lib/navigation.tsx`
+- `src/lib/routes.ts`
+- `src/lib/schemas/lead.schema.ts`
+- `src/components/crm/LeadForm.tsx`
+- `src/components/crm/DuplicateLeadWarning.tsx`
+- `src/components/crm/LeadResultsTable.tsx`
+- `src/pages/crm/CreateLeadPage.tsx`
+- `src/pages/crm/LeadDetailPage.tsx`
+- `src/pages/crm/LeadListPage.tsx`
+- `src/tests/crm/CreateLeadPage.test.tsx`
+- `src/tests/crm/LeadDetailPage.test.tsx`
+- `src/tests/crm/LeadListPage.test.tsx`
+- `public/locales/en/common.json`
 - `_bmad-output/implementation-artifacts/23-1-lead-capture-deduplication-and-qualification.md`

@@ -1232,4 +1232,23 @@ development_status:
         validation: "Story artifact created."
         prerequisites: ["22.1", "22.3"]
 
+  # Epic 23 - CRM Foundation and Quotation Pipeline
+  epic-23:
+    status: "in-progress"
+    validation_note: "Epic 23 started on 2026-04-21 with Story 23.1 implemented as the CRM foundation slice. The lead backend/frontend now provide tenant-scoped lead capture, duplicate review guidance across leads and customers, qualification and attribution capture, and dedicated opportunity/customer handoff seams without pulling quotation or order writes forward. The review-fix pass then closed a real persistence defect by adding explicit CRM write transactions, tightened generic lifecycle transitions so `opportunity` and `converted` remain dedicated flows, normalized cross-table company dedupe, preserved duplicate-review drafts, and surfaced non-404 load errors plus update-time conflicts in the CRM UI. Focused validation passed with `cd /Users/changtom/Downloads/UltrERP/backend && uv run pytest tests/domains/crm/test_lead_service.py tests/domains/crm/test_routes.py -q` (`13 passed in 1.86s`) and `cd /Users/changtom/Downloads/UltrERP && pnpm test -- src/tests/crm/CreateLeadPage.test.tsx src/tests/crm/LeadDetailPage.test.tsx src/tests/crm/LeadListPage.test.tsx` (exit code 0)."
+    recommended_execution_order:
+      - "23.1 Lead Capture, Deduplication, and Qualification"
+      - "23.2 Opportunity Pipeline and Dynamic Party Linking"
+      - "23.3 Quotation Authoring and Lifecycle"
+      - "23.4 Quotation-to-Order Conversion and Commercial Handoff"
+      - "23.5 CRM Setup Masters and Pipeline Reporting"
+    stories:
+      23-1-lead-capture-deduplication-and-qualification:
+        status: "done"
+        story_id: "23.1"
+        title: "Lead Capture, Deduplication, and Qualification"
+        story_file: "23-1-lead-capture-deduplication-and-qualification.md"
+        validation: "Implemented on 2026-04-21 with a tenant-scoped CRM lead model, migration, services, routes, and CRM list/create/detail UI. Review follow-up fixes added explicit write transactions, kept `opportunity` and `converted` behind dedicated handoff flows, normalized customer-company dedupe, preserved duplicate-review drafts, and surfaced update/load conflicts in the CRM UI. Focused validation passed with `cd /Users/changtom/Downloads/UltrERP/backend && uv run pytest tests/domains/crm/test_lead_service.py tests/domains/crm/test_routes.py -q` (`13 passed in 1.86s`) and `cd /Users/changtom/Downloads/UltrERP && pnpm test -- src/tests/crm/CreateLeadPage.test.tsx src/tests/crm/LeadDetailPage.test.tsx src/tests/crm/LeadListPage.test.tsx` (exit code 0)."
+        prerequisites: ["22.1", "22.3", "22.4", "22.6"]
+
 last_updated: "2026-04-21"

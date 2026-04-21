@@ -14,6 +14,9 @@ export const INVENTORY_SUPPLIERS_ROUTE = "/inventory/suppliers";
 export const SUPPLIER_DETAIL_ROUTE = "/inventory/suppliers/:supplierId";
 export const PRODUCT_DETAIL_ROUTE = "/inventory/:productId";
 export const PURCHASES_ROUTE = "/purchases";
+export const CRM_LEADS_ROUTE = "/crm/leads";
+export const CRM_LEAD_DETAIL_ROUTE = "/crm/leads/:leadId";
+export const CRM_LEAD_CREATE_ROUTE = "/crm/leads/new";
 export const CUSTOMERS_ROUTE = "/customers";
 export const CUSTOMER_DETAIL_ROUTE = "/customers/:customerId";
 export const CUSTOMER_CREATE_ROUTE = "/customers/new";
@@ -44,6 +47,9 @@ export type AppRoute =
   | typeof SUPPLIER_DETAIL_ROUTE
   | typeof PRODUCT_DETAIL_ROUTE
   | typeof PURCHASES_ROUTE
+  | typeof CRM_LEADS_ROUTE
+  | typeof CRM_LEAD_DETAIL_ROUTE
+  | typeof CRM_LEAD_CREATE_ROUTE
   | typeof CUSTOMERS_ROUTE
   | typeof CUSTOMER_DETAIL_ROUTE
   | typeof CUSTOMER_CREATE_ROUTE
@@ -61,6 +67,14 @@ export type AppRoute =
 
 export function buildSupplierDetailPath(supplierId: string): string {
   return SUPPLIER_DETAIL_ROUTE.replace(":supplierId", encodeURIComponent(supplierId));
+}
+
+export function buildLeadDetailPath(leadId: string): string {
+  return CRM_LEAD_DETAIL_ROUTE.replace(":leadId", encodeURIComponent(leadId));
+}
+
+export function buildCustomerDetailPath(customerId: string): string {
+  return CUSTOMER_DETAIL_ROUTE.replace(":customerId", encodeURIComponent(customerId));
 }
 
 export function buildCountSessionDetailPath(sessionId: string): string {

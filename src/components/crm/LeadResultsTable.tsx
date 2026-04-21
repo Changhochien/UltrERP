@@ -1,0 +1,92 @@
+import { useTranslation } from "react-i18next";
+
+import type { LeadSummary } from "../../domain/crm/types";
+import { DataTable } from "../layout/DataTable";
+import { Badge } from "../ui/badge";
+
+interface LeadResultsTableProps {
+  items: LeadSummary[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  onPageChange: (page: number) => void;
+  onSelect: (id: string) => void;
+}
+
+function statusVariant(status: LeadSummary["status"]) {
+  switch (status) {
+    case "converted":
+    case "interested":
+      return "success" as const;
+    case "lost_quotation":
+    case "do_not_contact":
+      return "warning" as const;
+    default:
+      return "outline" as const;
+  }
+}
+
+export function LeadResultsTable({
+  items,
+  page,
+  pageSize,
+  totalCount,
+  onPageChange,
+  onSelect,
+}: LeadResultsTableProps) {
+  const { t } = useTranslation("common");
+
+  return (
+    <DataTable
+      columns={[
+        {
+          id: "lead_name",
+          header: t("crm.table.lead"),
+          sortable: true,
+          getSortValue: (lead) => lead.lead_name,
+          cell: (lead) => (
+            <div className="space-y-0.5">
+              <span className="font-medium">{lead.lead_name}</span>
+              <p className="text-xs text-muted-foreground">{lead.company_name || t("crm.table.noCompany")}</p>
+            </div>
+          ),
+        },
+        {
+          id: "lead_owner",
+          header: t("crm.table.owner"),
+          sortable: true,
+          getSortValue: (lead) => lead.lead_owner,
+          cell: (lead) => lead.lead_owner || "-",
+        },
+        {
+          id: "status",
+          header: t("crm.table.status"),
+          sortable: true,
+          getSortValue: (lead) => lead.status,
+          cell: (lead) => (
+            <Badge variant={statusVariant(lead.status)} className="normal-case tracking-normal">
+              {t(`crm.statusValues.${lead.status}`)}
+            </Badge>
+          ),
+        },
+        {
+          id: "qualification_status",
+          header: t("crm.table.qualification"),
+          sortable: true,
+          getSortValue: (lead) => lead.qualification_status,
+          cell: (lead) => t(`crm.qualificationValues.${lead.qualification_status}`),
+        },
+      ]}
+      data={items}
+      emptyTitle={t("crm.table.emptyTitle")}
+      emptyDescription={t("crm.table.emptyDescription")}
+      page={page}
+      pageSize={pageSize}
+      totalItems={totalCount}
+      onPageChange={onPageChange}
+      getRowId={(lead) => lead.id}
+      rowLabel={(lead) => `Lead ${lead.lead_name}`}
+      onRowClick={(lead) => onSelect(lead.id)}
+    />
+  );
+}

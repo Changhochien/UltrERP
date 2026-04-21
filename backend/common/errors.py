@@ -34,6 +34,14 @@ class DuplicateBusinessNumberError(ApplicationError):
         )
 
 
+class DuplicateLeadConflictError(ApplicationError):
+    """A lead collides with existing lead or customer records."""
+
+    def __init__(self, candidates: list[dict[str, Any]]) -> None:
+        self.candidates = candidates
+        super().__init__(f"Duplicate lead conflict: {candidates}")
+
+
 class DuplicateProductCodeError(ApplicationError):
     """A product with this code already exists for the tenant."""
 
@@ -84,6 +92,14 @@ def duplicate_response(err: DuplicateBusinessNumberError) -> dict[str, Any]:
         "existing_customer_id": str(err.existing_id),
         "existing_customer_name": err.existing_name,
         "normalized_business_number": err.normalized_business_number,
+    }
+
+
+def duplicate_lead_response(err: DuplicateLeadConflictError) -> dict[str, Any]:
+    """Stable 409 duplicate lead guidance envelope."""
+    return {
+        "error": "duplicate_lead",
+        "candidates": err.candidates,
     }
 
 

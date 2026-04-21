@@ -19,6 +19,9 @@ import { ToastProvider } from "./providers/ToastProvider";
 
 import {
   ADMIN_ROUTE,
+  CRM_LEAD_CREATE_ROUTE,
+  CRM_LEAD_DETAIL_ROUTE,
+  CRM_LEADS_ROUTE,
   CUSTOMER_CREATE_ROUTE,
   CUSTOMER_DETAIL_ROUTE,
   CUSTOMERS_ROUTE,
@@ -49,6 +52,8 @@ import {
   SUPPLIER_DETAIL_ROUTE,
 } from "./lib/routes";
 import { AdminPage } from "./pages/AdminPage";
+import CreateLeadPage from "./pages/crm/CreateLeadPage";
+import { LeadListPage } from "./pages/crm/LeadListPage";
 import CreateCustomerPage from "./pages/customers/CreateCustomerPage";
 import { CustomerListPage } from "./pages/customers/CustomerListPage";
 import { DashboardPage } from "./pages/dashboard/DashboardPage";
@@ -150,6 +155,23 @@ function CreateCustomerRoute() {
   return (
     <RoutedPage>
       <CreateCustomerPage onNavigate={(path) => navigate(path)} />
+    </RoutedPage>
+  );
+}
+
+function CreateLeadRoute() {
+  const navigate = useNavigate();
+  return (
+    <RoutedPage>
+      <CreateLeadPage onNavigate={(path) => navigate(path)} />
+    </RoutedPage>
+  );
+}
+
+function LeadListRoute() {
+  return (
+    <RoutedPage>
+      <LeadListPage />
     </RoutedPage>
   );
 }
@@ -324,6 +346,30 @@ export default function App() {
                 <RoutedPage>
                   <ProductDetailPage />
                 </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={CRM_LEADS_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="crm">
+                <LeadListRoute />
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={CRM_LEAD_DETAIL_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="crm">
+                <LeadListRoute />
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={CRM_LEAD_CREATE_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="crm" requiredWrite>
+                <CreateLeadRoute />
               </ProtectedAppRoute>
             }
           />

@@ -1,5 +1,6 @@
 {
   "nav": {
+    "crm": "Leads",
     "createCustomer": "Create Customer",
     "createInvoice": "Create Invoice",
     "dashboard": "Dashboard",
@@ -55,6 +56,14 @@
     "admin": {
       "description": "Manage users, audit logs, and privileged controls.",
       "label": "Admin"
+    },
+    "crmLeads": {
+      "description": "Capture, qualify, and review new commercial leads.",
+      "label": "Leads"
+    },
+    "createLead": {
+      "description": "Capture a new lead before customer creation.",
+      "label": "Create Lead"
     },
     "createCustomer": {
       "description": "Add a new customer to your workspace.",
@@ -136,6 +145,10 @@
       "description": "Sign in to manage your ERP workspace.",
       "label": "Login"
     },
+    "leadDetail": {
+      "description": "Review lifecycle, attribution, and conversion actions for one lead.",
+      "label": "Lead Detail"
+    },
     "orderDetail": {
       "description": "View and update the selected order.",
       "label": "Order Detail",
@@ -199,10 +212,90 @@
   },
   "settingsPage": {
     "eyebrow": "Configuration",
+    "title": "Settings",
+    "description": "Manage workspace settings and preferences.",
     "emptyCategory": "No settings in this category.",
     "noCategories": "No settings categories available.",
     "saveError": "Failed to save setting.",
-    "resetError": "Failed to reset setting."
+    "resetError": "Failed to reset setting.",
+    "resetDone": "Setting reset.",
+    "undo": "Undo",
+    "invalidInt": "Must be a whole number.",
+    "invalidJson": "Must be valid JSON.",
+    "settingsCount_one": "{{count}} setting",
+    "settingsCount_other": "{{count}} settings",
+    "lastUpdated": "Last updated",
+    "by": "by",
+    "configureMessage": "Configure your workspace settings to see them here.",
+    "sensitive": "Sensitive",
+    "nullable": "Nullable",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "emptyPlaceholder": "(empty)",
+    "jsonPlaceholder": "JSON array, e.g. [\"https://example.com\"]",
+    "resetTitle": "Reset to default",
+    "categories": {
+      "general": {
+        "label": "General",
+        "description": "Basic workspace configuration and preferences"
+      },
+      "notification": {
+        "label": "Notifications",
+        "description": "Email, SMS, and in-app notification settings"
+      },
+      "notifications": {
+        "label": "Notifications",
+        "description": "Email, SMS, and in-app notification settings"
+      },
+      "security": {
+        "label": "Security",
+        "description": "Authentication, authorization, and access control"
+      },
+      "appearance": {
+        "label": "Appearance",
+        "description": "Theme, colors, and visual presentation"
+      },
+      "data": {
+        "label": "Data",
+        "description": "Data management, backup, and export settings"
+      },
+      "api": {
+        "label": "API",
+        "description": "API keys, webhooks, and integrations"
+      },
+      "privacy": {
+        "label": "Privacy",
+        "description": "Data privacy and consent settings"
+      },
+      "email": {
+        "label": "Email",
+        "description": "Email server and templates configuration"
+      },
+      "integration": {
+        "label": "Integrations",
+        "description": "Third-party service connections"
+      },
+      "billing": {
+        "label": "Billing",
+        "description": "Subscription and payment settings"
+      },
+      "egui": {
+        "label": "eGui",
+        "description": "Electronic approval workflow settings"
+      },
+      "auth": {
+        "label": "Authentication",
+        "description": "Login, password, and session settings"
+      }
+    },
+    "types": {
+      "bool": "Toggle",
+      "int": "Number",
+      "literal": "Option",
+      "json": "JSON",
+      "tuple": "Array",
+      "str": "Text"
+    }
   },
   "intelligence": {
     "page": {
@@ -446,6 +539,173 @@
       "affectedCustomers": "{count} customers affected",
       "action": "Recommended action",
       "deferred": "Deferred in v1: {value}"
+    }
+  },
+  "crm": {
+    "createPage": {
+      "createAnother": "Create another lead",
+      "createdRecord": "Lead Created",
+      "createdRecordDescription": "The lead has been captured successfully.",
+      "description": "Capture a lead with qualification and attribution details before customer conversion.",
+      "descriptionCreated": "The new lead is ready for follow-up and conversion.",
+      "eyebrow": "CRM",
+      "formDescription": "Store identity, owner, qualification, and UTM context on the lead record.",
+      "formTitle": "Lead Capture",
+      "toast": {
+        "errorDescription": "Please review the lead details and try again.",
+        "errorTitle": "Lead could not be created",
+        "successDescription": "{name} is ready for qualification and handoff.",
+        "successTitle": "Lead created"
+      },
+      "title": "Create Lead",
+      "titleCreated": "Lead Created"
+    },
+    "detailPage": {
+      "backToList": "Back to lead list",
+      "convertAction": "Convert to customer",
+      "convertBillingAddress": "Billing Address",
+      "convertBusinessNumber": "Business Number",
+      "convertContactEmail": "Contact Email",
+      "convertContactName": "Contact Name",
+      "convertContactPhone": "Contact Phone",
+      "convertDescription": "Prepare the qualified lead for customer creation while preserving lineage.",
+      "convertErrorDescription": "Please review the conversion fields and try again.",
+      "convertErrorTitle": "Customer conversion failed",
+      "convertSuccessDescription": "Customer {customerId} was created from this lead.",
+      "convertSuccessTitle": "Lead converted",
+      "convertTitle": "Customer Conversion",
+      "converting": "Converting…",
+      "eyebrow": "Lead",
+      "handoffAction": "Mark as opportunity handoff",
+      "handoffDescription": "Advance a qualified lead into the Story 23.2 opportunity seam without creating an opportunity record yet.",
+      "handoffErrorDescription": "This lead could not be handed off yet.",
+      "handoffErrorTitle": "Opportunity handoff failed",
+      "handoffing": "Handing off…",
+      "handoffPreviewDescription": "This is the preserved owner, territory, and attribution context that will feed the later opportunity workflow.",
+      "handoffPreviewTitle": "Ready for Story 23.2 handoff",
+      "handoffSuccessDescription": "{name} is ready for the opportunity pipeline handoff.",
+      "handoffSuccessTitle": "Lead handed off",
+      "handoffTitle": "Opportunity Handoff",
+      "lifecycleDescription": "Change the visible lead lifecycle without introducing quotation or order writes.",
+      "lifecycleTitle": "Lifecycle Controls",
+      "loading": "Loading lead…",
+      "notFound": "Lead not found.",
+      "profileDescription": "Review and update the core lead profile, qualification, and attribution fields.",
+      "profileTitle": "Lead Profile",
+      "toast": {
+        "updateErrorDescription": "Please review the lead changes and try again.",
+        "updateErrorTitle": "Lead update failed",
+        "updateSuccessDescription": "{name} has been saved.",
+        "updateSuccessTitle": "Lead updated"
+      },
+      "transitionAction": "Update status",
+      "transitionErrorDescription": "This lifecycle change is not allowed.",
+      "transitionErrorTitle": "Status update failed",
+      "transitionStatus": "Next status",
+      "transitionSuccessDescription": "Lead status changed to {status}.",
+      "transitionSuccessTitle": "Status updated",
+      "transitioning": "Updating…",
+      "viewCustomer": "View customer"
+    },
+    "duplicateWarning": {
+      "continueEditing": "Continue editing",
+      "description": "Review the matching records before creating another lead.",
+      "kindCustomer": "Customer",
+      "kindLead": "Lead",
+      "matchCompanyName": "Matched on company",
+      "matchEmail": "Matched on email",
+      "matchPhone": "Matched on phone",
+      "openCustomer": "Open customer",
+      "openLead": "Open lead",
+      "title": "Possible duplicate lead"
+    },
+    "form": {
+      "annualRevenue": "Annual Revenue",
+      "annualRevenueNonNegative": "Annual revenue must be zero or greater.",
+      "companyName": "Company Name",
+      "companyNameTooLong": "Company name must be 200 characters or fewer.",
+      "createTitle": "Create Lead",
+      "creating": "Creating…",
+      "email": "Email",
+      "emailTooLong": "Email must be 254 characters or fewer.",
+      "employeeCount": "Employees",
+      "employeeCountNonNegative": "Employee count must be zero or greater.",
+      "industry": "Industry",
+      "industryTooLong": "Industry must be 120 characters or fewer.",
+      "invalidEmail": "Enter a valid email address.",
+      "leadName": "Lead Name",
+      "leadNameRequired": "Lead name is required.",
+      "leadNameTooLong": "Lead name must be 140 characters or fewer.",
+      "marketSegment": "Market Segment",
+      "marketSegmentTooLong": "Market segment must be 120 characters or fewer.",
+      "mobile": "Mobile",
+      "mobileTooLong": "Mobile number must be 30 characters or fewer.",
+      "notes": "Notes",
+      "notesTooLong": "Notes must be 4000 characters or fewer.",
+      "owner": "Lead Owner",
+      "ownerTooLong": "Lead owner must be 120 characters or fewer.",
+      "phone": "Phone",
+      "phoneTooLong": "Phone number must be 30 characters or fewer.",
+      "qualificationStatus": "Qualification Status",
+      "qualifiedBy": "Qualified By",
+      "qualifiedByTooLong": "Qualified by must be 120 characters or fewer.",
+      "source": "Source",
+      "sourceTooLong": "Source must be 120 characters or fewer.",
+      "territory": "Territory",
+      "territoryTooLong": "Territory must be 120 characters or fewer.",
+      "updateTitle": "Save Changes",
+      "updating": "Saving…",
+      "utmCampaign": "UTM Campaign",
+      "utmCampaignTooLong": "UTM campaign must be 120 characters or fewer.",
+      "utmContent": "UTM Content",
+      "utmContentTooLong": "UTM content must be 200 characters or fewer.",
+      "utmMedium": "UTM Medium",
+      "utmMediumTooLong": "UTM medium must be 120 characters or fewer.",
+      "utmSource": "UTM Source",
+      "utmSourceTooLong": "UTM source must be 120 characters or fewer."
+    },
+    "listPage": {
+      "activeFilters": "{count} active filters applied",
+      "allStatuses": "All statuses",
+      "clearFilters": "Clear filters",
+      "createLead": "Create Lead",
+      "description": "Browse, qualify, and review incoming commercial leads.",
+      "eyebrow": "CRM",
+      "loadError": "Failed to load leads.",
+      "loading": "Loading…",
+      "registryDescription": "Review lead intake, qualification progress, and conversion readiness.",
+      "registryTitle": "Lead Registry",
+      "searchBadge": "Search: {query}",
+      "searchLabel": "Search leads",
+      "searchPlaceholder": "Lead, company, email, or phone",
+      "statusBadge": "Status: {status}",
+      "statusLabel": "Status",
+      "title": "Leads"
+    },
+    "qualificationValues": {
+      "in_process": "In Process",
+      "qualified": "Qualified",
+      "unqualified": "Unqualified"
+    },
+    "statusValues": {
+      "converted": "Converted",
+      "do_not_contact": "Do Not Contact",
+      "interested": "Interested",
+      "lead": "Lead",
+      "lost_quotation": "Lost Quotation",
+      "open": "Open",
+      "opportunity": "Opportunity",
+      "quotation": "Quotation",
+      "replied": "Replied"
+    },
+    "table": {
+      "emptyDescription": "Try broadening your search or clearing the lifecycle filter.",
+      "emptyTitle": "No leads found.",
+      "lead": "Lead",
+      "noCompany": "No company yet",
+      "owner": "Owner",
+      "qualification": "Qualification",
+      "status": "Status"
     }
   },
   "customer": {

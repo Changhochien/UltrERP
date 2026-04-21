@@ -16,6 +16,8 @@ import {
 import type { AppFeature } from "../hooks/usePermissions";
 import {
   ADMIN_ROUTE,
+  CRM_LEAD_CREATE_ROUTE,
+  CRM_LEADS_ROUTE,
   CUSTOMER_CREATE_ROUTE,
   CUSTOMERS_ROUTE,
   HOME_ROUTE,
@@ -91,6 +93,13 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
     label: "nav.revenue",
     items: [
       {
+        feature: "crm",
+        label: "nav.crm",
+        to: CRM_LEADS_ROUTE,
+        description: "routes.crmLeads.description",
+        icon: Users,
+      },
+      {
         feature: "customers",
         label: "nav.customers",
         to: CUSTOMERS_ROUTE,
@@ -151,6 +160,8 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
 // i18n keys for route contexts — resolved by callers via useTranslation
 export const ROUTE_CONTEXT_KEYS = [
   { match: HOME_ROUTE, labelKey: "routes.dashboard.label", descriptionKey: "routes.dashboard.description" },
+  { match: CRM_LEADS_ROUTE, labelKey: "routes.crmLeads.label", descriptionKey: "routes.crmLeads.description" },
+  { match: CRM_LEAD_CREATE_ROUTE, labelKey: "routes.createLead.label", descriptionKey: "routes.createLead.description" },
   { match: CUSTOMERS_ROUTE, labelKey: "routes.customers.label", descriptionKey: "routes.customers.description" },
   { match: CUSTOMER_CREATE_ROUTE, labelKey: "routes.createCustomer.label", descriptionKey: "routes.createCustomer.description" },
   { match: INTELLIGENCE_ROUTE, labelKey: "routes.intelligence.label", descriptionKey: "routes.intelligence.description" },
@@ -264,6 +275,14 @@ export function getRouteContext(pathname: string) {
     };
   }
 
+  if (pathname.startsWith(`${CRM_LEADS_ROUTE}/`) && pathname !== CRM_LEAD_CREATE_ROUTE) {
+    return {
+      labelKey: "routes.leadDetail.label",
+      descriptionKey: "routes.leadDetail.description",
+      sectionKey: "nav.revenue",
+    };
+  }
+
   if (
     pathname.startsWith(`${INVENTORY_ROUTE}/`) &&
     pathname !== INVENTORY_ROUTE &&
@@ -300,6 +319,7 @@ export function getRouteContext(pathname: string) {
 }
 
 export const DASHBOARD_QUICK_LINKS = [
+  { label: "nav.crm", to: CRM_LEAD_CREATE_ROUTE, icon: Users },
   { label: "nav.createCustomer", to: CUSTOMER_CREATE_ROUTE, icon: Users },
   { label: "nav.createInvoice", to: INVOICE_CREATE_ROUTE, icon: ReceiptText },
   { label: "nav.newOrder", to: ORDER_CREATE_ROUTE, icon: CircleDollarSign },
