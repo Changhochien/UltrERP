@@ -22,6 +22,9 @@ import {
   CRM_LEAD_CREATE_ROUTE,
   CRM_LEAD_DETAIL_ROUTE,
   CRM_LEADS_ROUTE,
+  CRM_OPPORTUNITY_CREATE_ROUTE,
+  CRM_OPPORTUNITY_DETAIL_ROUTE,
+  CRM_OPPORTUNITIES_ROUTE,
   CUSTOMER_CREATE_ROUTE,
   CUSTOMER_DETAIL_ROUTE,
   CUSTOMERS_ROUTE,
@@ -54,6 +57,8 @@ import {
 import { AdminPage } from "./pages/AdminPage";
 import CreateLeadPage from "./pages/crm/CreateLeadPage";
 import { LeadListPage } from "./pages/crm/LeadListPage";
+import CreateOpportunityPage from "./pages/crm/CreateOpportunityPage";
+import { OpportunityListPage } from "./pages/crm/OpportunityListPage";
 import CreateCustomerPage from "./pages/customers/CreateCustomerPage";
 import { CustomerListPage } from "./pages/customers/CustomerListPage";
 import { DashboardPage } from "./pages/dashboard/DashboardPage";
@@ -172,6 +177,23 @@ function LeadListRoute() {
   return (
     <RoutedPage>
       <LeadListPage />
+    </RoutedPage>
+  );
+}
+
+function CreateOpportunityRoute() {
+  const navigate = useNavigate();
+  return (
+    <RoutedPage>
+      <CreateOpportunityPage onNavigate={(path) => navigate(path)} />
+    </RoutedPage>
+  );
+}
+
+function OpportunityListRoute() {
+  return (
+    <RoutedPage>
+      <OpportunityListPage />
     </RoutedPage>
   );
 }
@@ -370,6 +392,30 @@ export default function App() {
             element={
               <ProtectedAppRoute requiredFeature="crm" requiredWrite>
                 <CreateLeadRoute />
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={CRM_OPPORTUNITIES_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="crm">
+                <OpportunityListRoute />
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={CRM_OPPORTUNITY_DETAIL_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="crm">
+                <OpportunityListRoute />
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={CRM_OPPORTUNITY_CREATE_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="crm" requiredWrite>
+                <CreateOpportunityRoute />
               </ProtectedAppRoute>
             }
           />

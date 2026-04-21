@@ -11,6 +11,14 @@ import type {
   LeadResponse,
   LeadStatus,
   LeadUpdatePayload,
+  OpportunityCreatePayload,
+  OpportunityListResponse,
+  OpportunityPartyKind,
+  OpportunityQuotationHandoff,
+  OpportunityResponse,
+  OpportunityStatus,
+  OpportunityTransitionPayload,
+  OpportunityUpdatePayload,
 } from "../../domain/crm/types";
 import { apiFetch } from "../apiFetch";
 
@@ -62,6 +70,22 @@ export type UpdateLeadResult =
 export type LeadActionResult<TData> =
   | { ok: true; data: TData }
   | { ok: false; errors: ApiError["detail"] };
+
+export type OpportunityActionResult<TData> =
+  | { ok: true; data: TData }
+  | { ok: false; errors: ApiError["detail"] };
+
+export type CreateOpportunityResult =
+  | { ok: true; data: OpportunityResponse }
+  | { ok: false; errors: ApiError["detail"] };
+
+export type UpdateOpportunityResult =
+  | { ok: true; data: OpportunityResponse }
+  | {
+      ok: false;
+      versionConflict?: VersionConflictInfo;
+      errors: ApiError["detail"];
+    };
 
 export async function createLead(payload: LeadCreatePayload): Promise<CreateLeadResult> {
   let resp: Response;
@@ -261,6 +285,165 @@ export async function convertLeadToCustomer(
   return { ok: false, errors: body.detail ?? [] };
 }
 
+export async function createOpportunity(
+  payload: OpportunityCreatePayload,
+): Promise<CreateOpportunityResult> {
+  let resp: Response;
+  try {
+    resp = await apiFetch("/api/v1/crm/opportunities", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    return { ok: false, errors: networkErrorDetail() };
+  }
+
+  if (resp.ok) {
+    const data: OpportunityResponse = await resp.json();
+    return { ok: true, data };
+  }
+
+  const body: ApiError = await resp.json().catch(() => ({ detail: [] }));
+  return { ok: false, errors: body.detail ?? [] };
+}
+
+export async function listOpportunities(params: {
+  q?: string;
+  status?: OpportunityStatus;
+  page?: number;
+  page_size?: number;
+}): Promise<OpportunityListResponse> {
+  const qs = new URLSearchParams();
+  if (params.q) qs.set("q", params.q);
+  if (params.status) qs.set("status", params.status);
+  if (params.page) qs.set("page", String(params.page));
+  if (params.page_size) qs.set("page_size", String(params.page_size));
+
+  let resp: Response;
+  try {
+    resp = await apiFetch(`/api/v1/crm/opportunities?${qs.toString()}`);
+  } catch {
+    throw new Error(NETWORK_ERROR_MESSAGE);
+  }
+
+  if (!resp.ok) {
+    const errors = await readErrorDetails(resp, "Failed to load opportunities.");
+    throw new Error(errors[0]?.message ?? "Failed to load opportunities.");
+  }
+
+  return resp.json();
+}
+
+export async function getOpportunity(id: string): Promise<OpportunityResponse | null> {
+  let resp: Response;
+  try {
+    resp = await apiFetch(`/api/v1/crm/opportunities/${id}`);
+  } catch {
+    throw new Error(NETWORK_ERROR_MESSAGE);
+  }
+
+  if (resp.status === 404) {
+    return null;
+  }
+
+  if (!resp.ok) {
+    const errors = await readErrorDetails(resp, "Failed to load opportunity.");
+    throw new Error(errors[0]?.message ?? "Failed to load opportunity.");
+  }
+
+  return resp.json();
+}
+
+export async function updateOpportunity(
+  id: string,
+  payload: OpportunityUpdatePayload,
+): Promise<UpdateOpportunityResult> {
+  let resp: Response;
+  try {
+    resp = await apiFetch(`/api/v1/crm/opportunities/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    return { ok: false, errors: networkErrorDetail() };
+  }
+
+  if (resp.ok) {
+    const data: OpportunityResponse = await resp.json();
+    return { ok: true, data };
+  }
+
+  if (resp.status === 409) {
+    const body = await resp.json().catch(() => ({}));
+    if (body.error === "version_conflict") {
+      return {
+        ok: false,
+        versionConflict: {
+          expected_version: body.expected_version,
+          actual_version: body.actual_version,
+        },
+        errors: [],
+      };
+    }
+  }
+
+  if (resp.status === 404) {
+    return { ok: false, errors: [{ field: "", message: "Opportunity not found." }] };
+  }
+
+  const body: ApiError = await resp.json().catch(() => ({ detail: [] }));
+  return { ok: false, errors: body.detail ?? [] };
+}
+
+export async function transitionOpportunityStatus(
+  id: string,
+  payload: OpportunityTransitionPayload,
+): Promise<OpportunityActionResult<OpportunityResponse>> {
+  let resp: Response;
+  try {
+    resp = await apiFetch(`/api/v1/crm/opportunities/${id}/status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    return { ok: false, errors: networkErrorDetail() };
+  }
+
+  if (resp.ok) {
+    const data: OpportunityResponse = await resp.json();
+    return { ok: true, data };
+  }
+
+  const body: ApiError = await resp.json().catch(() => ({ detail: [] }));
+  return { ok: false, errors: body.detail ?? [] };
+}
+
+export async function prepareOpportunityQuotationHandoff(
+  id: string,
+): Promise<OpportunityActionResult<OpportunityQuotationHandoff>> {
+  let resp: Response;
+  try {
+    resp = await apiFetch(`/api/v1/crm/opportunities/${id}/handoff/quotation`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+  } catch {
+    return { ok: false, errors: networkErrorDetail() };
+  }
+
+  if (resp.ok) {
+    const data: OpportunityQuotationHandoff = await resp.json();
+    return { ok: true, data };
+  }
+
+  const body: ApiError = await resp.json().catch(() => ({ detail: [] }));
+  return { ok: false, errors: body.detail ?? [] };
+}
+
 export const LEAD_STATUS_OPTIONS: LeadStatus[] = [
   "lead",
   "open",
@@ -277,4 +460,19 @@ export const LEAD_QUALIFICATION_OPTIONS: LeadQualificationStatus[] = [
   "unqualified",
   "in_process",
   "qualified",
+];
+
+export const OPPORTUNITY_STATUS_OPTIONS: OpportunityStatus[] = [
+  "open",
+  "replied",
+  "quotation",
+  "converted",
+  "closed",
+  "lost",
+];
+
+export const OPPORTUNITY_PARTY_OPTIONS: OpportunityPartyKind[] = [
+  "lead",
+  "customer",
+  "prospect",
 ];

@@ -1,6 +1,9 @@
 {
   "nav": {
-    "crm": "Leads",
+    "crm": "CRM",
+    "crmLeads": "Leads",
+    "crmOpportunities": "Opportunities",
+    "createOpportunity": "Create Opportunity",
     "createCustomer": "Create Customer",
     "createInvoice": "Create Invoice",
     "dashboard": "Dashboard",
@@ -64,6 +67,14 @@
     "createLead": {
       "description": "Capture a new lead before customer creation.",
       "label": "Create Lead"
+    },
+    "crmOpportunities": {
+      "description": "Track deal stages, forecast confidence, and quotation readiness.",
+      "label": "Opportunities"
+    },
+    "createOpportunity": {
+      "description": "Create a pipeline opportunity linked to a lead, customer, or prospect.",
+      "label": "Create Opportunity"
     },
     "createCustomer": {
       "description": "Add a new customer to your workspace.",
@@ -148,6 +159,10 @@
     "leadDetail": {
       "description": "Review lifecycle, attribution, and conversion actions for one lead.",
       "label": "Lead Detail"
+    },
+    "opportunityDetail": {
+      "description": "Review pipeline context, loss reasons, and quotation handoff readiness for one opportunity.",
+      "label": "Opportunity Detail"
     },
     "orderDetail": {
       "description": "View and update the selected order.",
@@ -562,6 +577,7 @@
     },
     "detailPage": {
       "backToList": "Back to lead list",
+      "createOpportunity": "Create opportunity",
       "convertAction": "Convert to customer",
       "convertBillingAddress": "Billing Address",
       "convertBusinessNumber": "Business Number",
@@ -706,6 +722,168 @@
       "owner": "Owner",
       "qualification": "Qualification",
       "status": "Status"
+    },
+    "opportunities": {
+      "createPage": {
+        "backToPipeline": "Back to pipeline",
+        "createAnother": "Create another opportunity",
+        "createdRecord": "Opportunity Created",
+        "createdRecordDescription": "The opportunity is ready for pipeline follow-up.",
+        "description": "Capture the commercial context, forecast, and party link before quotation authoring.",
+        "descriptionCreated": "The opportunity is now available in the CRM pipeline.",
+        "eyebrow": "CRM",
+        "formDescription": "Store dynamic party context, forecast metadata, and line items on the opportunity record.",
+        "formTitle": "Opportunity Capture",
+        "toast": {
+          "errorDescription": "Please review the opportunity details and try again.",
+          "errorTitle": "Opportunity could not be created",
+          "successDescription": "{name} is ready for pipeline follow-up.",
+          "successTitle": "Opportunity created"
+        },
+        "title": "Create Opportunity",
+        "titleCreated": "Opportunity Created"
+      },
+      "detailPage": {
+        "backToList": "Back to opportunity list",
+        "competitor": "Competitor",
+        "eyebrow": "Opportunity",
+        "handoffAction": "Prepare quotation handoff",
+        "handoffDescription": "Expose party, contact, item, currency, and attribution context for Story 23.3 without creating a quotation record here.",
+        "handoffErrorDescription": "This opportunity is not ready for quotation handoff yet.",
+        "handoffErrorTitle": "Quotation handoff failed",
+        "handoffing": "Preparing…",
+        "handoffPreviewDescription": "This is the handoff payload Story 23.3 can consume for quotation authoring.",
+        "handoffPreviewTitle": "Quotation handoff ready",
+        "handoffSuccessDescription": "{name} is ready for quotation authoring.",
+        "handoffSuccessTitle": "Quotation handoff prepared",
+        "handoffTitle": "Quotation Handoff",
+        "lifecycleDescription": "Advance the opportunity through its active pipeline lifecycle and capture loss context when needed.",
+        "lifecycleTitle": "Lifecycle Controls",
+        "loading": "Loading opportunity…",
+        "lossNotes": "Loss Notes",
+        "lostReason": "Lost Reason",
+        "notFound": "Opportunity not found.",
+        "profileDescription": "Review and update party linkage, forecast context, contacts, and opportunity items.",
+        "profileTitle": "Opportunity Profile",
+        "toast": {
+          "updateErrorDescription": "Please review the opportunity changes and try again.",
+          "updateErrorTitle": "Opportunity update failed",
+          "updateSuccessDescription": "{name} has been saved.",
+          "updateSuccessTitle": "Opportunity updated"
+        },
+        "transitionAction": "Update status",
+        "transitionErrorDescription": "This lifecycle change is not allowed.",
+        "transitionErrorTitle": "Status update failed",
+        "transitionStatus": "Next status",
+        "transitionSuccessDescription": "Opportunity status changed to {status}.",
+        "transitionSuccessTitle": "Status updated",
+        "transitioning": "Updating…"
+      },
+      "form": {
+        "addItem": "Add item",
+        "amount": "Opportunity Amount",
+        "amountNonNegative": "Opportunity amount must be zero or greater.",
+        "contactEmail": "Contact Email",
+        "contactEmailTooLong": "Contact email must be 254 characters or fewer.",
+        "contactMobile": "Contact Mobile",
+        "contactMobileTooLong": "Contact mobile must be 30 characters or fewer.",
+        "contactPerson": "Contact Person",
+        "contactPersonTooLong": "Contact person must be 120 characters or fewer.",
+        "createTitle": "Create Opportunity",
+        "creating": "Creating…",
+        "currency": "Currency",
+        "currencyLength": "Currency must be a 3-letter code.",
+        "customerGroup": "Customer Group",
+        "customerGroupTooLong": "Customer group must be 120 characters or fewer.",
+        "expectedClosing": "Expected Closing",
+        "expectedClosingInvalid": "Expected closing must use YYYY-MM-DD.",
+        "itemCode": "Item Code",
+        "itemCodeTooLong": "Item code must be 120 characters or fewer.",
+        "itemDescription": "Item Description",
+        "itemDescriptionTooLong": "Item description must be 500 characters or fewer.",
+        "itemName": "Item Name",
+        "itemNameRequired": "Item name is required.",
+        "itemNameTooLong": "Item name must be 200 characters or fewer.",
+        "itemsDescription": "Capture the line context needed for future quotation authoring.",
+        "itemsEmpty": "No opportunity items yet.",
+        "itemsTitle": "Opportunity Items",
+        "jobTitle": "Job Title",
+        "jobTitleTooLong": "Job title must be 120 characters or fewer.",
+        "notes": "Notes",
+        "notesTooLong": "Notes must be 4000 characters or fewer.",
+        "owner": "Opportunity Owner",
+        "ownerTooLong": "Opportunity owner must be 120 characters or fewer.",
+        "partyName": "Party Name",
+        "partyRequired": "Party context is required.",
+        "partyTooLong": "Party value must be 200 characters or fewer.",
+        "partyType": "Party Type",
+        "probability": "Probability",
+        "probabilityRange": "Probability must be a whole number from 0 to 100.",
+        "quantity": "Quantity",
+        "quantityPositive": "Quantity must be greater than zero.",
+        "removeItem": "Remove item",
+        "salesStage": "Sales Stage",
+        "salesStageTooLong": "Sales stage must be 120 characters or fewer.",
+        "selectParty": "Select a party record",
+        "territory": "Territory",
+        "territoryTooLong": "Territory must be 120 characters or fewer.",
+        "title": "Opportunity Title",
+        "titleRequired": "Opportunity title is required.",
+        "titleTooLong": "Opportunity title must be 200 characters or fewer.",
+        "unitPrice": "Unit Price",
+        "unitPriceNonNegative": "Unit price must be zero or greater.",
+        "updateTitle": "Save Changes",
+        "updating": "Saving…",
+        "utmCampaign": "UTM Campaign",
+        "utmCampaignTooLong": "UTM campaign must be 120 characters or fewer.",
+        "utmContent": "UTM Content",
+        "utmContentTooLong": "UTM content must be 200 characters or fewer.",
+        "utmMedium": "UTM Medium",
+        "utmMediumTooLong": "UTM medium must be 120 characters or fewer.",
+        "utmSource": "UTM Source",
+        "utmSourceTooLong": "UTM source must be 120 characters or fewer."
+      },
+      "listPage": {
+        "activeFilters": "{count} active filters applied",
+        "allStatuses": "All statuses",
+        "clearFilters": "Clear filters",
+        "createOpportunity": "Create Opportunity",
+        "description": "Review deal stages, forecast confidence, and handoff readiness across the active pipeline.",
+        "eyebrow": "CRM",
+        "loadError": "Failed to load opportunities.",
+        "loading": "Loading…",
+        "pipelineDescription": "A quick view of the currently loaded pipeline by lifecycle state.",
+        "pipelineTitle": "Pipeline Snapshot",
+        "registryDescription": "Browse and manage active commercial opportunities before quotation authoring.",
+        "registryTitle": "Opportunity Registry",
+        "searchBadge": "Search: {query}",
+        "searchLabel": "Search opportunities",
+        "searchPlaceholder": "Opportunity, party, or contact",
+        "statusBadge": "Status: {status}",
+        "statusLabel": "Status",
+        "title": "Opportunities"
+      },
+      "partyValues": {
+        "customer": "Customer",
+        "lead": "Lead",
+        "prospect": "Prospect"
+      },
+      "statusValues": {
+        "closed": "Closed",
+        "converted": "Converted",
+        "lost": "Lost",
+        "open": "Open",
+        "quotation": "Quotation",
+        "replied": "Replied"
+      },
+      "table": {
+        "emptyDescription": "Try broadening your search or clearing the lifecycle filter.",
+        "emptyTitle": "No opportunities found.",
+        "opportunity": "Opportunity",
+        "probability": "Probability",
+        "stage": "Stage",
+        "status": "Status"
+      }
     }
   },
   "customer": {

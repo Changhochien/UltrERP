@@ -1,6 +1,6 @@
 # Story 23.2: Opportunity Pipeline and Dynamic Party Linking
 
-Status: drafted
+Status: done
 
 ## Story
 
@@ -34,28 +34,28 @@ This story should establish opportunity as the canonical active-deal record, not
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add the opportunity model, schemas, and dynamic-party contract. (AC: 1-3)
-  - [ ] Create an opportunity model under `backend/domains/crm/` with explicit `opportunity_from` and `party_name` fields compatible with lead, customer, and prospect contexts.
-  - [ ] Add validated fields for status, sales stage, probability, expected closing, currency, opportunity amount, a computed or stored read-only base-amount field suitable for later Epic 25 currency work, territory, customer-group-compatible context, contact fields (`contact_person`, `contact_email`, `contact_mobile`, `job_title`), and UTM attribution.
-  - [ ] Add an opportunity items table or equivalent structured line list so quotation handoff does not require rekeying deal lines later.
-  - [ ] Keep the party-link contract explicit and typed rather than relying on unstructured generic metadata.
-- [ ] Task 2: Implement opportunity lifecycle and forecasting services. (AC: 2-4)
-  - [ ] Add create, list, detail, update, and lifecycle-transition service logic for opportunities.
-  - [ ] Enforce the validated state model `open -> quotation -> converted` with alternate `replied`, `closed`, and `lost` paths.
-  - [ ] Preserve stage, amount, and probability changes for reporting-friendly history.
-- [ ] Task 3: Add loss handling and competitor capture. (AC: 4)
-  - [ ] Add structured lost-reason support and competitor capture on lost opportunities.
-  - [ ] Keep the first slice on structured fields and notes instead of a full competitive-intelligence subsystem.
-  - [ ] Prevent silent closure that would discard why the deal was lost.
-- [ ] Task 4: Build the opportunity UI workspace and detail flow. (AC: 1-5)
-  - [ ] Add opportunity list, detail, and pipeline-oriented views inside the CRM area.
-  - [ ] Surface stage, probability, expected close, owner, territory, and dynamic-party context clearly in list and detail views.
-  - [ ] Add a clear quotation-handoff action that stops at the opportunity boundary unless Story 23.3 is available.
-  - [ ] Define the handoff contract explicitly so Story 23.3 receives party, contact, item, attribution, and currency context with a backlink to the opportunity.
-- [ ] Task 5: Add focused tests and validation. (AC: 1-6)
-  - [ ] Add backend tests for dynamic-party validation, valid and invalid lifecycle transitions, lost-reason capture, and quotation handoff readiness.
-  - [ ] Add frontend tests for opportunity create or edit, status updates, lost-deal capture, and pipeline visibility.
-  - [ ] Validate that no quotation or order write logic is implemented inside this story.
+- [x] Task 1: Add the opportunity model, schemas, and dynamic-party contract. (AC: 1-3)
+  - [x] Create an opportunity model under `backend/domains/crm/` with explicit `opportunity_from` and `party_name` fields compatible with lead, customer, and prospect contexts.
+  - [x] Add validated fields for status, sales stage, probability, expected closing, currency, opportunity amount, a computed or stored read-only base-amount field suitable for later Epic 25 currency work, territory, customer-group-compatible context, contact fields (`contact_person`, `contact_email`, `contact_mobile`, `job_title`), and UTM attribution.
+  - [x] Add an opportunity items table or equivalent structured line list so quotation handoff does not require rekeying deal lines later.
+  - [x] Keep the party-link contract explicit and typed rather than relying on unstructured generic metadata.
+- [x] Task 2: Implement opportunity lifecycle and forecasting services. (AC: 2-4)
+  - [x] Add create, list, detail, update, and lifecycle-transition service logic for opportunities.
+  - [x] Enforce the validated state model `open -> quotation -> converted` with alternate `replied`, `closed`, and `lost` paths.
+  - [x] Preserve stage, amount, and probability changes for reporting-friendly history.
+- [x] Task 3: Add loss handling and competitor capture. (AC: 4)
+  - [x] Add structured lost-reason support and competitor capture on lost opportunities.
+  - [x] Keep the first slice on structured fields and notes instead of a full competitive-intelligence subsystem.
+  - [x] Prevent silent closure that would discard why the deal was lost.
+- [x] Task 4: Build the opportunity UI workspace and detail flow. (AC: 1-5)
+  - [x] Add opportunity list, detail, and pipeline-oriented views inside the CRM area.
+  - [x] Surface stage, probability, expected close, owner, territory, and dynamic-party context clearly in list and detail views.
+  - [x] Add a clear quotation-handoff action that stops at the opportunity boundary unless Story 23.3 is available.
+  - [x] Define the handoff contract explicitly so Story 23.3 receives party, contact, item, attribution, and currency context with a backlink to the opportunity.
+- [x] Task 5: Add focused tests and validation. (AC: 1-6)
+  - [x] Add backend tests for dynamic-party validation, valid and invalid lifecycle transitions, lost-reason capture, and quotation handoff readiness.
+  - [x] Add frontend tests for opportunity create or edit, status updates, lost-deal capture, and pipeline visibility.
+  - [x] Validate that no quotation or order write logic is implemented inside this story.
 
 ## Dev Notes
 
@@ -114,12 +114,42 @@ GPT-5.4
 
 ### Debug Log References
 
-- Story draft only; implementation and validation commands not run yet.
+- `cd /Users/changtom/Downloads/UltrERP/backend && uv run pytest tests/domains/crm/test_opportunity_service.py tests/domains/crm/test_opportunity_routes.py -q`
+- `cd /Users/changtom/Downloads/UltrERP && pnpm test -- src/tests/crm/CreateOpportunityPage.test.tsx src/tests/crm/OpportunityDetailPage.test.tsx src/tests/crm/OpportunityListPage.test.tsx`
+- `cd /Users/changtom/Downloads/UltrERP/backend && uv run pytest tests/domains/crm/test_lead_service.py tests/domains/crm/test_routes.py tests/domains/crm/test_opportunity_service.py tests/domains/crm/test_opportunity_routes.py -q`
+- `cd /Users/changtom/Downloads/UltrERP && pnpm test -- src/tests/crm/CreateLeadPage.test.tsx src/tests/crm/LeadDetailPage.test.tsx src/tests/crm/LeadListPage.test.tsx src/tests/crm/CreateOpportunityPage.test.tsx src/tests/crm/OpportunityDetailPage.test.tsx src/tests/crm/OpportunityListPage.test.tsx`
 
 ### Completion Notes List
 
 - 2026-04-21: Drafted Story 23.2 from Epic 23 and the validated CRM research, keeping Opportunity pre-financial, dynamic-party-aware, forecast-friendly, and cleanly separated from later quotation and order writes.
+- 2026-04-21: Implemented the CRM opportunity backend slice with tenant-scoped opportunity persistence, typed lead/customer/prospect party validation, forecast fields, structured line items, lost-reason capture, and quotation-handoff context that stops before quotation writes.
+- 2026-04-21: Added the opportunity frontend workspace with create/list/detail flows, a pipeline snapshot, quotation-handoff preview, and a lead-detail bridge into prefilled opportunity creation, then validated the combined lead and opportunity CRM regression suite.
 
 ### File List
 
+- `migrations/versions/3b2d4f5e6a7b_add_crm_opportunities.py`
+- `backend/app/main.py`
+- `backend/domains/crm/models.py`
+- `backend/domains/crm/schemas.py`
+- `backend/domains/crm/service.py`
+- `backend/domains/crm/routes.py`
+- `backend/tests/domains/crm/test_opportunity_service.py`
+- `backend/tests/domains/crm/test_opportunity_routes.py`
+- `src/App.tsx`
+- `src/components/crm/OpportunityForm.tsx`
+- `src/components/crm/OpportunityPipelineSummary.tsx`
+- `src/components/crm/OpportunityResultsTable.tsx`
+- `src/domain/crm/types.ts`
+- `src/lib/api/crm.ts`
+- `src/lib/navigation.tsx`
+- `src/lib/routes.ts`
+- `src/lib/schemas/opportunity.schema.ts`
+- `src/pages/crm/CreateOpportunityPage.tsx`
+- `src/pages/crm/LeadDetailPage.tsx`
+- `src/pages/crm/OpportunityDetailPage.tsx`
+- `src/pages/crm/OpportunityListPage.tsx`
+- `src/tests/crm/CreateOpportunityPage.test.tsx`
+- `src/tests/crm/OpportunityDetailPage.test.tsx`
+- `src/tests/crm/OpportunityListPage.test.tsx`
+- `public/locales/en/common.json`
 - `_bmad-output/implementation-artifacts/23-2-opportunity-pipeline-and-dynamic-party-linking.md`

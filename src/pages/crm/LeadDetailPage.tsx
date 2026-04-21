@@ -31,6 +31,7 @@ import {
   buildCustomerDetailPath,
   buildLeadDetailPath,
   CRM_LEADS_ROUTE,
+  CRM_OPPORTUNITY_CREATE_ROUTE,
 } from "../../lib/routes";
 
 const VERSION_CONFLICT_MESSAGE =
@@ -339,6 +340,7 @@ export function LeadDetailPage({ onBack }: LeadDetailPageProps) {
 
   const canEditLead = canWrite("crm");
   const canAdvanceLead = canEditLead && lead.qualification_status === "qualified" && lead.status !== "converted";
+  const createOpportunityPath = `${CRM_OPPORTUNITY_CREATE_ROUTE}?partyType=lead&partyName=${encodeURIComponent(lead.id)}&partyLabel=${encodeURIComponent(lead.company_name || lead.lead_name)}&territory=${encodeURIComponent(lead.territory)}&utmSource=${encodeURIComponent(lead.utm_source)}&utmMedium=${encodeURIComponent(lead.utm_medium)}&utmCampaign=${encodeURIComponent(lead.utm_campaign)}&utmContent=${encodeURIComponent(lead.utm_content)}`;
 
   return (
     <div className="space-y-6">
@@ -427,9 +429,14 @@ export function LeadDetailPage({ onBack }: LeadDetailPageProps) {
 
       <SectionCard title={t("crm.detailPage.handoffTitle")} description={t("crm.detailPage.handoffDescription")}>
         <div className="space-y-4">
-          <Button type="button" onClick={handleOpportunityHandoff} disabled={!canAdvanceLead || handoffing}>
-            {handoffing ? t("crm.detailPage.handoffing") : t("crm.detailPage.handoffAction")}
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <Button type="button" onClick={handleOpportunityHandoff} disabled={!canAdvanceLead || handoffing}>
+              {handoffing ? t("crm.detailPage.handoffing") : t("crm.detailPage.handoffAction")}
+            </Button>
+            <Button type="button" variant="outline" onClick={() => navigate(createOpportunityPath)} disabled={!canAdvanceLead}>
+              {t("crm.detailPage.createOpportunity")}
+            </Button>
+          </div>
           {handoffPreview ? (
             <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-4 text-sm">
               <h3 className="font-semibold">{t("crm.detailPage.handoffPreviewTitle")}</h3>

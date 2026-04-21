@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  BriefcaseBusiness,
   Boxes,
   BrainCircuit,
   CircleDollarSign,
@@ -18,6 +19,8 @@ import {
   ADMIN_ROUTE,
   CRM_LEAD_CREATE_ROUTE,
   CRM_LEADS_ROUTE,
+  CRM_OPPORTUNITY_CREATE_ROUTE,
+  CRM_OPPORTUNITIES_ROUTE,
   CUSTOMER_CREATE_ROUTE,
   CUSTOMERS_ROUTE,
   HOME_ROUTE,
@@ -94,10 +97,17 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
     items: [
       {
         feature: "crm",
-        label: "nav.crm",
+        label: "nav.crmLeads",
         to: CRM_LEADS_ROUTE,
         description: "routes.crmLeads.description",
         icon: Users,
+      },
+      {
+        feature: "crm",
+        label: "nav.crmOpportunities",
+        to: CRM_OPPORTUNITIES_ROUTE,
+        description: "routes.crmOpportunities.description",
+        icon: BriefcaseBusiness,
       },
       {
         feature: "customers",
@@ -162,6 +172,8 @@ export const ROUTE_CONTEXT_KEYS = [
   { match: HOME_ROUTE, labelKey: "routes.dashboard.label", descriptionKey: "routes.dashboard.description" },
   { match: CRM_LEADS_ROUTE, labelKey: "routes.crmLeads.label", descriptionKey: "routes.crmLeads.description" },
   { match: CRM_LEAD_CREATE_ROUTE, labelKey: "routes.createLead.label", descriptionKey: "routes.createLead.description" },
+  { match: CRM_OPPORTUNITIES_ROUTE, labelKey: "routes.crmOpportunities.label", descriptionKey: "routes.crmOpportunities.description" },
+  { match: CRM_OPPORTUNITY_CREATE_ROUTE, labelKey: "routes.createOpportunity.label", descriptionKey: "routes.createOpportunity.description" },
   { match: CUSTOMERS_ROUTE, labelKey: "routes.customers.label", descriptionKey: "routes.customers.description" },
   { match: CUSTOMER_CREATE_ROUTE, labelKey: "routes.createCustomer.label", descriptionKey: "routes.createCustomer.description" },
   { match: INTELLIGENCE_ROUTE, labelKey: "routes.intelligence.label", descriptionKey: "routes.intelligence.description" },
@@ -283,6 +295,14 @@ export function getRouteContext(pathname: string) {
     };
   }
 
+  if (pathname.startsWith(`${CRM_OPPORTUNITIES_ROUTE}/`) && pathname !== CRM_OPPORTUNITY_CREATE_ROUTE) {
+    return {
+      labelKey: "routes.opportunityDetail.label",
+      descriptionKey: "routes.opportunityDetail.description",
+      sectionKey: "nav.revenue",
+    };
+  }
+
   if (
     pathname.startsWith(`${INVENTORY_ROUTE}/`) &&
     pathname !== INVENTORY_ROUTE &&
@@ -319,7 +339,8 @@ export function getRouteContext(pathname: string) {
 }
 
 export const DASHBOARD_QUICK_LINKS = [
-  { label: "nav.crm", to: CRM_LEAD_CREATE_ROUTE, icon: Users },
+  { label: "nav.createOpportunity", to: CRM_OPPORTUNITY_CREATE_ROUTE, icon: BriefcaseBusiness },
+  { label: "nav.crmLeads", to: CRM_LEAD_CREATE_ROUTE, icon: Users },
   { label: "nav.createCustomer", to: CUSTOMER_CREATE_ROUTE, icon: Users },
   { label: "nav.createInvoice", to: INVOICE_CREATE_ROUTE, icon: ReceiptText },
   { label: "nav.newOrder", to: ORDER_CREATE_ROUTE, icon: CircleDollarSign },

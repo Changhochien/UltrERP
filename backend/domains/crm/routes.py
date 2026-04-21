@@ -29,19 +29,34 @@ from domains.crm.schemas import (
     LeadSummary,
     LeadTransition,
     LeadUpdate,
+    OpportunityCreate,
+    OpportunityListParams,
+    OpportunityListResponse,
+    OpportunityQuotationHandoff,
+    OpportunityResponse,
+    OpportunitySummary,
+    OpportunityTransition,
+    OpportunityUpdate,
 )
 from domains.crm.service import (
     convert_lead_to_customer,
     create_lead,
+    create_opportunity,
     get_lead,
+    get_opportunity,
     handoff_lead_to_opportunity,
     list_leads,
+    list_opportunities,
+    prepare_opportunity_quotation_handoff,
+    transition_opportunity_status,
     transition_lead_status,
+    update_opportunity,
     update_lead,
 )
 from domains.customers.schemas import CustomerCreate
 
 router = APIRouter()
+opportunity_router = APIRouter()
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 ReadUser = Annotated[dict, Depends(require_role("admin", "sales"))]
@@ -174,4 +189,111 @@ async def convert_to_customer(
     except ValidationError as exc:
         errors = error_response(exc.errors)
         status_code = 404 if any(error.get("field") == "lead_id" for error in exc.errors) else 422
+        return JSONResponse(status_code=status_code, content=errors)
+
+
+@opportunity_router.get("", response_model=OpportunityListResponse)
+async def list_all_opportunities(
+    session: DbSession,
+    user: ReadUser,
+    q: str | None = Query(default=None, max_length=200),
+    status_filter: str | None = Query(default=None, alias="status", max_length=20),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=500),
+) -> OpportunityListResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
+    params = OpportunityListParams(q=q, status=status_filter, page=page, page_size=page_size)
+    items, total_count = await list_opportunities(session, params, tenant_id=real_tid)
+    total_pages = max(1, math.ceil(total_count / page_size))
+    return OpportunityListResponse(
+        items=[OpportunitySummary.model_validate(item) for item in items],
+        page=page,
+        page_size=page_size,
+        total_count=total_count,
+        total_pages=total_pages,
+    )
+
+
+@opportunity_router.get("/{opportunity_id}", response_model=OpportunityResponse)
+async def get_opportunity_by_id(
+    opportunity_id: uuid.UUID,
+    session: DbSession,
+    user: ReadUser,
+) -> OpportunityResponse | JSONResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
+    opportunity = await get_opportunity(session, opportunity_id, tenant_id=real_tid)
+    if opportunity is None:
+        return JSONResponse(status_code=404, content={"detail": "Opportunity not found."})
+    return OpportunityResponse.model_validate(opportunity)
+
+
+@opportunity_router.post("", response_model=OpportunityResponse, status_code=status.HTTP_201_CREATED)
+async def create_new_opportunity(
+    data: OpportunityCreate,
+    session: DbSession,
+    user: WriteUser,
+) -> OpportunityResponse | JSONResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
+    try:
+        opportunity = await create_opportunity(session, data, tenant_id=real_tid)
+        return OpportunityResponse.model_validate(opportunity)
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+
+
+@opportunity_router.patch("/{opportunity_id}", response_model=OpportunityResponse)
+async def update_existing_opportunity(
+    opportunity_id: uuid.UUID,
+    data: OpportunityUpdate,
+    session: DbSession,
+    user: WriteUser,
+) -> OpportunityResponse | JSONResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
+    try:
+        opportunity = await update_opportunity(session, opportunity_id, data, tenant_id=real_tid)
+        if opportunity is None:
+            return JSONResponse(status_code=404, content={"detail": "Opportunity not found."})
+        return OpportunityResponse.model_validate(opportunity)
+    except VersionConflictError as exc:
+        return JSONResponse(
+            status_code=409,
+            content={
+                "error": "version_conflict",
+                "expected_version": exc.expected,
+                "actual_version": exc.actual,
+            },
+        )
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+
+
+@opportunity_router.post("/{opportunity_id}/status", response_model=OpportunityResponse)
+async def transition_opportunity(
+    opportunity_id: uuid.UUID,
+    data: OpportunityTransition,
+    session: DbSession,
+    user: WriteUser,
+) -> OpportunityResponse | JSONResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
+    try:
+        opportunity = await transition_opportunity_status(session, opportunity_id, data, tenant_id=real_tid)
+        if opportunity is None:
+            return JSONResponse(status_code=404, content={"detail": "Opportunity not found."})
+        return OpportunityResponse.model_validate(opportunity)
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+
+
+@opportunity_router.post("/{opportunity_id}/handoff/quotation", response_model=OpportunityQuotationHandoff)
+async def handoff_opportunity_to_quotation(
+    opportunity_id: uuid.UUID,
+    session: DbSession,
+    user: WriteUser,
+) -> OpportunityQuotationHandoff | JSONResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
+    try:
+        return await prepare_opportunity_quotation_handoff(session, opportunity_id, tenant_id=real_tid)
+    except ValidationError as exc:
+        errors = error_response(exc.errors)
+        status_code = 404 if any(error.get("field") == "opportunity_id" for error in exc.errors) else 422
         return JSONResponse(status_code=status_code, content=errors)

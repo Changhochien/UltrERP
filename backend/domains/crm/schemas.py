@@ -1,9 +1,9 @@
-"""CRM lead request and response schemas."""
+"""CRM request and response schemas."""
 
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
 
@@ -162,3 +162,181 @@ class LeadCustomerConversionResult(BaseModel):
     lead_id: uuid.UUID
     customer_id: uuid.UUID
     status: LeadStatus
+
+
+class OpportunityPartyKind(StrEnum):
+    LEAD = "lead"
+    CUSTOMER = "customer"
+    PROSPECT = "prospect"
+
+
+class OpportunityStatus(StrEnum):
+    OPEN = "open"
+    REPLIED = "replied"
+    QUOTATION = "quotation"
+    CONVERTED = "converted"
+    CLOSED = "closed"
+    LOST = "lost"
+
+
+class OpportunityItemInput(BaseModel):
+    item_name: str = Field(..., min_length=1, max_length=200)
+    item_code: str = Field(default="", max_length=120)
+    description: str = Field(default="", max_length=500)
+    quantity: Decimal = Field(default=Decimal("1.00"), gt=0, max_digits=12, decimal_places=2)
+    unit_price: Decimal = Field(default=Decimal("0.00"), ge=0, max_digits=12, decimal_places=2)
+    amount: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
+
+
+class OpportunityItem(OpportunityItemInput):
+    line_no: int = Field(..., ge=1)
+    amount: Decimal = Field(..., ge=0, max_digits=14, decimal_places=2)
+
+
+class OpportunityCreate(BaseModel):
+    opportunity_title: str = Field(..., min_length=1, max_length=200)
+    opportunity_from: OpportunityPartyKind
+    party_name: str = Field(..., min_length=1, max_length=200)
+    sales_stage: str = Field(default="qualification", max_length=120)
+    probability: int = Field(default=0, ge=0, le=100)
+    expected_closing: date | None = None
+    currency: str = Field(default="TWD", min_length=3, max_length=3)
+    opportunity_amount: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
+    opportunity_owner: str = Field(default="", max_length=120)
+    territory: str = Field(default="", max_length=120)
+    customer_group: str = Field(default="", max_length=120)
+    contact_person: str = Field(default="", max_length=120)
+    contact_email: str = Field(default="", max_length=254)
+    contact_mobile: str = Field(default="", max_length=30)
+    job_title: str = Field(default="", max_length=120)
+    utm_source: str = Field(default="", max_length=120)
+    utm_medium: str = Field(default="", max_length=120)
+    utm_campaign: str = Field(default="", max_length=120)
+    utm_content: str = Field(default="", max_length=200)
+    items: list[OpportunityItemInput] = Field(default_factory=list)
+    notes: str = Field(default="", max_length=4000)
+
+
+class OpportunityUpdate(BaseModel):
+    opportunity_title: str | None = Field(default=None, min_length=1, max_length=200)
+    opportunity_from: OpportunityPartyKind | None = None
+    party_name: str | None = Field(default=None, min_length=1, max_length=200)
+    sales_stage: str | None = Field(default=None, max_length=120)
+    probability: int | None = Field(default=None, ge=0, le=100)
+    expected_closing: date | None = None
+    currency: str | None = Field(default=None, min_length=3, max_length=3)
+    opportunity_amount: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
+    opportunity_owner: str | None = Field(default=None, max_length=120)
+    territory: str | None = Field(default=None, max_length=120)
+    customer_group: str | None = Field(default=None, max_length=120)
+    contact_person: str | None = Field(default=None, max_length=120)
+    contact_email: str | None = Field(default=None, max_length=254)
+    contact_mobile: str | None = Field(default=None, max_length=30)
+    job_title: str | None = Field(default=None, max_length=120)
+    utm_source: str | None = Field(default=None, max_length=120)
+    utm_medium: str | None = Field(default=None, max_length=120)
+    utm_campaign: str | None = Field(default=None, max_length=120)
+    utm_content: str | None = Field(default=None, max_length=200)
+    items: list[OpportunityItemInput] | None = None
+    notes: str | None = Field(default=None, max_length=4000)
+    version: int = Field(..., ge=1)
+
+
+class OpportunityTransition(BaseModel):
+    status: OpportunityStatus
+    lost_reason: str = Field(default="", max_length=200)
+    competitor_name: str = Field(default="", max_length=200)
+    loss_notes: str = Field(default="", max_length=4000)
+
+
+class OpportunitySummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    opportunity_title: str
+    opportunity_from: OpportunityPartyKind
+    party_name: str
+    party_label: str
+    status: OpportunityStatus
+    sales_stage: str
+    probability: int
+    expected_closing: date | None = None
+    currency: str
+    opportunity_amount: Decimal | None = None
+    opportunity_owner: str
+    territory: str
+    updated_at: datetime
+
+
+class OpportunityResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    opportunity_title: str
+    opportunity_from: OpportunityPartyKind
+    party_name: str
+    party_label: str
+    status: OpportunityStatus
+    sales_stage: str
+    probability: int
+    expected_closing: date | None = None
+    currency: str
+    opportunity_amount: Decimal | None = None
+    base_opportunity_amount: Decimal | None = None
+    opportunity_owner: str
+    territory: str
+    customer_group: str
+    contact_person: str
+    contact_email: str
+    contact_mobile: str
+    job_title: str
+    utm_source: str
+    utm_medium: str
+    utm_campaign: str
+    utm_content: str
+    items: list[OpportunityItem]
+    notes: str
+    lost_reason: str
+    competitor_name: str
+    loss_notes: str
+    version: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class OpportunityListParams(BaseModel):
+    q: str | None = Field(default=None, max_length=200)
+    status: OpportunityStatus | None = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=500)
+
+
+class OpportunityListResponse(BaseModel):
+    items: list[OpportunitySummary]
+    page: int
+    page_size: int
+    total_count: int
+    total_pages: int
+
+
+class OpportunityQuotationHandoff(BaseModel):
+    opportunity_id: uuid.UUID
+    opportunity_title: str
+    opportunity_from: OpportunityPartyKind
+    party_name: str
+    party_label: str
+    customer_group: str
+    currency: str
+    opportunity_amount: Decimal | None = None
+    base_opportunity_amount: Decimal | None = None
+    territory: str
+    contact_person: str
+    contact_email: str
+    contact_mobile: str
+    job_title: str
+    utm_source: str
+    utm_medium: str
+    utm_campaign: str
+    utm_content: str
+    items: list[OpportunityItem]
