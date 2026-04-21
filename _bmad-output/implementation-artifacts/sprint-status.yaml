@@ -1218,11 +1218,11 @@ development_status:
         validation: "Story artifact created."
         prerequisites: []
       22-6-quickentrydialog-and-spinner:
-        status: "ready-for-dev"
+        status: "done"
         story_id: "22.6"
         title: "Spinner, QuickEntryDialog, and StatusBadge"
         story_file: "22-6-quickentrydialog-and-spinner.md"
-        validation: "Story artifact created."
+        validation: "Implemented on 2026-04-21 with shared `Spinner`, `QuickEntryDialog`, and `StatusBadge` primitives, additive customer and product quick-create dialog flows with toast feedback, and shared status-tone resolution across the touched order, invoice, supplier-order, and supplier-invoice surfaces. Focused frontend validation passed with `pnpm vitest run src/tests/ui/SharedUiPrimitives.test.tsx src/tests/customers/CustomerCombobox.test.tsx src/tests/products/ProductCombobox.test.tsx src/tests/inventory/ProductForm.test.tsx src/tests/orders/OrderDetailConfirmationUX.test.tsx src/tests/orders/CustomerOrdersTab.test.tsx src/domain/invoices/__tests__/InvoiceList.test.tsx src/domain/invoices/__tests__/InvoiceDetail.test.tsx src/tests/invoices/CustomerInvoicesTab.test.tsx src/domain/purchases/__tests__/PurchasesPage.test.tsx` (`10 passed`)."
         prerequisites: ["22.1", "22.4"]
       22-7-tanstackdatatable-foundation:
         status: "ready-for-dev"

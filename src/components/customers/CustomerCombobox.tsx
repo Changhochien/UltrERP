@@ -159,7 +159,8 @@ export function CustomerCombobox({
     !createForm.contact_phone.trim() ||
     !createForm.contact_name.trim() ||
     !createForm.contact_email.trim() ||
-    !createValidation.success;
+    !createValidation.success ||
+    duplicateMatch !== null;
 
   const selectedCustomer = customers.find((c) => c.id === value);
 

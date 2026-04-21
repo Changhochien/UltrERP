@@ -207,53 +207,45 @@ export function ProductCombobox({
   return (
     <>
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger
-          render={
-            <Button
-              type="button"
-              variant="outline"
-              role="combobox"
-              aria-expanded={open}
-              aria-label={ariaLabel}
-              aria-labelledby={ariaLabelledBy}
-              disabled={disabled}
-              className={cn(
-                "w-full justify-start text-left font-normal",
-                !selectedProduct && "text-muted-foreground",
-              )}
-            />
-          }
-        >
-          {selectedProduct ? (
-            <span className="truncate flex-1">
-              {selectedProduct.name} ({selectedProduct.code})
-            </span>
-          ) : (
-            <span className="truncate flex-1">{placeholder}</span>
-          )}
+        <div className="relative">
+          <PopoverTrigger
+            render={
+              <Button
+                type="button"
+                variant="outline"
+                role="combobox"
+                aria-expanded={open}
+                aria-label={ariaLabel}
+                aria-labelledby={ariaLabelledBy}
+                disabled={disabled}
+                className={cn(
+                  "w-full justify-start pr-9 text-left font-normal",
+                  !selectedProduct && "text-muted-foreground",
+                )}
+              />
+            }
+          >
+            {selectedProduct ? (
+              <span className="truncate flex-1">
+                {selectedProduct.name} ({selectedProduct.code})
+              </span>
+            ) : (
+              <span className="truncate flex-1">{placeholder}</span>
+            )}
+          </PopoverTrigger>
           {selectedProduct && onClear ? (
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={(e) => {
-                e.stopPropagation();
-                onClear();
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.stopPropagation();
-                  onClear();
-                }
-              }}
-              className="ml-1 rounded-sm opacity-70 hover:opacity-100 focus:outline-none cursor-pointer"
+            <button
+              type="button"
+              onClick={onClear}
+              className="absolute right-2 top-1/2 inline-flex size-5 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               aria-label="Clear product filter"
             >
               ×
-            </span>
+            </button>
           ) : (
-            <Search className="ml-1 size-4 shrink-0 opacity-50" />
+            <Search className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 shrink-0 opacity-50" />
           )}
-        </PopoverTrigger>
+        </div>
         <PopoverContent className="w-[24rem] p-0" align="start">
           <Command shouldFilter={false}>
             <CommandInput placeholder={placeholder} value={query} onValueChange={setQuery} />

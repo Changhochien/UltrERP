@@ -1,6 +1,6 @@
 # Story 22.6: Spinner, QuickEntryDialog, and StatusBadge
 
-**Status:** ready-for-dev
+**Status:** done
 
 **Story ID:** 22.6
 
@@ -24,25 +24,25 @@ so that the app uses one consistent pattern for submission feedback, inline enti
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add the shared Spinner component. (AC: 1)
-  - [ ] Create `src/components/ui/Spinner.tsx` with at least `sm`, `md`, and `lg` variants.
-  - [ ] Reuse Tailwind animation utilities instead of adding bespoke CSS for the spinner.
-  - [ ] Apply Spinner to the first touched submission and loading surfaces in this story.
-- [ ] Task 2: Centralize status tone rendering with StatusBadge. (AC: 2)
-  - [ ] Create `src/components/ui/StatusBadge.tsx`.
-  - [ ] Compose the existing `Badge` component rather than introducing a new pill system.
-  - [ ] Lift the duplicated status-to-variant mapping currently spread across domain hooks into one shared implementation.
-- [ ] Task 3: Build the shared QuickEntryDialog. (AC: 3, 4)
-  - [ ] Create `src/components/ui/QuickEntryDialog.tsx` on top of the existing dialog primitive.
-  - [ ] Support at least customer and product quick-create flows in this story.
-  - [ ] Keep the dialog form minimal and aligned with the shared form-validation work from Story 22.4.
-- [ ] Task 4: Migrate the current combobox quick-create flows. (AC: 3-5)
-  - [ ] Refactor `src/components/customers/CustomerCombobox.tsx` to stop owning a raw inline create panel.
-  - [ ] Refactor `src/components/products/ProductCombobox.tsx` to the same shared quick-entry pattern.
-  - [ ] Reuse the current create APIs and ensure the selected entity is returned to the parent flow after success.
-- [ ] Task 5: Add focused validation coverage. (AC: 1-5)
-  - [ ] Add tests for Spinner sizing, StatusBadge mapping, and at least one quick-entry dialog flow.
-  - [ ] Add a regression proving the combobox can still select a newly created entity after migration.
+- [x] Task 1: Add the shared Spinner component. (AC: 1)
+  - [x] Create `src/components/ui/Spinner.tsx` with at least `sm`, `md`, and `lg` variants.
+  - [x] Reuse Tailwind animation utilities instead of adding bespoke CSS for the spinner.
+  - [x] Apply Spinner to the first touched submission and loading surfaces in this story.
+- [x] Task 2: Centralize status tone rendering with StatusBadge. (AC: 2)
+  - [x] Create `src/components/ui/StatusBadge.tsx`.
+  - [x] Compose the existing `Badge` component rather than introducing a new pill system.
+  - [x] Lift the duplicated status-to-variant mapping currently spread across domain hooks into one shared implementation.
+- [x] Task 3: Build the shared QuickEntryDialog. (AC: 3, 4)
+  - [x] Create `src/components/ui/QuickEntryDialog.tsx` on top of the existing dialog primitive.
+  - [x] Support at least customer and product quick-create flows in this story.
+  - [x] Keep the dialog form minimal and aligned with the shared form-validation work from Story 22.4.
+- [x] Task 4: Migrate the current combobox quick-create flows. (AC: 3-5)
+  - [x] Refactor `src/components/customers/CustomerCombobox.tsx` to stop owning a raw inline create panel.
+  - [x] Refactor `src/components/products/ProductCombobox.tsx` to the same shared quick-entry pattern.
+  - [x] Reuse the current create APIs and ensure the selected entity is returned to the parent flow after success.
+- [x] Task 5: Add focused validation coverage. (AC: 1-5)
+  - [x] Add tests for Spinner sizing, StatusBadge mapping, and at least one quick-entry dialog flow.
+  - [x] Add a regression proving the combobox can still select a newly created entity after migration.
 
 ## Dev Notes
 
@@ -92,21 +92,47 @@ so that the app uses one consistent pattern for submission feedback, inline enti
 
 ### Agent Model Used
 
-Record the implementation model and version here.
+GPT-5.4
 
 ### Debug Log References
 
-Record focused frontend validation commands and any interaction notes here.
+- `pnpm vitest run src/tests/ui/SharedUiPrimitives.test.tsx`
+- `pnpm vitest run src/tests/customers/CustomerCombobox.test.tsx`
+- `pnpm vitest run src/tests/products/ProductCombobox.test.tsx src/tests/inventory/ProductForm.test.tsx`
+- `pnpm vitest run src/tests/orders/OrderDetailConfirmationUX.test.tsx src/tests/orders/CustomerOrdersTab.test.tsx src/domain/invoices/__tests__/InvoiceList.test.tsx src/domain/invoices/__tests__/InvoiceDetail.test.tsx src/tests/invoices/CustomerInvoicesTab.test.tsx src/domain/purchases/__tests__/PurchasesPage.test.tsx`
+- Final focused suite passed with `pnpm vitest run src/tests/ui/SharedUiPrimitives.test.tsx src/tests/customers/CustomerCombobox.test.tsx src/tests/products/ProductCombobox.test.tsx src/tests/inventory/ProductForm.test.tsx src/tests/orders/OrderDetailConfirmationUX.test.tsx src/tests/orders/CustomerOrdersTab.test.tsx src/domain/invoices/__tests__/InvoiceList.test.tsx src/domain/invoices/__tests__/InvoiceDetail.test.tsx src/tests/invoices/CustomerInvoicesTab.test.tsx src/domain/purchases/__tests__/PurchasesPage.test.tsx`.
 
 ### Completion Notes List
 
-Summarize the shared primitive APIs, the status mapping consolidation, and the migrated quick-create flows here once implementation is done.
+- Added shared `Spinner`, `StatusBadge`, and `QuickEntryDialog` primitives and validated their core behavior with focused UI tests.
+- Migrated customer quick-create from the inline combobox panel into the shared dialog, replaced duplicate resolution with an accessible in-dialog path, and preserved parent selection updates plus toast feedback.
+- Added product quick-create to `ProductCombobox` through the shared dialog and the existing product create contract, with successful selections flowing back into the parent combobox state.
+- Centralized status tone resolution through `StatusBadge` and updated the touched order, invoice, supplier-order, and supplier-invoice list/detail surfaces to compose the shared badge primitive.
 
 ### File List
 
 - `src/components/ui/Spinner.tsx`
 - `src/components/ui/StatusBadge.tsx`
 - `src/components/ui/QuickEntryDialog.tsx`
-- touched combobox components
-- any shared status helper introduced for tone mapping
-- focused frontend tests for the touched components
+- `src/components/customers/CustomerCombobox.tsx`
+- `src/components/products/ProductCombobox.tsx`
+- `src/domain/inventory/components/ProductForm.tsx`
+- `src/domain/orders/hooks/useOrders.ts`
+- `src/domain/inventory/hooks/useSupplierOrders.ts`
+- `src/domain/invoices/hooks/useInvoices.ts`
+- `src/domain/purchases/hooks/useSupplierInvoices.ts`
+- `src/domain/orders/components/OrderList.tsx`
+- `src/domain/orders/components/OrderDetail.tsx`
+- `src/components/customers/CustomerOrdersTab.tsx`
+- `src/domain/inventory/components/SupplierOrderList.tsx`
+- `src/domain/inventory/components/SupplierOrderDetail.tsx`
+- `src/domain/invoices/components/InvoiceList.tsx`
+- `src/domain/invoices/components/InvoiceDetail.tsx`
+- `src/components/customers/CustomerInvoicesTab.tsx`
+- `src/domain/purchases/components/SupplierInvoiceList.tsx`
+- `src/domain/purchases/components/SupplierInvoiceDetail.tsx`
+- `src/tests/ui/SharedUiPrimitives.test.tsx`
+- `src/tests/customers/CustomerCombobox.test.tsx`
+- `src/tests/products/ProductCombobox.test.tsx`
+- `src/tests/inventory/ProductForm.test.tsx`
+- `src/domain/invoices/__tests__/InvoiceList.test.tsx`
