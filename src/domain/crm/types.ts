@@ -276,6 +276,26 @@ export interface OpportunityQuotationHandoff {
   items: OpportunityItemResponse[];
 }
 
+export interface QuotationOrderHandoffLine {
+  source_quotation_line_no: number;
+  product_id: string;
+  description: string;
+  quantity: string;
+  list_unit_price: string;
+  unit_price: string;
+  discount_amount: string;
+  tax_policy_code: string;
+}
+
+export interface QuotationOrderHandoff {
+  quotation_id: string;
+  source_quotation_id: string;
+  customer_id: string;
+  crm_context_snapshot?: Record<string, unknown> | null;
+  notes: string;
+  lines: QuotationOrderHandoffLine[];
+}
+
 export type QuotationPartyKind = OpportunityPartyKind;
 
 export type QuotationStatus =
@@ -394,6 +414,8 @@ export interface QuotationResponse {
   version: number;
   created_at: string;
   updated_at: string;
+  linked_orders?: QuotationLinkedOrder[];
+  remaining_items?: QuotationRemainingItem[];
 }
 
 export interface QuotationSummary {
@@ -407,10 +429,34 @@ export interface QuotationSummary {
   company: string;
   currency: string;
   grand_total: string;
+  ordered_amount?: string;
+  order_count?: number;
   opportunity_id: string | null;
   amended_from: string | null;
   revision_no: number;
   updated_at: string;
+}
+
+export interface QuotationLinkedOrder {
+  order_id: string;
+  order_number: string;
+  status: string;
+  total_amount: string | null;
+  linked_line_count: number;
+  created_at: string;
+}
+
+export interface QuotationRemainingItem {
+  line_no: number;
+  item_name: string;
+  item_code: string;
+  description: string;
+  quoted_quantity: string;
+  ordered_quantity: string;
+  remaining_quantity: string;
+  quoted_amount: string;
+  ordered_amount: string;
+  remaining_amount: string;
 }
 
 export interface QuotationListResponse {

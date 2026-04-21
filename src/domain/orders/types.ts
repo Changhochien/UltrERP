@@ -34,6 +34,7 @@ export type PaymentTermsCode = "NET_30" | "NET_60" | "COD";
 
 export interface OrderLineCreate {
   product_id: string;
+  source_quotation_line_no?: number;
   description: string;
   quantity: number;
   list_unit_price?: number;
@@ -57,9 +58,11 @@ export interface OrderSalesTeamAssignment {
 
 export interface OrderCreatePayload {
   customer_id: string;
+  source_quotation_id?: string;
   payment_terms_code?: PaymentTermsCode;
   discount_amount?: number;
   discount_percent?: number;
+  crm_context_snapshot?: Record<string, unknown> | null;
   notes?: string;
   sales_team?: OrderSalesTeamAssignmentCreate[];
   lines: OrderLineCreate[];
@@ -68,6 +71,7 @@ export interface OrderCreatePayload {
 export interface OrderLineResponse {
   id: string;
   product_id: string;
+  source_quotation_line_no?: number | null;
   line_number: number;
   description: string;
   quantity: string;
@@ -100,6 +104,7 @@ export interface OrderResponse {
   status: OrderStatus;
   customer_id: string;
   customer_name: string | null;
+  source_quotation_id?: string | null;
   payment_terms_code: string;
   payment_terms_days: number;
   subtotal_amount: string;
@@ -114,6 +119,7 @@ export interface OrderResponse {
   invoice_payment_status: OrderBillingStatus | null;
   execution: OrderExecutionSummary;
   notes: string | null;
+  crm_context_snapshot?: Record<string, unknown> | null;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -126,12 +132,14 @@ export interface OrderListItem {
   order_number: string;
   status: OrderStatus;
   customer_id: string;
+  source_quotation_id?: string | null;
   total_amount: string;
   sales_team: OrderSalesTeamAssignment[];
   total_commission: string;
   invoice_number: string | null;
   invoice_payment_status: OrderBillingStatus | null;
   execution: OrderExecutionSummary;
+  crm_context_snapshot?: Record<string, unknown> | null;
   created_at: string;
 }
 

@@ -20,6 +20,7 @@ const numberFromInput = (value: unknown) => {
 
 export const orderLineFormSchema = z.object({
   product_id: z.string().trim().min(1, "orders.form.errors.lineProductRequired"),
+  source_quotation_line_no: z.number().int().positive().optional(),
   description: z
     .string()
     .trim()
@@ -55,12 +56,14 @@ export type OrderSalesTeamMemberFormValues = z.infer<typeof orderSalesTeamMember
 export const orderFormSchema = z
   .object({
     customer_id: z.string().trim().min(1, "orders.form.errors.customerRequired"),
+    source_quotation_id: z.string().trim().optional(),
     payment_terms_code: z.enum(paymentTermsValues),
     discount_amount: z.number().min(0, "orders.form.errors.discountAmountNonNegative"),
     discount_percent: z
       .number()
       .min(0, "orders.form.errors.discountPercentRange")
       .max(100, "orders.form.errors.discountPercentRange"),
+    crm_context_snapshot: z.record(z.string(), z.unknown()).nullable().optional(),
     notes: z.string().trim().max(2000, "orders.form.errors.notesTooLong"),
     sales_team: z.array(orderSalesTeamMemberSchema).max(10, "orders.form.errors.salesTeamTooLarge"),
     lines: z.array(orderLineFormSchema).min(1, "orders.form.errors.linesRequired").max(200, "orders.form.errors.linesTooLarge"),
@@ -97,6 +100,7 @@ export type OrderFormValues = z.infer<typeof orderFormSchema>;
 export function emptyOrderFormLine(): OrderLineFormValues {
   return {
     product_id: "",
+    source_quotation_line_no: undefined,
     description: "",
     quantity: 1,
     list_unit_price: 0,
@@ -117,6 +121,9 @@ export const numericFieldOptions = {
 export function toOrderCreatePayload(values: OrderFormValues): OrderCreatePayload {
   const lines: OrderLineCreate[] = values.lines.map((line) => ({
     product_id: line.product_id.trim(),
+    ...(typeof line.source_quotation_line_no === "number"
+      ? { source_quotation_line_no: line.source_quotation_line_no }
+      : {}),
     description: line.description.trim(),
     quantity: Number(line.quantity),
     list_unit_price: Number(line.list_unit_price),
@@ -136,6 +143,15 @@ export function toOrderCreatePayload(values: OrderFormValues): OrderCreatePayloa
     payment_terms_code: values.payment_terms_code as PaymentTermsCode,
     lines,
   };
+
+  const sourceQuotationId = values.source_quotation_id?.trim();
+  if (sourceQuotationId) {
+    payload.source_quotation_id = sourceQuotationId;
+  }
+
+  if (values.crm_context_snapshot) {
+    payload.crm_context_snapshot = values.crm_context_snapshot;
+  }
 
   if (values.discount_amount > 0) {
     payload.discount_amount = Number(values.discount_amount);

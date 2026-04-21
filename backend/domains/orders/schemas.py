@@ -72,6 +72,7 @@ PAYMENT_TERMS_CONFIG: dict[PaymentTermsCode, dict[str, str | int]] = {
 
 class OrderCreateLine(BaseModel):
     product_id: uuid.UUID
+    source_quotation_line_no: int | None = Field(default=None, ge=1)
     description: str = Field(..., min_length=1, max_length=500)
     quantity: Decimal = Field(..., gt=0, max_digits=18, decimal_places=3)
     list_unit_price: Decimal = Field(default=Decimal("0.00"), ge=0, max_digits=20, decimal_places=2)
@@ -95,9 +96,11 @@ class OrderSalesTeamAssignment(BaseModel):
 
 class OrderCreate(BaseModel):
     customer_id: uuid.UUID
+    source_quotation_id: uuid.UUID | None = None
     payment_terms_code: PaymentTermsCode = PaymentTermsCode.NET_30
     discount_amount: Decimal = Field(default=Decimal("0.00"), ge=0, max_digits=20, decimal_places=2)
     discount_percent: Decimal = Field(default=Decimal("0.0000"), ge=0, le=1, max_digits=5, decimal_places=4)
+    crm_context_snapshot: dict[str, Any] | None = None
     notes: str | None = Field(default=None, max_length=2000)
     sales_team: list[OrderSalesTeamAssignmentCreate] = Field(default_factory=list, max_length=10)
     lines: list[OrderCreateLine] = Field(..., min_length=1, max_length=200)
@@ -114,6 +117,7 @@ class OrderLineResponse(BaseModel):
 
     id: uuid.UUID
     product_id: uuid.UUID
+    source_quotation_line_no: int | None = None
     line_number: int
     quantity: Decimal
     list_unit_price: Decimal
@@ -147,6 +151,7 @@ class OrderResponse(BaseModel):
     tenant_id: uuid.UUID
     customer_id: uuid.UUID
     customer_name: str | None = None
+    source_quotation_id: uuid.UUID | None = None
     order_number: str
     status: OrderStatus
     payment_terms_code: str
@@ -163,6 +168,7 @@ class OrderResponse(BaseModel):
     invoice_payment_status: OrderBillingStatus | None = None
     execution: OrderExecutionSummary
     notes: str | None
+    crm_context_snapshot: dict[str, Any] | None = None
     legacy_header_snapshot: dict[str, Any] | None = None
     created_by: str
     created_at: datetime
@@ -177,6 +183,7 @@ class OrderListItem(BaseModel):
     id: uuid.UUID
     tenant_id: uuid.UUID
     customer_id: uuid.UUID
+    source_quotation_id: uuid.UUID | None = None
     order_number: str
     status: OrderStatus
     payment_terms_code: str
@@ -186,6 +193,7 @@ class OrderListItem(BaseModel):
     invoice_number: str | None = None
     invoice_payment_status: OrderBillingStatus | None = None
     execution: OrderExecutionSummary
+    crm_context_snapshot: dict[str, Any] | None = None
     legacy_header_snapshot: dict[str, Any] | None = None
     created_at: datetime
     updated_at: datetime

@@ -38,6 +38,7 @@ from domains.crm.schemas import (
     OpportunityTransition,
     OpportunityUpdate,
     QuotationCreate,
+    QuotationOrderHandoff,
     QuotationListParams,
     QuotationListResponse,
     QuotationResponse,
@@ -59,6 +60,7 @@ from domains.crm.service import (
     list_leads,
     list_opportunities,
     list_quotations,
+    prepare_quotation_order_handoff,
     prepare_opportunity_quotation_handoff,
     transition_quotation_status,
     transition_opportunity_status,
@@ -347,6 +349,21 @@ async def get_quotation_by_id(
     if quotation is None:
         return JSONResponse(status_code=404, content={"detail": "Quotation not found."})
     return QuotationResponse.model_validate(quotation)
+
+
+@quotation_router.post("/{quotation_id}/handoff/order", response_model=QuotationOrderHandoff)
+async def handoff_quotation_to_order(
+    quotation_id: uuid.UUID,
+    session: DbSession,
+    user: WriteUser,
+) -> QuotationOrderHandoff | JSONResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
+    try:
+        return await prepare_quotation_order_handoff(session, quotation_id, tenant_id=real_tid)
+    except ValidationError as exc:
+        errors = error_response(exc.errors)
+        status_code = 404 if any(error.get("field") == "quotation_id" for error in exc.errors) else 422
+        return JSONResponse(status_code=status_code, content=errors)
 
 
 @quotation_router.post("", response_model=QuotationResponse, status_code=status.HTTP_201_CREATED)

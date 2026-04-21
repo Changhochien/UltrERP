@@ -347,6 +347,48 @@ QuotationItemInput = OpportunityItemInput
 QuotationItem = OpportunityItem
 
 
+class QuotationOrderHandoffLine(BaseModel):
+    source_quotation_line_no: int = Field(..., ge=1)
+    product_id: uuid.UUID
+    description: str = Field(..., min_length=1, max_length=500)
+    quantity: Decimal = Field(..., gt=0, max_digits=18, decimal_places=3)
+    list_unit_price: Decimal = Field(default=Decimal("0.00"), ge=0, max_digits=20, decimal_places=2)
+    unit_price: Decimal = Field(..., ge=0, max_digits=20, decimal_places=2)
+    discount_amount: Decimal = Field(default=Decimal("0.00"), ge=0, max_digits=20, decimal_places=2)
+    tax_policy_code: str = Field(default="standard", min_length=1, max_length=20)
+
+
+class QuotationOrderHandoff(BaseModel):
+    quotation_id: uuid.UUID
+    source_quotation_id: uuid.UUID
+    customer_id: uuid.UUID
+    crm_context_snapshot: dict[str, object] | None = None
+    notes: str
+    lines: list[QuotationOrderHandoffLine]
+
+
+class QuotationLinkedOrder(BaseModel):
+    order_id: uuid.UUID
+    order_number: str
+    status: str
+    total_amount: Decimal | None = None
+    linked_line_count: int = 0
+    created_at: datetime
+
+
+class QuotationRemainingItem(BaseModel):
+    line_no: int
+    item_name: str
+    item_code: str
+    description: str
+    quoted_quantity: Decimal
+    ordered_quantity: Decimal
+    remaining_quantity: Decimal
+    quoted_amount: Decimal
+    ordered_amount: Decimal
+    remaining_amount: Decimal
+
+
 class QuotationStatus(StrEnum):
     DRAFT = "draft"
     OPEN = "open"
@@ -453,6 +495,8 @@ class QuotationSummary(BaseModel):
     company: str
     currency: str
     grand_total: Decimal
+    ordered_amount: Decimal = Decimal("0.00")
+    order_count: int = 0
     opportunity_id: uuid.UUID | None = None
     amended_from: uuid.UUID | None = None
     revision_no: int
@@ -507,6 +551,8 @@ class QuotationResponse(BaseModel):
     version: int
     created_at: datetime
     updated_at: datetime
+    linked_orders: list[QuotationLinkedOrder] = Field(default_factory=list)
+    remaining_items: list[QuotationRemainingItem] = Field(default_factory=list)
 
 
 class QuotationListParams(BaseModel):

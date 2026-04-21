@@ -10,6 +10,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from domains.crm import routes as crm_routes
+from domains.crm.schemas import QuotationOrderHandoff, QuotationOrderHandoffLine
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tests.domains.orders._helpers import (  # noqa: E402
@@ -176,5 +177,54 @@ async def test_revise_quotation_returns_revision_lineage(monkeypatch) -> None:
         assert body["status"] == "draft"
         assert body["amended_from"] == str(source_id)
         assert body["revision_no"] == 1
+    finally:
+        teardown_session(prev)
+
+
+async def test_handoff_quotation_to_order_returns_prefill_context(monkeypatch) -> None:
+    quotation_id = uuid.uuid4()
+    customer_id = uuid.uuid4()
+
+    async def fake_handoff(_session: FakeAsyncSession, requested_id: uuid.UUID, tenant_id: uuid.UUID):
+        assert requested_id == quotation_id
+        assert tenant_id
+        return QuotationOrderHandoff(
+            quotation_id=quotation_id,
+            source_quotation_id=quotation_id,
+            customer_id=customer_id,
+            crm_context_snapshot={
+                "source_document_type": "quotation",
+                "party_label": "Rotor Works",
+            },
+            notes="Initial commercial offer.",
+            lines=[
+                QuotationOrderHandoffLine(
+                    source_quotation_line_no=1,
+                    product_id=uuid.uuid4(),
+                    description="24V industrial rotor",
+                    quantity=Decimal("2.00"),
+                    list_unit_price=Decimal("12500.00"),
+                    unit_price=Decimal("12500.00"),
+                    discount_amount=Decimal("0.00"),
+                    tax_policy_code="standard",
+                )
+            ],
+        )
+
+    monkeypatch.setattr(crm_routes, "prepare_quotation_order_handoff", fake_handoff)
+    session = FakeAsyncSession()
+    prev = setup_session(session)
+    try:
+        resp = await http_post(
+            f"/api/v1/crm/quotations/{quotation_id}/handoff/order",
+            {},
+            headers=auth_header("sales"),
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["source_quotation_id"] == str(quotation_id)
+        assert body["customer_id"] == str(customer_id)
+        assert body["crm_context_snapshot"]["party_label"] == "Rotor Works"
+        assert body["lines"][0]["source_quotation_line_no"] == 1
     finally:
         teardown_session(prev)

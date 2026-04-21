@@ -6,17 +6,19 @@ import QuotationDetailPage from "../../pages/crm/QuotationDetailPage";
 import {
   getQuotation,
   listLeads,
+  prepareQuotationOrderHandoff,
   QUOTATION_STATUS_OPTIONS,
   reviseQuotation,
   transitionQuotationStatus,
   updateQuotation,
 } from "../../lib/api/crm";
 import { listCustomers } from "../../lib/api/customers";
-import { buildQuotationDetailPath, CRM_QUOTATION_DETAIL_ROUTE } from "../../lib/routes";
+import { buildQuotationDetailPath, CRM_QUOTATION_DETAIL_ROUTE, ORDER_CREATE_ROUTE } from "../../lib/routes";
 
 vi.mock("../../lib/api/crm", () => ({
   getQuotation: vi.fn(),
   listLeads: vi.fn(),
+  prepareQuotationOrderHandoff: vi.fn(),
   QUOTATION_STATUS_OPTIONS: ["draft", "open", "replied", "partially_ordered", "ordered", "lost", "cancelled", "expired"],
   reviseQuotation: vi.fn(),
   transitionQuotationStatus: vi.fn(),
@@ -41,6 +43,7 @@ vi.mock("../../hooks/useToast", () => ({
 const mockedGetQuotation = vi.mocked(getQuotation);
 const mockedListLeads = vi.mocked(listLeads);
 const mockedListCustomers = vi.mocked(listCustomers);
+const mockedPrepareQuotationOrderHandoff = vi.mocked(prepareQuotationOrderHandoff);
 const mockedUpdateQuotation = vi.mocked(updateQuotation);
 const mockedTransitionQuotationStatus = vi.mocked(transitionQuotationStatus);
 const mockedReviseQuotation = vi.mocked(reviseQuotation);
@@ -108,6 +111,8 @@ const sampleQuotation = {
   version: 1,
   created_at: "2026-04-21T00:00:00Z",
   updated_at: "2026-04-21T00:00:00Z",
+  linked_orders: [],
+  remaining_items: [],
 };
 
 function renderQuotationDetail() {
@@ -115,6 +120,7 @@ function renderQuotationDetail() {
     <MemoryRouter initialEntries={[buildQuotationDetailPath("qtn-1")]}>
       <Routes>
         <Route path={CRM_QUOTATION_DETAIL_ROUTE} element={<QuotationDetailPage />} />
+        <Route path={ORDER_CREATE_ROUTE} element={<div>Order Intake</div>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -129,6 +135,28 @@ beforeEach(() => {
   mockedGetQuotation.mockResolvedValue(sampleQuotation);
   mockedListLeads.mockResolvedValue({ items: [], page: 1, page_size: 100, total_count: 0, total_pages: 1 });
   mockedListCustomers.mockResolvedValue({ items: [], page: 1, page_size: 100, total_count: 0, total_pages: 1 });
+  mockedPrepareQuotationOrderHandoff.mockResolvedValue({
+    ok: true,
+    data: {
+      quotation_id: "qtn-1",
+      source_quotation_id: "qtn-1",
+      customer_id: "cust-1",
+      crm_context_snapshot: { source_document_type: "quotation", party_label: "Rotor Works" },
+      notes: "Initial commercial offer.",
+      lines: [
+        {
+          source_quotation_line_no: 1,
+          product_id: "prod-1",
+          description: "24V industrial rotor",
+          quantity: "2.00",
+          list_unit_price: "12500.00",
+          unit_price: "12500.00",
+          discount_amount: "0.00",
+          tax_policy_code: "standard",
+        },
+      ],
+    },
+  });
   mockedUpdateQuotation.mockResolvedValue({ ok: true, data: sampleQuotation });
   mockedTransitionQuotationStatus.mockResolvedValue({ ok: true, data: sampleQuotation });
   mockedReviseQuotation.mockResolvedValue({ ok: true, data: { ...sampleQuotation, id: "qtn-2", revision_no: 1, amended_from: "qtn-1", status: "draft" } });
@@ -189,5 +217,54 @@ describe("QuotationDetailPage", () => {
 
     expect(await screen.findByText("Revision 1")).toBeTruthy();
     expect(mockedGetQuotation).toHaveBeenCalledWith("qtn-2");
+  });
+
+  it("navigates into the existing order intake flow after preparing conversion", async () => {
+    renderQuotationDetail();
+
+    expect(await screen.findByRole("heading", { name: "Rotor Works" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Create pending order" }));
+
+    expect(await screen.findByText("Order Intake")).toBeTruthy();
+    expect(mockedPrepareQuotationOrderHandoff).toHaveBeenCalledWith("qtn-1");
+  });
+
+  it("renders linked orders and remaining scope returned by the API", async () => {
+    mockedGetQuotation.mockResolvedValue({
+      ...sampleQuotation,
+      status: "partially_ordered",
+      ordered_amount: "12500.00",
+      order_count: 1,
+      linked_orders: [
+        {
+          order_id: "ord-1",
+          order_number: "ORD-20260422-AAAA1111",
+          status: "pending",
+          total_amount: "13125.00",
+          linked_line_count: 1,
+          created_at: "2026-04-22T00:00:00Z",
+        },
+      ],
+      remaining_items: [
+        {
+          line_no: 1,
+          item_name: "Rotor Assembly",
+          item_code: "ROTOR-24V",
+          description: "24V industrial rotor",
+          quoted_quantity: "2.000",
+          ordered_quantity: "1.000",
+          remaining_quantity: "1.000",
+          quoted_amount: "25000.00",
+          ordered_amount: "12500.00",
+          remaining_amount: "12500.00",
+        },
+      ],
+    });
+
+    renderQuotationDetail();
+
+    expect(await screen.findByText("ORD-20260422-AAAA1111")).toBeTruthy();
+    expect(screen.getByText("Rotor Assembly")).toBeTruthy();
+    expect(screen.getByText(/1.000 remaining/i)).toBeTruthy();
   });
 });

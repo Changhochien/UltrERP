@@ -7,7 +7,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, func
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, Numeric, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
 class OrderLine(Base):
 	__tablename__ = "order_lines"
+	__table_args__ = (Index("ix_order_lines_order_source_quotation_line", "order_id", "source_quotation_line_no"),)
 
 	id: Mapped[uuid.UUID] = mapped_column(
 		UUID(as_uuid=True), primary_key=True, default=uuid.uuid4,
@@ -37,6 +38,7 @@ class OrderLine(Base):
 		ForeignKey("product.id", name="fk_order_lines_product_id_product", ondelete="RESTRICT"),
 		nullable=False,
 	)
+	source_quotation_line_no: Mapped[int | None] = mapped_column(Integer, nullable=True)
 	line_number: Mapped[int] = mapped_column(Integer, nullable=False)
 	quantity: Mapped[Decimal] = mapped_column(Numeric(18, 3), nullable=False)
 	list_unit_price: Mapped[Decimal] = mapped_column(Numeric(20, 2), nullable=False, default=Decimal("0.00"))

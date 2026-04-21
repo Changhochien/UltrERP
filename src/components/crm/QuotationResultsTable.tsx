@@ -66,6 +66,26 @@ export function QuotationResultsTable({
           cell: (quotation) => quotation.grand_total,
         },
         {
+          id: "conversion",
+          header: t("crm.quotations.table.conversion"),
+          sortable: true,
+          getSortValue: (quotation) => quotation.order_count ?? 0,
+          cell: (quotation) => (
+            <div className="space-y-0.5 text-sm">
+              <p className="font-medium text-foreground">
+                {(quotation.order_count ?? 0) > 0
+                  ? t("crm.quotations.table.orderCount", { count: quotation.order_count ?? 0 })
+                  : t("crm.quotations.table.notConverted")}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t("crm.quotations.table.convertedAmount", {
+                  amount: quotation.ordered_amount ?? "0.00",
+                })}
+              </p>
+            </div>
+          ),
+        },
+        {
           id: "status",
           header: t("crm.quotations.table.status"),
           sortable: true,

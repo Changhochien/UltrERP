@@ -14,7 +14,7 @@ import { usePermissions } from "../../../hooks/usePermissions";
 import { useToast } from "../../../hooks/useToast";
 import { useOrderDetail, statusBadgeVariant, statusLabel } from "../hooks/useOrders";
 import { updateOrderStatus } from "../../../lib/api/orders";
-import { ORDERS_ROUTE } from "../../../lib/routes";
+import { buildQuotationDetailPath, ORDERS_ROUTE } from "../../../lib/routes";
 import type { OrderStatus } from "../types";
 import { BILLING_STATUS_META } from "../workflowMeta";
 
@@ -107,6 +107,10 @@ function buildStatusToastCopy(
   };
 }
 
+function snapshotText(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
 export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
   const { t } = useTranslation("common");
   const { canWrite } = usePermissions();
@@ -158,6 +162,13 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
 
   const actions = STATUS_ACTIONS[order.status] ?? [];
   const salesTeam = order.sales_team ?? [];
+  const crmContext = order.crm_context_snapshot ?? null;
+  const sourcePartyLabel = snapshotText(crmContext?.party_label);
+  const sourceTerritory = snapshotText(crmContext?.territory);
+  const sourceCustomerGroup = snapshotText(crmContext?.customer_group);
+  const sourceContact = snapshotText(crmContext?.contact_person);
+  const sourceBillingAddress = snapshotText(crmContext?.billing_address);
+  const sourceShippingAddress = snapshotText(crmContext?.shipping_address);
 
   const isConfirmed = order.status === "confirmed" || order.status === "shipped" || order.status === "fulfilled";
   const exec = isConfirmed ? order.execution : null;
@@ -234,6 +245,77 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
           <StatusBadge status={order.status} label={statusLabel(order.status as OrderStatus)} />
         </div>
       </div>
+
+      {order.source_quotation_id || crmContext ? (
+        <SectionCard
+          title={t("orders.detail.crmContextTitle")}
+          description={t("orders.detail.crmContextDescription")}
+        >
+          <div className="space-y-4">
+            <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-background/50 p-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">
+                  {sourcePartyLabel ?? t("orders.detail.crmContextFallback")}
+                </p>
+                {order.source_quotation_id ? (
+                  <p className="text-sm text-muted-foreground">
+                    {t("orders.detail.sourceQuotation", { quotationId: order.source_quotation_id })}
+                  </p>
+                ) : null}
+              </div>
+              {order.source_quotation_id ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate(buildQuotationDetailPath(order.source_quotation_id as string))}
+                >
+                  {t("orders.detail.viewSourceQuotation")}
+                </Button>
+              ) : null}
+            </div>
+
+            <div className="grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-3">
+              {sourceTerritory ? (
+                <div className="rounded-xl border border-border/60 bg-background/40 px-4 py-3">
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("orders.detail.crmTerritory")}</p>
+                  <p className="mt-1 font-medium text-foreground">{sourceTerritory}</p>
+                </div>
+              ) : null}
+              {sourceCustomerGroup ? (
+                <div className="rounded-xl border border-border/60 bg-background/40 px-4 py-3">
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("orders.detail.crmCustomerGroup")}</p>
+                  <p className="mt-1 font-medium text-foreground">{sourceCustomerGroup}</p>
+                </div>
+              ) : null}
+              {sourceContact ? (
+                <div className="rounded-xl border border-border/60 bg-background/40 px-4 py-3">
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("orders.detail.crmContact")}</p>
+                  <p className="mt-1 font-medium text-foreground">{sourceContact}</p>
+                </div>
+              ) : null}
+            </div>
+
+            {sourceBillingAddress || sourceShippingAddress ? (
+              <div className="grid gap-3 text-sm md:grid-cols-2">
+                {sourceBillingAddress ? (
+                  <div className="rounded-xl border border-border/60 bg-background/40 px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("orders.detail.crmBillingAddress")}</p>
+                    <p className="mt-1 whitespace-pre-wrap text-foreground">{sourceBillingAddress}</p>
+                  </div>
+                ) : null}
+                {sourceShippingAddress ? (
+                  <div className="rounded-xl border border-border/60 bg-background/40 px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("orders.detail.crmShippingAddress")}</p>
+                    <p className="mt-1 whitespace-pre-wrap text-foreground">{sourceShippingAddress}</p>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            <SurfaceMessage>{t("orders.detail.crmContextNote")}</SurfaceMessage>
+          </div>
+        </SectionCard>
+      ) : null}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <SectionCard

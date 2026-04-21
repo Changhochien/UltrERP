@@ -25,11 +25,41 @@ import {
 
 interface OrderFormProps {
   initialCustomerId?: string;
+  initialValues?: Partial<OrderFormValues>;
+  conversionSource?: {
+    quotationId: string;
+    partyLabel: string;
+  };
   onCreated: (orderId: string) => void;
   onCancel: () => void;
 }
 
-export function OrderForm({ initialCustomerId, onCreated, onCancel }: OrderFormProps) {
+function buildDefaultValues(
+  initialCustomerId?: string,
+  initialValues?: Partial<OrderFormValues>,
+): OrderFormValues {
+  return {
+    customer_id: initialValues?.customer_id ?? initialCustomerId ?? "",
+    source_quotation_id: initialValues?.source_quotation_id ?? "",
+    payment_terms_code: initialValues?.payment_terms_code ?? "NET_30",
+    discount_amount: initialValues?.discount_amount ?? 0,
+    discount_percent: initialValues?.discount_percent ?? 0,
+    crm_context_snapshot: initialValues?.crm_context_snapshot ?? null,
+    notes: initialValues?.notes ?? "",
+    lines: initialValues?.lines?.length
+      ? initialValues.lines.map((line) => ({ ...emptyOrderFormLine(), ...line }))
+      : [emptyOrderFormLine()],
+    sales_team: initialValues?.sales_team?.length ? initialValues.sales_team : [],
+  };
+}
+
+export function OrderForm({
+  initialCustomerId,
+  initialValues,
+  conversionSource,
+  onCreated,
+  onCancel,
+}: OrderFormProps) {
   const { t } = useTranslation("common");
   const { items: paymentTerms, loading: termsLoading, error: termsError } = usePaymentTerms();
   const { create, submitting, error, fieldErrors } = useCreateOrder();
@@ -44,15 +74,7 @@ export function OrderForm({ initialCustomerId, onCreated, onCancel }: OrderFormP
     formState: { errors },
   } = useForm<OrderFormValues>({
     resolver: zodResolver(orderFormSchema),
-    defaultValues: {
-      customer_id: initialCustomerId ?? "",
-      payment_terms_code: "NET_30",
-      discount_amount: 0,
-      discount_percent: 0,
-      notes: "",
-      lines: [emptyOrderFormLine()],
-      sales_team: [],
-    },
+    defaultValues: buildDefaultValues(initialCustomerId, initialValues),
     mode: "onChange",
     reValidateMode: "onChange",
   });
@@ -125,7 +147,9 @@ export function OrderForm({ initialCustomerId, onCreated, onCancel }: OrderFormP
     try {
       const result = await create(toOrderCreatePayload(values));
       if (result) {
-        trackEvent(AnalyticsEvents.ORDER_CREATED, { source_page: "/orders" });
+        trackEvent(AnalyticsEvents.ORDER_CREATED, {
+          source_page: conversionSource ? "/crm/quotations" : "/orders",
+        });
         onCreated(result.id);
       }
     } finally {
@@ -140,7 +164,15 @@ export function OrderForm({ initialCustomerId, onCreated, onCancel }: OrderFormP
         <p className="text-sm text-muted-foreground">{t("orders.form.newOrderDescription")}</p>
       </div>
 
-      {initialCustomerId ? (
+      {conversionSource ? (
+        <SurfaceMessage>
+          {t("orders.form.preselectedQuotation", {
+            quotationId: conversionSource.quotationId,
+            partyLabel: conversionSource.partyLabel,
+          })}{" "}
+          {t("orders.form.confirmationBoundary")}
+        </SurfaceMessage>
+      ) : initialCustomerId ? (
         <SurfaceMessage>{t("orders.form.preselectedCustomer")}</SurfaceMessage>
       ) : null}
 

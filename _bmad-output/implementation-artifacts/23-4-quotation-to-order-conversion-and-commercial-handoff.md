@@ -1,6 +1,6 @@
 # Story 23.4: Quotation-to-Order Conversion and Commercial Handoff
 
-Status: drafted
+Status: completed
 
 ## Story
 
@@ -35,26 +35,26 @@ This story should stop at pending-order creation and lineage. Confirmation, invo
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add quotation-to-order lineage fields and conversion contract. (AC: 1-6)
-  - [ ] Add explicit linkage between quotations and the orders created from them.
-  - [ ] Persist enough line-level or quantity-level mapping data to compute `partially ordered` versus `ordered` accurately, including correct recomputation when linked orders are cancelled or materially reduced.
-  - [ ] Keep the contract additive to the current orders model rather than introducing a CRM-owned order variant.
-- [ ] Task 2: Implement conversion services on top of the existing orders flow. (AC: 1-5, 7)
-  - [ ] Add a conversion service that calls or reuses the existing order create path and produces a `pending` order.
-  - [ ] Carry forward quotation data needed by orders: party, line items, addresses, notes, UTM and source attribution, territory, customer-group-compatible business context, and payment-term-compatible defaults mapped into the current order model.
-  - [ ] Explicitly defer invoice creation and stock reservation until the existing order confirmation step owned by Epic 21.
-- [ ] Task 3: Handle customer-resolution prerequisites and invalid conversion attempts. (AC: 3)
-  - [ ] Detect when a quotation points at a lead or prospect that lacks an order-ready customer context.
-  - [ ] Block conversion with actionable guidance to convert or resolve the party first.
-  - [ ] Keep the blocked state visible in the quotation detail UI.
-- [ ] Task 4: Compute and surface quotation conversion state. (AC: 4, 6)
-  - [ ] Derive quotation status from linked order coverage so `partially ordered` and `ordered` are computed, not manually maintained.
-  - [ ] Surface linked orders and remaining scope in quotation detail and list views.
-  - [ ] Ensure order cancellation or rollback updates quotation conversion state correctly.
-- [ ] Task 5: Build the conversion UX and add focused tests. (AC: 1-7)
-  - [ ] Add a clear convert-to-order action from quotation detail that uses the existing orders UX language.
-  - [ ] Add backend tests for conversion success, blocked conversion, lineage persistence, and partial-conversion computation.
-  - [ ] Add frontend tests for conversion CTA visibility, blocked state messaging, linked-order visibility, and confirmation-boundary preservation.
+- [x] Task 1: Add quotation-to-order lineage fields and conversion contract. (AC: 1-6)
+  - [x] Add explicit linkage between quotations and the orders created from them.
+  - [x] Persist enough line-level or quantity-level mapping data to compute `partially ordered` versus `ordered` accurately, including correct recomputation when linked orders are cancelled or materially reduced.
+  - [x] Keep the contract additive to the current orders model rather than introducing a CRM-owned order variant.
+- [x] Task 2: Implement conversion services on top of the existing orders flow. (AC: 1-5, 7)
+  - [x] Add a conversion service that calls or reuses the existing order create path and produces a `pending` order.
+  - [x] Carry forward quotation data needed by orders: party, line items, addresses, notes, UTM and source attribution, territory, customer-group-compatible business context, and payment-term-compatible defaults mapped into the current order model.
+  - [x] Explicitly defer invoice creation and stock reservation until the existing order confirmation step owned by Epic 21.
+- [x] Task 3: Handle customer-resolution prerequisites and invalid conversion attempts. (AC: 3)
+  - [x] Detect when a quotation points at a lead or prospect that lacks an order-ready customer context.
+  - [x] Block conversion with actionable guidance to convert or resolve the party first.
+  - [x] Keep the blocked state visible in the quotation detail UI.
+- [x] Task 4: Compute and surface quotation conversion state. (AC: 4, 6)
+  - [x] Derive quotation status from linked order coverage so `partially ordered` and `ordered` are computed, not manually maintained.
+  - [x] Surface linked orders and remaining scope in quotation detail and list views.
+  - [x] Ensure order cancellation or rollback updates quotation conversion state correctly.
+- [x] Task 5: Build the conversion UX and add focused tests. (AC: 1-7)
+  - [x] Add a clear convert-to-order action from quotation detail that uses the existing orders UX language.
+  - [x] Add backend tests for conversion success, blocked conversion, lineage persistence, and partial-conversion computation.
+  - [x] Add frontend tests for conversion CTA visibility, blocked state messaging, linked-order visibility, and confirmation-boundary preservation.
 
 ## Dev Notes
 
@@ -116,12 +116,45 @@ GPT-5.4
 
 ### Debug Log References
 
-- Story draft only; implementation and validation commands not run yet.
+- `cd /Users/changtom/Downloads/UltrERP/backend && uv run pytest tests/domains/crm/test_quotation_service.py -q`
+- `cd /Users/changtom/Downloads/UltrERP/backend && uv run pytest tests/domains/crm/test_quotation_service.py tests/domains/crm/test_quotation_routes.py tests/domains/orders/test_orders_api.py -q`
+- `cd /Users/changtom/Downloads/UltrERP && pnpm test src/tests/crm/QuotationDetailPage.test.tsx src/tests/crm/QuotationListPage.test.tsx src/tests/orders/OrderFormCustomerContext.test.tsx`
 
 ### Completion Notes List
 
-- 2026-04-21: Drafted Story 23.4 from Epic 23, Epic 21, and the validated quotation-to-order research, keeping conversion additive to the current pending-order flow and preserving quotation lineage without moving invoice or reservation logic forward.
+- Added a quotation handoff contract in CRM and reused the existing order create flow so accepted quotations open directly in the current pending-order intake path rather than introducing a CRM-owned order model.
+- Persisted quotation lineage on orders and order lines with `source_quotation_id`, `crm_context_snapshot`, and `source_quotation_line_no`, plus a migration and supporting indexes for order-to-quotation traversal.
+- Implemented customer-resolution and product-resolution guardrails for quotation conversion, including support for lead-based quotations via `Lead.converted_customer_id` and item-code-to-product fallback when quotation items do not already expose `product_id`.
+- Derived quotation conversion coverage from linked orders, kept `open`, `partially ordered`, and `ordered` status recomputation inside CRM, and resynced that coverage when quotation-derived orders are created or cancelled.
+- Extended the quotation detail, quotation list, order form, order create page, and order detail UI so users can launch conversion, see blocked-state guidance, review linked orders and remaining scope, and preserve the Epic 21 confirmation boundary in the copy.
+- Added focused backend and frontend regression coverage for quotation handoff preparation, blocked customer resolution, lineage persistence, linked-order rendering, remaining-scope display, and quotation-derived order submission.
+- Focused validation passed with `8 passed in 0.15s` on the initial handoff probe, `43 passed in 1.35s` on the backend Story 23.4 slice, and `8 passed` across the focused frontend Story 23.4 tests after locale alignment.
 
 ### File List
 
-- `_bmad-output/implementation-artifacts/23-4-quotation-to-order-conversion-and-commercial-handoff.md`
+- `backend/common/models/order.py`
+- `backend/common/models/order_line.py`
+- `backend/domains/crm/routes.py`
+- `backend/domains/crm/schemas.py`
+- `backend/domains/crm/service.py`
+- `backend/domains/orders/routes.py`
+- `backend/domains/orders/schemas.py`
+- `backend/domains/orders/services.py`
+- `backend/tests/domains/crm/test_quotation_routes.py`
+- `backend/tests/domains/crm/test_quotation_service.py`
+- `backend/tests/domains/orders/_helpers.py`
+- `backend/tests/domains/orders/test_orders_api.py`
+- `migrations/versions/5e6f7a8b9c0d_add_quotation_lineage_to_orders.py`
+- `public/locales/en/common.json`
+- `public/locales/zh-Hant/common.json`
+- `src/components/crm/QuotationResultsTable.tsx`
+- `src/domain/crm/types.ts`
+- `src/domain/orders/components/OrderDetail.tsx`
+- `src/domain/orders/components/OrderForm.tsx`
+- `src/domain/orders/types.ts`
+- `src/lib/api/crm.ts`
+- `src/lib/schemas/order.schema.ts`
+- `src/pages/crm/QuotationDetailPage.tsx`
+- `src/pages/orders/OrdersPage.tsx`
+- `src/tests/crm/QuotationDetailPage.test.tsx`
+- `src/tests/orders/OrderFormCustomerContext.test.tsx`

@@ -20,6 +20,7 @@ import type {
   OpportunityTransitionPayload,
   OpportunityUpdatePayload,
   QuotationCreatePayload,
+  QuotationOrderHandoff,
   QuotationListResponse,
   QuotationPartyKind,
   QuotationResponse,
@@ -536,6 +537,29 @@ export async function getQuotation(id: string): Promise<QuotationResponse | null
   }
 
   return resp.json();
+}
+
+export async function prepareQuotationOrderHandoff(
+  id: string,
+): Promise<QuotationActionResult<QuotationOrderHandoff>> {
+  let resp: Response;
+  try {
+    resp = await apiFetch(`/api/v1/crm/quotations/${id}/handoff/order`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+  } catch {
+    return { ok: false, errors: networkErrorDetail() };
+  }
+
+  if (resp.ok) {
+    const data: QuotationOrderHandoff = await resp.json();
+    return { ok: true, data };
+  }
+
+  const body: ApiError = await resp.json().catch(() => ({ detail: [] }));
+  return { ok: false, errors: body.detail ?? [] };
 }
 
 export async function updateQuotation(

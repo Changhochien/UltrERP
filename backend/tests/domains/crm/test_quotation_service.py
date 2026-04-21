@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -21,6 +22,8 @@ from domains.crm.service import (
     create_quotation,
     create_quotation_revision,
     get_quotation,
+    prepare_quotation_order_handoff,
+    sync_quotation_order_coverage,
     transition_quotation_status,
 )
 
@@ -85,6 +88,7 @@ class _FakeLead:
         self.utm_medium = "field"
         self.utm_campaign = "spring-2026"
         self.utm_content = "booth-a3"
+        self.converted_customer_id: uuid.UUID | None = None
 
 
 class _FakeQuotation:
@@ -170,6 +174,14 @@ class _FakeScalarResult:
 
     def scalar(self) -> object:
         return self._value
+
+
+class _FakeRowsResult:
+    def __init__(self, rows: list[object]) -> None:
+        self._rows = rows
+
+    def all(self) -> list[object]:
+        return list(self._rows)
 
 
 class FakeSession:
@@ -315,3 +327,196 @@ class TestQuotationRevision:
         assert revised.valid_till == date(2026, 6, 15)
         assert revised.terms_and_conditions == "Net 45 days."
         assert revised.notes == "Reissued with updated validity."
+
+
+class TestQuotationOrderHandoff:
+    @pytest.mark.asyncio
+    async def test_prepare_order_handoff_resolves_lead_to_existing_customer(self) -> None:
+        lead = _FakeLead("11111111-2222-3333-4444-555555555555")
+        lead.converted_customer_id = uuid.UUID("99999999-8888-7777-6666-555555555555")
+        quotation = _FakeQuotation(status=QuotationStatus.REPLIED)
+        quotation.quotation_to = QuotationPartyKind.LEAD
+        quotation.party_name = str(lead.id)
+        quotation.items = [
+            {
+                "line_no": 1,
+                "product_id": "aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb",
+                "item_name": "Rotor Assembly",
+                "item_code": "ROTOR-24V",
+                "description": "24V industrial rotor",
+                "quantity": "2.00",
+                "unit_price": "12500.00",
+                "amount": "25000.00",
+            }
+        ]
+        session = FakeSession(
+            execute_results=[
+                _FakeScalarResult(quotation),
+                _FakeScalarResult(lead),
+            ]
+        )
+
+        handoff = await prepare_quotation_order_handoff(
+            session,
+            quotation.id,
+            tenant_id=quotation.tenant_id,
+        )
+
+        assert handoff.quotation_id == quotation.id
+        assert handoff.customer_id == lead.converted_customer_id
+        assert handoff.source_quotation_id == quotation.id
+        assert handoff.crm_context_snapshot["source_document_type"] == "quotation"
+        assert handoff.lines[0].product_id == uuid.UUID("aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb")
+        assert handoff.lines[0].source_quotation_line_no == 1
+        assert handoff.lines[0].quantity == Decimal("2.00")
+
+    @pytest.mark.asyncio
+    async def test_prepare_order_handoff_blocks_lead_without_customer_resolution(self) -> None:
+        lead = _FakeLead("11111111-2222-3333-4444-555555555555")
+        quotation = _FakeQuotation(status=QuotationStatus.REPLIED)
+        quotation.quotation_to = QuotationPartyKind.LEAD
+        quotation.party_name = str(lead.id)
+        quotation.items = [
+            {
+                "line_no": 1,
+                "product_id": "aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb",
+                "item_name": "Rotor Assembly",
+                "item_code": "ROTOR-24V",
+                "description": "24V industrial rotor",
+                "quantity": "2.00",
+                "unit_price": "12500.00",
+                "amount": "25000.00",
+            }
+        ]
+        session = FakeSession(
+            execute_results=[
+                _FakeScalarResult(quotation),
+                _FakeScalarResult(lead),
+            ]
+        )
+
+        with pytest.raises(ValidationError) as exc_info:
+            await prepare_quotation_order_handoff(
+                session,
+                quotation.id,
+                tenant_id=quotation.tenant_id,
+            )
+
+        assert exc_info.value.errors[0]["field"] == "party_name"
+
+
+class TestQuotationOrderCoverage:
+    @pytest.mark.asyncio
+    async def test_sync_quotation_order_coverage_updates_counts_amounts_and_status(self) -> None:
+        quotation = _FakeQuotation(status=QuotationStatus.OPEN)
+        quotation.items = [
+            {
+                "line_no": 1,
+                "item_name": "Rotor Assembly",
+                "item_code": "ROTOR-24V",
+                "description": "24V industrial rotor",
+                "quantity": "4.00",
+                "unit_price": "100.00",
+                "amount": "400.00",
+            },
+            {
+                "line_no": 2,
+                "item_name": "Control Board",
+                "item_code": "CTRL-01",
+                "description": "Control board",
+                "quantity": "2.00",
+                "unit_price": "100.00",
+                "amount": "200.00",
+            },
+        ]
+        quotation.grand_total = Decimal("600.00")
+        rows = [
+            SimpleNamespace(
+                order_id=uuid.uuid4(),
+                order_number="ORD-20260422-AAAA1111",
+                status="pending",
+                total_amount=Decimal("200.00"),
+                created_at=datetime.now(tz=UTC),
+                source_quotation_line_no=1,
+                quantity=Decimal("2.000"),
+            ),
+            SimpleNamespace(
+                order_id=uuid.uuid4(),
+                order_number="ORD-20260422-BBBB2222",
+                status="confirmed",
+                total_amount=Decimal("200.00"),
+                created_at=datetime.now(tz=UTC),
+                source_quotation_line_no=2,
+                quantity=Decimal("2.000"),
+            ),
+        ]
+        session = FakeSession(
+            execute_results=[
+                _FakeScalarResult(quotation),
+                _FakeRowsResult(rows),
+            ]
+        )
+
+        updated = await sync_quotation_order_coverage(session, quotation.id, tenant_id=quotation.tenant_id)
+
+        assert updated is quotation
+        assert quotation.order_count == 2
+        assert quotation.ordered_amount == Decimal("400.00")
+        assert quotation.status == QuotationStatus.PARTIALLY_ORDERED.value
+
+    @pytest.mark.asyncio
+    async def test_get_quotation_attaches_linked_orders_and_remaining_scope(self) -> None:
+        quotation = _FakeQuotation(
+            status=QuotationStatus.PARTIALLY_ORDERED,
+            ordered_amount=Decimal("400.00"),
+            order_count=2,
+        )
+        quotation.items = [
+            {
+                "line_no": 1,
+                "item_name": "Rotor Assembly",
+                "item_code": "ROTOR-24V",
+                "description": "24V industrial rotor",
+                "quantity": "4.00",
+                "unit_price": "100.00",
+                "amount": "400.00",
+            },
+            {
+                "line_no": 2,
+                "item_name": "Control Board",
+                "item_code": "CTRL-01",
+                "description": "Control board",
+                "quantity": "2.00",
+                "unit_price": "100.00",
+                "amount": "200.00",
+            },
+        ]
+        quotation.grand_total = Decimal("600.00")
+        linked_order_id = uuid.uuid4()
+        rows = [
+            SimpleNamespace(
+                order_id=linked_order_id,
+                order_number="ORD-20260422-AAAA1111",
+                status="pending",
+                total_amount=Decimal("200.00"),
+                created_at=datetime.now(tz=UTC),
+                source_quotation_line_no=1,
+                quantity=Decimal("2.000"),
+            )
+        ]
+        session = FakeSession(
+            execute_results=[
+                _FakeScalarResult(quotation),
+                _FakeRowsResult(rows),
+            ]
+        )
+
+        fetched = await get_quotation(session, quotation.id, tenant_id=quotation.tenant_id)
+
+        assert fetched is quotation
+        assert fetched.linked_orders[0].order_id == linked_order_id
+        assert fetched.linked_orders[0].linked_line_count == 1
+        assert fetched.remaining_items[0].line_no == 1
+        assert fetched.remaining_items[0].remaining_quantity == Decimal("2.000")
+        assert fetched.remaining_items[1].line_no == 2
+        assert fetched.remaining_items[1].remaining_quantity == Decimal("2.000")

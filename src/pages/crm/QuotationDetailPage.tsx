@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import QuotationForm from "../../components/crm/QuotationForm";
-import { PageHeader, SectionCard } from "../../components/layout/PageLayout";
+import { PageHeader, SectionCard, SurfaceMessage } from "../../components/layout/PageLayout";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Field, FieldLabel } from "../../components/ui/field";
@@ -13,6 +13,7 @@ import { usePermissions } from "../../hooks/usePermissions";
 import { useToast } from "../../hooks/useToast";
 import {
   getQuotation,
+  prepareQuotationOrderHandoff,
   QUOTATION_STATUS_OPTIONS,
   reviseQuotation,
   transitionQuotationStatus,
@@ -24,7 +25,7 @@ import {
   toQuotationUpdatePayload,
   type QuotationFormValues,
 } from "../../lib/schemas/quotation.schema";
-import { buildQuotationDetailPath, CRM_QUOTATIONS_ROUTE } from "../../lib/routes";
+import { buildQuotationDetailPath, CRM_QUOTATIONS_ROUTE, ORDER_CREATE_ROUTE } from "../../lib/routes";
 
 const VERSION_CONFLICT_MESSAGE =
   "This quotation was changed elsewhere. The latest saved version has been reloaded.";
@@ -46,6 +47,8 @@ const STATUS_VARIANT: Record<QuotationStatus, "success" | "warning" | "outline">
   cancelled: "warning",
   expired: "warning",
 };
+
+const ORDER_CONVERTIBLE_STATUSES: QuotationStatus[] = ["open", "replied", "partially_ordered"];
 
 interface QuotationDetailPageProps {
   onBack?: () => void;
@@ -70,6 +73,8 @@ export function QuotationDetailPage({ onBack }: QuotationDetailPageProps) {
   const [revisionValidTill, setRevisionValidTill] = useState("");
   const [revisionNotes, setRevisionNotes] = useState("");
   const [revising, setRevising] = useState(false);
+  const [conversionErrors, setConversionErrors] = useState<Array<{ field: string; message: string }>>([]);
+  const [converting, setConverting] = useState(false);
 
   useEffect(() => {
     if (!quotationId) {
@@ -118,6 +123,10 @@ export function QuotationDetailPage({ onBack }: QuotationDetailPageProps) {
     () => TRANSITIONABLE_STATUSES.filter((status) => status !== quotation?.status),
     [quotation?.status],
   );
+  const canWriteOrders = canWrite("orders");
+  const linkedOrders = quotation?.linked_orders ?? [];
+  const remainingItems = quotation?.remaining_items ?? [];
+  const canConvertQuotation = quotation ? ORDER_CONVERTIBLE_STATUSES.includes(quotation.status) : false;
 
   const initialFormValues = useMemo<Partial<QuotationFormValues> | undefined>(() => {
     if (!quotation) {
@@ -275,6 +284,42 @@ export function QuotationDetailPage({ onBack }: QuotationDetailPageProps) {
     }
   }
 
+  async function handleOrderConversion() {
+    if (!quotation) {
+      return;
+    }
+    setConversionErrors([]);
+    setConverting(true);
+    try {
+      const result = await prepareQuotationOrderHandoff(quotation.id);
+      if (result.ok) {
+        const params = new URLSearchParams({
+          customer_id: result.data.customer_id,
+          quotation_id: quotation.id,
+        });
+        navigate(
+          {
+            pathname: ORDER_CREATE_ROUTE,
+            search: `?${params.toString()}`,
+          },
+          {
+            state: {
+              quotationOrderHandoff: result.data,
+            },
+          },
+        );
+        return;
+      }
+      setConversionErrors(result.errors);
+      showErrorToast(
+        t("crm.quotations.detailPage.conversionErrorTitle"),
+        result.errors[0]?.message ?? t("crm.quotations.detailPage.conversionErrorDescription"),
+      );
+    } finally {
+      setConverting(false);
+    }
+  }
+
   if (loading) {
     return <p>{t("crm.quotations.detailPage.loading")}</p>;
   }
@@ -405,11 +450,83 @@ export function QuotationDetailPage({ onBack }: QuotationDetailPageProps) {
       </SectionCard>
 
       <SectionCard title={t("crm.quotations.detailPage.conversionTitle")} description={t("crm.quotations.detailPage.conversionDescription")}>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-muted-foreground">{t("crm.quotations.detailPage.conversionNote")}</p>
-          <Button type="button" variant="outline" disabled>
-            {t("crm.quotations.detailPage.conversionAction")}
-          </Button>
+        <div className="space-y-4">
+          <div className="grid gap-3 rounded-xl border border-border/70 bg-muted/20 px-4 py-4 text-sm sm:grid-cols-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.quotations.detailPage.convertedAmount")}</p>
+              <p className="mt-1 font-medium">{quotation.ordered_amount}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.quotations.detailPage.linkedOrders")}</p>
+              <p className="mt-1 font-medium">{t("crm.quotations.detailPage.orderCount", { count: quotation.order_count })}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.quotations.detailPage.remainingScope")}</p>
+              <p className="mt-1 font-medium">{remainingItems.length > 0 ? t("crm.quotations.detailPage.remainingLines", { count: remainingItems.length }) : t("crm.quotations.detailPage.remainingNone")}</p>
+            </div>
+          </div>
+
+          {conversionErrors.length > 0 ? (
+            <SurfaceMessage tone="danger">{conversionErrors[0]?.message}</SurfaceMessage>
+          ) : null}
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted-foreground">
+              {canConvertQuotation
+                ? t("crm.quotations.detailPage.conversionNote")
+                : quotation.status === "ordered"
+                  ? t("crm.quotations.detailPage.conversionComplete")
+                  : t("crm.quotations.detailPage.conversionBlockedState")}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleOrderConversion}
+              disabled={!canWriteOrders || !canConvertQuotation || converting}
+            >
+              {converting ? t("crm.quotations.detailPage.converting") : t("crm.quotations.detailPage.conversionAction")}
+            </Button>
+          </div>
+
+          {linkedOrders.length > 0 ? (
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold tracking-tight">{t("crm.quotations.detailPage.linkedOrdersTitle")}</h3>
+              <div className="grid gap-3">
+                {linkedOrders.map((linkedOrder) => (
+                  <div key={linkedOrder.order_id} className="flex flex-col gap-3 rounded-xl border border-border/70 bg-background/50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="space-y-1 text-sm">
+                      <p className="font-medium text-foreground">{linkedOrder.order_number}</p>
+                      <p className="text-muted-foreground">
+                        {t(`orders.list.${linkedOrder.status}` as const, { defaultValue: linkedOrder.status })} · {t("crm.quotations.detailPage.linkedOrderLines", { count: linkedOrder.linked_line_count })}
+                      </p>
+                    </div>
+                    <Button type="button" variant="ghost" onClick={() => navigate(`/orders/${linkedOrder.order_id}`)}>
+                      {t("crm.quotations.detailPage.viewLinkedOrder")}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {remainingItems.length > 0 ? (
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold tracking-tight">{t("crm.quotations.detailPage.remainingScopeTitle")}</h3>
+              <div className="grid gap-3">
+                {remainingItems.map((item) => (
+                  <div key={item.line_no} className="rounded-xl border border-border/70 bg-background/50 px-4 py-3 text-sm">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="font-medium text-foreground">{item.item_name || item.description}</p>
+                      <p className="text-muted-foreground">{t("crm.quotations.detailPage.remainingLineSummary", { ordered: item.ordered_quantity, remaining: item.remaining_quantity })}</p>
+                    </div>
+                    <p className="mt-1 text-muted-foreground">{item.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : quotation.status === "ordered" ? (
+            <SurfaceMessage tone="success">{t("crm.quotations.detailPage.remainingComplete")}</SurfaceMessage>
+          ) : null}
         </div>
       </SectionCard>
     </div>

@@ -5,8 +5,10 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from types import SimpleNamespace
 
 from common.models.order import Order
+from common.models.order_line import OrderLine
 from domains.orders.services import list_orders
 
 from ._helpers import (
@@ -361,6 +363,70 @@ async def test_create_order_success() -> None:
         assert body["payment_terms_code"] == "NET_30"
         assert body["payment_terms_days"] == 30
         assert len(body["lines"]) == 1
+    finally:
+        _teardown(prev)
+
+
+async def test_create_order_preserves_quotation_lineage_and_context() -> None:
+    quotation_id = uuid.uuid4()
+    customer = FakeCustomer()
+    product = FakeProduct(product_id=uuid.UUID(_PRODUCT_ID))
+    crm_context_snapshot = {
+        "source_document_type": "quotation",
+        "party_label": "Rotor Works",
+        "billing_address": "No. 1, Zhongshan Rd, Taipei",
+    }
+    source_quotation = SimpleNamespace(
+        id=quotation_id,
+        items=[{"line_no": 1}],
+        ordered_amount=Decimal("0.00"),
+        order_count=0,
+        status="open",
+        valid_till=date(2026, 5, 21),
+        grand_total=Decimal("1000.00"),
+        updated_at=datetime.now(tz=UTC),
+    )
+
+    line = FakeOrderLine(product_id=product.id, source_quotation_line_no=1)
+    order = FakeOrder(
+        customer_id=customer.id,
+        source_quotation_id=quotation_id,
+        lines=[line],
+        customer=customer,
+        crm_context_snapshot=crm_context_snapshot,
+    )
+
+    session = FakeAsyncSession()
+    session.queue_scalar(None)  # set_tenant
+    session.queue_scalar(customer)  # customer lookup
+    session.queue_scalars([product.id])  # product check
+    session.queue_scalar(source_quotation)  # quotation lookup
+    session.queue_count(100)  # stock availability
+    session.queue_rows([])  # linked order rows for quotation coverage sync
+    session.queue_scalar(None)  # set_tenant (get_order)
+    session.queue_scalar(order)  # get_order
+
+    prev = _setup(session)
+    try:
+        payload = _valid_order_payload(customer_id=str(customer.id))
+        payload["source_quotation_id"] = str(quotation_id)
+        payload["crm_context_snapshot"] = crm_context_snapshot
+        payload["lines"][0]["product_id"] = str(product.id)
+        payload["lines"][0]["source_quotation_line_no"] = 1
+
+        resp = await _post("/api/v1/orders", json=payload)
+
+        assert resp.status_code == 201
+        body = resp.json()
+        assert body["source_quotation_id"] == str(quotation_id)
+        assert body["crm_context_snapshot"]["party_label"] == "Rotor Works"
+        assert body["lines"][0]["source_quotation_line_no"] == 1
+
+        created_order = next(obj for obj in session.added if isinstance(obj, Order))
+        created_line = next(obj for obj in session.added if isinstance(obj, OrderLine))
+        assert created_order.source_quotation_id == quotation_id
+        assert created_order.crm_context_snapshot == crm_context_snapshot
+        assert created_line.source_quotation_line_no == 1
     finally:
         _teardown(prev)
 

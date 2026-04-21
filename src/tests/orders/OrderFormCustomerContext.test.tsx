@@ -105,4 +105,60 @@ describe("OrderForm customer context", () => {
       expect(onCreated).toHaveBeenCalledWith("order-123");
     });
   });
+
+  it("submits quotation lineage fields when created from quotation handoff", async () => {
+    createMock.mockResolvedValue({ id: "order-234" });
+
+    render(
+      <MemoryRouter>
+        <OrderForm
+          initialValues={{
+            customer_id: "cust-456",
+            source_quotation_id: "qtn-456",
+            crm_context_snapshot: {
+              source_document_type: "quotation",
+              party_label: "Rotor Works",
+            },
+            notes: "Initial commercial offer.",
+            lines: [
+              {
+                product_id: "prod-2",
+                source_quotation_line_no: 3,
+                description: "Prefilled rotor",
+                quantity: 1,
+                list_unit_price: 100,
+                unit_price: 100,
+                discount_amount: 0,
+                tax_policy_code: "standard",
+              },
+            ],
+          }}
+          conversionSource={{ quotationId: "qtn-456", partyLabel: "Rotor Works" }}
+          onCreated={() => undefined}
+          onCancel={() => undefined}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText(/quoted commercial context/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Create Order" }));
+
+    await waitFor(() => {
+      expect(createMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          customer_id: "cust-456",
+          source_quotation_id: "qtn-456",
+          crm_context_snapshot: expect.objectContaining({
+            party_label: "Rotor Works",
+          }),
+          lines: [
+            expect.objectContaining({
+              product_id: "prod-2",
+              source_quotation_line_no: 3,
+            }),
+          ],
+        }),
+      );
+    });
+  });
 });

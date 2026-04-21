@@ -83,6 +83,7 @@ class FakeOrderLine:
         *,
         order_id: uuid.UUID | None = None,
         product_id: uuid.UUID | None = None,
+        source_quotation_line_no: int | None = None,
         line_number: int = 1,
         unit_cost: Decimal | None = None,
         available_stock_snapshot: int | None = None,
@@ -95,6 +96,7 @@ class FakeOrderLine:
         self.tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
         self.order_id = order_id or uuid.uuid4()
         self.product_id = product_id or uuid.uuid4()
+        self.source_quotation_line_no = source_quotation_line_no
         self.line_number = line_number
         self.quantity = Decimal("10.000")
         self.list_unit_price = Decimal("100.00")
@@ -121,16 +123,19 @@ class FakeOrder:
         *,
         tenant_id: uuid.UUID = uuid.UUID("00000000-0000-0000-0000-000000000001"),
         customer_id: uuid.UUID | None = None,
+        source_quotation_id: uuid.UUID | None = None,
         status: str = "pending",
         lines: list[FakeOrderLine] | None = None,
         invoice_id: uuid.UUID | None = None,
         customer: FakeCustomer | None = None,
         sales_team: list[dict[str, str]] | None = None,
         total_commission: Decimal = Decimal("0.00"),
+        crm_context_snapshot: dict[str, object] | None = None,
     ):
         self.id = uuid.uuid4()
         self.tenant_id = tenant_id
         self.customer_id = customer_id or uuid.uuid4()
+        self.source_quotation_id = source_quotation_id
         self.order_number = "ORD-20260401-ABCD1234"
         self.status = status
         self.payment_terms_code = "NET_30"
@@ -144,6 +149,7 @@ class FakeOrder:
         self.sales_team = sales_team
         self.total_commission = total_commission
         self.notes = None
+        self.crm_context_snapshot = crm_context_snapshot
         self.created_by = "00000000-0000-0000-0000-000000000001"
         self.created_at = datetime.now(tz=UTC)
         self.updated_at = datetime.now(tz=UTC)

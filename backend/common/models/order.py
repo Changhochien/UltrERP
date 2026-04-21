@@ -23,6 +23,7 @@ class Order(Base):
 	__table_args__ = (
 		Index("uq_orders_tenant_order_number", "tenant_id", "order_number", unique=True),
 		Index("ix_orders_tenant_created", "tenant_id", "created_at"),
+		Index("ix_orders_tenant_source_quotation", "tenant_id", "source_quotation_id"),
 		Index("ix_orders_tenant_status", "tenant_id", "status"),
 	)
 
@@ -37,6 +38,7 @@ class Order(Base):
 		ForeignKey("customers.id", name="fk_orders_customer_id_customers", ondelete="RESTRICT"),
 		nullable=False,
 	)
+	source_quotation_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
 	order_number: Mapped[str] = mapped_column(String(50), nullable=False)
 	status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
 	payment_terms_code: Mapped[str] = mapped_column(String(20), nullable=False, default="NET_30")
@@ -58,6 +60,7 @@ class Order(Base):
 		default=Decimal("0.00"),
 	)
 	notes: Mapped[str | None] = mapped_column(Text)
+	crm_context_snapshot: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
 	legacy_header_snapshot: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
 	created_by: Mapped[str] = mapped_column(String(100), nullable=False)
 	created_at: Mapped[datetime] = mapped_column(

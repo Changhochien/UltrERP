@@ -144,6 +144,19 @@ async def create_order(
     async with session.begin():
         await set_tenant(session, tid)
 
+        if data.source_quotation_id is None and any(
+            line.source_quotation_line_no is not None for line in data.lines
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail=[
+                    {
+                        "field": "source_quotation_id",
+                        "message": "source_quotation_id is required when quotation line mappings are provided.",
+                    }
+                ],
+            )
+
         result = await session.execute(
             select(Customer).where(
                 Customer.id == data.customer_id,
@@ -179,6 +192,58 @@ async def create_order(
                 ],
             )
 
+        source_quotation = None
+        if data.source_quotation_id is not None:
+            from domains.crm.models import Quotation
+
+            result = await session.execute(
+                select(Quotation).where(
+                    Quotation.id == data.source_quotation_id,
+                    Quotation.tenant_id == tid,
+                )
+            )
+            source_quotation = result.scalar_one_or_none()
+            if source_quotation is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail=[
+                        {
+                            "field": "source_quotation_id",
+                            "message": "Source quotation does not exist.",
+                        }
+                    ],
+                )
+
+            valid_source_lines = {int(item.get("line_no") or 0) for item in source_quotation.items}
+            mapped_source_lines = [
+                line.source_quotation_line_no for line in data.lines if line.source_quotation_line_no is not None
+            ]
+            if not mapped_source_lines:
+                raise HTTPException(
+                    status_code=422,
+                    detail=[
+                        {
+                            "field": "lines",
+                            "message": "At least one order line must preserve quotation line lineage for quotation conversion.",
+                        }
+                    ],
+                )
+
+            invalid_source_lines = sorted(
+                {line_no for line_no in mapped_source_lines if line_no not in valid_source_lines}
+            )
+            if invalid_source_lines:
+                raise HTTPException(
+                    status_code=422,
+                    detail=[
+                        {
+                            "field": "lines",
+                            "message": "Unknown quotation line mappings: "
+                            + ", ".join(str(line_no) for line_no in invalid_source_lines),
+                        }
+                    ],
+                )
+
         # Generate order number (12 hex chars ≈ 281 trillion combos/day)
         order_number = (
             f"ORD-{datetime.now(tz=UTC).strftime('%Y%m%d')}-{uuid.uuid4().hex[:12].upper()}"
@@ -205,12 +270,14 @@ async def create_order(
         order = Order(
             tenant_id=tid,
             customer_id=data.customer_id,
+            source_quotation_id=data.source_quotation_id,
             order_number=order_number,
             status=OrderStatus.PENDING.value,
             payment_terms_code=data.payment_terms_code.value,
             payment_terms_days=int(terms_config["days"]),
             discount_amount=normalized_discount_amount,
             discount_percent=normalized_discount_percent,
+            crm_context_snapshot=data.crm_context_snapshot,
             notes=data.notes,
             created_by=ACTOR_ID,
         )
@@ -263,9 +330,12 @@ async def create_order(
                 tenant_id=tid,
                 order_id=order.id,
                 product_id=line_data.product_id,
+                source_quotation_line_no=line_data.source_quotation_line_no,
                 line_number=idx,
                 quantity=line_data.quantity,
+                list_unit_price=line_data.list_unit_price,
                 unit_price=line_data.unit_price,
+                discount_amount=line_data.discount_amount,
                 tax_policy_code=line_data.tax_policy_code,
                 tax_type=amounts.tax_type,
                 tax_rate=amounts.tax_rate,
@@ -308,6 +378,7 @@ async def create_order(
             after_state={
                 "order_number": order.order_number,
                 "customer_id": str(data.customer_id),
+                "source_quotation_id": str(data.source_quotation_id) if data.source_quotation_id else None,
                 "status": OrderStatus.PENDING.value,
                 "line_count": len(data.lines),
                 "total_amount": str(order.total_amount),
@@ -317,6 +388,10 @@ async def create_order(
             correlation_id=str(order.id),
         )
         session.add(audit)
+        if source_quotation is not None:
+            from domains.crm.service import sync_quotation_order_coverage_in_transaction
+
+            await sync_quotation_order_coverage_in_transaction(session, source_quotation, tid)
         await session.flush()
 
     # Reload with relationships
@@ -565,6 +640,19 @@ async def update_order_status(
             correlation_id=str(order.id),
         )
         session.add(audit)
+        if target is OrderStatus.CANCELLED and getattr(order, "source_quotation_id", None) is not None:
+            from domains.crm.models import Quotation
+            from domains.crm.service import sync_quotation_order_coverage_in_transaction
+
+            result = await session.execute(
+                select(Quotation).where(
+                    Quotation.id == order.source_quotation_id,
+                    Quotation.tenant_id == tid,
+                )
+            )
+            source_quotation = result.scalar_one_or_none()
+            if source_quotation is not None:
+                await sync_quotation_order_coverage_in_transaction(session, source_quotation, tid)
         await session.flush()
 
     return order

@@ -11,6 +11,8 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.errors import DuplicateLeadConflictError, ValidationError, VersionConflictError
+from common.models.order import Order
+from common.models.order_line import OrderLine
 from common.tenant import DEFAULT_TENANT_ID, set_tenant
 from domains.crm.models import Lead, Opportunity, Quotation
 from domains.crm.schemas import (
@@ -32,9 +34,13 @@ from domains.crm.schemas import (
     OpportunityTransition,
     OpportunityUpdate,
     QuotationCreate,
+    QuotationLinkedOrder,
     QuotationItemInput,
     QuotationListParams,
+    QuotationOrderHandoff,
+    QuotationOrderHandoffLine,
     QuotationPartyKind,
+    QuotationRemainingItem,
     QuotationRevisionCreate,
     QuotationStatus,
     QuotationTaxInput,
@@ -192,6 +198,23 @@ def _ensure_quotation_handoff_allowed(current_status: OpportunityStatus) -> None
                 {
                     "field": "status",
                     "message": "Only open or active opportunities can be prepared for quotation handoff.",
+                }
+            ]
+        )
+
+
+def _ensure_order_handoff_allowed(current_status: QuotationStatus) -> None:
+    if current_status in {
+        QuotationStatus.DRAFT,
+        QuotationStatus.LOST,
+        QuotationStatus.CANCELLED,
+        QuotationStatus.EXPIRED,
+    }:
+        raise ValidationError(
+            [
+                {
+                    "field": "status",
+                    "message": "Only active quotations can be prepared for order conversion.",
                 }
             ]
         )
@@ -356,13 +379,315 @@ def _deserialize_quotation_taxes(items: list[dict[str, object]]) -> list[Quotati
     return [QuotationTaxInput.model_validate(item) for item in items]
 
 
+def _build_quotation_crm_context_snapshot(quotation: Quotation) -> dict[str, object]:
+    return {
+        "source_document_type": "quotation",
+        "source_document_id": str(quotation.id),
+        "party_kind": quotation.quotation_to,
+        "party_label": quotation.party_label,
+        "quotation_revision_no": quotation.revision_no,
+        "currency": quotation.currency,
+        "contact_person": quotation.contact_person,
+        "contact_email": quotation.contact_email,
+        "contact_mobile": quotation.contact_mobile,
+        "job_title": quotation.job_title,
+        "territory": quotation.territory,
+        "customer_group": quotation.customer_group,
+        "billing_address": quotation.billing_address,
+        "shipping_address": quotation.shipping_address,
+        "utm_source": quotation.utm_source,
+        "utm_medium": quotation.utm_medium,
+        "utm_campaign": quotation.utm_campaign,
+        "utm_content": quotation.utm_content,
+        "opportunity_id": str(quotation.opportunity_id) if quotation.opportunity_id else None,
+        "transaction_date": quotation.transaction_date.isoformat(),
+        "valid_till": quotation.valid_till.isoformat(),
+        "subtotal": str(quotation.subtotal),
+        "total_taxes": str(quotation.total_taxes),
+        "grand_total": str(quotation.grand_total),
+        "taxes": quotation.taxes,
+        "terms_template": quotation.terms_template,
+        "terms_and_conditions": quotation.terms_and_conditions,
+    }
+
+
+async def _resolve_product_ids_by_item_code(
+    session: AsyncSession,
+    items: list[dict[str, object]],
+    tenant_id: uuid.UUID,
+) -> dict[str, uuid.UUID]:
+    item_codes = {
+        str(item.get("item_code") or "").strip()
+        for item in items
+        if not item.get("product_id")
+    }
+    item_codes.discard("")
+    if not item_codes:
+        return {}
+
+    from common.models.product import Product
+
+    result = await session.execute(
+        select(Product.id, Product.code).where(
+            Product.tenant_id == tenant_id,
+            Product.code.in_(sorted(item_codes)),
+        )
+    )
+    return {str(row.code): row.id for row in result.all()}
+
+
+async def _build_quotation_order_handoff_lines(
+    session: AsyncSession,
+    items: list[dict[str, object]],
+    tenant_id: uuid.UUID,
+) -> list[QuotationOrderHandoffLine]:
+    product_ids_by_code = await _resolve_product_ids_by_item_code(session, items, tenant_id)
+    lines: list[QuotationOrderHandoffLine] = []
+    for item in items:
+        raw_product_id = item.get("product_id")
+        product_id: uuid.UUID | None = None
+        if raw_product_id:
+            try:
+                product_id = uuid.UUID(str(raw_product_id))
+            except ValueError as exc:
+                raise ValidationError(
+                    [
+                        {
+                            "field": "items",
+                            "message": "Quotation item product mapping is invalid for order conversion.",
+                        }
+                    ]
+                ) from exc
+
+        if product_id is None:
+            item_code = str(item.get("item_code") or "").strip()
+            product_id = product_ids_by_code.get(item_code)
+
+        if product_id is None:
+            raise ValidationError(
+                [
+                    {
+                        "field": "items",
+                        "message": "Resolve quotation items to catalog products before order conversion.",
+                    }
+                ]
+            )
+
+        description = str(item.get("description") or item.get("item_name") or "").strip()
+        if not description:
+            raise ValidationError(
+                [
+                    {
+                        "field": "items",
+                        "message": "Quotation items require a description before order conversion.",
+                    }
+                ]
+            )
+
+        line_no = int(item.get("line_no") or 0)
+        quantity = Decimal(str(item.get("quantity") or "0"))
+        unit_price = Decimal(str(item.get("unit_price") or "0.00")).quantize(Decimal("0.01"))
+        lines.append(
+            QuotationOrderHandoffLine(
+                source_quotation_line_no=line_no,
+                product_id=product_id,
+                description=description,
+                quantity=quantity,
+                list_unit_price=unit_price,
+                unit_price=unit_price,
+                discount_amount=Decimal("0.00"),
+                tax_policy_code="standard",
+            )
+        )
+    return lines
+
+
+async def _resolve_quotation_order_customer_id(
+    session: AsyncSession,
+    quotation: Quotation,
+    tenant_id: uuid.UUID,
+) -> uuid.UUID:
+    quotation_to = QuotationPartyKind(quotation.quotation_to)
+    if quotation_to == QuotationPartyKind.CUSTOMER:
+        try:
+            return uuid.UUID(quotation.party_name)
+        except ValueError as exc:
+            raise ValidationError(
+                [
+                    {
+                        "field": "party_name",
+                        "message": "Quotation customer context is invalid for order conversion.",
+                    }
+                ]
+            ) from exc
+
+    if quotation_to == QuotationPartyKind.LEAD:
+        try:
+            lead_id = uuid.UUID(quotation.party_name)
+        except ValueError as exc:
+            raise ValidationError(
+                [
+                    {
+                        "field": "party_name",
+                        "message": "Quotation lead context is invalid for order conversion.",
+                    }
+                ]
+            ) from exc
+
+        lead = await get_lead(session, lead_id, tenant_id=tenant_id)
+        if lead is not None and lead.converted_customer_id is not None:
+            return lead.converted_customer_id
+
+    raise ValidationError(
+        [
+            {
+                "field": "party_name",
+                "message": "Resolve this quotation to an existing customer before order conversion.",
+            }
+        ]
+    )
+
+
 def _resolve_serialized_decimal_sum(items: list[dict[str, object]], field_name: str) -> Decimal:
     return sum((Decimal(str(item[field_name])) for item in items), start=Decimal("0.00")).quantize(Decimal("0.01"))
 
 
+def _line_amount_from_item(item: dict[str, object]) -> Decimal:
+    raw_amount = item.get("amount")
+    if raw_amount is not None and str(raw_amount) != "":
+        return Decimal(str(raw_amount)).quantize(Decimal("0.01"))
+    quantity = Decimal(str(item.get("quantity") or "0"))
+    unit_price = Decimal(str(item.get("unit_price") or "0.00"))
+    return (quantity * unit_price).quantize(Decimal("0.01"))
+
+
+async def _load_linked_order_rows(
+    session: AsyncSession,
+    quotation_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+) -> list[object]:
+    result = await session.execute(
+        select(
+            Order.id.label("order_id"),
+            Order.order_number,
+            Order.status,
+            Order.total_amount,
+            Order.created_at,
+            OrderLine.source_quotation_line_no,
+            OrderLine.quantity,
+        )
+        .join(OrderLine, OrderLine.order_id == Order.id)
+        .where(
+            Order.tenant_id == tenant_id,
+            Order.source_quotation_id == quotation_id,
+            Order.status != "cancelled",
+            OrderLine.source_quotation_line_no.is_not(None),
+        )
+        .order_by(Order.created_at.desc(), Order.order_number.asc(), OrderLine.line_number.asc())
+    )
+    if not hasattr(result, "all"):
+        return []
+    return list(result.all())
+
+
+def _build_quotation_conversion_details(
+    quotation: Quotation,
+    linked_rows: list[object],
+) -> tuple[Decimal, int, list[QuotationLinkedOrder], list[QuotationRemainingItem]]:
+    ordered_quantities: dict[int, Decimal] = {}
+    linked_orders_by_id: dict[uuid.UUID, QuotationLinkedOrder] = {}
+    quantity_quant = Decimal("0.001")
+
+    for row in linked_rows:
+        source_line_no = getattr(row, "source_quotation_line_no", None)
+        if source_line_no is not None:
+            ordered_quantities[source_line_no] = ordered_quantities.get(source_line_no, Decimal("0.000")) + Decimal(
+                str(getattr(row, "quantity", "0"))
+            )
+
+        order_id = getattr(row, "order_id")
+        linked_order = linked_orders_by_id.get(order_id)
+        if linked_order is None:
+            linked_order = QuotationLinkedOrder(
+                order_id=order_id,
+                order_number=str(getattr(row, "order_number")),
+                status=str(getattr(row, "status")),
+                total_amount=getattr(row, "total_amount", None),
+                linked_line_count=0,
+                created_at=getattr(row, "created_at"),
+            )
+            linked_orders_by_id[order_id] = linked_order
+        linked_order.linked_line_count += 1
+
+    ordered_amount = Decimal("0.00")
+    remaining_items: list[QuotationRemainingItem] = []
+    for item in quotation.items:
+        line_no = int(item.get("line_no") or 0)
+        quoted_quantity = Decimal(str(item.get("quantity") or "0")).quantize(quantity_quant)
+        ordered_quantity = min(
+            ordered_quantities.get(line_no, Decimal("0.000")).quantize(quantity_quant),
+            quoted_quantity,
+        )
+        remaining_quantity = max(quoted_quantity - ordered_quantity, Decimal("0.000")).quantize(quantity_quant)
+
+        quoted_amount = _line_amount_from_item(item)
+        ordered_line_amount = Decimal("0.00")
+        if quoted_quantity > 0:
+            ordered_line_amount = (quoted_amount * (ordered_quantity / quoted_quantity)).quantize(Decimal("0.01"))
+        remaining_amount = max(quoted_amount - ordered_line_amount, Decimal("0.00")).quantize(Decimal("0.01"))
+        ordered_amount += ordered_line_amount
+
+        if remaining_quantity > 0:
+            remaining_items.append(
+                QuotationRemainingItem(
+                    line_no=line_no,
+                    item_name=str(item.get("item_name") or ""),
+                    item_code=str(item.get("item_code") or ""),
+                    description=str(item.get("description") or ""),
+                    quoted_quantity=quoted_quantity,
+                    ordered_quantity=ordered_quantity,
+                    remaining_quantity=remaining_quantity,
+                    quoted_amount=quoted_amount,
+                    ordered_amount=ordered_line_amount,
+                    remaining_amount=remaining_amount,
+                )
+            )
+
+    return ordered_amount.quantize(Decimal("0.01")), len(linked_orders_by_id), list(linked_orders_by_id.values()), remaining_items
+
+
+async def sync_quotation_order_coverage_in_transaction(
+    session: AsyncSession,
+    quotation: Quotation,
+    tenant_id: uuid.UUID,
+) -> Quotation:
+    linked_rows = await _load_linked_order_rows(session, quotation.id, tenant_id)
+    ordered_amount, order_count, _, _ = _build_quotation_conversion_details(quotation, linked_rows)
+    quotation.ordered_amount = ordered_amount
+    quotation.order_count = order_count
+    quotation.status = _derive_quotation_status(quotation).value
+    quotation.updated_at = datetime.now(tz=UTC)
+    return quotation
+
+
+async def sync_quotation_order_coverage(
+    session: AsyncSession,
+    quotation_id: uuid.UUID,
+    tenant_id: uuid.UUID | None = None,
+) -> Quotation | None:
+    tid = tenant_id or DEFAULT_TENANT_ID
+    async with session.begin():
+        await set_tenant(session, tid)
+        result = await session.execute(select(Quotation).where(Quotation.id == quotation_id, Quotation.tenant_id == tid))
+        quotation = result.scalar_one_or_none()
+        if quotation is None:
+            return None
+        return await sync_quotation_order_coverage_in_transaction(session, quotation, tid)
+
+
 def _derive_quotation_status(quotation: Quotation) -> QuotationStatus:
     current_status = QuotationStatus(quotation.status)
-    if current_status in {QuotationStatus.LOST, QuotationStatus.CANCELLED, QuotationStatus.ORDERED}:
+    if current_status in {QuotationStatus.LOST, QuotationStatus.CANCELLED}:
         return current_status
 
     order_count = int(getattr(quotation, "order_count", 0) or 0)
@@ -385,8 +710,13 @@ def _derive_quotation_status(quotation: Quotation) -> QuotationStatus:
         QuotationStatus.DRAFT,
         QuotationStatus.OPEN,
         QuotationStatus.REPLIED,
+        QuotationStatus.PARTIALLY_ORDERED,
+        QuotationStatus.ORDERED,
     }:
         return QuotationStatus.EXPIRED
+
+    if current_status in DERIVED_QUOTATION_STATUSES:
+        return QuotationStatus.OPEN
 
     return current_status
 
@@ -1250,7 +1580,43 @@ async def get_quotation(
 
     if quotation is None:
         return None
-    return await _synchronize_quotation_status(session, quotation, tid)
+    quotation = await _synchronize_quotation_status(session, quotation, tid)
+    if int(getattr(quotation, "order_count", 0) or 0) > 0:
+        linked_rows = await _load_linked_order_rows(session, quotation.id, tid)
+        _, _, linked_orders, remaining_items = _build_quotation_conversion_details(quotation, linked_rows)
+        quotation.linked_orders = linked_orders
+        quotation.remaining_items = remaining_items
+    else:
+        quotation.linked_orders = []
+        quotation.remaining_items = []
+    return quotation
+
+
+async def prepare_quotation_order_handoff(
+    session: AsyncSession,
+    quotation_id: uuid.UUID,
+    tenant_id: uuid.UUID | None = None,
+) -> QuotationOrderHandoff:
+    tid = tenant_id or DEFAULT_TENANT_ID
+    quotation = await get_quotation(session, quotation_id, tenant_id=tid)
+    if quotation is None:
+        raise ValidationError([{"field": "quotation_id", "message": "Quotation not found."}])
+
+    _ensure_order_handoff_allowed(QuotationStatus(quotation.status))
+    if not quotation.items:
+        raise ValidationError([{"field": "items", "message": "At least one quotation item is required for order conversion."}])
+
+    customer_id = await _resolve_quotation_order_customer_id(session, quotation, tid)
+    lines = await _build_quotation_order_handoff_lines(session, quotation.items, tid)
+
+    return QuotationOrderHandoff(
+        quotation_id=quotation.id,
+        source_quotation_id=quotation.id,
+        customer_id=customer_id,
+        crm_context_snapshot=_build_quotation_crm_context_snapshot(quotation),
+        notes=quotation.notes,
+        lines=lines,
+    )
 
 
 async def update_quotation(
