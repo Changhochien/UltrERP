@@ -116,4 +116,43 @@ describe("Order commission entry", () => {
       );
     });
   });
+
+  it("normalizes discount percent to the backend decimal fraction", async () => {
+    createMock.mockResolvedValue({ id: "order-456" });
+
+    render(
+      <MemoryRouter>
+        <OrderForm onCreated={() => undefined} onCancel={() => undefined} />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByLabelText("Customer ID"), {
+      target: { value: "cust-123" },
+    });
+    fireEvent.change(screen.getByLabelText("Line 1 product"), {
+      target: { value: "prod-1" },
+    });
+    fireEvent.change(screen.getByLabelText("Line 1 description"), {
+      target: { value: "Widget" },
+    });
+    fireEvent.change(screen.getByLabelText("Line 1 quantity"), {
+      target: { value: "2" },
+    });
+    fireEvent.change(screen.getByLabelText("Line 1 unit price"), {
+      target: { value: "10" },
+    });
+    fireEvent.change(screen.getByLabelText(/Disc. %/i), {
+      target: { value: "5" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Create Order" }));
+
+    await waitFor(() => {
+      expect(createMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          discount_percent: 0.05,
+        }),
+      );
+    });
+  });
 });

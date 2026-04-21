@@ -14,7 +14,7 @@ from app.mcp_server import mcp
 from common.database import AsyncSessionLocal
 from common.tenant import DEFAULT_TENANT_ID
 from domains.orders.schemas import OrderLineResponse, OrderListItem, OrderResponse
-from domains.orders.services import build_order_workspace_meta, derive_order_execution, get_order, list_orders
+from domains.orders.services import build_order_workspace_meta, get_order, list_orders
 
 
 def _parse_uuid(value: str, field: str) -> uuid.UUID:
