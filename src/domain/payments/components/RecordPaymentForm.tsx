@@ -1,6 +1,8 @@
 /** Form for recording a payment against an invoice. */
 
 import { useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslation } from "react-i18next";
 
 import { SurfaceMessage } from "../../../components/layout/PageLayout";
@@ -10,11 +12,19 @@ import {
 	parseDatePickerInputValue,
 	serializeDatePickerValue,
 } from "../../../components/ui/date-picker-utils";
+
+
+import { Field, FieldError, FieldLabel } from "../../../components/ui/field";
 import { Input } from "../../../components/ui/input";
 import { useToast } from "../../../hooks/useToast";
 import { appTodayISO } from "../../../lib/time";
 import type { PaymentMethod } from "../types";
 import { useCreatePayment } from "../hooks/usePayments";
+import {
+	createRecordPaymentFormSchema,
+	type RecordPaymentFormValues,
+	toRecordPaymentPayload,
+} from "../../../lib/schemas/payment.schema";
 
 const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
 	{ value: "CASH", label: "Cash" },
@@ -39,38 +49,43 @@ export default function RecordPaymentForm({
 }: RecordPaymentFormProps) {
 	const { t } = useTranslation("common");
 	const { error: showErrorToast, success: showSuccessToast } = useToast();
-	const [amount, setAmount] = useState(String(outstandingBalance));
-	const [method, setMethod] = useState<PaymentMethod>("BANK_TRANSFER");
-	const [paymentDate, setPaymentDate] = useState(appTodayISO);
-	const [referenceNumber, setReferenceNumber] = useState("");
-	const [notes, setNotes] = useState("");
 	const [formError, setFormError] = useState<string | null>(null);
 
 	const { mutate, isLoading } = useCreatePayment();
+	const {
+		control,
+		handleSubmit,
+		register,
+		formState: { errors },
+		watch,
+	} = useForm<RecordPaymentFormValues>({
+		resolver: zodResolver(createRecordPaymentFormSchema(outstandingBalance)),
+		defaultValues: {
+			amount: String(outstandingBalance),
+			payment_method: "BANK_TRANSFER",
+			payment_date: appTodayISO(),
+			reference_number: "",
+			notes: "",
+		},
+		reValidateMode: "onChange",
+	});
 
-	const parsedAmount = parseFloat(amount);
-	const isValid =
-		!isNaN(parsedAmount) &&
-		parsedAmount > 0 &&
-		parsedAmount <= outstandingBalance &&
-		paymentDate.length > 0;
+	const amount = watch("amount");
+	const parsedAmount = Number(amount);
 	const amountWarningId = parsedAmount > outstandingBalance ? "payment-amount-warning" : undefined;
 	const formErrorId = formError ? "record-payment-form-error" : undefined;
-	const amountDescribedBy = [formErrorId, amountWarningId].filter(Boolean).join(" ") || undefined;
+	const amountErrorId = errors.amount ? "record-payment-amount-error" : undefined;
+	const paymentDateErrorId = errors.payment_date ? "record-payment-date-error" : undefined;
+	const amountDescribedBy = [formErrorId, amountWarningId, amountErrorId]
+		.filter(Boolean)
+		.join(" ") || undefined;
+	const paymentDateDescribedBy = [paymentDateErrorId].filter(Boolean).join(" ") || undefined;
 
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (isLoading || !isValid) return;
+	const submitPayment = async (values: RecordPaymentFormValues) => {
+		if (isLoading) return;
 		setFormError(null);
 
-		const result = await mutate({
-			invoice_id: invoiceId,
-			amount: amount,
-			payment_method: method,
-			payment_date: paymentDate,
-			reference_number: referenceNumber || undefined,
-			notes: notes || undefined,
-		});
+		const result = await mutate(toRecordPaymentPayload(invoiceId, values));
 		if (result && result.ok) {
 			showSuccessToast(
 				t("payments.form.toast.recordedTitle"),
@@ -85,7 +100,12 @@ export default function RecordPaymentForm({
 	};
 
 	return (
-		<form onSubmit={handleSubmit} data-testid="record-payment-form" className="space-y-4">
+		<form
+			onSubmit={handleSubmit(submitPayment, () => setFormError(null))}
+			data-testid="record-payment-form"
+			className="space-y-4"
+			noValidate
+		>
 			<h3 className="text-base font-semibold tracking-tight">Record Payment</h3>
 
 			{formError ? (
@@ -94,17 +114,17 @@ export default function RecordPaymentForm({
 				</SurfaceMessage>
 			) : null}
 
-			<div className="space-y-2">
-				<label htmlFor="payment-amount">Amount</label>
+			<Field data-invalid={errors.amount ? true : undefined} className="space-y-2">
+				<FieldLabel htmlFor="payment-amount">Amount</FieldLabel>
 				<Input
 					id="payment-amount"
 					type="number"
 					aria-describedby={amountDescribedBy}
+					aria-invalid={errors.amount ? true : undefined}
 					step="0.01"
 					min="0.01"
 					max={outstandingBalance}
-					value={amount}
-					onChange={(e) => setAmount(e.target.value)}
+					{...register("amount")}
 					required
 				/>
 				{parsedAmount > outstandingBalance ? (
@@ -112,14 +132,17 @@ export default function RecordPaymentForm({
 						{t("payments.form.amountExceeded", { amount: outstandingBalance })}
 					</span>
 				) : null}
-			</div>
+				<FieldError id={amountErrorId}>
+					{errors.amount?.message ? t(errors.amount.message) : null}
+				</FieldError>
+			</Field>
 
-			<div className="space-y-2">
-				<label htmlFor="payment-method">Payment Method</label>
+			<Field data-invalid={errors.payment_method ? true : undefined} className="space-y-2">
+				<FieldLabel htmlFor="payment-method">Payment Method</FieldLabel>
 				<select
 					id="payment-method"
-					value={method}
-					onChange={(e) => setMethod(e.target.value as PaymentMethod)}
+					aria-invalid={errors.payment_method ? true : undefined}
+					{...register("payment_method")}
 					required
 				>
 					{PAYMENT_METHODS.map((m) => (
@@ -128,42 +151,61 @@ export default function RecordPaymentForm({
 						</option>
 					))}
 				</select>
-			</div>
+				<FieldError>
+					{errors.payment_method?.message ? t(errors.payment_method.message) : null}
+				</FieldError>
+			</Field>
 
-			<div className="space-y-2">
-				<label htmlFor="payment-date">{t("payments.form.fields.paymentDate")}</label>
-				<DatePicker
-					id="payment-date"
-					placeholder={t("payments.form.fields.paymentDate")}
-					value={parseDatePickerInputValue(paymentDate)}
-					onChange={(value) => setPaymentDate(serializeDatePickerValue(value))}
-					allowClear={false}
+			<Field data-invalid={errors.payment_date ? true : undefined} className="space-y-2">
+				<FieldLabel htmlFor="payment-date">{t("payments.form.fields.paymentDate")}</FieldLabel>
+				<Controller
+					name="payment_date"
+					control={control}
+					render={({ field }) => (
+						<DatePicker
+							id="payment-date"
+							placeholder={t("payments.form.fields.paymentDate")}
+							value={parseDatePickerInputValue(field.value)}
+							onChange={(value) => field.onChange(serializeDatePickerValue(value))}
+							allowClear={false}
+							aria-describedby={paymentDateDescribedBy}
+						/>
+					)}
 				/>
-			</div>
+				<FieldError id={paymentDateErrorId}>
+					{errors.payment_date?.message ? t(errors.payment_date.message) : null}
+				</FieldError>
+			</Field>
 
-			<div className="space-y-2">
-				<label htmlFor="reference-number">Reference Number</label>
+			<Field data-invalid={errors.reference_number ? true : undefined} className="space-y-2">
+				<FieldLabel htmlFor="reference-number">Reference Number</FieldLabel>
 				<Input
 					id="reference-number"
 					type="text"
 					maxLength={100}
-					value={referenceNumber}
-					onChange={(e) => setReferenceNumber(e.target.value)}
+					aria-invalid={errors.reference_number ? true : undefined}
+					{...register("reference_number")}
 				/>
-			</div>
+				<FieldError>
+					{errors.reference_number?.message ? t(errors.reference_number.message) : null}
+				</FieldError>
+			</Field>
 
-			<div className="space-y-2">
-				<label htmlFor="payment-notes">Notes</label>
+			<Field data-invalid={errors.notes ? true : undefined} className="space-y-2">
+				<FieldLabel htmlFor="payment-notes">Notes</FieldLabel>
 				<textarea
 					id="payment-notes"
 					maxLength={500}
-					value={notes}
-					onChange={(e) => setNotes(e.target.value)}
+					aria-invalid={errors.notes ? true : undefined}
+					{...register("notes")}
 				/>
-			</div>
+				<FieldError>
+					{errors.notes?.message ? t(errors.notes.message) : null}
+				</FieldError>
+			</Field>
 
 			<div className="flex gap-3">
-				<Button type="submit" disabled={!isValid || isLoading}>
+				<Button type="submit" disabled={isLoading}>
 					{isLoading ? "Recording..." : "Record Payment"}
 				</Button>
 				<Button type="button" variant="outline" onClick={onCancel}>

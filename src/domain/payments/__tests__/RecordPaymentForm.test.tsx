@@ -46,7 +46,12 @@ describe("RecordPaymentForm", () => {
 		expect(screen.getByText("Other")).toBeTruthy();
 	});
 
-	it("disables submit when amount exceeds outstanding", () => {
+	it("shows an inline amount error and does not submit when amount exceeds outstanding", async () => {
+		const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+			ok: true,
+			json: async () => ({}),
+		} as Response);
+
 		render(
 			<ToastProvider>
 				<RecordPaymentForm
@@ -59,8 +64,13 @@ describe("RecordPaymentForm", () => {
 		);
 		const input = screen.getByLabelText("Amount") as HTMLInputElement;
 		fireEvent.change(input, { target: { value: "600" } });
-		const submitBtn = screen.getByRole("button", { name: "Record Payment" });
-		expect((submitBtn as HTMLButtonElement).disabled).toBe(true);
+
+		fireEvent.click(screen.getByRole("button", { name: "Record Payment" }));
+
+		await waitFor(() => {
+			expect(screen.getByText("Amount exceeds the outstanding balance.")).toBeTruthy();
+		});
+		expect(fetchSpy).not.toHaveBeenCalled();
 	});
 
 	it("shows warning when amount exceeds outstanding", () => {

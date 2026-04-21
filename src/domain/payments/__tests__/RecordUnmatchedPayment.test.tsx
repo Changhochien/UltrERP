@@ -52,17 +52,10 @@ describe("RecordUnmatchedPayment", () => {
 		expect(screen.getByLabelText("Notes")).toBeTruthy();
 	});
 
-	it("disables submit when required fields are empty", () => {
-		render(
-			<ToastProvider>
-				<RecordUnmatchedPayment onSuccess={noop} onCancel={noop} />
-			</ToastProvider>,
-		);
-		const submitBtn = screen.getByRole("button", { name: "Record Payment" });
-		expect((submitBtn as HTMLButtonElement).disabled).toBe(true);
-	});
+	it("shows inline required errors and does not submit when required fields are empty", async () => {
+		vi.restoreAllMocks();
+		const fetchSpy = mockFetchForCustomers();
 
-	it("enables submit when customer and amount provided", async () => {
 		render(
 			<ToastProvider>
 				<RecordUnmatchedPayment onSuccess={noop} onCancel={noop} />
@@ -70,11 +63,36 @@ describe("RecordUnmatchedPayment", () => {
 		);
 		await waitFor(() => expect(screen.getByText("Test Corp (12345678)")).toBeTruthy());
 
+		fireEvent.click(screen.getByRole("button", { name: "Record Payment" }));
+
+		await waitFor(() => {
+			expect(screen.getByText("Customer is required.")).toBeTruthy();
+			expect(screen.getByText("Amount is required.")).toBeTruthy();
+		});
+		expect(fetchSpy).toHaveBeenCalledTimes(1);
+	});
+
+	it("clears client errors once customer and amount are provided", async () => {
+		render(
+			<ToastProvider>
+				<RecordUnmatchedPayment onSuccess={noop} onCancel={noop} />
+			</ToastProvider>,
+		);
+		await waitFor(() => expect(screen.getByText("Test Corp (12345678)")).toBeTruthy());
+
+		fireEvent.click(screen.getByRole("button", { name: "Record Payment" }));
+		await waitFor(() => {
+			expect(screen.getByText("Customer is required.")).toBeTruthy();
+			expect(screen.getByText("Amount is required.")).toBeTruthy();
+		});
+
 		fireEvent.change(screen.getByLabelText("Customer"), { target: { value: "cust-123" } });
 		fireEvent.change(screen.getByLabelText("Amount"), { target: { value: "100.00" } });
 
-		const submitBtn = screen.getByRole("button", { name: "Record Payment" });
-		expect((submitBtn as HTMLButtonElement).disabled).toBe(false);
+		await waitFor(() => {
+			expect(screen.queryByText("Customer is required.")).toBeNull();
+			expect(screen.queryByText("Amount is required.")).toBeNull();
+		});
 	});
 
 	it("submits and calls onSuccess", async () => {

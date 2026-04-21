@@ -1,6 +1,8 @@
 /** Form for recording a payment without a specific invoice (for reconciliation). */
 
 import { useEffect, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslation } from "react-i18next";
 
 import { SurfaceMessage } from "../../../components/layout/PageLayout";
@@ -10,6 +12,9 @@ import {
 	parseDatePickerInputValue,
 	serializeDatePickerValue,
 } from "../../../components/ui/date-picker-utils";
+
+
+import { Field, FieldError, FieldLabel } from "../../../components/ui/field";
 import { Input } from "../../../components/ui/input";
 import { useToast } from "../../../hooks/useToast";
 import { appTodayISO } from "../../../lib/time";
@@ -17,6 +22,11 @@ import type { PaymentMethod } from "../types";
 import type { CustomerSummary } from "../../customers/types";
 import { createUnmatchedPayment } from "../../../lib/api/payments";
 import { listCustomers } from "../../../lib/api/customers";
+import {
+	type UnmatchedPaymentFormValues,
+	toUnmatchedPaymentPayload,
+	unmatchedPaymentFormSchema,
+} from "../../../lib/schemas/payment.schema";
 
 const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
 	{ value: "CASH", label: "Cash" },
@@ -37,15 +47,26 @@ export default function RecordUnmatchedPayment({
 }: RecordUnmatchedPaymentProps) {
 	const { t } = useTranslation("common");
 	const { error: showErrorToast, success: showSuccessToast } = useToast();
-	const [customerId, setCustomerId] = useState("");
 	const [customers, setCustomers] = useState<CustomerSummary[]>([]);
-	const [amount, setAmount] = useState("");
-	const [method, setMethod] = useState<PaymentMethod>("BANK_TRANSFER");
-	const [paymentDate, setPaymentDate] = useState(appTodayISO);
-	const [referenceNumber, setReferenceNumber] = useState("");
-	const [notes, setNotes] = useState("");
 	const [formError, setFormError] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
+	const {
+		control,
+		handleSubmit,
+		register,
+		formState: { errors },
+	} = useForm<UnmatchedPaymentFormValues>({
+		resolver: zodResolver(unmatchedPaymentFormSchema),
+		defaultValues: {
+			customer_id: "",
+			amount: "",
+			payment_method: "BANK_TRANSFER",
+			payment_date: appTodayISO(),
+			reference_number: "",
+			notes: "",
+		},
+		reValidateMode: "onChange",
+	});
 
 	useEffect(() => {
 		listCustomers({ status: "active", page_size: 200 }).then((res) =>
@@ -53,27 +74,12 @@ export default function RecordUnmatchedPayment({
 		);
 	}, []);
 
-	const parsedAmount = parseFloat(amount);
-	const isValid =
-		customerId.length > 0 &&
-		!isNaN(parsedAmount) &&
-		parsedAmount > 0 &&
-		paymentDate.length > 0;
-
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (isLoading || !isValid) return;
+	const submitPayment = async (values: UnmatchedPaymentFormValues) => {
+		if (isLoading) return;
 		setIsLoading(true);
 		setFormError(null);
 
-		const result = await createUnmatchedPayment({
-			customer_id: customerId,
-			amount: amount,
-			payment_method: method,
-			payment_date: paymentDate,
-			reference_number: referenceNumber || undefined,
-			notes: notes || undefined,
-		});
+		const result = await createUnmatchedPayment(toUnmatchedPaymentPayload(values));
 
 		setIsLoading(false);
 		if (result.ok) {
@@ -90,7 +96,12 @@ export default function RecordUnmatchedPayment({
 	};
 
 	return (
-		<form onSubmit={handleSubmit} data-testid="record-unmatched-payment-form" className="space-y-4">
+		<form
+			onSubmit={handleSubmit(submitPayment, () => setFormError(null))}
+			data-testid="record-unmatched-payment-form"
+			className="space-y-4"
+			noValidate
+		>
 			<h3 className="text-base font-semibold tracking-tight">Record Unmatched Payment</h3>
 
 			{formError ? (
@@ -99,12 +110,12 @@ export default function RecordUnmatchedPayment({
 				</SurfaceMessage>
 			) : null}
 
-			<div className="space-y-2">
-				<label htmlFor="customer-id">Customer</label>
+			<Field data-invalid={errors.customer_id ? true : undefined} className="space-y-2">
+				<FieldLabel htmlFor="customer-id">Customer</FieldLabel>
 				<select
 					id="customer-id"
-					value={customerId}
-					onChange={(e) => setCustomerId(e.target.value)}
+					aria-invalid={errors.customer_id ? true : undefined}
+					{...register("customer_id")}
 					required
 				>
 					<option value="">-- Select customer --</option>
@@ -114,27 +125,33 @@ export default function RecordUnmatchedPayment({
 						</option>
 					))}
 				</select>
-			</div>
+				<FieldError id={errors.customer_id ? "record-unmatched-customer-error" : undefined}>
+					{errors.customer_id?.message ? t(errors.customer_id.message) : null}
+				</FieldError>
+			</Field>
 
-			<div className="space-y-2">
-				<label htmlFor="unmatched-amount">Amount</label>
+			<Field data-invalid={errors.amount ? true : undefined} className="space-y-2">
+				<FieldLabel htmlFor="unmatched-amount">Amount</FieldLabel>
 				<Input
 					id="unmatched-amount"
 					type="number"
 					step="0.01"
 					min="0.01"
-					value={amount}
-					onChange={(e) => setAmount(e.target.value)}
+					aria-invalid={errors.amount ? true : undefined}
+					{...register("amount")}
 					required
 				/>
-			</div>
+				<FieldError>
+					{errors.amount?.message ? t(errors.amount.message) : null}
+				</FieldError>
+			</Field>
 
-			<div className="space-y-2">
-				<label htmlFor="unmatched-method">Payment Method</label>
+			<Field data-invalid={errors.payment_method ? true : undefined} className="space-y-2">
+				<FieldLabel htmlFor="unmatched-method">Payment Method</FieldLabel>
 				<select
 					id="unmatched-method"
-					value={method}
-					onChange={(e) => setMethod(e.target.value as PaymentMethod)}
+					aria-invalid={errors.payment_method ? true : undefined}
+					{...register("payment_method")}
 				>
 					{PAYMENT_METHODS.map((pm) => (
 						<option key={pm.value} value={pm.value}>
@@ -142,43 +159,61 @@ export default function RecordUnmatchedPayment({
 						</option>
 					))}
 				</select>
-			</div>
+				<FieldError>
+					{errors.payment_method?.message ? t(errors.payment_method.message) : null}
+				</FieldError>
+			</Field>
 
-			<div className="space-y-2">
-				<label htmlFor="unmatched-date">{t("payments.form.fields.paymentDate")}</label>
-				<DatePicker
-					id="unmatched-date"
-					placeholder={t("payments.form.fields.paymentDate")}
-					value={parseDatePickerInputValue(paymentDate)}
-					onChange={(value) => setPaymentDate(serializeDatePickerValue(value))}
-					allowClear={false}
+			<Field data-invalid={errors.payment_date ? true : undefined} className="space-y-2">
+				<FieldLabel htmlFor="unmatched-date">{t("payments.form.fields.paymentDate")}</FieldLabel>
+				<Controller
+					name="payment_date"
+					control={control}
+					render={({ field }) => (
+						<DatePicker
+							id="unmatched-date"
+							placeholder={t("payments.form.fields.paymentDate")}
+							value={parseDatePickerInputValue(field.value)}
+							onChange={(value) => field.onChange(serializeDatePickerValue(value))}
+							allowClear={false}
+						/>
+					)}
 				/>
-			</div>
+				<FieldError>
+					{errors.payment_date?.message ? t(errors.payment_date.message) : null}
+				</FieldError>
+			</Field>
 
-			<div className="space-y-2">
-				<label htmlFor="unmatched-ref">Reference Number</label>
+			<Field data-invalid={errors.reference_number ? true : undefined} className="space-y-2">
+				<FieldLabel htmlFor="unmatched-ref">Reference Number</FieldLabel>
 				<Input
 					id="unmatched-ref"
 					type="text"
 					maxLength={100}
-					value={referenceNumber}
-					onChange={(e) => setReferenceNumber(e.target.value)}
+					aria-invalid={errors.reference_number ? true : undefined}
+					{...register("reference_number")}
 				/>
-			</div>
+				<FieldError>
+					{errors.reference_number?.message ? t(errors.reference_number.message) : null}
+				</FieldError>
+			</Field>
 
-			<div className="space-y-2">
-				<label htmlFor="unmatched-notes">Notes</label>
+			<Field data-invalid={errors.notes ? true : undefined} className="space-y-2">
+				<FieldLabel htmlFor="unmatched-notes">Notes</FieldLabel>
 				<textarea
 					id="unmatched-notes"
 					maxLength={500}
-					value={notes}
-					onChange={(e) => setNotes(e.target.value)}
+					aria-invalid={errors.notes ? true : undefined}
+					{...register("notes")}
 				/>
-			</div>
+				<FieldError>
+					{errors.notes?.message ? t(errors.notes.message) : null}
+				</FieldError>
+			</Field>
 
 			<div className="flex gap-3">
-				<Button type="submit" disabled={!isValid || isLoading}>
-					{isLoading ? "Submitting…" : "Record Payment"}
+				<Button type="submit" disabled={isLoading}>
+					{isLoading ? "Recording..." : "Record Payment"}
 				</Button>
 				<Button type="button" variant="outline" onClick={onCancel}>
 					Cancel

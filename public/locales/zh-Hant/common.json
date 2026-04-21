@@ -604,15 +604,26 @@
     "form": {
       "billingAddress": "帳單地址",
       "businessNumber": "統一編號",
+      "businessNumberRequired": "統一編號為必填。",
+      "businessNumberTooLong": "統一編號不得超過 20 個字元。",
       "companyName": "公司名稱",
+      "companyNameTooLong": "公司名稱不得超過 200 個字元。",
       "contactEmail": "聯絡人電子郵件",
+      "contactEmailRequired": "聯絡人電子郵件為必填。",
+      "contactEmailTooLong": "聯絡人電子郵件不得超過 254 個字元。",
       "contactName": "聯絡人姓名",
+      "contactNameRequired": "聯絡人姓名為必填。",
+      "contactNameTooLong": "聯絡人姓名不得超過 100 個字元。",
       "contactPhone": "聯絡人電話",
+      "contactPhoneRequired": "聯絡人電話為必填。",
+      "contactPhoneTooLong": "聯絡人電話不得超過 30 個字元。",
       "createTitle": "建立客戶",
       "creating": "建立中…",
       "creditLimit": "信用額度",
+      "billingAddressTooLong": "帳單地址不得超過 500 個字元。",
       "creditLimitNonNegative": "信用額度不得為負數。",
       "invalidBusinessNumber": "統一編號無效。",
+      "invalidEmail": "請輸入有效的電子郵件地址。",
       "title": "建立客戶"
     },
     "listPage": {
@@ -1123,6 +1134,15 @@
   "payments": {
     "form": {
       "amountExceeded": "金額超過未收餘額（{amount}）",
+      "errors": {
+        "amountExceedsOutstanding": "金額超過未收餘額。",
+        "amountPositive": "金額必須大於零。",
+        "amountRequired": "金額為必填。",
+        "customerRequired": "客戶為必填。",
+        "notesTooLong": "備註不得超過 500 個字元。",
+        "paymentDateRequired": "付款日期為必填。",
+        "referenceNumberTooLong": "參考編號不得超過 100 個字元。"
+      },
       "fields": {
         "paymentDate": "付款日期"
       },
@@ -2085,6 +2105,30 @@
       "workflowTimelineDescription": "用商務、倉儲與帳務節點快速看懂訂單狀態，不再只靠單一狀態字樣判讀。"
     },
     "form": {
+      "errors": {
+        "allocatedPercentageMax": "分配比例不得超過 100%。",
+        "allocatedPercentagePositive": "分配比例必須大於零。",
+        "commissionRateMax": "佣金率不得超過 100%。",
+        "commissionRateNonNegative": "佣金率不得為負數。",
+        "customerRequired": "建立訂單前請先選擇客戶。",
+        "discountAmountNonNegative": "折扣金額不得為負數。",
+        "discountConflict": "折扣金額與折扣百分比不可同時大於零。",
+        "discountPercentRange": "折扣百分比必須介於 0 到 100 之間。",
+        "lineDescriptionRequired": "每筆明細都需要描述。",
+        "lineDescriptionTooLong": "明細描述不得超過 500 個字元。",
+        "lineDiscountNonNegative": "明細折扣不得為負數。",
+        "lineListPriceNonNegative": "牌價不得為負數。",
+        "lineProductRequired": "每筆明細都需要產品。",
+        "lineQuantityPositive": "明細數量必須大於零。",
+        "lineTaxPolicyRequired": "每筆明細都需要課稅別。",
+        "lineUnitPriceNonNegative": "單價不得為負數。",
+        "linesRequired": "至少新增一筆訂單明細。",
+        "linesTooLarge": "一張訂單最多只能有 200 筆明細。",
+        "notesTooLong": "備註不得超過 2000 個字元。",
+        "salesPersonRequired": "每列業務代表都需要姓名。",
+        "salesPersonTooLong": "業務代表姓名不得超過 120 個字元。",
+        "salesTeamTooLarge": "業務分配最多支援 10 位代表。"
+      },
       "addSalesPerson": "新增業務代表",
       "addLine": "新增明細",
       "allocatedPercentage": "分配比例 %",

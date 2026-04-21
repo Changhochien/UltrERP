@@ -605,17 +605,28 @@
     "form": {
       "billingAddress": "Billing Address",
       "businessNumber": "Business Number",
+      "businessNumberRequired": "Business number is required.",
+      "businessNumberTooLong": "Business number must be 20 characters or fewer.",
       "companyName": "Company Name",
+      "companyNameTooLong": "Company name must be 200 characters or fewer.",
       "contactEmail": "Contact Email",
+      "contactEmailRequired": "Contact email is required.",
+      "contactEmailTooLong": "Contact email must be 254 characters or fewer.",
       "contactName": "Contact Name",
+      "contactNameRequired": "Contact name is required.",
+      "contactNameTooLong": "Contact name must be 100 characters or fewer.",
       "contactPhone": "Contact Phone",
+      "contactPhoneRequired": "Contact phone is required.",
+      "contactPhoneTooLong": "Contact phone must be 30 characters or fewer.",
       "createTitle": "Create Customer",
       "creating": "Creating…",
       "creditLimit": "Credit Limit",
+      "billingAddressTooLong": "Billing address must be 500 characters or fewer.",
       "businessNumberDigits": "Business number must be exactly 8 digits.",
       "companyNameRequired": "Company name is required.",
       "creditLimitNonNegative": "Credit limit must be non-negative.",
       "invalidBusinessNumber": "Invalid business number.",
+      "invalidEmail": "Enter a valid email address.",
       "title": "Create Customer"
     },
     "listPage": {
@@ -1127,6 +1138,15 @@
   "payments": {
     "form": {
       "amountExceeded": "Amount exceeds outstanding balance ({amount})",
+      "errors": {
+        "amountExceedsOutstanding": "Amount exceeds the outstanding balance.",
+        "amountPositive": "Amount must be greater than zero.",
+        "amountRequired": "Amount is required.",
+        "customerRequired": "Customer is required.",
+        "notesTooLong": "Notes must be 500 characters or fewer.",
+        "paymentDateRequired": "Payment date is required.",
+        "referenceNumberTooLong": "Reference number must be 100 characters or fewer."
+      },
       "fields": {
         "paymentDate": "Payment Date"
       },
@@ -2095,6 +2115,30 @@
       "workflowTimelineDescription": "Track the commercial, warehouse, and billing milestones without decoding overloaded status labels."
     },
     "form": {
+      "errors": {
+        "allocatedPercentageMax": "Allocated percentage must be 100% or less.",
+        "allocatedPercentagePositive": "Allocated percentage must be greater than zero.",
+        "commissionRateMax": "Commission rate must be 100% or less.",
+        "commissionRateNonNegative": "Commission rate cannot be negative.",
+        "customerRequired": "Select a customer before creating the order.",
+        "discountAmountNonNegative": "Discount amount cannot be negative.",
+        "discountConflict": "Discount amount and discount percent cannot both be greater than zero.",
+        "discountPercentRange": "Discount percent must be between 0 and 100.",
+        "lineDescriptionRequired": "Each line needs a description.",
+        "lineDescriptionTooLong": "Line descriptions must be 500 characters or fewer.",
+        "lineDiscountNonNegative": "Line discount cannot be negative.",
+        "lineListPriceNonNegative": "List price cannot be negative.",
+        "lineProductRequired": "Each line needs a product.",
+        "lineQuantityPositive": "Line quantity must be greater than zero.",
+        "lineTaxPolicyRequired": "Each line needs a tax policy.",
+        "lineUnitPriceNonNegative": "Unit price cannot be negative.",
+        "linesRequired": "Add at least one order line.",
+        "linesTooLarge": "Orders can contain at most 200 lines.",
+        "notesTooLong": "Notes must be 2000 characters or fewer.",
+        "salesPersonRequired": "Each sales rep row needs a name.",
+        "salesPersonTooLong": "Sales rep names must be 120 characters or fewer.",
+        "salesTeamTooLarge": "Sales team allocation supports up to 10 reps."
+      },
       "addSalesPerson": "Add sales rep",
       "addLine": "Add line",
       "allocatedPercentage": "Allocated %",
