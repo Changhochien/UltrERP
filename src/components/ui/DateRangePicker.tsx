@@ -40,7 +40,7 @@ export function DateRangePicker({
   const [month, setMonth] = React.useState<Date>(
     value?.from ?? value?.to ?? defaultMonth ?? new Date()
   )
-  const language = i18n.language || i18n.resolvedLanguage
+  const language = i18n?.language || i18n?.resolvedLanguage || "en"
   const resolvedPlaceholder = placeholder ?? t("dateRangePicker.placeholder")
 
   React.useEffect(() => {

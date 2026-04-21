@@ -37,7 +37,7 @@ export function DatePicker({
   const { i18n, t } = useTranslation("common")
   const [open, setOpen] = React.useState(false)
   const [month, setMonth] = React.useState<Date>(value ?? defaultMonth ?? new Date())
-  const language = i18n.language || i18n.resolvedLanguage
+  const language = i18n?.language || i18n?.resolvedLanguage || "en"
   const resolvedPlaceholder = placeholder ?? t("datePicker.placeholder")
 
   React.useEffect(() => {

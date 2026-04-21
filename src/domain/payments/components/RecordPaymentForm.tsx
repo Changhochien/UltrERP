@@ -134,7 +134,6 @@ export default function RecordPaymentForm({
 				<label htmlFor="payment-date">{t("payments.form.fields.paymentDate")}</label>
 				<DatePicker
 					id="payment-date"
-					aria-label={t("payments.form.fields.paymentDate")}
 					placeholder={t("payments.form.fields.paymentDate")}
 					value={parseDatePickerInputValue(paymentDate)}
 					onChange={(value) => setPaymentDate(serializeDatePickerValue(value))}

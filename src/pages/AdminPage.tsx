@@ -907,36 +907,52 @@ export function AdminPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="admin-audit-date-range">
+                <Label>
                   {t("adminPage.auditLog.filters.createdAfter")} / {t("adminPage.auditLog.filters.createdBefore")}
                 </Label>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  <DatePicker
-                    id="admin-audit-created-after"
-                    aria-label={t("adminPage.auditLog.filters.createdAfter")}
-                    placeholder={t("adminPage.auditLog.filters.createdAfter")}
-                    value={parseDatePickerInputValue(auditFilters.createdAfter)}
-                    onChange={(value) =>
-                      setAuditDateRange(
-                        serializeDatePickerValue(value),
-                        auditFilters.createdBefore,
-                      )
-                    }
-                    className="w-full"
-                  />
-                  <DatePicker
-                    id="admin-audit-created-before"
-                    aria-label={t("adminPage.auditLog.filters.createdBefore")}
-                    placeholder={t("adminPage.auditLog.filters.createdBefore")}
-                    value={parseDatePickerInputValue(auditFilters.createdBefore)}
-                    onChange={(value) =>
-                      setAuditDateRange(
-                        auditFilters.createdAfter,
-                        serializeDatePickerValue(value),
-                      )
-                    }
-                    className="w-full"
-                  />
+                  <div className="space-y-1">
+                    <span
+                      id="admin-audit-created-after-label"
+                      className="text-xs text-muted-foreground"
+                    >
+                      {t("adminPage.auditLog.filters.createdAfter")}
+                    </span>
+                    <DatePicker
+                      id="admin-audit-created-after"
+                      aria-labelledby="admin-audit-created-after-label"
+                      placeholder={t("adminPage.auditLog.filters.createdAfter")}
+                      value={parseDatePickerInputValue(auditFilters.createdAfter)}
+                      onChange={(value) =>
+                        setAuditDateRange(
+                          serializeDatePickerValue(value),
+                          auditFilters.createdBefore,
+                        )
+                      }
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <span
+                      id="admin-audit-created-before-label"
+                      className="text-xs text-muted-foreground"
+                    >
+                      {t("adminPage.auditLog.filters.createdBefore")}
+                    </span>
+                    <DatePicker
+                      id="admin-audit-created-before"
+                      aria-labelledby="admin-audit-created-before-label"
+                      placeholder={t("adminPage.auditLog.filters.createdBefore")}
+                      value={parseDatePickerInputValue(auditFilters.createdBefore)}
+                      onChange={(value) =>
+                        setAuditDateRange(
+                          auditFilters.createdAfter,
+                          serializeDatePickerValue(value),
+                        )
+                      }
+                      className="w-full"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

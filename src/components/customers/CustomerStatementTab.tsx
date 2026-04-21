@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "../ui/button";
 import { DatePicker } from "../ui/DatePicker";
 import {
+  formatDatePickerValue,
   parseDatePickerInputValue,
   serializeDatePickerValue,
 } from "../ui/date-picker-utils";
@@ -36,8 +37,8 @@ function today(): string {
   return appTodayISO();
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString();
+function formatDate(iso: string, language?: string): string {
+  return formatDatePickerValue(parseDatePickerInputValue(iso), language) || iso;
 }
 
 function formatCurrency(amount: string, currency = "TWD"): string {
@@ -80,7 +81,8 @@ function computeSummary(lines: StatementLine[]) {
 }
 
 export function CustomerStatementTab({ customerId, customerName }: CustomerStatementTabProps) {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
+  const language = i18n?.language || i18n?.resolvedLanguage || "en";
   const [fromDate, setFromDate] = useState(twelveMonthsAgo);
   const [toDate, setToDate] = useState(today);
   const [data, setData] = useState<CustomerStatementResponse | null>(null);
@@ -159,7 +161,7 @@ export function CustomerStatementTab({ customerId, customerName }: CustomerState
             </p>
             {oldestUnpaid ? (
               <p className="mt-1 text-xl font-semibold">
-                {formatDate(oldestUnpaid.date)} / {formatCurrency(oldestUnpaid.balance, data.currency_code)}
+                {formatDate(oldestUnpaid.date, language)} / {formatCurrency(oldestUnpaid.balance, data.currency_code)}
               </p>
             ) : (
               <p className="mt-1 text-muted-foreground">—</p>
@@ -185,7 +187,6 @@ export function CustomerStatementTab({ customerId, customerName }: CustomerState
             {t("customer.detail.statement.filter.from")}
             <DatePicker
               id="customer-statement-from-date"
-              aria-label={t("customer.detail.statement.filter.from")}
               placeholder={t("customer.detail.statement.filter.from")}
               value={parseDatePickerInputValue(fromDate)}
               onChange={(value) => setFromDate(serializeDatePickerValue(value))}
@@ -196,7 +197,6 @@ export function CustomerStatementTab({ customerId, customerName }: CustomerState
             {t("customer.detail.statement.filter.to")}
             <DatePicker
               id="customer-statement-to-date"
-              aria-label={t("customer.detail.statement.filter.to")}
               placeholder={t("customer.detail.statement.filter.to")}
               value={parseDatePickerInputValue(toDate)}
               onChange={(value) => setToDate(serializeDatePickerValue(value))}
@@ -257,7 +257,7 @@ export function CustomerStatementTab({ customerId, customerName }: CustomerState
                 </TableRow>
                 {data.lines.map((line, i) => (
                   <TableRow key={i}>
-                    <TableCell>{formatDate(line.date)}</TableCell>
+                    <TableCell>{formatDate(line.date, language)}</TableCell>
                     <TableCell>
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${

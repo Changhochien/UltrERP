@@ -238,7 +238,6 @@ export function SupplierOrderForm({
               <span>Order date</span>
               <DatePicker
                 id="so-date"
-                aria-label="Order date"
                 value={parseDatePickerInputValue(orderDate)}
                 onChange={(value) => setOrderDate(serializeDatePickerValue(value))}
                 allowClear={false}
@@ -249,7 +248,6 @@ export function SupplierOrderForm({
               <span>Expected arrival</span>
               <DatePicker
                 id="so-arrival"
-                aria-label="Expected arrival"
                 value={parseDatePickerInputValue(expectedArrival)}
                 onChange={(value) => setExpectedArrival(serializeDatePickerValue(value))}
               />

@@ -148,7 +148,6 @@ export default function RecordUnmatchedPayment({
 				<label htmlFor="unmatched-date">{t("payments.form.fields.paymentDate")}</label>
 				<DatePicker
 					id="unmatched-date"
-					aria-label={t("payments.form.fields.paymentDate")}
 					placeholder={t("payments.form.fields.paymentDate")}
 					value={parseDatePickerInputValue(paymentDate)}
 					onChange={(value) => setPaymentDate(serializeDatePickerValue(value))}

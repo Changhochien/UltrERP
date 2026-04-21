@@ -26,22 +26,20 @@ export function DateRangeFilter({
       <span className="text-xs text-muted-foreground">{t("dateRangeFilter.label")}</span>
       <div className="grid gap-2 sm:grid-cols-2">
         <label htmlFor="date-range-from" className="flex min-w-0 flex-col gap-1">
-          <span className="text-xs text-muted-foreground">{t("dateRangeFilter.from")}</span>
+          <span className="text-xs text-muted-foreground">{t("dateRangeFilter.fromAria")}</span>
           <DatePicker
             id="date-range-from"
-            aria-label={t("dateRangeFilter.fromAria")}
-            placeholder={t("dateRangeFilter.from")}
+            placeholder={t("dateRangeFilter.fromAria")}
             value={parseDatePickerInputValue(dateFrom)}
             onChange={(value) => onDateFromChange(serializeDatePickerValue(value))}
             className="min-w-0"
           />
         </label>
         <label htmlFor="date-range-to" className="flex min-w-0 flex-col gap-1">
-          <span className="text-xs text-muted-foreground">{t("dateRangeFilter.to")}</span>
+          <span className="text-xs text-muted-foreground">{t("dateRangeFilter.toAria")}</span>
           <DatePicker
             id="date-range-to"
-            aria-label={t("dateRangeFilter.toAria")}
-            placeholder={t("dateRangeFilter.to")}
+            placeholder={t("dateRangeFilter.toAria")}
             value={parseDatePickerInputValue(dateTo)}
             onChange={(value) => onDateToChange(serializeDatePickerValue(value))}
             className="min-w-0"

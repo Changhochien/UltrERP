@@ -315,7 +315,6 @@ export default function CreateInvoicePage() {
               </label>
               <DatePicker
                 id="invoice-date"
-                aria-label={t("invoice.createPage.invoiceDate")}
                 value={parseDatePickerInputValue(invoiceDate)}
                 onChange={(value) => setInvoiceDate(serializeDatePickerValue(value))}
                 allowClear={false}
