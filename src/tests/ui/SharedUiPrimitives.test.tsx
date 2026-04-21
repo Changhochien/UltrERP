@@ -25,6 +25,8 @@ describe("shared Story 22.6 UI primitives", () => {
     expect(resolveStatusBadgeVariant("paid")).toBe("success");
     expect(resolveStatusBadgeVariant("partially_received")).toBe("warning");
     expect(resolveStatusBadgeVariant("open", { overrides: { open: "warning" } })).toBe("warning");
+    expect(resolveStatusBadgeVariant("CUSTOM", { overrides: { custom: "info" } })).toBe("info");
+    expect(resolveStatusBadgeVariant(undefined, { defaultVariant: "warning" })).toBe("warning");
 
     render(<StatusBadge status="dead_letter" />);
 

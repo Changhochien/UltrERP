@@ -140,4 +140,54 @@ describe("CustomerCombobox", () => {
     expect((screen.getByRole("button", { name: "Create" }) as HTMLButtonElement).disabled).toBe(true);
     expect(createCustomer).not.toHaveBeenCalled();
   });
+
+  it("offers an accessible path to select an existing duplicate customer", async () => {
+    const onChange = vi.fn();
+    vi.mocked(createCustomer).mockResolvedValue({
+      ok: false,
+      duplicate: {
+        existing_customer_id: "cust-existing",
+        existing_customer_name: "Acme Corp",
+        normalized_business_number: "04595257",
+      },
+      errors: [],
+    });
+
+    renderWithToastProvider(<CustomerCombobox value="" onChange={onChange} />);
+
+    fireEvent.click(screen.getByRole("combobox"));
+    fireEvent.change(screen.getByPlaceholderText("Search customer by name or BAN…"), {
+      target: { value: "Acme" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Create new customer")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText("Create new customer"));
+
+    fireEvent.change(screen.getByPlaceholderText("Company name *"), {
+      target: { value: "Acme Corp" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Business number *"), {
+      target: { value: "04595257" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Contact phone *"), {
+      target: { value: "02-12345678" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Contact name *"), {
+      target: { value: "Jane Doe" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Contact email *"), {
+      target: { value: "sales@acme.com" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+
+    expect(await screen.findByRole("button", { name: "Use existing customer" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Use existing customer" }));
+
+    expect(onChange).toHaveBeenCalledWith("cust-existing");
+  });
 });

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Search } from "lucide-react";
 
-import { listCustomers, createCustomer } from "../../lib/api/customers";
+import { listCustomers, createCustomer, type DuplicateInfo } from "../../lib/api/customers";
 import type { CustomerSummary } from "../../domain/customers/types";
 import { useToast } from "../../hooks/useToast";
 import { cn } from "../../lib/utils";
@@ -66,6 +66,7 @@ export function CustomerCombobox({
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createForm, setCreateForm] = useState<CustomerFormValues>(EMPTY_CREATE_FORM);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [duplicateMatch, setDuplicateMatch] = useState<DuplicateInfo | null>(null);
   const [creating, setCreating] = useState(false);
   const [customers, setCustomers] = useState<CustomerSummary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -173,6 +174,7 @@ export function CustomerCombobox({
   function resetCreateForm() {
     setCreateForm(EMPTY_CREATE_FORM);
     setCreateError(null);
+    setDuplicateMatch(null);
   }
 
   function handleCreateDialogChange(nextOpen: boolean) {
@@ -189,6 +191,7 @@ export function CustomerCombobox({
   function openCreateDialog() {
     setOpen(false);
     setCreateError(null);
+    setDuplicateMatch(null);
     setCreateForm((current) => (
       current.company_name.trim()
         ? current
@@ -200,6 +203,7 @@ export function CustomerCombobox({
   async function handleCreateSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setCreateError(null);
+    setDuplicateMatch(null);
     if (!createValidation.success) {
       return;
     }
@@ -234,18 +238,12 @@ export function CustomerCombobox({
       }
 
       if (result.duplicate) {
-        const confirmed = window.confirm(
-          `A customer with business number "${result.duplicate.normalized_business_number}" already exists: "${result.duplicate.existing_customer_name}". Use existing customer?`,
+        setDuplicateMatch(result.duplicate);
+        setCreateError(
+          `A customer with business number "${result.duplicate.normalized_business_number}" already exists.`,
         );
-        if (confirmed) {
-          onChange(result.duplicate.existing_customer_id);
-          setQuery("");
-          setOpen(false);
-          setCreateDialogOpen(false);
-          resetCreateForm();
-          toast.info("Existing customer selected", result.duplicate.existing_customer_name);
-          return;
-        }
+        toast.warning("Customer already exists", result.duplicate.existing_customer_name);
+        return;
       }
 
       const message = result.errors[0]?.message ?? "Failed to create customer";
@@ -256,54 +254,59 @@ export function CustomerCombobox({
     }
   }
 
+  function handleUseExistingCustomer() {
+    if (!duplicateMatch) {
+      return;
+    }
+
+    onChange(duplicateMatch.existing_customer_id);
+    setQuery("");
+    setOpen(false);
+    setCreateDialogOpen(false);
+    toast.info("Existing customer selected", duplicateMatch.existing_customer_name);
+    resetCreateForm();
+  }
+
   return (
     <>
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger
-          render={
-            <Button
-              type="button"
-              variant="outline"
-              role="combobox"
-              aria-expanded={open}
-              disabled={disabled}
-              className={cn(
-                "w-full justify-start text-left font-normal",
-                !selectedCustomer && "text-muted-foreground",
-              )}
-            />
-          }
-        >
-          {selectedCustomer ? (
-            <span className="truncate flex-1">
-              {selectedCustomer.company_name} ({selectedCustomer.normalized_business_number})
-            </span>
-          ) : (
-            <span className="truncate flex-1">{placeholder}</span>
-          )}
+        <div className="relative">
+          <PopoverTrigger
+            render={
+              <Button
+                type="button"
+                variant="outline"
+                role="combobox"
+                aria-expanded={open}
+                disabled={disabled}
+                className={cn(
+                  "w-full justify-start pr-9 text-left font-normal",
+                  !selectedCustomer && "text-muted-foreground",
+                )}
+              />
+            }
+          >
+            {selectedCustomer ? (
+              <span className="truncate flex-1">
+                {selectedCustomer.company_name} ({selectedCustomer.normalized_business_number})
+              </span>
+            ) : (
+              <span className="truncate flex-1">{placeholder}</span>
+            )}
+          </PopoverTrigger>
           {selectedCustomer && onClear ? (
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={(e) => {
-                e.stopPropagation();
-                onClear();
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.stopPropagation();
-                  onClear();
-                }
-              }}
-              className="ml-1 rounded-sm opacity-70 hover:opacity-100 focus:outline-none cursor-pointer"
+            <button
+              type="button"
+              onClick={onClear}
+              className="absolute right-2 top-1/2 inline-flex size-5 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               aria-label="Clear customer filter"
             >
               ×
-            </span>
+            </button>
           ) : (
-            <Search className="ml-1 size-4 shrink-0 opacity-50" />
+            <Search className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 shrink-0 opacity-50" />
           )}
-        </PopoverTrigger>
+        </div>
         <PopoverContent className="w-[24rem] p-0" align="start">
           <Command shouldFilter={false}>
             <CommandInput placeholder={searchPlaceholder ?? placeholder} value={query} onValueChange={setQuery} />
@@ -361,6 +364,23 @@ export function CustomerCombobox({
         busy={creating}
       >
         <form onSubmit={handleCreateSubmit} className="space-y-4" noValidate>
+          {duplicateMatch ? (
+            <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-foreground" role="alert">
+              <p>
+                A customer with business number "{duplicateMatch.normalized_business_number}" already exists:
+                {" "}
+                <strong>{duplicateMatch.existing_customer_name}</strong>
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button type="button" size="sm" onClick={handleUseExistingCustomer}>
+                  Use existing customer
+                </Button>
+                <Button type="button" size="sm" variant="outline" onClick={() => setDuplicateMatch(null)}>
+                  Continue editing
+                </Button>
+              </div>
+            </div>
+          ) : null}
           <div className="grid gap-3 sm:grid-cols-2">
             <Input
               placeholder="Company name *"
