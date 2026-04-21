@@ -1,6 +1,6 @@
 # Story 23.3: Quotation Authoring and Lifecycle
 
-Status: drafted
+Status: done
 
 ## Story
 
@@ -35,28 +35,28 @@ This story should make quotation the canonical commercial-offer document without
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add the quotation model, schemas, and base-currency commercial contract. (AC: 1-3, 6)
-  - [ ] Create a quotation model with explicit `quotation_to` and `party_name` targeting fields compatible with customer, lead, and prospect contexts.
-  - [ ] Add transaction date, valid-till, company, item lines, taxes, totals, contact fields, distinct billing and shipping address fields, UTM attribution fields, a reusable terms-template link plus inline terms override, opportunity backlink, and revision lineage fields.
-  - [ ] Keep the first slice on the current base-currency model while leaving clear extension seams for Epic 25 currency and payment-term enhancements.
-  - [ ] Add auto-repeat-ready metadata without implementing recurring generation here.
-- [ ] Task 2: Implement quotation CRUD and lifecycle services. (AC: 1-7)
-  - [ ] Add create, list, detail, update, and lifecycle-transition service logic for quotations.
-  - [ ] Enforce the validated status model `draft -> open -> replied -> partially ordered | ordered` with alternate `lost`, `cancelled`, and `expired` paths.
-  - [ ] Add expiry evaluation based on valid-till through service-level or read-time computation in the first slice without tying the story to a full scheduler platform.
-  - [ ] Compute `partially ordered` and `ordered` status from linked downstream order coverage rather than making those states purely manual toggles.
-- [ ] Task 3: Add revision, loss, and competitor handling. (AC: 4-5)
-  - [ ] Support amendment or revision lineage through an explicit backlink such as `amended_from` or equivalent, with no silent in-place overwrite of prior commercial records.
-  - [ ] Add structured lost-reason and competitor capture on lost quotations.
-  - [ ] Preserve prior commercial context and notes across revisions.
-- [ ] Task 4: Build the quotation authoring and detail UI. (AC: 1-6)
-  - [ ] Add quotation list, create, detail, and revision flows inside the CRM workspace.
-  - [ ] Surface validity, item totals, status, source opportunity, and loss context clearly in list and detail views.
-  - [ ] Expose an order-conversion seam in the UI only as a handoff action for Story 23.4, not as implemented conversion behavior in this story.
-- [ ] Task 5: Add focused tests and validation. (AC: 1-7)
-  - [ ] Add backend tests for lifecycle transitions, expiry behavior, revision lineage, lost-reason capture, and auto-repeat metadata persistence.
-  - [ ] Add frontend tests for quotation create/edit flow, state visibility, revision UX, and loss handling.
-  - [ ] Validate that no order or invoice write logic lands in this story.
+- [x] Task 1: Add the quotation model, schemas, and base-currency commercial contract. (AC: 1-3, 6)
+  - [x] Create a quotation model with explicit `quotation_to` and `party_name` targeting fields compatible with customer, lead, and prospect contexts.
+  - [x] Add transaction date, valid-till, company, item lines, taxes, totals, contact fields, distinct billing and shipping address fields, UTM attribution fields, a reusable terms-template link plus inline terms override, opportunity backlink, and revision lineage fields.
+  - [x] Keep the first slice on the current base-currency model while leaving clear extension seams for Epic 25 currency and payment-term enhancements.
+  - [x] Add auto-repeat-ready metadata without implementing recurring generation here.
+- [x] Task 2: Implement quotation CRUD and lifecycle services. (AC: 1-7)
+  - [x] Add create, list, detail, update, and lifecycle-transition service logic for quotations.
+  - [x] Enforce the validated status model `draft -> open -> replied -> partially ordered | ordered` with alternate `lost`, `cancelled`, and `expired` paths.
+  - [x] Add expiry evaluation based on valid-till through service-level or read-time computation in the first slice without tying the story to a full scheduler platform.
+  - [x] Compute `partially ordered` and `ordered` status from linked downstream order coverage rather than making those states purely manual toggles.
+- [x] Task 3: Add revision, loss, and competitor handling. (AC: 4-5)
+  - [x] Support amendment or revision lineage through an explicit backlink such as `amended_from` or equivalent, with no silent in-place overwrite of prior commercial records.
+  - [x] Add structured lost-reason and competitor capture on lost quotations.
+  - [x] Preserve prior commercial context and notes across revisions.
+- [x] Task 4: Build the quotation authoring and detail UI. (AC: 1-6)
+  - [x] Add quotation list, create, detail, and revision flows inside the CRM workspace.
+  - [x] Surface validity, item totals, status, source opportunity, and loss context clearly in list and detail views.
+  - [x] Expose an order-conversion seam in the UI only as a handoff action for Story 23.4, not as implemented conversion behavior in this story.
+- [x] Task 5: Add focused tests and validation. (AC: 1-7)
+  - [x] Add backend tests for lifecycle transitions, expiry behavior, revision lineage, lost-reason capture, and auto-repeat metadata persistence.
+  - [x] Add frontend tests for quotation create/edit flow, state visibility, revision UX, and loss handling.
+  - [x] Validate that no order or invoice write logic lands in this story.
 
 ## Dev Notes
 
@@ -115,12 +115,44 @@ GPT-5.4
 
 ### Debug Log References
 
-- Story draft only; implementation and validation commands not run yet.
+- `cd /Users/changtom/Downloads/UltrERP/backend && uv run pytest tests/domains/crm/test_quotation_service.py tests/domains/crm/test_quotation_routes.py -q`
+- `cd /Users/changtom/Downloads/UltrERP/backend && uv run pytest tests/domains/crm/test_routes.py tests/domains/crm/test_lead_service.py tests/domains/crm/test_opportunity_service.py tests/domains/crm/test_opportunity_routes.py tests/domains/crm/test_quotation_service.py tests/domains/crm/test_quotation_routes.py -q`
+- `cd /Users/changtom/Downloads/UltrERP && pnpm exec vitest run src/tests/crm/CreateQuotationPage.test.tsx src/tests/crm/QuotationListPage.test.tsx src/tests/crm/QuotationDetailPage.test.tsx src/tests/crm/OpportunityDetailPage.test.tsx`
+- `cd /Users/changtom/Downloads/UltrERP && pnpm exec vitest run src/tests/crm/CreateLeadPage.test.tsx src/tests/crm/LeadDetailPage.test.tsx src/tests/crm/LeadListPage.test.tsx src/tests/crm/CreateOpportunityPage.test.tsx src/tests/crm/OpportunityDetailPage.test.tsx src/tests/crm/OpportunityListPage.test.tsx src/tests/crm/CreateQuotationPage.test.tsx src/tests/crm/QuotationDetailPage.test.tsx src/tests/crm/QuotationListPage.test.tsx`
 
 ### Completion Notes List
 
 - 2026-04-21: Drafted Story 23.3 from Epic 23 and the validated quotation research, keeping quotation as a formal pre-order commercial record with lifecycle, revision, loss, and auto-repeat metadata while deferring conversion to Story 23.4.
+- 2026-04-21: Implemented a tenant-scoped CRM quotation record with dynamic party targeting, transaction and validity dates, base-currency totals, taxes, contact and address context, opportunity backlinking, amendment lineage, competitor and lost-reason capture, and auto-repeat-ready metadata without embedding sales-order, invoice, or GL writes.
+- 2026-04-21: Added CRM quotation create/list/detail/revision UI, opportunity-detail handoff into prefilled quotation authoring, localized route and navigation wiring, and focused backend/frontend CRM regression coverage for Stories 23.1 through 23.3.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/23-3-quotation-authoring-and-lifecycle.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `backend/app/main.py`
+- `backend/domains/crm/models.py`
+- `backend/domains/crm/routes.py`
+- `backend/domains/crm/schemas.py`
+- `backend/domains/crm/service.py`
+- `backend/tests/domains/crm/test_quotation_routes.py`
+- `backend/tests/domains/crm/test_quotation_service.py`
+- `migrations/versions/4d6e7f8a9b0c_add_crm_quotations.py`
+- `public/locales/en/common.json`
+- `public/locales/zh-Hant/common.json`
+- `src/App.tsx`
+- `src/components/crm/QuotationForm.tsx`
+- `src/components/crm/QuotationResultsTable.tsx`
+- `src/domain/crm/types.ts`
+- `src/lib/api/crm.ts`
+- `src/lib/navigation.tsx`
+- `src/lib/routes.ts`
+- `src/lib/schemas/quotation.schema.ts`
+- `src/pages/crm/CreateQuotationPage.tsx`
+- `src/pages/crm/OpportunityDetailPage.tsx`
+- `src/pages/crm/QuotationDetailPage.tsx`
+- `src/pages/crm/QuotationListPage.tsx`
+- `src/tests/crm/CreateQuotationPage.test.tsx`
+- `src/tests/crm/OpportunityDetailPage.test.tsx`
+- `src/tests/crm/QuotationDetailPage.test.tsx`
+- `src/tests/crm/QuotationListPage.test.tsx`

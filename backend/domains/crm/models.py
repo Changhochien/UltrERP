@@ -6,7 +6,7 @@ import uuid
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
-from sqlalchemy import JSON, Date, DateTime, Index, Integer, Numeric, String, Text, Uuid
+from sqlalchemy import JSON, Boolean, Date, DateTime, Index, Integer, Numeric, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from common.database import Base
@@ -121,4 +121,77 @@ class Opportunity(Base):
         Index("ix_crm_opportunities_tenant_status", "tenant_id", "status"),
         Index("ix_crm_opportunities_tenant_party", "tenant_id", "opportunity_from", "party_name"),
         Index("ix_crm_opportunities_tenant_expected_closing", "tenant_id", "expected_closing"),
+    )
+
+
+class Quotation(Base):
+    __tablename__ = "crm_quotations"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+
+    quotation_to: Mapped[str] = mapped_column(String(20), nullable=False)
+    party_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    party_label: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="draft")
+    transaction_date: Mapped[date] = mapped_column(Date, nullable=False)
+    valid_till: Mapped[date] = mapped_column(Date, nullable=False)
+    company: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="TWD")
+
+    subtotal: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0.00"))
+    total_taxes: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0.00"))
+    grand_total: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0.00"))
+    base_grand_total: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0.00"))
+    ordered_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0.00"))
+    order_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    contact_person: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    contact_email: Mapped[str] = mapped_column(String(254), nullable=False, default="")
+    contact_mobile: Mapped[str] = mapped_column(String(30), nullable=False, default="")
+    job_title: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    territory: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    customer_group: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    billing_address: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    shipping_address: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+    utm_source: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    utm_medium: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    utm_campaign: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    utm_content: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+
+    items: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False, default=list)
+    taxes: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False, default=list)
+    terms_template: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    terms_and_conditions: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    opportunity_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    amended_from: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    revision_no: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    lost_reason: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    competitor_name: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    loss_notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+    auto_repeat_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    auto_repeat_frequency: Mapped[str] = mapped_column(String(40), nullable=False, default="")
+    auto_repeat_until: Mapped[date | None] = mapped_column(Date, nullable=True)
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+    version: Mapped[int] = mapped_column(nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(tz=UTC),
+        onupdate=lambda: datetime.now(tz=UTC),
+    )
+
+    __table_args__ = (
+        Index("ix_crm_quotations_tenant_status", "tenant_id", "status"),
+        Index("ix_crm_quotations_tenant_party", "tenant_id", "quotation_to", "party_name"),
+        Index("ix_crm_quotations_tenant_valid_till", "tenant_id", "valid_till"),
+        Index("ix_crm_quotations_tenant_opportunity", "tenant_id", "opportunity_id"),
     )

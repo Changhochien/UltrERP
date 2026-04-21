@@ -21,6 +21,8 @@ import {
   CRM_LEADS_ROUTE,
   CRM_OPPORTUNITY_CREATE_ROUTE,
   CRM_OPPORTUNITIES_ROUTE,
+  CRM_QUOTATION_CREATE_ROUTE,
+  CRM_QUOTATIONS_ROUTE,
   CUSTOMER_CREATE_ROUTE,
   CUSTOMERS_ROUTE,
   HOME_ROUTE,
@@ -110,6 +112,13 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
         icon: BriefcaseBusiness,
       },
       {
+        feature: "crm",
+        label: "nav.crmQuotations",
+        to: CRM_QUOTATIONS_ROUTE,
+        description: "routes.crmQuotations.description",
+        icon: ReceiptText,
+      },
+      {
         feature: "customers",
         label: "nav.customers",
         to: CUSTOMERS_ROUTE,
@@ -174,6 +183,8 @@ export const ROUTE_CONTEXT_KEYS = [
   { match: CRM_LEAD_CREATE_ROUTE, labelKey: "routes.createLead.label", descriptionKey: "routes.createLead.description" },
   { match: CRM_OPPORTUNITIES_ROUTE, labelKey: "routes.crmOpportunities.label", descriptionKey: "routes.crmOpportunities.description" },
   { match: CRM_OPPORTUNITY_CREATE_ROUTE, labelKey: "routes.createOpportunity.label", descriptionKey: "routes.createOpportunity.description" },
+  { match: CRM_QUOTATIONS_ROUTE, labelKey: "routes.crmQuotations.label", descriptionKey: "routes.crmQuotations.description" },
+  { match: CRM_QUOTATION_CREATE_ROUTE, labelKey: "routes.createQuotation.label", descriptionKey: "routes.createQuotation.description" },
   { match: CUSTOMERS_ROUTE, labelKey: "routes.customers.label", descriptionKey: "routes.customers.description" },
   { match: CUSTOMER_CREATE_ROUTE, labelKey: "routes.createCustomer.label", descriptionKey: "routes.createCustomer.description" },
   { match: INTELLIGENCE_ROUTE, labelKey: "routes.intelligence.label", descriptionKey: "routes.intelligence.description" },
@@ -299,6 +310,14 @@ export function getRouteContext(pathname: string) {
     return {
       labelKey: "routes.opportunityDetail.label",
       descriptionKey: "routes.opportunityDetail.description",
+      sectionKey: "nav.revenue",
+    };
+  }
+
+  if (pathname.startsWith(`${CRM_QUOTATIONS_ROUTE}/`) && pathname !== CRM_QUOTATION_CREATE_ROUTE) {
+    return {
+      labelKey: "routes.quotationDetail.label",
+      descriptionKey: "routes.quotationDetail.description",
       sectionKey: "nav.revenue",
     };
   }

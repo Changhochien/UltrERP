@@ -340,3 +340,185 @@ class OpportunityQuotationHandoff(BaseModel):
     utm_campaign: str
     utm_content: str
     items: list[OpportunityItem]
+
+
+QuotationPartyKind = OpportunityPartyKind
+QuotationItemInput = OpportunityItemInput
+QuotationItem = OpportunityItem
+
+
+class QuotationStatus(StrEnum):
+    DRAFT = "draft"
+    OPEN = "open"
+    REPLIED = "replied"
+    PARTIALLY_ORDERED = "partially_ordered"
+    ORDERED = "ordered"
+    LOST = "lost"
+    CANCELLED = "cancelled"
+    EXPIRED = "expired"
+
+
+class QuotationTaxInput(BaseModel):
+    description: str = Field(..., min_length=1, max_length=200)
+    rate: Decimal = Field(default=Decimal("0.00"), ge=0, max_digits=7, decimal_places=2)
+    tax_amount: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
+
+
+class QuotationTax(QuotationTaxInput):
+    line_no: int = Field(..., ge=1)
+    tax_amount: Decimal = Field(..., ge=0, max_digits=14, decimal_places=2)
+
+
+class QuotationCreate(BaseModel):
+    quotation_to: QuotationPartyKind
+    party_name: str = Field(..., min_length=1, max_length=200)
+    transaction_date: date
+    valid_till: date
+    company: str = Field(..., min_length=1, max_length=200)
+    currency: str = Field(default="TWD", min_length=3, max_length=3)
+    contact_person: str = Field(default="", max_length=120)
+    contact_email: str = Field(default="", max_length=254)
+    contact_mobile: str = Field(default="", max_length=30)
+    job_title: str = Field(default="", max_length=120)
+    territory: str = Field(default="", max_length=120)
+    customer_group: str = Field(default="", max_length=120)
+    billing_address: str = Field(default="", max_length=4000)
+    shipping_address: str = Field(default="", max_length=4000)
+    utm_source: str = Field(default="", max_length=120)
+    utm_medium: str = Field(default="", max_length=120)
+    utm_campaign: str = Field(default="", max_length=120)
+    utm_content: str = Field(default="", max_length=200)
+    opportunity_id: uuid.UUID | None = None
+    items: list[QuotationItemInput] = Field(default_factory=list)
+    taxes: list[QuotationTaxInput] = Field(default_factory=list)
+    terms_template: str = Field(default="", max_length=200)
+    terms_and_conditions: str = Field(default="", max_length=4000)
+    auto_repeat_enabled: bool = False
+    auto_repeat_frequency: str = Field(default="", max_length=40)
+    auto_repeat_until: date | None = None
+    notes: str = Field(default="", max_length=4000)
+
+
+class QuotationRevisionCreate(BaseModel):
+    quotation_to: QuotationPartyKind | None = None
+    party_name: str | None = Field(default=None, min_length=1, max_length=200)
+    transaction_date: date | None = None
+    valid_till: date | None = None
+    company: str | None = Field(default=None, min_length=1, max_length=200)
+    currency: str | None = Field(default=None, min_length=3, max_length=3)
+    contact_person: str | None = Field(default=None, max_length=120)
+    contact_email: str | None = Field(default=None, max_length=254)
+    contact_mobile: str | None = Field(default=None, max_length=30)
+    job_title: str | None = Field(default=None, max_length=120)
+    territory: str | None = Field(default=None, max_length=120)
+    customer_group: str | None = Field(default=None, max_length=120)
+    billing_address: str | None = Field(default=None, max_length=4000)
+    shipping_address: str | None = Field(default=None, max_length=4000)
+    utm_source: str | None = Field(default=None, max_length=120)
+    utm_medium: str | None = Field(default=None, max_length=120)
+    utm_campaign: str | None = Field(default=None, max_length=120)
+    utm_content: str | None = Field(default=None, max_length=200)
+    opportunity_id: uuid.UUID | None = None
+    items: list[QuotationItemInput] | None = None
+    taxes: list[QuotationTaxInput] | None = None
+    terms_template: str | None = Field(default=None, max_length=200)
+    terms_and_conditions: str | None = Field(default=None, max_length=4000)
+    auto_repeat_enabled: bool | None = None
+    auto_repeat_frequency: str | None = Field(default=None, max_length=40)
+    auto_repeat_until: date | None = None
+    notes: str | None = Field(default=None, max_length=4000)
+
+
+class QuotationUpdate(QuotationRevisionCreate):
+    version: int = Field(..., ge=1)
+
+
+class QuotationTransition(BaseModel):
+    status: QuotationStatus
+    lost_reason: str = Field(default="", max_length=200)
+    competitor_name: str = Field(default="", max_length=200)
+    loss_notes: str = Field(default="", max_length=4000)
+
+
+class QuotationSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    quotation_to: QuotationPartyKind
+    party_name: str
+    party_label: str
+    status: QuotationStatus
+    transaction_date: date
+    valid_till: date
+    company: str
+    currency: str
+    grand_total: Decimal
+    opportunity_id: uuid.UUID | None = None
+    amended_from: uuid.UUID | None = None
+    revision_no: int
+    updated_at: datetime
+
+
+class QuotationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    quotation_to: QuotationPartyKind
+    party_name: str
+    party_label: str
+    status: QuotationStatus
+    transaction_date: date
+    valid_till: date
+    company: str
+    currency: str
+    subtotal: Decimal
+    total_taxes: Decimal
+    grand_total: Decimal
+    base_grand_total: Decimal
+    ordered_amount: Decimal
+    order_count: int
+    contact_person: str
+    contact_email: str
+    contact_mobile: str
+    job_title: str
+    territory: str
+    customer_group: str
+    billing_address: str
+    shipping_address: str
+    utm_source: str
+    utm_medium: str
+    utm_campaign: str
+    utm_content: str
+    items: list[QuotationItem]
+    taxes: list[QuotationTax]
+    terms_template: str
+    terms_and_conditions: str
+    opportunity_id: uuid.UUID | None = None
+    amended_from: uuid.UUID | None = None
+    revision_no: int
+    lost_reason: str
+    competitor_name: str
+    loss_notes: str
+    auto_repeat_enabled: bool
+    auto_repeat_frequency: str
+    auto_repeat_until: date | None = None
+    notes: str
+    version: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class QuotationListParams(BaseModel):
+    q: str | None = Field(default=None, max_length=200)
+    status: QuotationStatus | None = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=500)
+
+
+class QuotationListResponse(BaseModel):
+    items: list[QuotationSummary]
+    page: int
+    page_size: int
+    total_count: int
+    total_pages: int

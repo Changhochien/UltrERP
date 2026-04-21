@@ -25,6 +25,9 @@ import {
   CRM_OPPORTUNITY_CREATE_ROUTE,
   CRM_OPPORTUNITY_DETAIL_ROUTE,
   CRM_OPPORTUNITIES_ROUTE,
+  CRM_QUOTATION_CREATE_ROUTE,
+  CRM_QUOTATION_DETAIL_ROUTE,
+  CRM_QUOTATIONS_ROUTE,
   CUSTOMER_CREATE_ROUTE,
   CUSTOMER_DETAIL_ROUTE,
   CUSTOMERS_ROUTE,
@@ -59,6 +62,8 @@ import CreateLeadPage from "./pages/crm/CreateLeadPage";
 import { LeadListPage } from "./pages/crm/LeadListPage";
 import CreateOpportunityPage from "./pages/crm/CreateOpportunityPage";
 import { OpportunityListPage } from "./pages/crm/OpportunityListPage";
+import CreateQuotationPage from "./pages/crm/CreateQuotationPage";
+import { QuotationListPage } from "./pages/crm/QuotationListPage";
 import CreateCustomerPage from "./pages/customers/CreateCustomerPage";
 import { CustomerListPage } from "./pages/customers/CustomerListPage";
 import { DashboardPage } from "./pages/dashboard/DashboardPage";
@@ -194,6 +199,23 @@ function OpportunityListRoute() {
   return (
     <RoutedPage>
       <OpportunityListPage />
+    </RoutedPage>
+  );
+}
+
+function CreateQuotationRoute() {
+  const navigate = useNavigate();
+  return (
+    <RoutedPage>
+      <CreateQuotationPage onNavigate={(path) => navigate(path)} />
+    </RoutedPage>
+  );
+}
+
+function QuotationListRoute() {
+  return (
+    <RoutedPage>
+      <QuotationListPage />
     </RoutedPage>
   );
 }
@@ -416,6 +438,30 @@ export default function App() {
             element={
               <ProtectedAppRoute requiredFeature="crm" requiredWrite>
                 <CreateOpportunityRoute />
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={CRM_QUOTATIONS_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="crm">
+                <QuotationListRoute />
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={CRM_QUOTATION_DETAIL_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="crm">
+                <QuotationListRoute />
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={CRM_QUOTATION_CREATE_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="crm" requiredWrite>
+                <CreateQuotationRoute />
               </ProtectedAppRoute>
             }
           />

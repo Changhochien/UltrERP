@@ -200,10 +200,272 @@
   },
   "settingsPage": {
     "eyebrow": "設定",
+    "title": "設定",
+    "description": "管理工作區設定與偏好設定。",
     "emptyCategory": "此分類中沒有任何設定。",
     "noCategories": "目前沒有可用的設定分類。",
     "saveError": "儲存設定失敗。",
-    "resetError": "重設設定失敗。"
+    "resetError": "重設設定失敗。",
+    "resetDone": "設定已重設。",
+    "undo": "復原",
+    "invalidInt": "必須是整數。",
+    "invalidJson": "必須是有效的 JSON。",
+    "settingsCount_one": "{{count}} 項設定",
+    "settingsCount_other": "{{count}} 項設定",
+    "lastUpdated": "上次更新",
+    "by": "由",
+    "configureMessage": "在此配置您的工作區設定。",
+    "sensitive": "敏感",
+    "nullable": "可空",
+    "showPassword": "顯示密碼",
+    "hidePassword": "隱藏密碼",
+    "emptyPlaceholder": "（空）",
+    "jsonPlaceholder": "JSON 陣列，例如 [\"https://example.com\"]",
+    "resetTitle": "重設為預設值",
+    "categories": {
+      "general": {
+        "label": "一般",
+        "description": "基本工作區配置與偏好設定"
+      },
+      "notification": {
+        "label": "通知",
+        "description": "電子郵件、簡訊及應用程式內通知設定"
+      },
+      "notifications": {
+        "label": "通知",
+        "description": "電子郵件、簡訊及應用程式內通知設定"
+      },
+      "security": {
+        "label": "安全性",
+        "description": "驗證、授權與存取控制"
+      },
+      "appearance": {
+        "label": "外觀",
+        "description": "主題、色彩與視覺呈現"
+      },
+      "data": {
+        "label": "資料",
+        "description": "資料管理、備份與匯出設定"
+      },
+      "api": {
+        "label": "API",
+        "description": "API 金鑰、網頁鉤子與整合"
+      },
+      "privacy": {
+        "label": "隱私",
+        "description": "資料隱私與同意設定"
+      },
+      "email": {
+        "label": "電子郵件",
+        "description": "郵件伺服器與範本設定"
+      },
+      "integration": {
+        "label": "整合",
+        "description": "第三方服務連線"
+      },
+      "billing": {
+        "label": "帳務",
+        "description": "訂閱與付款設定"
+      },
+      "egui": {
+        "label": "電子審批",
+        "description": "電子審批流程設定"
+      },
+      "auth": {
+        "label": "驗證",
+        "description": "登入、密碼與工作階段設定"
+      },
+      "posthog": {
+        "label": "分析",
+        "description": "PostHog 分析與事件追蹤設定"
+      },
+      "object_store": {
+        "label": "物件儲存",
+        "description": "檔案儲存與物件儲存設定"
+      },
+      "invoice": {
+        "label": "發票",
+        "description": "發票產生與編號設定"
+      },
+      "intelligence": {
+        "label": "Intelligence",
+        "description": "AI 與分析 Intelligence 設定"
+      },
+      "inventory": {
+        "label": "庫存",
+        "description": "庫存管理與倉庫設定"
+      },
+      "approval": {
+        "label": "審批",
+        "description": "審批流程與路由設定"
+      },
+      "legacy_import": {
+        "label": "舊資料匯入",
+        "description": "資料遷移與匯入工具"
+      },
+      "verification": {
+        "label": "驗證",
+        "description": "使用者驗證與身份設定"
+      }
+    },
+    "types": {
+      "bool": "開關",
+      "int": "數字",
+      "literal": "選項",
+      "json": "JSON",
+      "tuple": "陣列",
+      "str": "文字"
+    },
+    "keys": {
+      "log_level": "日誌級別",
+      "jwt_secret": "JWT 密鑰",
+      "jwt_expiry": "JWT 有效期",
+      "egui_tracking_enabled": "啟用審批追蹤",
+      "email_host": "SMTP 主機",
+      "email_port": "SMTP 連接埠",
+      "email_user": "SMTP 使用者名稱",
+      "email_password": "SMTP 密碼",
+      "email_from": "寄件地址",
+      "email_use_tls": "使用 TLS",
+      "timezone": "時區",
+      "currency": "貨幣",
+      "company_name": "公司名稱",
+      "company_address": "公司地址",
+      "tax_id": "統一編號",
+      "invoice_prefix": "發票前綴",
+      "invoice_footer": "發票頁尾",
+      "auto_backup": "自動備份",
+      "backup_frequency": "備份頻率",
+      "backup_retention_days": "備份保留天數",
+      "session_timeout": "工作階段逾時",
+      "max_login_attempts": "最大登入嘗試次數",
+      "password_min_length": "最小密碼長度",
+      "require_mfa": "需要 MFA",
+      "api_enabled": "啟用 API",
+      "api_rate_limit": "API 速率限制",
+      "webhook_url": "Webhook 網址",
+      "webhook_secret": "Webhook 密鑰",
+      "default_warehouse": "預設倉庫",
+      "low_stock_threshold": "低庫存閾值",
+      "auto_reorder": "自動補貨",
+      "reorder_point": "補貨點",
+      "safety_stock_days": "安全庫存天數",
+      "lead_time_days": "前置時間天數",
+      "default_tax_rate": "預設稅率",
+      "discount_allowed": "允許折扣",
+      "credit_limit_default": "預設信用額度",
+      "payment_terms": "付款條款",
+      "reminder_days": "提醒天數",
+      "overdue_charge": "逾期費用率",
+      "enabled": "已啟用",
+      "disabled": "已停用",
+      "site_name": "網站名稱",
+      "site_url": "網站網址",
+      "logo_url": "Logo 網址",
+      "favicon_url": "Favicon 網址",
+      "theme": "主題",
+      "theme_light": "淺色",
+      "theme_dark": "深色",
+      "theme_system": "系統",
+      "date_format": "日期格式",
+      "time_format": "時間格式",
+      "number_format": "數字格式",
+      "decimal_places": "小數位數",
+      "thousand_separator": "千位分隔符",
+      "decimal_separator": "小數分隔符",
+      "notification_email": "電子郵件通知",
+      "notification_sms": "簡訊通知",
+      "notification_push": "推播通知",
+      "notification_frequency": "通知頻率",
+      "low_stock_alert": "低庫存警報",
+      "order_confirm_alert": "訂單確認警報",
+      "payment_reminder_alert": "付款提醒警報",
+      "newsletter_enabled": "電子報已啟用",
+      "marketing_consent": "行銷同意",
+      "analytics_enabled": "分析已啟用",
+      "maintenance_mode": "維護模式",
+      "debug_mode": "除錯模式",
+      "cache_enabled": "快取已啟用",
+      "cache_ttl": "快取 TTL",
+      "smtp_debug": "SMTP 除錯",
+      "send_test_email": "傳送測試郵件",
+      "test_email_recipient": "測試郵件收件人",
+      "posthog_api_key": "PostHog API 金鑰",
+      "posthog_enabled": "啟用 PostHog",
+      "posthog_host": "PostHog 主機",
+      "posthog_debug": "PostHog 除錯模式",
+      "s3_bucket": "S3 儲存桶名稱",
+      "s3_region": "S3 區域",
+      "s3_access_key": "S3 存取金鑰",
+      "s3_secret_key": "S3 私密金鑰",
+      "s3_endpoint": "S3 端點網址",
+      "storage_provider": "儲存供應商",
+      "max_file_size": "最大檔案大小 (MB)",
+      "allowed_file_types": "允許的檔案類型",
+      "invoice_template": "發票範本",
+      "invoice_number_format": "發票編號格式",
+      "auto_send_invoice": "自動傳送發票",
+      "invoice_footer_text": "發票頁尾文字",
+      "invoice_notes": "發票備註",
+      "default_payment_terms": "預設付款條款",
+      "late_fee_percentage": "逾期費用百分比",
+      "min_order_amount": "最低訂單金額",
+      "max_discount_percentage": "最高折扣百分比",
+      "intelligence_enabled": "啟用 Intelligence",
+      "prediction_model": "預測模型",
+      "forecast_horizon": "預測範圍 (天)",
+      "anomaly_detection": "異常偵測",
+      "recommendation_engine": "推薦引擎",
+      "stock_replenishment": "庫存補貨 AI",
+      "demand_forecast": "需求預測",
+      "supplier_recommendations": "供應商推薦",
+      "reorder_alerts": "補貨提醒",
+      "stock_count_frequency": "庫存盤點頻率",
+      "auto_stock_adjustment": "自動庫存調整",
+      "negative_stock_allowed": "允許負庫存",
+      "serial_number_tracking": "序號追蹤",
+      "batch_tracking": "批號追蹤",
+      "expiry_tracking": "有效期追蹤",
+      "approval_workflow_enabled": "啟用審批流程",
+      "approval_threshold": "審批門檻",
+      "auto_approve_below": "自動核准低於",
+      "approval_email_notification": "審批郵件通知",
+      "approval_reminder_days": "審批提醒天數",
+      "max_approval_chain": "最大審批鏈",
+      "delegation_enabled": "啟用代理",
+      "import_batch_size": "匯入批次大小",
+      "import_timeout": "匯入逾時 (秒)",
+      "skip_duplicates": "跳過重複項",
+      "update_existing": "更新現有記錄",
+      "validate_before_import": "匯入前驗證",
+      "import_log_retention": "匯入日誌保留 (天)",
+      "backup_before_import": "匯入前備份",
+      "email_verification_required": "需要郵箱驗證",
+      "phone_verification_required": "需要電話驗證",
+      "two_factor_required": "需要雙重驗證",
+      "password_expiry_days": "密碼到期 (天)",
+      "password_history_count": "密碼歷史記錄數",
+      "session_duration": "工作階段時長 (小時)",
+      "idle_timeout": "閒置逾時 (分鐘)",
+      "concurrent_sessions": "允許並存工作階段",
+      "ip_whitelist": "IP 白名單",
+      "intelligence_prospect_gaps_enabled": "Intelligence 潛在空白分析",
+      "intelligence_prospect_gaps_enabled_desc": "啟用潛在空白分析",
+      "intelligence_product_affinity_enabled": "Intelligence 商品關聯分析",
+      "intelligence_product_affinity_enabled_desc": "啟用商品關聯分析",
+      "intelligence_category_trends_enabled": "Intelligence 品類趨勢分析",
+      "intelligence_category_trends_enabled_desc": "啟用品類趨勢分析",
+      "intelligence_customer_risk_signals_enabled": "Intelligence 客戶風險訊號",
+      "intelligence_customer_risk_signals_enabled_desc": "啟用客戶風險訊號",
+      "intelligence_market_opportunities_enabled": "Intelligence 市場機會分析",
+      "intelligence_market_opportunities_enabled_desc": "啟用市場機會分析",
+      "intelligence_revenue_diagnosis_enabled": "Intelligence 營收診斷分析",
+      "intelligence_revenue_diagnosis_enabled_desc": "啟用營收診斷分析",
+      "intelligence_product_performance_enabled": "Intelligence 商品績效分析",
+      "intelligence_product_performance_enabled_desc": "啟用商品績效分析",
+      "intelligence_customer_buying_behavior_enabled": "Intelligence 客戶購買行為分析",
+      "intelligence_customer_buying_behavior_enabled_desc": "啟用客戶購買行為分析"
+    }
   },
   "intelligence": {
     "page": {

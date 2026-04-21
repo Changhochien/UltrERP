@@ -5,14 +5,14 @@ from __future__ import annotations
 from decimal import Decimal
 import re
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.errors import DuplicateLeadConflictError, ValidationError, VersionConflictError
 from common.tenant import DEFAULT_TENANT_ID, set_tenant
-from domains.crm.models import Lead, Opportunity
+from domains.crm.models import Lead, Opportunity, Quotation
 from domains.crm.schemas import (
     LeadCreate,
     LeadCustomerConversionResult,
@@ -31,6 +31,15 @@ from domains.crm.schemas import (
     OpportunityStatus,
     OpportunityTransition,
     OpportunityUpdate,
+    QuotationCreate,
+    QuotationItemInput,
+    QuotationListParams,
+    QuotationPartyKind,
+    QuotationRevisionCreate,
+    QuotationStatus,
+    QuotationTaxInput,
+    QuotationTransition,
+    QuotationUpdate,
 )
 from domains.customers.models import Customer
 from domains.customers.schemas import CustomerCreate
@@ -87,6 +96,25 @@ ALLOWED_OPPORTUNITY_TRANSITIONS: dict[OpportunityStatus, frozenset[OpportunitySt
     OpportunityStatus.CONVERTED: frozenset(),
     OpportunityStatus.CLOSED: frozenset(),
     OpportunityStatus.LOST: frozenset(),
+}
+
+DERIVED_QUOTATION_STATUSES = frozenset(
+    {
+        QuotationStatus.PARTIALLY_ORDERED,
+        QuotationStatus.ORDERED,
+        QuotationStatus.EXPIRED,
+    }
+)
+
+ALLOWED_QUOTATION_TRANSITIONS: dict[QuotationStatus, frozenset[QuotationStatus]] = {
+    QuotationStatus.DRAFT: frozenset({QuotationStatus.OPEN, QuotationStatus.CANCELLED}),
+    QuotationStatus.OPEN: frozenset({QuotationStatus.REPLIED, QuotationStatus.LOST, QuotationStatus.CANCELLED}),
+    QuotationStatus.REPLIED: frozenset({QuotationStatus.OPEN, QuotationStatus.LOST, QuotationStatus.CANCELLED}),
+    QuotationStatus.EXPIRED: frozenset({QuotationStatus.OPEN, QuotationStatus.LOST, QuotationStatus.CANCELLED}),
+    QuotationStatus.PARTIALLY_ORDERED: frozenset(),
+    QuotationStatus.ORDERED: frozenset(),
+    QuotationStatus.LOST: frozenset(),
+    QuotationStatus.CANCELLED: frozenset(),
 }
 
 
@@ -169,6 +197,66 @@ def _ensure_quotation_handoff_allowed(current_status: OpportunityStatus) -> None
         )
 
 
+def _ensure_quotation_transition_allowed(
+    current_status: QuotationStatus,
+    target_status: QuotationStatus,
+) -> None:
+    if target_status in DERIVED_QUOTATION_STATUSES:
+        raise ValidationError(
+            [
+                {
+                    "field": "status",
+                    "message": f"Quotation status '{target_status.value}' is derived from expiry or downstream order coverage.",
+                }
+            ]
+        )
+    if target_status not in ALLOWED_QUOTATION_TRANSITIONS.get(current_status, frozenset()):
+        raise ValidationError(
+            [
+                {
+                    "field": "status",
+                    "message": f"Cannot transition from '{current_status.value}' to '{target_status.value}'.",
+                }
+            ]
+        )
+
+
+def _ensure_quotation_lost_context(data: QuotationTransition) -> None:
+    if data.status == QuotationStatus.LOST and not data.lost_reason.strip():
+        raise ValidationError(
+            [
+                {
+                    "field": "lost_reason",
+                    "message": "Lost quotations require a lost reason.",
+                }
+            ]
+        )
+
+
+def _ensure_quotation_validity(transaction_date: date, valid_till: date) -> None:
+    if valid_till < transaction_date:
+        raise ValidationError(
+            [
+                {
+                    "field": "valid_till",
+                    "message": "Valid till date cannot be earlier than the transaction date.",
+                }
+            ]
+        )
+
+
+def _ensure_auto_repeat_metadata(enabled: bool, frequency: str) -> None:
+    if enabled and not frequency.strip():
+        raise ValidationError(
+            [
+                {
+                    "field": "auto_repeat_frequency",
+                    "message": "Auto repeat frequency is required when auto repeat is enabled.",
+                }
+            ]
+        )
+
+
 def _first_matched_field(data: LeadCreate, candidate: object) -> str:
     normalized_company = _normalize_company_name(data.company_name)
     candidate_company = getattr(
@@ -231,6 +319,92 @@ def _deserialize_opportunity_items(items: list[dict[str, object]]) -> list[Oppor
         )
         for item in items
     ]
+
+
+def _serialize_quotation_items(items: list[QuotationItemInput]) -> list[dict[str, object]]:
+    return _serialize_opportunity_items(items)
+
+
+def _deserialize_quotation_items(items: list[dict[str, object]]) -> list[QuotationItemInput]:
+    return [QuotationItemInput.model_validate(item) for item in items]
+
+
+def _serialize_quotation_taxes(
+    taxes: list[QuotationTaxInput],
+    subtotal: Decimal,
+) -> list[dict[str, object]]:
+    serialized: list[dict[str, object]] = []
+    for line_no, tax in enumerate(taxes, start=1):
+        rate = tax.rate.quantize(Decimal("0.01"))
+        tax_amount = (
+            tax.tax_amount
+            if tax.tax_amount is not None
+            else (subtotal * rate / Decimal("100.00"))
+        ).quantize(Decimal("0.01"))
+        serialized.append(
+            {
+                "line_no": line_no,
+                "description": tax.description.strip(),
+                "rate": f"{rate:.2f}",
+                "tax_amount": f"{tax_amount:.2f}",
+            }
+        )
+    return serialized
+
+
+def _deserialize_quotation_taxes(items: list[dict[str, object]]) -> list[QuotationTaxInput]:
+    return [QuotationTaxInput.model_validate(item) for item in items]
+
+
+def _resolve_serialized_decimal_sum(items: list[dict[str, object]], field_name: str) -> Decimal:
+    return sum((Decimal(str(item[field_name])) for item in items), start=Decimal("0.00")).quantize(Decimal("0.01"))
+
+
+def _derive_quotation_status(quotation: Quotation) -> QuotationStatus:
+    current_status = QuotationStatus(quotation.status)
+    if current_status in {QuotationStatus.LOST, QuotationStatus.CANCELLED, QuotationStatus.ORDERED}:
+        return current_status
+
+    order_count = int(getattr(quotation, "order_count", 0) or 0)
+    ordered_amount = Decimal(str(getattr(quotation, "ordered_amount", Decimal("0.00")) or Decimal("0.00"))).quantize(
+        Decimal("0.01")
+    )
+    grand_total = Decimal(str(getattr(quotation, "grand_total", Decimal("0.00")) or Decimal("0.00"))).quantize(
+        Decimal("0.01")
+    )
+    if order_count > 0:
+        if grand_total > 0 and ordered_amount >= grand_total:
+            return QuotationStatus.ORDERED
+        return QuotationStatus.PARTIALLY_ORDERED
+
+    if current_status == QuotationStatus.EXPIRED:
+        return current_status
+
+    valid_till = getattr(quotation, "valid_till", None)
+    if valid_till is not None and valid_till < date.today() and current_status in {
+        QuotationStatus.DRAFT,
+        QuotationStatus.OPEN,
+        QuotationStatus.REPLIED,
+    }:
+        return QuotationStatus.EXPIRED
+
+    return current_status
+
+
+async def _synchronize_quotation_status(
+    session: AsyncSession,
+    quotation: Quotation,
+    tenant_id: uuid.UUID,
+) -> Quotation:
+    derived_status = _derive_quotation_status(quotation)
+    if derived_status == QuotationStatus(quotation.status):
+        return quotation
+
+    async with session.begin():
+        await set_tenant(session, tenant_id)
+        quotation.status = derived_status
+        quotation.updated_at = datetime.now(tz=UTC)
+    return quotation
 
 
 def _resolve_total_amount(
@@ -947,3 +1121,452 @@ async def prepare_opportunity_quotation_handoff(
         utm_content=opportunity.utm_content,
         items=[OpportunityItem.model_validate(item) for item in opportunity.items],
     )
+
+
+async def create_quotation(
+    session: AsyncSession,
+    data: QuotationCreate,
+    tenant_id: uuid.UUID | None = None,
+) -> Quotation:
+    tid = tenant_id or DEFAULT_TENANT_ID
+    if not data.items:
+        raise ValidationError([{"field": "items", "message": "At least one quotation item is required."}])
+    _ensure_quotation_validity(data.transaction_date, data.valid_till)
+    _ensure_auto_repeat_metadata(data.auto_repeat_enabled, data.auto_repeat_frequency)
+
+    serialized_items = _serialize_quotation_items(data.items)
+    subtotal = _resolve_total_amount(None, serialized_items) or Decimal("0.00")
+    serialized_taxes = _serialize_quotation_taxes(data.taxes, subtotal)
+    total_taxes = _resolve_serialized_decimal_sum(serialized_taxes, "tax_amount")
+    grand_total = (subtotal + total_taxes).quantize(Decimal("0.01"))
+    party_name, party_label, party_defaults = await _resolve_party_context(
+        session,
+        OpportunityPartyKind(data.quotation_to),
+        data.party_name,
+        tid,
+    )
+
+    quotation = Quotation(
+        tenant_id=tid,
+        quotation_to=data.quotation_to,
+        party_name=party_name,
+        party_label=party_label,
+        status=QuotationStatus.DRAFT,
+        transaction_date=data.transaction_date,
+        valid_till=data.valid_till,
+        company=data.company.strip(),
+        currency=data.currency.strip().upper(),
+        subtotal=subtotal,
+        total_taxes=total_taxes,
+        grand_total=grand_total,
+        base_grand_total=grand_total,
+        ordered_amount=Decimal("0.00"),
+        order_count=0,
+        contact_person=_trim(data.contact_person) or party_defaults.get("contact_person", ""),
+        contact_email=_trim(data.contact_email) or party_defaults.get("contact_email", ""),
+        contact_mobile=_trim(data.contact_mobile) or party_defaults.get("contact_mobile", ""),
+        job_title=_trim(data.job_title),
+        territory=_trim(data.territory) or party_defaults.get("territory", ""),
+        customer_group=_trim(data.customer_group),
+        billing_address=_trim(data.billing_address),
+        shipping_address=_trim(data.shipping_address),
+        utm_source=_trim(data.utm_source) or party_defaults.get("utm_source", ""),
+        utm_medium=_trim(data.utm_medium) or party_defaults.get("utm_medium", ""),
+        utm_campaign=_trim(data.utm_campaign) or party_defaults.get("utm_campaign", ""),
+        utm_content=_trim(data.utm_content) or party_defaults.get("utm_content", ""),
+        items=serialized_items,
+        taxes=serialized_taxes,
+        terms_template=_trim(data.terms_template),
+        terms_and_conditions=_trim(data.terms_and_conditions),
+        opportunity_id=data.opportunity_id,
+        auto_repeat_enabled=data.auto_repeat_enabled,
+        auto_repeat_frequency=_trim(data.auto_repeat_frequency),
+        auto_repeat_until=data.auto_repeat_until,
+        notes=_trim(data.notes),
+    )
+
+    async with session.begin():
+        await set_tenant(session, tid)
+        session.add(quotation)
+
+    await session.refresh(quotation)
+    return quotation
+
+
+async def list_quotations(
+    session: AsyncSession,
+    params: QuotationListParams,
+    tenant_id: uuid.UUID | None = None,
+) -> tuple[list[Quotation], int]:
+    tid = tenant_id or DEFAULT_TENANT_ID
+    base = select(Quotation).where(Quotation.tenant_id == tid)
+
+    if params.q:
+        escaped_q = params.q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        like_pattern = f"%{escaped_q}%"
+        base = base.where(
+            or_(
+                Quotation.party_label.ilike(like_pattern, escape="\\"),
+                Quotation.company.ilike(like_pattern, escape="\\"),
+                Quotation.contact_person.ilike(like_pattern, escape="\\"),
+                Quotation.contact_email.ilike(like_pattern, escape="\\"),
+            )
+        )
+
+    if params.status:
+        base = base.where(Quotation.status == params.status)
+
+    count_stmt = select(func.count()).select_from(base.subquery())
+    offset = (params.page - 1) * params.page_size
+    items_stmt = (
+        base.order_by(Quotation.updated_at.desc(), Quotation.valid_till.asc(), Quotation.id.asc())
+        .offset(offset)
+        .limit(params.page_size)
+    )
+
+    async with session.begin():
+        await set_tenant(session, tid)
+        total_result = await session.execute(count_stmt)
+        total_count = total_result.scalar() or 0
+        result = await session.execute(items_stmt)
+        items = list(result.scalars().all())
+
+    for quotation in items:
+        await _synchronize_quotation_status(session, quotation, tid)
+
+    return items, total_count
+
+
+async def get_quotation(
+    session: AsyncSession,
+    quotation_id: uuid.UUID,
+    tenant_id: uuid.UUID | None = None,
+) -> Quotation | None:
+    tid = tenant_id or DEFAULT_TENANT_ID
+    async with session.begin():
+        await set_tenant(session, tid)
+        result = await session.execute(select(Quotation).where(Quotation.id == quotation_id, Quotation.tenant_id == tid))
+        quotation = result.scalar_one_or_none()
+
+    if quotation is None:
+        return None
+    return await _synchronize_quotation_status(session, quotation, tid)
+
+
+async def update_quotation(
+    session: AsyncSession,
+    quotation_id: uuid.UUID,
+    data: QuotationUpdate,
+    tenant_id: uuid.UUID | None = None,
+) -> Quotation | None:
+    tid = tenant_id or DEFAULT_TENANT_ID
+    quotation = await get_quotation(session, quotation_id, tenant_id=tid)
+    if quotation is None:
+        return None
+    if quotation.version != data.version:
+        raise VersionConflictError(expected=data.version, actual=quotation.version)
+
+    fields = data.model_fields_set - {"version"}
+    merged = QuotationCreate(
+        quotation_to=(
+            data.quotation_to
+            if "quotation_to" in fields and data.quotation_to is not None
+            else QuotationPartyKind(quotation.quotation_to)
+        ),
+        party_name=(data.party_name if "party_name" in fields and data.party_name is not None else quotation.party_name),
+        transaction_date=(
+            data.transaction_date
+            if "transaction_date" in fields and data.transaction_date is not None
+            else quotation.transaction_date
+        ),
+        valid_till=(data.valid_till if "valid_till" in fields and data.valid_till is not None else quotation.valid_till),
+        company=(data.company if "company" in fields and data.company is not None else quotation.company),
+        currency=(data.currency if "currency" in fields and data.currency is not None else quotation.currency),
+        contact_person=(
+            data.contact_person if "contact_person" in fields and data.contact_person is not None else quotation.contact_person
+        ),
+        contact_email=(
+            data.contact_email if "contact_email" in fields and data.contact_email is not None else quotation.contact_email
+        ),
+        contact_mobile=(
+            data.contact_mobile if "contact_mobile" in fields and data.contact_mobile is not None else quotation.contact_mobile
+        ),
+        job_title=(data.job_title if "job_title" in fields and data.job_title is not None else quotation.job_title),
+        territory=(data.territory if "territory" in fields and data.territory is not None else quotation.territory),
+        customer_group=(
+            data.customer_group if "customer_group" in fields and data.customer_group is not None else quotation.customer_group
+        ),
+        billing_address=(
+            data.billing_address if "billing_address" in fields and data.billing_address is not None else quotation.billing_address
+        ),
+        shipping_address=(
+            data.shipping_address if "shipping_address" in fields and data.shipping_address is not None else quotation.shipping_address
+        ),
+        utm_source=(data.utm_source if "utm_source" in fields and data.utm_source is not None else quotation.utm_source),
+        utm_medium=(data.utm_medium if "utm_medium" in fields and data.utm_medium is not None else quotation.utm_medium),
+        utm_campaign=(
+            data.utm_campaign if "utm_campaign" in fields and data.utm_campaign is not None else quotation.utm_campaign
+        ),
+        utm_content=(
+            data.utm_content if "utm_content" in fields and data.utm_content is not None else quotation.utm_content
+        ),
+        opportunity_id=(data.opportunity_id if "opportunity_id" in fields else quotation.opportunity_id),
+        items=(data.items if "items" in fields and data.items is not None else _deserialize_quotation_items(quotation.items)),
+        taxes=(data.taxes if "taxes" in fields and data.taxes is not None else _deserialize_quotation_taxes(quotation.taxes)),
+        terms_template=(
+            data.terms_template if "terms_template" in fields and data.terms_template is not None else quotation.terms_template
+        ),
+        terms_and_conditions=(
+            data.terms_and_conditions
+            if "terms_and_conditions" in fields and data.terms_and_conditions is not None
+            else quotation.terms_and_conditions
+        ),
+        auto_repeat_enabled=(
+            data.auto_repeat_enabled
+            if "auto_repeat_enabled" in fields and data.auto_repeat_enabled is not None
+            else quotation.auto_repeat_enabled
+        ),
+        auto_repeat_frequency=(
+            data.auto_repeat_frequency
+            if "auto_repeat_frequency" in fields and data.auto_repeat_frequency is not None
+            else quotation.auto_repeat_frequency
+        ),
+        auto_repeat_until=(data.auto_repeat_until if "auto_repeat_until" in fields else quotation.auto_repeat_until),
+        notes=(data.notes if "notes" in fields and data.notes is not None else quotation.notes),
+    )
+
+    _ensure_quotation_validity(merged.transaction_date, merged.valid_till)
+    _ensure_auto_repeat_metadata(merged.auto_repeat_enabled, merged.auto_repeat_frequency)
+    serialized_items = _serialize_quotation_items(merged.items)
+    if not serialized_items:
+        raise ValidationError([{"field": "items", "message": "At least one quotation item is required."}])
+    subtotal = _resolve_total_amount(None, serialized_items) or Decimal("0.00")
+    serialized_taxes = _serialize_quotation_taxes(merged.taxes, subtotal)
+    total_taxes = _resolve_serialized_decimal_sum(serialized_taxes, "tax_amount")
+    grand_total = (subtotal + total_taxes).quantize(Decimal("0.01"))
+    if merged.quotation_to == quotation.quotation_to and merged.party_name == quotation.party_name:
+        party_name = quotation.party_name
+        party_label = quotation.party_label
+        party_defaults: dict[str, str] = {}
+    else:
+        party_name, party_label, party_defaults = await _resolve_party_context(
+            session,
+            OpportunityPartyKind(merged.quotation_to),
+            merged.party_name,
+            tid,
+        )
+
+    async with session.begin():
+        await set_tenant(session, tid)
+        quotation.quotation_to = merged.quotation_to
+        quotation.party_name = party_name
+        quotation.party_label = party_label
+        quotation.transaction_date = merged.transaction_date
+        quotation.valid_till = merged.valid_till
+        quotation.company = merged.company.strip()
+        quotation.currency = merged.currency.strip().upper()
+        quotation.subtotal = subtotal
+        quotation.total_taxes = total_taxes
+        quotation.grand_total = grand_total
+        quotation.base_grand_total = grand_total
+        quotation.contact_person = _trim(merged.contact_person) or party_defaults.get("contact_person", "")
+        quotation.contact_email = _trim(merged.contact_email) or party_defaults.get("contact_email", "")
+        quotation.contact_mobile = _trim(merged.contact_mobile) or party_defaults.get("contact_mobile", "")
+        quotation.job_title = _trim(merged.job_title)
+        quotation.territory = _trim(merged.territory) or party_defaults.get("territory", "")
+        quotation.customer_group = _trim(merged.customer_group)
+        quotation.billing_address = _trim(merged.billing_address)
+        quotation.shipping_address = _trim(merged.shipping_address)
+        quotation.utm_source = _trim(merged.utm_source) or party_defaults.get("utm_source", "")
+        quotation.utm_medium = _trim(merged.utm_medium) or party_defaults.get("utm_medium", "")
+        quotation.utm_campaign = _trim(merged.utm_campaign) or party_defaults.get("utm_campaign", "")
+        quotation.utm_content = _trim(merged.utm_content) or party_defaults.get("utm_content", "")
+        quotation.items = serialized_items
+        quotation.taxes = serialized_taxes
+        quotation.terms_template = _trim(merged.terms_template)
+        quotation.terms_and_conditions = _trim(merged.terms_and_conditions)
+        quotation.opportunity_id = merged.opportunity_id
+        quotation.auto_repeat_enabled = merged.auto_repeat_enabled
+        quotation.auto_repeat_frequency = _trim(merged.auto_repeat_frequency)
+        quotation.auto_repeat_until = merged.auto_repeat_until
+        quotation.notes = _trim(merged.notes)
+        quotation.version += 1
+        quotation.updated_at = datetime.now(tz=UTC)
+    return await _synchronize_quotation_status(session, quotation, tid)
+
+
+async def transition_quotation_status(
+    session: AsyncSession,
+    quotation_id: uuid.UUID,
+    data: QuotationTransition,
+    tenant_id: uuid.UUID | None = None,
+) -> Quotation | None:
+    tid = tenant_id or DEFAULT_TENANT_ID
+    quotation = await get_quotation(session, quotation_id, tenant_id=tid)
+    if quotation is None:
+        return None
+
+    current_status = QuotationStatus(quotation.status)
+    _ensure_quotation_transition_allowed(current_status, data.status)
+    _ensure_quotation_lost_context(data)
+
+    async with session.begin():
+        await set_tenant(session, tid)
+        quotation.status = data.status
+        if data.status == QuotationStatus.LOST:
+            quotation.lost_reason = data.lost_reason.strip()
+            quotation.competitor_name = data.competitor_name.strip()
+            quotation.loss_notes = data.loss_notes.strip()
+        quotation.updated_at = datetime.now(tz=UTC)
+    return quotation
+
+
+async def create_quotation_revision(
+    session: AsyncSession,
+    quotation_id: uuid.UUID,
+    data: QuotationRevisionCreate,
+    tenant_id: uuid.UUID | None = None,
+) -> Quotation | None:
+    tid = tenant_id or DEFAULT_TENANT_ID
+    quotation = await get_quotation(session, quotation_id, tenant_id=tid)
+    if quotation is None:
+        return None
+
+    fields = data.model_fields_set
+    merged = QuotationCreate(
+        quotation_to=(
+            data.quotation_to
+            if "quotation_to" in fields and data.quotation_to is not None
+            else QuotationPartyKind(quotation.quotation_to)
+        ),
+        party_name=(data.party_name if "party_name" in fields and data.party_name is not None else quotation.party_name),
+        transaction_date=(
+            data.transaction_date
+            if "transaction_date" in fields and data.transaction_date is not None
+            else quotation.transaction_date
+        ),
+        valid_till=(data.valid_till if "valid_till" in fields and data.valid_till is not None else quotation.valid_till),
+        company=(data.company if "company" in fields and data.company is not None else quotation.company),
+        currency=(data.currency if "currency" in fields and data.currency is not None else quotation.currency),
+        contact_person=(
+            data.contact_person if "contact_person" in fields and data.contact_person is not None else quotation.contact_person
+        ),
+        contact_email=(
+            data.contact_email if "contact_email" in fields and data.contact_email is not None else quotation.contact_email
+        ),
+        contact_mobile=(
+            data.contact_mobile if "contact_mobile" in fields and data.contact_mobile is not None else quotation.contact_mobile
+        ),
+        job_title=(data.job_title if "job_title" in fields and data.job_title is not None else quotation.job_title),
+        territory=(data.territory if "territory" in fields and data.territory is not None else quotation.territory),
+        customer_group=(
+            data.customer_group if "customer_group" in fields and data.customer_group is not None else quotation.customer_group
+        ),
+        billing_address=(
+            data.billing_address if "billing_address" in fields and data.billing_address is not None else quotation.billing_address
+        ),
+        shipping_address=(
+            data.shipping_address if "shipping_address" in fields and data.shipping_address is not None else quotation.shipping_address
+        ),
+        utm_source=(data.utm_source if "utm_source" in fields and data.utm_source is not None else quotation.utm_source),
+        utm_medium=(data.utm_medium if "utm_medium" in fields and data.utm_medium is not None else quotation.utm_medium),
+        utm_campaign=(
+            data.utm_campaign if "utm_campaign" in fields and data.utm_campaign is not None else quotation.utm_campaign
+        ),
+        utm_content=(
+            data.utm_content if "utm_content" in fields and data.utm_content is not None else quotation.utm_content
+        ),
+        opportunity_id=(data.opportunity_id if "opportunity_id" in fields else quotation.opportunity_id),
+        items=(data.items if "items" in fields and data.items is not None else _deserialize_quotation_items(quotation.items)),
+        taxes=(data.taxes if "taxes" in fields and data.taxes is not None else _deserialize_quotation_taxes(quotation.taxes)),
+        terms_template=(
+            data.terms_template if "terms_template" in fields and data.terms_template is not None else quotation.terms_template
+        ),
+        terms_and_conditions=(
+            data.terms_and_conditions
+            if "terms_and_conditions" in fields and data.terms_and_conditions is not None
+            else quotation.terms_and_conditions
+        ),
+        auto_repeat_enabled=(
+            data.auto_repeat_enabled
+            if "auto_repeat_enabled" in fields and data.auto_repeat_enabled is not None
+            else quotation.auto_repeat_enabled
+        ),
+        auto_repeat_frequency=(
+            data.auto_repeat_frequency
+            if "auto_repeat_frequency" in fields and data.auto_repeat_frequency is not None
+            else quotation.auto_repeat_frequency
+        ),
+        auto_repeat_until=(data.auto_repeat_until if "auto_repeat_until" in fields else quotation.auto_repeat_until),
+        notes=(data.notes if "notes" in fields and data.notes is not None else quotation.notes),
+    )
+
+    if merged.quotation_to == quotation.quotation_to and merged.party_name == quotation.party_name:
+        party_name = quotation.party_name
+        party_label = quotation.party_label
+        party_defaults: dict[str, str] = {}
+    else:
+        party_name, party_label, party_defaults = await _resolve_party_context(
+            session,
+            OpportunityPartyKind(merged.quotation_to),
+            merged.party_name,
+            tid,
+        )
+
+    _ensure_quotation_validity(merged.transaction_date, merged.valid_till)
+    _ensure_auto_repeat_metadata(merged.auto_repeat_enabled, merged.auto_repeat_frequency)
+    serialized_items = _serialize_quotation_items(merged.items)
+    if not serialized_items:
+        raise ValidationError([{"field": "items", "message": "At least one quotation item is required."}])
+    subtotal = _resolve_total_amount(None, serialized_items) or Decimal("0.00")
+    serialized_taxes = _serialize_quotation_taxes(merged.taxes, subtotal)
+    total_taxes = _resolve_serialized_decimal_sum(serialized_taxes, "tax_amount")
+    grand_total = (subtotal + total_taxes).quantize(Decimal("0.01"))
+
+    revised = Quotation(
+        tenant_id=tid,
+        quotation_to=merged.quotation_to,
+        party_name=party_name,
+        party_label=party_label,
+        status=QuotationStatus.DRAFT,
+        transaction_date=merged.transaction_date,
+        valid_till=merged.valid_till,
+        company=merged.company.strip(),
+        currency=merged.currency.strip().upper(),
+        subtotal=subtotal,
+        total_taxes=total_taxes,
+        grand_total=grand_total,
+        base_grand_total=grand_total,
+        ordered_amount=Decimal("0.00"),
+        order_count=0,
+        contact_person=_trim(merged.contact_person) or party_defaults.get("contact_person", ""),
+        contact_email=_trim(merged.contact_email) or party_defaults.get("contact_email", ""),
+        contact_mobile=_trim(merged.contact_mobile) or party_defaults.get("contact_mobile", ""),
+        job_title=_trim(merged.job_title),
+        territory=_trim(merged.territory) or party_defaults.get("territory", ""),
+        customer_group=_trim(merged.customer_group),
+        billing_address=_trim(merged.billing_address),
+        shipping_address=_trim(merged.shipping_address),
+        utm_source=_trim(merged.utm_source) or party_defaults.get("utm_source", ""),
+        utm_medium=_trim(merged.utm_medium) or party_defaults.get("utm_medium", ""),
+        utm_campaign=_trim(merged.utm_campaign) or party_defaults.get("utm_campaign", ""),
+        utm_content=_trim(merged.utm_content) or party_defaults.get("utm_content", ""),
+        items=serialized_items,
+        taxes=serialized_taxes,
+        terms_template=_trim(merged.terms_template),
+        terms_and_conditions=_trim(merged.terms_and_conditions),
+        opportunity_id=merged.opportunity_id,
+        amended_from=quotation.id,
+        revision_no=quotation.revision_no + 1,
+        auto_repeat_enabled=merged.auto_repeat_enabled,
+        auto_repeat_frequency=_trim(merged.auto_repeat_frequency),
+        auto_repeat_until=merged.auto_repeat_until,
+        notes=_trim(merged.notes),
+    )
+
+    async with session.begin():
+        await set_tenant(session, tid)
+        session.add(revised)
+
+    await session.refresh(revised)
+    return revised

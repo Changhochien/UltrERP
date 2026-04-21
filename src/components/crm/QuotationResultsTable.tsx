@@ -1,0 +1,101 @@
+import { useTranslation } from "react-i18next";
+
+import type { QuotationSummary } from "../../domain/crm/types";
+import { DataTable } from "../layout/DataTable";
+import { Badge } from "../ui/badge";
+
+interface QuotationResultsTableProps {
+  items: QuotationSummary[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  onPageChange: (page: number) => void;
+  onSelect: (id: string) => void;
+}
+
+function statusVariant(status: QuotationSummary["status"]) {
+  switch (status) {
+    case "ordered":
+      return "success" as const;
+    case "lost":
+    case "cancelled":
+    case "expired":
+      return "warning" as const;
+    default:
+      return "outline" as const;
+  }
+}
+
+export function QuotationResultsTable({
+  items,
+  page,
+  pageSize,
+  totalCount,
+  onPageChange,
+  onSelect,
+}: QuotationResultsTableProps) {
+  const { t } = useTranslation("common");
+
+  return (
+    <DataTable
+      columns={[
+        {
+          id: "party_label",
+          header: t("crm.quotations.table.party"),
+          sortable: true,
+          getSortValue: (quotation) => quotation.party_label,
+          cell: (quotation) => (
+            <div className="space-y-0.5">
+              <span className="font-medium">{quotation.party_label}</span>
+              <p className="text-xs text-muted-foreground">{quotation.company}</p>
+            </div>
+          ),
+        },
+        {
+          id: "valid_till",
+          header: t("crm.quotations.table.validTill"),
+          sortable: true,
+          getSortValue: (quotation) => quotation.valid_till,
+          cell: (quotation) => quotation.valid_till,
+        },
+        {
+          id: "grand_total",
+          header: t("crm.quotations.table.total"),
+          sortable: true,
+          getSortValue: (quotation) => quotation.grand_total,
+          cell: (quotation) => quotation.grand_total,
+        },
+        {
+          id: "status",
+          header: t("crm.quotations.table.status"),
+          sortable: true,
+          getSortValue: (quotation) => quotation.status,
+          cell: (quotation) => (
+            <Badge variant={statusVariant(quotation.status)} className="normal-case tracking-normal">
+              {t(`crm.quotations.statusValues.${quotation.status}`)}
+            </Badge>
+          ),
+        },
+        {
+          id: "revision_no",
+          header: t("crm.quotations.table.revision"),
+          sortable: true,
+          getSortValue: (quotation) => quotation.revision_no,
+          cell: (quotation) => quotation.revision_no,
+        },
+      ]}
+      data={items}
+      emptyTitle={t("crm.quotations.table.emptyTitle")}
+      emptyDescription={t("crm.quotations.table.emptyDescription")}
+      page={page}
+      pageSize={pageSize}
+      totalItems={totalCount}
+      onPageChange={onPageChange}
+      getRowId={(quotation) => quotation.id}
+      rowLabel={(quotation) => `Quotation ${quotation.party_label}`}
+      onRowClick={(quotation) => onSelect(quotation.id)}
+    />
+  );
+}
+
+export default QuotationResultsTable;

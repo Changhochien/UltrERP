@@ -275,3 +275,148 @@ export interface OpportunityQuotationHandoff {
   utm_content: string;
   items: OpportunityItemResponse[];
 }
+
+export type QuotationPartyKind = OpportunityPartyKind;
+
+export type QuotationStatus =
+  | "draft"
+  | "open"
+  | "replied"
+  | "partially_ordered"
+  | "ordered"
+  | "lost"
+  | "cancelled"
+  | "expired";
+
+export interface QuotationItemPayload extends OpportunityItemPayload {}
+
+export interface QuotationTaxPayload {
+  description: string;
+  rate: string;
+  tax_amount?: string | null;
+}
+
+export interface QuotationCreatePayload {
+  quotation_to: QuotationPartyKind;
+  party_name: string;
+  transaction_date: string;
+  valid_till: string;
+  company: string;
+  currency: string;
+  contact_person: string;
+  contact_email: string;
+  contact_mobile: string;
+  job_title: string;
+  territory: string;
+  customer_group: string;
+  billing_address: string;
+  shipping_address: string;
+  utm_source: string;
+  utm_medium: string;
+  utm_campaign: string;
+  utm_content: string;
+  opportunity_id: string | null;
+  items: QuotationItemPayload[];
+  taxes: QuotationTaxPayload[];
+  terms_template: string;
+  terms_and_conditions: string;
+  auto_repeat_enabled: boolean;
+  auto_repeat_frequency: string;
+  auto_repeat_until: string | null;
+  notes: string;
+}
+
+export interface QuotationRevisionPayload extends Partial<QuotationCreatePayload> {}
+
+export interface QuotationUpdatePayload extends Partial<QuotationCreatePayload> {
+  version: number;
+}
+
+export interface QuotationTransitionPayload {
+  status: QuotationStatus;
+  lost_reason: string;
+  competitor_name: string;
+  loss_notes: string;
+}
+
+export interface QuotationItemResponse extends OpportunityItemResponse {}
+
+export interface QuotationTaxResponse {
+  line_no: number;
+  description: string;
+  rate: string;
+  tax_amount: string;
+}
+
+export interface QuotationResponse {
+  id: string;
+  tenant_id: string;
+  quotation_to: QuotationPartyKind;
+  party_name: string;
+  party_label: string;
+  status: QuotationStatus;
+  transaction_date: string;
+  valid_till: string;
+  company: string;
+  currency: string;
+  subtotal: string;
+  total_taxes: string;
+  grand_total: string;
+  base_grand_total: string;
+  ordered_amount: string;
+  order_count: number;
+  contact_person: string;
+  contact_email: string;
+  contact_mobile: string;
+  job_title: string;
+  territory: string;
+  customer_group: string;
+  billing_address: string;
+  shipping_address: string;
+  utm_source: string;
+  utm_medium: string;
+  utm_campaign: string;
+  utm_content: string;
+  items: QuotationItemResponse[];
+  taxes: QuotationTaxResponse[];
+  terms_template: string;
+  terms_and_conditions: string;
+  opportunity_id: string | null;
+  amended_from: string | null;
+  revision_no: number;
+  lost_reason: string;
+  competitor_name: string;
+  loss_notes: string;
+  auto_repeat_enabled: boolean;
+  auto_repeat_frequency: string;
+  auto_repeat_until: string | null;
+  notes: string;
+  version: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface QuotationSummary {
+  id: string;
+  quotation_to: QuotationPartyKind;
+  party_name: string;
+  party_label: string;
+  status: QuotationStatus;
+  transaction_date: string;
+  valid_till: string;
+  company: string;
+  currency: string;
+  grand_total: string;
+  opportunity_id: string | null;
+  amended_from: string | null;
+  revision_no: number;
+  updated_at: string;
+}
+
+export interface QuotationListResponse {
+  items: QuotationSummary[];
+  page: number;
+  page_size: number;
+  total_count: number;
+  total_pages: number;
+}

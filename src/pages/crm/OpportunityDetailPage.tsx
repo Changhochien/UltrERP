@@ -23,7 +23,7 @@ import {
   toOpportunityUpdatePayload,
   type OpportunityFormValues,
 } from "../../lib/schemas/opportunity.schema";
-import { CRM_OPPORTUNITIES_ROUTE } from "../../lib/routes";
+import { CRM_OPPORTUNITIES_ROUTE, CRM_QUOTATION_CREATE_ROUTE } from "../../lib/routes";
 
 const VERSION_CONFLICT_MESSAGE =
   "This opportunity was changed elsewhere. The latest saved version has been reloaded.";
@@ -373,6 +373,15 @@ export function OpportunityDetailPage({ onBack }: OpportunityDetailPageProps) {
                   <dd className="mt-1">{handoffPreview.contact_person || "-"}</dd>
                 </div>
               </dl>
+              <div className="mt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate(CRM_QUOTATION_CREATE_ROUTE, { state: { handoff: handoffPreview } })}
+                >
+                  {t("crm.opportunities.detailPage.createQuotation")}
+                </Button>
+              </div>
             </div>
           ) : null}
         </div>

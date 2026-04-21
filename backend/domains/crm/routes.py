@@ -37,19 +37,33 @@ from domains.crm.schemas import (
     OpportunitySummary,
     OpportunityTransition,
     OpportunityUpdate,
+    QuotationCreate,
+    QuotationListParams,
+    QuotationListResponse,
+    QuotationResponse,
+    QuotationRevisionCreate,
+    QuotationSummary,
+    QuotationTransition,
+    QuotationUpdate,
 )
 from domains.crm.service import (
     convert_lead_to_customer,
     create_lead,
     create_opportunity,
+    create_quotation,
+    create_quotation_revision,
     get_lead,
     get_opportunity,
+    get_quotation,
     handoff_lead_to_opportunity,
     list_leads,
     list_opportunities,
+    list_quotations,
     prepare_opportunity_quotation_handoff,
+    transition_quotation_status,
     transition_opportunity_status,
     transition_lead_status,
+    update_quotation,
     update_opportunity,
     update_lead,
 )
@@ -57,6 +71,7 @@ from domains.customers.schemas import CustomerCreate
 
 router = APIRouter()
 opportunity_router = APIRouter()
+quotation_router = APIRouter()
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 ReadUser = Annotated[dict, Depends(require_role("admin", "sales"))]
@@ -296,4 +311,115 @@ async def handoff_opportunity_to_quotation(
     except ValidationError as exc:
         errors = error_response(exc.errors)
         status_code = 404 if any(error.get("field") == "opportunity_id" for error in exc.errors) else 422
+        return JSONResponse(status_code=status_code, content=errors)
+
+
+@quotation_router.get("", response_model=QuotationListResponse)
+async def list_all_quotations(
+    session: DbSession,
+    user: ReadUser,
+    q: str | None = Query(default=None, max_length=200),
+    status_filter: str | None = Query(default=None, alias="status", max_length=24),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=500),
+) -> QuotationListResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
+    params = QuotationListParams(q=q, status=status_filter, page=page, page_size=page_size)
+    items, total_count = await list_quotations(session, params, tenant_id=real_tid)
+    total_pages = max(1, math.ceil(total_count / page_size))
+    return QuotationListResponse(
+        items=[QuotationSummary.model_validate(item) for item in items],
+        page=page,
+        page_size=page_size,
+        total_count=total_count,
+        total_pages=total_pages,
+    )
+
+
+@quotation_router.get("/{quotation_id}", response_model=QuotationResponse)
+async def get_quotation_by_id(
+    quotation_id: uuid.UUID,
+    session: DbSession,
+    user: ReadUser,
+) -> QuotationResponse | JSONResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
+    quotation = await get_quotation(session, quotation_id, tenant_id=real_tid)
+    if quotation is None:
+        return JSONResponse(status_code=404, content={"detail": "Quotation not found."})
+    return QuotationResponse.model_validate(quotation)
+
+
+@quotation_router.post("", response_model=QuotationResponse, status_code=status.HTTP_201_CREATED)
+async def create_new_quotation(
+    data: QuotationCreate,
+    session: DbSession,
+    user: WriteUser,
+) -> QuotationResponse | JSONResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
+    try:
+        quotation = await create_quotation(session, data, tenant_id=real_tid)
+        return QuotationResponse.model_validate(quotation)
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+
+
+@quotation_router.patch("/{quotation_id}", response_model=QuotationResponse)
+async def update_existing_quotation(
+    quotation_id: uuid.UUID,
+    data: QuotationUpdate,
+    session: DbSession,
+    user: WriteUser,
+) -> QuotationResponse | JSONResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
+    try:
+        quotation = await update_quotation(session, quotation_id, data, tenant_id=real_tid)
+        if quotation is None:
+            return JSONResponse(status_code=404, content={"detail": "Quotation not found."})
+        return QuotationResponse.model_validate(quotation)
+    except VersionConflictError as exc:
+        return JSONResponse(
+            status_code=409,
+            content={
+                "error": "version_conflict",
+                "expected_version": exc.expected,
+                "actual_version": exc.actual,
+            },
+        )
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+
+
+@quotation_router.post("/{quotation_id}/status", response_model=QuotationResponse)
+async def transition_quotation(
+    quotation_id: uuid.UUID,
+    data: QuotationTransition,
+    session: DbSession,
+    user: WriteUser,
+) -> QuotationResponse | JSONResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
+    try:
+        quotation = await transition_quotation_status(session, quotation_id, data, tenant_id=real_tid)
+        if quotation is None:
+            return JSONResponse(status_code=404, content={"detail": "Quotation not found."})
+        return QuotationResponse.model_validate(quotation)
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+
+
+@quotation_router.post("/{quotation_id}/revise", response_model=QuotationResponse, status_code=status.HTTP_201_CREATED)
+async def revise_quotation(
+    quotation_id: uuid.UUID,
+    data: QuotationRevisionCreate,
+    session: DbSession,
+    user: WriteUser,
+) -> QuotationResponse | JSONResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
+    try:
+        quotation = await create_quotation_revision(session, quotation_id, data, tenant_id=real_tid)
+        if quotation is None:
+            return JSONResponse(status_code=404, content={"detail": "Quotation not found."})
+        return QuotationResponse.model_validate(quotation)
+    except ValidationError as exc:
+        errors = error_response(exc.errors)
+        status_code = 404 if any(error.get("field") == "quotation_id" for error in exc.errors) else 422
         return JSONResponse(status_code=status_code, content=errors)

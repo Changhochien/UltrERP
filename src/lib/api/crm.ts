@@ -19,6 +19,14 @@ import type {
   OpportunityStatus,
   OpportunityTransitionPayload,
   OpportunityUpdatePayload,
+  QuotationCreatePayload,
+  QuotationListResponse,
+  QuotationPartyKind,
+  QuotationResponse,
+  QuotationRevisionPayload,
+  QuotationStatus,
+  QuotationTransitionPayload,
+  QuotationUpdatePayload,
 } from "../../domain/crm/types";
 import { apiFetch } from "../apiFetch";
 
@@ -81,6 +89,18 @@ export type CreateOpportunityResult =
 
 export type UpdateOpportunityResult =
   | { ok: true; data: OpportunityResponse }
+  | {
+      ok: false;
+      versionConflict?: VersionConflictInfo;
+      errors: ApiError["detail"];
+    };
+
+export type CreateQuotationResult =
+  | { ok: true; data: QuotationResponse }
+  | { ok: false; errors: ApiError["detail"] };
+
+export type UpdateQuotationResult =
+  | { ok: true; data: QuotationResponse }
   | {
       ok: false;
       versionConflict?: VersionConflictInfo;
@@ -444,6 +464,170 @@ export async function prepareOpportunityQuotationHandoff(
   return { ok: false, errors: body.detail ?? [] };
 }
 
+export type QuotationActionResult<TData> =
+  | { ok: true; data: TData }
+  | { ok: false; errors: ApiError["detail"] };
+
+export async function createQuotation(
+  payload: QuotationCreatePayload,
+): Promise<CreateQuotationResult> {
+  let resp: Response;
+  try {
+    resp = await apiFetch("/api/v1/crm/quotations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    return { ok: false, errors: networkErrorDetail() };
+  }
+
+  if (resp.ok) {
+    const data: QuotationResponse = await resp.json();
+    return { ok: true, data };
+  }
+
+  const body: ApiError = await resp.json().catch(() => ({ detail: [] }));
+  return { ok: false, errors: body.detail ?? [] };
+}
+
+export async function listQuotations(params: {
+  q?: string;
+  status?: QuotationStatus;
+  page?: number;
+  page_size?: number;
+}): Promise<QuotationListResponse> {
+  const qs = new URLSearchParams();
+  if (params.q) qs.set("q", params.q);
+  if (params.status) qs.set("status", params.status);
+  if (params.page) qs.set("page", String(params.page));
+  if (params.page_size) qs.set("page_size", String(params.page_size));
+
+  let resp: Response;
+  try {
+    resp = await apiFetch(`/api/v1/crm/quotations?${qs.toString()}`);
+  } catch {
+    throw new Error(NETWORK_ERROR_MESSAGE);
+  }
+
+  if (!resp.ok) {
+    const errors = await readErrorDetails(resp, "Failed to load quotations.");
+    throw new Error(errors[0]?.message ?? "Failed to load quotations.");
+  }
+
+  return resp.json();
+}
+
+export async function getQuotation(id: string): Promise<QuotationResponse | null> {
+  let resp: Response;
+  try {
+    resp = await apiFetch(`/api/v1/crm/quotations/${id}`);
+  } catch {
+    throw new Error(NETWORK_ERROR_MESSAGE);
+  }
+
+  if (resp.status === 404) {
+    return null;
+  }
+
+  if (!resp.ok) {
+    const errors = await readErrorDetails(resp, "Failed to load quotation.");
+    throw new Error(errors[0]?.message ?? "Failed to load quotation.");
+  }
+
+  return resp.json();
+}
+
+export async function updateQuotation(
+  id: string,
+  payload: QuotationUpdatePayload,
+): Promise<UpdateQuotationResult> {
+  let resp: Response;
+  try {
+    resp = await apiFetch(`/api/v1/crm/quotations/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    return { ok: false, errors: networkErrorDetail() };
+  }
+
+  if (resp.ok) {
+    const data: QuotationResponse = await resp.json();
+    return { ok: true, data };
+  }
+
+  if (resp.status === 409) {
+    const body = await resp.json().catch(() => ({}));
+    if (body.error === "version_conflict") {
+      return {
+        ok: false,
+        versionConflict: {
+          expected_version: body.expected_version,
+          actual_version: body.actual_version,
+        },
+        errors: [],
+      };
+    }
+  }
+
+  if (resp.status === 404) {
+    return { ok: false, errors: [{ field: "", message: "Quotation not found." }] };
+  }
+
+  const body: ApiError = await resp.json().catch(() => ({ detail: [] }));
+  return { ok: false, errors: body.detail ?? [] };
+}
+
+export async function transitionQuotationStatus(
+  id: string,
+  payload: QuotationTransitionPayload,
+): Promise<QuotationActionResult<QuotationResponse>> {
+  let resp: Response;
+  try {
+    resp = await apiFetch(`/api/v1/crm/quotations/${id}/status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    return { ok: false, errors: networkErrorDetail() };
+  }
+
+  if (resp.ok) {
+    const data: QuotationResponse = await resp.json();
+    return { ok: true, data };
+  }
+
+  const body: ApiError = await resp.json().catch(() => ({ detail: [] }));
+  return { ok: false, errors: body.detail ?? [] };
+}
+
+export async function reviseQuotation(
+  id: string,
+  payload: QuotationRevisionPayload,
+): Promise<QuotationActionResult<QuotationResponse>> {
+  let resp: Response;
+  try {
+    resp = await apiFetch(`/api/v1/crm/quotations/${id}/revise`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    return { ok: false, errors: networkErrorDetail() };
+  }
+
+  if (resp.ok) {
+    const data: QuotationResponse = await resp.json();
+    return { ok: true, data };
+  }
+
+  const body: ApiError = await resp.json().catch(() => ({ detail: [] }));
+  return { ok: false, errors: body.detail ?? [] };
+}
+
 export const LEAD_STATUS_OPTIONS: LeadStatus[] = [
   "lead",
   "open",
@@ -476,3 +660,16 @@ export const OPPORTUNITY_PARTY_OPTIONS: OpportunityPartyKind[] = [
   "customer",
   "prospect",
 ];
+
+export const QUOTATION_STATUS_OPTIONS: QuotationStatus[] = [
+  "draft",
+  "open",
+  "replied",
+  "partially_ordered",
+  "ordered",
+  "lost",
+  "cancelled",
+  "expired",
+];
+
+export const QUOTATION_PARTY_OPTIONS: QuotationPartyKind[] = OPPORTUNITY_PARTY_OPTIONS;

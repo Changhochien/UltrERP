@@ -20,6 +20,9 @@ export const CRM_LEAD_CREATE_ROUTE = "/crm/leads/new";
 export const CRM_OPPORTUNITIES_ROUTE = "/crm/opportunities";
 export const CRM_OPPORTUNITY_DETAIL_ROUTE = "/crm/opportunities/:opportunityId";
 export const CRM_OPPORTUNITY_CREATE_ROUTE = "/crm/opportunities/new";
+export const CRM_QUOTATIONS_ROUTE = "/crm/quotations";
+export const CRM_QUOTATION_DETAIL_ROUTE = "/crm/quotations/:quotationId";
+export const CRM_QUOTATION_CREATE_ROUTE = "/crm/quotations/new";
 export const CUSTOMERS_ROUTE = "/customers";
 export const CUSTOMER_DETAIL_ROUTE = "/customers/:customerId";
 export const CUSTOMER_CREATE_ROUTE = "/customers/new";
@@ -56,6 +59,9 @@ export type AppRoute =
   | typeof CRM_OPPORTUNITIES_ROUTE
   | typeof CRM_OPPORTUNITY_DETAIL_ROUTE
   | typeof CRM_OPPORTUNITY_CREATE_ROUTE
+  | typeof CRM_QUOTATIONS_ROUTE
+  | typeof CRM_QUOTATION_DETAIL_ROUTE
+  | typeof CRM_QUOTATION_CREATE_ROUTE
   | typeof CUSTOMERS_ROUTE
   | typeof CUSTOMER_DETAIL_ROUTE
   | typeof CUSTOMER_CREATE_ROUTE
@@ -81,6 +87,10 @@ export function buildLeadDetailPath(leadId: string): string {
 
 export function buildOpportunityDetailPath(opportunityId: string): string {
   return CRM_OPPORTUNITY_DETAIL_ROUTE.replace(":opportunityId", encodeURIComponent(opportunityId));
+}
+
+export function buildQuotationDetailPath(quotationId: string): string {
+  return CRM_QUOTATION_DETAIL_ROUTE.replace(":quotationId", encodeURIComponent(quotationId));
 }
 
 export function buildCustomerDetailPath(customerId: string): string {
