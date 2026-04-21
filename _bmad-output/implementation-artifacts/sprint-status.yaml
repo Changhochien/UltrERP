@@ -1211,11 +1211,11 @@ development_status:
         validation: "Story artifact created."
         prerequisites: ["22.1", "22.2"]
       22-5-css-cleanup-alertfeed-and-commandbar:
-        status: "ready-for-dev"
+        status: "done"
         story_id: "22.5"
         title: "CSS Cleanup - AlertFeed and CommandBar"
         story_file: "22-5-css-cleanup-alertfeed-and-commandbar.md"
-        validation: "Story artifact created."
+        validation: "Implemented on 2026-04-21 with a shared-primitive `CommandBar`, a live inventory-page search/action wiring pass, an `AlertFeed` wrapper over the real alert surface, shared dialog shells for stock adjustment and create-product flows, and localized inventory form/dialog copy. Focused frontend validation passed with `pnpm vitest run src/domain/inventory/components/StockAdjustmentForm.test.tsx src/tests/inventory/ProductForm.test.tsx src/domain/inventory/__tests__/AlertFeed.test.tsx src/domain/inventory/__tests__/CommandBar.test.tsx src/pages/InventoryPage.test.tsx` (`11 passed`). `inventory.css` was audited and already contained no remaining AlertFeed or CommandBar selectors."
         prerequisites: []
       22-6-quickentrydialog-and-spinner:
         status: "done"
@@ -1232,4 +1232,4 @@ development_status:
         validation: "Story artifact created."
         prerequisites: ["22.1", "22.3"]
 
-last_updated: "2026-04-20"
+last_updated: "2026-04-21"

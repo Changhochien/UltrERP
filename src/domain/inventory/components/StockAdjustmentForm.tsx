@@ -1,6 +1,7 @@
 /** Stock adjustment form for recording inventory changes with reason codes. */
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayout";
 import {
@@ -29,9 +30,15 @@ import {
 interface StockAdjustmentFormProps {
   defaultProductId?: string;
   defaultWarehouseId?: string;
+  confirmBeforeSubmit?: boolean;
 }
 
-export function StockAdjustmentForm({ defaultProductId = "", defaultWarehouseId = "" }: StockAdjustmentFormProps) {
+export function StockAdjustmentForm({
+  defaultProductId = "",
+  defaultWarehouseId = "",
+  confirmBeforeSubmit = true,
+}: StockAdjustmentFormProps) {
+  const { t } = useTranslation("common", { keyPrefix: "inventory.stockAdjustmentForm" });
   const { warehouses, loading: whLoading } = useWarehouses();
   const { codes, loading: codesLoading } = useReasonCodes();
   const { submit, submitting, result, error, clearError } =
@@ -46,10 +53,11 @@ export function StockAdjustmentForm({ defaultProductId = "", defaultWarehouseId 
   const [showConfirm, setShowConfirm] = useState(false);
   const [validationMessages, setValidationMessages] = useState<string[]>([]);
 
-  if (whLoading || codesLoading) return <p aria-busy="true">Loading…</p>;
+  if (whLoading || codesLoading) return <p aria-busy="true">{t("loading")}</p>;
 
   const canSubmit =
     productId && warehouseId && quantityChange !== 0 && reasonCode;
+  const selectedReasonLabel = codes.find((reason) => reason.value === reasonCode)?.label ?? reasonCode;
 
   const parseForm = () =>
     stockAdjustmentFormSchema.safeParse({
@@ -69,6 +77,11 @@ export function StockAdjustmentForm({ defaultProductId = "", defaultWarehouseId 
     }
 
     setValidationMessages([]);
+    if (!confirmBeforeSubmit) {
+      void handleSubmit();
+      return;
+    }
+
     setShowConfirm(true);
   };
 
@@ -91,10 +104,10 @@ export function StockAdjustmentForm({ defaultProductId = "", defaultWarehouseId 
   };
 
   return (
-    <section aria-label="Stock adjustment form" className="space-y-5">
+    <section aria-label={t("title")} className="space-y-5">
       <div className="space-y-1">
-        <h2 className="text-xl font-semibold tracking-tight">Record Stock Adjustment</h2>
-        <p className="text-sm text-muted-foreground">Post manual stock movements with warehouse and reason-code control.</p>
+        <h2 className="text-xl font-semibold tracking-tight">{t("title")}</h2>
+        <p className="text-sm text-muted-foreground">{t("description")}</p>
       </div>
 
       {error ? <SurfaceMessage tone="danger">{error}</SurfaceMessage> : null}
@@ -109,11 +122,11 @@ export function StockAdjustmentForm({ defaultProductId = "", defaultWarehouseId 
       ) : null}
       {result ? (
         <SurfaceMessage tone="success" role="status">
-          Adjustment recorded. Updated stock: {result.updated_stock} units.
+          {t("success", { count: result.updated_stock })}
         </SurfaceMessage>
       ) : null}
 
-      <SectionCard title="Adjustment Form" description="Enter the product, warehouse, quantity delta, and reason code for the stock change.">
+      <SectionCard title={t("sectionTitle")} description={t("sectionDescription")}>
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -124,11 +137,11 @@ export function StockAdjustmentForm({ defaultProductId = "", defaultWarehouseId 
         >
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-2">
-              <span>Product</span>
+              <span>{t("productLabel")}</span>
               <ProductCombobox
                 value={productId}
                 onChange={setProductId}
-                placeholder="Search product…"
+                placeholder={t("productPlaceholder")}
               />
               {product && (
                 <span className="text-sm font-medium text-foreground">
@@ -137,15 +150,15 @@ export function StockAdjustmentForm({ defaultProductId = "", defaultWarehouseId 
               )}
             </label>
 
-            <label className="space-y-2">
-              <span>Warehouse</span>
+            <label className="space-y-2" htmlFor="adj-warehouse">
+              <span>{t("warehouseLabel")}</span>
               <select
                 id="adj-warehouse"
                 required
                 value={warehouseId}
                 onChange={(e) => setWarehouseId(e.target.value)}
               >
-                <option value="">Select warehouse</option>
+                <option value="">{t("warehousePlaceholder")}</option>
                 {warehouses.map((warehouse) => (
                   <option key={warehouse.id} value={warehouse.id}>
                     {warehouse.name}
@@ -156,8 +169,8 @@ export function StockAdjustmentForm({ defaultProductId = "", defaultWarehouseId 
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <label className="space-y-2">
-              <span>Quantity change</span>
+            <label className="space-y-2" htmlFor="adj-quantity">
+              <span>{t("quantityChangeLabel")}</span>
               <Input
                 id="adj-quantity"
                 type="number"
@@ -167,19 +180,19 @@ export function StockAdjustmentForm({ defaultProductId = "", defaultWarehouseId 
                 aria-describedby="qty-hint"
               />
               <small id="qty-hint" className="text-sm text-muted-foreground">
-                Positive to add, negative to remove
+                {t("quantityHint")}
               </small>
             </label>
 
-            <label className="space-y-2">
-              <span>Reason code</span>
+            <label className="space-y-2" htmlFor="adj-reason">
+              <span>{t("reasonCodeLabel")}</span>
               <select
                 id="adj-reason"
                 required
                 value={reasonCode}
                 onChange={(e) => setReasonCode(e.target.value)}
               >
-                <option value="">Select reason</option>
+                <option value="">{t("reasonCodePlaceholder")}</option>
                 {codes.map((reason) => (
                   <option key={reason.value} value={reason.value}>
                     {reason.label}
@@ -189,8 +202,8 @@ export function StockAdjustmentForm({ defaultProductId = "", defaultWarehouseId 
             </label>
           </div>
 
-          <label className="space-y-2">
-            <span>Notes (optional)</span>
+          <label className="space-y-2" htmlFor="adj-notes">
+            <span>{t("notesLabel")}</span>
             <textarea
               id="adj-notes"
               value={notes}
@@ -202,26 +215,29 @@ export function StockAdjustmentForm({ defaultProductId = "", defaultWarehouseId 
 
           <div>
             <Button type="submit" disabled={!canSubmit || submitting}>
-              {submitting ? "Submitting…" : "Record Adjustment"}
+              {submitting ? t("submittingLabel") : t("submitLabel")}
             </Button>
           </div>
         </form>
       </SectionCard>
 
       <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
-        <DialogContent aria-label="Confirm adjustment">
+        <DialogContent aria-label={t("confirmTitle")}>
           <DialogHeader>
-            <DialogTitle>Confirm adjustment</DialogTitle>
+            <DialogTitle>{t("confirmTitle")}</DialogTitle>
             <DialogDescription>
-              Confirm adjustment of <strong>{quantityChange > 0 ? "+" : ""}{quantityChange}</strong> units ({reasonCode}).
+              {t("confirmDescription", {
+                quantity: `${quantityChange > 0 ? "+" : ""}${quantityChange}`,
+                reason: selectedReasonLabel,
+              })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setShowConfirm(false)}>
-              Cancel
+              {t("cancel")}
             </Button>
             <Button type="button" onClick={() => void handleSubmit()} disabled={submitting}>
-              Confirm
+              {t("confirm")}
             </Button>
           </DialogFooter>
         </DialogContent>

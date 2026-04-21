@@ -4,8 +4,9 @@ import { useTranslation } from "react-i18next";
 
 import { WarehouseSelector } from "../domain/inventory/components/WarehouseSelector";
 import { WarehouseProvider, useWarehouseContext } from "../domain/inventory/context/WarehouseContext";
+import { AlertFeed } from "../domain/inventory/components/AlertFeed";
+import { CommandBar } from "../domain/inventory/components/CommandBar";
 import { ProductTable } from "../domain/inventory/components/ProductTable";
-import { AlertPanel } from "../domain/inventory/components/AlertPanel";
 import { MetricCards } from "../domain/inventory/components/MetricCards";
 import { PageHeader, PageTabs } from "../components/layout/PageLayout";
 import { ProductDetailDrawer } from "../domain/inventory/components/ProductDetailDrawer";
@@ -13,8 +14,15 @@ import { CreateProductForm } from "../domain/inventory/components/CreateProductF
 import { ReorderPointAdmin } from "../domain/inventory/components/ReorderPointAdmin";
 import { StockAdjustmentForm } from "../domain/inventory/components/StockAdjustmentForm";
 import { Button } from "../components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
 import { usePermissions } from "../hooks/usePermissions";
-import { buildInventoryTransfersPath } from "../lib/routes";
+import { buildInventoryTransfersPath, ORDER_CREATE_ROUTE } from "../lib/routes";
 import { buildInventorySectionTabs, getInventorySectionRoute, type InventorySectionTabValue } from "./inventory/inventoryPageTabs";
 
 function InventoryWorkspace() {
@@ -22,10 +30,16 @@ function InventoryWorkspace() {
   const navigate = useNavigate();
   const { selectedWarehouse, setSelectedWarehouse } = useWarehouseContext();
   const { canWrite } = usePermissions();
+  const canManageInventory = canWrite("inventory");
+  const canCreateOrders = canWrite("orders");
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
-  const [adjustProductId, setAdjustProductId] = useState<string | null>(null);
+  const [adjustProductId, setAdjustProductId] = useState("");
+  const [showAdjustStock, setShowAdjustStock] = useState(false);
+  const [stockAdjustmentDialogKey, setStockAdjustmentDialogKey] = useState(0);
   const [showCreateProduct, setShowCreateProduct] = useState(false);
+  const [createProductDialogKey, setCreateProductDialogKey] = useState(0);
   const [createdProductKey, setCreatedProductKey] = useState(0);
+  const [productSearch, setProductSearch] = useState("");
   const inventoryTabs = buildInventorySectionTabs(t);
 
   return (
@@ -50,7 +64,14 @@ function InventoryWorkspace() {
               </p>
             </div>
             {canWrite("inventory") && (
-              <Button type="button" className="h-10 rounded-full px-5" onClick={() => setShowCreateProduct(true)}>
+              <Button
+                type="button"
+                className="h-10 rounded-full px-5"
+                onClick={() => {
+                  setCreateProductDialogKey((current) => current + 1);
+                  setShowCreateProduct(true);
+                }}
+              >
                 {t("inventory.page.addProduct")}
               </Button>
             )}
@@ -68,16 +89,38 @@ function InventoryWorkspace() {
 
       <MetricCards warehouseId={selectedWarehouse?.id} />
 
+      <CommandBar
+        ariaLabel={t("inventory.page.commandBar.regionLabel")}
+        searchValue={productSearch}
+        onSearch={setProductSearch}
+        searchPlaceholder={t("inventory.page.commandBar.searchPlaceholder")}
+        searchAriaLabel={t("inventory.page.commandBar.searchPlaceholder")}
+        adjustStockLabel={t("inventory.page.commandBar.adjustStock")}
+        newTransferLabel={t("inventory.page.commandBar.newTransfer")}
+        newOrderLabel={t("inventory.page.commandBar.newOrder")}
+        onAdjustStock={canManageInventory ? () => {
+          setSelectedProductId(null);
+          setAdjustProductId("");
+          setStockAdjustmentDialogKey((current) => current + 1);
+          setShowAdjustStock(true);
+        } : undefined}
+        onNewTransfer={canManageInventory ? () => navigate(buildInventoryTransfersPath(undefined, selectedWarehouse?.id)) : undefined}
+        onNewOrder={canCreateOrders ? () => navigate(ORDER_CREATE_ROUTE) : undefined}
+      />
+
       <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
         <ProductTable
           warehouseId={selectedWarehouse?.id}
           onProductClick={(id) => setSelectedProductId(id)}
           createdProductKey={createdProductKey}
+          searchValue={productSearch}
+          onSearchValueChange={setProductSearch}
+          hideToolbarSearch
         />
-        <AlertPanel />
+        <AlertFeed />
       </div>
 
-      {canWrite("inventory") ? <ReorderPointAdmin /> : null}
+      {canManageInventory ? <ReorderPointAdmin /> : null}
 
       <ProductDetailDrawer
         productId={selectedProductId}
@@ -85,6 +128,8 @@ function InventoryWorkspace() {
         onAdjustStock={(productId) => {
           setSelectedProductId(null);
           setAdjustProductId(productId);
+          setStockAdjustmentDialogKey((current) => current + 1);
+          setShowAdjustStock(true);
         }}
         onTransfer={(productId, warehouseId) => {
           setSelectedProductId(null);
@@ -96,37 +141,66 @@ function InventoryWorkspace() {
         }}
       />
 
-      {adjustProductId && (
-        <div className="fixed inset-0 z-[9002] flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-lg rounded-xl border border-border bg-background p-6 shadow-lg">
+      <Dialog
+        open={showAdjustStock}
+        onOpenChange={(open) => {
+          setShowAdjustStock(open);
+          if (!open) {
+            setAdjustProductId("");
+            setStockAdjustmentDialogKey((current) => current + 1);
+          }
+        }}
+      >
+        <DialogContent className="max-w-3xl p-0 sm:max-w-3xl" showCloseButton>
+          <DialogHeader className="px-6 pt-6">
+            <DialogTitle>{t("inventory.page.stockAdjustmentDialog.title")}</DialogTitle>
+            <DialogDescription>
+              {t("inventory.page.stockAdjustmentDialog.description")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[80vh] overflow-y-auto px-6 pb-6">
             <StockAdjustmentForm
-              defaultProductId={adjustProductId}
+              key={stockAdjustmentDialogKey}
+              defaultProductId={adjustProductId || undefined}
               defaultWarehouseId={selectedWarehouse?.id ?? ""}
+              confirmBeforeSubmit={false}
             />
-            <button
-              type="button"
-              className="mt-4 text-sm text-muted-foreground underline"
-              onClick={() => setAdjustProductId(null)}
-            >
-              Close
-            </button>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
-      {showCreateProduct && (
-        <div className="fixed inset-0 z-[9002] flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-lg rounded-xl border border-border bg-background p-6 shadow-lg">
+      <Dialog
+        open={showCreateProduct}
+        onOpenChange={(open) => {
+          setShowCreateProduct(open);
+          if (!open) {
+            setCreateProductDialogKey((current) => current + 1);
+          }
+        }}
+      >
+        <DialogContent className="max-w-3xl p-0 sm:max-w-3xl" showCloseButton>
+          <DialogHeader className="px-6 pt-6">
+            <DialogTitle>{t("inventory.page.createProductDialog.title")}</DialogTitle>
+            <DialogDescription>
+              {t("inventory.page.createProductDialog.description")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[80vh] overflow-y-auto px-6 pb-6">
             <CreateProductForm
+              key={createProductDialogKey}
               onSuccess={() => {
                 setShowCreateProduct(false);
                 setCreatedProductKey((k) => k + 1);
+                setCreateProductDialogKey((current) => current + 1);
               }}
-              onCancel={() => setShowCreateProduct(false)}
+              onCancel={() => {
+                setShowCreateProduct(false);
+                setCreateProductDialogKey((current) => current + 1);
+              }}
             />
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

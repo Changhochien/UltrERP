@@ -1,4 +1,5 @@
 import { createProduct } from "../../../lib/api/inventory";
+import { useTranslation } from "react-i18next";
 import type { ProductResponse } from "../types";
 import { ProductForm } from "./ProductForm";
 
@@ -8,10 +9,23 @@ interface CreateProductFormProps {
 }
 
 export function CreateProductForm({ onSuccess, onCancel }: CreateProductFormProps) {
+  const { t } = useTranslation("common", { keyPrefix: "inventory.createProductForm" });
+
   return (
     <ProductForm
-      submitLabel="Create Product"
-      submittingLabel="Creating..."
+      submitLabel={t("submitLabel")}
+      submittingLabel={t("submittingLabel")}
+      labels={{
+        code: t("codeLabel"),
+        name: t("nameLabel"),
+        category: t("categoryLabel"),
+        categoryPlaceholder: t("categoryPlaceholder"),
+        description: t("descriptionLabel"),
+        unit: t("unitLabel"),
+        unitPlaceholder: t("unitPlaceholder"),
+        standardCost: t("standardCostLabel"),
+        cancel: t("cancel"),
+      }}
       onSuccess={onSuccess}
       onCancel={onCancel}
       onSubmit={async (values) => {
@@ -21,7 +35,7 @@ export function CreateProductForm({ onSuccess, onCancel }: CreateProductFormProp
         } catch (err) {
           return {
             ok: false,
-            formError: err instanceof Error ? err.message : "Failed to create product",
+            formError: err instanceof Error ? err.message : t("failed"),
           };
         }
       }}

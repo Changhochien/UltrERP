@@ -4,6 +4,23 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const useProductDetailMock = vi.fn();
 const fetchProductLookupMock = vi.fn();
 const searchProductsMock = vi.fn();
+const submitMock = vi.fn();
+
+vi.mock("../../../components/products/ProductCombobox", () => ({
+  ProductCombobox: ({
+    value,
+    onChange,
+    placeholder,
+  }: {
+    value: string;
+    onChange: (value: string) => void;
+    placeholder?: string;
+  }) => (
+    <button type="button" role="combobox" aria-label={placeholder ?? "Product"} onClick={() => onChange("product-2")}>
+      {value || placeholder || "Product"}
+    </button>
+  ),
+}));
 
 vi.mock("../hooks/useProductDetail", () => ({
   useProductDetail: (...args: Parameters<typeof useProductDetailMock>) => useProductDetailMock(...args),
@@ -23,7 +40,7 @@ vi.mock("../hooks/useStockAdjustment", () => ({
     loading: false,
   }),
   useStockAdjustment: () => ({
-    submit: vi.fn(),
+    submit: submitMock,
     submitting: false,
     result: null,
     error: null,
@@ -42,6 +59,7 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
   vi.resetModules();
+  submitMock.mockReset();
 });
 
 describe("StockAdjustmentForm", () => {
@@ -93,20 +111,56 @@ describe("StockAdjustmentForm", () => {
 
     expect(screen.getByText("Widget")).toBeTruthy();
 
-  const productField = screen.getByText("Product").closest("label");
-  expect(productField).toBeTruthy();
-
-  fireEvent.click(within(productField!).getByRole("combobox"));
-
-    await waitFor(() => {
-      expect(screen.getByText("Rotor")).toBeTruthy();
-    });
-
-    fireEvent.click(screen.getByText("Rotor"));
+    fireEvent.click(screen.getByRole("combobox", { name: "Search product…" }));
 
     await waitFor(() => {
       expect(useProductDetailMock).toHaveBeenLastCalledWith("product-2");
       expect(screen.getByText("Rotor")).toBeTruthy();
     });
+  });
+
+  it("uses the reason label in confirmation copy and can skip the nested confirmation dialog", async () => {
+    const { StockAdjustmentForm } = await import("./StockAdjustmentForm");
+
+    useProductDetailMock.mockImplementation((productId: string | null) => {
+      if (productId === "product-1") {
+        return { product: { name: "Widget" } };
+      }
+      return { product: null };
+    });
+
+    submitMock.mockResolvedValue({ updated_stock: 9 });
+
+    const { unmount } = render(<StockAdjustmentForm defaultProductId="product-1" />);
+
+    fireEvent.change(screen.getByLabelText("Warehouse"), { target: { value: "warehouse-1" } });
+    fireEvent.change(screen.getByLabelText(/Quantity change/i), { target: { value: "3" } });
+    fireEvent.change(screen.getByLabelText(/Reason code/i), { target: { value: "count" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Record Adjustment" }));
+
+    const confirmDialog = await screen.findByRole("dialog", { name: "Confirm adjustment" });
+    expect(within(confirmDialog).getByText(/\+3/)).toBeTruthy();
+    expect(within(confirmDialog).getByText(/Count adjustment/)).toBeTruthy();
+
+    unmount();
+
+    render(<StockAdjustmentForm defaultProductId="product-1" confirmBeforeSubmit={false} />);
+
+    fireEvent.change(screen.getByLabelText("Warehouse"), { target: { value: "warehouse-1" } });
+    fireEvent.change(screen.getByLabelText(/Quantity change/i), { target: { value: "2" } });
+    fireEvent.change(screen.getByLabelText(/Reason code/i), { target: { value: "count" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Record Adjustment" }));
+
+    await waitFor(() => {
+      expect(submitMock).toHaveBeenCalledWith(expect.objectContaining({
+        product_id: "product-1",
+        warehouse_id: "warehouse-1",
+        quantity_change: 2,
+        reason_code: "count",
+      }));
+    });
+    expect(screen.queryByText("Confirm adjustment")).toBeNull();
   });
 });

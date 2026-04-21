@@ -1169,7 +1169,59 @@
       "manageCategories": "管理類別",
       "addProduct": "新增產品",
       "warehouseScope": "倉庫範圍",
-      "warehouseScopeDescription": "依倉庫篩選庫存檢視。"
+      "warehouseScopeDescription": "依倉庫篩選庫存檢視。",
+      "commandBar": {
+        "regionLabel": "庫存快捷列",
+        "searchPlaceholder": "依編號或名稱搜尋…",
+        "adjustStock": "調整庫存",
+        "newTransfer": "新增調撥",
+        "newOrder": "新增訂單"
+      },
+      "stockAdjustmentDialog": {
+        "title": "調整庫存",
+        "description": "直接在庫存工作區記錄倉庫庫存異動。"
+      },
+      "createProductDialog": {
+        "title": "新增產品",
+        "description": "建立新產品，成功後會自動重新整理庫存表格。"
+      }
+    },
+    "stockAdjustmentForm": {
+      "loading": "載入中...",
+      "title": "記錄庫存調整",
+      "description": "在受控的倉庫與原因代碼流程下記錄人工庫存異動。",
+      "success": "已記錄調整。更新後庫存：{count} 單位。",
+      "sectionTitle": "調整表單",
+      "sectionDescription": "輸入產品、倉庫、數量增減與原因代碼以記錄庫存變動。",
+      "productLabel": "產品",
+      "productPlaceholder": "搜尋產品…",
+      "warehouseLabel": "倉庫",
+      "warehousePlaceholder": "選擇倉庫",
+      "quantityChangeLabel": "數量變動",
+      "quantityHint": "正數表示增加，負數表示減少",
+      "reasonCodeLabel": "原因代碼",
+      "reasonCodePlaceholder": "選擇原因",
+      "notesLabel": "備註（選填）",
+      "submitLabel": "記錄調整",
+      "submittingLabel": "送出中...",
+      "confirmTitle": "確認調整",
+      "confirmDescription": "確認調整 {quantity} 單位（{reason}）。",
+      "cancel": "取消",
+      "confirm": "確認"
+    },
+    "createProductForm": {
+      "submitLabel": "建立產品",
+      "submittingLabel": "建立中...",
+      "failed": "建立產品失敗",
+      "codeLabel": "編號",
+      "nameLabel": "名稱",
+      "categoryLabel": "類別",
+      "categoryPlaceholder": "搜尋或建立類別…",
+      "descriptionLabel": "描述",
+      "unitLabel": "單位",
+      "unitPlaceholder": "搜尋單位…",
+      "standardCostLabel": "標準成本",
+      "cancel": "取消"
     },
     "suppliersPage": {
       "eyebrow": "庫存",

@@ -1173,7 +1173,59 @@
       "manageCategories": "Manage Categories",
       "addProduct": "Add Product",
       "warehouseScope": "Warehouse Scope",
-      "warehouseScopeDescription": "Filter stock view by warehouse."
+      "warehouseScopeDescription": "Filter stock view by warehouse.",
+      "commandBar": {
+        "regionLabel": "Inventory commands",
+        "searchPlaceholder": "Search by code or name…",
+        "adjustStock": "Adjust Stock",
+        "newTransfer": "New Transfer",
+        "newOrder": "New Order"
+      },
+      "stockAdjustmentDialog": {
+        "title": "Adjust Stock",
+        "description": "Record a warehouse stock change without leaving the inventory workspace."
+      },
+      "createProductDialog": {
+        "title": "Add Product",
+        "description": "Create a new product and refresh the inventory table when it saves successfully."
+      }
+    },
+    "stockAdjustmentForm": {
+      "loading": "Loading...",
+      "title": "Record Stock Adjustment",
+      "description": "Post manual stock movements with warehouse and reason-code control.",
+      "success": "Adjustment recorded. Updated stock: {count} units.",
+      "sectionTitle": "Adjustment Form",
+      "sectionDescription": "Enter the product, warehouse, quantity delta, and reason code for the stock change.",
+      "productLabel": "Product",
+      "productPlaceholder": "Search product…",
+      "warehouseLabel": "Warehouse",
+      "warehousePlaceholder": "Select warehouse",
+      "quantityChangeLabel": "Quantity change",
+      "quantityHint": "Positive to add, negative to remove",
+      "reasonCodeLabel": "Reason code",
+      "reasonCodePlaceholder": "Select reason",
+      "notesLabel": "Notes (optional)",
+      "submitLabel": "Record Adjustment",
+      "submittingLabel": "Submitting...",
+      "confirmTitle": "Confirm adjustment",
+      "confirmDescription": "Confirm adjustment of {quantity} units ({reason}).",
+      "cancel": "Cancel",
+      "confirm": "Confirm"
+    },
+    "createProductForm": {
+      "submitLabel": "Create Product",
+      "submittingLabel": "Creating...",
+      "failed": "Failed to create product",
+      "codeLabel": "Code",
+      "nameLabel": "Name",
+      "categoryLabel": "Category",
+      "categoryPlaceholder": "Search or create category…",
+      "descriptionLabel": "Description",
+      "unitLabel": "Unit",
+      "unitPlaceholder": "Search unit…",
+      "standardCostLabel": "Standard Cost",
+      "cancel": "Cancel"
     },
     "suppliersPage": {
       "eyebrow": "Inventory",

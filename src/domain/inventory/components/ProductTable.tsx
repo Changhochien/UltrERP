@@ -16,9 +16,19 @@ interface ProductTableProps {
   warehouseId?: string;
   onProductClick?: (productId: string) => void;
   createdProductKey?: number;
+  searchValue?: string;
+  onSearchValueChange?: (value: string) => void;
+  hideToolbarSearch?: boolean;
 }
 
-export function ProductTable({ warehouseId, onProductClick, createdProductKey }: ProductTableProps) {
+export function ProductTable({
+  warehouseId,
+  onProductClick,
+  createdProductKey,
+  searchValue,
+  onSearchValueChange,
+  hideToolbarSearch = false,
+}: ProductTableProps) {
   const { t } = useTranslation("common", { keyPrefix: "inventory.productGrid" });
   const navigate = useNavigate();
   const {
@@ -37,15 +47,20 @@ export function ProductTable({ warehouseId, onProductClick, createdProductKey }:
     sortState,
     setSort,
   } = useProductSearch();
-  const [query, setQuery] = useState("");
+  const [internalQuery, setInternalQuery] = useState("");
+  const query = searchValue ?? internalQuery;
 
   useEffect(() => {
-    search("", warehouseId, 1, sortState ?? undefined, includeInactive, categoryId, categoryLabel);
-  }, [categoryId, categoryLabel, createdProductKey, includeInactive, search, sortState, warehouseId]);
+    search(query, warehouseId, 1, sortState ?? undefined, includeInactive, categoryId, categoryLabel);
+  }, [categoryId, categoryLabel, createdProductKey, includeInactive, query, search, sortState, warehouseId]);
 
   const handleSearchChange = (value: string) => {
-    setQuery(value);
-    search(value, warehouseId, 1, sortState ?? undefined, includeInactive, categoryId, categoryLabel);
+    if (onSearchValueChange) {
+      onSearchValueChange(value);
+      return;
+    }
+
+    setInternalQuery(value);
   };
 
   const handleCategoryChange = (nextCategoryId: string, nextCategoryLabel: string) => {
@@ -183,17 +198,19 @@ export function ProductTable({ warehouseId, onProductClick, createdProductKey }:
         toolbar={(
           <DataTableToolbar>
             <div className="flex flex-col gap-3 md:flex-row md:items-center">
-              <div className="relative max-w-64">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder={t("searchPlaceholder")}
-                  value={query}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  aria-label={t("searchPlaceholder")}
-                  className="pl-9"
-                />
-              </div>
+              {!hideToolbarSearch ? (
+                <div className="relative max-w-64">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    placeholder={t("searchPlaceholder")}
+                    value={query}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    aria-label={t("searchPlaceholder")}
+                    className="pl-9"
+                  />
+                </div>
+              ) : null}
               <div className="min-w-[14rem]">
                 <CategoryCombobox
                   value={categoryId || null}

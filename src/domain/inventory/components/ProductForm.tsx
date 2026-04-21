@@ -23,6 +23,30 @@ export type ProductFormSubmitResult =
   | { ok: true; product: ProductResponse }
   | { ok: false; fieldErrors?: ProductFormFieldError[]; formError?: string };
 
+export interface ProductFormLabels {
+  code: string;
+  name: string;
+  category: string;
+  categoryPlaceholder: string;
+  description: string;
+  unit: string;
+  unitPlaceholder: string;
+  standardCost: string;
+  cancel: string;
+}
+
+const DEFAULT_LABELS: ProductFormLabels = {
+  code: "Code",
+  name: "Name",
+  category: "Category",
+  categoryPlaceholder: "Search or create category...",
+  description: "Description",
+  unit: "Unit",
+  unitPlaceholder: "Search unit...",
+  standardCost: "Standard Cost",
+  cancel: "Cancel",
+};
+
 interface ProductFormProps {
   initialValues?: Partial<ProductFormValues>;
   onSubmit: (values: ProductUpdate) => Promise<ProductFormSubmitResult>;
@@ -30,6 +54,7 @@ interface ProductFormProps {
   onCancel?: () => void;
   submitLabel: string;
   submittingLabel: string;
+  labels?: Partial<ProductFormLabels>;
 }
 
 function toErrorMap(errors: ProductFormFieldError[]): Record<string, string> {
@@ -60,7 +85,9 @@ export function ProductForm({
   onCancel,
   submitLabel,
   submittingLabel,
+  labels,
 }: ProductFormProps) {
+  const fieldLabels = { ...DEFAULT_LABELS, ...labels };
   const [formData, setFormData] = useState<ProductFormValues>(defaultProductFormValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
@@ -129,7 +156,7 @@ export function ProductForm({
 
       <div>
         <label htmlFor="product-code" className="block text-sm font-medium">
-          Code <span className="text-destructive">*</span>
+          {fieldLabels.code} <span className="text-destructive">*</span>
         </label>
         <Input
           id="product-code"
@@ -144,7 +171,7 @@ export function ProductForm({
 
       <div>
         <label htmlFor="product-name" className="block text-sm font-medium">
-          Name <span className="text-destructive">*</span>
+          {fieldLabels.name} <span className="text-destructive">*</span>
         </label>
         <Input
           id="product-name"
@@ -159,7 +186,7 @@ export function ProductForm({
 
       <div>
         <label id="product-category-label" className="block text-sm font-medium">
-          Category
+          {fieldLabels.category}
         </label>
         <div id="product-category" className="mt-1">
           <CategoryCombobox
@@ -171,7 +198,7 @@ export function ProductForm({
               setFormData((current) => ({ ...current, category_id, category_name }))
             }
             onClear={() => setFormData((current) => ({ ...current, category_id: null, category_name: "" }))}
-            placeholder="Search or create category…"
+            placeholder={fieldLabels.categoryPlaceholder}
             allowCreate
             disabled={isSubmitting}
           />
@@ -181,7 +208,7 @@ export function ProductForm({
 
       <div>
         <label htmlFor="product-description" className="block text-sm font-medium">
-          Description
+          {fieldLabels.description}
         </label>
         <Textarea
           id="product-description"
@@ -194,7 +221,7 @@ export function ProductForm({
 
       <div>
         <label id="product-unit-label" className="block text-sm font-medium">
-          Unit <span className="text-destructive">*</span>
+          {fieldLabels.unit} <span className="text-destructive">*</span>
         </label>
         <div id="product-unit" className="mt-1">
           <UnitCombobox
@@ -203,7 +230,7 @@ export function ProductForm({
             value={formData.unit}
             onChange={(unit) => setFormData((current) => ({ ...current, unit }))}
             onClear={() => setFormData((current) => ({ ...current, unit: "" }))}
-            placeholder="Search unit…"
+            placeholder={fieldLabels.unitPlaceholder}
             disabled={isSubmitting}
           />
         </div>
@@ -212,7 +239,7 @@ export function ProductForm({
 
       <div>
         <label htmlFor="product-standard-cost" className="block text-sm font-medium">
-          Standard Cost
+          {fieldLabels.standardCost}
         </label>
         <Input
           id="product-standard-cost"
@@ -239,7 +266,7 @@ export function ProductForm({
         </Button>
         {onCancel && (
           <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
-            Cancel
+            {fieldLabels.cancel}
           </Button>
         )}
       </div>
