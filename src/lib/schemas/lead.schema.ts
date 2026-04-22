@@ -100,9 +100,9 @@ export function toLeadCreatePayload(values: LeadFormValues): LeadCreatePayload {
   };
 }
 
-export function toLeadUpdatePayload(values: LeadFormValues, version: number): LeadUpdatePayload {
+export function toLeadUpdatePayload(values: LeadCreatePayload, version: number): LeadUpdatePayload {
   return {
-    ...toLeadCreatePayload(values),
+    ...values,
     version,
   };
 }

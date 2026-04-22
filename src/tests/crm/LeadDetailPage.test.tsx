@@ -74,7 +74,12 @@ const sampleLead = {
   utm_campaign: "spring-2026",
   utm_content: "booth-a3",
   notes: "Warm inbound lead",
+  conversion_state: "not_converted" as const,
+  conversion_path: "",
+  converted_by: "",
   converted_customer_id: null,
+  converted_opportunity_id: null,
+  converted_quotation_id: null,
   converted_at: null,
   version: 1,
   created_at: "2026-04-21T00:00:00Z",
@@ -209,5 +214,26 @@ describe("LeadDetailPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Convert to customer" }));
 
     expect(await screen.findByRole("button", { name: "View customer" })).toBeTruthy();
+  });
+
+  it("shows conversion summary and linked record shortcuts", async () => {
+    mockedGetLead.mockResolvedValue({
+      ...sampleLead,
+      status: "quotation",
+      conversion_state: "partially_converted",
+      conversion_path: "customer+quotation",
+      converted_by: "sales.owner@test",
+      converted_customer_id: "customer-1",
+      converted_opportunity_id: "opp-1",
+      converted_quotation_id: "qtn-1",
+      converted_at: "2026-04-22T08:30:00Z",
+    });
+
+    renderLeadDetail();
+
+    expect(await screen.findByText("Customer + Quotation")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "View customer" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "View opportunity" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "View quotation" })).toBeTruthy();
   });
 });

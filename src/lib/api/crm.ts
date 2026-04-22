@@ -15,6 +15,8 @@ import type {
   CRMTerritoryPayload,
   DuplicateLeadInfo,
   LeadCreatePayload,
+  LeadConversionPayload,
+  LeadConversionResult,
   LeadCustomerConversionResult,
   LeadListResponse,
   LeadOpportunityHandoff,
@@ -314,6 +316,30 @@ export async function convertLeadToCustomer(
 
   if (resp.ok) {
     const data: LeadCustomerConversionResult = await resp.json();
+    return { ok: true, data };
+  }
+
+  const body: ApiError = await resp.json().catch(() => ({ detail: [] }));
+  return { ok: false, errors: body.detail ?? [] };
+}
+
+export async function convertLead(
+  id: string,
+  payload: LeadConversionPayload,
+): Promise<LeadActionResult<LeadConversionResult>> {
+  let resp: Response;
+  try {
+    resp = await apiFetch(`/api/v1/crm/leads/${id}/convert`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    return { ok: false, errors: networkErrorDetail() };
+  }
+
+  if (resp.ok) {
+    const data: LeadConversionResult = await resp.json();
     return { ok: true, data };
   }
 
