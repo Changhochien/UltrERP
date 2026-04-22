@@ -716,6 +716,27 @@
     }
   },
   "crm": {
+    "detailPage": {
+      "convertedAt": "轉換時間",
+      "convertedBy": "轉換人員",
+      "conversionPath": "轉換路徑",
+      "conversionState": "轉換狀態",
+      "conversionSummaryDescription": "檢視此線索已建立的下游記錄與已保存的轉換路徑。",
+      "conversionSummaryTitle": "轉換摘要",
+      "conversionTarget": {
+        "customer": "客戶",
+        "opportunity": "商機",
+        "quotation": "報價"
+      },
+      "createQuotation": "建立報價",
+      "viewOpportunity": "查看商機",
+      "viewQuotation": "查看報價"
+    },
+    "conversionStateValues": {
+      "converted": "已轉換",
+      "not_converted": "尚未轉換",
+      "partially_converted": "部分轉換"
+    },
     "setup": {
       "selectPlaceholder": "請選擇"
     },

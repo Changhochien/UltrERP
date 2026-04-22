@@ -783,15 +783,27 @@
     "detailPage": {
       "backToList": "Back to lead list",
       "createOpportunity": "Create opportunity",
+      "createQuotation": "Create quotation",
       "convertAction": "Convert to customer",
       "convertBillingAddress": "Billing Address",
       "convertBusinessNumber": "Business Number",
       "convertContactEmail": "Contact Email",
       "convertContactName": "Contact Name",
       "convertContactPhone": "Contact Phone",
+      "convertedAt": "Converted At",
+      "convertedBy": "Converted By",
       "convertDescription": "Prepare the qualified lead for customer creation while preserving lineage.",
       "convertErrorDescription": "Please review the conversion fields and try again.",
       "convertErrorTitle": "Customer conversion failed",
+      "conversionPath": "Conversion Path",
+      "conversionState": "Conversion State",
+      "conversionSummaryDescription": "Review the stored downstream links and the recorded conversion path for this lead.",
+      "conversionSummaryTitle": "Conversion Summary",
+      "conversionTarget": {
+        "customer": "Customer",
+        "opportunity": "Opportunity",
+        "quotation": "Quotation"
+      },
       "convertSuccessDescription": "Customer {customerId} was created from this lead.",
       "convertSuccessTitle": "Lead converted",
       "convertTitle": "Customer Conversion",
@@ -826,7 +838,9 @@
       "transitionSuccessDescription": "Lead status changed to {status}.",
       "transitionSuccessTitle": "Status updated",
       "transitioning": "Updating…",
-      "viewCustomer": "View customer"
+      "viewCustomer": "View customer",
+      "viewOpportunity": "View opportunity",
+      "viewQuotation": "View quotation"
     },
     "duplicateWarning": {
       "continueEditing": "Continue editing",
@@ -907,6 +921,11 @@
       "in_process": "In Process",
       "qualified": "Qualified",
       "unqualified": "Unqualified"
+    },
+    "conversionStateValues": {
+      "converted": "Converted",
+      "not_converted": "Not Converted",
+      "partially_converted": "Partially Converted"
     },
     "statusValues": {
       "converted": "Converted",
