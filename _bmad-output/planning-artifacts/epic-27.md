@@ -16,17 +16,22 @@ Add the minimally viable manufacturing foundation needed to define product recip
 **Backend:**
 - BOM records with submit workflow, materials list, and production-item references.
 - Work orders with direct material transfer mode and finished-goods completion.
-- Basic production planning from demand signals.
+- Routing and workstation definitions with operation sequences.
+- Production planning from demand signals and capacity constraints.
+- Downtime tracking and OEE (Overall Equipment Effectiveness) calculation.
 
 **Frontend:**
 - BOM and work-order workspaces using shared list/detail patterns.
-- Material requirement and production-status visibility.
-- Guardrails that keep draft, submitted, in-process, and completed states legible.
+- Routing and workstation management interfaces.
+- Production planning and scheduling views.
+- Downtime and OEE dashboard.
 
 **Data Model:**
-- BOM headers, BOM items, and optional operation-ready hooks.
-- Work-order status, quantity, and reservation/consumption fields.
-- Production-plan-ready references to sales and inventory demand.
+- BOM headers, BOM items, and operation definitions.
+- Work-order status, quantity, operation steps, and reservation/consumption fields.
+- Workstation capacity and operation time definitions.
+- Downtime records categorized by reason.
+- OEE calculation components: Availability, Performance, Quality.
 
 ## Non-Goals
 
@@ -39,20 +44,24 @@ Add the minimally viable manufacturing foundation needed to define product recip
 
 - Treat BOM as a submittable master record, not an informal recipe note.
 - Start with direct material transfer against the work order, matching the validated recommendation.
-- Keep operation and Job Card hooks present but deferred until the direct mode is stable.
+- Implement routing as operation sequences linked to workstations with time and cost estimates.
 - Use existing stock movement and product models wherever possible.
+- Calculate OEE from downtime data to provide equipment effectiveness visibility.
 
 ## Key Constraints
 
 - The validated report is explicit: full BOM and Work Order parity is high effort, but a minimally viable slice is medium.
 - BOM approval must exist before work orders can consume it.
 - Quality hooks should be designed to connect cleanly to Epic 29 rather than embedded prematurely.
+- Routing and workstation work extends Epic 27 beyond direct-transfer mode.
 
 ## Dependency and Phase Order
 
-1. BOM lands before Work Orders.
-2. Direct-transfer work orders land before any Job Card expansion.
-3. Production planning lands only after the BOM and work-order write model is stable.
+1. BOM lands before Work Orders and Routing.
+2. Direct-transfer work orders land before operation-level tracking.
+3. Routing and workstations land after basic work orders are stable.
+4. Production planning lands after routing with time estimates.
+5. Downtime and OEE tracking can land independently for equipment visibility.
 
 ---
 
@@ -104,14 +113,56 @@ Add the minimally viable manufacturing foundation needed to define product recip
 - Given a planner accepts or rejects a proposal, the action is explicit and auditable.
 - Given multiple BOM-driven items compete for materials, planning still exposes shortages clearly.
 
-## Story 27.5: Advanced Routing Extension Point
+## Story 27.5: Routing and Workstation Management
 
-- Add the minimum model hooks needed for later operation routing and Job Card work.
-- Keep those hooks inactive until the direct-transfer flow is stable.
-- Document the migration path from direct work-order execution to operation-level tracking.
+- Add Workstation records with name, description, cost per hour, and capacity.
+- Define Routing records with operation sequences linked to work orders.
+- Add operation steps: operation name, workstation, time (setup, run, fixed, variable), and sequence order.
+- Link routing to BOM for manufactured items with operation requirements.
+- Calculate planned operation times and costs for work orders using routing.
+- Support operation overlapping and sequencing for work order scheduling.
 
 **Acceptance Criteria:**
 
-- Given the current release uses direct mode only, the schema still leaves room for future operation records.
-- Given a future Job Card slice is planned, it does not require destructive rework of the v1 manufacturing write model.
-- Given current users interact with work orders, no inactive advanced-routing surface creates confusion.
+- Given a workstation is configured with hourly cost, work orders using it calculate operation labor cost correctly.
+- Given a routing is defined for a product, work orders inherit operation sequence and time estimates.
+- Given a work order uses a routing with multiple operations, the planned production time reflects setup plus run times.
+- Given operation costs are configured on routing, total production cost is estimable before work order execution.
+- Given a work order is scheduled, the system can display operation timeline based on workstation availability.
+- Given production requires specific workstations, the routing ensures operations are assigned correctly.
+
+## Story 27.6: Production Plan and Demand Aggregation
+
+- Add production plan records that aggregate demand from sales orders and forecasts.
+- Generate proposed work orders from production plan based on BOM and material availability.
+- Support make-to-order and make-to-stock production strategies.
+- Provide visibility into production capacity vs. demand load.
+- Allow plan approval and firming of proposed work orders.
+- Track planned vs. actual production completion for plan accuracy reporting.
+
+**Acceptance Criteria:**
+
+- Given sales orders exist for manufactured items, the production plan aggregates total demand.
+- Given material shortages exist, the production plan flags items that cannot be fully produced.
+- Given a planner reviews the production plan, proposed work orders can be created, modified, or cancelled.
+- Given a production plan is firmed, proposed work orders become firm work orders.
+- Given production capacity is limited, the plan highlights overload situations and allows prioritization.
+- Given the plan period ends, actual vs. planned production is reportable for planning accuracy analysis.
+
+## Story 27.7: Downtime Tracking and OEE Calculation
+
+- Add downtime recording linked to workstations or work orders.
+- Categorize downtime by type: Planned Maintenance, Unplanned Breakdown, Changeover, Material Shortage, Quality Hold.
+- Record downtime start time, end time, and duration.
+- Calculate OEE components: Availability (actual run time / planned run time), Performance (ideal cycle time / actual cycle time), Quality (good units / total units).
+- Compute OEE score as product of the three components.
+- Provide OEE dashboard showing trends, downtime Pareto analysis, and improvement tracking.
+
+**Acceptance Criteria:**
+
+- Given a workstation experiences unplanned downtime, the operator can log the event with type and duration.
+- Given downtime is logged, the system calculates impact on equipment availability.
+- Given production data exists (good units, total units, cycle times), the system calculates OEE components.
+- Given an OEE dashboard is viewed, current OEE score and trend over time are visible.
+- Given a downtime Pareto report is generated, the system ranks downtime causes by frequency and duration.
+- Given OEE improves or degrades, the trend visualization shows the change clearly for management review.

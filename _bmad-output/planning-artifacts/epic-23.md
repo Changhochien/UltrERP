@@ -120,3 +120,55 @@ Close the validated pre-sale gap by giving UltrERP a lead, opportunity, and quot
 - Given a sales manager filters the pipeline, open work and drop-off reasons are visible by stage, territory, or customer group.
 - Given a lead or opportunity is captured from an attributed source, UTM source, medium, campaign, and content remain reportable.
 - Given Epic 30 later adds outreach channels, the CRM records already expose stable party and attribution fields.
+
+## Story 23.6: UTM Tracking and Marketing Attribution
+
+- Add comprehensive UTM parameter capture on all lead and opportunity sources.
+- Store utm_source, utm_medium, utm_campaign, utm_content, and utm_term fields on lead records.
+- Propagate UTM data through opportunity creation to quotation and order handoff.
+- Provide attribution reporting: lead source analysis, conversion by channel, campaign ROI.
+- Support first-touch and multi-touch attribution models.
+
+**Acceptance Criteria:**
+
+- Given a lead originates from a marketing campaign URL with UTM parameters, the system captures all five standard UTM fields.
+- Given an opportunity is created from a lead, UTM attribution data follows through to the opportunity record.
+- Given a sales manager reviews the marketing attribution report, conversion rates by source, medium, and campaign are visible.
+- Given a quotation converts to an order, the original UTM attribution remains traceable for revenue attribution.
+- Given a lead has multiple interactions across channels, the system can track the full attribution journey.
+
+## Story 23.7: Lead Conversion and Customer Handoff
+
+- Implement complete lead-to-customer conversion workflow with all related records.
+- Convert lead to customer with address and contact data migration.
+- Create opportunity from lead with qualification data preservation.
+- Generate quotation from lead or opportunity with party linkage.
+- Track conversion metrics: conversion rate, time-to-conversion, conversion source.
+- Support partial conversion (convert to customer only, or to opportunity only).
+
+**Acceptance Criteria:**
+
+- Given a lead is qualified, the system can convert it to a customer without data re-entry.
+- Given a lead is converted, all linked contacts, addresses, and communications migrate to the customer record.
+- Given an opportunity is created during conversion, historical lead data remains visible.
+- Given a lead conversion fails partially, the system preserves successful conversions and surfaces errors.
+- Given sales leadership reviews conversion metrics, time-to-conversion and conversion source are reportable.
+- Given a lead is converted, the original lead record remains for historical reference with converted status.
+
+## Story 23.8: CRM Reporting and Pipeline Analytics
+
+- Add CRM dashboard with key sales metrics: pipeline value, win rate, conversion rate, average deal size.
+- Provide pipeline funnel visualization: leads by stage, conversion drop-off points.
+- Build win/loss analysis reports with loss reason categorization.
+- Add sales rep performance tracking: assigned leads, opportunities owned, closed revenue.
+- Support forecast reporting: expected close by period based on stage probabilities.
+- Enable period-over-period comparison for trend analysis.
+
+**Acceptance Criteria:**
+
+- Given a sales manager opens the CRM dashboard, pipeline value, win rate, and conversion rate display prominently.
+- Given a pipeline funnel view is requested, the system shows lead volume at each stage with conversion percentages.
+- Given a win/loss report is generated, loss reasons are categorized and ranked by frequency.
+- Given a sales rep performance report is run, individual metrics for assigned leads, opportunities, and revenue are visible.
+- Given a forecast report is generated, expected revenue by period reflects stage probability weighting.
+- Given period comparisons are requested, trends in pipeline, win rate, and revenue are visualized.

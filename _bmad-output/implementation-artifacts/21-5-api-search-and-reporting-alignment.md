@@ -18,24 +18,24 @@ so that sales performance and order metrics can improve without destabilizing th
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add additive commission support to the order domain. (AC: 1, 2)
-  - [ ] Extend the order model, schemas, and response contracts with the minimum additive commission structure needed for assignments and totals.
-  - [ ] If no reusable commission or salesperson shape exists in the current source, choose the smallest structure that supports real order reporting needs.
-  - [ ] Keep commission data orthogonal to confirmation, reservation, fulfillment, and invoice linkage.
-- [ ] Task 2: Expose commission information through the touched API and UI surfaces. (AC: 1, 2)
-  - [ ] Update the relevant backend order responses and frontend order types or views so commission information is visible where order operators or reporting users need it.
-  - [ ] Avoid pulling CRM or quotation-specific abstractions into the orders domain.
-- [ ] Task 3: Gate optional order metadata by real usage. (AC: 3)
-  - [ ] Only add low-effort order metadata such as UTM fields if a real consumer inside Epic 21 uses it.
-  - [ ] If no real consumer exists, document that metadata was deliberately deferred to keep scope tight.
-- [ ] Task 4: Align reporting and intelligence semantics with confirmation. (AC: 4, 5)
-  - [ ] Update reporting or intelligence paths that still rely on creation-time or stale status assumptions for committed-order counts.
-  - [ ] Ensure committed-order analytics key off the preserved confirmation semantics, especially `confirmed_at` and the committed lifecycle states already in code.
-  - [ ] Perform a targeted repository sweep for touched order-reporting paths and document the ones changed.
-- [ ] Task 5: Add focused regression coverage. (AC: 1-5)
-  - [ ] Add tests for commission serialization and any touched commission calculations.
-  - [ ] Add tests proving committed-order reporting excludes pending intake orders and continues counting confirmed orders correctly.
-  - [ ] Add compatibility coverage if optional metadata is introduced.
+- [x] Task 1: Add additive commission support to the order domain. (AC: 1, 2)
+  - [x] Extend the order model, schemas, and response contracts with the minimum additive commission structure needed for assignments and totals.
+  - [x] If no reusable commission or salesperson shape exists in the current source, choose the smallest structure that supports real order reporting needs.
+  - [x] Keep commission data orthogonal to confirmation, reservation, fulfillment, and invoice linkage.
+- [x] Task 2: Expose commission information through the touched API and UI surfaces. (AC: 1, 2)
+  - [x] Update the relevant backend order responses and frontend order types or views so commission information is visible where order operators or reporting users need it.
+  - [x] Avoid pulling CRM or quotation-specific abstractions into the orders domain.
+- [x] Task 3: Gate optional order metadata by real usage. (AC: 3)
+  - [x] Only add low-effort order metadata such as UTM fields if a real consumer inside Epic 21 uses it.
+  - [x] If no real consumer exists, document that metadata was deliberately deferred to keep scope tight.
+- [x] Task 4: Align reporting and intelligence semantics with confirmation. (AC: 4, 5)
+  - [x] Update reporting or intelligence paths that still rely on creation-time or stale status assumptions for committed-order counts.
+  - [x] Ensure committed-order analytics key off the preserved confirmation semantics, especially `confirmed_at` and the committed lifecycle states already in code.
+  - [x] Perform a targeted repository sweep for touched order-reporting paths and document the ones changed.
+- [x] Task 5: Add focused regression coverage. (AC: 1-5)
+  - [x] Add tests for commission serialization and any touched commission calculations.
+  - [x] Add tests proving committed-order reporting excludes pending intake orders and continues counting confirmed orders correctly.
+  - [x] Add compatibility coverage if optional metadata is introduced.
 
 ## Dev Notes
 

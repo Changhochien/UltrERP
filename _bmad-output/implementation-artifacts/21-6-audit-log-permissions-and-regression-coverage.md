@@ -18,21 +18,21 @@ so that the current order commitment flow remains trustworthy while the newly cl
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Preserve and extend audit continuity. (AC: 1, 2)
-  - [ ] Keep order confirmation and invoice creation correlated as one business action chain.
-  - [ ] Audit fulfillment mutations, commission writes, and optional metadata writes only where they change workflow meaning.
-  - [ ] Keep audit changes localized to the Epic 21 surfaces rather than broad unrelated audit refactors.
-- [ ] Task 2: Lock the permission matrix to the real current baseline. (AC: 3)
-  - [ ] Preserve the current create or confirm write baseline in `backend/domains/orders/routes.py`, where write access is currently limited to admin and sales roles.
-  - [ ] Preserve the current read baseline, where order reads are currently allowed for admin, warehouse, and sales roles, unless this epic intentionally expands visibility.
-  - [ ] If new warehouse-only actions or finance visibility are introduced, make them explicit and route-local rather than implied.
-- [ ] Task 3: Add backend regression coverage for the preserved commitment flow and new gaps. (AC: 1-5)
-  - [ ] Extend confirmation, status, and orders API tests for the touched Epic 21 behavior.
-  - [ ] Keep rollback coverage proving reservation or invoice failures leave the order unconfirmed.
-  - [ ] Add tests for any new commission serialization, reporting semantics, or permission boundaries introduced by this epic.
-- [ ] Task 4: Add focused frontend regression coverage. (AC: 4, 5)
-  - [ ] Add tests for action visibility, workflow labels, toast or inline feedback, and backorder or readiness cues.
-  - [ ] Add tests that protect the billing and fulfillment presentation separation introduced earlier in the epic.
+- [x] Task 1: Preserve and extend audit continuity. (AC: 1, 2)
+  - [x] Keep order confirmation and invoice creation correlated as one business action chain.
+  - [x] Audit fulfillment mutations, commission writes, and optional metadata writes only where they change workflow meaning.
+  - [x] Keep audit changes localized to the Epic 21 surfaces rather than broad unrelated audit refactors.
+- [x] Task 2: Lock the permission matrix to the real current baseline. (AC: 3)
+  - [x] Preserve the current create or confirm write baseline in `backend/domains/orders/routes.py`, where write access is currently limited to admin and sales roles.
+  - [x] Preserve the current read baseline, where order reads are currently allowed for admin, warehouse, and sales roles, unless this epic intentionally expands visibility.
+  - [x] If new warehouse-only actions or finance visibility are introduced, make them explicit and route-local rather than implied.
+- [x] Task 3: Add backend regression coverage for the preserved commitment flow and new gaps. (AC: 1-5)
+  - [x] Extend confirmation, status, and orders API tests for the touched Epic 21 behavior.
+  - [x] Keep rollback coverage proving reservation or invoice failures leave the order unconfirmed.
+  - [x] Add tests for any new commission serialization, reporting semantics, or permission boundaries introduced by this epic.
+- [x] Task 4: Add focused frontend regression coverage. (AC: 4, 5)
+  - [x] Add tests for action visibility, workflow labels, toast or inline feedback, and backorder or readiness cues.
+  - [x] Add tests that protect the billing and fulfillment presentation separation introduced earlier in the epic.
 
 ## Dev Notes
 

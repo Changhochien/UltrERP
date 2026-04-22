@@ -118,3 +118,17 @@ Establish a minimally viable accounting backbone with chart of accounts, journal
 - Given finance imports or reviews bank activity, unmatched and matched items are visible and auditable.
 - Given an invoice is partially paid, the finance UI can record and reconcile that state without contradicting the existing backend computation.
 - Given receivables age beyond configured rules, collection actions and notices are trackable.
+
+## Story 26.6: Budget Controls and Variance Reporting
+
+- Add budget creation, period allocation, and spending control rules.
+- Support budget by department, project, or cost center dimensions.
+- Alert or block transactions that exceed budget thresholds.
+- Provide variance reports comparing actuals against budget.
+
+**Acceptance Criteria:**
+
+- Given a budget is defined for a cost center and period, spending can be tracked against it.
+- Given a purchase or expense transaction exceeds available budget, the system alerts or blocks submission based on policy.
+- Given finance reviews budget performance, variance reports show actual versus planned amounts.
+- Given budget periods are adjusted, historical budget allocations remain auditable.

@@ -284,6 +284,70 @@ Enable AI agents and sales staff to understand what customers are buying, how pu
 Provide multi-dimensional sales analytics covering revenue diagnosis, inventory planning, product performance, and customer buying behavior — with accurate historical attribution via product snapshots on order lines, SCD Type 2 product dimension, and pre-computed monthly aggregation tables.
 **FRs covered:** (see epic-20.md for full story list)
 
+### Epic 23: CRM Foundation and Quotation Pipeline
+Close the validated pre-sale gap by giving UltrERP a lead, opportunity, and quotation pipeline that hands off cleanly into the existing customer and order workflows.
+**Stories:** 23.1-23.8 (see epic-23.md for full story list)
+
+### Epic 24: Supplier Sourcing, Purchase Orders, and Goods Receipt
+Close the validated purchase-cycle gap by adding RFQ, supplier quotation, purchase order, and goods receipt workflows.
+**Stories:** 24.1-24.6 (see epic-24.md for full story list)
+
+### Epic 25: Multi-Currency, Payment Terms, and Commercial Defaults
+Add currency-aware commercial foundations and reusable payment-term configuration.
+**Stories:** 25.1-25.5 (see epic-25.md for full story list)
+
+### Epic 26: GL, Banking, and Budget Controls
+Add chart of accounts, journal entries, financial statements, and budget controls for financial oversight.
+**Stories:** 26.1-26.7 (see epic-26.md for full story list)
+
+### Epic 27: Manufacturing Foundation
+Add BOM, work orders, routing, workstations, production planning, and downtime/OEE tracking.
+**Stories:** 27.1-27.7 (see epic-27.md for full story list)
+
+### Epic 28: Workforce, Contacts, Service, and Quality Management
+Add employee management, shared contacts, timesheets, issue tracking, NCR/CAPA, quality procedures, and quality goals.
+**Stories:** 28.1-28.8 (see epic-28.md for full story list)
+
+### Epic 29: Quality Control, Traceability, and Warehouse Mobility
+Add quality inspection, serial/batch tracking, AQL sampling, SPC charts, and supplier quality scorecards.
+**Stories:** 29.1-29.8 (see epic-29.md for full story list)
+
+### Epic 30: Customer Operations and Portal
+Customer operations, service desk, and portal foundations for external user access.
+**Stories:** (see epic-30.md for full story list)
+
+### Epic 31: Assets and Regional Extensions
+Asset lifecycle management and regional tax/compliance extensions.
+**Stories:** 31.1-31.6 (see epic-31.md for full story list)
+
+### Epic 32: Advanced Product Management, EDI Integration, and Budget Controls
+Close the remaining ERPNext feature gaps by implementing EDI integration, budget controls, and product variants.
+**Stories:** 32.1-32.10 (see epic-32.md for full story list)
+
+### Epic 33: HR Foundation
+Establish foundational human resources infrastructure for UltrERP: employee management with organizational structure, Taiwan-specific holiday calendars, basic leave tracking, and attendance recording.
+**Stories:** 33.1-33.4 (see epic-33.md for full story list)
+**ERPNext gaps covered:** Employee CRUD, Department, Designation, Holiday List, Leave Management, Attendance
+
+### Epic 34: Taiwan Localization Plus
+Extend UltrERP's Taiwan-specific capabilities with LINE Pay, ECPay, Taiwan banking reconciliation, and optional logistics API connectivity.
+**Stories:** 34.1-34.4 (see epic-34.md for full story list)
+**Taiwan-specific integrations:** LINE Pay, ECPay, Taiwan Banking, Taiwan Logistics
+
+### Epic 35: Workflow Automation Engine
+Add a generic workflow engine for custom approval chains, document state transitions, and automated notifications without code changes.
+**Stories:** 35.1-35.6 (see epic-35.md for full story list)
+**ERPNext gaps covered:** Workflow, Approval Chain, Document State Machine, Notifications
+
+### Epic 36: Extensibility and Document Management
+Add no-code extensibility with custom fields, file attachments, print format builder, data import/export, and document versioning.
+**Stories:** 36.1-36.7 (see epic-36.md for full story list)
+**ERPNext gaps covered:** Custom Field, File Attachment, Print Format, Import/Export, Versioning
+
+### Epic 37: Integration and Automation Platform
+Add webhooks, email templates, global search, background job scheduler, rate limiting, and integration audit logging.
+**Stories:** 37.1-37.8 (see epic-37.md for full story list)
+**ERPNext gaps covered:** Webhook, Email Template, Global Search, Scheduler, Rate Limiting
 
 ---
 
@@ -366,4 +430,81 @@ INTEL-005: Epic 19 - Prospect gap analysis (customers not buying in a category)
 INTEL-006: Epic 19 - Market opportunities signal feed (macro market signals)
 INTEL-007: Epic 19 - Intelligence feature gate and MCP scope configuration
 INTEL-008: Epic 19 - Backend test coverage for intelligence services
-
+SUB-001: Epic 24 - RFQ and supplier quotation workflow
+SUB-002: Epic 24 - Purchase order authoring and approval
+SUB-003: Epic 24 - Goods receipt and receiving exceptions
+SUB-004: Epic 24 - Procurement lineage and three-way match readiness
+SUB-005: Epic 24 - Supplier controls and procurement extensions
+SUB-006: Epic 24 - Subcontracting workflow foundation
+BUD-001: Epic 26 - Chart of accounts and fiscal structure
+BUD-002: Epic 26 - Journal entry and general ledger posting
+BUD-003: Epic 26 - Core financial statements and exports
+BUD-004: Epic 26 - Document auto-posting for sales, purchasing, and payments
+BUD-005: Epic 26 - Banking, reconciliation, and collections controls
+BUD-006: Epic 26 - Budget controls and variance reporting
+CRM-001: Epic 23 - Lead capture, deduplication, and qualification
+CRM-002: Epic 23 - Opportunity pipeline and dynamic party linking
+CRM-003: Epic 23 - Quotation authoring and lifecycle
+CRM-004: Epic 23 - Quotation-to-order conversion and commercial handoff
+CRM-005: Epic 23 - CRM setup masters and pipeline reporting
+CRM-006: Epic 23 - UTM tracking and marketing attribution
+CRM-007: Epic 23 - Lead conversion and customer handoff
+CRM-008: Epic 23 - CRM reporting and pipeline analytics
+MFG-001: Epic 27 - BOM master and submission workflow
+MFG-002: Epic 27 - Work orders with direct material transfer
+MFG-003: Epic 27 - Material reservation, consumption, and finished goods completion
+MFG-004: Epic 27 - Production planning from demand signals
+MFG-005: Epic 27 - Routing and workstation management
+MFG-006: Epic 27 - Production plan and demand aggregation
+MFG-007: Epic 27 - Downtime tracking and OEE calculation
+WF-001: Epic 28 - Employee and organization structure
+WF-002: Epic 28 - Shared contact-person CRUD and dynamic links
+WF-003: Epic 28 - Activity types and timesheets
+WF-004: Epic 28 - Issue tracking and SLA management
+WF-005: Epic 28 - Warranty and service handoff hooks
+WF-006: Epic 28 - NCR and CAPA management
+WF-007: Epic 28 - Quality procedure management
+WF-008: Epic 28 - Quality goals and quality meetings
+QUAL-001: Epic 29 - Quality inspection templates and execution
+QUAL-002: Epic 29 - Serial, batch, expiry, and traceability bundles
+QUAL-003: Epic 29 - Barcode support and scan processing
+QUAL-004: Epic 29 - Warehouse transfers, pick lists, and putaway guidance
+QUAL-005: Epic 29 - Traceability, stock closing, and compliance reporting
+QUAL-006: Epic 29 - AQL sampling plans and execution
+QUAL-007: Epic 29 - SPC charts and statistical process control
+QUAL-008: Epic 29 - Supplier quality scorecard
+HR-001: Epic 33 - Employee CRUD with department, designation
+HR-002: Epic 33 - Holiday list with Taiwan holidays
+HR-003: Epic 33 - Leave management (annual, sick)
+HR-004: Epic 33 - Attendance tracking
+TW-001: Epic 34 - LINE Pay integration
+TW-002: Epic 34 - ECPay integration
+TW-003: Epic 34 - Taiwan banking reconciliation
+TW-004: Epic 34 - Taiwan logistics API (optional)
+VAR-001: Epic 32 - Product attribute definitions and variant configuration
+VAR-002: Epic 32 - Variant matrix view and bulk operations
+EDI-001: Epic 32 - EDI trading partner setup and document configuration
+EDI-002: Epic 32 - Inbound EDI processing (purchase orders)
+EDI-003: Epic 32 - Outbound EDI processing (invoices and shipping notices)
+EDI-004: Epic 32 - EDI and budget audit trails
+WORKFLOW-001: Epic 35 - Workflow definition model and state machine
+WORKFLOW-002: Epic 35 - Workflow engine core and transition evaluation
+WORKFLOW-003: Epic 35 - Document workflow state integration
+WORKFLOW-004: Epic 35 - Workflow notifications and alerts
+WORKFLOW-005: Epic 35 - Workflow builder admin UI
+WORKFLOW-006: Epic 35 - Workflow audit trail and reporting
+EXT-001: Epic 36 - Custom field definition model
+EXT-002: Epic 36 - Custom field builder admin UI
+EXT-003: Epic 36 - File attachment storage and management
+EXT-004: Epic 36 - Print format templates
+EXT-005: Epic 36 - Data import and export
+EXT-006: Epic 36 - Document versioning and change tracking
+EXT-007: Epic 36 - Dashboard and analytics for customizations
+INT-001: Epic 37 - Webhook definition and event system
+INT-002: Epic 37 - Webhook delivery engine and retry logic
+INT-003: Epic 37 - Webhook admin UI and testing
+INT-004: Epic 37 - Email template engine
+INT-005: Epic 37 - Global search
+INT-006: Epic 37 - Background job scheduler and monitoring
+INT-007: Epic 37 - API rate limiting and quota management
+INT-008: Epic 37 - Webhook and integration audit logging
