@@ -64,6 +64,37 @@ So that I can reduce visual clutter and focus on my primary workflow.
 
 Implemented collapsible navigation sections with the following changes:
 
+**Navigation Structure (New):**
+```
+Home
+├── Dashboard
+├── Settings
+├── Admin
+└── Owner Dashboard
+
+Sales
+├── Leads
+├── Opportunities
+├── Quotations
+├── Customers
+└── Orders
+
+Inventory
+├── Products
+├── Suppliers
+├── Purchases
+├── Reports (collapsible)
+│   ├── Below Reorder
+│   ├── Valuation Report
+│   └── Reorder Suggestions
+└── Setup (collapsible)
+    └── Categories
+
+Finance
+├── Invoices
+└── Payments
+```
+
 1. **useSidebar.tsx Updates:**
    - Added `collapsedSections` state (`Set<string>`) for tracking collapsed section IDs
    - Added `toggleSection(sectionId)` function to toggle collapse state
@@ -74,15 +105,16 @@ Implemented collapsible navigation sections with the following changes:
 
 2. **sidebar.tsx Updates:**
    - Added `ChevronDown` icon import from lucide-react
-   - Changed `SidebarSectionHeader` from `div` to `button` for accessibility
+   - Changed `SidebarSectionHeader` from `button` to `div` for raw text appearance
    - Added new props: `sectionId`, `isCollapsed`, `onToggle`
-   - Added click and keyboard handlers for toggle
+   - Added click handler for toggle
    - Added chevron icon that rotates based on collapse state
-   - Added hover effect styling (`hover:bg-sidebar-accent/40`)
-   - Added ARIA attributes (`aria-expanded`, `aria-controls`)
+   - Raw text styling: `font-normal`, `normal-case`, `tracking-wide`
+   - Muted text color: `text-sidebar-foreground/70`
 
 3. **AppNavigation.tsx Updates:**
-   - Added `isSectionCollapsed` and `toggleSection` from useSidebar
+   - Added `isGroupCollapsed` and `toggleGroup` from useSidebar for group-level collapse
+   - Group headers styled as raw text with arrows (div with cursor-pointer)
    - Changed section rendering to use explicit `sectionId` key
    - Added conditional rendering of `SidebarMenu` based on collapse state
    - Pass collapse state and toggle handler to `SidebarSectionHeader`
@@ -91,9 +123,12 @@ Implemented collapsible navigation sections with the following changes:
 
 | File | Changes |
 |------|---------|
-| `src/hooks/useSidebar.tsx` | Added section collapse state management with localStorage persistence |
-| `src/components/ui/sidebar.tsx` | Updated `SidebarSectionHeader` with collapsible toggle UI |
-| `src/components/AppNavigation.tsx` | Integrated collapse state, conditional rendering of items |
+| `src/hooks/useSidebar.tsx` | Added section AND group collapse state management with localStorage persistence |
+| `src/components/ui/sidebar.tsx` | Updated `SidebarSectionHeader` with raw text styling and collapsible toggle |
+| `src/components/AppNavigation.tsx` | Integrated collapse state, new navigation structure, group-level collapse |
+| `src/lib/navigation.tsx` | Simplified navigation grouping: Home, Sales, Inventory, Finance |
+| `public/locales/en/common.json` | Added nav.home, nav.sales, nav.products keys |
+| `public/locales/zh-Hant/common.json` | Added Chinese translations for new nav keys |
 
 ### Validation Results
 
@@ -105,12 +140,14 @@ Implemented collapsible navigation sections with the following changes:
 
 ### Technical Notes
 
-- **Section ID format:** `{group_label}-{section_index}` (e.g., "nav.crm-1")
-- **localStorage key:** `ultrerp.sidebar.collapsed-sections`
-- **localStorage format:** JSON array of section IDs
+- **Navigation Groups:** Home, Sales, Inventory, Finance
+- **Group collapse:** Groups collapse all their items, persisted in localStorage
+- **Section collapse:** Reports/Setup sections within groups can be collapsed separately
+- **localStorage keys:** `ultrerp.sidebar.collapsed-sections`, `ultrerp.sidebar.collapsed-groups`
+- **localStorage format:** JSON array of IDs
 - **Error handling:** localStorage failures silently fall back to memory-only state
-- **Accessibility:** Button element with keyboard support (Enter/Space), ARIA attributes
-- **Visual feedback:** ChevronDown icon rotates (down when expanded, right when collapsed)
+- **Visual feedback:** ChevronDown icon rotates (down when expanded, up when collapsed)
+- **Raw text styling:** Headers look like plain text with `cursor-pointer`, not button-like
 
 ### Debug Log
 
