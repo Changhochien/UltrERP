@@ -116,8 +116,7 @@ const SidebarSectionHeader = React.forwardRef<HTMLButtonElement, SidebarSectionH
     // Don't render section headers in collapsed sidebar mode
     if (!showLabel) return null;
 
-    const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.preventDefault();
+    const handleClick = () => {
       onToggle?.();
     };
 
