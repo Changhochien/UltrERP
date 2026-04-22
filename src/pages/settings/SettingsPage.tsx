@@ -1,19 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { ReactNode } from "react";
-import {
-  Settings,
-  ShieldCheck,
-  Bell,
-  Key,
-  Globe,
-  Database,
-  Palette,
-} from "lucide-react";
+import { Settings } from "lucide-react";
 
-import { PageHeader, SectionCard, SurfaceMessage } from "../../components/layout/PageLayout";
+import { PageHeader, PageTabs, SectionCard, SurfaceMessage } from "../../components/layout/PageLayout";
 import { Skeleton } from "../../components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { SettingField } from "../../components/settings/SettingField";
 import {
   useSettings,
@@ -22,31 +12,25 @@ import {
 } from "../../hooks/useSettings";
 import type { SettingsCategory } from "../../lib/api/settings";
 
-function toTitleCase(str: string): string {
-  return str.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+interface CategoryInfo {
+  label: string;
+  description: string;
 }
 
-function getCategoryIcon(category: string): ReactNode {
-  const iconMap: Record<string, ReactNode> = {
-    general: <Globe className="size-4" />,
-    notification: <Bell className="size-4" />,
-    notifications: <Bell className="size-4" />,
-    security: <ShieldCheck className="size-4" />,
-    appearance: <Palette className="size-4" />,
-    data: <Database className="size-4" />,
-    api: <Key className="size-4" />,
-    privacy: <Key className="size-4" />,
-  };
-  return iconMap[category.toLowerCase()] ?? <Settings className="size-4" />;
+function getCategoryInfo(category: string, t: (key: string, options?: Record<string, unknown>) => string): CategoryInfo {
+  const key = `settingsPage.categories.${category}`;
+  const label = t(`${key}.label`, { defaultValue: category.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) });
+  const description = t(`${key}.description`, { defaultValue: '' });
+  return { label, description };
 }
 
 function SettingsLoadingSkeleton() {
   return (
     <div className="space-y-6">
       <div className="flex gap-2">
-        <Skeleton className="h-9 w-24 rounded-lg" />
-        <Skeleton className="h-9 w-24 rounded-lg" />
-        <Skeleton className="h-9 w-24 rounded-lg" />
+        <Skeleton className="h-10 w-32 rounded-[1.1rem]" />
+        <Skeleton className="h-10 w-28 rounded-[1.1rem]" />
+        <Skeleton className="h-10 w-24 rounded-[1.1rem]" />
       </div>
       <div className="space-y-4">
         {[1, 2, 3].map((i) => (
@@ -59,6 +43,7 @@ function SettingsLoadingSkeleton() {
 
 function CategoryContent({
   category,
+  categoryInfo,
   onSave,
   onReset,
   savingKey,
@@ -67,6 +52,7 @@ function CategoryContent({
   saveError,
 }: {
   category: SettingsCategory;
+  categoryInfo: CategoryInfo;
   onSave: (key: string, value: string, valueType: string) => Promise<void>;
   onReset: (key: string) => Promise<void>;
   savingKey: string | null;
@@ -79,15 +65,31 @@ function CategoryContent({
   if (category.items.length === 0) {
     return (
       <SectionCard>
-        <p className="py-6 text-center text-sm text-muted-foreground">
-          {t("settingsPage.emptyCategory", "No settings in this category.")}
-        </p>
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="mb-4 rounded-full bg-muted/50 p-4">
+            <Settings className="size-8 text-muted-foreground/50" />
+          </div>
+          <p className="text-sm font-medium text-muted-foreground">
+            {t("settingsPage.emptyCategory")}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground/60">
+            {t("settingsPage.configureMessage")}
+          </p>
+        </div>
       </SectionCard>
     );
   }
 
   return (
-    <SectionCard>
+    <SectionCard
+      title={categoryInfo.label}
+      description={categoryInfo.description || category.description}
+      actions={
+        <span className="text-xs text-muted-foreground">
+          {category.items.length} {category.items.length === 1 ? t("settingsPage.settingsCount_one", { count: 1 }) : t("settingsPage.settingsCount_other", { count: category.items.length })}
+        </span>
+      }
+    >
       <div className="space-y-4">
         {category.items.map((item) => (
           <SettingField
@@ -121,6 +123,18 @@ export function SettingsPage() {
   // Set first category as active once loaded
   const currentCategory = activeCategory ?? (categories[0]?.category ?? null);
 
+  // Build page tab items from categories
+  const pageTabItems = categories.map((cat) => {
+    const info = getCategoryInfo(cat.category, t);
+    return {
+      value: cat.category,
+      label: info.label,
+    };
+  });
+
+  // Find current category data
+  const currentCategoryData = categories.find((c) => c.category === currentCategory) ?? null;
+
   async function handleSave(key: string, value: string, valueType: string) {
     setSaveError(null);
     setErrorKey(null);
@@ -129,7 +143,7 @@ export function SettingsPage() {
     if (valueType === "int") {
       const num = Number(value);
       if (isNaN(num) || !Number.isInteger(num)) {
-        const msg = t("settingsPage.invalidInt", "Must be a whole number.");
+        const msg = t("settingsPage.invalidInt");
         setSaveError(msg);
         setErrorKey(key);
         return;
@@ -139,7 +153,7 @@ export function SettingsPage() {
       try {
         JSON.parse(value);
       } catch {
-        const msg = t("settingsPage.invalidJson", "Must be valid JSON.");
+        const msg = t("settingsPage.invalidJson");
         setSaveError(msg);
         setErrorKey(key);
         return;
@@ -151,7 +165,7 @@ export function SettingsPage() {
       await updateSetting(key, value);
       await refresh();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : t("settingsPage.saveError", "Failed to save setting.");
+      const msg = err instanceof Error ? err.message : t("settingsPage.saveError");
       setSaveError(msg);
       setErrorKey(key);
     } finally {
@@ -173,7 +187,7 @@ export function SettingsPage() {
       // Clear undo state after 5s
       setTimeout(() => setLastReset(null), 5000);
     } catch (err) {
-      setResetError(err instanceof Error ? err.message : t("settingsPage.resetError", "Failed to reset setting."));
+      setResetError(err instanceof Error ? err.message : t("settingsPage.resetError"));
       setLastReset(null);
     } finally {
       setResettingKey(null);
@@ -189,7 +203,7 @@ export function SettingsPage() {
       await refresh();
       setLastReset(null);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : t("settingsPage.saveError", "Failed to restore setting."));
+      setSaveError(err instanceof Error ? err.message : t("settingsPage.saveError"));
     } finally {
       setSavingKey(null);
     }
@@ -199,9 +213,9 @@ export function SettingsPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          eyebrow={t("settingsPage.eyebrow", "Configuration")}
-          title={t("routes.settings.label", "Settings")}
-          description={t("routes.settings.description", "Manage workspace settings and preferences.")}
+          eyebrow={t("settingsPage.eyebrow")}
+          title={t("settingsPage.title")}
+          description={t("settingsPage.description")}
         />
         <SettingsLoadingSkeleton />
       </div>
@@ -212,9 +226,9 @@ export function SettingsPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          eyebrow={t("settingsPage.eyebrow", "Configuration")}
-          title={t("routes.settings.label", "Settings")}
-          description={t("routes.settings.description", "Manage workspace settings and preferences.")}
+          eyebrow={t("settingsPage.eyebrow")}
+          title={t("settingsPage.title")}
+          description={t("settingsPage.description")}
         />
         <SurfaceMessage tone="danger">{error}</SurfaceMessage>
       </div>
@@ -225,12 +239,12 @@ export function SettingsPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          eyebrow={t("settingsPage.eyebrow", "Configuration")}
-          title={t("routes.settings.label", "Settings")}
-          description={t("routes.settings.description", "Manage workspace settings and preferences.")}
+          eyebrow={t("settingsPage.eyebrow")}
+          title={t("settingsPage.title")}
+          description={t("settingsPage.description")}
         />
         <SurfaceMessage tone="default">
-          {t("settingsPage.noCategories", "No settings categories available.")}
+          {t("settingsPage.noCategories")}
         </SurfaceMessage>
       </div>
     );
@@ -239,12 +253,17 @@ export function SettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow={t("settingsPage.eyebrow", "Configuration")}
-        title={t("routes.settings.label", "Settings")}
-        description={t(
-          "routes.settings.description",
-          "Manage workspace settings and preferences.",
-        )}
+        eyebrow={t("settingsPage.eyebrow")}
+        title={t("settingsPage.title")}
+        description={t("settingsPage.description")}
+        tabs={
+          <PageTabs
+            items={pageTabItems}
+            value={currentCategory ?? ""}
+            onValueChange={setActiveCategory}
+            ariaLabel={t("settingsPage.title")}
+          />
+        }
       />
 
       {(saveError || resetError) ? (
@@ -255,44 +274,29 @@ export function SettingsPage() {
 
       {lastReset ? (
         <SurfaceMessage tone="default">
-          {t("settingsPage.resetDone", "Setting reset.")}{" "}
+          {t("settingsPage.resetDone")}{" "}
           <button
             type="button"
             className="underline underline-offset-2 font-medium"
             onClick={handleUndoReset}
           >
-            {t("settingsPage.undo", "Undo")}
+            {t("settingsPage.undo")}
           </button>
         </SurfaceMessage>
       ) : null}
 
-      <Tabs
-        value={currentCategory ?? undefined}
-        onValueChange={setActiveCategory}
-      >
-        <TabsList className="inline-flex items-center rounded-xl bg-muted/60 p-1 gap-1 overflow-x-auto">
-          {categories.map((cat) => (
-            <TabsTrigger key={cat.category} value={cat.category} className="gap-1.5 shrink-0">
-              {getCategoryIcon(cat.category)}
-              <span className="whitespace-nowrap">{toTitleCase(cat.category)}</span>
-            </TabsTrigger>
-          ))}
-        </TabsList>
-
-        {categories.map((cat) => (
-          <TabsContent key={cat.category} value={cat.category} className="mt-6">
-            <CategoryContent
-              category={cat}
-              onSave={handleSave}
-              onReset={handleReset}
-              savingKey={savingKey}
-              resettingKey={resettingKey}
-              errorKey={errorKey}
-              saveError={saveError}
-            />
-          </TabsContent>
-        ))}
-      </Tabs>
+      {currentCategoryData && (
+        <CategoryContent
+          category={currentCategoryData}
+          categoryInfo={getCategoryInfo(currentCategoryData.category, t)}
+          onSave={handleSave}
+          onReset={handleReset}
+          savingKey={savingKey}
+          resettingKey={resettingKey}
+          errorKey={errorKey}
+          saveError={saveError}
+        />
+      )}
     </div>
   );
 }

@@ -11,6 +11,10 @@ from types import SimpleNamespace
 from common.errors import DuplicateLeadConflictError
 from domains.crm import routes as crm_routes
 from domains.crm.schemas import (
+    LeadConversionResult,
+    LeadConversionState,
+    LeadConversionStepOutcome,
+    LeadConversionStepResult,
     LeadCustomerConversionResult,
     LeadOpportunityHandoff,
     LeadQualificationStatus,
@@ -193,5 +197,66 @@ async def test_convert_to_customer_returns_lineage(monkeypatch) -> None:
         assert body["lead_id"] == str(lead_id)
         assert body["customer_id"] == str(customer_id)
         assert body["status"] == "converted"
+    finally:
+        teardown_session(prev)
+
+
+async def test_convert_lead_route_returns_structured_conversion_result(monkeypatch) -> None:
+    lead_id = uuid.uuid4()
+    customer_id = uuid.uuid4()
+
+    async def fake_convert(
+        _session: FakeAsyncSession,
+        requested_lead_id: uuid.UUID,
+        data,
+        tenant_id: uuid.UUID,
+        converted_by: str | None,
+    ):
+        assert requested_lead_id == lead_id
+        assert data.customer is not None
+        assert tenant_id
+        assert converted_by == "00000000-0000-0000-0000-000000000111"
+        return LeadConversionResult(
+            lead_id=lead_id,
+            status="converted",
+            conversion_state=LeadConversionState.CONVERTED,
+            conversion_path="customer",
+            converted_by="00000000-0000-0000-0000-000000000111",
+            converted_customer_id=customer_id,
+            steps=[
+                LeadConversionStepResult(
+                    target="customer",
+                    outcome=LeadConversionStepOutcome.CREATED,
+                    record_id=customer_id,
+                )
+            ],
+        )
+
+    monkeypatch.setattr(crm_routes, "convert_lead", fake_convert)
+    session = FakeAsyncSession()
+    prev = setup_session(session)
+    try:
+        resp = await http_post(
+            f"/api/v1/crm/leads/{lead_id}/convert",
+            {
+                "customer": {
+                    "company_name": "Acme Industrial",
+                    "business_number": "12345675",
+                    "billing_address": "1 Harbor Rd",
+                    "contact_name": "Amy Chen",
+                    "contact_phone": "02-1234-5678",
+                    "contact_email": "amy@acme.example",
+                    "credit_limit": "0",
+                    "default_discount_percent": "0",
+                }
+            },
+            headers=auth_header("sales"),
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["lead_id"] == str(lead_id)
+        assert body["conversion_state"] == "converted"
+        assert body["converted_customer_id"] == str(customer_id)
+        assert body["steps"][0]["outcome"] == "created"
     finally:
         teardown_session(prev)

@@ -16,13 +16,19 @@ import pytest
 
 from common.errors import DuplicateLeadConflictError, ValidationError
 from domains.crm.schemas import (
+    LeadConversionRequest,
+    LeadConversionState,
     LeadCreate,
     LeadQualificationStatus,
     LeadStatus,
     LeadUpdate,
+    OpportunityCreate,
+    OpportunityPartyKind,
 )
 from domains.crm.service import (
+    convert_lead,
     create_lead,
+    create_opportunity,
     convert_lead_to_customer,
     handoff_lead_to_opportunity,
     transition_lead_status,
@@ -90,7 +96,12 @@ class _FakeLead:
         self.utm_campaign = "spring-launch"
         self.utm_content = "hero-banner"
         self.notes = "Interested in industrial supplies."
+        self.conversion_state = LeadConversionState.NOT_CONVERTED
+        self.conversion_path = ""
+        self.converted_by = ""
         self.converted_customer_id = None
+        self.converted_opportunity_id = None
+        self.converted_quotation_id = None
         self.converted_at = None
         self.version = 1
         self.created_at = datetime.now(tz=UTC)
@@ -347,7 +358,7 @@ class TestCustomerConversion:
             status=LeadStatus.REPLIED,
             qualification_status=LeadQualificationStatus.QUALIFIED,
         )
-        session = FakeSession(execute_results=[_FakeScalarResult(lead)])
+        session = FakeSession(execute_results=[_FakeScalarResult(lead), _FakeScalarResult(None), _FakeScalarResult(lead)])
         created_customer = _FakeCustomer(uuid.UUID("77777777-8888-9999-aaaa-bbbbbbbbbbbb"))
 
         async def _fake_create_customer(*_args: object, **_kwargs: object) -> _FakeCustomer:
@@ -372,6 +383,133 @@ class TestCustomerConversion:
 
         assert result.customer_id == created_customer.id
         assert lead.status == LeadStatus.CONVERTED
+        assert lead.conversion_state == LeadConversionState.CONVERTED
+        assert lead.conversion_path == "customer"
         assert lead.converted_customer_id == created_customer.id
         assert lead.converted_at is not None
-        assert session.begin_calls == 2
+        assert session.begin_calls == 4
+
+    @pytest.mark.asyncio
+    async def test_convert_lead_marks_partial_state_when_one_target_fails(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        lead = _FakeLead(
+            status=LeadStatus.REPLIED,
+            qualification_status=LeadQualificationStatus.QUALIFIED,
+        )
+        session = FakeSession()
+        created_customer = _FakeCustomer(uuid.UUID("88888888-9999-aaaa-bbbb-cccccccccccc"))
+
+        async def _fake_get_lead(*_args: object, **_kwargs: object) -> _FakeLead:
+            return lead
+
+        async def _fake_lookup_customer(*_args: object, **_kwargs: object) -> None:
+            return None
+
+        async def _fake_create_customer(*_args: object, **_kwargs: object) -> _FakeCustomer:
+            return created_customer
+
+        async def _fake_create_opportunity(*_args: object, **_kwargs: object):
+            raise ValidationError(
+                [{"field": "sales_stage", "message": "Select a configured sales stage."}]
+            )
+
+        monkeypatch.setattr("domains.crm.service.get_lead", _fake_get_lead)
+        monkeypatch.setattr("domains.crm.service.lookup_customer_by_ban", _fake_lookup_customer)
+        monkeypatch.setattr("domains.crm.service.create_customer", _fake_create_customer)
+        monkeypatch.setattr("domains.crm.service.create_opportunity", _fake_create_opportunity)
+
+        result = await convert_lead(
+            session,
+            lead.id,
+            LeadConversionRequest(
+                customer=CustomerCreate(
+                    company_name="Prospect Labs",
+                    business_number="04595257",
+                    billing_address="Taipei",
+                    contact_name="Alice Prospect",
+                    contact_phone="0912-345-678",
+                    contact_email="alice@prospect.test",
+                    credit_limit=Decimal("0.00"),
+                ),
+                opportunity=OpportunityCreate(
+                    opportunity_title="Prospect Labs Opportunity",
+                    opportunity_from=OpportunityPartyKind.LEAD,
+                    party_name=str(lead.id),
+                    sales_stage="qualification",
+                ),
+            ),
+            tenant_id=lead.tenant_id,
+            converted_by="sales.owner@test",
+        )
+
+        assert result.conversion_state == LeadConversionState.PARTIALLY_CONVERTED
+        assert result.conversion_path == "customer+opportunity"
+        assert result.converted_customer_id == created_customer.id
+        assert result.converted_opportunity_id is None
+        assert result.converted_by == "sales.owner@test"
+        assert [step.outcome for step in result.steps] == ["created", "failed"]
+        assert lead.converted_customer_id == created_customer.id
+        assert lead.conversion_state == LeadConversionState.PARTIALLY_CONVERTED
+        assert lead.status == LeadStatus.CONVERTED
+
+
+class TestLeadLinkedDownstreamCreation:
+    @pytest.mark.asyncio
+    async def test_create_opportunity_from_lead_updates_conversion_lineage(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        lead = _FakeLead(
+            status=LeadStatus.REPLIED,
+            qualification_status=LeadQualificationStatus.QUALIFIED,
+        )
+        session = FakeSession()
+
+        async def _fake_get_lead(*_args: object, **_kwargs: object) -> _FakeLead:
+            return lead
+
+        async def _fake_resolve_party_context(*_args: object, **_kwargs: object):
+            return str(lead.id), lead.company_name, {
+                "territory": lead.territory,
+                "contact_person": lead.lead_name,
+                "contact_email": lead.email_id,
+                "contact_mobile": lead.mobile_no,
+                "utm_source": lead.utm_source,
+                "utm_medium": lead.utm_medium,
+                "utm_campaign": lead.utm_campaign,
+                "utm_content": lead.utm_content,
+            }
+
+        async def _fake_sales_stage(*_args: object, **_kwargs: object) -> str:
+            return "qualification"
+
+        async def _fake_territory(*_args: object, **_kwargs: object) -> str:
+            return lead.territory
+
+        async def _fake_customer_group(*_args: object, **_kwargs: object) -> str:
+            return ""
+
+        monkeypatch.setattr("domains.crm.service.get_lead", _fake_get_lead)
+        monkeypatch.setattr("domains.crm.service._ensure_sales_stage_supported", _fake_sales_stage)
+        monkeypatch.setattr("domains.crm.service._ensure_territory_supported", _fake_territory)
+        monkeypatch.setattr("domains.crm.service._ensure_customer_group_supported", _fake_customer_group)
+        monkeypatch.setattr("domains.crm.service._resolve_party_context", _fake_resolve_party_context)
+
+        opportunity = await create_opportunity(
+            session,
+            OpportunityCreate(
+                opportunity_title="Prospect Labs Opportunity",
+                opportunity_from=OpportunityPartyKind.LEAD,
+                party_name=str(lead.id),
+                sales_stage="qualification",
+            ),
+            tenant_id=lead.tenant_id,
+        )
+
+        assert opportunity.id is not None
+        assert lead.converted_opportunity_id == opportunity.id
+        assert lead.conversion_state == LeadConversionState.CONVERTED
+        assert lead.conversion_path == "opportunity"
+        assert lead.status == LeadStatus.OPPORTUNITY
