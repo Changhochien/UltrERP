@@ -756,3 +756,50 @@ async def test_intelligence_routes_return_403_when_feature_disabled(
         assert resp.json() == {"detail": detail}
     finally:
         teardown_session(prev)
+
+
+async def _http_post_with_auth(path: str, headers: dict, json_data: dict | None = None):
+    transport = ASGITransport(app=app)
+    async with HttpxAsyncClient(transport=transport, base_url="http://test") as client:
+        return await client.post(path, headers=headers, json=json_data)
+
+
+async def test_refresh_sales_monthly_requires_admin_role() -> None:
+    session = FakeAsyncSession()
+    prev = setup_session(session)
+    try:
+        resp = await _http_post_with_auth(
+            "/api/v1/intelligence/refresh-sales-monthly?start_month=2026-03-01&end_month=2026-03-01",
+            headers=auth_header("sales"),
+        )
+        assert resp.status_code == 403
+    finally:
+        teardown_session(prev)
+
+
+async def test_refresh_sales_monthly_rejects_future_months() -> None:
+    session = FakeAsyncSession()
+    prev = setup_session(session)
+    try:
+        resp = await _http_post_with_auth(
+            "/api/v1/intelligence/refresh-sales-monthly?start_month=2026-03-01&end_month=2026-04-01",
+            headers=auth_header("admin"),
+        )
+        assert resp.status_code == 400
+        assert "Cannot refresh months at or after the current month" in resp.json()["detail"]
+    finally:
+        teardown_session(prev)
+
+
+async def test_refresh_sales_monthly_rejects_invalid_range() -> None:
+    session = FakeAsyncSession()
+    prev = setup_session(session)
+    try:
+        resp = await _http_post_with_auth(
+            "/api/v1/intelligence/refresh-sales-monthly?start_month=2026-03-01&end_month=2026-02-01",
+            headers=auth_header("admin"),
+        )
+        assert resp.status_code == 400
+        assert "end_month must be on or after start_month" in resp.json()["detail"]
+    finally:
+        teardown_session(prev)

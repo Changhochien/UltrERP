@@ -306,6 +306,51 @@ def test_build_reconciliation_rows_uses_adjustment_sum_minus_current_stock() -> 
     }
 
 
+def test_build_reconciliation_rows_can_ignore_existing_corrections() -> None:
+    product_id = uuid.UUID("00000000-0000-0000-0000-000000000117")
+    warehouse_id = uuid.UUID("00000000-0000-0000-0000-000000000217")
+
+    rows = stock_backfill.build_reconciliation_rows(
+        adjustment_rows=[
+            {
+                "product_id": product_id,
+                "warehouse_id": warehouse_id,
+                "reason_code": ReasonCode.SUPPLIER_DELIVERY.value,
+                "quantity_total": 10,
+            },
+            {
+                "product_id": product_id,
+                "warehouse_id": warehouse_id,
+                "reason_code": ReasonCode.SALES_RESERVATION.value,
+                "quantity_total": -7,
+            },
+            {
+                "product_id": product_id,
+                "warehouse_id": warehouse_id,
+                "reason_code": ReasonCode.CORRECTION.value,
+                "quantity_total": 5,
+            },
+        ],
+        inventory_rows=[
+            {
+                "product_id": product_id,
+                "warehouse_id": warehouse_id,
+                "current_stock": 8,
+            }
+        ],
+        ignored_reason_codes={ReasonCode.CORRECTION.value},
+    )
+
+    assert len(rows) == 1
+    assert rows[0].expected_adjustment_sum == 3
+    assert rows[0].actual_stock == 8
+    assert rows[0].gap == -5
+    assert rows[0].reason_breakdown == {
+        ReasonCode.SUPPLIER_DELIVERY.value: 10,
+        ReasonCode.SALES_RESERVATION.value: -7,
+    }
+
+
 def test_build_correction_adjustments_inverts_gap_with_deterministic_id() -> None:
     tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
     row = stock_backfill.ReconciliationRow(

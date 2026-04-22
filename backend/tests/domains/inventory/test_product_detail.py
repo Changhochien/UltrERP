@@ -431,6 +431,37 @@ async def test_adjustment_history_fields() -> None:
         _teardown(prev)
 
 
+async def test_adjustment_history_hides_reconciliation_apply_entries() -> None:
+    product = FakeProduct()
+    visible = FakeAdjustment(
+        quantity_change=-5,
+        reason_code="damaged",
+        actor_id="user1",
+        notes="Broken items",
+    )
+    hidden = FakeAdjustment(
+        quantity_change=1503,
+        reason_code="correction",
+        actor_id="reconciliation-apply",
+        notes="Approved inventory reconciliation correction",
+    )
+
+    session = FakeAsyncSession()
+    session.queue_scalar(product)
+    session.queue_rows([])
+    session.queue_scalars_list([hidden, visible])
+
+    prev = _setup(session)
+    try:
+        resp = await _get(f"/api/v1/inventory/products/{product.id}")
+        history = resp.json()["adjustment_history"]
+        assert len(history) == 1
+        assert history[0]["actor_id"] == "user1"
+        assert history[0]["reason_code"] == "damaged"
+    finally:
+        _teardown(prev)
+
+
 async def test_history_limit_query_param() -> None:
     product = FakeProduct()
 

@@ -504,7 +504,9 @@ def build_reconciliation_rows(
     *,
     adjustment_rows: list[dict[str, object]],
     inventory_rows: list[dict[str, object]],
+    ignored_reason_codes: set[str] | None = None,
 ) -> list[ReconciliationRow]:
+    ignored_codes = {code.upper() for code in (ignored_reason_codes or set())}
     reason_breakdowns: dict[tuple[uuid.UUID, uuid.UUID], dict[str, int]] = {}
 
     for row in adjustment_rows:
@@ -514,6 +516,8 @@ def build_reconciliation_rows(
         if key not in reason_breakdowns:
             reason_breakdowns[key] = {}
         reason_code = _as_text(row.get("reason_code")) or "UNKNOWN"
+        if reason_code.upper() in ignored_codes:
+            continue
         reason_breakdowns[key][reason_code] = reason_breakdowns[key].get(reason_code, 0) + int(
             row.get("quantity_total") or 0
         )

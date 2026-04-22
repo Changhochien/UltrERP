@@ -2818,7 +2818,11 @@ async def get_product_detail(
         .limit(history_limit)
     )
     history_result = await session.execute(history_stmt)
-    adjustments = history_result.scalars().all()
+    adjustments = [
+        adjustment
+        for adjustment in history_result.scalars().all()
+        if adjustment.actor_id != "reconciliation-apply"
+    ]
 
     history = [
         {
@@ -3682,6 +3686,9 @@ async def get_stock_history(
 
     from common.time import utc_now
 
+    def is_reconciliation_apply_adjustment(adjustment: StockAdjustment) -> bool:
+        return adjustment.actor_id == "reconciliation-apply"
+
     # Cap start_date to at most _max_range_days ago to avoid loading huge histories
     effective_start = start_date
     if effective_start is None:
@@ -3720,7 +3727,13 @@ async def get_stock_history(
     adj_result = await session.execute(adj_stmt)
     adjustments = list(adj_result.scalars().all())
 
-    total_adjustment = sum(adj.quantity_change for adj in adjustments)
+    visible_adjustments = [
+        adjustment
+        for adjustment in adjustments
+        if not is_reconciliation_apply_adjustment(adjustment)
+    ]
+
+    total_adjustment = sum(adj.quantity_change for adj in visible_adjustments)
     initial_stock = current_stock - total_adjustment
 
     # 3. Build running stock
@@ -3730,7 +3743,7 @@ async def get_stock_history(
     if granularity == "daily":
         # Group by date, sum quantity_change, pick dominant reason_code
         by_date: dict[str, dict] = {}
-        for adj in adjustments:
+        for adj in visible_adjustments:
             day_key = adj.created_at.date().isoformat()
             if day_key not in by_date:
                 by_date[day_key] = {"quantity_change": 0, "reason_codes": Counter(), "notes": None}
@@ -3755,7 +3768,7 @@ async def get_stock_history(
             })
     else:
         # event-level granularity
-        for adj in adjustments:
+        for adj in visible_adjustments:
             running += adj.quantity_change
             points.append({
                 "date": adj.created_at,

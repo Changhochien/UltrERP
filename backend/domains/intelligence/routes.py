@@ -1,6 +1,6 @@
 """Routes for the intelligence domain."""
 
-from datetime import date
+from datetime import date, datetime, timedelta, UTC
 import uuid
 from typing import Annotated
 
@@ -34,6 +34,7 @@ from domains.intelligence.service import (
 	get_product_performance,
 	get_revenue_diagnosis,
 )
+from domains.product_analytics.service import refresh_sales_monthly_range
 
 router = APIRouter()
 DbSession = Annotated[AsyncSession, Depends(get_db)]
@@ -226,3 +227,74 @@ async def customer_product_profile(
 		return await get_customer_product_profile(session, customer_id, tenant_id)
 	except ValueError as exc:
 		return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+# Admin-only route for refreshing sales monthly aggregates
+AdminUser = Annotated[dict, Depends(require_role("admin"))]
+
+
+@router.post("/refresh-sales-monthly", response_model=dict)
+async def refresh_sales_monthly(
+	session: DbSession,
+	user: AdminUser,
+	start_month: date = Query(description="Start month (first day of month, e.g. 2026-03-01)"),
+	end_month: date = Query(description="End month (first day of month, e.g. 2026-03-01)"),
+) -> dict:
+	"""Refresh the sales monthly aggregates for the specified date range.
+
+	This endpoint populates the SalesMonthly table with aggregated sales data
+	for closed months, which is required for revenue diagnosis and other
+	intelligence features to show historical comparisons.
+
+	The current month is never aggregated (it uses live data instead).
+	Only closed months can be refreshed.
+
+	Typically, you would call this endpoint:
+	- On initial setup to backfill historical data
+	- Monthly after a month closes to populate its data
+	"""
+	_require_feature_enabled(
+		settings.intelligence_revenue_diagnosis_enabled,
+		"Revenue diagnosis is disabled",
+	)
+	tenant_id = uuid.UUID(user["tenant_id"])
+
+	# Normalize to first of month
+	start_month_normalized = start_month.replace(day=1)
+	end_month_normalized = end_month.replace(day=1)
+
+	# Validate range
+	if end_month_normalized < start_month_normalized:
+		raise HTTPException(status_code=400, detail="end_month must be on or after start_month")
+
+	# Prevent refreshing the current month (it uses live data)
+	current_month_start = datetime.now(tz=UTC).date().replace(day=1)
+	if end_month_normalized >= current_month_start:
+		raise HTTPException(
+			status_code=400,
+			detail=f"Cannot refresh months at or after the current month ({current_month_start}). "
+			f"The current month uses live data. Only specify closed (past) months.",
+		)
+
+	try:
+		result = await refresh_sales_monthly_range(
+			session,
+			tenant_id,
+			start_month=start_month_normalized,
+			end_month=end_month_normalized,
+		)
+		return {
+			"refreshed_month_count": result.refreshed_month_count,
+			"results": [
+				{
+					"month_start": r.month_start.isoformat(),
+					"upserted_row_count": r.upserted_row_count,
+					"deleted_row_count": r.deleted_row_count,
+					"skipped_reason": r.skipped_reason,
+					"skipped_line_count": len(r.skipped_lines),
+				}
+				for r in result.results
+			],
+		}
+	except ValueError as exc:
+		raise HTTPException(status_code=400, detail=str(exc)) from exc
