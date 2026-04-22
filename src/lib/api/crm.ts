@@ -751,6 +751,10 @@ export async function getCRMPipelineReport(params: CRMPipelineReportParams): Pro
   const qs = new URLSearchParams();
   if (params.record_type) qs.set("record_type", params.record_type);
   if (params.scope) qs.set("scope", params.scope);
+  if (params.start_date) qs.set("start_date", params.start_date);
+  if (params.end_date) qs.set("end_date", params.end_date);
+  if (params.compare_start_date) qs.set("compare_start_date", params.compare_start_date);
+  if (params.compare_end_date) qs.set("compare_end_date", params.compare_end_date);
   if (params.status) qs.set("status", params.status);
   if (params.sales_stage) qs.set("sales_stage", params.sales_stage);
   if (params.territory) qs.set("territory", params.territory);

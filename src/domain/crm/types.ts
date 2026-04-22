@@ -237,6 +237,10 @@ export type CRMPipelineRecordType = "all" | "lead" | "opportunity" | "quotation"
 export interface CRMPipelineReportParams {
   record_type?: CRMPipelineRecordType;
   scope?: CRMPipelineScope;
+  start_date?: string;
+  end_date?: string;
+  compare_start_date?: string;
+  compare_end_date?: string;
   status?: string;
   sales_stage?: string;
   territory?: string;
@@ -278,9 +282,70 @@ export interface CRMPipelineDropOff {
   quotation_with_order_count: number;
 }
 
+export interface CRMPipelineComparisonMetric {
+  current_value: string;
+  previous_value: string;
+  delta: string;
+}
+
+export interface CRMPipelineAnalyticsKpis {
+  open_pipeline_value: string;
+  weighted_pipeline_value: string;
+  win_rate: string;
+  lead_conversion_rate: string;
+  average_deal_size: string;
+  converted_revenue: string;
+  time_to_conversion: string;
+}
+
+export interface CRMPipelineFunnelStage {
+  key: string;
+  label: string;
+  count: number;
+  dropoff_count: number;
+  conversion_rate: string;
+}
+
+export interface CRMPipelineOwnerScorecard {
+  owner: string;
+  assigned_leads: number;
+  owned_opportunities: number;
+  open_pipeline_value: string;
+  weighted_pipeline_value: string;
+  converted_revenue: string;
+  time_to_conversion: string;
+}
+
+export interface CRMPipelineDrilldownRecord {
+  record_type: string;
+  record_id: string;
+  label: string;
+  status: string;
+  owner: string;
+  amount: string;
+}
+
+export interface CRMPipelineDrilldownGroup {
+  key: string;
+  label: string;
+  records: CRMPipelineDrilldownRecord[];
+}
+
+export interface CRMPipelineAnalytics {
+  kpis: CRMPipelineAnalyticsKpis;
+  comparison: Record<string, CRMPipelineComparisonMetric>;
+  funnel: CRMPipelineFunnelStage[];
+  terminal_by_status: CRMPipelineSegment[];
+  terminal_by_lost_reason: CRMPipelineSegment[];
+  terminal_by_competitor: CRMPipelineSegment[];
+  owner_scorecards: CRMPipelineOwnerScorecard[];
+  drilldowns: CRMPipelineDrilldownGroup[];
+}
+
 export interface CRMPipelineReport {
   filters: Required<CRMPipelineReportParams>;
   totals: CRMPipelineTotals;
+  analytics: CRMPipelineAnalytics;
   by_status: CRMPipelineSegment[];
   by_sales_stage: CRMPipelineSegment[];
   by_territory: CRMPipelineSegment[];

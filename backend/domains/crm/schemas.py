@@ -334,6 +334,10 @@ class CRMPipelineRecordType(StrEnum):
 class CRMPipelineReportParams(BaseModel):
     record_type: CRMPipelineRecordType = CRMPipelineRecordType.ALL
     scope: CRMPipelineScope = CRMPipelineScope.ALL
+    start_date: date | None = None
+    end_date: date | None = None
+    compare_start_date: date | None = None
+    compare_end_date: date | None = None
     status: str | None = Field(default=None, max_length=40)
     sales_stage: str | None = Field(default=None, max_length=120)
     territory: str | None = Field(default=None, max_length=120)
@@ -375,9 +379,70 @@ class CRMPipelineDropOff(BaseModel):
     quotation_with_order_count: int = 0
 
 
+class CRMPipelineComparisonMetric(BaseModel):
+    current_value: Decimal = Decimal("0.00")
+    previous_value: Decimal = Decimal("0.00")
+    delta: Decimal = Decimal("0.00")
+
+
+class CRMPipelineAnalyticsKpis(BaseModel):
+    open_pipeline_value: Decimal = Decimal("0.00")
+    weighted_pipeline_value: Decimal = Decimal("0.00")
+    win_rate: Decimal = Decimal("0.00")
+    lead_conversion_rate: Decimal = Decimal("0.00")
+    average_deal_size: Decimal = Decimal("0.00")
+    converted_revenue: Decimal = Decimal("0.00")
+    time_to_conversion: Decimal = Decimal("0.00")
+
+
+class CRMPipelineFunnelStage(BaseModel):
+    key: str
+    label: str
+    count: int
+    dropoff_count: int = 0
+    conversion_rate: Decimal = Decimal("0.00")
+
+
+class CRMPipelineOwnerScorecard(BaseModel):
+    owner: str
+    assigned_leads: int = 0
+    owned_opportunities: int = 0
+    open_pipeline_value: Decimal = Decimal("0.00")
+    weighted_pipeline_value: Decimal = Decimal("0.00")
+    converted_revenue: Decimal = Decimal("0.00")
+    time_to_conversion: Decimal = Decimal("0.00")
+
+
+class CRMPipelineDrilldownRecord(BaseModel):
+    record_type: str
+    record_id: str
+    label: str
+    status: str
+    owner: str = ""
+    amount: Decimal = Decimal("0.00")
+
+
+class CRMPipelineDrilldownGroup(BaseModel):
+    key: str
+    label: str
+    records: list[CRMPipelineDrilldownRecord]
+
+
+class CRMPipelineAnalytics(BaseModel):
+    kpis: CRMPipelineAnalyticsKpis
+    comparison: dict[str, CRMPipelineComparisonMetric]
+    funnel: list[CRMPipelineFunnelStage]
+    terminal_by_status: list[CRMPipelineSegment]
+    terminal_by_lost_reason: list[CRMPipelineSegment]
+    terminal_by_competitor: list[CRMPipelineSegment]
+    owner_scorecards: list[CRMPipelineOwnerScorecard]
+    drilldowns: list[CRMPipelineDrilldownGroup]
+
+
 class CRMPipelineReportResponse(BaseModel):
     filters: CRMPipelineReportParams
     totals: CRMPipelineTotals
+    analytics: CRMPipelineAnalytics
     by_status: list[CRMPipelineSegment]
     by_sales_stage: list[CRMPipelineSegment]
     by_territory: list[CRMPipelineSegment]

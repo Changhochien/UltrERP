@@ -6,7 +6,12 @@ import { Button } from "../../components/ui/button";
 import { Field, FieldLabel } from "../../components/ui/field";
 import { Input } from "../../components/ui/input";
 import { useCRMSetupBundle } from "../../domain/crm/hooks/useCRMSetupBundle";
-import type { CRMPipelineReport, CRMPipelineReportParams, CRMPipelineSegment } from "../../domain/crm/types";
+import type {
+  CRMPipelineDrilldownGroup,
+  CRMPipelineReport,
+  CRMPipelineReportParams,
+  CRMPipelineSegment,
+} from "../../domain/crm/types";
 import { getCRMPipelineReport } from "../../lib/api/crm";
 import { CRM_REPORTING_ROUTE, type AppRoute } from "../../lib/routes";
 
@@ -16,6 +21,10 @@ const SELECT_CLASS_NAME =
 const DEFAULT_FILTERS: CRMPipelineReportParams = {
   record_type: "all",
   scope: "open",
+  start_date: "",
+  end_date: "",
+  compare_start_date: "",
+  compare_end_date: "",
   sales_stage: "",
   territory: "",
   customer_group: "",
@@ -28,11 +37,39 @@ const DEFAULT_FILTERS: CRMPipelineReportParams = {
   utm_content: "",
 };
 
-function SummaryCard({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-xl border border-border/70 bg-background/50 p-4">
+function SummaryCard({
+  label,
+  value,
+  onClick,
+  selected = false,
+}: {
+  label: string;
+  value: string | number;
+  onClick?: () => void;
+  selected?: boolean;
+}) {
+  const content = (
+    <>
       <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">{label}</p>
       <p className="mt-2 text-2xl font-semibold text-foreground">{value}</p>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={`rounded-xl border p-4 text-left transition-colors ${selected ? "border-ring bg-accent/40" : "border-border/70 bg-background/50 hover:border-ring/70"}`}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-border/70 bg-background/50 p-4">
+      {content}
     </div>
   );
 }
@@ -85,6 +122,7 @@ export default function CRMPipelineReportPage() {
   const [report, setReport] = useState<CRMPipelineReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeDrilldown, setActiveDrilldown] = useState<string>("");
 
   useEffect(() => {
     let cancelled = false;
@@ -112,6 +150,15 @@ export default function CRMPipelineReportPage() {
       cancelled = true;
     };
   }, [filters, t]);
+
+  useEffect(() => {
+    if (!report) {
+      return;
+    }
+    if (!report.analytics.drilldowns.some((group) => group.key === activeDrilldown)) {
+      setActiveDrilldown(report.analytics.drilldowns[0]?.key ?? "");
+    }
+  }, [activeDrilldown, report]);
 
   const groups = useMemo(() => {
     if (!report) {
@@ -146,6 +193,22 @@ export default function CRMPipelineReportPage() {
       conversionSource: report.by_conversion_source ?? [],
     };
   }, [report]);
+
+  const activeDrilldownGroup: CRMPipelineDrilldownGroup | null = useMemo(() => {
+    if (!report) {
+      return null;
+    }
+    return report.analytics.drilldowns.find((group) => group.key === activeDrilldown) ?? null;
+  }, [activeDrilldown, report]);
+
+  const comparisonCards = report
+    ? [
+        ["open_pipeline_value", t("crm.reporting.openPipelineValue")],
+        ["win_rate", t("crm.reporting.winRate")],
+        ["lead_conversion_rate", t("crm.reporting.leadConversionRate")],
+        ["converted_revenue", t("crm.reporting.convertedRevenue")],
+      ]
+    : [];
 
   return (
     <div className="space-y-6">
@@ -238,6 +301,22 @@ export default function CRMPipelineReportPage() {
             </select>
           </Field>
           <Field>
+            <FieldLabel htmlFor="start_date">{t("crm.reporting.periodStart")}</FieldLabel>
+            <Input id="start_date" type="date" value={filters.start_date ?? ""} onChange={(event) => setFilters((current) => ({ ...current, start_date: event.target.value }))} />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="end_date">{t("crm.reporting.periodEnd")}</FieldLabel>
+            <Input id="end_date" type="date" value={filters.end_date ?? ""} onChange={(event) => setFilters((current) => ({ ...current, end_date: event.target.value }))} />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="compare_start_date">{t("crm.reporting.compareStart")}</FieldLabel>
+            <Input id="compare_start_date" type="date" value={filters.compare_start_date ?? ""} onChange={(event) => setFilters((current) => ({ ...current, compare_start_date: event.target.value }))} />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="compare_end_date">{t("crm.reporting.compareEnd")}</FieldLabel>
+            <Input id="compare_end_date" type="date" value={filters.compare_end_date ?? ""} onChange={(event) => setFilters((current) => ({ ...current, compare_end_date: event.target.value }))} />
+          </Field>
+          <Field>
             <FieldLabel htmlFor="status">{t("crm.reporting.status")}</FieldLabel>
             <Input id="status" value={filters.status ?? ""} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))} />
           </Field>
@@ -278,6 +357,71 @@ export default function CRMPipelineReportPage() {
 
       {report ? (
         <>
+          <SectionCard title={t("crm.reporting.analyticsTitle")} description={t("crm.reporting.analyticsDescription")}>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <SummaryCard
+                label={t("crm.reporting.openPipelineValue")}
+                value={report.analytics.kpis.open_pipeline_value}
+                onClick={() => setActiveDrilldown("open_pipeline")}
+                selected={activeDrilldown === "open_pipeline"}
+              />
+              <SummaryCard
+                label={t("crm.reporting.weightedPipelineValue")}
+                value={report.analytics.kpis.weighted_pipeline_value}
+                onClick={() => setActiveDrilldown("open_pipeline")}
+                selected={activeDrilldown === "open_pipeline"}
+              />
+              <SummaryCard
+                label={t("crm.reporting.winRate")}
+                value={`${report.analytics.kpis.win_rate}%`}
+                onClick={() => setActiveDrilldown("terminal_outcomes")}
+                selected={activeDrilldown === "terminal_outcomes"}
+              />
+              <SummaryCard
+                label={t("crm.reporting.leadConversionRate")}
+                value={`${report.analytics.kpis.lead_conversion_rate}%`}
+                onClick={() => setActiveDrilldown("qualified_leads")}
+                selected={activeDrilldown === "qualified_leads"}
+              />
+              <SummaryCard
+                label={t("crm.reporting.averageDealSize")}
+                value={report.analytics.kpis.average_deal_size}
+                onClick={() => setActiveDrilldown("converted_orders")}
+                selected={activeDrilldown === "converted_orders"}
+              />
+              <SummaryCard
+                label={t("crm.reporting.convertedRevenue")}
+                value={report.analytics.kpis.converted_revenue}
+                onClick={() => setActiveDrilldown("converted_orders")}
+                selected={activeDrilldown === "converted_orders"}
+              />
+              <SummaryCard
+                label={t("crm.reporting.timeToConversion")}
+                value={report.analytics.kpis.time_to_conversion}
+                onClick={() => setActiveDrilldown("qualified_leads")}
+                selected={activeDrilldown === "qualified_leads"}
+              />
+            </div>
+          </SectionCard>
+
+          <SectionCard title={t("crm.reporting.comparisonTitle")} description={t("crm.reporting.comparisonDescription")}>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {comparisonCards.map(([key, label]) => {
+                const metric = report.analytics.comparison[key] ?? { current_value: "0.00", previous_value: "0.00", delta: "0.00" };
+                return (
+                  <div key={key} className="rounded-xl border border-border/70 bg-background/50 p-4">
+                    <p className="text-sm font-medium text-foreground">{label}</p>
+                    <div className="mt-3 space-y-2 text-sm text-muted-foreground">
+                      <p>{t("crm.reporting.currentPeriod")}: {metric.current_value}</p>
+                      <p>{t("crm.reporting.previousPeriod")}: {metric.previous_value}</p>
+                      <p>{t("crm.reporting.delta")}: {metric.delta}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </SectionCard>
+
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <SummaryCard label={t("crm.reporting.leadCount")} value={report.totals.lead_count} />
             <SummaryCard label={t("crm.reporting.opportunityCount")} value={report.totals.opportunity_count} />
@@ -291,6 +435,38 @@ export default function CRMPipelineReportPage() {
             <SummaryCard label={t("crm.reporting.avgDaysToConversion")} value={report.totals.avg_days_to_conversion ?? "0.00"} />
           </div>
 
+          <SectionCard title={t("crm.reporting.funnelTitle")} description={t("crm.reporting.funnelDescription")}>
+            <div className="space-y-3">
+              {report.analytics.funnel.map((stage) => {
+                const drilldownKey = stage.key === "converted" ? "converted_orders" : stage.key === "opportunity" ? "open_pipeline" : "qualified_leads";
+                return (
+                  <button
+                    key={stage.key}
+                    type="button"
+                    onClick={() => setActiveDrilldown(drilldownKey)}
+                    className="grid w-full gap-3 rounded-xl border border-border/70 bg-background/40 p-4 text-left md:grid-cols-[minmax(0,1fr)_120px_140px_160px]"
+                  >
+                    <div>
+                      <p className="font-medium text-foreground">{t(`crm.reporting.funnelStage.${stage.key}`)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.count")}</p>
+                      <p className="text-sm font-medium text-foreground">{stage.count}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.dropoffCount")}</p>
+                      <p className="text-sm font-medium text-foreground">{stage.dropoff_count}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.conversionRate")}</p>
+                      <p className="text-sm font-medium text-foreground">{stage.conversion_rate}%</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </SectionCard>
+
           <SectionCard title={t("crm.reporting.dropOffTitle")} description={t("crm.reporting.dropOffDescription")}>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <SummaryCard label={t("crm.reporting.dropOffLeadOnly")} value={report.dropoff.lead_only_count} />
@@ -298,6 +474,92 @@ export default function CRMPipelineReportPage() {
               <SummaryCard label={t("crm.reporting.dropOffQuotationWithoutOrder")} value={report.dropoff.quotation_without_order_count} />
               <SummaryCard label={t("crm.reporting.dropOffQuotationWithOrder")} value={report.dropoff.quotation_with_order_count} />
             </div>
+          </SectionCard>
+
+          <SectionCard title={t("crm.reporting.terminalAnalysisTitle")} description={t("crm.reporting.terminalAnalysisDescription")}>
+            <div className="grid gap-6 xl:grid-cols-3">
+              <SegmentGroup title={t("crm.reporting.byStatusTitle")} items={report.analytics.terminal_by_status} />
+              <SegmentGroup title={t("crm.reporting.byLostReasonTitle")} items={report.analytics.terminal_by_lost_reason} />
+              <SegmentGroup title={t("crm.reporting.byCompetitorTitle")} items={report.analytics.terminal_by_competitor} />
+            </div>
+          </SectionCard>
+
+          <SectionCard title={t("crm.reporting.repPerformanceTitle")} description={t("crm.reporting.repPerformanceDescription")}>
+            <div className="space-y-3">
+              {report.analytics.owner_scorecards.length ? (
+                report.analytics.owner_scorecards.map((scorecard) => (
+                  <div key={scorecard.owner} className="grid gap-3 rounded-xl border border-border/70 bg-background/40 p-4 md:grid-cols-[minmax(0,1fr)_120px_120px_140px_140px_140px_140px]">
+                    <div>
+                      <p className="font-medium text-foreground">{scorecard.owner}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.assignedLeads")}</p>
+                      <p className="text-sm font-medium text-foreground">{scorecard.assigned_leads}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.ownedOpportunities")}</p>
+                      <p className="text-sm font-medium text-foreground">{scorecard.owned_opportunities}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.openPipelineValue")}</p>
+                      <p className="text-sm font-medium text-foreground">{scorecard.open_pipeline_value}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.weightedForecast")}</p>
+                      <p className="text-sm font-medium text-foreground">{scorecard.weighted_pipeline_value}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.convertedRevenue")}</p>
+                      <p className="text-sm font-medium text-foreground">{scorecard.converted_revenue}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.timeToConversion")}</p>
+                      <p className="text-sm font-medium text-foreground">{scorecard.time_to_conversion}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <SurfaceMessage>{t("crm.reporting.noMatches")}</SurfaceMessage>
+              )}
+            </div>
+          </SectionCard>
+
+          <SectionCard title={t("crm.reporting.drilldownTitle")} description={t("crm.reporting.drilldownDescription")}>
+            {activeDrilldownGroup ? (
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-foreground">{activeDrilldownGroup.label}</p>
+                {activeDrilldownGroup.records.length ? (
+                  activeDrilldownGroup.records.map((record) => (
+                    <div key={`${record.record_type}-${record.record_id}`} className="grid gap-3 rounded-xl border border-border/70 bg-background/40 p-4 md:grid-cols-[minmax(0,1fr)_120px_140px_120px_140px]">
+                      <div>
+                        <p className="font-medium text-foreground">{record.label}</p>
+                        <p className="text-sm text-muted-foreground">{record.record_id}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.drilldownRecordType")}</p>
+                        <p className="text-sm font-medium text-foreground">{record.record_type}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.drilldownStatus")}</p>
+                        <p className="text-sm font-medium text-foreground">{record.status}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.drilldownOwner")}</p>
+                        <p className="text-sm font-medium text-foreground">{record.owner || "-"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.drilldownAmount")}</p>
+                        <p className="text-sm font-medium text-foreground">{record.amount}</p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <SurfaceMessage>{t("crm.reporting.drilldownEmpty")}</SurfaceMessage>
+                )}
+              </div>
+            ) : (
+              <SurfaceMessage>{t("crm.reporting.drilldownEmpty")}</SurfaceMessage>
+            )}
           </SectionCard>
 
           <SegmentGroup title={t("crm.reporting.byStatusTitle")} items={groups.status} />

@@ -319,3 +319,259 @@ async def test_get_crm_pipeline_report_includes_lead_conversion_metrics() -> Non
     assert report.totals.avg_days_to_conversion == Decimal("2.00")
     assert any(segment.key == "customer+opportunity" and segment.count == 1 for segment in report.by_conversion_path)
     assert any(segment.key == "trade-show" and segment.count == 1 for segment in report.by_conversion_source)
+
+
+@pytest.mark.asyncio
+async def test_get_crm_pipeline_report_builds_analytics_kpis_and_period_comparison() -> None:
+    opportunity_open_id = uuid.uuid4()
+    opportunity_converted_id = uuid.uuid4()
+    previous_opportunity_id = uuid.uuid4()
+    quotation_current_id = uuid.uuid4()
+    quotation_previous_id = uuid.uuid4()
+
+    leads = [
+        SimpleNamespace(
+            id=uuid.uuid4(),
+            status="converted",
+            qualification_status="qualified",
+            territory="North",
+            lead_owner="alice",
+            source="trade-show",
+            conversion_state="converted",
+            conversion_path="customer+opportunity+quotation",
+            converted_customer_id=uuid.uuid4(),
+            converted_opportunity_id=opportunity_open_id,
+            converted_quotation_id=quotation_current_id,
+            created_at=datetime(2026, 4, 10, 9, 0, tzinfo=UTC),
+            converted_at=datetime(2026, 4, 12, 9, 0, tzinfo=UTC),
+            utm_source="expo",
+            utm_medium="field",
+            utm_campaign="spring-2026",
+            utm_content="hero-banner",
+        ),
+        SimpleNamespace(
+            id=uuid.uuid4(),
+            status="open",
+            qualification_status="qualified",
+            territory="North",
+            lead_owner="bob",
+            source="web",
+            conversion_state="not_converted",
+            conversion_path="",
+            converted_customer_id=None,
+            converted_opportunity_id=None,
+            converted_quotation_id=None,
+            created_at=datetime(2026, 4, 11, 9, 0, tzinfo=UTC),
+            converted_at=None,
+            utm_source="expo",
+            utm_medium="field",
+            utm_campaign="spring-2026",
+            utm_content="hero-banner",
+        ),
+        SimpleNamespace(
+            id=uuid.uuid4(),
+            status="converted",
+            qualification_status="qualified",
+            territory="North",
+            lead_owner="alice",
+            source="partner",
+            conversion_state="converted",
+            conversion_path="customer+opportunity",
+            converted_customer_id=uuid.uuid4(),
+            converted_opportunity_id=previous_opportunity_id,
+            converted_quotation_id=quotation_previous_id,
+            created_at=datetime(2026, 3, 5, 9, 0, tzinfo=UTC),
+            converted_at=datetime(2026, 3, 8, 9, 0, tzinfo=UTC),
+            utm_source="expo",
+            utm_medium="field",
+            utm_campaign="spring-2026",
+            utm_content="hero-banner",
+        ),
+    ]
+    opportunities = [
+        SimpleNamespace(
+            id=opportunity_open_id,
+            status="open",
+            sales_stage="proposal",
+            territory="North",
+            customer_group="Industrial",
+            opportunity_owner="alice",
+            lost_reason="",
+            competitor_name="",
+            utm_source="expo",
+            utm_medium="field",
+            utm_campaign="spring-2026",
+            utm_content="hero-banner",
+            probability=40,
+            opportunity_amount=Decimal("10000.00"),
+            expected_closing=date(2026, 4, 18),
+            opportunity_title="Rotor Expansion",
+        ),
+        SimpleNamespace(
+            id=opportunity_converted_id,
+            status="converted",
+            sales_stage="proposal",
+            territory="North",
+            customer_group="Industrial",
+            opportunity_owner="alice",
+            lost_reason="",
+            competitor_name="",
+            utm_source="expo",
+            utm_medium="field",
+            utm_campaign="spring-2026",
+            utm_content="hero-banner",
+            probability=100,
+            opportunity_amount=Decimal("12000.00"),
+            expected_closing=date(2026, 4, 15),
+            opportunity_title="Won Renewal",
+        ),
+        SimpleNamespace(
+            id=uuid.uuid4(),
+            status="lost",
+            sales_stage="negotiation",
+            territory="North",
+            customer_group="Industrial",
+            opportunity_owner="bob",
+            lost_reason="Price",
+            competitor_name="RivalCo",
+            utm_source="expo",
+            utm_medium="field",
+            utm_campaign="spring-2026",
+            utm_content="hero-banner",
+            probability=20,
+            opportunity_amount=Decimal("5000.00"),
+            expected_closing=date(2026, 4, 20),
+            opportunity_title="Lost Bid",
+        ),
+        SimpleNamespace(
+            id=previous_opportunity_id,
+            status="open",
+            sales_stage="proposal",
+            territory="North",
+            customer_group="Industrial",
+            opportunity_owner="alice",
+            lost_reason="",
+            competitor_name="",
+            utm_source="expo",
+            utm_medium="field",
+            utm_campaign="spring-2026",
+            utm_content="hero-banner",
+            probability=50,
+            opportunity_amount=Decimal("8000.00"),
+            expected_closing=date(2026, 3, 20),
+            opportunity_title="Prior Pipeline",
+        ),
+    ]
+    quotations = [
+        SimpleNamespace(
+            id=quotation_current_id,
+            opportunity_id=opportunity_converted_id,
+            status="ordered",
+            territory="North",
+            customer_group="Industrial",
+            lost_reason="",
+            competitor_name="",
+            utm_source="expo",
+            utm_medium="field",
+            utm_campaign="spring-2026",
+            utm_content="hero-banner",
+            grand_total=Decimal("21000.00"),
+            order_count=1,
+            transaction_date=date(2026, 4, 14),
+            valid_till=date(2026, 5, 14),
+            created_at=datetime(2026, 4, 14, 9, 0, tzinfo=UTC),
+            updated_at=datetime(2026, 4, 14, 9, 0, tzinfo=UTC),
+            party_label="Rotor Works",
+        ),
+        SimpleNamespace(
+            id=quotation_previous_id,
+            opportunity_id=previous_opportunity_id,
+            status="ordered",
+            territory="North",
+            customer_group="Industrial",
+            lost_reason="",
+            competitor_name="",
+            utm_source="expo",
+            utm_medium="field",
+            utm_campaign="spring-2026",
+            utm_content="hero-banner",
+            grand_total=Decimal("15000.00"),
+            order_count=1,
+            transaction_date=date(2026, 3, 16),
+            valid_till=date(2026, 4, 16),
+            created_at=datetime(2026, 3, 16, 9, 0, tzinfo=UTC),
+            updated_at=datetime(2026, 3, 16, 9, 0, tzinfo=UTC),
+            party_label="Legacy Rotor Works",
+        ),
+    ]
+    orders = [
+        SimpleNamespace(
+            id=uuid.uuid4(),
+            source_quotation_id=quotation_current_id,
+            status="confirmed",
+            total_amount=Decimal("21000.00"),
+            created_at=datetime(2026, 4, 16, 9, 0, tzinfo=UTC),
+            crm_context_snapshot={
+                "utm_source": "expo",
+                "utm_medium": "field",
+                "utm_campaign": "spring-2026",
+                "utm_content": "hero-banner",
+            },
+        ),
+        SimpleNamespace(
+            id=uuid.uuid4(),
+            source_quotation_id=quotation_previous_id,
+            status="confirmed",
+            total_amount=Decimal("15000.00"),
+            created_at=datetime(2026, 3, 18, 9, 0, tzinfo=UTC),
+            crm_context_snapshot={
+                "utm_source": "expo",
+                "utm_medium": "field",
+                "utm_campaign": "spring-2026",
+                "utm_content": "hero-banner",
+            },
+        ),
+    ]
+    session = FakeSession(
+        execute_results=[
+            _FakeListResult(leads),
+            _FakeListResult(opportunities),
+            _FakeListResult(quotations),
+            _FakeListResult(orders),
+        ]
+    )
+
+    report = await get_crm_pipeline_report(
+        session,
+        CRMPipelineReportParams(
+            start_date=date(2026, 4, 1),
+            end_date=date(2026, 4, 30),
+            compare_start_date=date(2026, 3, 1),
+            compare_end_date=date(2026, 3, 31),
+            territory="North",
+            utm_source="expo",
+            utm_medium="field",
+            utm_campaign="spring-2026",
+            utm_content="hero-banner",
+        ),
+    )
+
+    assert report.analytics.kpis.open_pipeline_value == Decimal("10000.00")
+    assert report.analytics.kpis.weighted_pipeline_value == Decimal("4000.00")
+    assert report.analytics.kpis.win_rate == Decimal("50.00")
+    assert report.analytics.kpis.lead_conversion_rate == Decimal("50.00")
+    assert report.analytics.kpis.average_deal_size == Decimal("21000.00")
+    assert report.analytics.kpis.converted_revenue == Decimal("21000.00")
+    assert report.analytics.kpis.time_to_conversion == Decimal("2.00")
+    assert report.analytics.comparison["open_pipeline_value"].previous_value == Decimal("8000.00")
+    assert report.analytics.comparison["open_pipeline_value"].delta == Decimal("2000.00")
+    assert report.analytics.comparison["converted_revenue"].previous_value == Decimal("15000.00")
+    assert report.analytics.comparison["converted_revenue"].delta == Decimal("6000.00")
+    assert report.analytics.funnel[1].key == "opportunity"
+    assert report.analytics.funnel[1].count == 1
+    assert report.analytics.funnel[1].conversion_rate == Decimal("50.00")
+    assert any(segment.key == "Price" and segment.count == 1 for segment in report.analytics.terminal_by_lost_reason)
+    assert any(segment.key == "RivalCo" and segment.count == 1 for segment in report.analytics.terminal_by_competitor)
+    assert report.analytics.owner_scorecards[0].owner == "alice"
+    assert report.analytics.owner_scorecards[0].weighted_pipeline_value == Decimal("4000.00")
+    assert any(group.key == "open_pipeline" and group.records[0].label == "Rotor Expansion" for group in report.analytics.drilldowns)

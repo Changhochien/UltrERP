@@ -1,6 +1,6 @@
 # Story 23.8: CRM Reporting and Pipeline Analytics
 
-Status: drafted
+Status: completed
 
 ## Story
 
@@ -33,26 +33,26 @@ This story should provide CRM and pipeline analytics, not finance dashboards, ma
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Define the CRM analytics metric contract. (AC: 1-5)
-  - [ ] Document metric definitions for open pipeline value, weighted pipeline value, win rate, lead-conversion rate, average deal size, converted revenue, and time-to-conversion.
-  - [ ] Keep Epic 23 metrics in current base-currency semantics until Epic 25 extends them for cross-currency reporting.
-  - [ ] Make period filters, owner filters, stage filters, territory filters, and attribution filters explicit and reusable.
-- [ ] Task 2: Build analytics projections and service endpoints. (AC: 1-5)
-  - [ ] Add read-oriented projections or queries for KPI cards, funnel counts, terminal outcome analysis, rep scorecards, and forecast views.
-  - [ ] Reuse stored lead, opportunity, quotation, order-handoff, and conversion-lineage fields rather than recomputing history heuristically.
-  - [ ] Extend the Story 23.5 reporting layer and the Story 23.6 attribution segments instead of creating an isolated analytics stack.
-- [ ] Task 3: Build manager-facing dashboard and analytics views. (AC: 1-5)
-  - [ ] Add a CRM dashboard with KPI cards and quick filter controls.
-  - [ ] Add funnel, win or loss, rep-performance, and forecast views with readable breakdowns and trend comparisons.
-  - [ ] Reuse Epic 22 shared dashboard, table, chart, filter, and feedback primitives.
-- [ ] Task 4: Add comparison and drilldown behavior. (AC: 2-5)
-  - [ ] Support period-over-period comparison for dashboard KPIs and trend visuals.
-  - [ ] Allow drilldown from KPI or chart summaries into the underlying lead, opportunity, quotation, or converted-order record sets.
-  - [ ] Keep drilldown read-only and analytics-focused rather than turning this into a custom report builder.
-- [ ] Task 5: Add focused tests and validation. (AC: 1-6)
-  - [ ] Add backend tests for metric formulas, forecast weighting, trend comparison, and loss-reason aggregation.
-  - [ ] Add frontend tests for dashboard rendering, filter interactions, drilldowns, and period comparison behavior.
-  - [ ] Validate that no generic BI builder, finance reporting suite, or marketing-campaign engine lands in this story.
+- [x] Task 1: Define the CRM analytics metric contract. (AC: 1-5)
+  - [x] Document metric definitions for open pipeline value, weighted pipeline value, win rate, lead-conversion rate, average deal size, converted revenue, and time-to-conversion.
+  - [x] Keep Epic 23 metrics in current base-currency semantics until Epic 25 extends them for cross-currency reporting.
+  - [x] Make period filters, owner filters, stage filters, territory filters, and attribution filters explicit and reusable.
+- [x] Task 2: Build analytics projections and service endpoints. (AC: 1-5)
+  - [x] Add read-oriented projections or queries for KPI cards, funnel counts, terminal outcome analysis, rep scorecards, and forecast views.
+  - [x] Reuse stored lead, opportunity, quotation, order-handoff, and conversion-lineage fields rather than recomputing history heuristically.
+  - [x] Extend the Story 23.5 reporting layer and the Story 23.6 attribution segments instead of creating an isolated analytics stack.
+- [x] Task 3: Build manager-facing dashboard and analytics views. (AC: 1-5)
+  - [x] Add a CRM dashboard with KPI cards and quick filter controls.
+  - [x] Add funnel, win or loss, rep-performance, and forecast views with readable breakdowns and trend comparisons.
+  - [x] Reuse Epic 22 shared dashboard, table, chart, filter, and feedback primitives.
+- [x] Task 4: Add comparison and drilldown behavior. (AC: 2-5)
+  - [x] Support period-over-period comparison for dashboard KPIs and trend visuals.
+  - [x] Allow drilldown from KPI or chart summaries into the underlying lead, opportunity, quotation, or converted-order record sets.
+  - [x] Keep drilldown read-only and analytics-focused rather than turning this into a custom report builder.
+- [x] Task 5: Add focused tests and validation. (AC: 1-6)
+  - [x] Add backend tests for metric formulas, forecast weighting, trend comparison, and loss-reason aggregation.
+  - [x] Add frontend tests for dashboard rendering, filter interactions, drilldowns, and period comparison behavior.
+  - [x] Validate that no generic BI builder, finance reporting suite, or marketing-campaign engine lands in this story.
 
 ## Dev Notes
 
@@ -140,12 +140,28 @@ GPT-5.4
 
 ### Debug Log References
 
-- Story draft only; implementation and validation commands not run yet.
+- `cd /Users/changtom/Downloads/UltrERP/backend && .venv/bin/python -m pytest tests/domains/crm/test_reporting_service.py`
+- `cd /Users/changtom/Downloads/UltrERP && pnpm test -- --run src/tests/crm/CRMPipelineReportPage.test.tsx`
 
 ### Completion Notes List
 
-- 2026-04-21: Drafted Story 23.8 from Epic 23, the validated CRM research, and the current CRM opportunity fields so leadership analytics can sit on top of stable pipeline data without expanding into a generic reporting platform.
+- Extended the existing CRM reporting contract with explicit period-comparison filters, analytics KPI payloads, funnel breakdowns, terminal outcome rankings, owner scorecards, and read-only drilldown record groups.
+- Reused the current pipeline reporting surface for the manager dashboard instead of adding a parallel analytics route, preserving Story 23.5 and Story 23.6 ownership boundaries.
+- Added focused analytics validation that locks KPI formulas, weighted forecast, period comparison, competitor and lost-reason aggregation, dashboard rendering, filter interactions, and drilldown behavior.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/23-8-crm-reporting-and-pipeline-analytics.md`
+- `backend/domains/crm/_pipeline.py`
+- `backend/domains/crm/schemas.py`
+- `backend/tests/domains/crm/test_reporting_service.py`
+- `public/locales/en/common.json`
+- `public/locales/zh-Hant/common.json`
+- `src/domain/crm/types.ts`
+- `src/lib/api/crm.ts`
+- `src/pages/crm/CRMPipelineReportPage.tsx`
+- `src/tests/crm/CRMPipelineReportPage.test.tsx`
+
+## Change Log
+
+- 2026-04-22: Implemented Story 23.8 CRM analytics, comparison filters, drilldowns, and focused validation.
