@@ -70,14 +70,14 @@ export function AppNavigation() {
   return (
     <Sidebar>
       <SidebarHeader>
-        <div className="flex items-center gap-3 rounded-2xl border border-sidebar-border/70 bg-sidebar-accent/55 px-3 py-3">
-          <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/12 text-sm font-semibold text-primary">
+        <div className="flex items-center gap-3 rounded-xl border border-sidebar-border/50 bg-sidebar-accent/40 px-3 py-3">
+          <div className="flex size-11 items-center justify-center rounded-xl bg-sidebar-accent/80 text-sm font-semibold text-sidebar-accent-foreground">
             UE
           </div>
           {showLabel ? (
             <div className="min-w-0 space-y-1">
-              <p className="text-sm font-semibold tracking-tight">UltrERP</p>
-              <p className="text-xs text-sidebar-foreground/60">{t("app.tagline")}</p>
+              <p className="text-sm font-semibold tracking-tight text-sidebar-foreground">UltrERP</p>
+              <p className="text-xs text-sidebar-muted">{t("app.tagline")}</p>
             </div>
           ) : null}
         </div>
@@ -121,11 +121,11 @@ export function AppNavigation() {
                                     onClick={handleNavigation}
                                     className={({ isActive }) =>
                                       [
-                                        "group flex items-center gap-3 rounded-2xl border px-3 py-2.5 text-sm font-medium transition-colors transition-shadow",
+                                        "group flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm font-medium transition-all duration-150",
                                         showLabel ? `justify-start ${indentClass}` : "justify-center px-0",
                                         isActive
-                                          ? "border-sidebar-border bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
-                                          : "border-transparent text-sidebar-foreground/72 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+                                          ? "border-sidebar-accent/50 bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
+                                          : "border-transparent text-sidebar-foreground/80 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
                                       ].join(" ")
                                     }
                                   >
@@ -133,7 +133,7 @@ export function AppNavigation() {
                                     {showLabel ? (
                                       <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
                                         <span className="truncate">{t(item.label)}</span>
-                                        <ChevronRight className="size-3.5 text-sidebar-foreground/40 transition-transform group-hover:translate-x-0.5" />
+                                        <ChevronRight className="size-3.5 text-sidebar-foreground/50 transition-transform group-hover:translate-x-0.5" />
                                       </span>
                                     ) : null}
                                   </NavLink>
@@ -156,8 +156,8 @@ export function AppNavigation() {
       <SidebarFooter>
         <div className="space-y-3">
           {showLabel ? (
-            <div className="rounded-2xl border border-sidebar-border/70 bg-sidebar-accent/45 px-3 py-3">
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-sidebar-foreground/60">
+            <div className="rounded-xl border border-sidebar-border/50 bg-sidebar-accent/30 px-3 py-3">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-sidebar-muted">
                 {t("nav.language")}
               </p>
               <LanguageSwitcher />
@@ -168,19 +168,19 @@ export function AppNavigation() {
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="flex w-full items-center gap-3 rounded-2xl border border-sidebar-border/70 bg-sidebar-accent/45 px-3 py-3 text-left transition-colors hover:bg-sidebar-accent/75"
+                className="flex w-full items-center gap-3 rounded-xl border border-sidebar-border/50 bg-sidebar-accent/30 px-3 py-3 text-left transition-colors hover:bg-sidebar-accent/50"
               >
-                <Avatar className="size-10 border border-sidebar-border/80">
-                  <AvatarFallback>{getInitials(user?.sub ?? "")}</AvatarFallback>
+                <Avatar className="size-10 border border-sidebar-border/60">
+                  <AvatarFallback className="bg-sidebar-accent/60 text-sidebar-accent-foreground">{getInitials(user?.sub ?? "")}</AvatarFallback>
                 </Avatar>
                 {showLabel ? (
                   <div className="min-w-0 flex-1 space-y-1">
-                    <p className="truncate text-sm font-medium">{user?.sub ?? t("common.guest")}</p>
+                    <p className="truncate text-sm font-medium text-sidebar-foreground">{user?.sub ?? t("common.guest")}</p>
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="outline" className="border-sidebar-border/80 bg-transparent text-[10px] text-sidebar-foreground/60">
+                      <Badge variant="outline" className="border-sidebar-border/60 bg-transparent text-[10px] text-sidebar-muted">
                         {user?.role ?? t("common.guest")}
                       </Badge>
-                      <span className="truncate text-xs text-sidebar-foreground/55">{user?.tenant_id ?? t("common.noTenant")}</span>
+                      <span className="truncate text-xs text-sidebar-muted/80">{user?.tenant_id ?? t("common.noTenant")}</span>
                     </div>
                   </div>
                 ) : null}

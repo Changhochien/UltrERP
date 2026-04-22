@@ -83,7 +83,7 @@ const SidebarGroupLabel = React.forwardRef<HTMLParagraphElement, React.HTMLAttri
       <p
         ref={ref}
         className={cn(
-          "mb-2 px-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-sidebar-foreground/45",
+          "mb-2 px-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-sidebar-muted",
           !showLabel && "sr-only",
           className,
         )}
@@ -127,6 +127,33 @@ const SidebarSectionHeader = React.forwardRef<HTMLButtonElement, SidebarSectionH
       }
     };
 
+    // Section type determines the visual hierarchy
+    // Reports: medium emphasis, Setup: lower emphasis
+    const getSectionStyles = () => {
+      switch (sectionType) {
+        case 'reports':
+          return {
+            text: "text-sidebar-muted",
+            icon: "text-sidebar-muted/70",
+            hover: "hover:bg-sidebar-accent/50",
+          };
+        case 'setup':
+          return {
+            text: "text-sidebar-muted/80",
+            icon: "text-sidebar-muted/60",
+            hover: "hover:bg-sidebar-accent/40",
+          };
+        default:
+          return {
+            text: "text-sidebar-foreground/70",
+            icon: "text-sidebar-foreground/60",
+            hover: "hover:bg-sidebar-accent/50",
+          };
+      }
+    };
+
+    const styles = getSectionStyles();
+
     return (
       <button
         ref={ref}
@@ -136,10 +163,10 @@ const SidebarSectionHeader = React.forwardRef<HTMLButtonElement, SidebarSectionH
         aria-expanded={!isCollapsed}
         aria-controls={`section-${sectionId}`}
         className={cn(
-          "mb-1 mt-3 flex w-full items-center justify-between px-2 py-1.5 text-left text-[11px] font-semibold uppercase tracking-[0.24em] transition-colors",
-          sectionType === 'reports' && "text-sidebar-foreground/50",
-          sectionType === 'setup' && "text-sidebar-foreground/40",
-          "cursor-pointer rounded hover:bg-sidebar-accent/40",
+          "mb-1 mt-3 flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-[11px] font-semibold uppercase tracking-[0.2em] transition-colors",
+          styles.text,
+          styles.hover,
+          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-muted",
           className,
         )}
         {...props}
@@ -147,7 +174,8 @@ const SidebarSectionHeader = React.forwardRef<HTMLButtonElement, SidebarSectionH
         <span>{label}</span>
         <ChevronDown
           className={cn(
-            "size-3 shrink-0 text-sidebar-foreground/40 transition-transform duration-200",
+            "size-3 shrink-0 transition-transform duration-200",
+            styles.icon,
             isCollapsed ? "-rotate-90" : "rotate-0",
           )}
         />
