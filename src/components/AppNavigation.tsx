@@ -60,10 +60,7 @@ export function AppNavigation() {
 
   // Get indentation class based on section type
   const getSectionIndentClass = (sectionType: NavigationSectionType): string => {
-    if (sectionType === 'reports' || sectionType === 'setup') {
-      return "pl-6";
-    }
-    if (sectionType === 'quick-actions') {
+    if (sectionType === 'quick-actions' || sectionType === 'reports' || sectionType === 'setup') {
       return "pl-6";
     }
     return "";
