@@ -1,5 +1,6 @@
 import { Plus, Search, ArrowRightLeft, ShoppingCart } from "lucide-react";
 import type { ReactNode } from "react";
+import { useMemo } from "react";
 
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
@@ -31,7 +32,7 @@ export function CommandBar({
   newTransferLabel = "New Transfer",
   newOrderLabel = "New Order",
 }: CommandBarProps) {
-  const actions = [
+  const actions = useMemo(() => [
     onAdjustStock
       ? {
           key: "adjust-stock",
@@ -65,7 +66,7 @@ export function CommandBar({
     shortcut: string;
     icon: ReactNode;
     onClick: () => void;
-  }>;
+  }>, [onAdjustStock, onNewTransfer, onNewOrder, adjustStockLabel, newTransferLabel, newOrderLabel]);
 
   return (
     <section

@@ -1,6 +1,6 @@
 /** Stock adjustment form for recording inventory changes with reason codes. */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayout";
@@ -57,7 +57,10 @@ export function StockAdjustmentForm({
 
   const canSubmit =
     productId && warehouseId && quantityChange !== 0 && reasonCode;
-  const selectedReasonLabel = codes.find((reason) => reason.value === reasonCode)?.label ?? reasonCode;
+  const selectedReasonLabel = useMemo(
+    () => codes.find((reason) => reason.value === reasonCode)?.label ?? reasonCode,
+    [codes, reasonCode],
+  );
 
   const parseForm = () =>
     stockAdjustmentFormSchema.safeParse({
