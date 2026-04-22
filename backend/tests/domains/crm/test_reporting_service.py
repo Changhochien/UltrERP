@@ -1,0 +1,190 @@
+"""Focused CRM pipeline reporting tests for Story 23.5."""
+
+from __future__ import annotations
+
+import uuid
+from datetime import UTC, date, datetime
+from decimal import Decimal
+from types import SimpleNamespace
+
+import pytest
+
+from domains.crm.schemas import CRMPipelineReportParams
+from domains.crm.service import get_crm_pipeline_report
+
+
+class _FakeScalarsResult:
+    def __init__(self, values: list[object]) -> None:
+        self._values = values
+
+    def all(self) -> list[object]:
+        return list(self._values)
+
+
+class _FakeListResult:
+    def __init__(self, values: list[object]) -> None:
+        self._values = values
+
+    def scalars(self) -> _FakeScalarsResult:
+        return _FakeScalarsResult(self._values)
+
+
+class FakeSession:
+    def __init__(self, execute_results: list[object]) -> None:
+        self._execute_results = list(execute_results)
+        self.begin_calls = 0
+
+    async def execute(self, stmt: object, params: object = None) -> object:
+        if isinstance(params, dict) and "tid" in params:
+            return _FakeListResult([])
+        return self._execute_results.pop(0)
+
+    def begin(self) -> "FakeSession":
+        self.begin_calls += 1
+        return self
+
+    async def __aenter__(self) -> "FakeSession":
+        return self
+
+    async def __aexit__(self, *args: object) -> None:
+        return None
+
+
+@pytest.mark.asyncio
+async def test_get_crm_pipeline_report_segments_records_by_status_dimension_and_dropoff() -> None:
+    lead = SimpleNamespace(
+        id=uuid.uuid4(),
+        status="open",
+        territory="North",
+        lead_owner="alice",
+        utm_source="expo",
+        utm_medium="field",
+        utm_campaign="spring-2026",
+    )
+    opportunity = SimpleNamespace(
+        id=uuid.uuid4(),
+        status="quotation",
+        sales_stage="proposal",
+        territory="North",
+        customer_group="Industrial",
+        opportunity_owner="alice",
+        lost_reason="",
+        utm_source="expo",
+        utm_medium="field",
+        utm_campaign="spring-2026",
+        opportunity_amount=Decimal("25000.00"),
+    )
+    quotation = SimpleNamespace(
+        id=uuid.uuid4(),
+        status="partially_ordered",
+        territory="North",
+        customer_group="Industrial",
+        lost_reason="",
+        utm_source="expo",
+        utm_medium="field",
+        utm_campaign="spring-2026",
+        grand_total=Decimal("26250.00"),
+        order_count=0,
+        transaction_date=date(2026, 4, 21),
+        valid_till=date(2026, 5, 21),
+        created_at=datetime.now(tz=UTC),
+        updated_at=datetime.now(tz=UTC),
+    )
+    session = FakeSession(
+        execute_results=[
+            _FakeListResult([lead]),
+            _FakeListResult([opportunity]),
+            _FakeListResult([quotation]),
+        ]
+    )
+
+    report = await get_crm_pipeline_report(session, CRMPipelineReportParams())
+
+    assert report.totals.lead_count == 1
+    assert report.totals.opportunity_count == 1
+    assert report.totals.quotation_count == 1
+    assert report.totals.open_count == 3
+    assert report.totals.terminal_count == 0
+    assert report.totals.open_pipeline_amount == Decimal("51250.00")
+    assert any(segment.record_type == "opportunity" and segment.key == "proposal" for segment in report.by_sales_stage)
+    assert any(segment.record_type == "quotation" and segment.key == "Industrial" for segment in report.by_customer_group)
+    assert any(segment.record_type == "lead" and segment.key == "alice" for segment in report.by_owner)
+    assert any(segment.key == "expo" for segment in report.by_utm_source)
+    assert report.dropoff.lead_only_count == 1
+    assert report.dropoff.opportunity_without_quotation_count == 0
+    assert report.dropoff.quotation_without_order_count == 1
+
+
+@pytest.mark.asyncio
+async def test_get_crm_pipeline_report_applies_sales_stage_filter_to_opportunity_slice() -> None:
+    lead = SimpleNamespace(
+        id=uuid.uuid4(),
+        status="open",
+        territory="North",
+        lead_owner="alice",
+        utm_source="expo",
+        utm_medium="field",
+        utm_campaign="spring-2026",
+    )
+    opportunities = [
+        SimpleNamespace(
+            id=uuid.uuid4(),
+            status="open",
+            sales_stage="qualification",
+            territory="North",
+            customer_group="Industrial",
+            opportunity_owner="alice",
+            lost_reason="",
+            utm_source="expo",
+            utm_medium="field",
+            utm_campaign="spring-2026",
+            opportunity_amount=Decimal("1000.00"),
+        ),
+        SimpleNamespace(
+            id=uuid.uuid4(),
+            status="open",
+            sales_stage="proposal",
+            territory="North",
+            customer_group="Industrial",
+            opportunity_owner="bob",
+            lost_reason="",
+            utm_source="expo",
+            utm_medium="field",
+            utm_campaign="spring-2026",
+            opportunity_amount=Decimal("2000.00"),
+        ),
+    ]
+    quotation = SimpleNamespace(
+        id=uuid.uuid4(),
+        status="open",
+        territory="North",
+        customer_group="Industrial",
+        lost_reason="",
+        utm_source="expo",
+        utm_medium="field",
+        utm_campaign="spring-2026",
+        grand_total=Decimal("26250.00"),
+        order_count=0,
+        transaction_date=date(2026, 4, 21),
+        valid_till=date(2026, 5, 21),
+        created_at=datetime.now(tz=UTC),
+        updated_at=datetime.now(tz=UTC),
+    )
+    session = FakeSession(
+        execute_results=[
+            _FakeListResult([lead]),
+            _FakeListResult(opportunities),
+            _FakeListResult([quotation]),
+        ]
+    )
+
+    report = await get_crm_pipeline_report(
+        session,
+        CRMPipelineReportParams(sales_stage="proposal"),
+    )
+
+    assert report.totals.lead_count == 0
+    assert report.totals.quotation_count == 0
+    assert report.totals.opportunity_count == 1
+    assert report.by_sales_stage[0].key == "proposal"
+    assert report.totals.open_pipeline_amount == Decimal("2000.00")

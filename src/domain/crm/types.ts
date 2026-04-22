@@ -128,6 +128,130 @@ export interface LeadCustomerConversionResult {
   status: LeadStatus;
 }
 
+export type CRMDuplicatePolicy = "block" | "allow";
+
+export interface CRMSettings {
+  lead_duplicate_policy: CRMDuplicatePolicy;
+  contact_creation_enabled: boolean;
+  default_quotation_validity_days: number;
+  carry_forward_communications: boolean;
+  carry_forward_comments: boolean;
+  opportunity_auto_close_days: number | null;
+}
+
+export interface CRMSettingsUpdatePayload extends Partial<CRMSettings> {}
+
+export interface CRMSalesStage {
+  id: string;
+  name: string;
+  probability: number;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface CRMSalesStagePayload {
+  name: string;
+  probability: number;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface CRMTerritory {
+  id: string;
+  name: string;
+  parent_id: string | null;
+  is_group: boolean;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface CRMTerritoryPayload {
+  name: string;
+  parent_id?: string | null;
+  is_group: boolean;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface CRMCustomerGroup {
+  id: string;
+  name: string;
+  parent_id: string | null;
+  is_group: boolean;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface CRMCustomerGroupPayload {
+  name: string;
+  parent_id?: string | null;
+  is_group: boolean;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface CRMSetupBundle {
+  settings: CRMSettings;
+  sales_stages: CRMSalesStage[];
+  territories: CRMTerritory[];
+  customer_groups: CRMCustomerGroup[];
+}
+
+export type CRMPipelineScope = "all" | "open" | "terminal";
+export type CRMPipelineRecordType = "all" | "lead" | "opportunity" | "quotation";
+
+export interface CRMPipelineReportParams {
+  record_type?: CRMPipelineRecordType;
+  scope?: CRMPipelineScope;
+  status?: string;
+  sales_stage?: string;
+  territory?: string;
+  customer_group?: string;
+  owner?: string;
+  lost_reason?: string;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+}
+
+export interface CRMPipelineSegment {
+  record_type: string | null;
+  key: string;
+  label: string;
+  count: number;
+  amount: string;
+}
+
+export interface CRMPipelineTotals {
+  lead_count: number;
+  opportunity_count: number;
+  quotation_count: number;
+  open_count: number;
+  terminal_count: number;
+  open_pipeline_amount: string;
+  terminal_pipeline_amount: string;
+}
+
+export interface CRMPipelineDropOff {
+  lead_only_count: number;
+  opportunity_without_quotation_count: number;
+  quotation_without_order_count: number;
+  quotation_with_order_count: number;
+}
+
+export interface CRMPipelineReport {
+  filters: Required<CRMPipelineReportParams>;
+  totals: CRMPipelineTotals;
+  by_status: CRMPipelineSegment[];
+  by_sales_stage: CRMPipelineSegment[];
+  by_territory: CRMPipelineSegment[];
+  by_customer_group: CRMPipelineSegment[];
+  by_owner: CRMPipelineSegment[];
+  by_lost_reason: CRMPipelineSegment[];
+  by_utm_source: CRMPipelineSegment[];
+  dropoff: CRMPipelineDropOff;
+}
+
 export type LeadCustomerConversionPayload = CustomerCreatePayload;
 
 export type OpportunityPartyKind = "lead" | "customer" | "prospect";

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import OpportunityForm from "../../components/crm/OpportunityForm";
+import OpportunityForm, { type OpportunityFormProps } from "../../components/crm/OpportunityForm";
 import { PageHeader, SectionCard } from "../../components/layout/PageLayout";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -20,7 +20,6 @@ import {
 } from "../../lib/api/crm";
 import {
   toOpportunityTransitionPayload,
-  toOpportunityUpdatePayload,
   type OpportunityFormValues,
 } from "../../lib/schemas/opportunity.schema";
 import { CRM_OPPORTUNITIES_ROUTE, CRM_QUOTATION_CREATE_ROUTE } from "../../lib/routes";
@@ -150,7 +149,7 @@ export function OpportunityDetailPage({ onBack }: OpportunityDetailPageProps) {
     }
   }, [availableStatusOptions, statusTarget]);
 
-  async function handleSave(payload: ReturnType<typeof toOpportunityUpdatePayload>) {
+  async function handleSave(payload: Parameters<OpportunityFormProps["onSubmit"]>[0]) {
     if (!opportunity) {
       return;
     }
@@ -293,7 +292,7 @@ export function OpportunityDetailPage({ onBack }: OpportunityDetailPageProps) {
           </div>
           <OpportunityForm
             initialValues={initialFormValues}
-            onSubmit={(payload) => handleSave(toOpportunityUpdatePayload(payload, opportunity.version))}
+            onSubmit={handleSave}
             serverErrors={serverErrors}
             submitLabel={t("crm.opportunities.form.updateTitle")}
             submittingLabel={t("crm.opportunities.form.updating")}

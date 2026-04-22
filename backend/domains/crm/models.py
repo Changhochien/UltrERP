@@ -12,6 +12,107 @@ from sqlalchemy.orm import Mapped, mapped_column
 from common.database import Base
 
 
+class CRMSettings(Base):
+    __tablename__ = "crm_settings"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, unique=True, index=True)
+
+    lead_duplicate_policy: Mapped[str] = mapped_column(String(20), nullable=False, default="block")
+    contact_creation_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    default_quotation_validity_days: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
+    carry_forward_communications: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    carry_forward_comments: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    opportunity_auto_close_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(tz=UTC),
+        onupdate=lambda: datetime.now(tz=UTC),
+    )
+
+
+class CRMSalesStage(Base):
+    __tablename__ = "crm_sales_stages"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    probability: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(tz=UTC),
+        onupdate=lambda: datetime.now(tz=UTC),
+    )
+
+    __table_args__ = (
+        Index("uq_crm_sales_stages_tenant_name", "tenant_id", "name", unique=True),
+        Index("ix_crm_sales_stages_tenant_sort", "tenant_id", "sort_order"),
+    )
+
+
+class CRMTerritory(Base):
+    __tablename__ = "crm_territories"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    is_group: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(tz=UTC),
+        onupdate=lambda: datetime.now(tz=UTC),
+    )
+
+    __table_args__ = (
+        Index("uq_crm_territories_tenant_name", "tenant_id", "name", unique=True),
+        Index("ix_crm_territories_tenant_sort", "tenant_id", "sort_order"),
+    )
+
+
+class CRMCustomerGroup(Base):
+    __tablename__ = "crm_customer_groups"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    is_group: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(tz=UTC),
+        onupdate=lambda: datetime.now(tz=UTC),
+    )
+
+    __table_args__ = (
+        Index("uq_crm_customer_groups_tenant_name", "tenant_id", "name", unique=True),
+        Index("ix_crm_customer_groups_tenant_sort", "tenant_id", "sort_order"),
+    )
+
+
 class Lead(Base):
     __tablename__ = "crm_leads"
 

@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
+from dataclasses import dataclass
 import re
 import uuid
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,8 +15,28 @@ from common.errors import DuplicateLeadConflictError, ValidationError, VersionCo
 from common.models.order import Order
 from common.models.order_line import OrderLine
 from common.tenant import DEFAULT_TENANT_ID, set_tenant
-from domains.crm.models import Lead, Opportunity, Quotation
+from domains.crm.models import CRMCustomerGroup, CRMSettings, CRMSalesStage, CRMTerritory, Lead, Opportunity, Quotation
 from domains.crm.schemas import (
+    CRMDuplicatePolicy,
+    CRMCustomerGroupCreate,
+    CRMCustomerGroupResponse,
+    CRMCustomerGroupUpdate,
+    CRMPipelineDropOff,
+    CRMPipelineRecordType,
+    CRMPipelineReportParams,
+    CRMPipelineReportResponse,
+    CRMPipelineScope,
+    CRMPipelineSegment,
+    CRMPipelineTotals,
+    CRMSettingsResponse,
+    CRMSettingsUpdate,
+    CRMSalesStageCreate,
+    CRMSalesStageResponse,
+    CRMSalesStageUpdate,
+    CRMSetupBundleResponse,
+    CRMTerritoryCreate,
+    CRMTerritoryResponse,
+    CRMTerritoryUpdate,
     LeadCreate,
     LeadCustomerConversionResult,
     LeadListParams,
@@ -34,8 +55,8 @@ from domains.crm.schemas import (
     OpportunityTransition,
     OpportunityUpdate,
     QuotationCreate,
-    QuotationLinkedOrder,
     QuotationItemInput,
+    QuotationLinkedOrder,
     QuotationListParams,
     QuotationOrderHandoff,
     QuotationOrderHandoffLine,
@@ -50,6 +71,58 @@ from domains.crm.schemas import (
 from domains.customers.models import Customer
 from domains.customers.schemas import CustomerCreate
 from domains.customers.service import create_customer
+
+DEFAULT_CRM_SETTINGS = CRMSettingsResponse()
+DEFAULT_CRM_SALES_STAGES: tuple[tuple[str, int, int], ...] = (
+    ("qualification", 10, 10),
+    ("proposal", 50, 20),
+    ("negotiation", 75, 30),
+    ("commitment", 90, 40),
+)
+DEFAULT_CRM_TERRITORIES: tuple[tuple[str, int], ...] = (
+    ("North", 10),
+    ("Taipei", 20),
+    ("Central", 30),
+    ("South", 40),
+)
+DEFAULT_CRM_CUSTOMER_GROUPS: tuple[tuple[str, int], ...] = (
+    ("Industrial", 10),
+    ("Dealer", 20),
+    ("End User", 30),
+)
+
+
+@dataclass(frozen=True, slots=True)
+class _LeadDuplicateLookup:
+    company_name: str
+    email_id: str
+    phone: str
+    mobile_no: str
+
+
+TERMINAL_LEAD_STATUSES = frozenset(
+    {
+        LeadStatus.INTERESTED.value,
+        LeadStatus.CONVERTED.value,
+        LeadStatus.DO_NOT_CONTACT.value,
+        LeadStatus.LOST_QUOTATION.value,
+    }
+)
+TERMINAL_OPPORTUNITY_STATUSES = frozenset(
+    {
+        OpportunityStatus.CONVERTED.value,
+        OpportunityStatus.CLOSED.value,
+        OpportunityStatus.LOST.value,
+    }
+)
+TERMINAL_QUOTATION_STATUSES = frozenset(
+    {
+        QuotationStatus.ORDERED.value,
+        QuotationStatus.LOST.value,
+        QuotationStatus.CANCELLED.value,
+        QuotationStatus.EXPIRED.value,
+    }
+)
 
 ALLOWED_LEAD_TRANSITIONS: dict[LeadStatus, frozenset[LeadStatus]] = {
     LeadStatus.LEAD: frozenset({LeadStatus.OPEN, LeadStatus.INTERESTED, LeadStatus.DO_NOT_CONTACT}),
@@ -268,6 +341,873 @@ def _ensure_quotation_validity(transaction_date: date, valid_till: date) -> None
         )
 
 
+def _serialize_crm_settings(record: CRMSettings | object | None) -> CRMSettingsResponse:
+    if record is None:
+        return CRMSettingsResponse.model_validate(DEFAULT_CRM_SETTINGS.model_dump())
+
+    return CRMSettingsResponse(
+        lead_duplicate_policy=CRMDuplicatePolicy(getattr(record, "lead_duplicate_policy", DEFAULT_CRM_SETTINGS.lead_duplicate_policy)),
+        contact_creation_enabled=bool(
+            getattr(record, "contact_creation_enabled", DEFAULT_CRM_SETTINGS.contact_creation_enabled)
+        ),
+        default_quotation_validity_days=int(
+            getattr(
+                record,
+                "default_quotation_validity_days",
+                DEFAULT_CRM_SETTINGS.default_quotation_validity_days,
+            )
+        ),
+        carry_forward_communications=bool(
+            getattr(
+                record,
+                "carry_forward_communications",
+                DEFAULT_CRM_SETTINGS.carry_forward_communications,
+            )
+        ),
+        carry_forward_comments=bool(
+            getattr(record, "carry_forward_comments", DEFAULT_CRM_SETTINGS.carry_forward_comments)
+        ),
+        opportunity_auto_close_days=getattr(
+            record,
+            "opportunity_auto_close_days",
+            DEFAULT_CRM_SETTINGS.opportunity_auto_close_days,
+        ),
+    )
+
+
+async def get_crm_settings(
+    session: AsyncSession,
+    tenant_id: uuid.UUID | None = None,
+) -> CRMSettingsResponse:
+    tid = tenant_id or DEFAULT_TENANT_ID
+    async with session.begin():
+        await set_tenant(session, tid)
+        result = await session.execute(select(CRMSettings).where(CRMSettings.tenant_id == tid))
+        return _serialize_crm_settings(result.scalar_one_or_none())
+
+
+async def update_crm_settings(
+    session: AsyncSession,
+    data: CRMSettingsUpdate,
+    tenant_id: uuid.UUID | None = None,
+) -> CRMSettingsResponse:
+    tid = tenant_id or DEFAULT_TENANT_ID
+    fields = data.model_fields_set
+
+    async with session.begin():
+        await set_tenant(session, tid)
+        result = await session.execute(select(CRMSettings).where(CRMSettings.tenant_id == tid))
+        record = result.scalar_one_or_none()
+        if record is None:
+            record = CRMSettings(tenant_id=tid)
+            session.add(record)
+
+        if "lead_duplicate_policy" in fields and data.lead_duplicate_policy is not None:
+            record.lead_duplicate_policy = data.lead_duplicate_policy
+        if "contact_creation_enabled" in fields and data.contact_creation_enabled is not None:
+            record.contact_creation_enabled = data.contact_creation_enabled
+        if "default_quotation_validity_days" in fields and data.default_quotation_validity_days is not None:
+            record.default_quotation_validity_days = data.default_quotation_validity_days
+        if "carry_forward_communications" in fields and data.carry_forward_communications is not None:
+            record.carry_forward_communications = data.carry_forward_communications
+        if "carry_forward_comments" in fields and data.carry_forward_comments is not None:
+            record.carry_forward_comments = data.carry_forward_comments
+        if "opportunity_auto_close_days" in fields:
+            record.opportunity_auto_close_days = data.opportunity_auto_close_days
+        record.updated_at = datetime.now(tz=UTC)
+
+    return _serialize_crm_settings(record)
+
+
+async def _resolve_effective_quotation_valid_till(
+    session: AsyncSession,
+    transaction_date: date,
+    valid_till: date | None,
+    tenant_id: uuid.UUID,
+) -> date:
+    if valid_till is not None:
+        return valid_till
+
+    settings = await get_crm_settings(session, tenant_id=tenant_id)
+    return transaction_date + timedelta(days=settings.default_quotation_validity_days)
+
+
+def _default_sales_stage_names() -> set[str]:
+    return {name for name, _, _ in DEFAULT_CRM_SALES_STAGES}
+
+
+def _default_territory_names() -> set[str]:
+    return {name for name, _ in DEFAULT_CRM_TERRITORIES}
+
+
+def _default_customer_group_names() -> set[str]:
+    return {name for name, _ in DEFAULT_CRM_CUSTOMER_GROUPS}
+
+
+def _serialize_sales_stage(record: CRMSalesStage) -> CRMSalesStageResponse:
+    return CRMSalesStageResponse.model_validate(record)
+
+
+def _serialize_territory(record: CRMTerritory) -> CRMTerritoryResponse:
+    return CRMTerritoryResponse.model_validate(record)
+
+
+def _serialize_customer_group(record: CRMCustomerGroup) -> CRMCustomerGroupResponse:
+    return CRMCustomerGroupResponse.model_validate(record)
+
+
+async def _lookup_active_master_name(
+    session: AsyncSession,
+    model: type[CRMSalesStage] | type[CRMTerritory] | type[CRMCustomerGroup],
+    name: str,
+    tenant_id: uuid.UUID,
+) -> object | None:
+    async with session.begin():
+        await set_tenant(session, tenant_id)
+        result = await session.execute(
+            select(model).where(model.tenant_id == tenant_id, model.name == name, model.is_active.is_(True))
+        )
+        return result.scalar_one_or_none()
+
+
+async def _ensure_sales_stage_supported(
+    session: AsyncSession,
+    sales_stage: str,
+    tenant_id: uuid.UUID,
+) -> str:
+    normalized = _trim(sales_stage) or "qualification"
+    if normalized in _default_sales_stage_names():
+        return normalized
+    record = await _lookup_active_master_name(session, CRMSalesStage, normalized, tenant_id)
+    if record is None:
+        raise ValidationError([{"field": "sales_stage", "message": "Select a configured sales stage."}])
+    return normalized
+
+
+async def _ensure_territory_supported(
+    session: AsyncSession,
+    territory: str,
+    tenant_id: uuid.UUID,
+) -> str:
+    normalized = _trim(territory)
+    if not normalized or normalized in _default_territory_names():
+        return normalized
+    record = await _lookup_active_master_name(session, CRMTerritory, normalized, tenant_id)
+    if record is None:
+        raise ValidationError([{"field": "territory", "message": "Select a configured territory."}])
+    return normalized
+
+
+async def _ensure_customer_group_supported(
+    session: AsyncSession,
+    customer_group: str,
+    tenant_id: uuid.UUID,
+) -> str:
+    normalized = _trim(customer_group)
+    if not normalized or normalized in _default_customer_group_names():
+        return normalized
+    record = await _lookup_active_master_name(session, CRMCustomerGroup, normalized, tenant_id)
+    if record is None:
+        raise ValidationError([{"field": "customer_group", "message": "Select a configured customer group."}])
+    return normalized
+
+
+async def list_sales_stages(
+    session: AsyncSession,
+    tenant_id: uuid.UUID | None = None,
+) -> list[CRMSalesStage]:
+    tid = tenant_id or DEFAULT_TENANT_ID
+    async with session.begin():
+        await set_tenant(session, tid)
+        result = await session.execute(
+            select(CRMSalesStage).where(CRMSalesStage.tenant_id == tid).order_by(CRMSalesStage.sort_order.asc(), CRMSalesStage.name.asc())
+        )
+        items = list(result.scalars().all())
+        if items:
+            return items
+
+        defaults = [
+            CRMSalesStage(
+                id=uuid.uuid4(),
+                tenant_id=tid,
+                name=name,
+                probability=probability,
+                sort_order=sort_order,
+                is_active=True,
+            )
+            for name, probability, sort_order in DEFAULT_CRM_SALES_STAGES
+        ]
+        for item in defaults:
+            session.add(item)
+        return defaults
+
+
+async def list_territories(
+    session: AsyncSession,
+    tenant_id: uuid.UUID | None = None,
+) -> list[CRMTerritory]:
+    tid = tenant_id or DEFAULT_TENANT_ID
+    async with session.begin():
+        await set_tenant(session, tid)
+        result = await session.execute(
+            select(CRMTerritory).where(CRMTerritory.tenant_id == tid).order_by(CRMTerritory.sort_order.asc(), CRMTerritory.name.asc())
+        )
+        items = list(result.scalars().all())
+        if items:
+            return items
+
+        defaults = [
+            CRMTerritory(
+                id=uuid.uuid4(),
+                tenant_id=tid,
+                name=name,
+                parent_id=None,
+                is_group=False,
+                sort_order=sort_order,
+                is_active=True,
+            )
+            for name, sort_order in DEFAULT_CRM_TERRITORIES
+        ]
+        for item in defaults:
+            session.add(item)
+        return defaults
+
+
+async def list_customer_groups(
+    session: AsyncSession,
+    tenant_id: uuid.UUID | None = None,
+) -> list[CRMCustomerGroup]:
+    tid = tenant_id or DEFAULT_TENANT_ID
+    async with session.begin():
+        await set_tenant(session, tid)
+        result = await session.execute(
+            select(CRMCustomerGroup).where(CRMCustomerGroup.tenant_id == tid).order_by(CRMCustomerGroup.sort_order.asc(), CRMCustomerGroup.name.asc())
+        )
+        items = list(result.scalars().all())
+        if items:
+            return items
+
+        defaults = [
+            CRMCustomerGroup(
+                id=uuid.uuid4(),
+                tenant_id=tid,
+                name=name,
+                parent_id=None,
+                is_group=False,
+                sort_order=sort_order,
+                is_active=True,
+            )
+            for name, sort_order in DEFAULT_CRM_CUSTOMER_GROUPS
+        ]
+        for item in defaults:
+            session.add(item)
+        return defaults
+
+
+async def get_crm_setup_bundle(
+    session: AsyncSession,
+    tenant_id: uuid.UUID | None = None,
+) -> CRMSetupBundleResponse:
+    tid = tenant_id or DEFAULT_TENANT_ID
+    settings = await get_crm_settings(session, tenant_id=tid)
+    sales_stages = await list_sales_stages(session, tenant_id=tid)
+    territories = await list_territories(session, tenant_id=tid)
+    customer_groups = await list_customer_groups(session, tenant_id=tid)
+    return CRMSetupBundleResponse(
+        settings=settings,
+        sales_stages=[_serialize_sales_stage(item) for item in sales_stages],
+        territories=[_serialize_territory(item) for item in territories],
+        customer_groups=[_serialize_customer_group(item) for item in customer_groups],
+    )
+
+
+def _quantized_amount(value: object | None) -> Decimal:
+    if value is None or value == "":
+        return Decimal("0.00")
+    return Decimal(str(value)).quantize(Decimal("0.01"))
+
+
+def _build_pipeline_segment_list(
+    buckets: dict[tuple[str | None, str], dict[str, object]],
+) -> list[CRMPipelineSegment]:
+    items = [CRMPipelineSegment.model_validate(item) for item in buckets.values()]
+    return sorted(items, key=lambda item: (-item.count, item.label.lower(), item.record_type or ""))
+
+
+def _upsert_pipeline_bucket(
+    buckets: dict[tuple[str | None, str], dict[str, object]],
+    *,
+    record_type: str | None,
+    key: str,
+    label: str,
+    amount: Decimal,
+) -> None:
+    bucket_key = (record_type, key)
+    bucket = buckets.setdefault(
+        bucket_key,
+        {
+            "record_type": record_type,
+            "key": key,
+            "label": label,
+            "count": 0,
+            "amount": Decimal("0.00"),
+        },
+    )
+    bucket["count"] = int(bucket["count"]) + 1
+    bucket["amount"] = (_quantized_amount(bucket["amount"]) + amount).quantize(Decimal("0.01"))
+
+
+def _lead_scope(status: str) -> CRMPipelineScope:
+    return CRMPipelineScope.TERMINAL if status in TERMINAL_LEAD_STATUSES else CRMPipelineScope.OPEN
+
+
+def _opportunity_scope(status: str) -> CRMPipelineScope:
+    return CRMPipelineScope.TERMINAL if status in TERMINAL_OPPORTUNITY_STATUSES else CRMPipelineScope.OPEN
+
+
+def _quotation_scope(status: str) -> CRMPipelineScope:
+    return CRMPipelineScope.TERMINAL if status in TERMINAL_QUOTATION_STATUSES else CRMPipelineScope.OPEN
+
+
+def _matches_common_filters(
+    *,
+    params: CRMPipelineReportParams,
+    scope: CRMPipelineScope,
+    status: str,
+    territory: str,
+    customer_group: str,
+    owner: str,
+    lost_reason: str,
+    utm_source: str,
+    utm_medium: str,
+    utm_campaign: str,
+) -> bool:
+    if params.scope != CRMPipelineScope.ALL and scope != params.scope:
+        return False
+    if params.status and status != params.status:
+        return False
+    if params.territory and territory != params.territory:
+        return False
+    if params.customer_group and customer_group != params.customer_group:
+        return False
+    if params.owner and owner != params.owner:
+        return False
+    if params.lost_reason and lost_reason != params.lost_reason:
+        return False
+    if params.utm_source and utm_source != params.utm_source:
+        return False
+    if params.utm_medium and utm_medium != params.utm_medium:
+        return False
+    if params.utm_campaign and utm_campaign != params.utm_campaign:
+        return False
+    return True
+
+
+async def get_crm_pipeline_report(
+    session: AsyncSession,
+    params: CRMPipelineReportParams,
+    tenant_id: uuid.UUID | None = None,
+) -> CRMPipelineReportResponse:
+    tid = tenant_id or DEFAULT_TENANT_ID
+    async with session.begin():
+        await set_tenant(session, tid)
+        lead_result = await session.execute(select(Lead).where(Lead.tenant_id == tid))
+        opportunity_result = await session.execute(select(Opportunity).where(Opportunity.tenant_id == tid))
+        quotation_result = await session.execute(select(Quotation).where(Quotation.tenant_id == tid))
+        leads = list(lead_result.scalars().all())
+        opportunities = list(opportunity_result.scalars().all())
+        quotations = list(quotation_result.scalars().all())
+
+    totals = CRMPipelineTotals()
+    by_status: dict[tuple[str | None, str], dict[str, object]] = {}
+    by_sales_stage: dict[tuple[str | None, str], dict[str, object]] = {}
+    by_territory: dict[tuple[str | None, str], dict[str, object]] = {}
+    by_customer_group: dict[tuple[str | None, str], dict[str, object]] = {}
+    by_owner: dict[tuple[str | None, str], dict[str, object]] = {}
+    by_lost_reason: dict[tuple[str | None, str], dict[str, object]] = {}
+    by_utm_source: dict[tuple[str | None, str], dict[str, object]] = {}
+    dropoff = CRMPipelineDropOff()
+
+    def include_record(record_type: CRMPipelineRecordType) -> bool:
+        return params.record_type in {CRMPipelineRecordType.ALL, record_type}
+
+    for lead in leads:
+        if not include_record(CRMPipelineRecordType.LEAD):
+            continue
+        scope = _lead_scope(str(lead.status))
+        if params.sales_stage:
+            continue
+        if not _matches_common_filters(
+            params=params,
+            scope=scope,
+            status=str(lead.status),
+            territory=str(getattr(lead, "territory", "") or ""),
+            customer_group="",
+            owner=str(getattr(lead, "lead_owner", "") or ""),
+            lost_reason="",
+            utm_source=str(getattr(lead, "utm_source", "") or ""),
+            utm_medium=str(getattr(lead, "utm_medium", "") or ""),
+            utm_campaign=str(getattr(lead, "utm_campaign", "") or ""),
+        ):
+            continue
+
+        totals.lead_count += 1
+        if scope == CRMPipelineScope.OPEN:
+            totals.open_count += 1
+        else:
+            totals.terminal_count += 1
+        if str(lead.status) not in {LeadStatus.OPPORTUNITY.value, LeadStatus.QUOTATION.value, LeadStatus.CONVERTED.value}:
+            dropoff.lead_only_count += 1
+
+        _upsert_pipeline_bucket(by_status, record_type="lead", key=str(lead.status), label=str(lead.status), amount=Decimal("0.00"))
+        if getattr(lead, "territory", ""):
+            _upsert_pipeline_bucket(
+                by_territory,
+                record_type="lead",
+                key=str(lead.territory),
+                label=str(lead.territory),
+                amount=Decimal("0.00"),
+            )
+        if getattr(lead, "lead_owner", ""):
+            _upsert_pipeline_bucket(
+                by_owner,
+                record_type="lead",
+                key=str(lead.lead_owner),
+                label=str(lead.lead_owner),
+                amount=Decimal("0.00"),
+            )
+        if getattr(lead, "utm_source", ""):
+            _upsert_pipeline_bucket(
+                by_utm_source,
+                record_type="lead",
+                key=str(lead.utm_source),
+                label=str(lead.utm_source),
+                amount=Decimal("0.00"),
+            )
+
+    for opportunity in opportunities:
+        if not include_record(CRMPipelineRecordType.OPPORTUNITY):
+            continue
+        scope = _opportunity_scope(str(opportunity.status))
+        if params.sales_stage and str(opportunity.sales_stage) != params.sales_stage:
+            continue
+        amount = _quantized_amount(getattr(opportunity, "opportunity_amount", None))
+        if not _matches_common_filters(
+            params=params,
+            scope=scope,
+            status=str(opportunity.status),
+            territory=str(getattr(opportunity, "territory", "") or ""),
+            customer_group=str(getattr(opportunity, "customer_group", "") or ""),
+            owner=str(getattr(opportunity, "opportunity_owner", "") or ""),
+            lost_reason=str(getattr(opportunity, "lost_reason", "") or ""),
+            utm_source=str(getattr(opportunity, "utm_source", "") or ""),
+            utm_medium=str(getattr(opportunity, "utm_medium", "") or ""),
+            utm_campaign=str(getattr(opportunity, "utm_campaign", "") or ""),
+        ):
+            continue
+
+        totals.opportunity_count += 1
+        if scope == CRMPipelineScope.OPEN:
+            totals.open_count += 1
+            totals.open_pipeline_amount = (totals.open_pipeline_amount + amount).quantize(Decimal("0.01"))
+        else:
+            totals.terminal_count += 1
+            totals.terminal_pipeline_amount = (totals.terminal_pipeline_amount + amount).quantize(Decimal("0.01"))
+        if str(opportunity.status) not in {OpportunityStatus.QUOTATION.value, OpportunityStatus.CONVERTED.value}:
+            dropoff.opportunity_without_quotation_count += 1
+
+        _upsert_pipeline_bucket(
+            by_status,
+            record_type="opportunity",
+            key=str(opportunity.status),
+            label=str(opportunity.status),
+            amount=amount,
+        )
+        _upsert_pipeline_bucket(
+            by_sales_stage,
+            record_type="opportunity",
+            key=str(opportunity.sales_stage),
+            label=str(opportunity.sales_stage),
+            amount=amount,
+        )
+        if getattr(opportunity, "territory", ""):
+            _upsert_pipeline_bucket(
+                by_territory,
+                record_type="opportunity",
+                key=str(opportunity.territory),
+                label=str(opportunity.territory),
+                amount=amount,
+            )
+        if getattr(opportunity, "customer_group", ""):
+            _upsert_pipeline_bucket(
+                by_customer_group,
+                record_type="opportunity",
+                key=str(opportunity.customer_group),
+                label=str(opportunity.customer_group),
+                amount=amount,
+            )
+        if getattr(opportunity, "opportunity_owner", ""):
+            _upsert_pipeline_bucket(
+                by_owner,
+                record_type="opportunity",
+                key=str(opportunity.opportunity_owner),
+                label=str(opportunity.opportunity_owner),
+                amount=amount,
+            )
+        if getattr(opportunity, "lost_reason", ""):
+            _upsert_pipeline_bucket(
+                by_lost_reason,
+                record_type="opportunity",
+                key=str(opportunity.lost_reason),
+                label=str(opportunity.lost_reason),
+                amount=amount,
+            )
+        if getattr(opportunity, "utm_source", ""):
+            _upsert_pipeline_bucket(
+                by_utm_source,
+                record_type="opportunity",
+                key=str(opportunity.utm_source),
+                label=str(opportunity.utm_source),
+                amount=amount,
+            )
+
+    for quotation in quotations:
+        if not include_record(CRMPipelineRecordType.QUOTATION):
+            continue
+        scope = _quotation_scope(str(quotation.status))
+        if params.sales_stage:
+            continue
+        amount = _quantized_amount(getattr(quotation, "grand_total", None))
+        if not _matches_common_filters(
+            params=params,
+            scope=scope,
+            status=str(quotation.status),
+            territory=str(getattr(quotation, "territory", "") or ""),
+            customer_group=str(getattr(quotation, "customer_group", "") or ""),
+            owner="",
+            lost_reason=str(getattr(quotation, "lost_reason", "") or ""),
+            utm_source=str(getattr(quotation, "utm_source", "") or ""),
+            utm_medium=str(getattr(quotation, "utm_medium", "") or ""),
+            utm_campaign=str(getattr(quotation, "utm_campaign", "") or ""),
+        ):
+            continue
+
+        totals.quotation_count += 1
+        if scope == CRMPipelineScope.OPEN:
+            totals.open_count += 1
+            totals.open_pipeline_amount = (totals.open_pipeline_amount + amount).quantize(Decimal("0.01"))
+        else:
+            totals.terminal_count += 1
+            totals.terminal_pipeline_amount = (totals.terminal_pipeline_amount + amount).quantize(Decimal("0.01"))
+        if int(getattr(quotation, "order_count", 0) or 0) > 0:
+            dropoff.quotation_with_order_count += 1
+        else:
+            dropoff.quotation_without_order_count += 1
+
+        _upsert_pipeline_bucket(
+            by_status,
+            record_type="quotation",
+            key=str(quotation.status),
+            label=str(quotation.status),
+            amount=amount,
+        )
+        if getattr(quotation, "territory", ""):
+            _upsert_pipeline_bucket(
+                by_territory,
+                record_type="quotation",
+                key=str(quotation.territory),
+                label=str(quotation.territory),
+                amount=amount,
+            )
+        if getattr(quotation, "customer_group", ""):
+            _upsert_pipeline_bucket(
+                by_customer_group,
+                record_type="quotation",
+                key=str(quotation.customer_group),
+                label=str(quotation.customer_group),
+                amount=amount,
+            )
+        if getattr(quotation, "lost_reason", ""):
+            _upsert_pipeline_bucket(
+                by_lost_reason,
+                record_type="quotation",
+                key=str(quotation.lost_reason),
+                label=str(quotation.lost_reason),
+                amount=amount,
+            )
+        if getattr(quotation, "utm_source", ""):
+            _upsert_pipeline_bucket(
+                by_utm_source,
+                record_type="quotation",
+                key=str(quotation.utm_source),
+                label=str(quotation.utm_source),
+                amount=amount,
+            )
+
+    return CRMPipelineReportResponse(
+        filters=params,
+        totals=totals,
+        by_status=_build_pipeline_segment_list(by_status),
+        by_sales_stage=_build_pipeline_segment_list(by_sales_stage),
+        by_territory=_build_pipeline_segment_list(by_territory),
+        by_customer_group=_build_pipeline_segment_list(by_customer_group),
+        by_owner=_build_pipeline_segment_list(by_owner),
+        by_lost_reason=_build_pipeline_segment_list(by_lost_reason),
+        by_utm_source=_build_pipeline_segment_list(by_utm_source),
+        dropoff=dropoff,
+    )
+
+
+async def create_sales_stage(
+    session: AsyncSession,
+    data: CRMSalesStageCreate,
+    tenant_id: uuid.UUID | None = None,
+) -> CRMSalesStage:
+    tid = tenant_id or DEFAULT_TENANT_ID
+    name = _trim(data.name)
+    if not name:
+        raise ValidationError([{"field": "name", "message": "Sales stage name is required."}])
+
+    await list_sales_stages(session, tenant_id=tid)
+    async with session.begin():
+        await set_tenant(session, tid)
+        existing = await session.execute(
+            select(CRMSalesStage).where(CRMSalesStage.tenant_id == tid, CRMSalesStage.name == name)
+        )
+        if existing.scalar_one_or_none() is not None:
+            raise ValidationError([{"field": "name", "message": "Sales stage already exists."}])
+
+        stage = CRMSalesStage(
+            tenant_id=tid,
+            name=name,
+            probability=data.probability,
+            sort_order=data.sort_order,
+            is_active=data.is_active,
+        )
+        session.add(stage)
+        return stage
+
+
+async def update_sales_stage(
+    session: AsyncSession,
+    stage_id: uuid.UUID,
+    data: CRMSalesStageUpdate,
+    tenant_id: uuid.UUID | None = None,
+) -> CRMSalesStage | None:
+    tid = tenant_id or DEFAULT_TENANT_ID
+    async with session.begin():
+        await set_tenant(session, tid)
+        result = await session.execute(
+            select(CRMSalesStage).where(CRMSalesStage.id == stage_id, CRMSalesStage.tenant_id == tid)
+        )
+        stage = result.scalar_one_or_none()
+        if stage is None:
+            return None
+
+        if data.name is not None:
+            name = _trim(data.name)
+            duplicate = await session.execute(
+                select(CRMSalesStage).where(
+                    CRMSalesStage.tenant_id == tid,
+                    CRMSalesStage.name == name,
+                    CRMSalesStage.id != stage_id,
+                )
+            )
+            if duplicate.scalar_one_or_none() is not None:
+                raise ValidationError([{"field": "name", "message": "Sales stage already exists."}])
+            stage.name = name
+        if data.probability is not None:
+            stage.probability = data.probability
+        if data.sort_order is not None:
+            stage.sort_order = data.sort_order
+        if data.is_active is not None:
+            stage.is_active = data.is_active
+        stage.updated_at = datetime.now(tz=UTC)
+        return stage
+
+
+async def _validate_tree_parent(
+    session: AsyncSession,
+    model: type[CRMTerritory] | type[CRMCustomerGroup],
+    parent_id: uuid.UUID | None,
+    tenant_id: uuid.UUID,
+    current_id: uuid.UUID | None = None,
+) -> uuid.UUID | None:
+    if parent_id is None:
+        return None
+    if current_id is not None and parent_id == current_id:
+        raise ValidationError([{"field": "parent_id", "message": "A master record cannot be its own parent."}])
+
+    async with session.begin():
+        await set_tenant(session, tenant_id)
+        result = await session.execute(select(model).where(model.id == parent_id, model.tenant_id == tenant_id))
+        if result.scalar_one_or_none() is None:
+            raise ValidationError([{"field": "parent_id", "message": "Parent master record not found."}])
+    return parent_id
+
+
+async def create_territory(
+    session: AsyncSession,
+    data: CRMTerritoryCreate,
+    tenant_id: uuid.UUID | None = None,
+) -> CRMTerritory:
+    tid = tenant_id or DEFAULT_TENANT_ID
+    name = _trim(data.name)
+    if not name:
+        raise ValidationError([{"field": "name", "message": "Territory name is required."}])
+
+    await list_territories(session, tenant_id=tid)
+    parent_id = await _validate_tree_parent(session, CRMTerritory, data.parent_id, tid)
+    async with session.begin():
+        await set_tenant(session, tid)
+        existing = await session.execute(
+            select(CRMTerritory).where(CRMTerritory.tenant_id == tid, CRMTerritory.name == name)
+        )
+        if existing.scalar_one_or_none() is not None:
+            raise ValidationError([{"field": "name", "message": "Territory already exists."}])
+
+        territory = CRMTerritory(
+            tenant_id=tid,
+            name=name,
+            parent_id=parent_id,
+            is_group=data.is_group,
+            sort_order=data.sort_order,
+            is_active=data.is_active,
+        )
+        session.add(territory)
+        return territory
+
+
+async def update_territory(
+    session: AsyncSession,
+    territory_id: uuid.UUID,
+    data: CRMTerritoryUpdate,
+    tenant_id: uuid.UUID | None = None,
+) -> CRMTerritory | None:
+    tid = tenant_id or DEFAULT_TENANT_ID
+    async with session.begin():
+        await set_tenant(session, tid)
+        result = await session.execute(
+            select(CRMTerritory).where(CRMTerritory.id == territory_id, CRMTerritory.tenant_id == tid)
+        )
+        territory = result.scalar_one_or_none()
+        if territory is None:
+            return None
+
+    parent_id = await _validate_tree_parent(session, CRMTerritory, data.parent_id, tid, current_id=territory_id)
+    async with session.begin():
+        await set_tenant(session, tid)
+        result = await session.execute(
+            select(CRMTerritory).where(CRMTerritory.id == territory_id, CRMTerritory.tenant_id == tid)
+        )
+        territory = result.scalar_one_or_none()
+        if territory is None:
+            return None
+        if data.name is not None:
+            name = _trim(data.name)
+            duplicate = await session.execute(
+                select(CRMTerritory).where(
+                    CRMTerritory.tenant_id == tid,
+                    CRMTerritory.name == name,
+                    CRMTerritory.id != territory_id,
+                )
+            )
+            if duplicate.scalar_one_or_none() is not None:
+                raise ValidationError([{"field": "name", "message": "Territory already exists."}])
+            territory.name = name
+        if "parent_id" in data.model_fields_set:
+            territory.parent_id = parent_id
+        if data.is_group is not None:
+            territory.is_group = data.is_group
+        if data.sort_order is not None:
+            territory.sort_order = data.sort_order
+        if data.is_active is not None:
+            territory.is_active = data.is_active
+        territory.updated_at = datetime.now(tz=UTC)
+        return territory
+
+
+async def create_customer_group(
+    session: AsyncSession,
+    data: CRMCustomerGroupCreate,
+    tenant_id: uuid.UUID | None = None,
+) -> CRMCustomerGroup:
+    tid = tenant_id or DEFAULT_TENANT_ID
+    name = _trim(data.name)
+    if not name:
+        raise ValidationError([{"field": "name", "message": "Customer group name is required."}])
+
+    await list_customer_groups(session, tenant_id=tid)
+    parent_id = await _validate_tree_parent(session, CRMCustomerGroup, data.parent_id, tid)
+    async with session.begin():
+        await set_tenant(session, tid)
+        existing = await session.execute(
+            select(CRMCustomerGroup).where(CRMCustomerGroup.tenant_id == tid, CRMCustomerGroup.name == name)
+        )
+        if existing.scalar_one_or_none() is not None:
+            raise ValidationError([{"field": "name", "message": "Customer group already exists."}])
+
+        customer_group = CRMCustomerGroup(
+            tenant_id=tid,
+            name=name,
+            parent_id=parent_id,
+            is_group=data.is_group,
+            sort_order=data.sort_order,
+            is_active=data.is_active,
+        )
+        session.add(customer_group)
+        return customer_group
+
+
+async def update_customer_group(
+    session: AsyncSession,
+    customer_group_id: uuid.UUID,
+    data: CRMCustomerGroupUpdate,
+    tenant_id: uuid.UUID | None = None,
+) -> CRMCustomerGroup | None:
+    tid = tenant_id or DEFAULT_TENANT_ID
+    async with session.begin():
+        await set_tenant(session, tid)
+        result = await session.execute(
+            select(CRMCustomerGroup).where(CRMCustomerGroup.id == customer_group_id, CRMCustomerGroup.tenant_id == tid)
+        )
+        customer_group = result.scalar_one_or_none()
+        if customer_group is None:
+            return None
+
+    parent_id = await _validate_tree_parent(session, CRMCustomerGroup, data.parent_id, tid, current_id=customer_group_id)
+    async with session.begin():
+        await set_tenant(session, tid)
+        result = await session.execute(
+            select(CRMCustomerGroup).where(CRMCustomerGroup.id == customer_group_id, CRMCustomerGroup.tenant_id == tid)
+        )
+        customer_group = result.scalar_one_or_none()
+        if customer_group is None:
+            return None
+        if data.name is not None:
+            name = _trim(data.name)
+            duplicate = await session.execute(
+                select(CRMCustomerGroup).where(
+                    CRMCustomerGroup.tenant_id == tid,
+                    CRMCustomerGroup.name == name,
+                    CRMCustomerGroup.id != customer_group_id,
+                )
+            )
+            if duplicate.scalar_one_or_none() is not None:
+                raise ValidationError([{"field": "name", "message": "Customer group already exists."}])
+            customer_group.name = name
+        if "parent_id" in data.model_fields_set:
+            customer_group.parent_id = parent_id
+        if data.is_group is not None:
+            customer_group.is_group = data.is_group
+        if data.sort_order is not None:
+            customer_group.sort_order = data.sort_order
+        if data.is_active is not None:
+            customer_group.is_active = data.is_active
+        customer_group.updated_at = datetime.now(tz=UTC)
+        return customer_group
+
+
 def _ensure_auto_repeat_metadata(enabled: bool, frequency: str) -> None:
     if enabled and not frequency.strip():
         raise ValidationError(
@@ -280,30 +1220,52 @@ def _ensure_auto_repeat_metadata(enabled: bool, frequency: str) -> None:
         )
 
 
-def _first_matched_field(data: LeadCreate, candidate: object) -> str:
-    normalized_company = _normalize_company_name(data.company_name)
-    candidate_company = getattr(
-        candidate,
-        "normalized_company_name",
-        _normalize_company_name(getattr(candidate, "company_name", "")),
+def _build_duplicate_lookup_from_update(
+    data: LeadUpdate,
+    lead: Lead,
+    fields: set[str],
+) -> _LeadDuplicateLookup:
+    def merged(field_name: str) -> str:
+        value = getattr(data, field_name)
+        if field_name in fields and value is not None:
+            return value
+        return getattr(lead, field_name)
+
+    return _LeadDuplicateLookup(
+        company_name=merged("company_name"),
+        email_id=merged("email_id"),
+        phone=merged("phone"),
+        mobile_no=merged("mobile_no"),
     )
-    if normalized_company and candidate_company == normalized_company:
+
+
+def _first_matched_field(data: LeadCreate | _LeadDuplicateLookup, candidate: Lead | Customer) -> str:
+    """Return the field name that caused the first match for duplicate detection."""
+    # Use getattr to handle both Lead (with normalized_* fields) and Customer models
+    normalized_company = _normalize_company_name(data.company_name)
+    candidate_company_normalized = getattr(candidate, "normalized_company_name", None)
+    if candidate_company_normalized is None:
+        # Customer model doesn't have normalized_company_name, normalize on access
+        candidate_company_normalized = _normalize_company_name(getattr(candidate, "company_name", ""))
+    if normalized_company and candidate_company_normalized == normalized_company:
         return "company_name"
 
     normalized_email = _normalize_email(data.email_id)
-    candidate_email = getattr(
-        candidate,
-        "normalized_email_id",
-        _normalize_email(getattr(candidate, "contact_email", "")),
-    )
-    if normalized_email and candidate_email == normalized_email:
+    candidate_email_normalized = getattr(candidate, "normalized_email_id", None)
+    if candidate_email_normalized is None:
+        # Customer model uses contact_email
+        candidate_email_normalized = _normalize_email(getattr(candidate, "contact_email", ""))
+    if normalized_email and candidate_email_normalized == normalized_email:
         return "email_id"
 
     return "phone"
 
 
-def _candidate_label(candidate: object) -> str:
-    return getattr(candidate, "lead_name", getattr(candidate, "company_name", ""))
+def _candidate_label(candidate: Lead | Customer) -> str:
+    """Return a human-readable label for a duplicate candidate."""
+    if isinstance(candidate, Lead):
+        return candidate.lead_name
+    return candidate.company_name
 
 
 def _trim(value: str | None) -> str:
@@ -815,7 +1777,7 @@ def _build_opportunity_response(opportunity: Opportunity) -> OpportunityResponse
 
 async def _find_duplicate_candidates(
     session: AsyncSession,
-    data: LeadCreate,
+    data: LeadCreate | _LeadDuplicateLookup,
     tenant_id: uuid.UUID,
     *,
     exclude_lead_id: uuid.UUID | None = None,
@@ -895,9 +1857,12 @@ async def create_lead(
     tenant_id: uuid.UUID | None = None,
 ) -> Lead:
     tid = tenant_id or DEFAULT_TENANT_ID
+    territory = await _ensure_territory_supported(session, data.territory, tid)
     candidates = await _find_duplicate_candidates(session, data, tid)
     if candidates:
-        raise DuplicateLeadConflictError(candidates)
+        settings = await get_crm_settings(session, tenant_id=tid)
+        if settings.lead_duplicate_policy == CRMDuplicatePolicy.BLOCK:
+            raise DuplicateLeadConflictError(candidates)
 
     lead = Lead(
         tenant_id=tid,
@@ -910,7 +1875,7 @@ async def create_lead(
         mobile_no=data.mobile_no.strip(),
         normalized_phone=_normalize_phone(data.phone),
         normalized_mobile_no=_normalize_phone(data.mobile_no),
-        territory=data.territory.strip(),
+        territory=territory,
         lead_owner=data.lead_owner.strip(),
         source=data.source.strip(),
         status=LeadStatus.LEAD,
@@ -1008,39 +1973,9 @@ async def update_lead(
         raise VersionConflictError(expected=data.version, actual=lead.version)
 
     fields = data.model_fields_set - {"version"}
-    merged = LeadCreate(
-        lead_name=data.lead_name if "lead_name" in fields and data.lead_name is not None else lead.lead_name,
-        company_name=data.company_name if "company_name" in fields and data.company_name is not None else lead.company_name,
-        email_id=data.email_id if "email_id" in fields and data.email_id is not None else lead.email_id,
-        phone=data.phone if "phone" in fields and data.phone is not None else lead.phone,
-        mobile_no=data.mobile_no if "mobile_no" in fields and data.mobile_no is not None else lead.mobile_no,
-        territory=data.territory if "territory" in fields and data.territory is not None else lead.territory,
-        lead_owner=data.lead_owner if "lead_owner" in fields and data.lead_owner is not None else lead.lead_owner,
-        source=data.source if "source" in fields and data.source is not None else lead.source,
-        qualification_status=(
-            data.qualification_status
-            if "qualification_status" in fields and data.qualification_status is not None
-            else LeadQualificationStatus(lead.qualification_status)
-        ),
-        qualified_by=data.qualified_by if "qualified_by" in fields and data.qualified_by is not None else lead.qualified_by,
-        annual_revenue=data.annual_revenue if "annual_revenue" in fields else lead.annual_revenue,
-        no_of_employees=data.no_of_employees if "no_of_employees" in fields else lead.no_of_employees,
-        industry=data.industry if "industry" in fields and data.industry is not None else lead.industry,
-        market_segment=(
-            data.market_segment if "market_segment" in fields and data.market_segment is not None else lead.market_segment
-        ),
-        utm_source=data.utm_source if "utm_source" in fields and data.utm_source is not None else lead.utm_source,
-        utm_medium=data.utm_medium if "utm_medium" in fields and data.utm_medium is not None else lead.utm_medium,
-        utm_campaign=(
-            data.utm_campaign if "utm_campaign" in fields and data.utm_campaign is not None else lead.utm_campaign
-        ),
-        utm_content=(
-            data.utm_content if "utm_content" in fields and data.utm_content is not None else lead.utm_content
-        ),
-        notes=data.notes if "notes" in fields and data.notes is not None else lead.notes,
-    )
+    duplicate_lookup = _build_duplicate_lookup_from_update(data, lead, fields)
 
-    candidates = await _find_duplicate_candidates(session, merged, tid, exclude_lead_id=lead_id)
+    candidates = await _find_duplicate_candidates(session, duplicate_lookup, tid, exclude_lead_id=lead_id)
     if candidates:
         raise DuplicateLeadConflictError(candidates)
 
@@ -1185,6 +2120,9 @@ async def create_opportunity(
     tenant_id: uuid.UUID | None = None,
 ) -> Opportunity:
     tid = tenant_id or DEFAULT_TENANT_ID
+    sales_stage = await _ensure_sales_stage_supported(session, data.sales_stage, tid)
+    territory = await _ensure_territory_supported(session, data.territory, tid)
+    customer_group = await _ensure_customer_group_supported(session, data.customer_group, tid)
     serialized_items = _serialize_opportunity_items(data.items)
     opportunity_amount = _resolve_total_amount(data.opportunity_amount, serialized_items)
     party_name, party_label, party_defaults = await _resolve_party_context(
@@ -1201,15 +2139,15 @@ async def create_opportunity(
         party_name=party_name,
         party_label=party_label,
         status=OpportunityStatus.OPEN,
-        sales_stage=data.sales_stage.strip(),
+        sales_stage=sales_stage,
         probability=data.probability,
         expected_closing=data.expected_closing,
         currency=data.currency.strip().upper(),
         opportunity_amount=opportunity_amount,
         base_opportunity_amount=opportunity_amount,
         opportunity_owner=_trim(data.opportunity_owner),
-        territory=_trim(data.territory) or party_defaults.get("territory", ""),
-        customer_group=_trim(data.customer_group),
+        territory=territory or party_defaults.get("territory", ""),
+        customer_group=customer_group,
         contact_person=_trim(data.contact_person) or party_defaults.get("contact_person", ""),
         contact_email=_trim(data.contact_email) or party_defaults.get("contact_email", ""),
         contact_mobile=_trim(data.contact_mobile) or party_defaults.get("contact_mobile", ""),
@@ -1461,7 +2399,15 @@ async def create_quotation(
     tid = tenant_id or DEFAULT_TENANT_ID
     if not data.items:
         raise ValidationError([{"field": "items", "message": "At least one quotation item is required."}])
-    _ensure_quotation_validity(data.transaction_date, data.valid_till)
+    territory = await _ensure_territory_supported(session, data.territory, tid)
+    customer_group = await _ensure_customer_group_supported(session, data.customer_group, tid)
+    valid_till = await _resolve_effective_quotation_valid_till(
+        session,
+        transaction_date=data.transaction_date,
+        valid_till=data.valid_till,
+        tenant_id=tid,
+    )
+    _ensure_quotation_validity(data.transaction_date, valid_till)
     _ensure_auto_repeat_metadata(data.auto_repeat_enabled, data.auto_repeat_frequency)
 
     serialized_items = _serialize_quotation_items(data.items)
@@ -1483,7 +2429,7 @@ async def create_quotation(
         party_label=party_label,
         status=QuotationStatus.DRAFT,
         transaction_date=data.transaction_date,
-        valid_till=data.valid_till,
+        valid_till=valid_till,
         company=data.company.strip(),
         currency=data.currency.strip().upper(),
         subtotal=subtotal,
@@ -1496,8 +2442,8 @@ async def create_quotation(
         contact_email=_trim(data.contact_email) or party_defaults.get("contact_email", ""),
         contact_mobile=_trim(data.contact_mobile) or party_defaults.get("contact_mobile", ""),
         job_title=_trim(data.job_title),
-        territory=_trim(data.territory) or party_defaults.get("territory", ""),
-        customer_group=_trim(data.customer_group),
+        territory=territory or party_defaults.get("territory", ""),
+        customer_group=customer_group,
         billing_address=_trim(data.billing_address),
         shipping_address=_trim(data.shipping_address),
         utm_source=_trim(data.utm_source) or party_defaults.get("utm_source", ""),

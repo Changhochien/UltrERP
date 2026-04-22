@@ -19,12 +19,14 @@ from domains.crm.schemas import (
     LeadCreate,
     LeadQualificationStatus,
     LeadStatus,
+    LeadUpdate,
 )
 from domains.crm.service import (
     create_lead,
     convert_lead_to_customer,
     handoff_lead_to_opportunity,
     transition_lead_status,
+    update_lead,
 )
 from domains.customers.schemas import CustomerCreate
 
@@ -175,6 +177,15 @@ class TestCreateLead:
         assert len(session.added) == 1
 
     @pytest.mark.asyncio
+    async def test_create_lead_rejects_unknown_territory(self) -> None:
+        session = FakeSession()
+
+        with pytest.raises(ValidationError) as exc_info:
+            await create_lead(session, _valid_payload(territory="Unknown Region"))  # type: ignore[arg-type]
+
+        assert exc_info.value.errors == [{"field": "territory", "message": "Select a configured territory."}]
+
+    @pytest.mark.asyncio
     async def test_create_lead_raises_structured_duplicate_conflict(self) -> None:
         existing_lead = _FakeLead()
         existing_customer = _FakeCustomer(uuid.UUID("22222222-3333-4444-5555-666666666666"))
@@ -192,6 +203,23 @@ class TestCreateLead:
         assert len(candidates) == 2
         assert {candidate["kind"] for candidate in candidates} == {"lead", "customer"}
         assert {candidate["matched_on"] for candidate in candidates} >= {"company_name"}
+
+    @pytest.mark.asyncio
+    async def test_create_lead_allows_duplicates_when_policy_allows(self) -> None:
+        existing_lead = _FakeLead()
+        settings = _FakeScalarResult(type("Settings", (), {"lead_duplicate_policy": "allow"})())
+        session = FakeSession(
+            execute_results=[
+                _FakeListResult([existing_lead]),
+                _FakeListResult([]),
+                settings,
+            ]
+        )
+
+        lead = await create_lead(session, _valid_payload())  # type: ignore[arg-type]
+
+        assert lead.lead_name == "Alice Prospect"
+        assert len(session.added) == 1
 
     @pytest.mark.asyncio
     async def test_create_lead_detects_customer_duplicate_when_company_punctuation_differs(self) -> None:
@@ -262,6 +290,36 @@ class TestLeadLifecycle:
                 LeadStatus.OPPORTUNITY,
                 tenant_id=lead.tenant_id,
             )
+
+    @pytest.mark.asyncio
+    async def test_update_lead_checks_duplicates_using_existing_identity_fields(self) -> None:
+        lead = _FakeLead()
+        existing_customer = _FakeCustomer(uuid.UUID("44444444-5555-6666-7777-888888888888"))
+        existing_customer.company_name = lead.company_name
+        session = FakeSession(
+            execute_results=[
+                _FakeScalarResult(lead),
+                _FakeListResult([]),
+                _FakeListResult([existing_customer]),
+            ]
+        )
+
+        with pytest.raises(DuplicateLeadConflictError) as exc_info:
+            await update_lead(
+                session,
+                lead.id,
+                LeadUpdate(version=lead.version, territory="South"),
+                tenant_id=lead.tenant_id,
+            )
+
+        assert exc_info.value.candidates == [
+            {
+                "kind": "customer",
+                "id": str(existing_customer.id),
+                "label": lead.company_name,
+                "matched_on": "company_name",
+            }
+        ]
 
     @pytest.mark.asyncio
     async def test_opportunity_handoff_updates_status_and_preserves_context(self) -> None:

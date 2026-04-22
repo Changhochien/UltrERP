@@ -28,6 +28,8 @@ import {
   CRM_QUOTATION_CREATE_ROUTE,
   CRM_QUOTATION_DETAIL_ROUTE,
   CRM_QUOTATIONS_ROUTE,
+  CRM_REPORTING_ROUTE,
+  CRM_SETUP_ROUTE,
   CUSTOMER_CREATE_ROUTE,
   CUSTOMER_DETAIL_ROUTE,
   CUSTOMERS_ROUTE,
@@ -62,6 +64,8 @@ import CreateLeadPage from "./pages/crm/CreateLeadPage";
 import { LeadListPage } from "./pages/crm/LeadListPage";
 import CreateOpportunityPage from "./pages/crm/CreateOpportunityPage";
 import { OpportunityListPage } from "./pages/crm/OpportunityListPage";
+import CRMPipelineReportPage from "./pages/crm/CRMPipelineReportPage";
+import CRMSetupPage from "./pages/crm/CRMSetupPage";
 import CreateQuotationPage from "./pages/crm/CreateQuotationPage";
 import { QuotationListPage } from "./pages/crm/QuotationListPage";
 import CreateCustomerPage from "./pages/customers/CreateCustomerPage";
@@ -462,6 +466,26 @@ export default function App() {
             element={
               <ProtectedAppRoute requiredFeature="crm" requiredWrite>
                 <CreateQuotationRoute />
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={CRM_REPORTING_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="crm">
+                <RoutedPage>
+                  <CRMPipelineReportPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={CRM_SETUP_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="settings">
+                <RoutedPage>
+                  <CRMSetupPage />
+                </RoutedPage>
               </ProtectedAppRoute>
             }
           />

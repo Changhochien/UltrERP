@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import type { CustomerCreatePayload } from "../../domain/customers/types";
 import type {
   DuplicateLeadCandidate,
+  LeadCreatePayload,
   LeadOpportunityHandoff,
   LeadResponse,
   LeadStatus,
@@ -39,7 +40,17 @@ const VERSION_CONFLICT_MESSAGE =
 
 const MANUAL_STATUS_OPTIONS = LEAD_STATUS_OPTIONS.filter(
   (status) => status !== "opportunity" && status !== "converted",
-);
+) as Array<Exclude<LeadStatus, "opportunity" | "converted">>;
+
+type ManualLeadStatus = Exclude<LeadStatus, "opportunity" | "converted">;
+
+function normalizeManualStatusTarget(status: LeadStatus): ManualLeadStatus {
+  if (status === "lead" || status === "opportunity" || status === "converted") {
+    return "open";
+  }
+
+  return status;
+}
 
 const SELECT_CLASS_NAME =
   "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
@@ -80,7 +91,7 @@ export function LeadDetailPage({ onBack }: LeadDetailPageProps) {
   const [updating, setUpdating] = useState(false);
   const [serverErrors, setServerErrors] = useState<Array<{ field: string; message: string }>>([]);
   const [updateDuplicate, setUpdateDuplicate] = useState<{ candidates: DuplicateLeadCandidate[] } | null>(null);
-  const [statusTarget, setStatusTarget] = useState<LeadStatus>("open");
+  const [statusTarget, setStatusTarget] = useState<ManualLeadStatus>("open");
   const [transitioning, setTransitioning] = useState(false);
   const [handoffing, setHandoffing] = useState(false);
   const [handoffPreview, setHandoffPreview] = useState<LeadOpportunityHandoff | null>(null);
@@ -115,7 +126,7 @@ export function LeadDetailPage({ onBack }: LeadDetailPageProps) {
           return;
         }
         setLead(data);
-        setStatusTarget(data.status === "lead" ? "open" : data.status);
+        setStatusTarget(normalizeManualStatusTarget(data.status));
         setConversionForm({
           business_number: "",
           billing_address: "",
@@ -185,7 +196,7 @@ export function LeadDetailPage({ onBack }: LeadDetailPageProps) {
     navigate(buildCustomerDetailPath(candidate.id));
   }
 
-  async function handleSave(payload: ReturnType<typeof toLeadUpdatePayload>) {
+  async function handleSave(payload: LeadCreatePayload) {
     if (!lead) {
       return;
     }
@@ -193,10 +204,7 @@ export function LeadDetailPage({ onBack }: LeadDetailPageProps) {
     setUpdateDuplicate(null);
     setUpdating(true);
     try {
-      const result = await updateLead(lead.id, {
-        ...payload,
-        version: lead.version,
-      });
+      const result = await updateLead(lead.id, toLeadUpdatePayload(payload, lead.version));
       if (result.ok) {
         setLead(result.data);
         showSuccessToast(
@@ -373,27 +381,7 @@ export function LeadDetailPage({ onBack }: LeadDetailPageProps) {
           ) : null}
           <LeadForm
             initialValues={initialFormValues}
-            onSubmit={(payload) => handleSave(toLeadUpdatePayload({
-              lead_name: payload.lead_name,
-              company_name: payload.company_name,
-              email_id: payload.email_id,
-              phone: payload.phone,
-              mobile_no: payload.mobile_no,
-              territory: payload.territory,
-              lead_owner: payload.lead_owner,
-              source: payload.source,
-              qualification_status: payload.qualification_status,
-              qualified_by: payload.qualified_by,
-              annual_revenue: payload.annual_revenue ?? "",
-              no_of_employees: payload.no_of_employees != null ? String(payload.no_of_employees) : "",
-              industry: payload.industry,
-              market_segment: payload.market_segment,
-              utm_source: payload.utm_source,
-              utm_medium: payload.utm_medium,
-              utm_campaign: payload.utm_campaign,
-              utm_content: payload.utm_content,
-              notes: payload.notes,
-            }, lead.version))}
+            onSubmit={handleSave}
             serverErrors={serverErrors}
             submitLabel={t("crm.form.updateTitle")}
             submittingLabel={t("crm.form.updating")}
@@ -411,7 +399,7 @@ export function LeadDetailPage({ onBack }: LeadDetailPageProps) {
               id="lead-status-target"
               className={SELECT_CLASS_NAME}
               value={statusTarget}
-              onChange={(event) => setStatusTarget(event.target.value as LeadStatus)}
+              onChange={(event) => setStatusTarget(event.target.value as ManualLeadStatus)}
               disabled={!canEditLead || availableStatusOptions.length === 0}
             >
               {availableStatusOptions.map((status) => (

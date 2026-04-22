@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useFieldArray, useForm, type Resolver } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
 import type { CustomerSummary } from "../../domain/customers/types";
 import type { LeadSummary } from "../../domain/crm/types";
+import { useCRMSetupBundle } from "../../domain/crm/hooks/useCRMSetupBundle";
 import { listCustomers } from "../../lib/api/customers";
 import { listLeads } from "../../lib/api/crm";
 import {
@@ -121,17 +122,20 @@ export function QuotationForm({
   const resolvedSubmittingLabel = submittingLabel ?? t("crm.quotations.form.creating");
   const [leadOptions, setLeadOptions] = useState<LeadSummary[]>([]);
   const [customerOptions, setCustomerOptions] = useState<CustomerSummary[]>([]);
+  const { data: setupBundle, territoryOptions, customerGroupOptions } = useCRMSetupBundle();
 
   const {
     register,
     control,
+    getValues,
     handleSubmit,
     reset,
     setError,
+    setValue,
     watch,
     formState: { errors },
   } = useForm<QuotationFormValues>({
-    resolver: zodResolver(quotationFormSchema),
+    resolver: zodResolver(quotationFormSchema as never) as Resolver<QuotationFormValues>,
     defaultValues: defaultValues(initialValues),
     mode: "onSubmit",
   });
@@ -155,10 +159,26 @@ export function QuotationForm({
   const currentItems = watch("items");
   const currentTaxes = watch("taxes");
   const autoRepeatEnabled = watch("auto_repeat_enabled");
+  const currentTerritory = watch("territory");
+  const currentCustomerGroup = watch("customer_group");
 
   useEffect(() => {
     reset(defaultValues(initialValues));
   }, [initialValues, reset]);
+
+  useEffect(() => {
+    if (initialValues?.valid_till) {
+      return;
+    }
+    const fallbackValidTill = formatDateInput(addDays(new Date(), 30));
+    const currentValidTill = getValues("valid_till");
+    if (!currentValidTill || currentValidTill === fallbackValidTill) {
+      setValue(
+        "valid_till",
+        formatDateInput(addDays(new Date(), setupBundle.settings.default_quotation_validity_days)),
+      );
+    }
+  }, [getValues, initialValues?.valid_till, setValue, setupBundle.settings.default_quotation_validity_days]);
 
   useEffect(() => {
     let cancelled = false;
@@ -311,13 +331,29 @@ export function QuotationForm({
 
         <Field>
           <FieldLabel htmlFor="territory">{t("crm.quotations.form.territory")}</FieldLabel>
-          <Input id="territory" disabled={disabled} {...register("territory")} />
+          <select id="territory" className={SELECT_CLASS_NAME} disabled={disabled} {...register("territory")}>
+            <option value="">{t("crm.setup.selectPlaceholder")}</option>
+            {currentTerritory && !territoryOptions.some((option) => option.name === currentTerritory) ? (
+              <option value={currentTerritory}>{currentTerritory}</option>
+            ) : null}
+            {territoryOptions.map((option) => (
+              <option key={option.id} value={option.name}>{option.name}</option>
+            ))}
+          </select>
           <FieldError>{errors.territory?.message ? t(errors.territory.message) : undefined}</FieldError>
         </Field>
 
         <Field>
           <FieldLabel htmlFor="customer_group">{t("crm.quotations.form.customerGroup")}</FieldLabel>
-          <Input id="customer_group" disabled={disabled} {...register("customer_group")} />
+          <select id="customer_group" className={SELECT_CLASS_NAME} disabled={disabled} {...register("customer_group")}>
+            <option value="">{t("crm.setup.selectPlaceholder")}</option>
+            {currentCustomerGroup && !customerGroupOptions.some((option) => option.name === currentCustomerGroup) ? (
+              <option value={currentCustomerGroup}>{currentCustomerGroup}</option>
+            ) : null}
+            {customerGroupOptions.map((option) => (
+              <option key={option.id} value={option.name}>{option.name}</option>
+            ))}
+          </select>
           <FieldError>{errors.customer_group?.message ? t(errors.customer_group.message) : undefined}</FieldError>
         </Field>
 

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useFieldArray, useForm, type Resolver } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
 import type { CustomerSummary } from "../../domain/customers/types";
 import type { LeadSummary } from "../../domain/crm/types";
+import { useCRMSetupBundle } from "../../domain/crm/hooks/useCRMSetupBundle";
 import { listCustomers } from "../../lib/api/customers";
 import { listLeads } from "../../lib/api/crm";
 import {
@@ -90,6 +91,7 @@ export function OpportunityForm({
   const resolvedSubmittingLabel = submittingLabel ?? t("crm.opportunities.form.creating");
   const [leadOptions, setLeadOptions] = useState<LeadSummary[]>([]);
   const [customerOptions, setCustomerOptions] = useState<CustomerSummary[]>([]);
+  const { salesStageOptions, territoryOptions, customerGroupOptions } = useCRMSetupBundle();
 
   const {
     register,
@@ -100,7 +102,7 @@ export function OpportunityForm({
     watch,
     formState: { errors },
   } = useForm<OpportunityFormValues>({
-    resolver: zodResolver(opportunityFormSchema),
+    resolver: zodResolver(opportunityFormSchema as never) as Resolver<OpportunityFormValues>,
     defaultValues: defaultValues(initialValues),
     mode: "onSubmit",
   });
@@ -112,6 +114,9 @@ export function OpportunityForm({
 
   const currentPartyType = watch("opportunity_from");
   const currentPartyValue = watch("party_name");
+  const currentSalesStage = watch("sales_stage");
+  const currentTerritory = watch("territory");
+  const currentCustomerGroup = watch("customer_group");
 
   useEffect(() => {
     reset(defaultValues(initialValues));
@@ -217,7 +222,14 @@ export function OpportunityForm({
         </Field>
         <Field>
           <FieldLabel htmlFor="sales_stage">{t("crm.opportunities.form.salesStage")}</FieldLabel>
-          <Input id="sales_stage" {...register("sales_stage")} maxLength={120} aria-invalid={!!errors.sales_stage} />
+          <select id="sales_stage" {...register("sales_stage")} className={SELECT_CLASS_NAME} aria-invalid={!!errors.sales_stage}>
+            {currentSalesStage && !salesStageOptions.some((option) => option.name === currentSalesStage) ? (
+              <option value={currentSalesStage}>{currentSalesStage}</option>
+            ) : null}
+            {salesStageOptions.map((option) => (
+              <option key={option.id} value={option.name}>{option.name}</option>
+            ))}
+          </select>
           <FieldError errors={errors.sales_stage ? [{ message: t(errors.sales_stage.message!) }] : []} />
         </Field>
       </div>
@@ -253,7 +265,15 @@ export function OpportunityForm({
         </Field>
         <Field>
           <FieldLabel htmlFor="territory">{t("crm.opportunities.form.territory")}</FieldLabel>
-          <Input id="territory" {...register("territory")} maxLength={120} aria-invalid={!!errors.territory} />
+          <select id="territory" {...register("territory")} className={SELECT_CLASS_NAME} aria-invalid={!!errors.territory}>
+            <option value="">{t("crm.setup.selectPlaceholder")}</option>
+            {currentTerritory && !territoryOptions.some((option) => option.name === currentTerritory) ? (
+              <option value={currentTerritory}>{currentTerritory}</option>
+            ) : null}
+            {territoryOptions.map((option) => (
+              <option key={option.id} value={option.name}>{option.name}</option>
+            ))}
+          </select>
           <FieldError errors={errors.territory ? [{ message: t(errors.territory.message!) }] : []} />
         </Field>
       </div>
@@ -261,7 +281,15 @@ export function OpportunityForm({
       <div className="grid gap-5 sm:grid-cols-2">
         <Field>
           <FieldLabel htmlFor="customer_group">{t("crm.opportunities.form.customerGroup")}</FieldLabel>
-          <Input id="customer_group" {...register("customer_group")} maxLength={120} aria-invalid={!!errors.customer_group} />
+          <select id="customer_group" {...register("customer_group")} className={SELECT_CLASS_NAME} aria-invalid={!!errors.customer_group}>
+            <option value="">{t("crm.setup.selectPlaceholder")}</option>
+            {currentCustomerGroup && !customerGroupOptions.some((option) => option.name === currentCustomerGroup) ? (
+              <option value={currentCustomerGroup}>{currentCustomerGroup}</option>
+            ) : null}
+            {customerGroupOptions.map((option) => (
+              <option key={option.id} value={option.name}>{option.name}</option>
+            ))}
+          </select>
           <FieldError errors={errors.customer_group ? [{ message: t(errors.customer_group.message!) }] : []} />
         </Field>
         <Field>

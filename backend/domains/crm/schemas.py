@@ -164,6 +164,179 @@ class LeadCustomerConversionResult(BaseModel):
     status: LeadStatus
 
 
+class CRMDuplicatePolicy(StrEnum):
+    BLOCK = "block"
+    ALLOW = "allow"
+
+
+class CRMSettingsResponse(BaseModel):
+    lead_duplicate_policy: CRMDuplicatePolicy = CRMDuplicatePolicy.BLOCK
+    contact_creation_enabled: bool = True
+    default_quotation_validity_days: int = Field(default=30, ge=1, le=365)
+    carry_forward_communications: bool = True
+    carry_forward_comments: bool = True
+    opportunity_auto_close_days: int | None = Field(default=None, ge=1, le=365)
+
+
+class CRMSettingsUpdate(BaseModel):
+    lead_duplicate_policy: CRMDuplicatePolicy | None = None
+    contact_creation_enabled: bool | None = None
+    default_quotation_validity_days: int | None = Field(default=None, ge=1, le=365)
+    carry_forward_communications: bool | None = None
+    carry_forward_comments: bool | None = None
+    opportunity_auto_close_days: int | None = Field(default=None, ge=1, le=365)
+
+
+class CRMSalesStageCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    probability: int = Field(default=0, ge=0, le=100)
+    sort_order: int = Field(default=0, ge=0)
+    is_active: bool = True
+
+
+class CRMSalesStageUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    probability: int | None = Field(default=None, ge=0, le=100)
+    sort_order: int | None = Field(default=None, ge=0)
+    is_active: bool | None = None
+
+
+class CRMSalesStageResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    probability: int
+    sort_order: int
+    is_active: bool
+
+
+class CRMTerritoryCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    parent_id: uuid.UUID | None = None
+    is_group: bool = False
+    sort_order: int = Field(default=0, ge=0)
+    is_active: bool = True
+
+
+class CRMTerritoryUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    parent_id: uuid.UUID | None = None
+    is_group: bool | None = None
+    sort_order: int | None = Field(default=None, ge=0)
+    is_active: bool | None = None
+
+
+class CRMTerritoryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    parent_id: uuid.UUID | None = None
+    is_group: bool
+    sort_order: int
+    is_active: bool
+
+
+class CRMCustomerGroupCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    parent_id: uuid.UUID | None = None
+    is_group: bool = False
+    sort_order: int = Field(default=0, ge=0)
+    is_active: bool = True
+
+
+class CRMCustomerGroupUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    parent_id: uuid.UUID | None = None
+    is_group: bool | None = None
+    sort_order: int | None = Field(default=None, ge=0)
+    is_active: bool | None = None
+
+
+class CRMCustomerGroupResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    parent_id: uuid.UUID | None = None
+    is_group: bool
+    sort_order: int
+    is_active: bool
+
+
+class CRMSetupBundleResponse(BaseModel):
+    settings: CRMSettingsResponse
+    sales_stages: list[CRMSalesStageResponse]
+    territories: list[CRMTerritoryResponse]
+    customer_groups: list[CRMCustomerGroupResponse]
+
+
+class CRMPipelineScope(StrEnum):
+    ALL = "all"
+    OPEN = "open"
+    TERMINAL = "terminal"
+
+
+class CRMPipelineRecordType(StrEnum):
+    ALL = "all"
+    LEAD = "lead"
+    OPPORTUNITY = "opportunity"
+    QUOTATION = "quotation"
+
+
+class CRMPipelineReportParams(BaseModel):
+    record_type: CRMPipelineRecordType = CRMPipelineRecordType.ALL
+    scope: CRMPipelineScope = CRMPipelineScope.ALL
+    status: str | None = Field(default=None, max_length=40)
+    sales_stage: str | None = Field(default=None, max_length=120)
+    territory: str | None = Field(default=None, max_length=120)
+    customer_group: str | None = Field(default=None, max_length=120)
+    owner: str | None = Field(default=None, max_length=120)
+    lost_reason: str | None = Field(default=None, max_length=200)
+    utm_source: str | None = Field(default=None, max_length=120)
+    utm_medium: str | None = Field(default=None, max_length=120)
+    utm_campaign: str | None = Field(default=None, max_length=120)
+
+
+class CRMPipelineSegment(BaseModel):
+    record_type: str | None = None
+    key: str
+    label: str
+    count: int
+    amount: Decimal = Decimal("0.00")
+
+
+class CRMPipelineTotals(BaseModel):
+    lead_count: int = 0
+    opportunity_count: int = 0
+    quotation_count: int = 0
+    open_count: int = 0
+    terminal_count: int = 0
+    open_pipeline_amount: Decimal = Decimal("0.00")
+    terminal_pipeline_amount: Decimal = Decimal("0.00")
+
+
+class CRMPipelineDropOff(BaseModel):
+    lead_only_count: int = 0
+    opportunity_without_quotation_count: int = 0
+    quotation_without_order_count: int = 0
+    quotation_with_order_count: int = 0
+
+
+class CRMPipelineReportResponse(BaseModel):
+    filters: CRMPipelineReportParams
+    totals: CRMPipelineTotals
+    by_status: list[CRMPipelineSegment]
+    by_sales_stage: list[CRMPipelineSegment]
+    by_territory: list[CRMPipelineSegment]
+    by_customer_group: list[CRMPipelineSegment]
+    by_owner: list[CRMPipelineSegment]
+    by_lost_reason: list[CRMPipelineSegment]
+    by_utm_source: list[CRMPipelineSegment]
+    dropoff: CRMPipelineDropOff
+
+
 class OpportunityPartyKind(StrEnum):
     LEAD = "lead"
     CUSTOMER = "customer"
@@ -415,7 +588,7 @@ class QuotationCreate(BaseModel):
     quotation_to: QuotationPartyKind
     party_name: str = Field(..., min_length=1, max_length=200)
     transaction_date: date
-    valid_till: date
+    valid_till: date | None = None
     company: str = Field(..., min_length=1, max_length=200)
     currency: str = Field(default="TWD", min_length=3, max_length=3)
     contact_person: str = Field(default="", max_length=120)

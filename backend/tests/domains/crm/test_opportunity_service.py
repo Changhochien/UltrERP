@@ -189,6 +189,15 @@ class TestCreateOpportunity:
         assert session.begin_calls == 2
 
     @pytest.mark.asyncio
+    async def test_create_opportunity_rejects_unknown_sales_stage(self) -> None:
+        session = FakeSession()
+
+        with pytest.raises(ValidationError) as exc_info:
+            await create_opportunity(session, _opportunity_payload(sales_stage="mystery_stage"))
+
+        assert exc_info.value.errors == [{"field": "sales_stage", "message": "Select a configured sales stage."}]
+
+    @pytest.mark.asyncio
     async def test_create_opportunity_accepts_prospect_party_without_lookup(self) -> None:
         session = FakeSession()
 

@@ -3,11 +3,12 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import CreateOpportunityPage from "../../pages/crm/CreateOpportunityPage";
-import { createOpportunity, listLeads } from "../../lib/api/crm";
+import { createOpportunity, getCRMSetupBundle, listLeads } from "../../lib/api/crm";
 import { listCustomers } from "../../lib/api/customers";
 
 vi.mock("../../lib/api/crm", () => ({
   createOpportunity: vi.fn(),
+  getCRMSetupBundle: vi.fn(),
   listLeads: vi.fn(),
 }));
 
@@ -20,6 +21,7 @@ vi.mock("../../hooks/useToast", () => ({
 }));
 
 const mockedCreateOpportunity = vi.mocked(createOpportunity);
+const mockedGetCRMSetupBundle = vi.mocked(getCRMSetupBundle);
 const mockedListLeads = vi.mocked(listLeads);
 const mockedListCustomers = vi.mocked(listCustomers);
 
@@ -30,6 +32,22 @@ afterEach(() => {
 
 beforeEach(() => {
   mockedCreateOpportunity.mockReset();
+  mockedGetCRMSetupBundle.mockResolvedValue({
+    settings: {
+      lead_duplicate_policy: "block",
+      default_quotation_validity_days: 30,
+      contact_creation_enabled: true,
+      carry_forward_communications: true,
+      carry_forward_comments: true,
+      opportunity_auto_close_days: 45,
+    },
+    sales_stages: [
+      { id: "stage-1", name: "qualification", probability: 20, sort_order: 10, is_active: true },
+      { id: "stage-2", name: "proposal", probability: 70, sort_order: 20, is_active: true },
+    ],
+    territories: [{ id: "territory-1", name: "North", parent_id: null, is_group: false, sort_order: 10, is_active: true }],
+    customer_groups: [{ id: "group-1", name: "Industrial", parent_id: null, is_group: false, sort_order: 10, is_active: true }],
+  });
   mockedListLeads.mockResolvedValue({ items: [], page: 1, page_size: 100, total_count: 0, total_pages: 1 });
   mockedListCustomers.mockResolvedValue({ items: [], page: 1, page_size: 100, total_count: 0, total_pages: 1 });
 });

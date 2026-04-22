@@ -1,12 +1,13 @@
 import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "../ui/button";
 import { Field, FieldError, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
+import { useCRMSetupBundle } from "../../domain/crm/hooks/useCRMSetupBundle";
 import {
   leadFormSchema,
   type LeadFormValues,
@@ -38,61 +39,45 @@ export function LeadForm({
   const { t } = useTranslation("common");
   const resolvedSubmitLabel = submitLabel ?? t("crm.form.createTitle");
   const resolvedSubmittingLabel = submittingLabel ?? t("crm.form.creating");
+  const { territoryOptions } = useCRMSetupBundle();
+
+  const buildDefaultValues = (): LeadFormValues => ({
+    lead_name: initialValues?.lead_name ?? "",
+    company_name: initialValues?.company_name ?? "",
+    email_id: initialValues?.email_id ?? "",
+    phone: initialValues?.phone ?? "",
+    mobile_no: initialValues?.mobile_no ?? "",
+    territory: initialValues?.territory ?? "",
+    lead_owner: initialValues?.lead_owner ?? "",
+    source: initialValues?.source ?? "",
+    qualification_status: initialValues?.qualification_status ?? "in_process",
+    qualified_by: initialValues?.qualified_by ?? "",
+    annual_revenue: initialValues?.annual_revenue ?? "",
+    no_of_employees: initialValues?.no_of_employees ?? "",
+    industry: initialValues?.industry ?? "",
+    market_segment: initialValues?.market_segment ?? "",
+    utm_source: initialValues?.utm_source ?? "",
+    utm_medium: initialValues?.utm_medium ?? "",
+    utm_campaign: initialValues?.utm_campaign ?? "",
+    utm_content: initialValues?.utm_content ?? "",
+    notes: initialValues?.notes ?? "",
+  });
 
   const {
     register,
     handleSubmit,
     reset,
     setError,
+    watch,
     formState: { errors },
   } = useForm<LeadFormValues>({
-    resolver: zodResolver(leadFormSchema),
-    defaultValues: {
-      lead_name: initialValues?.lead_name ?? "",
-      company_name: initialValues?.company_name ?? "",
-      email_id: initialValues?.email_id ?? "",
-      phone: initialValues?.phone ?? "",
-      mobile_no: initialValues?.mobile_no ?? "",
-      territory: initialValues?.territory ?? "",
-      lead_owner: initialValues?.lead_owner ?? "",
-      source: initialValues?.source ?? "",
-      qualification_status: initialValues?.qualification_status ?? "in_process",
-      qualified_by: initialValues?.qualified_by ?? "",
-      annual_revenue: initialValues?.annual_revenue ?? "",
-      no_of_employees: initialValues?.no_of_employees ?? "",
-      industry: initialValues?.industry ?? "",
-      market_segment: initialValues?.market_segment ?? "",
-      utm_source: initialValues?.utm_source ?? "",
-      utm_medium: initialValues?.utm_medium ?? "",
-      utm_campaign: initialValues?.utm_campaign ?? "",
-      utm_content: initialValues?.utm_content ?? "",
-      notes: initialValues?.notes ?? "",
-    },
+    resolver: zodResolver(leadFormSchema as never) as Resolver<LeadFormValues>,
+    defaultValues: buildDefaultValues(),
     mode: "onSubmit",
   });
 
   useEffect(() => {
-    reset({
-      lead_name: initialValues?.lead_name ?? "",
-      company_name: initialValues?.company_name ?? "",
-      email_id: initialValues?.email_id ?? "",
-      phone: initialValues?.phone ?? "",
-      mobile_no: initialValues?.mobile_no ?? "",
-      territory: initialValues?.territory ?? "",
-      lead_owner: initialValues?.lead_owner ?? "",
-      source: initialValues?.source ?? "",
-      qualification_status: initialValues?.qualification_status ?? "in_process",
-      qualified_by: initialValues?.qualified_by ?? "",
-      annual_revenue: initialValues?.annual_revenue ?? "",
-      no_of_employees: initialValues?.no_of_employees ?? "",
-      industry: initialValues?.industry ?? "",
-      market_segment: initialValues?.market_segment ?? "",
-      utm_source: initialValues?.utm_source ?? "",
-      utm_medium: initialValues?.utm_medium ?? "",
-      utm_campaign: initialValues?.utm_campaign ?? "",
-      utm_content: initialValues?.utm_content ?? "",
-      notes: initialValues?.notes ?? "",
-    });
+    reset(buildDefaultValues());
   }, [initialValues, reset]);
 
   useEffect(() => {
@@ -107,6 +92,7 @@ export function LeadForm({
   }, [serverErrors, setError]);
 
   const generalErrors = serverErrors?.filter((error) => !error.field) ?? [];
+  const currentTerritory = watch("territory");
 
   return (
     <form
@@ -169,7 +155,15 @@ export function LeadForm({
       <div className="grid gap-5 sm:grid-cols-2">
         <Field>
           <FieldLabel htmlFor="territory">{t("crm.form.territory")}</FieldLabel>
-          <Input id="territory" {...register("territory")} maxLength={120} aria-invalid={!!errors.territory} />
+          <select id="territory" {...register("territory")} className={SELECT_CLASS_NAME} aria-invalid={!!errors.territory}>
+            <option value="">{t("crm.setup.selectPlaceholder")}</option>
+            {currentTerritory && !territoryOptions.some((option) => option.name === currentTerritory) ? (
+              <option value={currentTerritory}>{currentTerritory}</option>
+            ) : null}
+            {territoryOptions.map((option) => (
+              <option key={option.id} value={option.name}>{option.name}</option>
+            ))}
+          </select>
           <FieldError errors={errors.territory ? [{ message: t(errors.territory.message!) }] : []} />
         </Field>
         <Field>

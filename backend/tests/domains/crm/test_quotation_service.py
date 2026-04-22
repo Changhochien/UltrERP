@@ -235,6 +235,31 @@ class TestCreateQuotation:
         assert quotation.auto_repeat_frequency == "monthly"
         assert quotation.opportunity_id == uuid.UUID("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
 
+    @pytest.mark.asyncio
+    async def test_create_quotation_uses_settings_default_validity_when_missing(self) -> None:
+        settings = SimpleNamespace(default_quotation_validity_days=45)
+        session = FakeSession(
+            execute_results=[
+                _FakeScalarResult(settings),
+                _FakeScalarResult(_FakeLead("11111111-2222-3333-4444-555555555555")),
+            ]
+        )
+
+        quotation = await create_quotation(session, _quotation_payload(valid_till=None))
+
+        assert quotation.valid_till == date(2026, 6, 5)
+
+    @pytest.mark.asyncio
+    async def test_create_quotation_rejects_unknown_customer_group(self) -> None:
+        session = FakeSession()
+
+        with pytest.raises(ValidationError) as exc_info:
+            await create_quotation(session, _quotation_payload(customer_group="Unknown Segment"))
+
+        assert exc_info.value.errors == [
+            {"field": "customer_group", "message": "Select a configured customer group."}
+        ]
+
 
 class TestQuotationLifecycle:
     @pytest.mark.asyncio

@@ -23,6 +23,8 @@ export const CRM_OPPORTUNITY_CREATE_ROUTE = "/crm/opportunities/new";
 export const CRM_QUOTATIONS_ROUTE = "/crm/quotations";
 export const CRM_QUOTATION_DETAIL_ROUTE = "/crm/quotations/:quotationId";
 export const CRM_QUOTATION_CREATE_ROUTE = "/crm/quotations/new";
+export const CRM_SETUP_ROUTE = "/crm/setup";
+export const CRM_REPORTING_ROUTE = "/crm/reports/pipeline";
 export const CUSTOMERS_ROUTE = "/customers";
 export const CUSTOMER_DETAIL_ROUTE = "/customers/:customerId";
 export const CUSTOMER_CREATE_ROUTE = "/customers/new";
@@ -62,6 +64,8 @@ export type AppRoute =
   | typeof CRM_QUOTATIONS_ROUTE
   | typeof CRM_QUOTATION_DETAIL_ROUTE
   | typeof CRM_QUOTATION_CREATE_ROUTE
+  | typeof CRM_SETUP_ROUTE
+  | typeof CRM_REPORTING_ROUTE
   | typeof CUSTOMERS_ROUTE
   | typeof CUSTOMER_DETAIL_ROUTE
   | typeof CUSTOMER_CREATE_ROUTE

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import QuotationForm from "../../components/crm/QuotationForm";
+import QuotationForm, { type QuotationFormProps } from "../../components/crm/QuotationForm";
 import { PageHeader, SectionCard, SurfaceMessage } from "../../components/layout/PageLayout";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -22,7 +22,6 @@ import {
 import {
   toQuotationRevisionPayload,
   toQuotationTransitionPayload,
-  toQuotationUpdatePayload,
   type QuotationFormValues,
 } from "../../lib/schemas/quotation.schema";
 import { buildQuotationDetailPath, CRM_QUOTATIONS_ROUTE, ORDER_CREATE_ROUTE } from "../../lib/routes";
@@ -179,7 +178,7 @@ export function QuotationDetailPage({ onBack }: QuotationDetailPageProps) {
     }
   }, [availableStatusOptions, statusTarget]);
 
-  async function handleSave(payload: ReturnType<typeof toQuotationUpdatePayload>) {
+  async function handleSave(payload: Parameters<QuotationFormProps["onSubmit"]>[0]) {
     if (!quotation) {
       return;
     }
@@ -380,7 +379,7 @@ export function QuotationDetailPage({ onBack }: QuotationDetailPageProps) {
           </div>
           <QuotationForm
             initialValues={initialFormValues}
-            onSubmit={(payload) => handleSave(toQuotationUpdatePayload(payload, quotation.version))}
+            onSubmit={handleSave}
             serverErrors={serverErrors}
             submitLabel={t("crm.quotations.form.updateTitle")}
             submittingLabel={t("crm.quotations.form.updating")}

@@ -20,6 +20,20 @@ from common.errors import (
     error_response,
 )
 from domains.crm.schemas import (
+    CRMCustomerGroupCreate,
+    CRMCustomerGroupResponse,
+    CRMCustomerGroupUpdate,
+    CRMPipelineReportParams,
+    CRMPipelineReportResponse,
+    CRMSettingsResponse,
+    CRMSettingsUpdate,
+    CRMSalesStageCreate,
+    CRMSalesStageResponse,
+    CRMSalesStageUpdate,
+    CRMSetupBundleResponse,
+    CRMTerritoryCreate,
+    CRMTerritoryResponse,
+    CRMTerritoryUpdate,
     LeadCreate,
     LeadCustomerConversionResult,
     LeadListParams,
@@ -48,25 +62,38 @@ from domains.crm.schemas import (
     QuotationUpdate,
 )
 from domains.crm.service import (
+    create_customer_group,
     convert_lead_to_customer,
     create_lead,
     create_opportunity,
     create_quotation,
     create_quotation_revision,
+    create_sales_stage,
+    create_territory,
+    get_crm_pipeline_report,
     get_lead,
+    get_crm_setup_bundle,
     get_opportunity,
     get_quotation,
+    get_crm_settings,
     handoff_lead_to_opportunity,
+    list_customer_groups,
     list_leads,
     list_opportunities,
     list_quotations,
+    list_sales_stages,
+    list_territories,
     prepare_quotation_order_handoff,
     prepare_opportunity_quotation_handoff,
     transition_quotation_status,
     transition_opportunity_status,
     transition_lead_status,
+    update_customer_group,
+    update_crm_settings,
     update_quotation,
     update_opportunity,
+    update_sales_stage,
+    update_territory,
     update_lead,
 )
 from domains.customers.schemas import CustomerCreate
@@ -74,10 +101,198 @@ from domains.customers.schemas import CustomerCreate
 router = APIRouter()
 opportunity_router = APIRouter()
 quotation_router = APIRouter()
+settings_router = APIRouter()
+setup_router = APIRouter()
+reporting_router = APIRouter()
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 ReadUser = Annotated[dict, Depends(require_role("admin", "sales"))]
 WriteUser = Annotated[dict, Depends(require_role("admin", "sales"))]
+AdminUser = Annotated[dict, Depends(require_role("admin"))]
+
+
+@settings_router.get("", response_model=CRMSettingsResponse)
+async def get_settings(
+    session: DbSession,
+    user: ReadUser,
+) -> CRMSettingsResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
+    return await get_crm_settings(session, tenant_id=real_tid)
+
+
+@settings_router.patch("", response_model=CRMSettingsResponse)
+async def update_settings(
+    data: CRMSettingsUpdate,
+    session: DbSession,
+    user: AdminUser,
+) -> CRMSettingsResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
+    return await update_crm_settings(session, data, tenant_id=real_tid)
+
+
+@setup_router.get("", response_model=CRMSetupBundleResponse)
+async def get_setup_bundle(
+    session: DbSession,
+    user: ReadUser,
+) -> CRMSetupBundleResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
+    return await get_crm_setup_bundle(session, tenant_id=real_tid)
+
+
+@setup_router.get("/sales-stages", response_model=list[CRMSalesStageResponse])
+async def get_sales_stages(
+    session: DbSession,
+    user: ReadUser,
+) -> list[CRMSalesStageResponse]:
+    real_tid = uuid.UUID(user["tenant_id"])
+    items = await list_sales_stages(session, tenant_id=real_tid)
+    return [CRMSalesStageResponse.model_validate(item) for item in items]
+
+
+@setup_router.post("/sales-stages", response_model=CRMSalesStageResponse, status_code=status.HTTP_201_CREATED)
+async def create_sales_stage_route(
+    data: CRMSalesStageCreate,
+    session: DbSession,
+    user: AdminUser,
+) -> CRMSalesStageResponse | JSONResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
+    try:
+        stage = await create_sales_stage(session, data, tenant_id=real_tid)
+        return CRMSalesStageResponse.model_validate(stage)
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+
+
+@setup_router.patch("/sales-stages/{stage_id}", response_model=CRMSalesStageResponse)
+async def update_sales_stage_route(
+    stage_id: uuid.UUID,
+    data: CRMSalesStageUpdate,
+    session: DbSession,
+    user: AdminUser,
+) -> CRMSalesStageResponse | JSONResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
+    try:
+        stage = await update_sales_stage(session, stage_id, data, tenant_id=real_tid)
+        if stage is None:
+            return JSONResponse(status_code=404, content={"detail": "Sales stage not found."})
+        return CRMSalesStageResponse.model_validate(stage)
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+
+
+@setup_router.get("/territories", response_model=list[CRMTerritoryResponse])
+async def get_territories(
+    session: DbSession,
+    user: ReadUser,
+) -> list[CRMTerritoryResponse]:
+    real_tid = uuid.UUID(user["tenant_id"])
+    items = await list_territories(session, tenant_id=real_tid)
+    return [CRMTerritoryResponse.model_validate(item) for item in items]
+
+
+@setup_router.post("/territories", response_model=CRMTerritoryResponse, status_code=status.HTTP_201_CREATED)
+async def create_territory_route(
+    data: CRMTerritoryCreate,
+    session: DbSession,
+    user: AdminUser,
+) -> CRMTerritoryResponse | JSONResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
+    try:
+        territory = await create_territory(session, data, tenant_id=real_tid)
+        return CRMTerritoryResponse.model_validate(territory)
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+
+
+@setup_router.patch("/territories/{territory_id}", response_model=CRMTerritoryResponse)
+async def update_territory_route(
+    territory_id: uuid.UUID,
+    data: CRMTerritoryUpdate,
+    session: DbSession,
+    user: AdminUser,
+) -> CRMTerritoryResponse | JSONResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
+    try:
+        territory = await update_territory(session, territory_id, data, tenant_id=real_tid)
+        if territory is None:
+            return JSONResponse(status_code=404, content={"detail": "Territory not found."})
+        return CRMTerritoryResponse.model_validate(territory)
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+
+
+@setup_router.get("/customer-groups", response_model=list[CRMCustomerGroupResponse])
+async def get_customer_groups(
+    session: DbSession,
+    user: ReadUser,
+) -> list[CRMCustomerGroupResponse]:
+    real_tid = uuid.UUID(user["tenant_id"])
+    items = await list_customer_groups(session, tenant_id=real_tid)
+    return [CRMCustomerGroupResponse.model_validate(item) for item in items]
+
+
+@setup_router.post("/customer-groups", response_model=CRMCustomerGroupResponse, status_code=status.HTTP_201_CREATED)
+async def create_customer_group_route(
+    data: CRMCustomerGroupCreate,
+    session: DbSession,
+    user: AdminUser,
+) -> CRMCustomerGroupResponse | JSONResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
+    try:
+        customer_group = await create_customer_group(session, data, tenant_id=real_tid)
+        return CRMCustomerGroupResponse.model_validate(customer_group)
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+
+
+@setup_router.patch("/customer-groups/{customer_group_id}", response_model=CRMCustomerGroupResponse)
+async def update_customer_group_route(
+    customer_group_id: uuid.UUID,
+    data: CRMCustomerGroupUpdate,
+    session: DbSession,
+    user: AdminUser,
+) -> CRMCustomerGroupResponse | JSONResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
+    try:
+        customer_group = await update_customer_group(session, customer_group_id, data, tenant_id=real_tid)
+        if customer_group is None:
+            return JSONResponse(status_code=404, content={"detail": "Customer group not found."})
+        return CRMCustomerGroupResponse.model_validate(customer_group)
+    except ValidationError as exc:
+        return JSONResponse(status_code=422, content=error_response(exc.errors))
+
+
+@reporting_router.get("/pipeline", response_model=CRMPipelineReportResponse)
+async def get_pipeline_report(
+    session: DbSession,
+    user: ReadUser,
+    record_type: str = Query(default="all", max_length=20),
+    scope: str = Query(default="all", max_length=20),
+    status_filter: str | None = Query(default=None, alias="status", max_length=40),
+    sales_stage: str | None = Query(default=None, max_length=120),
+    territory: str | None = Query(default=None, max_length=120),
+    customer_group: str | None = Query(default=None, max_length=120),
+    owner: str | None = Query(default=None, max_length=120),
+    lost_reason: str | None = Query(default=None, max_length=200),
+    utm_source: str | None = Query(default=None, max_length=120),
+    utm_medium: str | None = Query(default=None, max_length=120),
+    utm_campaign: str | None = Query(default=None, max_length=120),
+) -> CRMPipelineReportResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
+    params = CRMPipelineReportParams(
+        record_type=record_type,
+        scope=scope,
+        status=status_filter,
+        sales_stage=sales_stage,
+        territory=territory,
+        customer_group=customer_group,
+        owner=owner,
+        lost_reason=lost_reason,
+        utm_source=utm_source,
+        utm_medium=utm_medium,
+        utm_campaign=utm_campaign,
+    )
+    return await get_crm_pipeline_report(session, params, tenant_id=real_tid)
 
 
 @router.get("", response_model=LeadListResponse)

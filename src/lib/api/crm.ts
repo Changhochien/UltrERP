@@ -2,6 +2,17 @@
 
 import type { CustomerCreatePayload } from "../../domain/customers/types";
 import type {
+  CRMCustomerGroup,
+  CRMCustomerGroupPayload,
+  CRMPipelineReport,
+  CRMPipelineReportParams,
+  CRMSettings,
+  CRMSettingsUpdatePayload,
+  CRMSetupBundle,
+  CRMSalesStage,
+  CRMSalesStagePayload,
+  CRMTerritory,
+  CRMTerritoryPayload,
   DuplicateLeadInfo,
   LeadCreatePayload,
   LeadCustomerConversionResult,
@@ -107,6 +118,10 @@ export type UpdateQuotationResult =
       versionConflict?: VersionConflictInfo;
       errors: ApiError["detail"];
     };
+
+export type CRMActionResult<TData> =
+  | { ok: true; data: TData }
+  | { ok: false; errors: ApiError["detail"] };
 
 export async function createLead(payload: LeadCreatePayload): Promise<CreateLeadResult> {
   let resp: Response;
@@ -534,6 +549,202 @@ export async function getQuotation(id: string): Promise<QuotationResponse | null
   if (!resp.ok) {
     const errors = await readErrorDetails(resp, "Failed to load quotation.");
     throw new Error(errors[0]?.message ?? "Failed to load quotation.");
+  }
+
+  return resp.json();
+}
+
+export async function getCRMSetupBundle(): Promise<CRMSetupBundle> {
+  let resp: Response;
+  try {
+    resp = await apiFetch("/api/v1/crm/setup");
+  } catch {
+    throw new Error(NETWORK_ERROR_MESSAGE);
+  }
+
+  if (!resp.ok) {
+    const errors = await readErrorDetails(resp, "Failed to load CRM setup.");
+    throw new Error(errors[0]?.message ?? "Failed to load CRM setup.");
+  }
+
+  return resp.json();
+}
+
+export async function updateCRMSettings(payload: CRMSettingsUpdatePayload): Promise<CRMActionResult<CRMSettings>> {
+  let resp: Response;
+  try {
+    resp = await apiFetch("/api/v1/crm/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    return { ok: false, errors: networkErrorDetail() };
+  }
+
+  if (resp.ok) {
+    const data: CRMSettings = await resp.json();
+    return { ok: true, data };
+  }
+
+  return { ok: false, errors: await readErrorDetails(resp, "Failed to update CRM settings.") };
+}
+
+export async function createCRMSalesStage(payload: CRMSalesStagePayload): Promise<CRMActionResult<CRMSalesStage>> {
+  let resp: Response;
+  try {
+    resp = await apiFetch("/api/v1/crm/setup/sales-stages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    return { ok: false, errors: networkErrorDetail() };
+  }
+
+  if (resp.ok) {
+    const data: CRMSalesStage = await resp.json();
+    return { ok: true, data };
+  }
+
+  return { ok: false, errors: await readErrorDetails(resp, "Failed to create sales stage.") };
+}
+
+export async function updateCRMSalesStage(
+  id: string,
+  payload: Partial<CRMSalesStagePayload>,
+): Promise<CRMActionResult<CRMSalesStage>> {
+  let resp: Response;
+  try {
+    resp = await apiFetch(`/api/v1/crm/setup/sales-stages/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    return { ok: false, errors: networkErrorDetail() };
+  }
+
+  if (resp.ok) {
+    const data: CRMSalesStage = await resp.json();
+    return { ok: true, data };
+  }
+
+  return { ok: false, errors: await readErrorDetails(resp, "Failed to update sales stage.") };
+}
+
+export async function createCRMTerritory(payload: CRMTerritoryPayload): Promise<CRMActionResult<CRMTerritory>> {
+  let resp: Response;
+  try {
+    resp = await apiFetch("/api/v1/crm/setup/territories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    return { ok: false, errors: networkErrorDetail() };
+  }
+
+  if (resp.ok) {
+    const data: CRMTerritory = await resp.json();
+    return { ok: true, data };
+  }
+
+  return { ok: false, errors: await readErrorDetails(resp, "Failed to create territory.") };
+}
+
+export async function updateCRMTerritory(
+  id: string,
+  payload: Partial<CRMTerritoryPayload>,
+): Promise<CRMActionResult<CRMTerritory>> {
+  let resp: Response;
+  try {
+    resp = await apiFetch(`/api/v1/crm/setup/territories/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    return { ok: false, errors: networkErrorDetail() };
+  }
+
+  if (resp.ok) {
+    const data: CRMTerritory = await resp.json();
+    return { ok: true, data };
+  }
+
+  return { ok: false, errors: await readErrorDetails(resp, "Failed to update territory.") };
+}
+
+export async function createCRMCustomerGroup(
+  payload: CRMCustomerGroupPayload,
+): Promise<CRMActionResult<CRMCustomerGroup>> {
+  let resp: Response;
+  try {
+    resp = await apiFetch("/api/v1/crm/setup/customer-groups", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    return { ok: false, errors: networkErrorDetail() };
+  }
+
+  if (resp.ok) {
+    const data: CRMCustomerGroup = await resp.json();
+    return { ok: true, data };
+  }
+
+  return { ok: false, errors: await readErrorDetails(resp, "Failed to create customer group.") };
+}
+
+export async function updateCRMCustomerGroup(
+  id: string,
+  payload: Partial<CRMCustomerGroupPayload>,
+): Promise<CRMActionResult<CRMCustomerGroup>> {
+  let resp: Response;
+  try {
+    resp = await apiFetch(`/api/v1/crm/setup/customer-groups/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    return { ok: false, errors: networkErrorDetail() };
+  }
+
+  if (resp.ok) {
+    const data: CRMCustomerGroup = await resp.json();
+    return { ok: true, data };
+  }
+
+  return { ok: false, errors: await readErrorDetails(resp, "Failed to update customer group.") };
+}
+
+export async function getCRMPipelineReport(params: CRMPipelineReportParams): Promise<CRMPipelineReport> {
+  const qs = new URLSearchParams();
+  if (params.record_type) qs.set("record_type", params.record_type);
+  if (params.scope) qs.set("scope", params.scope);
+  if (params.status) qs.set("status", params.status);
+  if (params.sales_stage) qs.set("sales_stage", params.sales_stage);
+  if (params.territory) qs.set("territory", params.territory);
+  if (params.customer_group) qs.set("customer_group", params.customer_group);
+  if (params.owner) qs.set("owner", params.owner);
+  if (params.lost_reason) qs.set("lost_reason", params.lost_reason);
+  if (params.utm_source) qs.set("utm_source", params.utm_source);
+  if (params.utm_medium) qs.set("utm_medium", params.utm_medium);
+  if (params.utm_campaign) qs.set("utm_campaign", params.utm_campaign);
+
+  let resp: Response;
+  try {
+    resp = await apiFetch(`/api/v1/crm/reports/pipeline?${qs.toString()}`);
+  } catch {
+    throw new Error(NETWORK_ERROR_MESSAGE);
+  }
+
+  if (!resp.ok) {
+    const errors = await readErrorDetails(resp, "Failed to load CRM pipeline report.");
+    throw new Error(errors[0]?.message ?? "Failed to load CRM pipeline report.");
   }
 
   return resp.json();

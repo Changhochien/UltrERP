@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import LeadDetailPage from "../../pages/crm/LeadDetailPage";
 import {
   convertLeadToCustomer,
+  getCRMSetupBundle,
   getLead,
   handoffLeadToOpportunity,
   transitionLeadStatus,
@@ -14,6 +15,7 @@ import { CRM_LEAD_DETAIL_ROUTE, buildLeadDetailPath } from "../../lib/routes";
 
 vi.mock("../../lib/api/crm", () => ({
   convertLeadToCustomer: vi.fn(),
+  getCRMSetupBundle: vi.fn(),
   getLead: vi.fn(),
   handoffLeadToOpportunity: vi.fn(),
   LEAD_STATUS_OPTIONS: [
@@ -43,6 +45,7 @@ vi.mock("../../hooks/useToast", () => ({
 }));
 
 const mockedGetLead = vi.mocked(getLead);
+const mockedGetCRMSetupBundle = vi.mocked(getCRMSetupBundle);
 const mockedUpdateLead = vi.mocked(updateLead);
 const mockedTransitionLeadStatus = vi.mocked(transitionLeadStatus);
 const mockedHandoffLeadToOpportunity = vi.mocked(handoffLeadToOpportunity);
@@ -94,6 +97,19 @@ afterEach(() => {
 });
 
 beforeEach(() => {
+  mockedGetCRMSetupBundle.mockResolvedValue({
+    settings: {
+      lead_duplicate_policy: "block",
+      default_quotation_validity_days: 30,
+      contact_creation_enabled: true,
+      carry_forward_communications: true,
+      carry_forward_comments: true,
+      opportunity_auto_close_days: 45,
+    },
+    sales_stages: [],
+    territories: [{ id: "territory-1", name: "North", parent_id: null, is_group: false, sort_order: 10, is_active: true }],
+    customer_groups: [],
+  });
   mockedGetLead.mockResolvedValue(sampleLead);
   mockedUpdateLead.mockResolvedValue({ ok: true, data: sampleLead });
   mockedTransitionLeadStatus.mockResolvedValue({ ok: true, data: sampleLead });
@@ -155,6 +171,14 @@ describe("LeadDetailPage", () => {
 
     expect(await screen.findByRole("heading", { name: "Possible duplicate lead" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Open customer" })).toBeTruthy();
+    expect(mockedUpdateLead).toHaveBeenCalledWith(
+      "lead-1",
+      expect.objectContaining({
+        company_name: "Rotor Works",
+        email_id: "owner@rotor.example",
+        version: 1,
+      }),
+    );
   });
 
   it("shows the real load error instead of masking it as not found", async () => {

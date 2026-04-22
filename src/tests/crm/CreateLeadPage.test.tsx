@@ -4,10 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import CreateLeadPage from "../../pages/crm/CreateLeadPage";
 import { buildCustomerDetailPath } from "../../lib/routes";
-import { createLead } from "../../lib/api/crm";
+import { createLead, getCRMSetupBundle } from "../../lib/api/crm";
 
 vi.mock("../../lib/api/crm", () => ({
   createLead: vi.fn(),
+  getCRMSetupBundle: vi.fn(),
 }));
 
 vi.mock("../../hooks/useToast", () => ({
@@ -15,6 +16,7 @@ vi.mock("../../hooks/useToast", () => ({
 }));
 
 const mockedCreateLead = vi.mocked(createLead);
+const mockedGetCRMSetupBundle = vi.mocked(getCRMSetupBundle);
 
 afterEach(() => {
   cleanup();
@@ -23,6 +25,19 @@ afterEach(() => {
 
 beforeEach(() => {
   mockedCreateLead.mockReset();
+  mockedGetCRMSetupBundle.mockResolvedValue({
+    settings: {
+      lead_duplicate_policy: "block",
+      default_quotation_validity_days: 30,
+      contact_creation_enabled: true,
+      carry_forward_communications: true,
+      carry_forward_comments: true,
+      opportunity_auto_close_days: 45,
+    },
+    sales_stages: [],
+    territories: [{ id: "territory-1", name: "North", parent_id: null, is_group: false, sort_order: 10, is_active: true }],
+    customer_groups: [],
+  });
 });
 
 describe("CreateLeadPage", () => {

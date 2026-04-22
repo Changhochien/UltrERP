@@ -1,6 +1,6 @@
 # Story 23.5: CRM Setup Masters and Pipeline Reporting
 
-Status: drafted
+Status: completed
 
 ## Story
 
@@ -33,28 +33,28 @@ This story should standardize CRM configuration and visibility, not create new c
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add CRM setup masters and settings models. (AC: 1-2, 4)
-  - [ ] Add Sales Stage, Territory, Customer Group, and CRM Settings models or equivalent master records.
-  - [ ] Include CRM settings for lead duplication policy, contact-creation compatibility, default quotation validity, communication and comment carry-forward compatibility, and opportunity auto-close timing.
-  - [ ] Keep Customer Group and Territory tree-capable so later customer and reporting flows can reuse them.
-- [ ] Task 2: Wire setup masters into the CRM workflows. (AC: 1-2, 4)
-  - [ ] Apply Territory defaults across leads and apply Territory plus Customer Group defaults across opportunities, quotations, and converted customer handoff.
-  - [ ] Make default quotation validity available to quotation authoring without hardcoding a form-only fallback.
-  - [ ] Keep duplication rules centralized so lead intake does not drift from admin policy.
-  - [ ] Verify Stories 23.1 through 23.4 consume CRM settings and masters through stable integration points instead of forking settings logic per story.
-- [ ] Task 3: Build the CRM setup UI and admin surfaces. (AC: 1-2)
-  - [ ] Add admin-facing CRUD or single-record settings surfaces for the CRM masters and settings.
-  - [ ] Keep the UI consistent with Epic 22 shared form and navigation primitives.
-  - [ ] Surface the operational effect of key settings, especially duplicate behavior and quotation validity.
-- [ ] Task 4: Add pipeline reporting views and filters. (AC: 3-4)
-  - [ ] Add CRM reporting endpoints or projections for leads, opportunities, and quotations grouped and filtered by stage, status, territory, customer group, owner, lost reason, and UTM attribution.
-  - [ ] Surface open pipeline, terminal outcomes, and conversion drop-off views in the CRM workspace.
-  - [ ] Keep settings enforcement in workflow logic from Task 2 and use the reporting surface only to display configuration-aware outcomes and segment-level visibility.
-  - [ ] Keep the first slice on manager-facing reporting, not on a full custom report builder.
-- [ ] Task 5: Add focused tests and validation. (AC: 1-5)
-  - [ ] Add backend tests for settings enforcement, master-data reuse, and pipeline segmentation.
-  - [ ] Add frontend tests for CRM settings UI, master-data forms, and manager-facing filter/report views.
-  - [ ] Validate that no transaction write logic from Stories 23.1 through 23.4 is duplicated here.
+- [x] Task 1: Add CRM setup masters and settings models. (AC: 1-2, 4)
+  - [x] Add Sales Stage, Territory, Customer Group, and CRM Settings models or equivalent master records.
+  - [x] Include CRM settings for lead duplication policy, contact-creation compatibility, default quotation validity, communication and comment carry-forward compatibility, and opportunity auto-close timing.
+  - [x] Keep Customer Group and Territory tree-capable so later customer and reporting flows can reuse them.
+- [x] Task 2: Wire setup masters into the CRM workflows. (AC: 1-2, 4)
+  - [x] Apply Territory defaults across leads and apply Territory plus Customer Group defaults across opportunities, quotations, and converted customer handoff.
+  - [x] Make default quotation validity available to quotation authoring without hardcoding a form-only fallback.
+  - [x] Keep duplication rules centralized so lead intake does not drift from admin policy.
+  - [x] Verify Stories 23.1 through 23.4 consume CRM settings and masters through stable integration points instead of forking settings logic per story.
+- [x] Task 3: Build the CRM setup UI and admin surfaces. (AC: 1-2)
+  - [x] Add admin-facing CRUD or single-record settings surfaces for the CRM masters and settings.
+  - [x] Keep the UI consistent with Epic 22 shared form and navigation primitives.
+  - [x] Surface the operational effect of key settings, especially duplicate behavior and quotation validity.
+- [x] Task 4: Add pipeline reporting views and filters. (AC: 3-4)
+  - [x] Add CRM reporting endpoints or projections for leads, opportunities, and quotations grouped and filtered by stage, status, territory, customer group, owner, lost reason, and UTM attribution.
+  - [x] Surface open pipeline, terminal outcomes, and conversion drop-off views in the CRM workspace.
+  - [x] Keep settings enforcement in workflow logic from Task 2 and use the reporting surface only to display configuration-aware outcomes and segment-level visibility.
+  - [x] Keep the first slice on manager-facing reporting, not on a full custom report builder.
+- [x] Task 5: Add focused tests and validation. (AC: 1-5)
+  - [x] Add backend tests for settings enforcement, master-data reuse, and pipeline segmentation.
+  - [x] Add frontend tests for CRM settings UI, master-data forms, and manager-facing filter/report views.
+  - [x] Validate that no transaction write logic from Stories 23.1 through 23.4 is duplicated here.
 
 ## Dev Notes
 
@@ -111,12 +111,53 @@ GPT-5.4
 
 ### Debug Log References
 
-- Story draft only; implementation and validation commands not run yet.
+- `cd /Users/changtom/Downloads/UltrERP/backend && uv run pytest tests/domains/crm/test_lead_service.py tests/domains/crm/test_opportunity_service.py tests/domains/crm/test_quotation_service.py -q`
+- `cd /Users/changtom/Downloads/UltrERP/backend && uv run pytest tests/domains/crm/test_reporting_service.py -q`
+- `cd /Users/changtom/Downloads/UltrERP && pnpm test src/tests/crm/CreateLeadPage.test.tsx src/tests/crm/CreateOpportunityPage.test.tsx src/tests/crm/CreateQuotationPage.test.tsx src/tests/crm/LeadDetailPage.test.tsx src/tests/crm/OpportunityDetailPage.test.tsx src/tests/crm/QuotationDetailPage.test.tsx src/tests/crm/CRMSetupPage.test.tsx src/tests/crm/CRMPipelineReportPage.test.tsx`
+- `cd /Users/changtom/Downloads/UltrERP && pnpm build`
 
 ### Completion Notes List
 
-- 2026-04-21: Drafted Story 23.5 from Epic 23 and the validated CRM research, keeping setup masters and reporting read-oriented while standardizing sales stages, territory, customer group, CRM settings, and attribution-aware pipeline views.
+- Added tenant-scoped CRM settings, sales stages, territories, and customer groups on the backend, together with migrations, setup/reporting routes, and read-oriented pipeline aggregation.
+- Centralized duplicate-policy enforcement, territory/customer-group validation, and settings-driven quotation validity so Stories 23.1 through 23.4 now consume shared CRM configuration instead of form-local defaults.
+- Added a shared CRM setup-bundle hook, migrated lead/opportunity/quotation forms onto setup masters, and introduced dedicated CRM setup and pipeline-reporting pages with route and navigation wiring.
+- Added focused backend coverage for settings/master enforcement and pipeline reporting, plus focused frontend coverage for the new CRM setup and reporting pages and the updated CRM create/detail flows.
+- Focused validation passed with `31 passed` across the backend Story 23.5 CRM service/report suite and `19 passed` across the frontend CRM Story 23.5 slice. A broader `pnpm build` rerun still reports unrelated pre-existing TypeScript failures outside the CRM slice in customer, inventory, order, and payment files.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/23-5-crm-setup-masters-and-pipeline-reporting.md`
+- `backend/app/main.py`
+- `backend/domains/crm/models.py`
+- `backend/domains/crm/routes.py`
+- `backend/domains/crm/schemas.py`
+- `backend/domains/crm/service.py`
+- `backend/tests/domains/crm/test_lead_service.py`
+- `backend/tests/domains/crm/test_opportunity_service.py`
+- `backend/tests/domains/crm/test_quotation_service.py`
+- `backend/tests/domains/crm/test_reporting_service.py`
+- `migrations/versions/6f7a8b9c0d1e_add_crm_settings.py`
+- `migrations/versions/70819a2b3c4d_add_crm_setup_masters.py`
+- `public/locales/en/common.json`
+- `src/App.tsx`
+- `src/components/crm/LeadForm.tsx`
+- `src/components/crm/OpportunityForm.tsx`
+- `src/components/crm/QuotationForm.tsx`
+- `src/domain/crm/hooks/useCRMSetupBundle.ts`
+- `src/domain/crm/types.ts`
+- `src/lib/api/crm.ts`
+- `src/lib/navigation.tsx`
+- `src/lib/routes.ts`
+- `src/pages/crm/CRMSetupPage.tsx`
+- `src/pages/crm/CRMPipelineReportPage.tsx`
+- `src/pages/crm/LeadDetailPage.tsx`
+- `src/pages/crm/OpportunityDetailPage.tsx`
+- `src/pages/crm/QuotationDetailPage.tsx`
+- `src/tests/crm/CRMSetupPage.test.tsx`
+- `src/tests/crm/CRMPipelineReportPage.test.tsx`
+- `src/tests/crm/CreateLeadPage.test.tsx`
+- `src/tests/crm/CreateOpportunityPage.test.tsx`
+- `src/tests/crm/CreateQuotationPage.test.tsx`
+- `src/tests/crm/LeadDetailPage.test.tsx`
+- `src/tests/crm/OpportunityDetailPage.test.tsx`
+- `src/tests/crm/QuotationDetailPage.test.tsx`
