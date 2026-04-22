@@ -172,13 +172,6 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
             description: "routes.crmReporting.description",
             icon: TrendingUp,
           },
-          {
-            feature: "intelligence",
-            label: "nav.intelligence",
-            to: INTELLIGENCE_ROUTE,
-            description: "routes.intelligence.description",
-            icon: BrainCircuit,
-          },
         ],
       },
       {
@@ -226,19 +219,6 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
           },
         ],
       },
-      {
-        type: 'reports',
-        label: "nav.reports",
-        items: [
-          {
-            feature: "invoices",
-            label: "nav.invoiceReports",
-            to: INVOICES_ROUTE,
-            description: "routes.invoiceReports.description",
-            icon: FileBarChart,
-          },
-        ],
-      },
     ],
   },
   {
@@ -262,19 +242,19 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
             description: "routes.purchases.description",
             icon: CircleDollarSign,
           },
+          {
+            feature: "inventory",
+            label: "nav.suppliers",
+            to: INVENTORY_SUPPLIERS_ROUTE,
+            description: "routes.suppliers.description",
+            icon: Users,
+          },
         ],
       },
       {
         type: 'reports',
         label: "nav.reports",
         items: [
-          {
-            feature: "inventory",
-            label: "nav.inventoryReports",
-            to: INVENTORY_ROUTE,
-            description: "routes.inventoryReports.description",
-            icon: Package,
-          },
           {
             feature: "inventory",
             label: "nav.belowReorderReport",
@@ -289,6 +269,13 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
             description: "routes.inventoryValuation.description",
             icon: FileBarChart,
           },
+          {
+            feature: "inventory",
+            label: "nav.reorderSuggestions",
+            to: INVENTORY_REORDER_SUGGESTIONS_ROUTE,
+            description: "routes.reorderSuggestions.description",
+            icon: Package,
+          },
         ],
       },
       {
@@ -300,13 +287,6 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
             label: "nav.inventoryCategories",
             to: INVENTORY_CATEGORIES_ROUTE,
             description: "routes.inventoryCategories.description",
-            icon: Settings,
-          },
-          {
-            feature: "purchases",
-            label: "nav.suppliers",
-            to: INVENTORY_SUPPLIERS_ROUTE,
-            description: "routes.suppliers.description",
             icon: Settings,
           },
         ],

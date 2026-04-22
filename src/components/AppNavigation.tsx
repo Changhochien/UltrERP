@@ -125,7 +125,7 @@ export function AppNavigation() {
                                         showLabel ? `justify-start ${indentClass}` : "justify-center px-0",
                                         isActive
                                           ? "border-sidebar-accent/50 bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
-                                          : "border-transparent text-sidebar-foreground/80 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
+                                          : "border-transparent text-sidebar-foreground/90 hover:border-sidebar-accent/30 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
                                       ].join(" ")
                                     }
                                   >

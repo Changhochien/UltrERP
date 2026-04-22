@@ -17,7 +17,7 @@ export function ThemeToggle() {
     <div
       role="group"
       aria-label={`Theme mode. Current selection: ${theme === "system" ? `system (${resolvedTheme})` : theme}`}
-      className="inline-flex items-center gap-1 rounded-full border border-border/80 bg-card/80 p-1 shadow-sm"
+      className="inline-flex items-center gap-1 rounded-lg border border-sidebar-border/50 bg-sidebar-accent/40 p-1"
     >
       {THEME_OPTIONS.map((option) => {
         const Icon = option.icon;
@@ -28,9 +28,14 @@ export function ThemeToggle() {
           <Button
             key={option.value}
             type="button"
-            variant={isActive ? "default" : "ghost"}
+            variant={isActive ? "secondary" : "ghost"}
             size="sm"
-            className={cn("h-8 rounded-full px-2.5", isActive && "shadow-sm")}
+            className={cn(
+              "h-7 rounded-md px-2 transition-colors",
+              isActive
+                ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
+                : "text-sidebar-muted hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+            )}
             onClick={() => setTheme(option.value)}
             aria-pressed={isActive}
             aria-label={`Use ${option.label.toLowerCase()} theme${resolvedSuffix}`}
