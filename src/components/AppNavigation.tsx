@@ -88,23 +88,10 @@ export function AppNavigation() {
           
           return (
             <SidebarGroup key={group.label}>
-              {/* Collapsible group header */}
-              <button
-                type="button"
-                onClick={() => toggleGroup(group.label)}
-                className={cn(
-                  "mb-2 flex w-full items-center justify-between px-2 text-[11px] font-semibold uppercase tracking-[0.2em] transition-colors",
-                  "text-sidebar-foreground/80",
-                )}
-              >
-                <span>{t(group.label)}</span>
-                <ChevronDown
-                  className={cn(
-                    "size-3 text-sidebar-foreground/60 transition-transform duration-200",
-                    groupCollapsed ? "-rotate-90" : "rotate-0",
-                  )}
-                />
-              </button>
+              {/* Simple group label without collapse */}
+              <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-sidebar-muted">
+                {t(group.label)}
+              </p>
               
               {/* Group content - collapsible */}
               {!groupCollapsed && (
