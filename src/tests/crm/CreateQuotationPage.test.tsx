@@ -227,4 +227,44 @@ describe("CreateQuotationPage", () => {
     expect(screen.getByDisplayValue("UltrERP Taiwan")).toBeTruthy();
     expect(screen.getByDisplayValue("Rotor Assembly")).toBeTruthy();
   });
+
+  it("prefills a quotation from lead query params", async () => {
+    mockedListLeads.mockResolvedValue({
+      items: [
+        {
+          id: "lead-1",
+          lead_name: "Amy Chen",
+          company_name: "Rotor Works",
+          email_id: "amy@rotor.example",
+          phone: "02-1234-5678",
+          mobile_no: "0912-000-111",
+          territory: "North",
+          lead_owner: "alice",
+          source: "expo",
+          status: "replied",
+          qualification_status: "qualified",
+          updated_at: "2026-04-21T00:00:00Z",
+        },
+      ],
+      page: 1,
+      page_size: 100,
+      total_count: 1,
+      total_pages: 1,
+    });
+
+    render(
+      <MemoryRouter
+        initialEntries={[
+          "/crm/quotations/new?partyType=lead&partyName=lead-1&territory=North&contactName=Amy%20Chen&contactEmail=amy%40rotor.example&contactMobile=0912-000-111&utmSource=expo&utmMedium=field&utmCampaign=spring-2026&utmContent=booth-a3",
+        ]}
+      >
+        <CreateQuotationPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByDisplayValue("lead-1")).toBeTruthy();
+    expect(screen.getByDisplayValue("Amy Chen")).toBeTruthy();
+    expect(screen.getByDisplayValue("amy@rotor.example")).toBeTruthy();
+    expect(screen.getByDisplayValue("booth-a3")).toBeTruthy();
+  });
 });

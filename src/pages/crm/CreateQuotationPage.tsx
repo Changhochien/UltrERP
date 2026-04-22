@@ -23,12 +23,54 @@ function addDays(value: Date, days: number): Date {
   return next;
 }
 
-function getPrefill(state: unknown): Partial<QuotationFormValues> {
+function getPrefill(state: unknown, search: string): Partial<QuotationFormValues> {
   const handoff = (state as { handoff?: OpportunityQuotationHandoff } | null)?.handoff;
   const today = formatDateInput(new Date());
   const validTill = formatDateInput(addDays(new Date(), 30));
 
-  if (!handoff) {
+  if (handoff) {
+    return {
+      quotation_to: handoff.opportunity_from,
+      party_name: handoff.party_name,
+      company: DEFAULT_COMPANY,
+      transaction_date: today,
+      valid_till: validTill,
+      currency: handoff.currency,
+      territory: handoff.territory,
+      customer_group: handoff.customer_group,
+      contact_person: handoff.contact_person,
+      contact_email: handoff.contact_email,
+      contact_mobile: handoff.contact_mobile,
+      job_title: handoff.job_title,
+      utm_source: handoff.utm_source,
+      utm_medium: handoff.utm_medium,
+      utm_campaign: handoff.utm_campaign,
+      utm_content: handoff.utm_content,
+      opportunity_id: handoff.opportunity_id,
+      items: handoff.items.map((item) => ({
+        item_name: item.item_name,
+        item_code: item.item_code,
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+      })),
+    };
+  }
+
+  const params = new URLSearchParams(search);
+  const partyType = params.get("partyType");
+  const partyName = params.get("partyName");
+  const territory = params.get("territory");
+  const customerGroup = params.get("customerGroup");
+  const contactName = params.get("contactName");
+  const contactEmail = params.get("contactEmail");
+  const contactMobile = params.get("contactMobile");
+  const utmSource = params.get("utmSource");
+  const utmMedium = params.get("utmMedium");
+  const utmCampaign = params.get("utmCampaign");
+  const utmContent = params.get("utmContent");
+
+  if (!partyType && !partyName) {
     return {
       company: DEFAULT_COMPANY,
       transaction_date: today,
@@ -46,30 +88,32 @@ function getPrefill(state: unknown): Partial<QuotationFormValues> {
   }
 
   return {
-    quotation_to: handoff.opportunity_from,
-    party_name: handoff.party_name,
+    quotation_to:
+      partyType === "lead" || partyType === "customer" || partyType === "prospect"
+        ? partyType
+        : "prospect",
+    party_name: partyName ?? "",
     company: DEFAULT_COMPANY,
     transaction_date: today,
     valid_till: validTill,
-    currency: handoff.currency,
-    territory: handoff.territory,
-    customer_group: handoff.customer_group,
-    contact_person: handoff.contact_person,
-    contact_email: handoff.contact_email,
-    contact_mobile: handoff.contact_mobile,
-    job_title: handoff.job_title,
-    utm_source: handoff.utm_source,
-    utm_medium: handoff.utm_medium,
-    utm_campaign: handoff.utm_campaign,
-    utm_content: handoff.utm_content,
-    opportunity_id: handoff.opportunity_id,
-    items: handoff.items.map((item) => ({
-      item_name: item.item_name,
-      item_code: item.item_code,
-      description: item.description,
-      quantity: item.quantity,
-      unit_price: item.unit_price,
-    })),
+    territory: territory ?? "",
+    customer_group: customerGroup ?? "",
+    contact_person: contactName ?? "",
+    contact_email: contactEmail ?? "",
+    contact_mobile: contactMobile ?? "",
+    utm_source: utmSource ?? "",
+    utm_medium: utmMedium ?? "",
+    utm_campaign: utmCampaign ?? "",
+    utm_content: utmContent ?? "",
+    items: [
+      {
+        item_name: "",
+        item_code: "",
+        description: "",
+        quantity: "1",
+        unit_price: "",
+      },
+    ],
   };
 }
 
@@ -85,7 +129,10 @@ export default function CreateQuotationPage({ onNavigate }: CreateQuotationPageP
   const [serverErrors, setServerErrors] = useState<Array<{ field: string; message: string }>>([]);
   const [createdId, setCreatedId] = useState<string | null>(null);
 
-  const initialValues = useMemo(() => getPrefill(location.state), [location.state]);
+  const initialValues = useMemo(
+    () => getPrefill(location.state, location.search),
+    [location.search, location.state],
+  );
 
   async function handleSubmit(payload: QuotationCreatePayload) {
     setSubmitting(true);
