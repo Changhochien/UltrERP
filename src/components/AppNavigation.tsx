@@ -63,7 +63,18 @@ export function AppNavigation() {
     if (sectionType === 'reports' || sectionType === 'setup') {
       return "pl-6";
     }
+    if (sectionType === 'quick-actions') {
+      return "pl-6";
+    }
     return "";
+  };
+
+  // Quick actions are only shown in expanded mode
+  const shouldShowQuickActions = (sectionType: NavigationSectionType): boolean => {
+    if (sectionType === 'quick-actions') {
+      return showLabel;
+    }
+    return true;
   };
 
   return (
@@ -110,6 +121,11 @@ export function AppNavigation() {
                     const sectionId = `${group.label}-${sectionIndex}`;
                     const collapsed = isSectionCollapsed(sectionId);
 
+                    // Skip rendering quick-actions section items when collapsed
+                    if (!shouldShowQuickActions(section.type)) {
+                      return null;
+                    }
+
                     return (
                       <React.Fragment key={sectionId}>
                         {/* Render section header for reports/setup sections */}
@@ -128,6 +144,7 @@ export function AppNavigation() {
                             {section.items.map((item) => {
                               const Icon = item.icon;
                               const indentClass = getSectionIndentClass(section.type);
+                              const isQuickAction = section.type === 'quick-actions';
 
                               return (
                                 <SidebarMenuItem key={item.to}>
@@ -143,7 +160,9 @@ export function AppNavigation() {
                                             showLabel ? `justify-start ${indentClass}` : "justify-center px-0",
                                             isActive
                                               ? "border-sidebar-accent/50 bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
-                                              : "border-transparent text-sidebar-foreground/90 hover:border-sidebar-accent/30 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+                                              : isQuickAction
+                                                ? "border-sidebar-accent/20 bg-sidebar-accent/10 text-sidebar-accent hover:border-sidebar-accent/40 hover:bg-sidebar-accent/30 hover:text-sidebar-accent"
+                                                : "border-transparent text-sidebar-foreground/90 hover:border-sidebar-accent/30 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
                                           ].join(" ")
                                         }
                                       >

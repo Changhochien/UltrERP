@@ -55,7 +55,8 @@ import {
 // 'standard' = primary workflow items (no section header)
 // 'reports' = analytics and reporting tools (with "Reports" header, indented)
 // 'setup' = configuration and settings (with "Setup" header, indented)
-export type NavigationSectionType = 'standard' | 'reports' | 'setup';
+// 'quick-actions' = quick action shortcuts (shown at bottom when expanded)
+export type NavigationSectionType = 'standard' | 'reports' | 'setup' | 'quick-actions';
 
 export interface NavigationItem {
   feature: AppFeature;
@@ -111,6 +112,40 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
             to: OWNER_DASHBOARD_ROUTE,
             description: "routes.ownerDashboard.description",
             icon: LayoutDashboardIcon,
+          },
+        ],
+      },
+      {
+        type: 'quick-actions',
+        label: "nav.quickActions",
+        items: [
+          {
+            feature: "crm",
+            label: "nav.createLead",
+            to: CRM_LEAD_CREATE_ROUTE,
+            description: "routes.createLead.description",
+            icon: Users,
+          },
+          {
+            feature: "crm",
+            label: "nav.createOpportunity",
+            to: CRM_OPPORTUNITY_CREATE_ROUTE,
+            description: "routes.createOpportunity.description",
+            icon: BriefcaseBusiness,
+          },
+          {
+            feature: "invoices",
+            label: "nav.createInvoice",
+            to: INVOICE_CREATE_ROUTE,
+            description: "routes.createInvoice.description",
+            icon: ReceiptText,
+          },
+          {
+            feature: "orders",
+            label: "nav.newOrder",
+            to: ORDER_CREATE_ROUTE,
+            description: "routes.createOrder.description",
+            icon: ShoppingCart,
           },
         ],
       },

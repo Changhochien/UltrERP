@@ -99,7 +99,7 @@ const SidebarGroupContent = React.forwardRef<HTMLDivElement, React.HTMLAttribute
 );
 SidebarGroupContent.displayName = "SidebarGroupContent";
 
-// Section header component for reports/setup sections
+// Section header component for reports/setup/quick-actions sections
 interface SidebarSectionHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   label: string;
   sectionType: NavigationSectionType;
@@ -109,12 +109,40 @@ interface SidebarSectionHeaderProps extends React.HTMLAttributes<HTMLDivElement>
 }
 
 const SidebarSectionHeader = React.forwardRef<HTMLDivElement, SidebarSectionHeaderProps>(
-  ({ label, sectionType, sectionId, isCollapsed = false, onToggle, className, ...props }, ref) => {
+  ({ label, sectionType, sectionId: _sectionId, isCollapsed = false, onToggle, className, ...props }, ref) => {
     const { open, openMobile, isMobile } = useSidebar();
     const showLabel = isMobile ? openMobile : open;
 
     // Don't render section headers in collapsed sidebar mode
     if (!showLabel) return null;
+
+    // Quick actions section has a distinct style
+    if (sectionType === 'quick-actions') {
+      return (
+        <div
+          ref={ref}
+          className={cn(
+            "mb-1 mt-3 flex w-full items-center gap-1.5 px-2 text-[11px] font-semibold uppercase tracking-[0.15em] text-sidebar-accent",
+            className,
+          )}
+          {...props}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="size-3"
+          >
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+          </svg>
+          <span>{label}</span>
+        </div>
+      );
+    }
 
     return (
       <div
