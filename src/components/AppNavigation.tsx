@@ -94,7 +94,7 @@ export function AppNavigation() {
                 onClick={() => toggleGroup(group.label)}
                 className={cn(
                   "mb-2 flex w-full items-center justify-between px-2 text-[11px] font-semibold uppercase tracking-[0.2em] transition-colors",
-                  "text-sidebar-foreground/80 hover:text-sidebar-foreground",
+                  "text-sidebar-foreground/80",
                 )}
               >
                 <span>{t(group.label)}</span>
