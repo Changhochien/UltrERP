@@ -1,5 +1,5 @@
 import * as React from "react";
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ChevronDown, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 import { useSidebar, SidebarProvider } from "../../hooks/useSidebar";
 import { cn } from "../../lib/utils";
@@ -100,32 +100,59 @@ const SidebarGroupContent = React.forwardRef<HTMLDivElement, React.HTMLAttribute
 SidebarGroupContent.displayName = "SidebarGroupContent";
 
 // Section header component for reports/setup sections
-interface SidebarSectionHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+interface SidebarSectionHeaderProps extends React.HTMLAttributes<HTMLButtonElement> {
   label: string;
   sectionType: NavigationSectionType;
+  sectionId: string;
+  isCollapsed?: boolean;
+  onToggle?: () => void;
 }
 
-const SidebarSectionHeader = React.forwardRef<HTMLDivElement, SidebarSectionHeaderProps>(
-  ({ label, sectionType, className, ...props }, ref) => {
+const SidebarSectionHeader = React.forwardRef<HTMLButtonElement, SidebarSectionHeaderProps>(
+  ({ label, sectionType, sectionId, isCollapsed = false, onToggle, className, ...props }, ref) => {
     const { open, openMobile, isMobile } = useSidebar();
     const showLabel = isMobile ? openMobile : open;
 
-    // Don't render section headers in collapsed mode
+    // Don't render section headers in collapsed sidebar mode
     if (!showLabel) return null;
 
+    const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      onToggle?.();
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onToggle?.();
+      }
+    };
+
     return (
-      <div
+      <button
         ref={ref}
+        type="button"
+        onClick={handleClick}
+        onKeyDown={handleKeyDown}
+        aria-expanded={!isCollapsed}
+        aria-controls={`section-${sectionId}`}
         className={cn(
-          "mb-1 mt-3 px-2 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em]",
+          "mb-1 mt-3 flex w-full items-center justify-between px-2 py-1.5 text-left text-[11px] font-semibold uppercase tracking-[0.24em] transition-colors",
           sectionType === 'reports' && "text-sidebar-foreground/50",
           sectionType === 'setup' && "text-sidebar-foreground/40",
+          "cursor-pointer rounded hover:bg-sidebar-accent/40",
           className,
         )}
         {...props}
       >
-        {label}
-      </div>
+        <span>{label}</span>
+        <ChevronDown
+          className={cn(
+            "size-3 shrink-0 text-sidebar-foreground/40 transition-transform duration-200",
+            isCollapsed ? "-rotate-90" : "rotate-0",
+          )}
+        />
+      </button>
     );
   },
 );

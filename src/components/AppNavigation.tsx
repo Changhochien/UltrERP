@@ -38,7 +38,7 @@ export function AppNavigation() {
   const { t } = useTranslation("common");
   const { user, logout } = useAuth();
   const { canAccess } = usePermissions();
-  const { open, openMobile, isMobile, setOpenMobile } = useSidebar();
+  const { open, openMobile, isMobile, setOpenMobile, isSectionCollapsed, toggleSection } = useSidebar();
 
   // Filter sections by permission, then filter out groups with no visible sections
   const visibleGroups = NAVIGATION_GROUPS.map((group) => ({
@@ -88,55 +88,66 @@ export function AppNavigation() {
           <SidebarGroup key={group.label}>
             <SidebarGroupLabel>{t(group.label)}</SidebarGroupLabel>
             <SidebarGroupContent>
-              {group.sections.map((section, sectionIndex) => (
-                <React.Fragment key={`${group.label}-section-${sectionIndex}`}>
-                  {/* Render section header for reports/setup sections */}
-                  {section.label && (
-                    <SidebarSectionHeader
-                      label={t(section.label)}
-                      sectionType={section.type}
-                    />
-                  )}
-                  <SidebarMenu>
-                    {section.items.map((item) => {
-                      const Icon = item.icon;
-                      const indentClass = getSectionIndentClass(section.type);
+              {group.sections.map((section, sectionIndex) => {
+                const sectionId = `${group.label}-${sectionIndex}`;
+                const collapsed = isSectionCollapsed(sectionId);
 
-                      return (
-                        <SidebarMenuItem key={item.to}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <NavLink
-                                to={item.to}
-                                end={item.to === "/"}
-                                onClick={handleNavigation}
-                                className={({ isActive }) =>
-                                  [
-                                    "group flex items-center gap-3 rounded-2xl border px-3 py-2.5 text-sm font-medium transition-colors transition-shadow",
-                                    showLabel ? `justify-start ${indentClass}` : "justify-center px-0",
-                                    isActive
-                                      ? "border-sidebar-border bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
-                                      : "border-transparent text-sidebar-foreground/72 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
-                                  ].join(" ")
-                                }
-                              >
-                                <Icon className="size-4 shrink-0" />
-                                {showLabel ? (
-                                  <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
-                                    <span className="truncate">{t(item.label)}</span>
-                                    <ChevronRight className="size-3.5 text-sidebar-foreground/40 transition-transform group-hover:translate-x-0.5" />
-                                  </span>
-                                ) : null}
-                              </NavLink>
-                            </TooltipTrigger>
-                            {!showLabel ? <TooltipContent side="right">{t(item.label)}</TooltipContent> : null}
-                          </Tooltip>
-                        </SidebarMenuItem>
-                      );
-                    })}
-                  </SidebarMenu>
-                </React.Fragment>
-              ))}
+                return (
+                  <React.Fragment key={sectionId}>
+                    {/* Render section header for reports/setup sections */}
+                    {section.label && (
+                      <SidebarSectionHeader
+                        label={t(section.label)}
+                        sectionType={section.type}
+                        sectionId={sectionId}
+                        isCollapsed={collapsed}
+                        onToggle={() => toggleSection(sectionId)}
+                      />
+                    )}
+                    {/* Only render items if not collapsed */}
+                    {!collapsed && (
+                      <SidebarMenu>
+                        {section.items.map((item) => {
+                          const Icon = item.icon;
+                          const indentClass = getSectionIndentClass(section.type);
+
+                          return (
+                            <SidebarMenuItem key={item.to}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <NavLink
+                                    to={item.to}
+                                    end={item.to === "/"}
+                                    onClick={handleNavigation}
+                                    className={({ isActive }) =>
+                                      [
+                                        "group flex items-center gap-3 rounded-2xl border px-3 py-2.5 text-sm font-medium transition-colors transition-shadow",
+                                        showLabel ? `justify-start ${indentClass}` : "justify-center px-0",
+                                        isActive
+                                          ? "border-sidebar-border bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
+                                          : "border-transparent text-sidebar-foreground/72 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+                                      ].join(" ")
+                                    }
+                                  >
+                                    <Icon className="size-4 shrink-0" />
+                                    {showLabel ? (
+                                      <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                                        <span className="truncate">{t(item.label)}</span>
+                                        <ChevronRight className="size-3.5 text-sidebar-foreground/40 transition-transform group-hover:translate-x-0.5" />
+                                      </span>
+                                    ) : null}
+                                  </NavLink>
+                                </TooltipTrigger>
+                                {!showLabel ? <TooltipContent side="right">{t(item.label)}</TooltipContent> : null}
+                              </Tooltip>
+                            </SidebarMenuItem>
+                          );
+                        })}
+                      </SidebarMenu>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </SidebarGroupContent>
           </SidebarGroup>
         ))}

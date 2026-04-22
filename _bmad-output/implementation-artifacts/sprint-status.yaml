@@ -1318,10 +1318,10 @@ last_updated: "2026-04-22"
         validation: ""
         prerequisites: []
       38-2-nav-collapsible-sections:
-        status: "backlog"
+        status: "review"
         story_id: "38.2"
         title: "Collapsible Navigation Sections"
-        story_file: ""
+        story_file: "38-2-nav-collapsible-sections.md"
         validation: ""
         prerequisites: ["38.1"]
       38-3-nav-quick-actions:
