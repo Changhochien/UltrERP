@@ -2,18 +2,17 @@
 
 from __future__ import annotations
 
-import re
 import uuid
-from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import domains.crm._lead as crm_lead
 import domains.crm._pipeline as crm_pipeline
 import domains.crm._setup as crm_setup
-from common.errors import DuplicateLeadConflictError, ValidationError, VersionConflictError
+from common.errors import DuplicateBusinessNumberError, ValidationError, VersionConflictError
 from common.models.order import Order
 from common.models.order_line import OrderLine
 from common.tenant import DEFAULT_TENANT_ID, set_tenant
@@ -23,14 +22,14 @@ from domains.crm.models import (
     Quotation,
 )
 from domains.crm.schemas import (
-    CRMDuplicatePolicy,
-    LeadCreate,
+    LeadConversionRequest,
+    LeadConversionResult,
+    LeadConversionState,
+    LeadConversionStepOutcome,
+    LeadConversionStepResult,
     LeadCustomerConversionResult,
-    LeadListParams,
-    LeadOpportunityHandoff,
     LeadQualificationStatus,
     LeadStatus,
-    LeadUpdate,
     OpportunityCreate,
     OpportunityItem,
     OpportunityItemInput,
@@ -57,7 +56,7 @@ from domains.crm.schemas import (
 )
 from domains.customers.models import Customer
 from domains.customers.schemas import CustomerCreate
-from domains.customers.service import create_customer
+from domains.customers.service import create_customer, get_customer, lookup_customer_by_ban
 
 get_crm_pipeline_report = crm_pipeline.get_crm_pipeline_report
 get_crm_settings = crm_setup.get_crm_settings
@@ -76,24 +75,389 @@ create_territory = crm_setup.create_territory
 update_territory = crm_setup.update_territory
 create_customer_group = crm_setup.create_customer_group
 update_customer_group = crm_setup.update_customer_group
+create_lead = crm_lead.create_lead
+list_leads = crm_lead.list_leads
+get_lead = crm_lead.get_lead
+update_lead = crm_lead.update_lead
+transition_lead_status = crm_lead.transition_lead_status
+handoff_lead_to_opportunity = crm_lead.handoff_lead_to_opportunity
 
 
-@dataclass(frozen=True, slots=True)
-class _LeadDuplicateLookup:
-    company_name: str
-    email_id: str
-    phone: str
-    mobile_no: str
+CONVERSION_TARGET_ORDER = ("customer", "opportunity", "quotation")
 
 
-TERMINAL_LEAD_STATUSES = frozenset(
-    {
-        LeadStatus.INTERESTED.value,
-        LeadStatus.CONVERTED.value,
-        LeadStatus.DO_NOT_CONTACT.value,
-        LeadStatus.LOST_QUOTATION.value,
+def _canonical_conversion_path(targets: set[str]) -> str:
+    return "+".join(target for target in CONVERSION_TARGET_ORDER if target in targets)
+
+
+def _current_lead_success_targets(lead: Lead) -> set[str]:
+    targets: set[str] = set()
+    if lead.converted_customer_id is not None:
+        targets.add("customer")
+    if getattr(lead, "converted_opportunity_id", None) is not None:
+        targets.add("opportunity")
+    if getattr(lead, "converted_quotation_id", None) is not None:
+        targets.add("quotation")
+    return targets
+
+
+def _resolve_conversion_state(
+    requested_targets: set[str],
+    successful_targets: set[str],
+) -> LeadConversionState:
+    if not successful_targets:
+        return LeadConversionState.NOT_CONVERTED
+    if not requested_targets or successful_targets == requested_targets:
+        return LeadConversionState.CONVERTED
+    return LeadConversionState.PARTIALLY_CONVERTED
+
+
+def _resolve_lead_status_after_conversion(successful_targets: set[str]) -> LeadStatus:
+    if "quotation" in successful_targets:
+        return LeadStatus.QUOTATION
+    if "opportunity" in successful_targets:
+        return LeadStatus.OPPORTUNITY
+    if "customer" in successful_targets:
+        return LeadStatus.CONVERTED
+    return LeadStatus.OPEN
+
+
+def _selected_conversion_targets(data: LeadConversionRequest) -> set[str]:
+    targets: set[str] = set()
+    if data.reuse_customer_id is not None or data.customer is not None:
+        targets.add("customer")
+    if data.opportunity is not None:
+        targets.add("opportunity")
+    if data.quotation is not None:
+        targets.add("quotation")
+    return targets
+
+
+def _try_parse_uuid(value: str) -> uuid.UUID | None:
+    try:
+        return uuid.UUID(value)
+    except (TypeError, ValueError):
+        return None
+
+
+async def _record_lead_conversion(
+    session: AsyncSession,
+    lead_id: uuid.UUID,
+    *,
+    tenant_id: uuid.UUID,
+    requested_targets: set[str] | None = None,
+    converted_by: str | None = None,
+    customer_id: uuid.UUID | None = None,
+    opportunity_id: uuid.UUID | None = None,
+    quotation_id: uuid.UUID | None = None,
+    status: LeadStatus | None = None,
+) -> Lead | None:
+    lead = await get_lead(session, lead_id, tenant_id=tenant_id)
+    if lead is None:
+        return None
+
+    now = datetime.now(tz=UTC)
+    async with session.begin():
+        await set_tenant(session, tenant_id)
+        if customer_id is not None:
+            lead.converted_customer_id = customer_id
+        if opportunity_id is not None:
+            lead.converted_opportunity_id = opportunity_id
+        if quotation_id is not None:
+            lead.converted_quotation_id = quotation_id
+        if status is not None:
+            lead.status = status
+
+        successful_targets = _current_lead_success_targets(lead)
+        effective_requested = requested_targets or successful_targets
+        lead.conversion_path = _canonical_conversion_path(effective_requested)
+        lead.conversion_state = _resolve_conversion_state(
+            effective_requested,
+            successful_targets,
+        ).value
+        if successful_targets and lead.converted_at is None:
+            lead.converted_at = now
+        if converted_by is not None:
+            lead.converted_by = converted_by
+        lead.updated_at = now
+    return lead
+
+
+def _build_opportunity_conversion_payload(
+    lead: Lead,
+    payload: OpportunityCreate,
+) -> OpportunityCreate:
+    data = payload.model_dump(mode="python")
+    data["opportunity_from"] = OpportunityPartyKind.LEAD
+    data["party_name"] = str(lead.id)
+    return OpportunityCreate.model_validate(data)
+
+
+def _build_quotation_conversion_payload(
+    lead: Lead,
+    payload: QuotationCreate,
+    opportunity_id: uuid.UUID | None = None,
+) -> QuotationCreate:
+    data = payload.model_dump(mode="python")
+    data["quotation_to"] = QuotationPartyKind.LEAD
+    data["party_name"] = str(lead.id)
+    if opportunity_id is not None and data.get("opportunity_id") is None:
+        data["opportunity_id"] = opportunity_id
+    return QuotationCreate.model_validate(data)
+
+
+async def convert_lead_to_customer(
+    session: AsyncSession,
+    lead_id: uuid.UUID,
+    customer_data: CustomerCreate,
+    tenant_id: uuid.UUID | None = None,
+    converted_by: str | None = None,
+) -> LeadCustomerConversionResult:
+    tid = tenant_id or DEFAULT_TENANT_ID
+    lead = await get_lead(session, lead_id, tenant_id=tid)
+    if lead is None:
+        raise ValidationError([{"field": "lead_id", "message": "Lead not found."}])
+    if (
+        LeadQualificationStatus(lead.qualification_status)
+        != LeadQualificationStatus.QUALIFIED
+    ):
+        raise ValidationError(
+            [
+                {
+                    "field": "qualification_status",
+                    "message": "Lead must be qualified before customer conversion.",
+                }
+            ]
+        )
+
+    customer = await lookup_customer_by_ban(
+        session,
+        customer_data.business_number,
+        tenant_id=tid,
+    )
+    if customer is None:
+        customer = await create_customer(session, customer_data, tenant_id=tid)
+
+    lead = await _record_lead_conversion(
+        session,
+        lead.id,
+        tenant_id=tid,
+        requested_targets={"customer"},
+        converted_by=converted_by,
+        customer_id=customer.id,
+        status=LeadStatus.CONVERTED,
+    )
+    return LeadCustomerConversionResult(
+        lead_id=lead.id if lead is not None else lead_id,
+        customer_id=customer.id,
+        status=lead.status if lead is not None else LeadStatus.CONVERTED,
+    )
+
+
+async def convert_lead(
+    session: AsyncSession,
+    lead_id: uuid.UUID,
+    data: LeadConversionRequest,
+    tenant_id: uuid.UUID | None = None,
+    converted_by: str | None = None,
+) -> LeadConversionResult:
+    tid = tenant_id or DEFAULT_TENANT_ID
+    lead = await get_lead(session, lead_id, tenant_id=tid)
+    if lead is None:
+        raise ValidationError([{"field": "lead_id", "message": "Lead not found."}])
+    if (
+        LeadQualificationStatus(lead.qualification_status)
+        != LeadQualificationStatus.QUALIFIED
+    ):
+        raise ValidationError(
+            [
+                {
+                    "field": "qualification_status",
+                    "message": "Lead must be qualified before conversion.",
+                }
+            ]
+        )
+
+    requested_targets = _selected_conversion_targets(data)
+    if not requested_targets:
+        raise ValidationError(
+            [{"field": "conversion", "message": "Select at least one conversion target."}]
+        )
+
+    customer_id = lead.converted_customer_id
+    opportunity_id = getattr(lead, "converted_opportunity_id", None)
+    quotation_id = getattr(lead, "converted_quotation_id", None)
+    steps: list[LeadConversionStepResult] = []
+
+    if "customer" in requested_targets:
+        if customer_id is not None:
+            steps.append(
+                LeadConversionStepResult(
+                    target="customer",
+                    outcome=LeadConversionStepOutcome.REUSED,
+                    record_id=customer_id,
+                )
+            )
+        else:
+            try:
+                if data.reuse_customer_id is not None:
+                    customer = await get_customer(session, data.reuse_customer_id, tenant_id=tid)
+                    if customer is None:
+                        raise ValidationError(
+                            [{"field": "reuse_customer_id", "message": "Customer not found."}]
+                        )
+                    customer_id = customer.id
+                    outcome = LeadConversionStepOutcome.REUSED
+                elif data.customer is not None:
+                    existing_customer = await lookup_customer_by_ban(
+                        session,
+                        data.customer.business_number,
+                        tenant_id=tid,
+                    )
+                    if existing_customer is not None:
+                        customer_id = existing_customer.id
+                        outcome = LeadConversionStepOutcome.REUSED
+                    else:
+                        created_customer = await create_customer(session, data.customer, tenant_id=tid)
+                        customer_id = created_customer.id
+                        outcome = LeadConversionStepOutcome.CREATED
+                else:
+                    raise ValidationError(
+                        [{"field": "customer", "message": "Customer payload is required."}]
+                    )
+
+                steps.append(
+                    LeadConversionStepResult(
+                        target="customer",
+                        outcome=outcome,
+                        record_id=customer_id,
+                    )
+                )
+            except DuplicateBusinessNumberError as exc:
+                customer_id = exc.existing_id
+                steps.append(
+                    LeadConversionStepResult(
+                        target="customer",
+                        outcome=LeadConversionStepOutcome.REUSED,
+                        record_id=customer_id,
+                    )
+                )
+            except ValidationError as exc:
+                steps.append(
+                    LeadConversionStepResult(
+                        target="customer",
+                        outcome=LeadConversionStepOutcome.FAILED,
+                        errors=exc.errors,
+                    )
+                )
+
+    if "opportunity" in requested_targets:
+        if opportunity_id is not None:
+            steps.append(
+                LeadConversionStepResult(
+                    target="opportunity",
+                    outcome=LeadConversionStepOutcome.REUSED,
+                    record_id=opportunity_id,
+                )
+            )
+        else:
+            try:
+                if data.opportunity is None:
+                    raise ValidationError(
+                        [{"field": "opportunity", "message": "Opportunity payload is required."}]
+                    )
+                opportunity = await create_opportunity(
+                    session,
+                    _build_opportunity_conversion_payload(lead, data.opportunity),
+                    tenant_id=tid,
+                )
+                opportunity_id = opportunity.id
+                steps.append(
+                    LeadConversionStepResult(
+                        target="opportunity",
+                        outcome=LeadConversionStepOutcome.CREATED,
+                        record_id=opportunity_id,
+                    )
+                )
+            except ValidationError as exc:
+                steps.append(
+                    LeadConversionStepResult(
+                        target="opportunity",
+                        outcome=LeadConversionStepOutcome.FAILED,
+                        errors=exc.errors,
+                    )
+                )
+
+    if "quotation" in requested_targets:
+        if quotation_id is not None:
+            steps.append(
+                LeadConversionStepResult(
+                    target="quotation",
+                    outcome=LeadConversionStepOutcome.REUSED,
+                    record_id=quotation_id,
+                )
+            )
+        else:
+            try:
+                if data.quotation is None:
+                    raise ValidationError(
+                        [{"field": "quotation", "message": "Quotation payload is required."}]
+                    )
+                quotation = await create_quotation(
+                    session,
+                    _build_quotation_conversion_payload(lead, data.quotation, opportunity_id),
+                    tenant_id=tid,
+                )
+                quotation_id = quotation.id
+                steps.append(
+                    LeadConversionStepResult(
+                        target="quotation",
+                        outcome=LeadConversionStepOutcome.CREATED,
+                        record_id=quotation_id,
+                    )
+                )
+            except ValidationError as exc:
+                steps.append(
+                    LeadConversionStepResult(
+                        target="quotation",
+                        outcome=LeadConversionStepOutcome.FAILED,
+                        errors=exc.errors,
+                    )
+                )
+
+    successful_targets = {
+        step.target
+        for step in steps
+        if step.outcome in {LeadConversionStepOutcome.CREATED, LeadConversionStepOutcome.REUSED}
     }
-)
+    updated_lead = await _record_lead_conversion(
+        session,
+        lead.id,
+        tenant_id=tid,
+        requested_targets=requested_targets,
+        converted_by=converted_by,
+        customer_id=customer_id,
+        opportunity_id=opportunity_id,
+        quotation_id=quotation_id,
+        status=_resolve_lead_status_after_conversion(successful_targets),
+    )
+    if updated_lead is None:
+        raise ValidationError([{"field": "lead_id", "message": "Lead not found."}])
+
+    return LeadConversionResult(
+        lead_id=updated_lead.id,
+        status=LeadStatus(updated_lead.status),
+        conversion_state=LeadConversionState(updated_lead.conversion_state),
+        conversion_path=updated_lead.conversion_path,
+        converted_by=updated_lead.converted_by,
+        converted_customer_id=updated_lead.converted_customer_id,
+        converted_opportunity_id=updated_lead.converted_opportunity_id,
+        converted_quotation_id=updated_lead.converted_quotation_id,
+        converted_at=updated_lead.converted_at,
+        steps=steps,
+    )
+
+
 TERMINAL_OPPORTUNITY_STATUSES = frozenset(
     {
         OpportunityStatus.CONVERTED.value,
@@ -191,45 +555,6 @@ ALLOWED_QUOTATION_TRANSITIONS: dict[QuotationStatus, frozenset[QuotationStatus]]
     QuotationStatus.LOST: frozenset(),
     QuotationStatus.CANCELLED: frozenset(),
 }
-
-
-def _normalize_company_name(value: str) -> str:
-    return re.sub(r"[^a-z0-9]", "", value.strip().lower())
-
-
-def _normalize_email(value: str) -> str:
-    return value.strip().lower()
-
-
-def _normalize_phone(value: str) -> str:
-    return re.sub(r"\D", "", value)
-
-
-def _ensure_transition_allowed(current_status: LeadStatus, target_status: LeadStatus) -> None:
-    if target_status not in ALLOWED_LEAD_TRANSITIONS.get(current_status, frozenset()):
-        raise ValidationError(
-            [
-                {
-                    "field": "status",
-                    "message": (
-                        f"Cannot transition from '{current_status.value}' "
-                        f"to '{target_status.value}'."
-                    ),
-                }
-            ]
-        )
-
-
-def _ensure_opportunity_handoff_allowed(current_status: LeadStatus) -> None:
-    if current_status != LeadStatus.REPLIED:
-        raise ValidationError(
-            [
-                {
-                    "field": "status",
-                    "message": "Lead must be in replied status before opportunity handoff.",
-                }
-            ]
-        )
 
 
 def _ensure_opportunity_transition_allowed(
@@ -362,59 +687,6 @@ def _ensure_auto_repeat_metadata(enabled: bool, frequency: str) -> None:
                 }
             ]
         )
-
-
-def _build_duplicate_lookup_from_update(
-    data: LeadUpdate,
-    lead: Lead,
-    fields: set[str],
-) -> _LeadDuplicateLookup:
-    def merged(field_name: str) -> str:
-        value = getattr(data, field_name)
-        if field_name in fields and value is not None:
-            return value
-        return getattr(lead, field_name)
-
-    return _LeadDuplicateLookup(
-        company_name=merged("company_name"),
-        email_id=merged("email_id"),
-        phone=merged("phone"),
-        mobile_no=merged("mobile_no"),
-    )
-
-
-def _first_matched_field(
-    data: LeadCreate | _LeadDuplicateLookup,
-    candidate: Lead | Customer,
-) -> str:
-    """Return the field name that caused the first match for duplicate detection."""
-    # Use getattr to handle both Lead (with normalized_* fields) and Customer models
-    normalized_company = _normalize_company_name(data.company_name)
-    candidate_company_normalized = getattr(candidate, "normalized_company_name", None)
-    if candidate_company_normalized is None:
-        # Customer model doesn't have normalized_company_name, normalize on access
-        candidate_company_normalized = _normalize_company_name(
-            getattr(candidate, "company_name", "")
-        )
-    if normalized_company and candidate_company_normalized == normalized_company:
-        return "company_name"
-
-    normalized_email = _normalize_email(data.email_id)
-    candidate_email_normalized = getattr(candidate, "normalized_email_id", None)
-    if candidate_email_normalized is None:
-        # Customer model uses contact_email
-        candidate_email_normalized = _normalize_email(getattr(candidate, "contact_email", ""))
-    if normalized_email and candidate_email_normalized == normalized_email:
-        return "email_id"
-
-    return "phone"
-
-
-def _candidate_label(candidate: Lead | Customer) -> str:
-    """Return a human-readable label for a duplicate candidate."""
-    if isinstance(candidate, Lead):
-        return candidate.lead_name
-    return candidate.company_name
 
 
 def _trim(value: str | None) -> str:
@@ -995,380 +1267,6 @@ def _build_opportunity_response(opportunity: Opportunity) -> OpportunityResponse
     return OpportunityResponse.model_validate(opportunity)
 
 
-async def _find_duplicate_candidates(
-    session: AsyncSession,
-    data: LeadCreate | _LeadDuplicateLookup,
-    tenant_id: uuid.UUID,
-    *,
-    exclude_lead_id: uuid.UUID | None = None,
-) -> list[dict[str, str]]:
-    normalized_company = _normalize_company_name(data.company_name)
-    normalized_email = _normalize_email(data.email_id)
-    normalized_phone_values = {
-        value
-        for value in {
-            _normalize_phone(data.phone),
-            _normalize_phone(data.mobile_no),
-        }
-        if value
-    }
-
-    lead_filters = []
-    customer_filters = []
-
-    if normalized_company:
-        lead_filters.append(Lead.normalized_company_name == normalized_company)
-        customer_filters.append(
-            func.regexp_replace(
-                func.lower(Customer.company_name),
-                r"[^a-z0-9]",
-                "",
-                "g",
-            )
-            == normalized_company
-        )
-    if normalized_email:
-        lead_filters.append(Lead.normalized_email_id == normalized_email)
-        customer_filters.append(func.lower(Customer.contact_email) == normalized_email)
-    if normalized_phone_values:
-        lead_filters.append(Lead.normalized_phone.in_(normalized_phone_values))
-        lead_filters.append(Lead.normalized_mobile_no.in_(normalized_phone_values))
-        customer_filters.append(
-            func.regexp_replace(
-                Customer.contact_phone,
-                r"\D",
-                "",
-                "g",
-            ).in_(normalized_phone_values)
-        )
-
-    if not lead_filters and not customer_filters:
-        return []
-
-    async with session.begin():
-        await set_tenant(session, tenant_id)
-
-        lead_stmt = select(Lead).where(Lead.tenant_id == tenant_id)
-        if exclude_lead_id is not None:
-            lead_stmt = lead_stmt.where(Lead.id != exclude_lead_id)
-        if lead_filters:
-            lead_result = await session.execute(lead_stmt.where(or_(*lead_filters)))
-            lead_matches = list(lead_result.scalars().all())
-        else:
-            lead_matches = []
-
-        if customer_filters:
-            customer_stmt = select(Customer).where(
-                Customer.tenant_id == tenant_id,
-                or_(*customer_filters),
-            )
-            customer_result = await session.execute(customer_stmt)
-            customer_matches = list(customer_result.scalars().all())
-        else:
-            customer_matches = []
-
-    candidates: list[dict[str, str]] = []
-    for lead in lead_matches:
-        candidates.append(
-            {
-                "kind": "lead",
-                "id": str(lead.id),
-                "label": _candidate_label(lead),
-                "matched_on": _first_matched_field(data, lead),
-            }
-        )
-    for customer in customer_matches:
-        candidates.append(
-            {
-                "kind": "customer",
-                "id": str(customer.id),
-                "label": _candidate_label(customer),
-                "matched_on": _first_matched_field(data, customer),
-            }
-        )
-    return candidates
-
-
-async def create_lead(
-    session: AsyncSession,
-    data: LeadCreate,
-    tenant_id: uuid.UUID | None = None,
-) -> Lead:
-    tid = tenant_id or DEFAULT_TENANT_ID
-    territory = await _ensure_territory_supported(session, data.territory, tid)
-    candidates = await _find_duplicate_candidates(session, data, tid)
-    if candidates:
-        settings = await get_crm_settings(session, tenant_id=tid)
-        if settings.lead_duplicate_policy == CRMDuplicatePolicy.BLOCK:
-            raise DuplicateLeadConflictError(candidates)
-
-    lead = Lead(
-        tenant_id=tid,
-        lead_name=data.lead_name.strip(),
-        company_name=data.company_name.strip(),
-        normalized_company_name=_normalize_company_name(data.company_name),
-        email_id=data.email_id.strip(),
-        normalized_email_id=_normalize_email(data.email_id),
-        phone=data.phone.strip(),
-        mobile_no=data.mobile_no.strip(),
-        normalized_phone=_normalize_phone(data.phone),
-        normalized_mobile_no=_normalize_phone(data.mobile_no),
-        territory=territory,
-        lead_owner=data.lead_owner.strip(),
-        source=data.source.strip(),
-        status=LeadStatus.LEAD,
-        qualification_status=data.qualification_status,
-        qualified_by=data.qualified_by.strip(),
-        annual_revenue=data.annual_revenue,
-        no_of_employees=data.no_of_employees,
-        industry=data.industry.strip(),
-        market_segment=data.market_segment.strip(),
-        utm_source=data.utm_source.strip(),
-        utm_medium=data.utm_medium.strip(),
-        utm_campaign=data.utm_campaign.strip(),
-        utm_content=data.utm_content.strip(),
-        notes=data.notes.strip(),
-    )
-
-    async with session.begin():
-        await set_tenant(session, tid)
-        session.add(lead)
-
-    await session.refresh(lead)
-    return lead
-
-
-async def list_leads(
-    session: AsyncSession,
-    params: LeadListParams,
-    tenant_id: uuid.UUID | None = None,
-) -> tuple[list[Lead], int]:
-    tid = tenant_id or DEFAULT_TENANT_ID
-    base = select(Lead).where(Lead.tenant_id == tid)
-
-    if params.q:
-        escaped_q = params.q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        like_pattern = f"%{escaped_q}%"
-        normalized_q = _normalize_phone(params.q)
-        predicates = [
-            Lead.lead_name.ilike(like_pattern, escape="\\"),
-            Lead.company_name.ilike(like_pattern, escape="\\"),
-            Lead.email_id.ilike(like_pattern, escape="\\"),
-        ]
-        if normalized_q:
-            predicates.extend(
-                [
-                    Lead.normalized_phone.contains(normalized_q),
-                    Lead.normalized_mobile_no.contains(normalized_q),
-                ]
-            )
-        base = base.where(or_(*predicates))
-
-    if params.status:
-        base = base.where(Lead.status == params.status)
-
-    count_stmt = select(func.count()).select_from(base.subquery())
-    offset = (params.page - 1) * params.page_size
-    items_stmt = (
-        base.order_by(Lead.updated_at.desc(), Lead.lead_name.asc(), Lead.id.asc())
-        .offset(offset)
-        .limit(params.page_size)
-    )
-
-    async with session.begin():
-        await set_tenant(session, tid)
-        total_result = await session.execute(count_stmt)
-        total_count = total_result.scalar() or 0
-        result = await session.execute(items_stmt)
-        items = list(result.scalars().all())
-
-    return items, total_count
-
-
-async def get_lead(
-    session: AsyncSession,
-    lead_id: uuid.UUID,
-    tenant_id: uuid.UUID | None = None,
-) -> Lead | None:
-    tid = tenant_id or DEFAULT_TENANT_ID
-    async with session.begin():
-        await set_tenant(session, tid)
-        result = await session.execute(
-            select(Lead).where(Lead.id == lead_id, Lead.tenant_id == tid)
-        )
-        return result.scalar_one_or_none()
-
-
-async def update_lead(
-    session: AsyncSession,
-    lead_id: uuid.UUID,
-    data: LeadUpdate,
-    tenant_id: uuid.UUID | None = None,
-) -> Lead | None:
-    tid = tenant_id or DEFAULT_TENANT_ID
-    lead = await get_lead(session, lead_id, tenant_id=tid)
-    if lead is None:
-        return None
-    if lead.version != data.version:
-        raise VersionConflictError(expected=data.version, actual=lead.version)
-
-    fields = data.model_fields_set - {"version"}
-    duplicate_lookup = _build_duplicate_lookup_from_update(data, lead, fields)
-
-    candidates = await _find_duplicate_candidates(
-        session,
-        duplicate_lookup,
-        tid,
-        exclude_lead_id=lead_id,
-    )
-    if candidates:
-        raise DuplicateLeadConflictError(candidates)
-
-    async with session.begin():
-        await set_tenant(session, tid)
-        if "lead_name" in fields and data.lead_name is not None:
-            lead.lead_name = data.lead_name.strip()
-        if "company_name" in fields and data.company_name is not None:
-            lead.company_name = data.company_name.strip()
-            lead.normalized_company_name = _normalize_company_name(data.company_name)
-        if "email_id" in fields and data.email_id is not None:
-            lead.email_id = data.email_id.strip()
-            lead.normalized_email_id = _normalize_email(data.email_id)
-        if "phone" in fields and data.phone is not None:
-            lead.phone = data.phone.strip()
-            lead.normalized_phone = _normalize_phone(data.phone)
-        if "mobile_no" in fields and data.mobile_no is not None:
-            lead.mobile_no = data.mobile_no.strip()
-            lead.normalized_mobile_no = _normalize_phone(data.mobile_no)
-        if "territory" in fields and data.territory is not None:
-            lead.territory = data.territory.strip()
-        if "lead_owner" in fields and data.lead_owner is not None:
-            lead.lead_owner = data.lead_owner.strip()
-        if "source" in fields and data.source is not None:
-            lead.source = data.source.strip()
-        if "qualification_status" in fields and data.qualification_status is not None:
-            lead.qualification_status = data.qualification_status
-        if "qualified_by" in fields and data.qualified_by is not None:
-            lead.qualified_by = data.qualified_by.strip()
-        if "annual_revenue" in fields:
-            lead.annual_revenue = data.annual_revenue
-        if "no_of_employees" in fields:
-            lead.no_of_employees = data.no_of_employees
-        if "industry" in fields and data.industry is not None:
-            lead.industry = data.industry.strip()
-        if "market_segment" in fields and data.market_segment is not None:
-            lead.market_segment = data.market_segment.strip()
-        if "utm_source" in fields and data.utm_source is not None:
-            lead.utm_source = data.utm_source.strip()
-        if "utm_medium" in fields and data.utm_medium is not None:
-            lead.utm_medium = data.utm_medium.strip()
-        if "utm_campaign" in fields and data.utm_campaign is not None:
-            lead.utm_campaign = data.utm_campaign.strip()
-        if "utm_content" in fields and data.utm_content is not None:
-            lead.utm_content = data.utm_content.strip()
-        if "notes" in fields and data.notes is not None:
-            lead.notes = data.notes.strip()
-
-        lead.version += 1
-        lead.updated_at = datetime.now(tz=UTC)
-    return lead
-
-
-async def transition_lead_status(
-    session: AsyncSession,
-    lead_id: uuid.UUID,
-    target_status: LeadStatus,
-    tenant_id: uuid.UUID | None = None,
-) -> Lead | None:
-    tid = tenant_id or DEFAULT_TENANT_ID
-    lead = await get_lead(session, lead_id, tenant_id=tid)
-    if lead is None:
-        return None
-
-    _ensure_transition_allowed(LeadStatus(lead.status), target_status)
-    async with session.begin():
-        await set_tenant(session, tid)
-        lead.status = target_status
-        lead.updated_at = datetime.now(tz=UTC)
-    return lead
-
-
-async def handoff_lead_to_opportunity(
-    session: AsyncSession,
-    lead_id: uuid.UUID,
-    tenant_id: uuid.UUID | None = None,
-) -> LeadOpportunityHandoff:
-    tid = tenant_id or DEFAULT_TENANT_ID
-    lead = await get_lead(session, lead_id, tenant_id=tid)
-    if lead is None:
-        raise ValidationError([{"field": "lead_id", "message": "Lead not found."}])
-    if LeadQualificationStatus(lead.qualification_status) != LeadQualificationStatus.QUALIFIED:
-        raise ValidationError(
-            [
-                {
-                    "field": "qualification_status",
-                    "message": "Lead must be qualified before opportunity handoff.",
-                }
-            ]
-        )
-
-    _ensure_opportunity_handoff_allowed(LeadStatus(lead.status))
-    async with session.begin():
-        await set_tenant(session, tid)
-        lead.status = LeadStatus.OPPORTUNITY
-        lead.updated_at = datetime.now(tz=UTC)
-    return LeadOpportunityHandoff(
-        lead_id=lead.id,
-        lead_name=lead.lead_name,
-        company_name=lead.company_name,
-        email_id=lead.email_id,
-        phone=lead.phone,
-        mobile_no=lead.mobile_no,
-        territory=lead.territory,
-        lead_owner=lead.lead_owner,
-        source=lead.source,
-        qualification_status=LeadQualificationStatus(lead.qualification_status),
-        utm_source=lead.utm_source,
-        utm_medium=lead.utm_medium,
-        utm_campaign=lead.utm_campaign,
-        utm_content=lead.utm_content,
-    )
-
-
-async def convert_lead_to_customer(
-    session: AsyncSession,
-    lead_id: uuid.UUID,
-    customer_data: CustomerCreate,
-    tenant_id: uuid.UUID | None = None,
-) -> LeadCustomerConversionResult:
-    tid = tenant_id or DEFAULT_TENANT_ID
-    lead = await get_lead(session, lead_id, tenant_id=tid)
-    if lead is None:
-        raise ValidationError([{"field": "lead_id", "message": "Lead not found."}])
-    if LeadQualificationStatus(lead.qualification_status) != LeadQualificationStatus.QUALIFIED:
-        raise ValidationError(
-            [
-                {
-                    "field": "qualification_status",
-                    "message": "Lead must be qualified before customer conversion.",
-                }
-            ]
-        )
-
-    customer = await create_customer(session, customer_data, tenant_id=tid)
-    async with session.begin():
-        await set_tenant(session, tid)
-        lead.status = LeadStatus.CONVERTED
-        lead.converted_customer_id = customer.id
-        lead.converted_at = datetime.now(tz=UTC)
-        lead.updated_at = datetime.now(tz=UTC)
-    return LeadCustomerConversionResult(
-        lead_id=lead.id,
-        customer_id=customer.id,
-        status=LeadStatus.CONVERTED,
-    )
-
-
 async def create_opportunity(
     session: AsyncSession,
     data: OpportunityCreate,
@@ -1420,6 +1318,17 @@ async def create_opportunity(
         session.add(opportunity)
 
     await session.refresh(opportunity)
+    if opportunity.opportunity_from == OpportunityPartyKind.LEAD:
+        lead_id = _try_parse_uuid(opportunity.party_name)
+        if lead_id is not None:
+            await _record_lead_conversion(
+                session,
+                lead_id,
+                tenant_id=tid,
+                requested_targets={"opportunity"},
+                opportunity_id=opportunity.id,
+                status=LeadStatus.OPPORTUNITY,
+            )
     return opportunity
 
 
@@ -1814,6 +1723,17 @@ async def create_quotation(
         session.add(quotation)
 
     await session.refresh(quotation)
+    if quotation.quotation_to == QuotationPartyKind.LEAD:
+        lead_id = _try_parse_uuid(quotation.party_name)
+        if lead_id is not None:
+            await _record_lead_conversion(
+                session,
+                lead_id,
+                tenant_id=tid,
+                requested_targets={"quotation"},
+                quotation_id=quotation.id,
+                status=LeadStatus.QUOTATION,
+            )
     return quotation
 
 

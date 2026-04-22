@@ -31,8 +31,11 @@ import { toLeadUpdatePayload } from "../../lib/schemas/lead.schema";
 import {
   buildCustomerDetailPath,
   buildLeadDetailPath,
+  buildOpportunityDetailPath,
+  buildQuotationDetailPath,
   CRM_LEADS_ROUTE,
   CRM_OPPORTUNITY_CREATE_ROUTE,
+  CRM_QUOTATION_CREATE_ROUTE,
 } from "../../lib/routes";
 
 const VERSION_CONFLICT_MESSAGE =
@@ -349,6 +352,13 @@ export function LeadDetailPage({ onBack }: LeadDetailPageProps) {
   const canEditLead = canWrite("crm");
   const canAdvanceLead = canEditLead && lead.qualification_status === "qualified" && lead.status !== "converted";
   const createOpportunityPath = `${CRM_OPPORTUNITY_CREATE_ROUTE}?partyType=lead&partyName=${encodeURIComponent(lead.id)}&partyLabel=${encodeURIComponent(lead.company_name || lead.lead_name)}&territory=${encodeURIComponent(lead.territory)}&utmSource=${encodeURIComponent(lead.utm_source)}&utmMedium=${encodeURIComponent(lead.utm_medium)}&utmCampaign=${encodeURIComponent(lead.utm_campaign)}&utmContent=${encodeURIComponent(lead.utm_content)}`;
+  const createQuotationPath = `${CRM_QUOTATION_CREATE_ROUTE}?partyType=lead&partyName=${encodeURIComponent(lead.id)}&partyLabel=${encodeURIComponent(lead.company_name || lead.lead_name)}&territory=${encodeURIComponent(lead.territory)}&contactName=${encodeURIComponent(lead.lead_name)}&contactEmail=${encodeURIComponent(lead.email_id)}&contactMobile=${encodeURIComponent(lead.phone || lead.mobile_no)}&utmSource=${encodeURIComponent(lead.utm_source)}&utmMedium=${encodeURIComponent(lead.utm_medium)}&utmCampaign=${encodeURIComponent(lead.utm_campaign)}&utmContent=${encodeURIComponent(lead.utm_content)}`;
+  const conversionPathLabel = lead.conversion_path
+    ? lead.conversion_path
+        .split("+")
+        .map((target) => t(`crm.detailPage.conversionTarget.${target}`))
+        .join(" + ")
+    : "-";
 
   return (
     <div className="space-y-6">
@@ -423,6 +433,9 @@ export function LeadDetailPage({ onBack }: LeadDetailPageProps) {
             </Button>
             <Button type="button" variant="outline" onClick={() => navigate(createOpportunityPath)} disabled={!canAdvanceLead}>
               {t("crm.detailPage.createOpportunity")}
+            </Button>
+            <Button type="button" variant="outline" onClick={() => navigate(createQuotationPath)} disabled={!canAdvanceLead}>
+              {t("crm.detailPage.createQuotation")}
             </Button>
           </div>
           {handoffPreview ? (
@@ -499,12 +512,48 @@ export function LeadDetailPage({ onBack }: LeadDetailPageProps) {
           <Button type="button" onClick={handleConvertToCustomer} disabled={!canAdvanceLead || converting}>
             {converting ? t("crm.detailPage.converting") : t("crm.detailPage.convertAction")}
           </Button>
-          {lead.converted_customer_id ? (
-            <Button type="button" variant="outline" onClick={() => navigate(buildCustomerDetailPath(lead.converted_customer_id!))}>
-              {t("crm.detailPage.viewCustomer")}
-            </Button>
-          ) : null}
         </div>
+        {(lead.converted_customer_id || lead.converted_opportunity_id || lead.converted_quotation_id || lead.converted_at) ? (
+          <div className="mt-4 rounded-xl border border-border/70 bg-muted/20 px-4 py-4 text-sm">
+            <h3 className="font-semibold">{t("crm.detailPage.conversionSummaryTitle")}</h3>
+            <p className="mt-1 text-muted-foreground">{t("crm.detailPage.conversionSummaryDescription")}</p>
+            <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div>
+                <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.detailPage.conversionState")}</dt>
+                <dd className="mt-1">{t(`crm.conversionStateValues.${lead.conversion_state}`)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.detailPage.conversionPath")}</dt>
+                <dd className="mt-1">{conversionPathLabel}</dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.detailPage.convertedAt")}</dt>
+                <dd className="mt-1">{lead.converted_at ? new Date(lead.converted_at).toLocaleString() : "-"}</dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.detailPage.convertedBy")}</dt>
+                <dd className="mt-1">{lead.converted_by || "-"}</dd>
+              </div>
+            </dl>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {lead.converted_customer_id ? (
+                <Button type="button" variant="outline" onClick={() => navigate(buildCustomerDetailPath(lead.converted_customer_id))}>
+                  {t("crm.detailPage.viewCustomer")}
+                </Button>
+              ) : null}
+              {lead.converted_opportunity_id ? (
+                <Button type="button" variant="outline" onClick={() => navigate(buildOpportunityDetailPath(lead.converted_opportunity_id))}>
+                  {t("crm.detailPage.viewOpportunity")}
+                </Button>
+              ) : null}
+              {lead.converted_quotation_id ? (
+                <Button type="button" variant="outline" onClick={() => navigate(buildQuotationDetailPath(lead.converted_quotation_id))}>
+                  {t("crm.detailPage.viewQuotation")}
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
       </SectionCard>
     </div>
   );
