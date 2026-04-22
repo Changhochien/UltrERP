@@ -1325,11 +1325,11 @@ last_updated: "2026-04-22"
         validation: ""
         prerequisites: ["38.1"]
       38-3-nav-quick-actions:
-        status: "review"
+        status: "done"
         story_id: "38.3"
         title: "Quick Action Shortcuts Integration"
         story_file: "38-3-nav-quick-actions.md"
-        validation: "Implemented quick actions section with Create Lead, Create Opportunity, Create Invoice, New Order shortcuts. All tests pass (327/327), TypeScript clean, ESLint clean."
+        validation: "Implemented quick actions section with Create Lead, Create Opportunity, Create Invoice, New Order shortcuts. All tests pass (327/327), TypeScript clean, ESLint clean. Simplification applied to getSectionIndentClass logic."
         prerequisites: ["38.1"]
       38-4-nav-visual-polish:
         status: "backlog"

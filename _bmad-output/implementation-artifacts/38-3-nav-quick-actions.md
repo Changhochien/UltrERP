@@ -12,7 +12,7 @@
 
 ## Implementation
 - `src/lib/navigation.tsx`: Added `'quick-actions'` type + Quick Actions section
-- `src/components/AppNavigation.tsx`: `shouldShowQuickActions()` + accent styling
+- `src/components/AppNavigation.tsx`: `shouldShowQuickActions()` + accent styling + simplified `getSectionIndentClass()`
 - `src/components/ui/sidebar.tsx`: Quick actions header with Zap SVG icon
 - `public/locales/{en,zh-Hant}/common.json`: i18n keys
 
@@ -21,5 +21,6 @@
 - ESLint: Clean  
 - Tests: 327 passed (107 files)
 
-## Commit
-`c03d099` - feat(epic-38): Implement quick action shortcuts in navigation sidebar
+## Commits
+- `c03d099` - feat(epic-38): Implement quick action shortcuts in navigation sidebar
+- `cf914dd` - refactor(epic-38): Simplify getSectionIndentClass logic
