@@ -2,7 +2,6 @@ import type { LucideIcon } from "lucide-react";
 import {
   BriefcaseBusiness,
   Boxes,
-  BrainCircuit,
   CircleDollarSign,
   LayoutDashboard,
   ReceiptText,
@@ -79,7 +78,7 @@ export interface NavigationGroup {
 
 export const NAVIGATION_GROUPS: NavigationGroup[] = [
   {
-    label: "nav.overview",
+    label: "nav.home",
     sections: [
       {
         type: 'standard',
@@ -91,6 +90,13 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
             to: HOME_ROUTE,
             description: "routes.dashboard.description",
             icon: LayoutDashboard,
+          },
+          {
+            feature: "settings",
+            label: "nav.settings",
+            to: SETTINGS_ROUTE,
+            description: "routes.settings.description",
+            icon: Settings,
           },
           {
             feature: "admin",
@@ -106,19 +112,12 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
             description: "routes.ownerDashboard.description",
             icon: LayoutDashboardIcon,
           },
-          {
-            feature: "settings",
-            label: "nav.settings",
-            to: SETTINGS_ROUTE,
-            description: "routes.settings.description",
-            icon: Settings,
-          },
         ],
       },
     ],
   },
   {
-    label: "nav.crm",
+    label: "nav.sales",
     sections: [
       {
         type: 'standard',
@@ -153,76 +152,18 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
             icon: Users,
           },
           {
-            feature: "intelligence",
-            label: "nav.intelligence",
-            to: INTELLIGENCE_ROUTE,
-            description: "routes.intelligence.description",
-            icon: BrainCircuit,
-          },
-        ],
-      },
-      {
-        type: 'reports',
-        label: "nav.reports",
-        items: [
-          {
-            feature: "crm",
-            label: "nav.crmReporting",
-            to: CRM_REPORTING_ROUTE,
-            description: "routes.crmReporting.description",
-            icon: TrendingUp,
-          },
-        ],
-      },
-      {
-        type: 'setup',
-        label: "nav.setup",
-        items: [
-          {
-            feature: "settings",
-            label: "nav.crmSetup",
-            to: CRM_SETUP_ROUTE,
-            description: "routes.crmSetup.description",
-            icon: Settings,
-          },
-        ],
-      },
-    ],
-  },
-  {
-    label: "nav.finance",
-    sections: [
-      {
-        type: 'standard',
-        label: null,
-        items: [
-          {
-            feature: "invoices",
-            label: "nav.invoices",
-            to: INVOICES_ROUTE,
-            description: "routes.invoices.description",
-            icon: ReceiptText,
-          },
-          {
             feature: "orders",
             label: "nav.orders",
             to: ORDERS_ROUTE,
             description: "routes.orders.description",
             icon: ShoppingCart,
           },
-          {
-            feature: "payments",
-            label: "nav.payments",
-            to: PAYMENTS_ROUTE,
-            description: "routes.payments.description",
-            icon: WalletCards,
-          },
         ],
       },
     ],
   },
   {
-    label: "nav.operations",
+    label: "nav.inventory",
     sections: [
       {
         type: 'standard',
@@ -230,17 +171,10 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
         items: [
           {
             feature: "inventory",
-            label: "nav.inventory",
+            label: "nav.products",
             to: INVENTORY_ROUTE,
             description: "routes.inventory.description",
             icon: Boxes,
-          },
-          {
-            feature: "purchases",
-            label: "nav.purchases",
-            to: PURCHASES_ROUTE,
-            description: "routes.purchases.description",
-            icon: CircleDollarSign,
           },
           {
             feature: "inventory",
@@ -248,6 +182,13 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
             to: INVENTORY_SUPPLIERS_ROUTE,
             description: "routes.suppliers.description",
             icon: Users,
+          },
+          {
+            feature: "purchases",
+            label: "nav.purchases",
+            to: PURCHASES_ROUTE,
+            description: "routes.purchases.description",
+            icon: CircleDollarSign,
           },
         ],
       },
@@ -288,6 +229,31 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
             to: INVENTORY_CATEGORIES_ROUTE,
             description: "routes.inventoryCategories.description",
             icon: Settings,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    label: "nav.finance",
+    sections: [
+      {
+        type: 'standard',
+        label: null,
+        items: [
+          {
+            feature: "invoices",
+            label: "nav.invoices",
+            to: INVOICES_ROUTE,
+            description: "routes.invoices.description",
+            icon: ReceiptText,
+          },
+          {
+            feature: "payments",
+            label: "nav.payments",
+            to: PAYMENTS_ROUTE,
+            description: "routes.payments.description",
+            icon: WalletCards,
           },
         ],
       },
