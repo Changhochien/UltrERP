@@ -45,6 +45,11 @@ let mockOrder = {
     has_backorder: false,
     backorder_line_count: 0,
   },
+  utm_source: "",
+  utm_medium: "",
+  utm_campaign: "",
+  utm_content: "",
+  utm_attribution_origin: null,
   lines: [
     {
       id: "line-1",
@@ -257,6 +262,34 @@ describe("OrderDetail confirmation UX", () => {
     expect(screen.getByText("Order update failed")).toBeTruthy();
     expect(screen.getByText(/adjust quantities or replenish stock/i)).toBeTruthy();
     expect(screen.getByText(/confirm status change/i)).toBeTruthy();
+  });
+
+  it("shows persisted CRM attribution and override origin", () => {
+    mockOrder = {
+      ...mockOrder,
+      source_quotation_id: "quotation-123",
+      crm_context_snapshot: { party_label: "Rotor Works" },
+      utm_source: "partner",
+      utm_medium: "referral",
+      utm_campaign: "channel-push",
+      utm_content: "landing-page-b",
+      utm_attribution_origin: "manual_override",
+    };
+
+    render(
+      <ToastProvider>
+        <MemoryRouter>
+          <OrderDetail orderId="order-123" onBack={() => undefined} />
+        </MemoryRouter>
+      </ToastProvider>,
+    );
+
+    expect(screen.getByText("Attribution")).toBeTruthy();
+    expect(screen.getByText("Manual override")).toBeTruthy();
+    expect(screen.getByText("partner")).toBeTruthy();
+    expect(screen.getByText("referral")).toBeTruthy();
+    expect(screen.getByText("channel-push")).toBeTruthy();
+    expect(screen.getByText("landing-page-b")).toBeTruthy();
   });
 
   it("hides workflow mutation actions for read-only order roles", () => {

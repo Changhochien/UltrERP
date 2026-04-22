@@ -1242,6 +1242,7 @@ development_status:
       - "23.3 Quotation Authoring and Lifecycle"
       - "23.4 Quotation-to-Order Conversion and Commercial Handoff"
       - "23.5 CRM Setup Masters and Pipeline Reporting"
+      - "23.6 UTM Tracking and Marketing Attribution"
     stories:
       23-1-lead-capture-deduplication-and-qualification:
         status: "done"
@@ -1278,5 +1279,12 @@ development_status:
         story_file: "23-5-crm-setup-masters-and-pipeline-reporting.md"
         validation: "Implemented on 2026-04-22 with tenant-scoped CRM settings and setup masters on the backend, stable service-side enforcement for duplicate policy and master-value reuse, a shared frontend setup-bundle hook, migrated lead/opportunity/quotation forms, a CRM setup workspace, and a manager-facing pipeline reporting page. Focused validation passed with `cd /Users/changtom/Downloads/UltrERP/backend && uv run pytest tests/domains/crm/test_lead_service.py tests/domains/crm/test_opportunity_service.py tests/domains/crm/test_quotation_service.py tests/domains/crm/test_reporting_service.py -q` (`31 passed in 0.16s`) and `cd /Users/changtom/Downloads/UltrERP && pnpm test src/tests/crm/CreateLeadPage.test.tsx src/tests/crm/CreateOpportunityPage.test.tsx src/tests/crm/CreateQuotationPage.test.tsx src/tests/crm/LeadDetailPage.test.tsx src/tests/crm/OpportunityDetailPage.test.tsx src/tests/crm/QuotationDetailPage.test.tsx src/tests/crm/CRMSetupPage.test.tsx src/tests/crm/CRMPipelineReportPage.test.tsx` (`19 passed`). Broader `pnpm build` remains blocked by pre-existing TypeScript failures outside the CRM slice in customer, inventory, order, and payment files."
         prerequisites: ["23.1", "23.2", "23.3", "23.4"]
+      23-6-utm-tracking-and-marketing-attribution:
+        status: "done"
+        story_id: "23.6"
+        title: "UTM Tracking and Marketing Attribution"
+        story_file: "23-6-utm-tracking-and-marketing-attribution.md"
+        validation: "Implemented on 2026-04-22 with typed order-side UTM exposure, snapshot normalization for source-document and manual-override attribution, CRM reporting segmentation for UTM medium/campaign/content, and manager-facing ordered-revenue attribution carried from downstream order lineage into CRM reporting. Review follow-up fixes preserved ordered revenue in opportunity and quotation report slices, allowed explicit clearing of inherited order UTM values, and localized the reporting page labels for zh-Hant. Focused validation passed with `cd /Users/changtom/Downloads/UltrERP/backend && .venv/bin/python -m pytest tests/domains/crm/test_reporting_service.py tests/domains/orders/test_orders_api.py` (`33 passed in 1.55s`) and `cd /Users/changtom/Downloads/UltrERP && pnpm test -- --run src/tests/crm/CRMPipelineReportPage.test.tsx src/tests/orders/OrderFormCustomerContext.test.tsx src/tests/orders/OrderDetailConfirmationUX.test.tsx` (exit code 0)."
+        prerequisites: ["23.4", "23.5"]
 
 last_updated: "2026-04-22"

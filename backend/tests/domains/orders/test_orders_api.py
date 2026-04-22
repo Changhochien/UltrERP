@@ -375,6 +375,19 @@ async def test_create_order_preserves_quotation_lineage_and_context() -> None:
         "source_document_type": "quotation",
         "party_label": "Rotor Works",
         "billing_address": "No. 1, Zhongshan Rd, Taipei",
+        "utm_source": "expo",
+        "utm_medium": "field",
+        "utm_campaign": "spring-2026",
+        "utm_content": "hero-banner",
+        "utm_attribution_origin": "source_document",
+    }
+    overridden_crm_context_snapshot = {
+        **crm_context_snapshot,
+        "utm_source": "partner",
+        "utm_medium": "referral",
+        "utm_campaign": "channel-push",
+        "utm_content": "landing-page-b",
+        "utm_attribution_origin": "manual_override",
     }
     source_quotation = SimpleNamespace(
         id=quotation_id,
@@ -393,7 +406,7 @@ async def test_create_order_preserves_quotation_lineage_and_context() -> None:
         source_quotation_id=quotation_id,
         lines=[line],
         customer=customer,
-        crm_context_snapshot=crm_context_snapshot,
+        crm_context_snapshot=overridden_crm_context_snapshot,
     )
 
     session = FakeAsyncSession()
@@ -411,6 +424,10 @@ async def test_create_order_preserves_quotation_lineage_and_context() -> None:
         payload = _valid_order_payload(customer_id=str(customer.id))
         payload["source_quotation_id"] = str(quotation_id)
         payload["crm_context_snapshot"] = crm_context_snapshot
+        payload["utm_source"] = "partner"
+        payload["utm_medium"] = "referral"
+        payload["utm_campaign"] = "channel-push"
+        payload["utm_content"] = "landing-page-b"
         payload["lines"][0]["product_id"] = str(product.id)
         payload["lines"][0]["source_quotation_line_no"] = 1
 
@@ -420,13 +437,95 @@ async def test_create_order_preserves_quotation_lineage_and_context() -> None:
         body = resp.json()
         assert body["source_quotation_id"] == str(quotation_id)
         assert body["crm_context_snapshot"]["party_label"] == "Rotor Works"
+        assert body["utm_source"] == "partner"
+        assert body["utm_medium"] == "referral"
+        assert body["utm_campaign"] == "channel-push"
+        assert body["utm_content"] == "landing-page-b"
+        assert body["utm_attribution_origin"] == "manual_override"
         assert body["lines"][0]["source_quotation_line_no"] == 1
 
         created_order = next(obj for obj in session.added if isinstance(obj, Order))
         created_line = next(obj for obj in session.added if isinstance(obj, OrderLine))
         assert created_order.source_quotation_id == quotation_id
-        assert created_order.crm_context_snapshot == crm_context_snapshot
+        assert created_order.crm_context_snapshot == overridden_crm_context_snapshot
         assert created_line.source_quotation_line_no == 1
+    finally:
+        _teardown(prev)
+
+
+async def test_create_order_can_clear_inherited_utm_fields() -> None:
+    quotation_id = uuid.uuid4()
+    customer = FakeCustomer()
+    product = FakeProduct(product_id=uuid.UUID(_PRODUCT_ID))
+    crm_context_snapshot = {
+        "source_document_type": "quotation",
+        "party_label": "Rotor Works",
+        "utm_source": "expo",
+        "utm_medium": "field",
+        "utm_campaign": "spring-2026",
+        "utm_content": "hero-banner",
+        "utm_attribution_origin": "source_document",
+    }
+    cleared_crm_context_snapshot = {
+        "source_document_type": "quotation",
+        "party_label": "Rotor Works",
+        "utm_medium": "field",
+        "utm_campaign": "spring-2026",
+        "utm_content": "hero-banner",
+        "utm_attribution_origin": "manual_override",
+    }
+    source_quotation = SimpleNamespace(
+        id=quotation_id,
+        items=[{"line_no": 1}],
+        ordered_amount=Decimal("0.00"),
+        order_count=0,
+        status="open",
+        valid_till=date(2026, 5, 21),
+        grand_total=Decimal("1000.00"),
+        updated_at=datetime.now(tz=UTC),
+    )
+
+    line = FakeOrderLine(product_id=product.id, source_quotation_line_no=1)
+    order = FakeOrder(
+        customer_id=customer.id,
+        source_quotation_id=quotation_id,
+        lines=[line],
+        customer=customer,
+        crm_context_snapshot=cleared_crm_context_snapshot,
+    )
+
+    session = FakeAsyncSession()
+    session.queue_scalar(None)  # set_tenant
+    session.queue_scalar(customer)  # customer lookup
+    session.queue_scalars([product.id])  # product check
+    session.queue_scalar(source_quotation)  # quotation lookup
+    session.queue_count(100)  # stock availability
+    session.queue_rows([])  # linked order rows for quotation coverage sync
+    session.queue_scalar(None)  # set_tenant (get_order)
+    session.queue_scalar(order)  # get_order
+
+    prev = _setup(session)
+    try:
+        payload = _valid_order_payload(customer_id=str(customer.id))
+        payload["source_quotation_id"] = str(quotation_id)
+        payload["crm_context_snapshot"] = crm_context_snapshot
+        payload["utm_source"] = ""
+        payload["lines"][0]["product_id"] = str(product.id)
+        payload["lines"][0]["source_quotation_line_no"] = 1
+
+        resp = await _post("/api/v1/orders", json=payload)
+
+        assert resp.status_code == 201
+        body = resp.json()
+        assert body["utm_source"] == ""
+        assert body["utm_medium"] == "field"
+        assert body["utm_campaign"] == "spring-2026"
+        assert body["utm_content"] == "hero-banner"
+        assert body["utm_attribution_origin"] == "manual_override"
+
+        created_order = next(obj for obj in session.added if isinstance(obj, Order))
+        assert created_order.crm_context_snapshot == cleared_crm_context_snapshot
+        assert "utm_source" not in created_order.crm_context_snapshot
     finally:
         _teardown(prev)
 

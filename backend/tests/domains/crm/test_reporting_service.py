@@ -1,4 +1,4 @@
-"""Focused CRM pipeline reporting tests for Story 23.5."""
+"""Focused CRM pipeline reporting tests for Story 23.5 and Story 23.6."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from domains.crm.schemas import CRMPipelineReportParams
+from domains.crm.schemas import CRMPipelineRecordType, CRMPipelineReportParams
 from domains.crm.service import get_crm_pipeline_report
 
 
@@ -60,6 +60,7 @@ async def test_get_crm_pipeline_report_segments_records_by_status_dimension_and_
         utm_source="expo",
         utm_medium="field",
         utm_campaign="spring-2026",
+        utm_content="hero-banner",
     )
     opportunity = SimpleNamespace(
         id=uuid.uuid4(),
@@ -72,10 +73,12 @@ async def test_get_crm_pipeline_report_segments_records_by_status_dimension_and_
         utm_source="expo",
         utm_medium="field",
         utm_campaign="spring-2026",
+        utm_content="hero-banner",
         opportunity_amount=Decimal("25000.00"),
     )
     quotation = SimpleNamespace(
         id=uuid.uuid4(),
+        opportunity_id=opportunity.id,
         status="partially_ordered",
         territory="North",
         customer_group="Industrial",
@@ -83,6 +86,7 @@ async def test_get_crm_pipeline_report_segments_records_by_status_dimension_and_
         utm_source="expo",
         utm_medium="field",
         utm_campaign="spring-2026",
+        utm_content="hero-banner",
         grand_total=Decimal("26250.00"),
         order_count=0,
         transaction_date=date(2026, 4, 21),
@@ -95,6 +99,7 @@ async def test_get_crm_pipeline_report_segments_records_by_status_dimension_and_
             _FakeListResult([lead]),
             _FakeListResult([opportunity]),
             _FakeListResult([quotation]),
+            _FakeListResult([]),
         ]
     )
 
@@ -110,6 +115,9 @@ async def test_get_crm_pipeline_report_segments_records_by_status_dimension_and_
     assert any(segment.record_type == "quotation" and segment.key == "Industrial" for segment in report.by_customer_group)
     assert any(segment.record_type == "lead" and segment.key == "alice" for segment in report.by_owner)
     assert any(segment.key == "expo" for segment in report.by_utm_source)
+    assert any(segment.key == "field" for segment in report.by_utm_medium)
+    assert any(segment.key == "spring-2026" for segment in report.by_utm_campaign)
+    assert any(segment.key == "hero-banner" for segment in report.by_utm_content)
     assert report.dropoff.lead_only_count == 1
     assert report.dropoff.opportunity_without_quotation_count == 0
     assert report.dropoff.quotation_without_order_count == 1
@@ -125,6 +133,7 @@ async def test_get_crm_pipeline_report_applies_sales_stage_filter_to_opportunity
         utm_source="expo",
         utm_medium="field",
         utm_campaign="spring-2026",
+        utm_content="hero-banner",
     )
     opportunities = [
         SimpleNamespace(
@@ -138,6 +147,7 @@ async def test_get_crm_pipeline_report_applies_sales_stage_filter_to_opportunity
             utm_source="expo",
             utm_medium="field",
             utm_campaign="spring-2026",
+            utm_content="hero-banner",
             opportunity_amount=Decimal("1000.00"),
         ),
         SimpleNamespace(
@@ -151,6 +161,7 @@ async def test_get_crm_pipeline_report_applies_sales_stage_filter_to_opportunity
             utm_source="expo",
             utm_medium="field",
             utm_campaign="spring-2026",
+            utm_content="partner-footer",
             opportunity_amount=Decimal("2000.00"),
         ),
     ]
@@ -163,6 +174,7 @@ async def test_get_crm_pipeline_report_applies_sales_stage_filter_to_opportunity
         utm_source="expo",
         utm_medium="field",
         utm_campaign="spring-2026",
+        utm_content="hero-banner",
         grand_total=Decimal("26250.00"),
         order_count=0,
         transaction_date=date(2026, 4, 21),
@@ -175,6 +187,7 @@ async def test_get_crm_pipeline_report_applies_sales_stage_filter_to_opportunity
             _FakeListResult([lead]),
             _FakeListResult(opportunities),
             _FakeListResult([quotation]),
+            _FakeListResult([]),
         ]
     )
 
@@ -188,3 +201,87 @@ async def test_get_crm_pipeline_report_applies_sales_stage_filter_to_opportunity
     assert report.totals.opportunity_count == 1
     assert report.by_sales_stage[0].key == "proposal"
     assert report.totals.open_pipeline_amount == Decimal("2000.00")
+
+
+@pytest.mark.asyncio
+async def test_get_crm_pipeline_report_supports_utm_content_filter_and_ordered_revenue() -> None:
+    lead = SimpleNamespace(
+        id=uuid.uuid4(),
+        status="open",
+        territory="North",
+        lead_owner="alice",
+        utm_source="expo",
+        utm_medium="field",
+        utm_campaign="spring-2026",
+        utm_content="hero-banner",
+    )
+    opportunity = SimpleNamespace(
+        id=uuid.uuid4(),
+        status="quotation",
+        sales_stage="proposal",
+        territory="North",
+        customer_group="Industrial",
+        opportunity_owner="alice",
+        lost_reason="",
+        utm_source="expo",
+        utm_medium="field",
+        utm_campaign="spring-2026",
+        utm_content="hero-banner",
+        opportunity_amount=Decimal("25000.00"),
+    )
+    quotation = SimpleNamespace(
+        id=uuid.uuid4(),
+        opportunity_id=opportunity.id,
+        status="partially_ordered",
+        territory="North",
+        customer_group="Industrial",
+        lost_reason="",
+        utm_source="expo",
+        utm_medium="field",
+        utm_campaign="spring-2026",
+        utm_content="hero-banner",
+        grand_total=Decimal("26250.00"),
+        order_count=1,
+        transaction_date=date(2026, 4, 21),
+        valid_till=date(2026, 5, 21),
+        created_at=datetime.now(tz=UTC),
+        updated_at=datetime.now(tz=UTC),
+    )
+    order = SimpleNamespace(
+        id=uuid.uuid4(),
+        source_quotation_id=quotation.id,
+        status="confirmed",
+        total_amount=Decimal("1050.00"),
+        crm_context_snapshot={
+            "utm_source": "expo",
+            "utm_medium": "field",
+            "utm_campaign": "spring-2026",
+            "utm_content": "hero-banner",
+            "utm_attribution_origin": "source_document",
+        },
+    )
+    session = FakeSession(
+        execute_results=[
+            _FakeListResult([lead]),
+            _FakeListResult([opportunity]),
+            _FakeListResult([quotation]),
+            _FakeListResult([order]),
+        ]
+    )
+
+    report = await get_crm_pipeline_report(
+        session,
+        CRMPipelineReportParams(
+            record_type=CRMPipelineRecordType.OPPORTUNITY,
+            utm_content="hero-banner",
+        ),
+    )
+
+    assert report.totals.opportunity_count == 1
+    assert report.totals.ordered_revenue == Decimal("1050.00")
+    assert report.filters.utm_content == "hero-banner"
+    assert any(segment.key == "hero-banner" for segment in report.by_utm_content)
+    assert any(segment.key == "expo" and segment.ordered_revenue == Decimal("1050.00") for segment in report.by_utm_source)
+    assert any(segment.key == "field" and segment.ordered_revenue == Decimal("1050.00") for segment in report.by_utm_medium)
+    assert any(segment.key == "spring-2026" and segment.ordered_revenue == Decimal("1050.00") for segment in report.by_utm_campaign)
+    assert any(segment.key == "hero-banner" and segment.ordered_revenue == Decimal("1050.00") for segment in report.by_utm_content)

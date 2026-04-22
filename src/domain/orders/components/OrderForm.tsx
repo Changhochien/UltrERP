@@ -34,17 +34,27 @@ interface OrderFormProps {
   onCancel: () => void;
 }
 
+function snapshotText(snapshot: Record<string, unknown> | null | undefined, key: string): string {
+  const value = snapshot?.[key];
+  return typeof value === "string" ? value : "";
+}
+
 function buildDefaultValues(
   initialCustomerId?: string,
   initialValues?: Partial<OrderFormValues>,
 ): OrderFormValues {
+  const crmContextSnapshot = initialValues?.crm_context_snapshot ?? null;
   return {
     customer_id: initialValues?.customer_id ?? initialCustomerId ?? "",
     source_quotation_id: initialValues?.source_quotation_id ?? "",
     payment_terms_code: initialValues?.payment_terms_code ?? "NET_30",
     discount_amount: initialValues?.discount_amount ?? 0,
     discount_percent: initialValues?.discount_percent ?? 0,
-    crm_context_snapshot: initialValues?.crm_context_snapshot ?? null,
+    utm_source: initialValues?.utm_source ?? snapshotText(crmContextSnapshot, "utm_source"),
+    utm_medium: initialValues?.utm_medium ?? snapshotText(crmContextSnapshot, "utm_medium"),
+    utm_campaign: initialValues?.utm_campaign ?? snapshotText(crmContextSnapshot, "utm_campaign"),
+    utm_content: initialValues?.utm_content ?? snapshotText(crmContextSnapshot, "utm_content"),
+    crm_context_snapshot: crmContextSnapshot,
     notes: initialValues?.notes ?? "",
     lines: initialValues?.lines?.length
       ? initialValues.lines.map((line) => ({ ...emptyOrderFormLine(), ...line }))
@@ -109,6 +119,7 @@ export function OrderForm({
   const customerId = watch("customer_id");
   const lines = watch("lines");
   const salesTeam = watch("sales_team");
+  const crmContextSnapshot = watch("crm_context_snapshot");
   const validLines = lines.filter(
     (line) => line.product_id && line.description.trim() && Number(line.quantity) > 0,
   );
@@ -140,6 +151,9 @@ export function OrderForm({
     validLines.length > 0 &&
     !hasInvalidSalesTeam &&
     !hasAllocationOverflow;
+  const attributionOrigin = typeof crmContextSnapshot?.["utm_attribution_origin"] === "string"
+    ? crmContextSnapshot["utm_attribution_origin"]
+    : null;
 
   const submitOrder = async (values: OrderFormValues) => {
     if (submittingRef.current) return;
@@ -254,6 +268,54 @@ export function OrderForm({
             </FieldError>
           </label>
         </div>
+
+        <SectionCard
+          title={t("orders.form.attributionTitle")}
+          description={t("orders.form.attributionDescription")}
+        >
+          <div className="space-y-4">
+            {conversionSource ? (
+              <SurfaceMessage>
+                {attributionOrigin === "source_document"
+                  ? t("orders.form.attributionInherited")
+                  : t("orders.form.attributionOverrideHint")}
+              </SurfaceMessage>
+            ) : null}
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <label className="space-y-2">
+                <span>{t("orders.form.utmSource")}</span>
+                <Input type="text" {...register("utm_source")} maxLength={120} />
+                <FieldError>
+                  {errors.utm_source?.message ? t(errors.utm_source.message) : null}
+                </FieldError>
+              </label>
+
+              <label className="space-y-2">
+                <span>{t("orders.form.utmMedium")}</span>
+                <Input type="text" {...register("utm_medium")} maxLength={120} />
+                <FieldError>
+                  {errors.utm_medium?.message ? t(errors.utm_medium.message) : null}
+                </FieldError>
+              </label>
+
+              <label className="space-y-2">
+                <span>{t("orders.form.utmCampaign")}</span>
+                <Input type="text" {...register("utm_campaign")} maxLength={120} />
+                <FieldError>
+                  {errors.utm_campaign?.message ? t(errors.utm_campaign.message) : null}
+                </FieldError>
+              </label>
+
+              <label className="space-y-2">
+                <span>{t("orders.form.utmContent")}</span>
+                <Input type="text" {...register("utm_content")} maxLength={200} />
+                <FieldError>
+                  {errors.utm_content?.message ? t(errors.utm_content.message) : null}
+                </FieldError>
+              </label>
+            </div>
+          </div>
+        </SectionCard>
 
         <SectionCard
           title={t("orders.form.commissionTitle")}

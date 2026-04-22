@@ -23,6 +23,9 @@ const DEFAULT_FILTERS: CRMPipelineReportParams = {
   owner: "",
   lost_reason: "",
   utm_source: "",
+  utm_medium: "",
+  utm_campaign: "",
+  utm_content: "",
 };
 
 function SummaryCard({ label, value }: { label: string; value: string | number }) {
@@ -36,29 +39,39 @@ function SummaryCard({ label, value }: { label: string; value: string | number }
 
 function SegmentGroup({ title, items }: { title: string; items: CRMPipelineSegment[] }) {
   const { t } = useTranslation("common");
+  const showOrderedRevenue = items.some((segment) => Number(segment.ordered_revenue ?? 0) > 0);
 
   return (
     <SectionCard title={title}>
       <div className="space-y-3">
         {items.length ? (
           items.map((segment) => (
-            <div key={segment.key} className="grid gap-2 rounded-xl border border-border/70 bg-background/40 p-4 md:grid-cols-[minmax(0,1fr)_120px_140px] md:items-center">
+            <div
+              key={`${segment.record_type ?? "all"}-${segment.key}`}
+              className={`grid gap-2 rounded-xl border border-border/70 bg-background/40 p-4 md:items-center ${showOrderedRevenue ? "md:grid-cols-[minmax(0,1fr)_120px_140px_160px]" : "md:grid-cols-[minmax(0,1fr)_120px_140px]"}`}
+            >
               <div>
                 <p className="font-medium text-foreground">{segment.label}</p>
                 <p className="text-sm text-muted-foreground">{segment.record_type ?? t("crm.reporting.recordTypeAll")}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Count</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.count")}</p>
                 <p className="text-sm font-medium text-foreground">{segment.count}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Amount</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.amount")}</p>
                 <p className="text-sm font-medium text-foreground">{segment.amount}</p>
               </div>
+              {showOrderedRevenue ? (
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.orderedRevenue")}</p>
+                  <p className="text-sm font-medium text-foreground">{segment.ordered_revenue ?? "0.00"}</p>
+                </div>
+              ) : null}
             </div>
           ))
         ) : (
-          <SurfaceMessage>No matching records.</SurfaceMessage>
+          <SurfaceMessage>{t("crm.reporting.noMatches")}</SurfaceMessage>
         )}
       </div>
     </SectionCard>
@@ -110,6 +123,9 @@ export default function CRMPipelineReportPage() {
         owner: [] as CRMPipelineSegment[],
         lostReason: [] as CRMPipelineSegment[],
         utmSource: [] as CRMPipelineSegment[],
+        utmMedium: [] as CRMPipelineSegment[],
+        utmCampaign: [] as CRMPipelineSegment[],
+        utmContent: [] as CRMPipelineSegment[],
       };
     }
 
@@ -121,6 +137,9 @@ export default function CRMPipelineReportPage() {
       owner: report.by_owner,
       lostReason: report.by_lost_reason,
       utmSource: report.by_utm_source,
+      utmMedium: report.by_utm_medium ?? [],
+      utmCampaign: report.by_utm_campaign ?? [],
+      utmContent: report.by_utm_content ?? [],
     };
   }, [report]);
 
@@ -227,6 +246,18 @@ export default function CRMPipelineReportPage() {
             <Input id="utm_source" value={filters.utm_source ?? ""} onChange={(event) => setFilters((current) => ({ ...current, utm_source: event.target.value }))} />
           </Field>
           <Field>
+            <FieldLabel htmlFor="utm_medium">{t("crm.reporting.utmMedium")}</FieldLabel>
+            <Input id="utm_medium" value={filters.utm_medium ?? ""} onChange={(event) => setFilters((current) => ({ ...current, utm_medium: event.target.value }))} />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="utm_campaign">{t("crm.reporting.utmCampaign")}</FieldLabel>
+            <Input id="utm_campaign" value={filters.utm_campaign ?? ""} onChange={(event) => setFilters((current) => ({ ...current, utm_campaign: event.target.value }))} />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="utm_content">{t("crm.reporting.utmContent")}</FieldLabel>
+            <Input id="utm_content" value={filters.utm_content ?? ""} onChange={(event) => setFilters((current) => ({ ...current, utm_content: event.target.value }))} />
+          </Field>
+          <Field>
             <FieldLabel htmlFor="lost_reason">{t("crm.reporting.lostReason")}</FieldLabel>
             <Input id="lost_reason" value={filters.lost_reason ?? ""} onChange={(event) => setFilters((current) => ({ ...current, lost_reason: event.target.value }))} />
           </Field>
@@ -251,6 +282,7 @@ export default function CRMPipelineReportPage() {
             <SummaryCard label={t("crm.reporting.terminalCount")} value={report.totals.terminal_count} />
             <SummaryCard label={t("crm.reporting.openAmount")} value={report.totals.open_pipeline_amount} />
             <SummaryCard label={t("crm.reporting.terminalAmount")} value={report.totals.terminal_pipeline_amount} />
+            <SummaryCard label={t("crm.reporting.orderedRevenue")} value={report.totals.ordered_revenue ?? "0.00"} />
           </div>
 
           <SectionCard title={t("crm.reporting.dropOffTitle")} description={t("crm.reporting.dropOffDescription")}>
@@ -269,6 +301,9 @@ export default function CRMPipelineReportPage() {
           <SegmentGroup title={t("crm.reporting.byOwnerTitle")} items={groups.owner} />
           <SegmentGroup title={t("crm.reporting.byLostReasonTitle")} items={groups.lostReason} />
           <SegmentGroup title={t("crm.reporting.byUtmSourceTitle")} items={groups.utmSource} />
+          <SegmentGroup title={t("crm.reporting.byUtmMediumTitle")} items={groups.utmMedium} />
+          <SegmentGroup title={t("crm.reporting.byUtmCampaignTitle")} items={groups.utmCampaign} />
+          <SegmentGroup title={t("crm.reporting.byUtmContentTitle")} items={groups.utmContent} />
         </>
       ) : null}
     </div>

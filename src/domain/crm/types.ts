@@ -212,6 +212,7 @@ export interface CRMPipelineReportParams {
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;
+  utm_content?: string;
 }
 
 export interface CRMPipelineSegment {
@@ -220,6 +221,7 @@ export interface CRMPipelineSegment {
   label: string;
   count: number;
   amount: string;
+  ordered_revenue?: string;
 }
 
 export interface CRMPipelineTotals {
@@ -230,6 +232,7 @@ export interface CRMPipelineTotals {
   terminal_count: number;
   open_pipeline_amount: string;
   terminal_pipeline_amount: string;
+  ordered_revenue?: string;
 }
 
 export interface CRMPipelineDropOff {
@@ -249,6 +252,9 @@ export interface CRMPipelineReport {
   by_owner: CRMPipelineSegment[];
   by_lost_reason: CRMPipelineSegment[];
   by_utm_source: CRMPipelineSegment[];
+  by_utm_medium?: CRMPipelineSegment[];
+  by_utm_campaign?: CRMPipelineSegment[];
+  by_utm_content?: CRMPipelineSegment[];
   dropoff: CRMPipelineDropOff;
 }
 

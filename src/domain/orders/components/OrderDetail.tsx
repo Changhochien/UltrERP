@@ -169,6 +169,11 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
   const sourceContact = snapshotText(crmContext?.contact_person);
   const sourceBillingAddress = snapshotText(crmContext?.billing_address);
   const sourceShippingAddress = snapshotText(crmContext?.shipping_address);
+  const utmSource = order.utm_source || snapshotText(crmContext?.utm_source);
+  const utmMedium = order.utm_medium || snapshotText(crmContext?.utm_medium);
+  const utmCampaign = order.utm_campaign || snapshotText(crmContext?.utm_campaign);
+  const utmContent = order.utm_content || snapshotText(crmContext?.utm_content);
+  const utmAttributionOrigin = order.utm_attribution_origin || snapshotText(crmContext?.utm_attribution_origin);
 
   const isConfirmed = order.status === "confirmed" || order.status === "shipped" || order.status === "fulfilled";
   const exec = isConfirmed ? order.execution : null;
@@ -294,6 +299,49 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
                 </div>
               ) : null}
             </div>
+
+            {utmSource || utmMedium || utmCampaign || utmContent ? (
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    {t("orders.detail.crmAttribution")}
+                  </p>
+                  {utmAttributionOrigin ? (
+                    <Badge variant="outline" className="normal-case tracking-normal">
+                      {utmAttributionOrigin === "manual_override"
+                        ? t("orders.detail.crmAttributionManualOverride")
+                        : t("orders.detail.crmAttributionSourceDocument")}
+                    </Badge>
+                  ) : null}
+                </div>
+                <div className="grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
+                  {utmSource ? (
+                    <div className="rounded-xl border border-border/60 bg-background/40 px-4 py-3">
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("orders.detail.crmUtmSource")}</p>
+                      <p className="mt-1 font-medium text-foreground">{utmSource}</p>
+                    </div>
+                  ) : null}
+                  {utmMedium ? (
+                    <div className="rounded-xl border border-border/60 bg-background/40 px-4 py-3">
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("orders.detail.crmUtmMedium")}</p>
+                      <p className="mt-1 font-medium text-foreground">{utmMedium}</p>
+                    </div>
+                  ) : null}
+                  {utmCampaign ? (
+                    <div className="rounded-xl border border-border/60 bg-background/40 px-4 py-3">
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("orders.detail.crmUtmCampaign")}</p>
+                      <p className="mt-1 font-medium text-foreground">{utmCampaign}</p>
+                    </div>
+                  ) : null}
+                  {utmContent ? (
+                    <div className="rounded-xl border border-border/60 bg-background/40 px-4 py-3">
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("orders.detail.crmUtmContent")}</p>
+                      <p className="mt-1 font-medium text-foreground">{utmContent}</p>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
 
             {sourceBillingAddress || sourceShippingAddress ? (
               <div className="grid gap-3 text-sm md:grid-cols-2">

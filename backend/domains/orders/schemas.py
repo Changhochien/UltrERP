@@ -54,6 +54,11 @@ class OrderReservationStatus(str, enum.Enum):
     RELEASED = "released"
 
 
+class OrderUTMAttributionOrigin(str, enum.Enum):
+    SOURCE_DOCUMENT = "source_document"
+    MANUAL_OVERRIDE = "manual_override"
+
+
 ALLOWED_TRANSITIONS: dict[OrderStatus, frozenset[OrderStatus]] = {
     OrderStatus.PENDING: frozenset({OrderStatus.CONFIRMED, OrderStatus.CANCELLED}),
     OrderStatus.CONFIRMED: frozenset({OrderStatus.SHIPPED}),
@@ -100,6 +105,10 @@ class OrderCreate(BaseModel):
     payment_terms_code: PaymentTermsCode = PaymentTermsCode.NET_30
     discount_amount: Decimal = Field(default=Decimal("0.00"), ge=0, max_digits=20, decimal_places=2)
     discount_percent: Decimal = Field(default=Decimal("0.0000"), ge=0, le=1, max_digits=5, decimal_places=4)
+    utm_source: str = Field(default="", max_length=120)
+    utm_medium: str = Field(default="", max_length=120)
+    utm_campaign: str = Field(default="", max_length=120)
+    utm_content: str = Field(default="", max_length=200)
     crm_context_snapshot: dict[str, Any] | None = None
     notes: str | None = Field(default=None, max_length=2000)
     sales_team: list[OrderSalesTeamAssignmentCreate] = Field(default_factory=list, max_length=10)
@@ -168,6 +177,11 @@ class OrderResponse(BaseModel):
     invoice_payment_status: OrderBillingStatus | None = None
     execution: OrderExecutionSummary
     notes: str | None
+    utm_source: str = ""
+    utm_medium: str = ""
+    utm_campaign: str = ""
+    utm_content: str = ""
+    utm_attribution_origin: OrderUTMAttributionOrigin | None = None
     crm_context_snapshot: dict[str, Any] | None = None
     legacy_header_snapshot: dict[str, Any] | None = None
     created_by: str
@@ -193,6 +207,11 @@ class OrderListItem(BaseModel):
     invoice_number: str | None = None
     invoice_payment_status: OrderBillingStatus | None = None
     execution: OrderExecutionSummary
+    utm_source: str = ""
+    utm_medium: str = ""
+    utm_campaign: str = ""
+    utm_content: str = ""
+    utm_attribution_origin: OrderUTMAttributionOrigin | None = None
     crm_context_snapshot: dict[str, Any] | None = None
     legacy_header_snapshot: dict[str, Any] | None = None
     created_at: datetime

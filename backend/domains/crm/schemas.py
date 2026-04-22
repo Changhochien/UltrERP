@@ -297,6 +297,7 @@ class CRMPipelineReportParams(BaseModel):
     utm_source: str | None = Field(default=None, max_length=120)
     utm_medium: str | None = Field(default=None, max_length=120)
     utm_campaign: str | None = Field(default=None, max_length=120)
+    utm_content: str | None = Field(default=None, max_length=200)
 
 
 class CRMPipelineSegment(BaseModel):
@@ -305,6 +306,7 @@ class CRMPipelineSegment(BaseModel):
     label: str
     count: int
     amount: Decimal = Decimal("0.00")
+    ordered_revenue: Decimal = Decimal("0.00")
 
 
 class CRMPipelineTotals(BaseModel):
@@ -315,6 +317,7 @@ class CRMPipelineTotals(BaseModel):
     terminal_count: int = 0
     open_pipeline_amount: Decimal = Decimal("0.00")
     terminal_pipeline_amount: Decimal = Decimal("0.00")
+    ordered_revenue: Decimal = Decimal("0.00")
 
 
 class CRMPipelineDropOff(BaseModel):
@@ -334,6 +337,9 @@ class CRMPipelineReportResponse(BaseModel):
     by_owner: list[CRMPipelineSegment]
     by_lost_reason: list[CRMPipelineSegment]
     by_utm_source: list[CRMPipelineSegment]
+    by_utm_medium: list[CRMPipelineSegment]
+    by_utm_campaign: list[CRMPipelineSegment]
+    by_utm_content: list[CRMPipelineSegment]
     dropoff: CRMPipelineDropOff
 
 

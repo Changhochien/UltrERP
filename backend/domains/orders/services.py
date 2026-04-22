@@ -35,6 +35,7 @@ from domains.orders.schemas import (
     OrderFulfillmentStatus,
     OrderReservationStatus,
     OrderStatus,
+    OrderUTMAttributionOrigin,
 )
 from domains.payments.models import Payment
 
@@ -43,6 +44,7 @@ logger = logging.getLogger(__name__)
 TENANT_ID = DEFAULT_TENANT_ID
 ACTOR_ID = str(DEFAULT_TENANT_ID)
 _COMMISSION_QUANT = Decimal("0.01")
+_ORDER_UTM_FIELDS = ("utm_source", "utm_medium", "utm_campaign", "utm_content")
 
 
 def _build_sales_team_snapshot(
@@ -85,6 +87,66 @@ def _build_sales_team_snapshot(
         total_commission += allocated_amount
 
     return normalized_team, total_commission.quantize(_COMMISSION_QUANT)
+
+
+def _trim_text(value: object | None) -> str:
+    return value.strip() if isinstance(value, str) else ""
+
+
+def extract_order_utm_attribution(
+    crm_context_snapshot: dict[str, Any] | None,
+) -> dict[str, str | None]:
+    snapshot = crm_context_snapshot if isinstance(crm_context_snapshot, dict) else {}
+    attribution = {field: _trim_text(snapshot.get(field)) for field in _ORDER_UTM_FIELDS}
+    raw_origin = _trim_text(snapshot.get("utm_attribution_origin"))
+    origin = raw_origin if raw_origin in {origin.value for origin in OrderUTMAttributionOrigin} else None
+    return {
+        **attribution,
+        "utm_attribution_origin": origin,
+    }
+
+
+def build_order_crm_context_snapshot(data: OrderCreate) -> dict[str, Any] | None:
+    snapshot = dict(data.crm_context_snapshot or {})
+    current = extract_order_utm_attribution(snapshot)
+    current_values = {field: str(current[field] or "") for field in _ORDER_UTM_FIELDS}
+    explicit_fields = {field: field in data.model_fields_set for field in _ORDER_UTM_FIELDS}
+    explicit_values = {field: _trim_text(getattr(data, field, "")) for field in _ORDER_UTM_FIELDS}
+    has_explicit_values = any(explicit_fields.values())
+
+    if has_explicit_values:
+        effective_values = {
+            field: explicit_values[field] if explicit_fields[field] else current_values[field]
+            for field in _ORDER_UTM_FIELDS
+        }
+    else:
+        effective_values = current_values
+
+    has_effective_values = any(effective_values.values())
+    for field in _ORDER_UTM_FIELDS:
+        if effective_values[field]:
+            snapshot[field] = effective_values[field]
+        else:
+            snapshot.pop(field, None)
+
+    origin: str | None
+    if not has_effective_values:
+        origin = None
+    elif has_explicit_values and effective_values != current_values:
+        origin = OrderUTMAttributionOrigin.MANUAL_OVERRIDE.value
+    else:
+        origin = str(current["utm_attribution_origin"] or "") or (
+            OrderUTMAttributionOrigin.SOURCE_DOCUMENT.value
+            if any(current_values.values())
+            else OrderUTMAttributionOrigin.MANUAL_OVERRIDE.value
+        )
+
+    if origin:
+        snapshot["utm_attribution_origin"] = origin
+    else:
+        snapshot.pop("utm_attribution_origin", None)
+
+    return snapshot or None
 
 
 async def check_stock_availability(
@@ -266,6 +328,7 @@ async def create_order(
             and customer.default_discount_percent > 0
             else Decimal("0.0000")
         )
+        crm_context_snapshot = build_order_crm_context_snapshot(data)
 
         order = Order(
             tenant_id=tid,
@@ -277,7 +340,7 @@ async def create_order(
             payment_terms_days=int(terms_config["days"]),
             discount_amount=normalized_discount_amount,
             discount_percent=normalized_discount_percent,
-            crm_context_snapshot=data.crm_context_snapshot,
+            crm_context_snapshot=crm_context_snapshot,
             notes=data.notes,
             created_by=ACTOR_ID,
         )
@@ -382,6 +445,11 @@ async def create_order(
                 "status": OrderStatus.PENDING.value,
                 "line_count": len(data.lines),
                 "total_amount": str(order.total_amount),
+                "utm_source": crm_context_snapshot.get("utm_source") if crm_context_snapshot else None,
+                "utm_medium": crm_context_snapshot.get("utm_medium") if crm_context_snapshot else None,
+                "utm_campaign": crm_context_snapshot.get("utm_campaign") if crm_context_snapshot else None,
+                "utm_content": crm_context_snapshot.get("utm_content") if crm_context_snapshot else None,
+                "utm_attribution_origin": crm_context_snapshot.get("utm_attribution_origin") if crm_context_snapshot else None,
                 "sales_team": sales_team_snapshot,
                 "total_commission": str(order.total_commission),
             },

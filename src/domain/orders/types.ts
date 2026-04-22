@@ -24,6 +24,8 @@ export type OrderReservationStatus =
   | "reserved"
   | "released";
 
+export type OrderUTMAttributionOrigin = "source_document" | "manual_override";
+
 export type OrderWorkflowView =
   | "pending_intake"
   | "ready_to_ship"
@@ -62,6 +64,10 @@ export interface OrderCreatePayload {
   payment_terms_code?: PaymentTermsCode;
   discount_amount?: number;
   discount_percent?: number;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_content?: string;
   crm_context_snapshot?: Record<string, unknown> | null;
   notes?: string;
   sales_team?: OrderSalesTeamAssignmentCreate[];
@@ -119,6 +125,11 @@ export interface OrderResponse {
   invoice_payment_status: OrderBillingStatus | null;
   execution: OrderExecutionSummary;
   notes: string | null;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  utm_attribution_origin?: OrderUTMAttributionOrigin | null;
   crm_context_snapshot?: Record<string, unknown> | null;
   created_by: string;
   created_at: string;
@@ -139,6 +150,11 @@ export interface OrderListItem {
   invoice_number: string | null;
   invoice_payment_status: OrderBillingStatus | null;
   execution: OrderExecutionSummary;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  utm_attribution_origin?: OrderUTMAttributionOrigin | null;
   crm_context_snapshot?: Record<string, unknown> | null;
   created_at: string;
 }

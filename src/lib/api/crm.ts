@@ -734,6 +734,7 @@ export async function getCRMPipelineReport(params: CRMPipelineReportParams): Pro
   if (params.utm_source) qs.set("utm_source", params.utm_source);
   if (params.utm_medium) qs.set("utm_medium", params.utm_medium);
   if (params.utm_campaign) qs.set("utm_campaign", params.utm_campaign);
+  if (params.utm_content) qs.set("utm_content", params.utm_content);
 
   let resp: Response;
   try {

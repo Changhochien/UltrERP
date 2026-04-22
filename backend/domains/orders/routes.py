@@ -32,6 +32,7 @@ from domains.orders.services import (
     build_order_workspace_meta,
     check_stock_availability,
     create_order,
+    extract_order_utm_attribution,
     get_order,
     list_orders,
     update_order_status,
@@ -46,6 +47,10 @@ WriteUser = Annotated[dict, Depends(require_role("admin", "sales"))]
 
 def _serialize_sales_team(raw_sales_team: list[dict[str, object]] | None) -> list[OrderSalesTeamAssignment]:
     return [OrderSalesTeamAssignment.model_validate(item) for item in (raw_sales_team or [])]
+
+
+def _serialize_order_attribution(crm_context_snapshot: dict[str, object] | None) -> dict[str, str | None]:
+    return extract_order_utm_attribution(crm_context_snapshot)
 
 
 # ── Payment Terms reference ──────────────────────────────────
@@ -229,6 +234,7 @@ async def cancel_order_endpoint(
 
 def _to_order_list_item(order, meta: dict | None = None) -> OrderListItem:
     meta = meta or {}
+    attribution = _serialize_order_attribution(getattr(order, "crm_context_snapshot", None))
     return OrderListItem(
         id=order.id,
         tenant_id=order.tenant_id,
@@ -243,6 +249,11 @@ def _to_order_list_item(order, meta: dict | None = None) -> OrderListItem:
         invoice_number=meta.get("invoice_number"),
         invoice_payment_status=meta.get("invoice_payment_status"),
         execution=OrderExecutionSummary(**meta.get("execution", {})),
+        utm_source=str(attribution["utm_source"] or ""),
+        utm_medium=str(attribution["utm_medium"] or ""),
+        utm_campaign=str(attribution["utm_campaign"] or ""),
+        utm_content=str(attribution["utm_content"] or ""),
+        utm_attribution_origin=attribution["utm_attribution_origin"],
         crm_context_snapshot=getattr(order, "crm_context_snapshot", None),
         legacy_header_snapshot=getattr(order, "legacy_header_snapshot", None),
         created_at=order.created_at,
@@ -258,6 +269,7 @@ async def _to_order_response(
 ) -> OrderResponse:
     meta_by_order_id = await build_order_workspace_meta(session, [order], tenant_id=tenant_id)
     meta = meta_by_order_id.get(order.id, {})
+    attribution = _serialize_order_attribution(getattr(order, "crm_context_snapshot", None))
     return OrderResponse(
         id=order.id,
         tenant_id=order.tenant_id,
@@ -280,6 +292,11 @@ async def _to_order_response(
         invoice_payment_status=meta.get("invoice_payment_status"),
         execution=OrderExecutionSummary(**meta.get("execution", {})),
         notes=order.notes,
+        utm_source=str(attribution["utm_source"] or ""),
+        utm_medium=str(attribution["utm_medium"] or ""),
+        utm_campaign=str(attribution["utm_campaign"] or ""),
+        utm_content=str(attribution["utm_content"] or ""),
+        utm_attribution_origin=attribution["utm_attribution_origin"],
         crm_context_snapshot=getattr(order, "crm_context_snapshot", None),
         legacy_header_snapshot=getattr(order, "legacy_header_snapshot", None),
         created_by=order.created_by,

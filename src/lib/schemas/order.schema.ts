@@ -63,6 +63,10 @@ export const orderFormSchema = z
       .number()
       .min(0, "orders.form.errors.discountPercentRange")
       .max(100, "orders.form.errors.discountPercentRange"),
+    utm_source: z.string().max(120, "orders.form.errors.utmSourceTooLong"),
+    utm_medium: z.string().max(120, "orders.form.errors.utmMediumTooLong"),
+    utm_campaign: z.string().max(120, "orders.form.errors.utmCampaignTooLong"),
+    utm_content: z.string().max(200, "orders.form.errors.utmContentTooLong"),
     crm_context_snapshot: z.record(z.string(), z.unknown()).nullable().optional(),
     notes: z.string().trim().max(2000, "orders.form.errors.notesTooLong"),
     sales_team: z.array(orderSalesTeamMemberSchema).max(10, "orders.form.errors.salesTeamTooLarge"),
@@ -152,6 +156,11 @@ export function toOrderCreatePayload(values: OrderFormValues): OrderCreatePayloa
   if (values.crm_context_snapshot) {
     payload.crm_context_snapshot = values.crm_context_snapshot;
   }
+
+  payload.utm_source = values.utm_source.trim();
+  payload.utm_medium = values.utm_medium.trim();
+  payload.utm_campaign = values.utm_campaign.trim();
+  payload.utm_content = values.utm_content.trim();
 
   if (values.discount_amount > 0) {
     payload.discount_amount = Number(values.discount_amount);

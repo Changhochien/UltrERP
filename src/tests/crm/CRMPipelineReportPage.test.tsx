@@ -57,6 +57,7 @@ beforeEach(() => {
       utm_source: "",
       utm_medium: "",
       utm_campaign: "",
+      utm_content: "",
     },
     totals: {
       lead_count: 3,
@@ -66,6 +67,7 @@ beforeEach(() => {
       terminal_count: 3,
       open_pipeline_amount: "60000.00",
       terminal_pipeline_amount: "40000.00",
+      ordered_revenue: "1050.00",
     },
     by_status: [
       {
@@ -81,7 +83,10 @@ beforeEach(() => {
     by_customer_group: [],
     by_owner: [],
     by_lost_reason: [],
-    by_utm_source: [],
+    by_utm_source: [{ key: "expo", label: "expo", record_type: "order", count: 1, amount: "1050.00", ordered_revenue: "1050.00" }],
+    by_utm_medium: [{ key: "field", label: "field", record_type: "order", count: 1, amount: "1050.00", ordered_revenue: "1050.00" }],
+    by_utm_campaign: [{ key: "spring-2026", label: "spring-2026", record_type: "order", count: 1, amount: "1050.00", ordered_revenue: "1050.00" }],
+    by_utm_content: [{ key: "hero-banner", label: "hero-banner", record_type: "order", count: 1, amount: "1050.00", ordered_revenue: "1050.00" }],
     dropoff: {
       lead_only_count: 2,
       opportunity_without_quotation_count: 1,
@@ -92,7 +97,7 @@ beforeEach(() => {
 });
 
 describe("CRMPipelineReportPage", () => {
-  it("loads the report and refetches when record type changes", async () => {
+  it("loads attribution reporting and refetches when UTM filters change", async () => {
     render(
       <MemoryRouter>
         <CRMPipelineReportPage />
@@ -100,7 +105,21 @@ describe("CRMPipelineReportPage", () => {
     );
 
     expect(await screen.findByRole("heading", { level: 1, name: "Pipeline Reporting" })).toBeTruthy();
-  expect((await screen.findAllByText("60000.00")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("60000.00")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Ordered Revenue").length).toBeGreaterThan(0);
+    expect(screen.getByText("By UTM Medium")).toBeTruthy();
+    expect(screen.getByText("By UTM Campaign")).toBeTruthy();
+    expect(screen.getByText("By UTM Content")).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("UTM Medium"), {
+      target: { value: "field" },
+    });
+
+    await waitFor(() => {
+      expect(mockedGetCRMPipelineReport).toHaveBeenLastCalledWith(
+        expect.objectContaining({ utm_medium: "field" }),
+      );
+    });
 
     fireEvent.change(screen.getByLabelText("Record Type"), {
       target: { value: "opportunity" },
@@ -111,5 +130,7 @@ describe("CRMPipelineReportPage", () => {
         expect.objectContaining({ record_type: "opportunity" }),
       );
     });
+
+    expect(screen.getAllByText("Ordered Revenue").length).toBeGreaterThan(0);
   });
 });

@@ -2,41 +2,28 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
 import uuid
-from datetime import UTC, date, datetime, timedelta
+from dataclasses import dataclass
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import domains.crm._pipeline as crm_pipeline
+import domains.crm._setup as crm_setup
 from common.errors import DuplicateLeadConflictError, ValidationError, VersionConflictError
 from common.models.order import Order
 from common.models.order_line import OrderLine
 from common.tenant import DEFAULT_TENANT_ID, set_tenant
-from domains.crm.models import CRMCustomerGroup, CRMSettings, CRMSalesStage, CRMTerritory, Lead, Opportunity, Quotation
+from domains.crm.models import (
+    Lead,
+    Opportunity,
+    Quotation,
+)
 from domains.crm.schemas import (
     CRMDuplicatePolicy,
-    CRMCustomerGroupCreate,
-    CRMCustomerGroupResponse,
-    CRMCustomerGroupUpdate,
-    CRMPipelineDropOff,
-    CRMPipelineRecordType,
-    CRMPipelineReportParams,
-    CRMPipelineReportResponse,
-    CRMPipelineScope,
-    CRMPipelineSegment,
-    CRMPipelineTotals,
-    CRMSettingsResponse,
-    CRMSettingsUpdate,
-    CRMSalesStageCreate,
-    CRMSalesStageResponse,
-    CRMSalesStageUpdate,
-    CRMSetupBundleResponse,
-    CRMTerritoryCreate,
-    CRMTerritoryResponse,
-    CRMTerritoryUpdate,
     LeadCreate,
     LeadCustomerConversionResult,
     LeadListParams,
@@ -72,24 +59,23 @@ from domains.customers.models import Customer
 from domains.customers.schemas import CustomerCreate
 from domains.customers.service import create_customer
 
-DEFAULT_CRM_SETTINGS = CRMSettingsResponse()
-DEFAULT_CRM_SALES_STAGES: tuple[tuple[str, int, int], ...] = (
-    ("qualification", 10, 10),
-    ("proposal", 50, 20),
-    ("negotiation", 75, 30),
-    ("commitment", 90, 40),
-)
-DEFAULT_CRM_TERRITORIES: tuple[tuple[str, int], ...] = (
-    ("North", 10),
-    ("Taipei", 20),
-    ("Central", 30),
-    ("South", 40),
-)
-DEFAULT_CRM_CUSTOMER_GROUPS: tuple[tuple[str, int], ...] = (
-    ("Industrial", 10),
-    ("Dealer", 20),
-    ("End User", 30),
-)
+get_crm_pipeline_report = crm_pipeline.get_crm_pipeline_report
+get_crm_settings = crm_setup.get_crm_settings
+update_crm_settings = crm_setup.update_crm_settings
+_resolve_effective_quotation_valid_till = crm_setup._resolve_effective_quotation_valid_till
+_ensure_sales_stage_supported = crm_setup._ensure_sales_stage_supported
+_ensure_territory_supported = crm_setup._ensure_territory_supported
+_ensure_customer_group_supported = crm_setup._ensure_customer_group_supported
+list_sales_stages = crm_setup.list_sales_stages
+list_territories = crm_setup.list_territories
+list_customer_groups = crm_setup.list_customer_groups
+get_crm_setup_bundle = crm_setup.get_crm_setup_bundle
+create_sales_stage = crm_setup.create_sales_stage
+update_sales_stage = crm_setup.update_sales_stage
+create_territory = crm_setup.create_territory
+update_territory = crm_setup.update_territory
+create_customer_group = crm_setup.create_customer_group
+update_customer_group = crm_setup.update_customer_group
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,8 +111,12 @@ TERMINAL_QUOTATION_STATUSES = frozenset(
 )
 
 ALLOWED_LEAD_TRANSITIONS: dict[LeadStatus, frozenset[LeadStatus]] = {
-    LeadStatus.LEAD: frozenset({LeadStatus.OPEN, LeadStatus.INTERESTED, LeadStatus.DO_NOT_CONTACT}),
-    LeadStatus.OPEN: frozenset({LeadStatus.REPLIED, LeadStatus.INTERESTED, LeadStatus.DO_NOT_CONTACT}),
+    LeadStatus.LEAD: frozenset(
+        {LeadStatus.OPEN, LeadStatus.INTERESTED, LeadStatus.DO_NOT_CONTACT}
+    ),
+    LeadStatus.OPEN: frozenset(
+        {LeadStatus.REPLIED, LeadStatus.INTERESTED, LeadStatus.DO_NOT_CONTACT}
+    ),
     LeadStatus.REPLIED: frozenset(
         {
             LeadStatus.QUOTATION,
@@ -187,9 +177,15 @@ DERIVED_QUOTATION_STATUSES = frozenset(
 
 ALLOWED_QUOTATION_TRANSITIONS: dict[QuotationStatus, frozenset[QuotationStatus]] = {
     QuotationStatus.DRAFT: frozenset({QuotationStatus.OPEN, QuotationStatus.CANCELLED}),
-    QuotationStatus.OPEN: frozenset({QuotationStatus.REPLIED, QuotationStatus.LOST, QuotationStatus.CANCELLED}),
-    QuotationStatus.REPLIED: frozenset({QuotationStatus.OPEN, QuotationStatus.LOST, QuotationStatus.CANCELLED}),
-    QuotationStatus.EXPIRED: frozenset({QuotationStatus.OPEN, QuotationStatus.LOST, QuotationStatus.CANCELLED}),
+    QuotationStatus.OPEN: frozenset(
+        {QuotationStatus.REPLIED, QuotationStatus.LOST, QuotationStatus.CANCELLED}
+    ),
+    QuotationStatus.REPLIED: frozenset(
+        {QuotationStatus.OPEN, QuotationStatus.LOST, QuotationStatus.CANCELLED}
+    ),
+    QuotationStatus.EXPIRED: frozenset(
+        {QuotationStatus.OPEN, QuotationStatus.LOST, QuotationStatus.CANCELLED}
+    ),
     QuotationStatus.PARTIALLY_ORDERED: frozenset(),
     QuotationStatus.ORDERED: frozenset(),
     QuotationStatus.LOST: frozenset(),
@@ -215,7 +211,10 @@ def _ensure_transition_allowed(current_status: LeadStatus, target_status: LeadSt
             [
                 {
                     "field": "status",
-                    "message": f"Cannot transition from '{current_status.value}' to '{target_status.value}'.",
+                    "message": (
+                        f"Cannot transition from '{current_status.value}' "
+                        f"to '{target_status.value}'."
+                    ),
                 }
             ]
         )
@@ -242,7 +241,10 @@ def _ensure_opportunity_transition_allowed(
             [
                 {
                     "field": "status",
-                    "message": f"Cannot transition from '{current_status.value}' to '{target_status.value}'.",
+                    "message": (
+                        f"Cannot transition from '{current_status.value}' "
+                        f"to '{target_status.value}'."
+                    ),
                 }
             ]
         )
@@ -270,7 +272,10 @@ def _ensure_quotation_handoff_allowed(current_status: OpportunityStatus) -> None
             [
                 {
                     "field": "status",
-                    "message": "Only open or active opportunities can be prepared for quotation handoff.",
+                    "message": (
+                        "Only open or active opportunities can be prepared "
+                        "for quotation handoff."
+                    ),
                 }
             ]
         )
@@ -302,7 +307,10 @@ def _ensure_quotation_transition_allowed(
             [
                 {
                     "field": "status",
-                    "message": f"Quotation status '{target_status.value}' is derived from expiry or downstream order coverage.",
+                    "message": (
+                        f"Quotation status '{target_status.value}' is derived "
+                        "from expiry or downstream order coverage."
+                    ),
                 }
             ]
         )
@@ -311,7 +319,10 @@ def _ensure_quotation_transition_allowed(
             [
                 {
                     "field": "status",
-                    "message": f"Cannot transition from '{current_status.value}' to '{target_status.value}'.",
+                    "message": (
+                        f"Cannot transition from '{current_status.value}' "
+                        f"to '{target_status.value}'."
+                    ),
                 }
             ]
         )
@@ -339,873 +350,6 @@ def _ensure_quotation_validity(transaction_date: date, valid_till: date) -> None
                 }
             ]
         )
-
-
-def _serialize_crm_settings(record: CRMSettings | object | None) -> CRMSettingsResponse:
-    if record is None:
-        return CRMSettingsResponse.model_validate(DEFAULT_CRM_SETTINGS.model_dump())
-
-    return CRMSettingsResponse(
-        lead_duplicate_policy=CRMDuplicatePolicy(getattr(record, "lead_duplicate_policy", DEFAULT_CRM_SETTINGS.lead_duplicate_policy)),
-        contact_creation_enabled=bool(
-            getattr(record, "contact_creation_enabled", DEFAULT_CRM_SETTINGS.contact_creation_enabled)
-        ),
-        default_quotation_validity_days=int(
-            getattr(
-                record,
-                "default_quotation_validity_days",
-                DEFAULT_CRM_SETTINGS.default_quotation_validity_days,
-            )
-        ),
-        carry_forward_communications=bool(
-            getattr(
-                record,
-                "carry_forward_communications",
-                DEFAULT_CRM_SETTINGS.carry_forward_communications,
-            )
-        ),
-        carry_forward_comments=bool(
-            getattr(record, "carry_forward_comments", DEFAULT_CRM_SETTINGS.carry_forward_comments)
-        ),
-        opportunity_auto_close_days=getattr(
-            record,
-            "opportunity_auto_close_days",
-            DEFAULT_CRM_SETTINGS.opportunity_auto_close_days,
-        ),
-    )
-
-
-async def get_crm_settings(
-    session: AsyncSession,
-    tenant_id: uuid.UUID | None = None,
-) -> CRMSettingsResponse:
-    tid = tenant_id or DEFAULT_TENANT_ID
-    async with session.begin():
-        await set_tenant(session, tid)
-        result = await session.execute(select(CRMSettings).where(CRMSettings.tenant_id == tid))
-        return _serialize_crm_settings(result.scalar_one_or_none())
-
-
-async def update_crm_settings(
-    session: AsyncSession,
-    data: CRMSettingsUpdate,
-    tenant_id: uuid.UUID | None = None,
-) -> CRMSettingsResponse:
-    tid = tenant_id or DEFAULT_TENANT_ID
-    fields = data.model_fields_set
-
-    async with session.begin():
-        await set_tenant(session, tid)
-        result = await session.execute(select(CRMSettings).where(CRMSettings.tenant_id == tid))
-        record = result.scalar_one_or_none()
-        if record is None:
-            record = CRMSettings(tenant_id=tid)
-            session.add(record)
-
-        if "lead_duplicate_policy" in fields and data.lead_duplicate_policy is not None:
-            record.lead_duplicate_policy = data.lead_duplicate_policy
-        if "contact_creation_enabled" in fields and data.contact_creation_enabled is not None:
-            record.contact_creation_enabled = data.contact_creation_enabled
-        if "default_quotation_validity_days" in fields and data.default_quotation_validity_days is not None:
-            record.default_quotation_validity_days = data.default_quotation_validity_days
-        if "carry_forward_communications" in fields and data.carry_forward_communications is not None:
-            record.carry_forward_communications = data.carry_forward_communications
-        if "carry_forward_comments" in fields and data.carry_forward_comments is not None:
-            record.carry_forward_comments = data.carry_forward_comments
-        if "opportunity_auto_close_days" in fields:
-            record.opportunity_auto_close_days = data.opportunity_auto_close_days
-        record.updated_at = datetime.now(tz=UTC)
-
-    return _serialize_crm_settings(record)
-
-
-async def _resolve_effective_quotation_valid_till(
-    session: AsyncSession,
-    transaction_date: date,
-    valid_till: date | None,
-    tenant_id: uuid.UUID,
-) -> date:
-    if valid_till is not None:
-        return valid_till
-
-    settings = await get_crm_settings(session, tenant_id=tenant_id)
-    return transaction_date + timedelta(days=settings.default_quotation_validity_days)
-
-
-def _default_sales_stage_names() -> set[str]:
-    return {name for name, _, _ in DEFAULT_CRM_SALES_STAGES}
-
-
-def _default_territory_names() -> set[str]:
-    return {name for name, _ in DEFAULT_CRM_TERRITORIES}
-
-
-def _default_customer_group_names() -> set[str]:
-    return {name for name, _ in DEFAULT_CRM_CUSTOMER_GROUPS}
-
-
-def _serialize_sales_stage(record: CRMSalesStage) -> CRMSalesStageResponse:
-    return CRMSalesStageResponse.model_validate(record)
-
-
-def _serialize_territory(record: CRMTerritory) -> CRMTerritoryResponse:
-    return CRMTerritoryResponse.model_validate(record)
-
-
-def _serialize_customer_group(record: CRMCustomerGroup) -> CRMCustomerGroupResponse:
-    return CRMCustomerGroupResponse.model_validate(record)
-
-
-async def _lookup_active_master_name(
-    session: AsyncSession,
-    model: type[CRMSalesStage] | type[CRMTerritory] | type[CRMCustomerGroup],
-    name: str,
-    tenant_id: uuid.UUID,
-) -> object | None:
-    async with session.begin():
-        await set_tenant(session, tenant_id)
-        result = await session.execute(
-            select(model).where(model.tenant_id == tenant_id, model.name == name, model.is_active.is_(True))
-        )
-        return result.scalar_one_or_none()
-
-
-async def _ensure_sales_stage_supported(
-    session: AsyncSession,
-    sales_stage: str,
-    tenant_id: uuid.UUID,
-) -> str:
-    normalized = _trim(sales_stage) or "qualification"
-    if normalized in _default_sales_stage_names():
-        return normalized
-    record = await _lookup_active_master_name(session, CRMSalesStage, normalized, tenant_id)
-    if record is None:
-        raise ValidationError([{"field": "sales_stage", "message": "Select a configured sales stage."}])
-    return normalized
-
-
-async def _ensure_territory_supported(
-    session: AsyncSession,
-    territory: str,
-    tenant_id: uuid.UUID,
-) -> str:
-    normalized = _trim(territory)
-    if not normalized or normalized in _default_territory_names():
-        return normalized
-    record = await _lookup_active_master_name(session, CRMTerritory, normalized, tenant_id)
-    if record is None:
-        raise ValidationError([{"field": "territory", "message": "Select a configured territory."}])
-    return normalized
-
-
-async def _ensure_customer_group_supported(
-    session: AsyncSession,
-    customer_group: str,
-    tenant_id: uuid.UUID,
-) -> str:
-    normalized = _trim(customer_group)
-    if not normalized or normalized in _default_customer_group_names():
-        return normalized
-    record = await _lookup_active_master_name(session, CRMCustomerGroup, normalized, tenant_id)
-    if record is None:
-        raise ValidationError([{"field": "customer_group", "message": "Select a configured customer group."}])
-    return normalized
-
-
-async def list_sales_stages(
-    session: AsyncSession,
-    tenant_id: uuid.UUID | None = None,
-) -> list[CRMSalesStage]:
-    tid = tenant_id or DEFAULT_TENANT_ID
-    async with session.begin():
-        await set_tenant(session, tid)
-        result = await session.execute(
-            select(CRMSalesStage).where(CRMSalesStage.tenant_id == tid).order_by(CRMSalesStage.sort_order.asc(), CRMSalesStage.name.asc())
-        )
-        items = list(result.scalars().all())
-        if items:
-            return items
-
-        defaults = [
-            CRMSalesStage(
-                id=uuid.uuid4(),
-                tenant_id=tid,
-                name=name,
-                probability=probability,
-                sort_order=sort_order,
-                is_active=True,
-            )
-            for name, probability, sort_order in DEFAULT_CRM_SALES_STAGES
-        ]
-        for item in defaults:
-            session.add(item)
-        return defaults
-
-
-async def list_territories(
-    session: AsyncSession,
-    tenant_id: uuid.UUID | None = None,
-) -> list[CRMTerritory]:
-    tid = tenant_id or DEFAULT_TENANT_ID
-    async with session.begin():
-        await set_tenant(session, tid)
-        result = await session.execute(
-            select(CRMTerritory).where(CRMTerritory.tenant_id == tid).order_by(CRMTerritory.sort_order.asc(), CRMTerritory.name.asc())
-        )
-        items = list(result.scalars().all())
-        if items:
-            return items
-
-        defaults = [
-            CRMTerritory(
-                id=uuid.uuid4(),
-                tenant_id=tid,
-                name=name,
-                parent_id=None,
-                is_group=False,
-                sort_order=sort_order,
-                is_active=True,
-            )
-            for name, sort_order in DEFAULT_CRM_TERRITORIES
-        ]
-        for item in defaults:
-            session.add(item)
-        return defaults
-
-
-async def list_customer_groups(
-    session: AsyncSession,
-    tenant_id: uuid.UUID | None = None,
-) -> list[CRMCustomerGroup]:
-    tid = tenant_id or DEFAULT_TENANT_ID
-    async with session.begin():
-        await set_tenant(session, tid)
-        result = await session.execute(
-            select(CRMCustomerGroup).where(CRMCustomerGroup.tenant_id == tid).order_by(CRMCustomerGroup.sort_order.asc(), CRMCustomerGroup.name.asc())
-        )
-        items = list(result.scalars().all())
-        if items:
-            return items
-
-        defaults = [
-            CRMCustomerGroup(
-                id=uuid.uuid4(),
-                tenant_id=tid,
-                name=name,
-                parent_id=None,
-                is_group=False,
-                sort_order=sort_order,
-                is_active=True,
-            )
-            for name, sort_order in DEFAULT_CRM_CUSTOMER_GROUPS
-        ]
-        for item in defaults:
-            session.add(item)
-        return defaults
-
-
-async def get_crm_setup_bundle(
-    session: AsyncSession,
-    tenant_id: uuid.UUID | None = None,
-) -> CRMSetupBundleResponse:
-    tid = tenant_id or DEFAULT_TENANT_ID
-    settings = await get_crm_settings(session, tenant_id=tid)
-    sales_stages = await list_sales_stages(session, tenant_id=tid)
-    territories = await list_territories(session, tenant_id=tid)
-    customer_groups = await list_customer_groups(session, tenant_id=tid)
-    return CRMSetupBundleResponse(
-        settings=settings,
-        sales_stages=[_serialize_sales_stage(item) for item in sales_stages],
-        territories=[_serialize_territory(item) for item in territories],
-        customer_groups=[_serialize_customer_group(item) for item in customer_groups],
-    )
-
-
-def _quantized_amount(value: object | None) -> Decimal:
-    if value is None or value == "":
-        return Decimal("0.00")
-    return Decimal(str(value)).quantize(Decimal("0.01"))
-
-
-def _build_pipeline_segment_list(
-    buckets: dict[tuple[str | None, str], dict[str, object]],
-) -> list[CRMPipelineSegment]:
-    items = [CRMPipelineSegment.model_validate(item) for item in buckets.values()]
-    return sorted(items, key=lambda item: (-item.count, item.label.lower(), item.record_type or ""))
-
-
-def _upsert_pipeline_bucket(
-    buckets: dict[tuple[str | None, str], dict[str, object]],
-    *,
-    record_type: str | None,
-    key: str,
-    label: str,
-    amount: Decimal,
-) -> None:
-    bucket_key = (record_type, key)
-    bucket = buckets.setdefault(
-        bucket_key,
-        {
-            "record_type": record_type,
-            "key": key,
-            "label": label,
-            "count": 0,
-            "amount": Decimal("0.00"),
-        },
-    )
-    bucket["count"] = int(bucket["count"]) + 1
-    bucket["amount"] = (_quantized_amount(bucket["amount"]) + amount).quantize(Decimal("0.01"))
-
-
-def _lead_scope(status: str) -> CRMPipelineScope:
-    return CRMPipelineScope.TERMINAL if status in TERMINAL_LEAD_STATUSES else CRMPipelineScope.OPEN
-
-
-def _opportunity_scope(status: str) -> CRMPipelineScope:
-    return CRMPipelineScope.TERMINAL if status in TERMINAL_OPPORTUNITY_STATUSES else CRMPipelineScope.OPEN
-
-
-def _quotation_scope(status: str) -> CRMPipelineScope:
-    return CRMPipelineScope.TERMINAL if status in TERMINAL_QUOTATION_STATUSES else CRMPipelineScope.OPEN
-
-
-def _matches_common_filters(
-    *,
-    params: CRMPipelineReportParams,
-    scope: CRMPipelineScope,
-    status: str,
-    territory: str,
-    customer_group: str,
-    owner: str,
-    lost_reason: str,
-    utm_source: str,
-    utm_medium: str,
-    utm_campaign: str,
-) -> bool:
-    if params.scope != CRMPipelineScope.ALL and scope != params.scope:
-        return False
-    if params.status and status != params.status:
-        return False
-    if params.territory and territory != params.territory:
-        return False
-    if params.customer_group and customer_group != params.customer_group:
-        return False
-    if params.owner and owner != params.owner:
-        return False
-    if params.lost_reason and lost_reason != params.lost_reason:
-        return False
-    if params.utm_source and utm_source != params.utm_source:
-        return False
-    if params.utm_medium and utm_medium != params.utm_medium:
-        return False
-    if params.utm_campaign and utm_campaign != params.utm_campaign:
-        return False
-    return True
-
-
-async def get_crm_pipeline_report(
-    session: AsyncSession,
-    params: CRMPipelineReportParams,
-    tenant_id: uuid.UUID | None = None,
-) -> CRMPipelineReportResponse:
-    tid = tenant_id or DEFAULT_TENANT_ID
-    async with session.begin():
-        await set_tenant(session, tid)
-        lead_result = await session.execute(select(Lead).where(Lead.tenant_id == tid))
-        opportunity_result = await session.execute(select(Opportunity).where(Opportunity.tenant_id == tid))
-        quotation_result = await session.execute(select(Quotation).where(Quotation.tenant_id == tid))
-        leads = list(lead_result.scalars().all())
-        opportunities = list(opportunity_result.scalars().all())
-        quotations = list(quotation_result.scalars().all())
-
-    totals = CRMPipelineTotals()
-    by_status: dict[tuple[str | None, str], dict[str, object]] = {}
-    by_sales_stage: dict[tuple[str | None, str], dict[str, object]] = {}
-    by_territory: dict[tuple[str | None, str], dict[str, object]] = {}
-    by_customer_group: dict[tuple[str | None, str], dict[str, object]] = {}
-    by_owner: dict[tuple[str | None, str], dict[str, object]] = {}
-    by_lost_reason: dict[tuple[str | None, str], dict[str, object]] = {}
-    by_utm_source: dict[tuple[str | None, str], dict[str, object]] = {}
-    dropoff = CRMPipelineDropOff()
-
-    def include_record(record_type: CRMPipelineRecordType) -> bool:
-        return params.record_type in {CRMPipelineRecordType.ALL, record_type}
-
-    for lead in leads:
-        if not include_record(CRMPipelineRecordType.LEAD):
-            continue
-        scope = _lead_scope(str(lead.status))
-        if params.sales_stage:
-            continue
-        if not _matches_common_filters(
-            params=params,
-            scope=scope,
-            status=str(lead.status),
-            territory=str(getattr(lead, "territory", "") or ""),
-            customer_group="",
-            owner=str(getattr(lead, "lead_owner", "") or ""),
-            lost_reason="",
-            utm_source=str(getattr(lead, "utm_source", "") or ""),
-            utm_medium=str(getattr(lead, "utm_medium", "") or ""),
-            utm_campaign=str(getattr(lead, "utm_campaign", "") or ""),
-        ):
-            continue
-
-        totals.lead_count += 1
-        if scope == CRMPipelineScope.OPEN:
-            totals.open_count += 1
-        else:
-            totals.terminal_count += 1
-        if str(lead.status) not in {LeadStatus.OPPORTUNITY.value, LeadStatus.QUOTATION.value, LeadStatus.CONVERTED.value}:
-            dropoff.lead_only_count += 1
-
-        _upsert_pipeline_bucket(by_status, record_type="lead", key=str(lead.status), label=str(lead.status), amount=Decimal("0.00"))
-        if getattr(lead, "territory", ""):
-            _upsert_pipeline_bucket(
-                by_territory,
-                record_type="lead",
-                key=str(lead.territory),
-                label=str(lead.territory),
-                amount=Decimal("0.00"),
-            )
-        if getattr(lead, "lead_owner", ""):
-            _upsert_pipeline_bucket(
-                by_owner,
-                record_type="lead",
-                key=str(lead.lead_owner),
-                label=str(lead.lead_owner),
-                amount=Decimal("0.00"),
-            )
-        if getattr(lead, "utm_source", ""):
-            _upsert_pipeline_bucket(
-                by_utm_source,
-                record_type="lead",
-                key=str(lead.utm_source),
-                label=str(lead.utm_source),
-                amount=Decimal("0.00"),
-            )
-
-    for opportunity in opportunities:
-        if not include_record(CRMPipelineRecordType.OPPORTUNITY):
-            continue
-        scope = _opportunity_scope(str(opportunity.status))
-        if params.sales_stage and str(opportunity.sales_stage) != params.sales_stage:
-            continue
-        amount = _quantized_amount(getattr(opportunity, "opportunity_amount", None))
-        if not _matches_common_filters(
-            params=params,
-            scope=scope,
-            status=str(opportunity.status),
-            territory=str(getattr(opportunity, "territory", "") or ""),
-            customer_group=str(getattr(opportunity, "customer_group", "") or ""),
-            owner=str(getattr(opportunity, "opportunity_owner", "") or ""),
-            lost_reason=str(getattr(opportunity, "lost_reason", "") or ""),
-            utm_source=str(getattr(opportunity, "utm_source", "") or ""),
-            utm_medium=str(getattr(opportunity, "utm_medium", "") or ""),
-            utm_campaign=str(getattr(opportunity, "utm_campaign", "") or ""),
-        ):
-            continue
-
-        totals.opportunity_count += 1
-        if scope == CRMPipelineScope.OPEN:
-            totals.open_count += 1
-            totals.open_pipeline_amount = (totals.open_pipeline_amount + amount).quantize(Decimal("0.01"))
-        else:
-            totals.terminal_count += 1
-            totals.terminal_pipeline_amount = (totals.terminal_pipeline_amount + amount).quantize(Decimal("0.01"))
-        if str(opportunity.status) not in {OpportunityStatus.QUOTATION.value, OpportunityStatus.CONVERTED.value}:
-            dropoff.opportunity_without_quotation_count += 1
-
-        _upsert_pipeline_bucket(
-            by_status,
-            record_type="opportunity",
-            key=str(opportunity.status),
-            label=str(opportunity.status),
-            amount=amount,
-        )
-        _upsert_pipeline_bucket(
-            by_sales_stage,
-            record_type="opportunity",
-            key=str(opportunity.sales_stage),
-            label=str(opportunity.sales_stage),
-            amount=amount,
-        )
-        if getattr(opportunity, "territory", ""):
-            _upsert_pipeline_bucket(
-                by_territory,
-                record_type="opportunity",
-                key=str(opportunity.territory),
-                label=str(opportunity.territory),
-                amount=amount,
-            )
-        if getattr(opportunity, "customer_group", ""):
-            _upsert_pipeline_bucket(
-                by_customer_group,
-                record_type="opportunity",
-                key=str(opportunity.customer_group),
-                label=str(opportunity.customer_group),
-                amount=amount,
-            )
-        if getattr(opportunity, "opportunity_owner", ""):
-            _upsert_pipeline_bucket(
-                by_owner,
-                record_type="opportunity",
-                key=str(opportunity.opportunity_owner),
-                label=str(opportunity.opportunity_owner),
-                amount=amount,
-            )
-        if getattr(opportunity, "lost_reason", ""):
-            _upsert_pipeline_bucket(
-                by_lost_reason,
-                record_type="opportunity",
-                key=str(opportunity.lost_reason),
-                label=str(opportunity.lost_reason),
-                amount=amount,
-            )
-        if getattr(opportunity, "utm_source", ""):
-            _upsert_pipeline_bucket(
-                by_utm_source,
-                record_type="opportunity",
-                key=str(opportunity.utm_source),
-                label=str(opportunity.utm_source),
-                amount=amount,
-            )
-
-    for quotation in quotations:
-        if not include_record(CRMPipelineRecordType.QUOTATION):
-            continue
-        scope = _quotation_scope(str(quotation.status))
-        if params.sales_stage:
-            continue
-        amount = _quantized_amount(getattr(quotation, "grand_total", None))
-        if not _matches_common_filters(
-            params=params,
-            scope=scope,
-            status=str(quotation.status),
-            territory=str(getattr(quotation, "territory", "") or ""),
-            customer_group=str(getattr(quotation, "customer_group", "") or ""),
-            owner="",
-            lost_reason=str(getattr(quotation, "lost_reason", "") or ""),
-            utm_source=str(getattr(quotation, "utm_source", "") or ""),
-            utm_medium=str(getattr(quotation, "utm_medium", "") or ""),
-            utm_campaign=str(getattr(quotation, "utm_campaign", "") or ""),
-        ):
-            continue
-
-        totals.quotation_count += 1
-        if scope == CRMPipelineScope.OPEN:
-            totals.open_count += 1
-            totals.open_pipeline_amount = (totals.open_pipeline_amount + amount).quantize(Decimal("0.01"))
-        else:
-            totals.terminal_count += 1
-            totals.terminal_pipeline_amount = (totals.terminal_pipeline_amount + amount).quantize(Decimal("0.01"))
-        if int(getattr(quotation, "order_count", 0) or 0) > 0:
-            dropoff.quotation_with_order_count += 1
-        else:
-            dropoff.quotation_without_order_count += 1
-
-        _upsert_pipeline_bucket(
-            by_status,
-            record_type="quotation",
-            key=str(quotation.status),
-            label=str(quotation.status),
-            amount=amount,
-        )
-        if getattr(quotation, "territory", ""):
-            _upsert_pipeline_bucket(
-                by_territory,
-                record_type="quotation",
-                key=str(quotation.territory),
-                label=str(quotation.territory),
-                amount=amount,
-            )
-        if getattr(quotation, "customer_group", ""):
-            _upsert_pipeline_bucket(
-                by_customer_group,
-                record_type="quotation",
-                key=str(quotation.customer_group),
-                label=str(quotation.customer_group),
-                amount=amount,
-            )
-        if getattr(quotation, "lost_reason", ""):
-            _upsert_pipeline_bucket(
-                by_lost_reason,
-                record_type="quotation",
-                key=str(quotation.lost_reason),
-                label=str(quotation.lost_reason),
-                amount=amount,
-            )
-        if getattr(quotation, "utm_source", ""):
-            _upsert_pipeline_bucket(
-                by_utm_source,
-                record_type="quotation",
-                key=str(quotation.utm_source),
-                label=str(quotation.utm_source),
-                amount=amount,
-            )
-
-    return CRMPipelineReportResponse(
-        filters=params,
-        totals=totals,
-        by_status=_build_pipeline_segment_list(by_status),
-        by_sales_stage=_build_pipeline_segment_list(by_sales_stage),
-        by_territory=_build_pipeline_segment_list(by_territory),
-        by_customer_group=_build_pipeline_segment_list(by_customer_group),
-        by_owner=_build_pipeline_segment_list(by_owner),
-        by_lost_reason=_build_pipeline_segment_list(by_lost_reason),
-        by_utm_source=_build_pipeline_segment_list(by_utm_source),
-        dropoff=dropoff,
-    )
-
-
-async def create_sales_stage(
-    session: AsyncSession,
-    data: CRMSalesStageCreate,
-    tenant_id: uuid.UUID | None = None,
-) -> CRMSalesStage:
-    tid = tenant_id or DEFAULT_TENANT_ID
-    name = _trim(data.name)
-    if not name:
-        raise ValidationError([{"field": "name", "message": "Sales stage name is required."}])
-
-    await list_sales_stages(session, tenant_id=tid)
-    async with session.begin():
-        await set_tenant(session, tid)
-        existing = await session.execute(
-            select(CRMSalesStage).where(CRMSalesStage.tenant_id == tid, CRMSalesStage.name == name)
-        )
-        if existing.scalar_one_or_none() is not None:
-            raise ValidationError([{"field": "name", "message": "Sales stage already exists."}])
-
-        stage = CRMSalesStage(
-            tenant_id=tid,
-            name=name,
-            probability=data.probability,
-            sort_order=data.sort_order,
-            is_active=data.is_active,
-        )
-        session.add(stage)
-        return stage
-
-
-async def update_sales_stage(
-    session: AsyncSession,
-    stage_id: uuid.UUID,
-    data: CRMSalesStageUpdate,
-    tenant_id: uuid.UUID | None = None,
-) -> CRMSalesStage | None:
-    tid = tenant_id or DEFAULT_TENANT_ID
-    async with session.begin():
-        await set_tenant(session, tid)
-        result = await session.execute(
-            select(CRMSalesStage).where(CRMSalesStage.id == stage_id, CRMSalesStage.tenant_id == tid)
-        )
-        stage = result.scalar_one_or_none()
-        if stage is None:
-            return None
-
-        if data.name is not None:
-            name = _trim(data.name)
-            duplicate = await session.execute(
-                select(CRMSalesStage).where(
-                    CRMSalesStage.tenant_id == tid,
-                    CRMSalesStage.name == name,
-                    CRMSalesStage.id != stage_id,
-                )
-            )
-            if duplicate.scalar_one_or_none() is not None:
-                raise ValidationError([{"field": "name", "message": "Sales stage already exists."}])
-            stage.name = name
-        if data.probability is not None:
-            stage.probability = data.probability
-        if data.sort_order is not None:
-            stage.sort_order = data.sort_order
-        if data.is_active is not None:
-            stage.is_active = data.is_active
-        stage.updated_at = datetime.now(tz=UTC)
-        return stage
-
-
-async def _validate_tree_parent(
-    session: AsyncSession,
-    model: type[CRMTerritory] | type[CRMCustomerGroup],
-    parent_id: uuid.UUID | None,
-    tenant_id: uuid.UUID,
-    current_id: uuid.UUID | None = None,
-) -> uuid.UUID | None:
-    if parent_id is None:
-        return None
-    if current_id is not None and parent_id == current_id:
-        raise ValidationError([{"field": "parent_id", "message": "A master record cannot be its own parent."}])
-
-    async with session.begin():
-        await set_tenant(session, tenant_id)
-        result = await session.execute(select(model).where(model.id == parent_id, model.tenant_id == tenant_id))
-        if result.scalar_one_or_none() is None:
-            raise ValidationError([{"field": "parent_id", "message": "Parent master record not found."}])
-    return parent_id
-
-
-async def create_territory(
-    session: AsyncSession,
-    data: CRMTerritoryCreate,
-    tenant_id: uuid.UUID | None = None,
-) -> CRMTerritory:
-    tid = tenant_id or DEFAULT_TENANT_ID
-    name = _trim(data.name)
-    if not name:
-        raise ValidationError([{"field": "name", "message": "Territory name is required."}])
-
-    await list_territories(session, tenant_id=tid)
-    parent_id = await _validate_tree_parent(session, CRMTerritory, data.parent_id, tid)
-    async with session.begin():
-        await set_tenant(session, tid)
-        existing = await session.execute(
-            select(CRMTerritory).where(CRMTerritory.tenant_id == tid, CRMTerritory.name == name)
-        )
-        if existing.scalar_one_or_none() is not None:
-            raise ValidationError([{"field": "name", "message": "Territory already exists."}])
-
-        territory = CRMTerritory(
-            tenant_id=tid,
-            name=name,
-            parent_id=parent_id,
-            is_group=data.is_group,
-            sort_order=data.sort_order,
-            is_active=data.is_active,
-        )
-        session.add(territory)
-        return territory
-
-
-async def update_territory(
-    session: AsyncSession,
-    territory_id: uuid.UUID,
-    data: CRMTerritoryUpdate,
-    tenant_id: uuid.UUID | None = None,
-) -> CRMTerritory | None:
-    tid = tenant_id or DEFAULT_TENANT_ID
-    async with session.begin():
-        await set_tenant(session, tid)
-        result = await session.execute(
-            select(CRMTerritory).where(CRMTerritory.id == territory_id, CRMTerritory.tenant_id == tid)
-        )
-        territory = result.scalar_one_or_none()
-        if territory is None:
-            return None
-
-    parent_id = await _validate_tree_parent(session, CRMTerritory, data.parent_id, tid, current_id=territory_id)
-    async with session.begin():
-        await set_tenant(session, tid)
-        result = await session.execute(
-            select(CRMTerritory).where(CRMTerritory.id == territory_id, CRMTerritory.tenant_id == tid)
-        )
-        territory = result.scalar_one_or_none()
-        if territory is None:
-            return None
-        if data.name is not None:
-            name = _trim(data.name)
-            duplicate = await session.execute(
-                select(CRMTerritory).where(
-                    CRMTerritory.tenant_id == tid,
-                    CRMTerritory.name == name,
-                    CRMTerritory.id != territory_id,
-                )
-            )
-            if duplicate.scalar_one_or_none() is not None:
-                raise ValidationError([{"field": "name", "message": "Territory already exists."}])
-            territory.name = name
-        if "parent_id" in data.model_fields_set:
-            territory.parent_id = parent_id
-        if data.is_group is not None:
-            territory.is_group = data.is_group
-        if data.sort_order is not None:
-            territory.sort_order = data.sort_order
-        if data.is_active is not None:
-            territory.is_active = data.is_active
-        territory.updated_at = datetime.now(tz=UTC)
-        return territory
-
-
-async def create_customer_group(
-    session: AsyncSession,
-    data: CRMCustomerGroupCreate,
-    tenant_id: uuid.UUID | None = None,
-) -> CRMCustomerGroup:
-    tid = tenant_id or DEFAULT_TENANT_ID
-    name = _trim(data.name)
-    if not name:
-        raise ValidationError([{"field": "name", "message": "Customer group name is required."}])
-
-    await list_customer_groups(session, tenant_id=tid)
-    parent_id = await _validate_tree_parent(session, CRMCustomerGroup, data.parent_id, tid)
-    async with session.begin():
-        await set_tenant(session, tid)
-        existing = await session.execute(
-            select(CRMCustomerGroup).where(CRMCustomerGroup.tenant_id == tid, CRMCustomerGroup.name == name)
-        )
-        if existing.scalar_one_or_none() is not None:
-            raise ValidationError([{"field": "name", "message": "Customer group already exists."}])
-
-        customer_group = CRMCustomerGroup(
-            tenant_id=tid,
-            name=name,
-            parent_id=parent_id,
-            is_group=data.is_group,
-            sort_order=data.sort_order,
-            is_active=data.is_active,
-        )
-        session.add(customer_group)
-        return customer_group
-
-
-async def update_customer_group(
-    session: AsyncSession,
-    customer_group_id: uuid.UUID,
-    data: CRMCustomerGroupUpdate,
-    tenant_id: uuid.UUID | None = None,
-) -> CRMCustomerGroup | None:
-    tid = tenant_id or DEFAULT_TENANT_ID
-    async with session.begin():
-        await set_tenant(session, tid)
-        result = await session.execute(
-            select(CRMCustomerGroup).where(CRMCustomerGroup.id == customer_group_id, CRMCustomerGroup.tenant_id == tid)
-        )
-        customer_group = result.scalar_one_or_none()
-        if customer_group is None:
-            return None
-
-    parent_id = await _validate_tree_parent(session, CRMCustomerGroup, data.parent_id, tid, current_id=customer_group_id)
-    async with session.begin():
-        await set_tenant(session, tid)
-        result = await session.execute(
-            select(CRMCustomerGroup).where(CRMCustomerGroup.id == customer_group_id, CRMCustomerGroup.tenant_id == tid)
-        )
-        customer_group = result.scalar_one_or_none()
-        if customer_group is None:
-            return None
-        if data.name is not None:
-            name = _trim(data.name)
-            duplicate = await session.execute(
-                select(CRMCustomerGroup).where(
-                    CRMCustomerGroup.tenant_id == tid,
-                    CRMCustomerGroup.name == name,
-                    CRMCustomerGroup.id != customer_group_id,
-                )
-            )
-            if duplicate.scalar_one_or_none() is not None:
-                raise ValidationError([{"field": "name", "message": "Customer group already exists."}])
-            customer_group.name = name
-        if "parent_id" in data.model_fields_set:
-            customer_group.parent_id = parent_id
-        if data.is_group is not None:
-            customer_group.is_group = data.is_group
-        if data.sort_order is not None:
-            customer_group.sort_order = data.sort_order
-        if data.is_active is not None:
-            customer_group.is_active = data.is_active
-        customer_group.updated_at = datetime.now(tz=UTC)
-        return customer_group
 
 
 def _ensure_auto_repeat_metadata(enabled: bool, frequency: str) -> None:
@@ -1239,14 +383,19 @@ def _build_duplicate_lookup_from_update(
     )
 
 
-def _first_matched_field(data: LeadCreate | _LeadDuplicateLookup, candidate: Lead | Customer) -> str:
+def _first_matched_field(
+    data: LeadCreate | _LeadDuplicateLookup,
+    candidate: Lead | Customer,
+) -> str:
     """Return the field name that caused the first match for duplicate detection."""
     # Use getattr to handle both Lead (with normalized_* fields) and Customer models
     normalized_company = _normalize_company_name(data.company_name)
     candidate_company_normalized = getattr(candidate, "normalized_company_name", None)
     if candidate_company_normalized is None:
         # Customer model doesn't have normalized_company_name, normalize on access
-        candidate_company_normalized = _normalize_company_name(getattr(candidate, "company_name", ""))
+        candidate_company_normalized = _normalize_company_name(
+            getattr(candidate, "company_name", "")
+        )
     if normalized_company and candidate_company_normalized == normalized_company:
         return "company_name"
 
@@ -1272,7 +421,9 @@ def _trim(value: str | None) -> str:
     return value.strip() if value else ""
 
 
-def _serialize_opportunity_items(items: list[OpportunityItemInput]) -> list[dict[str, object]]:
+def _serialize_opportunity_items(
+    items: list[OpportunityItemInput],
+) -> list[dict[str, object]]:
     serialized: list[dict[str, object]] = []
     for line_no, item in enumerate(items, start=1):
         quantity = item.quantity.quantize(Decimal("0.01"))
@@ -1292,7 +443,9 @@ def _serialize_opportunity_items(items: list[OpportunityItemInput]) -> list[dict
     return serialized
 
 
-def _deserialize_opportunity_items(items: list[dict[str, object]]) -> list[OpportunityItemInput]:
+def _deserialize_opportunity_items(
+    items: list[dict[str, object]],
+) -> list[OpportunityItemInput]:
     return [
         OpportunityItemInput(
             item_name=str(item.get("item_name", "")),
@@ -1310,7 +463,9 @@ def _serialize_quotation_items(items: list[QuotationItemInput]) -> list[dict[str
     return _serialize_opportunity_items(items)
 
 
-def _deserialize_quotation_items(items: list[dict[str, object]]) -> list[QuotationItemInput]:
+def _deserialize_quotation_items(
+    items: list[dict[str, object]],
+) -> list[QuotationItemInput]:
     return [QuotationItemInput.model_validate(item) for item in items]
 
 
@@ -1341,7 +496,9 @@ def _deserialize_quotation_taxes(items: list[dict[str, object]]) -> list[Quotati
     return [QuotationTaxInput.model_validate(item) for item in items]
 
 
-def _build_quotation_crm_context_snapshot(quotation: Quotation) -> dict[str, object]:
+def _build_quotation_crm_context_snapshot(
+    quotation: Quotation,
+) -> dict[str, object]:
     return {
         "source_document_type": "quotation",
         "source_document_id": str(quotation.id),
@@ -1361,7 +518,11 @@ def _build_quotation_crm_context_snapshot(quotation: Quotation) -> dict[str, obj
         "utm_medium": quotation.utm_medium,
         "utm_campaign": quotation.utm_campaign,
         "utm_content": quotation.utm_content,
-        "opportunity_id": str(quotation.opportunity_id) if quotation.opportunity_id else None,
+        "opportunity_id": (
+            str(quotation.opportunity_id)
+            if quotation.opportunity_id
+            else None
+        ),
         "transaction_date": quotation.transaction_date.isoformat(),
         "valid_till": quotation.valid_till.isoformat(),
         "subtotal": str(quotation.subtotal),
@@ -1416,7 +577,10 @@ async def _build_quotation_order_handoff_lines(
                     [
                         {
                             "field": "items",
-                            "message": "Quotation item product mapping is invalid for order conversion.",
+                            "message": (
+                                "Quotation item product mapping is invalid "
+                                "for order conversion."
+                            ),
                         }
                     ]
                 ) from exc
@@ -1430,7 +594,10 @@ async def _build_quotation_order_handoff_lines(
                 [
                     {
                         "field": "items",
-                        "message": "Resolve quotation items to catalog products before order conversion.",
+                        "message": (
+                            "Resolve quotation items to catalog products "
+                            "before order conversion."
+                        ),
                     }
                 ]
             )
@@ -1504,14 +671,23 @@ async def _resolve_quotation_order_customer_id(
         [
             {
                 "field": "party_name",
-                "message": "Resolve this quotation to an existing customer before order conversion.",
+                "message": (
+                    "Resolve this quotation to an existing customer "
+                    "before order conversion."
+                ),
             }
         ]
     )
 
 
-def _resolve_serialized_decimal_sum(items: list[dict[str, object]], field_name: str) -> Decimal:
-    return sum((Decimal(str(item[field_name])) for item in items), start=Decimal("0.00")).quantize(Decimal("0.01"))
+def _resolve_serialized_decimal_sum(
+    items: list[dict[str, object]],
+    field_name: str,
+) -> Decimal:
+    return sum(
+        (Decimal(str(item[field_name])) for item in items),
+        start=Decimal("0.00"),
+    ).quantize(Decimal("0.01"))
 
 
 def _line_amount_from_item(item: dict[str, object]) -> Decimal:
@@ -1545,7 +721,11 @@ async def _load_linked_order_rows(
             Order.status != "cancelled",
             OrderLine.source_quotation_line_no.is_not(None),
         )
-        .order_by(Order.created_at.desc(), Order.order_number.asc(), OrderLine.line_number.asc())
+        .order_by(
+            Order.created_at.desc(),
+            Order.order_number.asc(),
+            OrderLine.line_number.asc(),
+        )
     )
     if not hasattr(result, "all"):
         return []
@@ -1555,7 +735,12 @@ async def _load_linked_order_rows(
 def _build_quotation_conversion_details(
     quotation: Quotation,
     linked_rows: list[object],
-) -> tuple[Decimal, int, list[QuotationLinkedOrder], list[QuotationRemainingItem]]:
+) -> tuple[
+    Decimal,
+    int,
+    list[QuotationLinkedOrder],
+    list[QuotationRemainingItem],
+]:
     ordered_quantities: dict[int, Decimal] = {}
     linked_orders_by_id: dict[uuid.UUID, QuotationLinkedOrder] = {}
     quantity_quant = Decimal("0.001")
@@ -1563,8 +748,9 @@ def _build_quotation_conversion_details(
     for row in linked_rows:
         source_line_no = getattr(row, "source_quotation_line_no", None)
         if source_line_no is not None:
-            ordered_quantities[source_line_no] = ordered_quantities.get(source_line_no, Decimal("0.000")) + Decimal(
-                str(getattr(row, "quantity", "0"))
+            ordered_quantities[source_line_no] = (
+                ordered_quantities.get(source_line_no, Decimal("0.000"))
+                + Decimal(str(getattr(row, "quantity", "0")))
             )
 
         order_id = getattr(row, "order_id")
@@ -1585,18 +771,28 @@ def _build_quotation_conversion_details(
     remaining_items: list[QuotationRemainingItem] = []
     for item in quotation.items:
         line_no = int(item.get("line_no") or 0)
-        quoted_quantity = Decimal(str(item.get("quantity") or "0")).quantize(quantity_quant)
+        quoted_quantity = Decimal(
+            str(item.get("quantity") or "0")
+        ).quantize(quantity_quant)
         ordered_quantity = min(
             ordered_quantities.get(line_no, Decimal("0.000")).quantize(quantity_quant),
             quoted_quantity,
         )
-        remaining_quantity = max(quoted_quantity - ordered_quantity, Decimal("0.000")).quantize(quantity_quant)
+        remaining_quantity = max(
+            quoted_quantity - ordered_quantity,
+            Decimal("0.000"),
+        ).quantize(quantity_quant)
 
         quoted_amount = _line_amount_from_item(item)
         ordered_line_amount = Decimal("0.00")
         if quoted_quantity > 0:
-            ordered_line_amount = (quoted_amount * (ordered_quantity / quoted_quantity)).quantize(Decimal("0.01"))
-        remaining_amount = max(quoted_amount - ordered_line_amount, Decimal("0.00")).quantize(Decimal("0.01"))
+            ordered_line_amount = (
+                quoted_amount * (ordered_quantity / quoted_quantity)
+            ).quantize(Decimal("0.01"))
+        remaining_amount = max(
+            quoted_amount - ordered_line_amount,
+            Decimal("0.00"),
+        ).quantize(Decimal("0.01"))
         ordered_amount += ordered_line_amount
 
         if remaining_quantity > 0:
@@ -1615,7 +811,12 @@ def _build_quotation_conversion_details(
                 )
             )
 
-    return ordered_amount.quantize(Decimal("0.01")), len(linked_orders_by_id), list(linked_orders_by_id.values()), remaining_items
+    return (
+        ordered_amount.quantize(Decimal("0.01")),
+        len(linked_orders_by_id),
+        list(linked_orders_by_id.values()),
+        remaining_items,
+    )
 
 
 async def sync_quotation_order_coverage_in_transaction(
@@ -1640,7 +841,12 @@ async def sync_quotation_order_coverage(
     tid = tenant_id or DEFAULT_TENANT_ID
     async with session.begin():
         await set_tenant(session, tid)
-        result = await session.execute(select(Quotation).where(Quotation.id == quotation_id, Quotation.tenant_id == tid))
+        result = await session.execute(
+            select(Quotation).where(
+                Quotation.id == quotation_id,
+                Quotation.tenant_id == tid,
+            )
+        )
         quotation = result.scalar_one_or_none()
         if quotation is None:
             return None
@@ -1653,12 +859,12 @@ def _derive_quotation_status(quotation: Quotation) -> QuotationStatus:
         return current_status
 
     order_count = int(getattr(quotation, "order_count", 0) or 0)
-    ordered_amount = Decimal(str(getattr(quotation, "ordered_amount", Decimal("0.00")) or Decimal("0.00"))).quantize(
-        Decimal("0.01")
-    )
-    grand_total = Decimal(str(getattr(quotation, "grand_total", Decimal("0.00")) or Decimal("0.00"))).quantize(
-        Decimal("0.01")
-    )
+    ordered_amount = Decimal(
+        str(getattr(quotation, "ordered_amount", Decimal("0.00")) or Decimal("0.00"))
+    ).quantize(Decimal("0.01"))
+    grand_total = Decimal(
+        str(getattr(quotation, "grand_total", Decimal("0.00")) or Decimal("0.00"))
+    ).quantize(Decimal("0.01"))
     if order_count > 0:
         if grand_total > 0 and ordered_amount >= grand_total:
             return QuotationStatus.ORDERED
@@ -1707,9 +913,10 @@ def _resolve_total_amount(
         return explicit_amount.quantize(Decimal("0.01"))
     if not serialized_items:
         return None
-    return sum((Decimal(str(item["amount"])) for item in serialized_items), start=Decimal("0.00")).quantize(
-        Decimal("0.01")
-    )
+    return sum(
+        (Decimal(str(item["amount"])) for item in serialized_items),
+        start=Decimal("0.00"),
+    ).quantize(Decimal("0.01"))
 
 
 async def _resolve_party_context(
@@ -1729,7 +936,10 @@ async def _resolve_party_context(
             [
                 {
                     "field": "party_name",
-                    "message": f"{opportunity_from.value.capitalize()} party links must use a valid record id.",
+                    "message": (
+                        f"{opportunity_from.value.capitalize()} party links "
+                        "must use a valid record id."
+                    ),
                 }
             ]
         ) from exc
@@ -1737,7 +947,12 @@ async def _resolve_party_context(
     async with session.begin():
         await set_tenant(session, tenant_id)
         if opportunity_from == OpportunityPartyKind.LEAD:
-            result = await session.execute(select(Lead).where(Lead.id == party_id, Lead.tenant_id == tenant_id))
+            result = await session.execute(
+                select(Lead).where(
+                    Lead.id == party_id,
+                    Lead.tenant_id == tenant_id,
+                )
+            )
             lead = result.scalar_one_or_none()
             if lead is None:
                 raise ValidationError([{"field": "party_name", "message": "Lead party not found."}])
@@ -1756,7 +971,12 @@ async def _resolve_party_context(
                 },
             )
 
-        result = await session.execute(select(Customer).where(Customer.id == party_id, Customer.tenant_id == tenant_id))
+        result = await session.execute(
+            select(Customer).where(
+                Customer.id == party_id,
+                Customer.tenant_id == tenant_id,
+            )
+        )
         customer = result.scalar_one_or_none()
         if customer is None:
             raise ValidationError([{"field": "party_name", "message": "Customer party not found."}])
@@ -1785,7 +1005,12 @@ async def _find_duplicate_candidates(
     normalized_company = _normalize_company_name(data.company_name)
     normalized_email = _normalize_email(data.email_id)
     normalized_phone_values = {
-        value for value in {_normalize_phone(data.phone), _normalize_phone(data.mobile_no)} if value
+        value
+        for value in {
+            _normalize_phone(data.phone),
+            _normalize_phone(data.mobile_no),
+        }
+        if value
     }
 
     lead_filters = []
@@ -1794,7 +1019,12 @@ async def _find_duplicate_candidates(
     if normalized_company:
         lead_filters.append(Lead.normalized_company_name == normalized_company)
         customer_filters.append(
-            func.regexp_replace(func.lower(Customer.company_name), r"[^a-z0-9]", "", "g")
+            func.regexp_replace(
+                func.lower(Customer.company_name),
+                r"[^a-z0-9]",
+                "",
+                "g",
+            )
             == normalized_company
         )
     if normalized_email:
@@ -1804,7 +1034,12 @@ async def _find_duplicate_candidates(
         lead_filters.append(Lead.normalized_phone.in_(normalized_phone_values))
         lead_filters.append(Lead.normalized_mobile_no.in_(normalized_phone_values))
         customer_filters.append(
-            func.regexp_replace(Customer.contact_phone, r"\D", "", "g").in_(normalized_phone_values)
+            func.regexp_replace(
+                Customer.contact_phone,
+                r"\D",
+                "",
+                "g",
+            ).in_(normalized_phone_values)
         )
 
     if not lead_filters and not customer_filters:
@@ -1823,7 +1058,10 @@ async def _find_duplicate_candidates(
             lead_matches = []
 
         if customer_filters:
-            customer_stmt = select(Customer).where(Customer.tenant_id == tenant_id, or_(*customer_filters))
+            customer_stmt = select(Customer).where(
+                Customer.tenant_id == tenant_id,
+                or_(*customer_filters),
+            )
             customer_result = await session.execute(customer_stmt)
             customer_matches = list(customer_result.scalars().all())
         else:
@@ -1955,7 +1193,9 @@ async def get_lead(
     tid = tenant_id or DEFAULT_TENANT_ID
     async with session.begin():
         await set_tenant(session, tid)
-        result = await session.execute(select(Lead).where(Lead.id == lead_id, Lead.tenant_id == tid))
+        result = await session.execute(
+            select(Lead).where(Lead.id == lead_id, Lead.tenant_id == tid)
+        )
         return result.scalar_one_or_none()
 
 
@@ -1975,7 +1215,12 @@ async def update_lead(
     fields = data.model_fields_set - {"version"}
     duplicate_lookup = _build_duplicate_lookup_from_update(data, lead, fields)
 
-    candidates = await _find_duplicate_candidates(session, duplicate_lookup, tid, exclude_lead_id=lead_id)
+    candidates = await _find_duplicate_candidates(
+        session,
+        duplicate_lookup,
+        tid,
+        exclude_lead_id=lead_id,
+    )
     if candidates:
         raise DuplicateLeadConflictError(candidates)
 
@@ -2059,7 +1304,12 @@ async def handoff_lead_to_opportunity(
         raise ValidationError([{"field": "lead_id", "message": "Lead not found."}])
     if LeadQualificationStatus(lead.qualification_status) != LeadQualificationStatus.QUALIFIED:
         raise ValidationError(
-            [{"field": "qualification_status", "message": "Lead must be qualified before opportunity handoff."}]
+            [
+                {
+                    "field": "qualification_status",
+                    "message": "Lead must be qualified before opportunity handoff.",
+                }
+            ]
         )
 
     _ensure_opportunity_handoff_allowed(LeadStatus(lead.status))
@@ -2097,7 +1347,12 @@ async def convert_lead_to_customer(
         raise ValidationError([{"field": "lead_id", "message": "Lead not found."}])
     if LeadQualificationStatus(lead.qualification_status) != LeadQualificationStatus.QUALIFIED:
         raise ValidationError(
-            [{"field": "qualification_status", "message": "Lead must be qualified before customer conversion."}]
+            [
+                {
+                    "field": "qualification_status",
+                    "message": "Lead must be qualified before customer conversion.",
+                }
+            ]
         )
 
     customer = await create_customer(session, customer_data, tenant_id=tid)
@@ -2194,7 +1449,11 @@ async def list_opportunities(
     count_stmt = select(func.count()).select_from(base.subquery())
     offset = (params.page - 1) * params.page_size
     items_stmt = (
-        base.order_by(Opportunity.updated_at.desc(), Opportunity.expected_closing.asc(), Opportunity.id.asc())
+        base.order_by(
+            Opportunity.updated_at.desc(),
+            Opportunity.expected_closing.asc(),
+            Opportunity.id.asc(),
+        )
         .offset(offset)
         .limit(params.page_size)
     )
@@ -2218,7 +1477,10 @@ async def get_opportunity(
     async with session.begin():
         await set_tenant(session, tid)
         result = await session.execute(
-            select(Opportunity).where(Opportunity.id == opportunity_id, Opportunity.tenant_id == tid)
+            select(Opportunity).where(
+                Opportunity.id == opportunity_id,
+                Opportunity.tenant_id == tid,
+            )
         )
         return result.scalar_one_or_none()
 
@@ -2248,38 +1510,96 @@ async def update_opportunity(
             if "opportunity_from" in fields and data.opportunity_from is not None
             else OpportunityPartyKind(opportunity.opportunity_from)
         ),
-        party_name=(data.party_name if "party_name" in fields and data.party_name is not None else opportunity.party_name),
-        sales_stage=(data.sales_stage if "sales_stage" in fields and data.sales_stage is not None else opportunity.sales_stage),
-        probability=(data.probability if "probability" in fields and data.probability is not None else opportunity.probability),
-        expected_closing=(data.expected_closing if "expected_closing" in fields else opportunity.expected_closing),
-        currency=(data.currency if "currency" in fields and data.currency is not None else opportunity.currency),
-        opportunity_amount=(data.opportunity_amount if "opportunity_amount" in fields else opportunity.opportunity_amount),
-        opportunity_owner=(
-            data.opportunity_owner if "opportunity_owner" in fields and data.opportunity_owner is not None else opportunity.opportunity_owner
+        party_name=(
+            data.party_name
+            if "party_name" in fields and data.party_name is not None
+            else opportunity.party_name
         ),
-        territory=(data.territory if "territory" in fields and data.territory is not None else opportunity.territory),
+        sales_stage=(
+            data.sales_stage
+            if "sales_stage" in fields and data.sales_stage is not None
+            else opportunity.sales_stage
+        ),
+        probability=(
+            data.probability
+            if "probability" in fields and data.probability is not None
+            else opportunity.probability
+        ),
+        expected_closing=(
+            data.expected_closing
+            if "expected_closing" in fields
+            else opportunity.expected_closing
+        ),
+        currency=(
+            data.currency
+            if "currency" in fields and data.currency is not None
+            else opportunity.currency
+        ),
+        opportunity_amount=(
+            data.opportunity_amount
+            if "opportunity_amount" in fields
+            else opportunity.opportunity_amount
+        ),
+        opportunity_owner=(
+            data.opportunity_owner
+            if "opportunity_owner" in fields and data.opportunity_owner is not None
+            else opportunity.opportunity_owner
+        ),
+        territory=(
+            data.territory
+            if "territory" in fields and data.territory is not None
+            else opportunity.territory
+        ),
         customer_group=(
-            data.customer_group if "customer_group" in fields and data.customer_group is not None else opportunity.customer_group
+            data.customer_group
+            if "customer_group" in fields and data.customer_group is not None
+            else opportunity.customer_group
         ),
         contact_person=(
-            data.contact_person if "contact_person" in fields and data.contact_person is not None else opportunity.contact_person
+            data.contact_person
+            if "contact_person" in fields and data.contact_person is not None
+            else opportunity.contact_person
         ),
         contact_email=(
-            data.contact_email if "contact_email" in fields and data.contact_email is not None else opportunity.contact_email
+            data.contact_email
+            if "contact_email" in fields and data.contact_email is not None
+            else opportunity.contact_email
         ),
         contact_mobile=(
-            data.contact_mobile if "contact_mobile" in fields and data.contact_mobile is not None else opportunity.contact_mobile
+            data.contact_mobile
+            if "contact_mobile" in fields and data.contact_mobile is not None
+            else opportunity.contact_mobile
         ),
-        job_title=(data.job_title if "job_title" in fields and data.job_title is not None else opportunity.job_title),
-        utm_source=(data.utm_source if "utm_source" in fields and data.utm_source is not None else opportunity.utm_source),
-        utm_medium=(data.utm_medium if "utm_medium" in fields and data.utm_medium is not None else opportunity.utm_medium),
+        job_title=(
+            data.job_title
+            if "job_title" in fields and data.job_title is not None
+            else opportunity.job_title
+        ),
+        utm_source=(
+            data.utm_source
+            if "utm_source" in fields and data.utm_source is not None
+            else opportunity.utm_source
+        ),
+        utm_medium=(
+            data.utm_medium
+            if "utm_medium" in fields and data.utm_medium is not None
+            else opportunity.utm_medium
+        ),
         utm_campaign=(
-            data.utm_campaign if "utm_campaign" in fields and data.utm_campaign is not None else opportunity.utm_campaign
+            data.utm_campaign
+            if "utm_campaign" in fields and data.utm_campaign is not None
+            else opportunity.utm_campaign
         ),
         utm_content=(
-            data.utm_content if "utm_content" in fields and data.utm_content is not None else opportunity.utm_content
+            data.utm_content
+            if "utm_content" in fields and data.utm_content is not None
+            else opportunity.utm_content
         ),
-        items=(data.items if "items" in fields and data.items is not None else _deserialize_opportunity_items(opportunity.items)),
+        items=(
+            data.items
+            if "items" in fields and data.items is not None
+            else _deserialize_opportunity_items(opportunity.items)
+        ),
         notes=(data.notes if "notes" in fields and data.notes is not None else opportunity.notes),
     )
 
@@ -2305,16 +1625,37 @@ async def update_opportunity(
         opportunity.opportunity_amount = opportunity_amount
         opportunity.base_opportunity_amount = opportunity_amount
         opportunity.opportunity_owner = _trim(merged.opportunity_owner)
-        opportunity.territory = _trim(merged.territory) or party_defaults.get("territory", "")
+        opportunity.territory = (
+            _trim(merged.territory) or party_defaults.get("territory", "")
+        )
         opportunity.customer_group = _trim(merged.customer_group)
-        opportunity.contact_person = _trim(merged.contact_person) or party_defaults.get("contact_person", "")
-        opportunity.contact_email = _trim(merged.contact_email) or party_defaults.get("contact_email", "")
-        opportunity.contact_mobile = _trim(merged.contact_mobile) or party_defaults.get("contact_mobile", "")
+        opportunity.contact_person = (
+            _trim(merged.contact_person)
+            or party_defaults.get("contact_person", "")
+        )
+        opportunity.contact_email = (
+            _trim(merged.contact_email)
+            or party_defaults.get("contact_email", "")
+        )
+        opportunity.contact_mobile = (
+            _trim(merged.contact_mobile)
+            or party_defaults.get("contact_mobile", "")
+        )
         opportunity.job_title = _trim(merged.job_title)
-        opportunity.utm_source = _trim(merged.utm_source) or party_defaults.get("utm_source", "")
-        opportunity.utm_medium = _trim(merged.utm_medium) or party_defaults.get("utm_medium", "")
-        opportunity.utm_campaign = _trim(merged.utm_campaign) or party_defaults.get("utm_campaign", "")
-        opportunity.utm_content = _trim(merged.utm_content) or party_defaults.get("utm_content", "")
+        opportunity.utm_source = (
+            _trim(merged.utm_source) or party_defaults.get("utm_source", "")
+        )
+        opportunity.utm_medium = (
+            _trim(merged.utm_medium) or party_defaults.get("utm_medium", "")
+        )
+        opportunity.utm_campaign = (
+            _trim(merged.utm_campaign)
+            or party_defaults.get("utm_campaign", "")
+        )
+        opportunity.utm_content = (
+            _trim(merged.utm_content)
+            or party_defaults.get("utm_content", "")
+        )
         opportunity.items = serialized_items
         opportunity.notes = _trim(merged.notes)
         opportunity.version += 1
@@ -2360,7 +1701,12 @@ async def prepare_opportunity_quotation_handoff(
     _ensure_quotation_handoff_allowed(OpportunityStatus(opportunity.status))
     if not opportunity.items:
         raise ValidationError(
-            [{"field": "items", "message": "At least one opportunity item is required for quotation handoff."}]
+            [
+                {
+                    "field": "items",
+                    "message": "At least one opportunity item is required for quotation handoff.",
+                }
+            ]
         )
 
     async with session.begin():
@@ -2398,7 +1744,9 @@ async def create_quotation(
 ) -> Quotation:
     tid = tenant_id or DEFAULT_TENANT_ID
     if not data.items:
-        raise ValidationError([{"field": "items", "message": "At least one quotation item is required."}])
+        raise ValidationError(
+            [{"field": "items", "message": "At least one quotation item is required."}]
+        )
     territory = await _ensure_territory_supported(session, data.territory, tid)
     customer_group = await _ensure_customer_group_supported(session, data.customer_group, tid)
     valid_till = await _resolve_effective_quotation_valid_till(
@@ -2521,7 +1869,12 @@ async def get_quotation(
     tid = tenant_id or DEFAULT_TENANT_ID
     async with session.begin():
         await set_tenant(session, tid)
-        result = await session.execute(select(Quotation).where(Quotation.id == quotation_id, Quotation.tenant_id == tid))
+        result = await session.execute(
+            select(Quotation).where(
+                Quotation.id == quotation_id,
+                Quotation.tenant_id == tid,
+            )
+        )
         quotation = result.scalar_one_or_none()
 
     if quotation is None:
@@ -2529,7 +1882,10 @@ async def get_quotation(
     quotation = await _synchronize_quotation_status(session, quotation, tid)
     if int(getattr(quotation, "order_count", 0) or 0) > 0:
         linked_rows = await _load_linked_order_rows(session, quotation.id, tid)
-        _, _, linked_orders, remaining_items = _build_quotation_conversion_details(quotation, linked_rows)
+        _, _, linked_orders, remaining_items = _build_quotation_conversion_details(
+            quotation,
+            linked_rows,
+        )
         quotation.linked_orders = linked_orders
         quotation.remaining_items = remaining_items
     else:
@@ -2550,7 +1906,14 @@ async def prepare_quotation_order_handoff(
 
     _ensure_order_handoff_allowed(QuotationStatus(quotation.status))
     if not quotation.items:
-        raise ValidationError([{"field": "items", "message": "At least one quotation item is required for order conversion."}])
+        raise ValidationError(
+            [
+                {
+                    "field": "items",
+                    "message": "At least one quotation item is required for order conversion.",
+                }
+            ]
+        )
 
     customer_id = await _resolve_quotation_order_customer_id(session, quotation, tid)
     lines = await _build_quotation_order_handoff_lines(session, quotation.items, tid)
@@ -2585,48 +1948,110 @@ async def update_quotation(
             if "quotation_to" in fields and data.quotation_to is not None
             else QuotationPartyKind(quotation.quotation_to)
         ),
-        party_name=(data.party_name if "party_name" in fields and data.party_name is not None else quotation.party_name),
+        party_name=(
+            data.party_name
+            if "party_name" in fields and data.party_name is not None
+            else quotation.party_name
+        ),
         transaction_date=(
             data.transaction_date
             if "transaction_date" in fields and data.transaction_date is not None
             else quotation.transaction_date
         ),
-        valid_till=(data.valid_till if "valid_till" in fields and data.valid_till is not None else quotation.valid_till),
-        company=(data.company if "company" in fields and data.company is not None else quotation.company),
-        currency=(data.currency if "currency" in fields and data.currency is not None else quotation.currency),
+        valid_till=(
+            data.valid_till
+            if "valid_till" in fields and data.valid_till is not None
+            else quotation.valid_till
+        ),
+        company=(
+            data.company
+            if "company" in fields and data.company is not None
+            else quotation.company
+        ),
+        currency=(
+            data.currency
+            if "currency" in fields and data.currency is not None
+            else quotation.currency
+        ),
         contact_person=(
-            data.contact_person if "contact_person" in fields and data.contact_person is not None else quotation.contact_person
+            data.contact_person
+            if "contact_person" in fields and data.contact_person is not None
+            else quotation.contact_person
         ),
         contact_email=(
-            data.contact_email if "contact_email" in fields and data.contact_email is not None else quotation.contact_email
+            data.contact_email
+            if "contact_email" in fields and data.contact_email is not None
+            else quotation.contact_email
         ),
         contact_mobile=(
-            data.contact_mobile if "contact_mobile" in fields and data.contact_mobile is not None else quotation.contact_mobile
+            data.contact_mobile
+            if "contact_mobile" in fields and data.contact_mobile is not None
+            else quotation.contact_mobile
         ),
-        job_title=(data.job_title if "job_title" in fields and data.job_title is not None else quotation.job_title),
-        territory=(data.territory if "territory" in fields and data.territory is not None else quotation.territory),
+        job_title=(
+            data.job_title
+            if "job_title" in fields and data.job_title is not None
+            else quotation.job_title
+        ),
+        territory=(
+            data.territory
+            if "territory" in fields and data.territory is not None
+            else quotation.territory
+        ),
         customer_group=(
-            data.customer_group if "customer_group" in fields and data.customer_group is not None else quotation.customer_group
+            data.customer_group
+            if "customer_group" in fields and data.customer_group is not None
+            else quotation.customer_group
         ),
         billing_address=(
-            data.billing_address if "billing_address" in fields and data.billing_address is not None else quotation.billing_address
+            data.billing_address
+            if "billing_address" in fields and data.billing_address is not None
+            else quotation.billing_address
         ),
         shipping_address=(
-            data.shipping_address if "shipping_address" in fields and data.shipping_address is not None else quotation.shipping_address
+            data.shipping_address
+            if "shipping_address" in fields and data.shipping_address is not None
+            else quotation.shipping_address
         ),
-        utm_source=(data.utm_source if "utm_source" in fields and data.utm_source is not None else quotation.utm_source),
-        utm_medium=(data.utm_medium if "utm_medium" in fields and data.utm_medium is not None else quotation.utm_medium),
+        utm_source=(
+            data.utm_source
+            if "utm_source" in fields and data.utm_source is not None
+            else quotation.utm_source
+        ),
+        utm_medium=(
+            data.utm_medium
+            if "utm_medium" in fields and data.utm_medium is not None
+            else quotation.utm_medium
+        ),
         utm_campaign=(
-            data.utm_campaign if "utm_campaign" in fields and data.utm_campaign is not None else quotation.utm_campaign
+            data.utm_campaign
+            if "utm_campaign" in fields and data.utm_campaign is not None
+            else quotation.utm_campaign
         ),
         utm_content=(
-            data.utm_content if "utm_content" in fields and data.utm_content is not None else quotation.utm_content
+            data.utm_content
+            if "utm_content" in fields and data.utm_content is not None
+            else quotation.utm_content
         ),
-        opportunity_id=(data.opportunity_id if "opportunity_id" in fields else quotation.opportunity_id),
-        items=(data.items if "items" in fields and data.items is not None else _deserialize_quotation_items(quotation.items)),
-        taxes=(data.taxes if "taxes" in fields and data.taxes is not None else _deserialize_quotation_taxes(quotation.taxes)),
+        opportunity_id=(
+            data.opportunity_id
+            if "opportunity_id" in fields
+            else quotation.opportunity_id
+        ),
+        items=(
+            data.items
+            if "items" in fields and data.items is not None
+            else _deserialize_quotation_items(quotation.items)
+        ),
+        taxes=(
+            data.taxes
+            if "taxes" in fields and data.taxes is not None
+            else _deserialize_quotation_taxes(quotation.taxes)
+        ),
         terms_template=(
-            data.terms_template if "terms_template" in fields and data.terms_template is not None else quotation.terms_template
+            data.terms_template
+            if "terms_template" in fields and data.terms_template is not None
+            else quotation.terms_template
         ),
         terms_and_conditions=(
             data.terms_and_conditions
@@ -2643,7 +2068,11 @@ async def update_quotation(
             if "auto_repeat_frequency" in fields and data.auto_repeat_frequency is not None
             else quotation.auto_repeat_frequency
         ),
-        auto_repeat_until=(data.auto_repeat_until if "auto_repeat_until" in fields else quotation.auto_repeat_until),
+        auto_repeat_until=(
+            data.auto_repeat_until
+            if "auto_repeat_until" in fields
+            else quotation.auto_repeat_until
+        ),
         notes=(data.notes if "notes" in fields and data.notes is not None else quotation.notes),
     )
 
@@ -2651,7 +2080,9 @@ async def update_quotation(
     _ensure_auto_repeat_metadata(merged.auto_repeat_enabled, merged.auto_repeat_frequency)
     serialized_items = _serialize_quotation_items(merged.items)
     if not serialized_items:
-        raise ValidationError([{"field": "items", "message": "At least one quotation item is required."}])
+        raise ValidationError(
+            [{"field": "items", "message": "At least one quotation item is required."}]
+        )
     subtotal = _resolve_total_amount(None, serialized_items) or Decimal("0.00")
     serialized_taxes = _serialize_quotation_taxes(merged.taxes, subtotal)
     total_taxes = _resolve_serialized_decimal_sum(serialized_taxes, "tax_amount")
@@ -2681,18 +2112,39 @@ async def update_quotation(
         quotation.total_taxes = total_taxes
         quotation.grand_total = grand_total
         quotation.base_grand_total = grand_total
-        quotation.contact_person = _trim(merged.contact_person) or party_defaults.get("contact_person", "")
-        quotation.contact_email = _trim(merged.contact_email) or party_defaults.get("contact_email", "")
-        quotation.contact_mobile = _trim(merged.contact_mobile) or party_defaults.get("contact_mobile", "")
+        quotation.contact_person = (
+            _trim(merged.contact_person)
+            or party_defaults.get("contact_person", "")
+        )
+        quotation.contact_email = (
+            _trim(merged.contact_email)
+            or party_defaults.get("contact_email", "")
+        )
+        quotation.contact_mobile = (
+            _trim(merged.contact_mobile)
+            or party_defaults.get("contact_mobile", "")
+        )
         quotation.job_title = _trim(merged.job_title)
-        quotation.territory = _trim(merged.territory) or party_defaults.get("territory", "")
+        quotation.territory = (
+            _trim(merged.territory) or party_defaults.get("territory", "")
+        )
         quotation.customer_group = _trim(merged.customer_group)
         quotation.billing_address = _trim(merged.billing_address)
         quotation.shipping_address = _trim(merged.shipping_address)
-        quotation.utm_source = _trim(merged.utm_source) or party_defaults.get("utm_source", "")
-        quotation.utm_medium = _trim(merged.utm_medium) or party_defaults.get("utm_medium", "")
-        quotation.utm_campaign = _trim(merged.utm_campaign) or party_defaults.get("utm_campaign", "")
-        quotation.utm_content = _trim(merged.utm_content) or party_defaults.get("utm_content", "")
+        quotation.utm_source = (
+            _trim(merged.utm_source) or party_defaults.get("utm_source", "")
+        )
+        quotation.utm_medium = (
+            _trim(merged.utm_medium) or party_defaults.get("utm_medium", "")
+        )
+        quotation.utm_campaign = (
+            _trim(merged.utm_campaign)
+            or party_defaults.get("utm_campaign", "")
+        )
+        quotation.utm_content = (
+            _trim(merged.utm_content)
+            or party_defaults.get("utm_content", "")
+        )
         quotation.items = serialized_items
         quotation.taxes = serialized_taxes
         quotation.terms_template = _trim(merged.terms_template)
@@ -2751,48 +2203,110 @@ async def create_quotation_revision(
             if "quotation_to" in fields and data.quotation_to is not None
             else QuotationPartyKind(quotation.quotation_to)
         ),
-        party_name=(data.party_name if "party_name" in fields and data.party_name is not None else quotation.party_name),
+        party_name=(
+            data.party_name
+            if "party_name" in fields and data.party_name is not None
+            else quotation.party_name
+        ),
         transaction_date=(
             data.transaction_date
             if "transaction_date" in fields and data.transaction_date is not None
             else quotation.transaction_date
         ),
-        valid_till=(data.valid_till if "valid_till" in fields and data.valid_till is not None else quotation.valid_till),
-        company=(data.company if "company" in fields and data.company is not None else quotation.company),
-        currency=(data.currency if "currency" in fields and data.currency is not None else quotation.currency),
+        valid_till=(
+            data.valid_till
+            if "valid_till" in fields and data.valid_till is not None
+            else quotation.valid_till
+        ),
+        company=(
+            data.company
+            if "company" in fields and data.company is not None
+            else quotation.company
+        ),
+        currency=(
+            data.currency
+            if "currency" in fields and data.currency is not None
+            else quotation.currency
+        ),
         contact_person=(
-            data.contact_person if "contact_person" in fields and data.contact_person is not None else quotation.contact_person
+            data.contact_person
+            if "contact_person" in fields and data.contact_person is not None
+            else quotation.contact_person
         ),
         contact_email=(
-            data.contact_email if "contact_email" in fields and data.contact_email is not None else quotation.contact_email
+            data.contact_email
+            if "contact_email" in fields and data.contact_email is not None
+            else quotation.contact_email
         ),
         contact_mobile=(
-            data.contact_mobile if "contact_mobile" in fields and data.contact_mobile is not None else quotation.contact_mobile
+            data.contact_mobile
+            if "contact_mobile" in fields and data.contact_mobile is not None
+            else quotation.contact_mobile
         ),
-        job_title=(data.job_title if "job_title" in fields and data.job_title is not None else quotation.job_title),
-        territory=(data.territory if "territory" in fields and data.territory is not None else quotation.territory),
+        job_title=(
+            data.job_title
+            if "job_title" in fields and data.job_title is not None
+            else quotation.job_title
+        ),
+        territory=(
+            data.territory
+            if "territory" in fields and data.territory is not None
+            else quotation.territory
+        ),
         customer_group=(
-            data.customer_group if "customer_group" in fields and data.customer_group is not None else quotation.customer_group
+            data.customer_group
+            if "customer_group" in fields and data.customer_group is not None
+            else quotation.customer_group
         ),
         billing_address=(
-            data.billing_address if "billing_address" in fields and data.billing_address is not None else quotation.billing_address
+            data.billing_address
+            if "billing_address" in fields and data.billing_address is not None
+            else quotation.billing_address
         ),
         shipping_address=(
-            data.shipping_address if "shipping_address" in fields and data.shipping_address is not None else quotation.shipping_address
+            data.shipping_address
+            if "shipping_address" in fields and data.shipping_address is not None
+            else quotation.shipping_address
         ),
-        utm_source=(data.utm_source if "utm_source" in fields and data.utm_source is not None else quotation.utm_source),
-        utm_medium=(data.utm_medium if "utm_medium" in fields and data.utm_medium is not None else quotation.utm_medium),
+        utm_source=(
+            data.utm_source
+            if "utm_source" in fields and data.utm_source is not None
+            else quotation.utm_source
+        ),
+        utm_medium=(
+            data.utm_medium
+            if "utm_medium" in fields and data.utm_medium is not None
+            else quotation.utm_medium
+        ),
         utm_campaign=(
-            data.utm_campaign if "utm_campaign" in fields and data.utm_campaign is not None else quotation.utm_campaign
+            data.utm_campaign
+            if "utm_campaign" in fields and data.utm_campaign is not None
+            else quotation.utm_campaign
         ),
         utm_content=(
-            data.utm_content if "utm_content" in fields and data.utm_content is not None else quotation.utm_content
+            data.utm_content
+            if "utm_content" in fields and data.utm_content is not None
+            else quotation.utm_content
         ),
-        opportunity_id=(data.opportunity_id if "opportunity_id" in fields else quotation.opportunity_id),
-        items=(data.items if "items" in fields and data.items is not None else _deserialize_quotation_items(quotation.items)),
-        taxes=(data.taxes if "taxes" in fields and data.taxes is not None else _deserialize_quotation_taxes(quotation.taxes)),
+        opportunity_id=(
+            data.opportunity_id
+            if "opportunity_id" in fields
+            else quotation.opportunity_id
+        ),
+        items=(
+            data.items
+            if "items" in fields and data.items is not None
+            else _deserialize_quotation_items(quotation.items)
+        ),
+        taxes=(
+            data.taxes
+            if "taxes" in fields and data.taxes is not None
+            else _deserialize_quotation_taxes(quotation.taxes)
+        ),
         terms_template=(
-            data.terms_template if "terms_template" in fields and data.terms_template is not None else quotation.terms_template
+            data.terms_template
+            if "terms_template" in fields and data.terms_template is not None
+            else quotation.terms_template
         ),
         terms_and_conditions=(
             data.terms_and_conditions
@@ -2809,7 +2323,11 @@ async def create_quotation_revision(
             if "auto_repeat_frequency" in fields and data.auto_repeat_frequency is not None
             else quotation.auto_repeat_frequency
         ),
-        auto_repeat_until=(data.auto_repeat_until if "auto_repeat_until" in fields else quotation.auto_repeat_until),
+        auto_repeat_until=(
+            data.auto_repeat_until
+            if "auto_repeat_until" in fields
+            else quotation.auto_repeat_until
+        ),
         notes=(data.notes if "notes" in fields and data.notes is not None else quotation.notes),
     )
 
@@ -2829,7 +2347,9 @@ async def create_quotation_revision(
     _ensure_auto_repeat_metadata(merged.auto_repeat_enabled, merged.auto_repeat_frequency)
     serialized_items = _serialize_quotation_items(merged.items)
     if not serialized_items:
-        raise ValidationError([{"field": "items", "message": "At least one quotation item is required."}])
+        raise ValidationError(
+            [{"field": "items", "message": "At least one quotation item is required."}]
+        )
     subtotal = _resolve_total_amount(None, serialized_items) or Decimal("0.00")
     serialized_taxes = _serialize_quotation_taxes(merged.taxes, subtotal)
     total_taxes = _resolve_serialized_decimal_sum(serialized_taxes, "tax_amount")
