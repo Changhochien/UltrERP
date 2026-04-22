@@ -100,7 +100,7 @@ const SidebarGroupContent = React.forwardRef<HTMLDivElement, React.HTMLAttribute
 SidebarGroupContent.displayName = "SidebarGroupContent";
 
 // Section header component for reports/setup sections
-interface SidebarSectionHeaderProps extends React.HTMLAttributes<HTMLButtonElement> {
+interface SidebarSectionHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   label: string;
   sectionType: NavigationSectionType;
   sectionId: string;
@@ -108,7 +108,7 @@ interface SidebarSectionHeaderProps extends React.HTMLAttributes<HTMLButtonEleme
   onToggle?: () => void;
 }
 
-const SidebarSectionHeader = React.forwardRef<HTMLButtonElement, SidebarSectionHeaderProps>(
+const SidebarSectionHeader = React.forwardRef<HTMLDivElement, SidebarSectionHeaderProps>(
   ({ label, sectionType, sectionId, isCollapsed = false, onToggle, className, ...props }, ref) => {
     const { open, openMobile, isMobile } = useSidebar();
     const showLabel = isMobile ? openMobile : open;
@@ -116,29 +116,13 @@ const SidebarSectionHeader = React.forwardRef<HTMLButtonElement, SidebarSectionH
     // Don't render section headers in collapsed sidebar mode
     if (!showLabel) return null;
 
-    const handleClick = () => {
-      onToggle?.();
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        onToggle?.();
-      }
-    };
-
     return (
-      <button
+      <div
         ref={ref}
-        type="button"
-        onClick={handleClick}
-        onKeyDown={handleKeyDown}
-        aria-expanded={!isCollapsed}
-        aria-controls={`section-${sectionId}`}
+        onClick={onToggle}
         className={cn(
-          "mb-1 mt-3 flex w-full items-center justify-between px-2 text-[11px] font-normal normal-case tracking-wide",
+          "mb-1 mt-3 flex w-full cursor-pointer items-center justify-between px-2 text-[11px] font-normal normal-case tracking-wide",
           "text-sidebar-foreground/70",
-          "focus-visible:outline-none",
           className,
         )}
         {...props}
@@ -151,7 +135,7 @@ const SidebarSectionHeader = React.forwardRef<HTMLButtonElement, SidebarSectionH
             isCollapsed ? "-rotate-90" : "rotate-0",
           )}
         />
-      </button>
+      </div>
     );
   },
 );
