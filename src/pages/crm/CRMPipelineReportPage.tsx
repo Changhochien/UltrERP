@@ -126,6 +126,8 @@ export default function CRMPipelineReportPage() {
         utmMedium: [] as CRMPipelineSegment[],
         utmCampaign: [] as CRMPipelineSegment[],
         utmContent: [] as CRMPipelineSegment[],
+        conversionPath: [] as CRMPipelineSegment[],
+        conversionSource: [] as CRMPipelineSegment[],
       };
     }
 
@@ -140,6 +142,8 @@ export default function CRMPipelineReportPage() {
       utmMedium: report.by_utm_medium ?? [],
       utmCampaign: report.by_utm_campaign ?? [],
       utmContent: report.by_utm_content ?? [],
+      conversionPath: report.by_conversion_path ?? [],
+      conversionSource: report.by_conversion_source ?? [],
     };
   }, [report]);
 
@@ -283,6 +287,8 @@ export default function CRMPipelineReportPage() {
             <SummaryCard label={t("crm.reporting.openAmount")} value={report.totals.open_pipeline_amount} />
             <SummaryCard label={t("crm.reporting.terminalAmount")} value={report.totals.terminal_pipeline_amount} />
             <SummaryCard label={t("crm.reporting.orderedRevenue")} value={report.totals.ordered_revenue ?? "0.00"} />
+            <SummaryCard label={t("crm.reporting.conversionCount")} value={report.totals.conversion_count ?? 0} />
+            <SummaryCard label={t("crm.reporting.avgDaysToConversion")} value={report.totals.avg_days_to_conversion ?? "0.00"} />
           </div>
 
           <SectionCard title={t("crm.reporting.dropOffTitle")} description={t("crm.reporting.dropOffDescription")}>
@@ -304,6 +310,8 @@ export default function CRMPipelineReportPage() {
           <SegmentGroup title={t("crm.reporting.byUtmMediumTitle")} items={groups.utmMedium} />
           <SegmentGroup title={t("crm.reporting.byUtmCampaignTitle")} items={groups.utmCampaign} />
           <SegmentGroup title={t("crm.reporting.byUtmContentTitle")} items={groups.utmContent} />
+          <SegmentGroup title={t("crm.reporting.byConversionPathTitle")} items={groups.conversionPath} />
+          <SegmentGroup title={t("crm.reporting.byConversionSourceTitle")} items={groups.conversionSource} />
         </>
       ) : null}
     </div>

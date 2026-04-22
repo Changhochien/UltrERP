@@ -1,6 +1,6 @@
 # Story 23.7: Lead Conversion and Customer Handoff
 
-Status: drafted
+Status: completed
 
 ## Story
 
@@ -33,28 +33,28 @@ This story should make lead conversion reliable and auditable, not introduce a f
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Define the lead conversion contract. (AC: 1-4)
-  - [ ] Add an explicit conversion workflow that supports customer-only, opportunity-only, quotation-only, or allowed combined conversions from a qualified lead.
-  - [ ] Persist conversion-result metadata on the lead so created downstream record ids, timestamps, and conversion path stay historically traceable.
-  - [ ] Persist an explicit conversion state on the lead, such as `not_converted`, `partially_converted`, or `converted`, so partial outcomes are visible without ambiguity.
-  - [ ] Keep conversion idempotent enough to prevent duplicate downstream records from repeated clicks or retries.
-- [ ] Task 2: Implement customer handoff mapping. (AC: 1-4)
-  - [ ] Map lead company and primary contact data into the current customer fields such as `company_name`, `billing_address`, `contact_name`, `contact_phone`, and `contact_email`.
-  - [ ] Reuse dedupe and reuse guidance from Story 23.1 so conversion can link to an existing customer when appropriate instead of blindly creating duplicates.
-  - [ ] Preserve lead-origin metadata on the customer or in conversion lineage without making the customer domain subordinate to CRM.
-- [ ] Task 3: Implement opportunity and quotation conversion flows. (AC: 1, 3-4)
-  - [ ] Reuse Story 23.2 opportunity contracts and Story 23.3 quotation contracts when a lead is converted into those records.
-  - [ ] Carry forward qualification, territory, customer-group context, UTM attribution, and relevant contact details during conversion.
-  - [ ] Keep the created opportunity or quotation linked back to the source lead for detail views and reporting.
-- [ ] Task 4: Add conversion UI and review surfaces. (AC: 1-5)
-  - [ ] Add a lead conversion action with an explicit review step showing which downstream records will be created or reused.
-  - [ ] Surface conversion outcomes, linked records, and partial-failure errors clearly in the CRM UI.
-  - [ ] Reuse Epic 22 shared form, modal, feedback, and status-display primitives.
-- [ ] Task 5: Extend reporting and validation. (AC: 4-6)
-  - [ ] Extend CRM reporting with conversion-path and time-to-conversion measures using stored lead lineage.
-  - [ ] Add backend tests for customer mapping, downstream linkage, partial failures, retry safety, and reuse of existing customers.
-  - [ ] Add frontend tests for conversion review, successful conversion display, and partial-failure feedback.
-  - [ ] Validate that no premature shared-contact platform or duplicated downstream transaction logic lands in this story.
+- [x] Task 1: Define the lead conversion contract. (AC: 1-4)
+  - [x] Add an explicit conversion workflow that supports customer-only, opportunity-only, quotation-only, or allowed combined conversions from a qualified lead.
+  - [x] Persist conversion-result metadata on the lead so created downstream record ids, timestamps, and conversion path stay historically traceable.
+  - [x] Persist an explicit conversion state on the lead, such as `not_converted`, `partially_converted`, or `converted`, so partial outcomes are visible without ambiguity.
+  - [x] Keep conversion idempotent enough to prevent duplicate downstream records from repeated clicks or retries.
+- [x] Task 2: Implement customer handoff mapping. (AC: 1-4)
+  - [x] Map lead company and primary contact data into the current customer fields such as `company_name`, `billing_address`, `contact_name`, `contact_phone`, and `contact_email`.
+  - [x] Reuse dedupe and reuse guidance from Story 23.1 so conversion can link to an existing customer when appropriate instead of blindly creating duplicates.
+  - [x] Preserve lead-origin metadata on the customer or in conversion lineage without making the customer domain subordinate to CRM.
+- [x] Task 3: Implement opportunity and quotation conversion flows. (AC: 1, 3-4)
+  - [x] Reuse Story 23.2 opportunity contracts and Story 23.3 quotation contracts when a lead is converted into those records.
+  - [x] Carry forward qualification, territory, customer-group context, UTM attribution, and relevant contact details during conversion.
+  - [x] Keep the created opportunity or quotation linked back to the source lead for detail views and reporting.
+- [x] Task 4: Add conversion UI and review surfaces. (AC: 1-5)
+  - [x] Add a lead conversion action with an explicit review step showing which downstream records will be created or reused.
+  - [x] Surface conversion outcomes, linked records, and partial-failure errors clearly in the CRM UI.
+  - [x] Reuse Epic 22 shared form, modal, feedback, and status-display primitives.
+- [x] Task 5: Extend reporting and validation. (AC: 4-6)
+  - [x] Extend CRM reporting with conversion-path and time-to-conversion measures using stored lead lineage.
+  - [x] Add backend tests for customer mapping, downstream linkage, partial failures, retry safety, and reuse of existing customers.
+  - [x] Add frontend tests for conversion review, successful conversion display, and partial-failure feedback.
+  - [x] Validate that no premature shared-contact platform or duplicated downstream transaction logic lands in this story.
 
 ## Dev Notes
 
@@ -134,12 +134,44 @@ GPT-5.4
 
 ### Debug Log References
 
-- Story draft only; implementation and validation commands not run yet.
+- `cd /Users/changtom/Downloads/UltrERP/backend && .venv/bin/python -m pytest tests/domains/crm/test_lead_service.py tests/domains/crm/test_routes.py`
+- `cd /Users/changtom/Downloads/UltrERP && pnpm test -- --run src/tests/crm/LeadDetailPage.test.tsx`
+- `cd /Users/changtom/Downloads/UltrERP && pnpm test -- --run src/tests/crm/CreateQuotationPage.test.tsx`
+- `cd /Users/changtom/Downloads/UltrERP/backend && .venv/bin/python -m pytest tests/domains/crm/test_reporting_service.py`
+- `cd /Users/changtom/Downloads/UltrERP && pnpm test -- --run src/tests/crm/CRMPipelineReportPage.test.tsx`
+- `cd /Users/changtom/Downloads/UltrERP && backend/.venv/bin/python -m alembic -c migrations/alembic.ini upgrade head`
 
 ### Completion Notes List
 
-- 2026-04-21: Drafted Story 23.7 from Epic 23, the validated lead-conversion research, and the current customer master fields so qualified leads can hand off into customer, opportunity, and quotation workflows without re-entry or broken lineage.
+- Implemented a controlled lead conversion workflow that records explicit customer, opportunity, and quotation lineage on the lead while preserving partial-success outcomes and idempotent reuse behavior.
+- Added lead-detail conversion planning and conversion summary UI, plus lead-based quotation prefill so downstream authoring reuses existing Story 23.2 and 23.3 seams instead of duplicating them.
+- Extended CRM pipeline reporting with conversion counts, average time to conversion, conversion path grouping, and conversion source grouping sourced from stored lead lineage.
+- Added the Alembic migration for persisted lead conversion lineage fields and revalidated the focused backend/frontend Story 23.7 slices after review fixes.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/23-7-lead-conversion-and-customer-handoff.md`
+- `backend/domains/crm/_pipeline.py`
+- `backend/domains/crm/models.py`
+- `backend/domains/crm/routes.py`
+- `backend/domains/crm/schemas.py`
+- `backend/domains/crm/service.py`
+- `backend/tests/domains/crm/test_lead_service.py`
+- `backend/tests/domains/crm/test_opportunity_service.py`
+- `backend/tests/domains/crm/test_reporting_service.py`
+- `backend/tests/domains/crm/test_routes.py`
+- `migrations/versions/7b9d2c4e6f1a_add_lead_conversion_lineage.py`
+- `public/locales/en/common.json`
+- `public/locales/zh-Hant/common.json`
+- `src/domain/crm/types.ts`
+- `src/lib/api/crm.ts`
+- `src/pages/crm/CRMPipelineReportPage.tsx`
+- `src/pages/crm/CreateQuotationPage.tsx`
+- `src/pages/crm/LeadDetailPage.tsx`
+- `src/tests/crm/CRMPipelineReportPage.test.tsx`
+- `src/tests/crm/CreateQuotationPage.test.tsx`
+- `src/tests/crm/LeadDetailPage.test.tsx`
+
+## Change Log
+
+- 2026-04-22: Implemented Story 23.7 lead conversion orchestration, reporting extensions, migration, focused validations, and review-fix follow-up.

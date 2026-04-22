@@ -364,6 +364,8 @@ class CRMPipelineTotals(BaseModel):
     open_pipeline_amount: Decimal = Decimal("0.00")
     terminal_pipeline_amount: Decimal = Decimal("0.00")
     ordered_revenue: Decimal = Decimal("0.00")
+    conversion_count: int = 0
+    avg_days_to_conversion: Decimal = Decimal("0.00")
 
 
 class CRMPipelineDropOff(BaseModel):
@@ -386,6 +388,8 @@ class CRMPipelineReportResponse(BaseModel):
     by_utm_medium: list[CRMPipelineSegment]
     by_utm_campaign: list[CRMPipelineSegment]
     by_utm_content: list[CRMPipelineSegment]
+    by_conversion_path: list[CRMPipelineSegment]
+    by_conversion_source: list[CRMPipelineSegment]
     dropoff: CRMPipelineDropOff
 
 

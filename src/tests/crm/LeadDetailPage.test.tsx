@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 import LeadDetailPage from "../../pages/crm/LeadDetailPage";
 import {
+  convertLead,
   convertLeadToCustomer,
   getCRMSetupBundle,
   getLead,
@@ -14,6 +15,7 @@ import {
 import { CRM_LEAD_DETAIL_ROUTE, buildLeadDetailPath } from "../../lib/routes";
 
 vi.mock("../../lib/api/crm", () => ({
+  convertLead: vi.fn(),
   convertLeadToCustomer: vi.fn(),
   getCRMSetupBundle: vi.fn(),
   getLead: vi.fn(),
@@ -49,6 +51,7 @@ const mockedGetCRMSetupBundle = vi.mocked(getCRMSetupBundle);
 const mockedUpdateLead = vi.mocked(updateLead);
 const mockedTransitionLeadStatus = vi.mocked(transitionLeadStatus);
 const mockedHandoffLeadToOpportunity = vi.mocked(handoffLeadToOpportunity);
+const mockedConvertLead = vi.mocked(convertLead);
 const mockedConvertLeadToCustomer = vi.mocked(convertLeadToCustomer);
 
 const sampleLead = {
@@ -118,6 +121,28 @@ beforeEach(() => {
   mockedGetLead.mockResolvedValue(sampleLead);
   mockedUpdateLead.mockResolvedValue({ ok: true, data: sampleLead });
   mockedTransitionLeadStatus.mockResolvedValue({ ok: true, data: sampleLead });
+  mockedConvertLead.mockResolvedValue({
+    ok: true,
+    data: {
+      lead_id: "lead-1",
+      status: "opportunity",
+      conversion_state: "converted",
+      conversion_path: "opportunity",
+      converted_by: "00000000-0000-0000-0000-000000000111",
+      converted_customer_id: null,
+      converted_opportunity_id: "opp-1",
+      converted_quotation_id: null,
+      converted_at: "2026-04-22T08:30:00Z",
+      steps: [
+        {
+          target: "opportunity",
+          outcome: "created",
+          record_id: "opp-1",
+          errors: [],
+        },
+      ],
+    },
+  });
 });
 
 describe("LeadDetailPage", () => {
@@ -235,5 +260,26 @@ describe("LeadDetailPage", () => {
     expect(screen.getByRole("button", { name: "View customer" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "View opportunity" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "View quotation" })).toBeTruthy();
+  });
+
+  it("runs the combined conversion plan for opportunity creation", async () => {
+    renderLeadDetail();
+
+    expect(await screen.findByRole("heading", { name: "Rotor Works" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Opportunity Create a linked opportunity with the lead context carried forward." }));
+    fireEvent.click(screen.getByRole("button", { name: "Run conversion plan" }));
+
+    expect(mockedConvertLead).toHaveBeenCalledWith(
+      "lead-1",
+      expect.objectContaining({
+        opportunity: expect.objectContaining({
+          opportunity_title: "Rotor Works Opportunity",
+          party_name: "lead-1",
+          opportunity_from: "lead",
+        }),
+      }),
+    );
+    expect(await screen.findByRole("button", { name: "View opportunity" })).toBeTruthy();
+    expect(screen.getByText("Opportunity · Created")).toBeTruthy();
   });
 });

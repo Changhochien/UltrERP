@@ -267,6 +267,8 @@ export interface CRMPipelineTotals {
   open_pipeline_amount: string;
   terminal_pipeline_amount: string;
   ordered_revenue?: string;
+  conversion_count?: number;
+  avg_days_to_conversion?: string;
 }
 
 export interface CRMPipelineDropOff {
@@ -289,6 +291,8 @@ export interface CRMPipelineReport {
   by_utm_medium?: CRMPipelineSegment[];
   by_utm_campaign?: CRMPipelineSegment[];
   by_utm_content?: CRMPipelineSegment[];
+  by_conversion_path?: CRMPipelineSegment[];
+  by_conversion_source?: CRMPipelineSegment[];
   dropoff: CRMPipelineDropOff;
 }
 

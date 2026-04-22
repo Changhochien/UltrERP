@@ -228,6 +228,8 @@ async def get_crm_pipeline_report(
     by_utm_medium: dict[tuple[str | None, str], dict[str, object]] = {}
     by_utm_campaign: dict[tuple[str | None, str], dict[str, object]] = {}
     by_utm_content: dict[tuple[str | None, str], dict[str, object]] = {}
+    by_conversion_path: dict[tuple[str | None, str], _PipelineBucket] = {}
+    by_conversion_source: dict[tuple[str | None, str], _PipelineBucket] = {}
     dropoff = CRMPipelineDropOff()
     quotation_by_id = {
         getattr(quotation, "id", None): quotation for quotation in quotations
@@ -235,6 +237,8 @@ async def get_crm_pipeline_report(
     opportunity_by_id = {
         getattr(opportunity, "id", None): opportunity for opportunity in opportunities
     }
+    conversion_time_total = Decimal("0.00")
+    conversion_time_samples = 0
 
     def include_record(record_type: CRMPipelineRecordType) -> bool:
         return params.record_type in {CRMPipelineRecordType.ALL, record_type}
@@ -327,6 +331,37 @@ async def get_crm_pipeline_report(
                 label=str(lead.utm_content),
                 amount=Decimal("0.00"),
             )
+        conversion_state = str(getattr(lead, "conversion_state", "") or "")
+        converted_at = getattr(lead, "converted_at", None)
+        created_at = getattr(lead, "created_at", None)
+        conversion_path = str(getattr(lead, "conversion_path", "") or "")
+        conversion_source = str(getattr(lead, "source", "") or "")
+        if conversion_state not in {"", "not_converted"} or converted_at is not None:
+            totals.conversion_count += 1
+            if conversion_path:
+                _upsert_pipeline_bucket(
+                    by_conversion_path,
+                    record_type="lead",
+                    key=conversion_path,
+                    label=conversion_path,
+                    amount=Decimal("0.00"),
+                )
+            if conversion_source:
+                _upsert_pipeline_bucket(
+                    by_conversion_source,
+                    record_type="lead",
+                    key=conversion_source,
+                    label=conversion_source,
+                    amount=Decimal("0.00"),
+                )
+            if created_at is not None and converted_at is not None:
+                elapsed_days = Decimal(
+                    str((converted_at - created_at).total_seconds() / 86400)
+                ).quantize(Decimal("0.01"))
+                conversion_time_total = (conversion_time_total + elapsed_days).quantize(
+                    Decimal("0.01")
+                )
+                conversion_time_samples += 1
 
     for opportunity in opportunities:
         if not include_record(CRMPipelineRecordType.OPPORTUNITY):
@@ -646,6 +681,11 @@ async def get_crm_pipeline_report(
                     ordered_revenue=ordered_revenue,
                 )
 
+    if conversion_time_samples > 0:
+        totals.avg_days_to_conversion = (
+            conversion_time_total / Decimal(conversion_time_samples)
+        ).quantize(Decimal("0.01"))
+
     return CRMPipelineReportResponse(
         filters=params,
         totals=totals,
@@ -659,5 +699,7 @@ async def get_crm_pipeline_report(
         by_utm_medium=_build_pipeline_segment_list(by_utm_medium),
         by_utm_campaign=_build_pipeline_segment_list(by_utm_campaign),
         by_utm_content=_build_pipeline_segment_list(by_utm_content),
+        by_conversion_path=_build_pipeline_segment_list(by_conversion_path),
+        by_conversion_source=_build_pipeline_segment_list(by_conversion_source),
         dropoff=dropoff,
     )

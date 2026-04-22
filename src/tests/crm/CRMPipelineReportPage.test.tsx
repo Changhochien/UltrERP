@@ -68,6 +68,8 @@ beforeEach(() => {
       open_pipeline_amount: "60000.00",
       terminal_pipeline_amount: "40000.00",
       ordered_revenue: "1050.00",
+      conversion_count: 2,
+      avg_days_to_conversion: "4.50",
     },
     by_status: [
       {
@@ -87,6 +89,12 @@ beforeEach(() => {
     by_utm_medium: [{ key: "field", label: "field", record_type: "order", count: 1, amount: "1050.00", ordered_revenue: "1050.00" }],
     by_utm_campaign: [{ key: "spring-2026", label: "spring-2026", record_type: "order", count: 1, amount: "1050.00", ordered_revenue: "1050.00" }],
     by_utm_content: [{ key: "hero-banner", label: "hero-banner", record_type: "order", count: 1, amount: "1050.00", ordered_revenue: "1050.00" }],
+    by_conversion_path: [
+      { key: "customer+opportunity", label: "customer+opportunity", record_type: "lead", count: 2, amount: "0.00" },
+    ],
+    by_conversion_source: [
+      { key: "trade-show", label: "trade-show", record_type: "lead", count: 2, amount: "0.00" },
+    ],
     dropoff: {
       lead_only_count: 2,
       opportunity_without_quotation_count: 1,
@@ -110,6 +118,12 @@ describe("CRMPipelineReportPage", () => {
     expect(screen.getByText("By UTM Medium")).toBeTruthy();
     expect(screen.getByText("By UTM Campaign")).toBeTruthy();
     expect(screen.getByText("By UTM Content")).toBeTruthy();
+    expect(screen.getAllByText("Converted Leads").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Avg Days to Conversion").length).toBeGreaterThan(0);
+    expect(screen.getByText("By Conversion Path")).toBeTruthy();
+    expect(screen.getByText("By Conversion Source")).toBeTruthy();
+    expect(screen.getByText("customer+opportunity")).toBeTruthy();
+    expect(screen.getByText("trade-show")).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText("UTM Medium"), {
       target: { value: "field" },

@@ -186,7 +186,8 @@ class TestCreateOpportunity:
         assert opportunity.opportunity_amount == Decimal("25000.00")
         assert opportunity.base_opportunity_amount == Decimal("25000.00")
         assert len(opportunity.items) == 1
-        assert session.begin_calls == 2
+        # 3 calls: party lookup + opportunity create + lead conversion link
+        assert session.begin_calls == 3
 
     @pytest.mark.asyncio
     async def test_create_opportunity_rejects_unknown_sales_stage(self) -> None:

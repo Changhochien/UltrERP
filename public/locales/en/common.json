@@ -804,6 +804,28 @@
         "opportunity": "Opportunity",
         "quotation": "Quotation"
       },
+      "planAction": "Run conversion plan",
+      "planDescription": "Select which downstream records should be created or prepared from this qualified lead.",
+      "planErrorDescription": "The conversion plan could not be completed.",
+      "planErrorTitle": "Conversion plan failed",
+      "planOutcome": {
+        "created": "Created",
+        "failed": "Failed",
+        "reused": "Reused"
+      },
+      "planPartialDescription": "At least one selected conversion target still needs attention.",
+      "planPartialTitle": "Conversion plan partially completed",
+      "planResultsTitle": "Conversion step results",
+      "planRunning": "Running plan…",
+      "planSelectTargetError": "Select at least one conversion target first.",
+      "planSuccessDescription": "The selected lead conversion steps completed successfully.",
+      "planSuccessTitle": "Conversion plan completed",
+      "planTargetDescription": {
+        "customer": "Create or reuse the downstream customer record.",
+        "opportunity": "Create a linked opportunity with the lead context carried forward.",
+        "quotation": "Continue into prefilled quotation authoring with the lead context preserved."
+      },
+      "planTitle": "Conversion Plan",
       "convertSuccessDescription": "Customer {customerId} was created from this lead.",
       "convertSuccessTitle": "Lead converted",
       "convertTitle": "Customer Conversion",
@@ -1368,6 +1390,9 @@
     },
     "reporting": {
       "amount": "Amount",
+      "avgDaysToConversion": "Avg Days to Conversion",
+      "byConversionPathTitle": "By Conversion Path",
+      "byConversionSourceTitle": "By Conversion Source",
       "byCustomerGroupTitle": "By Customer Group",
       "byLostReasonTitle": "By Lost Reason",
       "byOwnerTitle": "By Owner",
@@ -1388,6 +1413,7 @@
       "dropOffDescription": "Closed-lost and terminal records grouped by lifecycle outcome.",
       "dropOffTitle": "Drop-off Analysis",
       "eyebrow": "CRM Reporting",
+      "conversionCount": "Converted Leads",
       "filtersDescription": "Filter the pipeline by lifecycle, ownership, and setup masters.",
       "filtersTitle": "Filters",
       "leadCount": "Lead Count",

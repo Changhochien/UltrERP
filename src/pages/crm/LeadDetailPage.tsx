@@ -5,6 +5,8 @@ import { useTranslation } from "react-i18next";
 import type { CustomerCreatePayload } from "../../domain/customers/types";
 import type {
   DuplicateLeadCandidate,
+  LeadConversionPayload,
+  LeadConversionStepResult,
   LeadCreatePayload,
   LeadOpportunityHandoff,
   LeadResponse,
@@ -20,6 +22,7 @@ import { Input } from "../../components/ui/input";
 import { usePermissions } from "../../hooks/usePermissions";
 import { useToast } from "../../hooks/useToast";
 import {
+  convertLead,
   convertLeadToCustomer,
   getLead,
   handoffLeadToOpportunity,
@@ -82,6 +85,20 @@ interface ConversionFormState {
   contact_email: string;
 }
 
+interface ConversionPlanState {
+  customer: boolean;
+  opportunity: boolean;
+  quotation: boolean;
+}
+
+function defaultConversionPlan(): ConversionPlanState {
+  return {
+    customer: false,
+    opportunity: false,
+    quotation: false,
+  };
+}
+
 export function LeadDetailPage({ onBack }: LeadDetailPageProps) {
   const { leadId } = useParams<{ leadId: string }>();
   const navigate = useNavigate();
@@ -99,6 +116,9 @@ export function LeadDetailPage({ onBack }: LeadDetailPageProps) {
   const [handoffing, setHandoffing] = useState(false);
   const [handoffPreview, setHandoffPreview] = useState<LeadOpportunityHandoff | null>(null);
   const [converting, setConverting] = useState(false);
+  const [runningPlan, setRunningPlan] = useState(false);
+  const [conversionPlan, setConversionPlan] = useState<ConversionPlanState>(defaultConversionPlan());
+  const [conversionPlanSteps, setConversionPlanSteps] = useState<LeadConversionStepResult[]>([]);
   const [conversionForm, setConversionForm] = useState<ConversionFormState>({
     business_number: "",
     billing_address: "",
@@ -137,6 +157,8 @@ export function LeadDetailPage({ onBack }: LeadDetailPageProps) {
           contact_phone: data.phone || data.mobile_no,
           contact_email: data.email_id,
         });
+        setConversionPlan(defaultConversionPlan());
+        setConversionPlanSteps([]);
         setLoading(false);
       })
       .catch((loadError: unknown) => {
@@ -315,8 +337,19 @@ export function LeadDetailPage({ onBack }: LeadDetailPageProps) {
         setLead({
           ...lead,
           status: result.data.status,
+          conversion_state: "converted",
+          conversion_path: "customer",
           converted_customer_id: result.data.customer_id,
+          converted_at: new Date().toISOString(),
         });
+        setConversionPlanSteps([
+          {
+            target: "customer",
+            outcome: "created",
+            record_id: result.data.customer_id,
+            errors: [],
+          },
+        ]);
         showSuccessToast(
           t("crm.detailPage.convertSuccessTitle"),
           t("crm.detailPage.convertSuccessDescription", { customerId: result.data.customer_id }),
@@ -329,6 +362,123 @@ export function LeadDetailPage({ onBack }: LeadDetailPageProps) {
       );
     } finally {
       setConverting(false);
+    }
+  }
+
+  function handleTogglePlanTarget(target: keyof ConversionPlanState) {
+    setConversionPlan((current) => ({
+      ...current,
+      [target]: !current[target],
+    }));
+  }
+
+  function buildOpportunityConversionPayload(): LeadConversionPayload["opportunity"] {
+    if (!lead) {
+      return undefined;
+    }
+    return {
+      opportunity_title: `${lead.company_name || lead.lead_name} Opportunity`,
+      opportunity_from: "lead",
+      party_name: lead.id,
+      sales_stage: "qualification",
+      probability: 0,
+      expected_closing: null,
+      currency: "TWD",
+      opportunity_amount: null,
+      opportunity_owner: lead.lead_owner,
+      territory: lead.territory,
+      customer_group: "",
+      contact_person: lead.lead_name,
+      contact_email: lead.email_id,
+      contact_mobile: lead.phone || lead.mobile_no,
+      job_title: "",
+      utm_source: lead.utm_source,
+      utm_medium: lead.utm_medium,
+      utm_campaign: lead.utm_campaign,
+      utm_content: lead.utm_content,
+      items: [],
+      notes: lead.notes,
+    };
+  }
+
+  async function handleRunConversionPlan() {
+    if (!lead) {
+      return;
+    }
+
+    const hasImmediateTargets = conversionPlan.customer || conversionPlan.opportunity;
+    if (!hasImmediateTargets && !conversionPlan.quotation) {
+      showErrorToast(
+        t("crm.detailPage.planErrorTitle"),
+        t("crm.detailPage.planSelectTargetError"),
+      );
+      return;
+    }
+
+    if (!hasImmediateTargets && conversionPlan.quotation) {
+      navigate(createQuotationPath);
+      return;
+    }
+
+    const payload: LeadConversionPayload = {};
+    if (conversionPlan.customer) {
+      payload.customer = {
+        company_name: lead.company_name || lead.lead_name,
+        business_number: conversionForm.business_number.trim(),
+        billing_address: conversionForm.billing_address.trim(),
+        contact_name: conversionForm.contact_name.trim(),
+        contact_phone: conversionForm.contact_phone.trim(),
+        contact_email: conversionForm.contact_email.trim().toLowerCase(),
+        credit_limit: "0.00",
+      };
+    }
+    if (conversionPlan.opportunity) {
+      payload.opportunity = buildOpportunityConversionPayload();
+    }
+
+    setRunningPlan(true);
+    setConversionPlanSteps([]);
+    try {
+      const result = await convertLead(lead.id, payload);
+      if (!result.ok) {
+        showErrorToast(
+          t("crm.detailPage.planErrorTitle"),
+          result.errors[0]?.message ?? t("crm.detailPage.planErrorDescription"),
+        );
+        return;
+      }
+
+      setLead({
+        ...lead,
+        status: result.data.status,
+        conversion_state: result.data.conversion_state,
+        conversion_path: result.data.conversion_path,
+        converted_by: result.data.converted_by,
+        converted_customer_id: result.data.converted_customer_id,
+        converted_opportunity_id: result.data.converted_opportunity_id,
+        converted_quotation_id: result.data.converted_quotation_id,
+        converted_at: result.data.converted_at,
+      });
+      setConversionPlanSteps(result.data.steps);
+
+      const failedStep = result.data.steps.find((step) => step.outcome === "failed");
+      if (failedStep) {
+        showErrorToast(
+          t("crm.detailPage.planPartialTitle"),
+          failedStep.errors[0]?.message ?? t("crm.detailPage.planPartialDescription"),
+        );
+        return;
+      }
+
+      showSuccessToast(
+        t("crm.detailPage.planSuccessTitle"),
+        t("crm.detailPage.planSuccessDescription"),
+      );
+      if (conversionPlan.quotation) {
+        navigate(createQuotationPath);
+      }
+    } finally {
+      setRunningPlan(false);
     }
   }
 
@@ -350,7 +500,8 @@ export function LeadDetailPage({ onBack }: LeadDetailPageProps) {
   }
 
   const canEditLead = canWrite("crm");
-  const canAdvanceLead = canEditLead && lead.qualification_status === "qualified" && lead.status !== "converted";
+  const canAdvanceLead = canEditLead && lead.qualification_status === "qualified" && lead.status !== "do_not_contact";
+  const canUseOpportunityHandoff = canAdvanceLead && lead.status !== "converted";
   const createOpportunityPath = `${CRM_OPPORTUNITY_CREATE_ROUTE}?partyType=lead&partyName=${encodeURIComponent(lead.id)}&partyLabel=${encodeURIComponent(lead.company_name || lead.lead_name)}&territory=${encodeURIComponent(lead.territory)}&utmSource=${encodeURIComponent(lead.utm_source)}&utmMedium=${encodeURIComponent(lead.utm_medium)}&utmCampaign=${encodeURIComponent(lead.utm_campaign)}&utmContent=${encodeURIComponent(lead.utm_content)}`;
   const createQuotationPath = `${CRM_QUOTATION_CREATE_ROUTE}?partyType=lead&partyName=${encodeURIComponent(lead.id)}&partyLabel=${encodeURIComponent(lead.company_name || lead.lead_name)}&territory=${encodeURIComponent(lead.territory)}&contactName=${encodeURIComponent(lead.lead_name)}&contactEmail=${encodeURIComponent(lead.email_id)}&contactMobile=${encodeURIComponent(lead.phone || lead.mobile_no)}&utmSource=${encodeURIComponent(lead.utm_source)}&utmMedium=${encodeURIComponent(lead.utm_medium)}&utmCampaign=${encodeURIComponent(lead.utm_campaign)}&utmContent=${encodeURIComponent(lead.utm_content)}`;
   const conversionPathLabel = lead.conversion_path
@@ -428,7 +579,7 @@ export function LeadDetailPage({ onBack }: LeadDetailPageProps) {
       <SectionCard title={t("crm.detailPage.handoffTitle")} description={t("crm.detailPage.handoffDescription")}>
         <div className="space-y-4">
           <div className="flex flex-wrap gap-3">
-            <Button type="button" onClick={handleOpportunityHandoff} disabled={!canAdvanceLead || handoffing}>
+            <Button type="button" onClick={handleOpportunityHandoff} disabled={!canUseOpportunityHandoff || handoffing}>
               {handoffing ? t("crm.detailPage.handoffing") : t("crm.detailPage.handoffAction")}
             </Button>
             <Button type="button" variant="outline" onClick={() => navigate(createOpportunityPath)} disabled={!canAdvanceLead}>
@@ -466,6 +617,49 @@ export function LeadDetailPage({ onBack }: LeadDetailPageProps) {
       </SectionCard>
 
       <SectionCard title={t("crm.detailPage.convertTitle")} description={t("crm.detailPage.convertDescription")}>
+        <div className="mb-5 rounded-xl border border-border/70 bg-background/40 p-4">
+          <h3 className="font-semibold text-foreground">{t("crm.detailPage.planTitle")}</h3>
+          <p className="mt-1 text-sm text-muted-foreground">{t("crm.detailPage.planDescription")}</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {(["customer", "opportunity", "quotation"] as Array<keyof ConversionPlanState>).map((target) => (
+              <label key={target} className="flex items-start gap-3 rounded-xl border border-border/70 bg-background/50 px-3 py-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={conversionPlan[target]}
+                  onChange={() => handleTogglePlanTarget(target)}
+                  disabled={!canAdvanceLead || runningPlan}
+                />
+                <span>
+                  <span className="font-medium text-foreground">{t(`crm.detailPage.conversionTarget.${target}`)}</span>
+                  <span className="block text-muted-foreground">{t(`crm.detailPage.planTargetDescription.${target}`)}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Button type="button" variant="outline" onClick={handleRunConversionPlan} disabled={!canAdvanceLead || runningPlan}>
+              {runningPlan ? t("crm.detailPage.planRunning") : t("crm.detailPage.planAction")}
+            </Button>
+          </div>
+          {conversionPlanSteps.length ? (
+            <div className="mt-4 space-y-3 rounded-xl border border-border/70 bg-muted/20 p-4 text-sm">
+              <h4 className="font-semibold text-foreground">{t("crm.detailPage.planResultsTitle")}</h4>
+              {conversionPlanSteps.map((step) => (
+                <div key={`${step.target}-${step.record_id ?? step.outcome}`} className="rounded-lg border border-border/60 bg-background/50 px-3 py-3">
+                  <p className="font-medium text-foreground">
+                    {t(`crm.detailPage.conversionTarget.${step.target}`)} · {t(`crm.detailPage.planOutcome.${step.outcome}`)}
+                  </p>
+                  {step.record_id ? <p className="mt-1 text-muted-foreground">{step.record_id}</p> : null}
+                  {step.errors.map((entry) => (
+                    <p key={`${step.target}-${entry.field}-${entry.message}`} className="mt-1 text-destructive">
+                      {entry.message}
+                    </p>
+                  ))}
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
         <div className="grid gap-5 sm:grid-cols-2">
           <Field>
             <FieldLabel htmlFor="convert-business-number">{t("crm.detailPage.convertBusinessNumber")}</FieldLabel>

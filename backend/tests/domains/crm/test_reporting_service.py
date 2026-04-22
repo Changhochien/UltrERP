@@ -285,3 +285,37 @@ async def test_get_crm_pipeline_report_supports_utm_content_filter_and_ordered_r
     assert any(segment.key == "field" and segment.ordered_revenue == Decimal("1050.00") for segment in report.by_utm_medium)
     assert any(segment.key == "spring-2026" and segment.ordered_revenue == Decimal("1050.00") for segment in report.by_utm_campaign)
     assert any(segment.key == "hero-banner" and segment.ordered_revenue == Decimal("1050.00") for segment in report.by_utm_content)
+
+
+@pytest.mark.asyncio
+async def test_get_crm_pipeline_report_includes_lead_conversion_metrics() -> None:
+    lead = SimpleNamespace(
+        id=uuid.uuid4(),
+        status="converted",
+        territory="North",
+        lead_owner="alice",
+        source="trade-show",
+        conversion_state="converted",
+        conversion_path="customer+opportunity",
+        converted_at=datetime(2026, 4, 22, 9, 0, tzinfo=UTC),
+        created_at=datetime(2026, 4, 20, 9, 0, tzinfo=UTC),
+        utm_source="expo",
+        utm_medium="field",
+        utm_campaign="spring-2026",
+        utm_content="hero-banner",
+    )
+    session = FakeSession(
+        execute_results=[
+            _FakeListResult([lead]),
+            _FakeListResult([]),
+            _FakeListResult([]),
+            _FakeListResult([]),
+        ]
+    )
+
+    report = await get_crm_pipeline_report(session, CRMPipelineReportParams(scope="all"))
+
+    assert report.totals.conversion_count == 1
+    assert report.totals.avg_days_to_conversion == Decimal("2.00")
+    assert any(segment.key == "customer+opportunity" and segment.count == 1 for segment in report.by_conversion_path)
+    assert any(segment.key == "trade-show" and segment.count == 1 for segment in report.by_conversion_source)

@@ -729,6 +729,28 @@
         "quotation": "報價"
       },
       "createQuotation": "建立報價",
+      "planAction": "執行轉換計畫",
+      "planDescription": "選擇要從這筆已合格線索建立或準備的下游記錄。",
+      "planErrorDescription": "線索轉換計畫無法完成。",
+      "planErrorTitle": "轉換計畫失敗",
+      "planOutcome": {
+        "created": "已建立",
+        "failed": "失敗",
+        "reused": "已重用"
+      },
+      "planPartialDescription": "至少有一個選取的轉換目標仍需處理。",
+      "planPartialTitle": "轉換計畫部分完成",
+      "planResultsTitle": "轉換步驟結果",
+      "planRunning": "執行中…",
+      "planSelectTargetError": "請先選擇至少一個轉換目標。",
+      "planSuccessDescription": "所選的線索轉換步驟已成功完成。",
+      "planSuccessTitle": "轉換計畫已完成",
+      "planTargetDescription": {
+        "customer": "建立或重用下游客戶記錄。",
+        "opportunity": "建立已帶入線索內容的關聯商機。",
+        "quotation": "以前置填入的線索內容繼續建立報價。"
+      },
+      "planTitle": "轉換計畫",
       "viewOpportunity": "查看商機",
       "viewQuotation": "查看報價"
     },
@@ -742,6 +764,9 @@
     },
     "reporting": {
       "amount": "金額",
+      "avgDaysToConversion": "平均轉換天數",
+      "byConversionPathTitle": "依轉換路徑",
+      "byConversionSourceTitle": "依線索來源",
       "byCustomerGroupTitle": "依客戶群組",
       "byLostReasonTitle": "依失單原因",
       "byOwnerTitle": "依負責人",
@@ -762,6 +787,7 @@
       "dropOffDescription": "依生命週期結果分組的終態與流失記錄。",
       "dropOffTitle": "流失分析",
       "eyebrow": "CRM 報表",
+      "conversionCount": "已轉換線索數",
       "filtersDescription": "依生命週期、負責人與主檔設定篩選管道。",
       "filtersTitle": "篩選條件",
       "leadCount": "線索數",
