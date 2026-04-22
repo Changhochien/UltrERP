@@ -148,6 +148,11 @@ class Lead(Base):
     notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
     converted_customer_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    converted_opportunity_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    converted_quotation_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    conversion_state: Mapped[str] = mapped_column(String(40), nullable=False, default="not_converted")
+    conversion_path: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    converted_by: Mapped[str] = mapped_column(String(120), nullable=False, default="")
     converted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     version: Mapped[int] = mapped_column(nullable=False, default=1)
 

@@ -15,6 +15,8 @@ export type LeadStatus =
 
 export type LeadQualificationStatus = "unqualified" | "in_process" | "qualified";
 
+export type LeadConversionState = "not_converted" | "partially_converted" | "converted";
+
 export interface LeadCreatePayload {
   lead_name: string;
   company_name: string;
@@ -64,7 +66,12 @@ export interface LeadResponse {
   utm_campaign: string;
   utm_content: string;
   notes: string;
+  conversion_state: LeadConversionState;
+  conversion_path: string;
+  converted_by: string;
   converted_customer_id: string | null;
+  converted_opportunity_id: string | null;
+  converted_quotation_id: string | null;
   converted_at: string | null;
   version: number;
   created_at: string;
@@ -126,6 +133,33 @@ export interface LeadCustomerConversionResult {
   lead_id: string;
   customer_id: string;
   status: LeadStatus;
+}
+
+export interface LeadConversionStepResult {
+  target: string;
+  outcome: "created" | "reused" | "failed";
+  record_id: string | null;
+  errors: Array<{ field: string; message: string }>;
+}
+
+export interface LeadConversionPayload {
+  reuse_customer_id?: string;
+  customer?: CustomerCreatePayload;
+  opportunity?: OpportunityCreatePayload;
+  quotation?: QuotationCreatePayload;
+}
+
+export interface LeadConversionResult {
+  lead_id: string;
+  status: LeadStatus;
+  conversion_state: LeadConversionState;
+  conversion_path: string;
+  converted_by: string;
+  converted_customer_id: string | null;
+  converted_opportunity_id: string | null;
+  converted_quotation_id: string | null;
+  converted_at: string | null;
+  steps: LeadConversionStepResult[];
 }
 
 export type CRMDuplicatePolicy = "block" | "allow";

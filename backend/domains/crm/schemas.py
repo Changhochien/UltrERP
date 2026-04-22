@@ -9,6 +9,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from domains.customers.schemas import CustomerCreate
+
 
 class LeadStatus(StrEnum):
     LEAD = "lead"
@@ -26,6 +28,12 @@ class LeadQualificationStatus(StrEnum):
     UNQUALIFIED = "unqualified"
     IN_PROCESS = "in_process"
     QUALIFIED = "qualified"
+
+
+class LeadConversionState(StrEnum):
+    NOT_CONVERTED = "not_converted"
+    PARTIALLY_CONVERTED = "partially_converted"
+    CONVERTED = "converted"
 
 
 class LeadCreate(BaseModel):
@@ -119,7 +127,12 @@ class LeadResponse(BaseModel):
     utm_campaign: str
     utm_content: str
     notes: str
+    conversion_state: LeadConversionState = LeadConversionState.NOT_CONVERTED
+    conversion_path: str = ""
+    converted_by: str = ""
     converted_customer_id: uuid.UUID | None = None
+    converted_opportunity_id: uuid.UUID | None = None
+    converted_quotation_id: uuid.UUID | None = None
     converted_at: datetime | None = None
     version: int
     created_at: datetime
@@ -162,6 +175,39 @@ class LeadCustomerConversionResult(BaseModel):
     lead_id: uuid.UUID
     customer_id: uuid.UUID
     status: LeadStatus
+
+
+class LeadConversionStepOutcome(StrEnum):
+    CREATED = "created"
+    REUSED = "reused"
+    FAILED = "failed"
+
+
+class LeadConversionStepResult(BaseModel):
+    target: str
+    outcome: LeadConversionStepOutcome
+    record_id: uuid.UUID | None = None
+    errors: list[dict[str, str]] = Field(default_factory=list)
+
+
+class LeadConversionRequest(BaseModel):
+    reuse_customer_id: uuid.UUID | None = None
+    customer: CustomerCreate | None = None
+    opportunity: OpportunityCreate | None = None
+    quotation: QuotationCreate | None = None
+
+
+class LeadConversionResult(BaseModel):
+    lead_id: uuid.UUID
+    status: LeadStatus
+    conversion_state: LeadConversionState
+    conversion_path: str
+    converted_by: str = ""
+    converted_customer_id: uuid.UUID | None = None
+    converted_opportunity_id: uuid.UUID | None = None
+    converted_quotation_id: uuid.UUID | None = None
+    converted_at: datetime | None = None
+    steps: list[LeadConversionStepResult] = Field(default_factory=list)
 
 
 class CRMDuplicatePolicy(StrEnum):

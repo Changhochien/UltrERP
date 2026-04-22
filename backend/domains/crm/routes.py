@@ -35,6 +35,8 @@ from domains.crm.schemas import (
     CRMTerritoryResponse,
     CRMTerritoryUpdate,
     LeadCreate,
+    LeadConversionRequest,
+    LeadConversionResult,
     LeadCustomerConversionResult,
     LeadListParams,
     LeadListResponse,
@@ -63,6 +65,7 @@ from domains.crm.schemas import (
 )
 from domains.crm.service import (
     create_customer_group,
+    convert_lead,
     convert_lead_to_customer,
     create_lead,
     create_opportunity,
@@ -418,6 +421,28 @@ async def convert_to_customer(
         return await convert_lead_to_customer(session, lead_id, data, tenant_id=real_tid)
     except DuplicateLeadConflictError as exc:
         return JSONResponse(status_code=409, content=duplicate_lead_response(exc))
+    except ValidationError as exc:
+        errors = error_response(exc.errors)
+        status_code = 404 if any(error.get("field") == "lead_id" for error in exc.errors) else 422
+        return JSONResponse(status_code=status_code, content=errors)
+
+
+@router.post("/{lead_id}/convert", response_model=LeadConversionResult)
+async def convert_lead_records(
+    lead_id: uuid.UUID,
+    data: LeadConversionRequest,
+    session: DbSession,
+    user: WriteUser,
+) -> LeadConversionResult | JSONResponse:
+    real_tid = uuid.UUID(user["tenant_id"])
+    try:
+        return await convert_lead(
+            session,
+            lead_id,
+            data,
+            tenant_id=real_tid,
+            converted_by=str(user.get("sub") or ""),
+        )
     except ValidationError as exc:
         errors = error_response(exc.errors)
         status_code = 404 if any(error.get("field") == "lead_id" for error in exc.errors) else 422
