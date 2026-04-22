@@ -1,10 +1,11 @@
+import * as React from "react";
 import { ChevronRight, LogOut } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { useAuth } from "../hooks/useAuth";
 import { usePermissions } from "../hooks/usePermissions";
-import { NAVIGATION_GROUPS } from "../lib/navigation";
+import { NAVIGATION_GROUPS, type NavigationSectionType } from "../lib/navigation";
 import { getInitials } from "../lib/utils";
 import { ThemeToggle } from "./theme/ThemeToggle";
 import { LanguageSwitcher } from "./LanguageSwitcher";
@@ -28,6 +29,7 @@ import {
   SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
+  SidebarSectionHeader,
   useSidebar,
 } from "./ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -38,10 +40,16 @@ export function AppNavigation() {
   const { canAccess } = usePermissions();
   const { open, openMobile, isMobile, setOpenMobile } = useSidebar();
 
+  // Filter sections by permission, then filter out groups with no visible sections
   const visibleGroups = NAVIGATION_GROUPS.map((group) => ({
     ...group,
-    items: group.items.filter((item) => canAccess(item.feature)),
-  })).filter((group) => group.items.length > 0);
+    sections: group.sections
+      .map((section) => ({
+        ...section,
+        items: section.items.filter((item) => canAccess(item.feature)),
+      }))
+      .filter((section) => section.items.length > 0),
+  })).filter((group) => group.sections.length > 0);
 
   const showLabel = isMobile ? openMobile : open;
 
@@ -49,6 +57,14 @@ export function AppNavigation() {
     if (isMobile) {
       setOpenMobile(false);
     }
+  };
+
+  // Get indentation class based on section type
+  const getSectionIndentClass = (sectionType: NavigationSectionType): string => {
+    if (sectionType === 'reports' || sectionType === 'setup') {
+      return "pl-6";
+    }
+    return "";
   };
 
   return (
@@ -72,43 +88,55 @@ export function AppNavigation() {
           <SidebarGroup key={group.label}>
             <SidebarGroupLabel>{t(group.label)}</SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu>
-                {group.items.map((item) => {
-                  const Icon = item.icon;
+              {group.sections.map((section, sectionIndex) => (
+                <React.Fragment key={`${group.label}-section-${sectionIndex}`}>
+                  {/* Render section header for reports/setup sections */}
+                  {section.label && (
+                    <SidebarSectionHeader
+                      label={t(section.label)}
+                      sectionType={section.type}
+                    />
+                  )}
+                  <SidebarMenu>
+                    {section.items.map((item) => {
+                      const Icon = item.icon;
+                      const indentClass = getSectionIndentClass(section.type);
 
-                  return (
-                    <SidebarMenuItem key={item.to}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <NavLink
-                            to={item.to}
-                            end={item.to === "/"}
-                            onClick={handleNavigation}
-                            className={({ isActive }) =>
-                              [
-                                "group flex items-center gap-3 rounded-2xl border px-3 py-2.5 text-sm font-medium transition-colors transition-shadow",
-                                showLabel ? "justify-start" : "justify-center px-0",
-                                isActive
-                                  ? "border-sidebar-border bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
-                                  : "border-transparent text-sidebar-foreground/72 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
-                              ].join(" ")
-                            }
-                          >
-                            <Icon className="size-4 shrink-0" />
-                            {showLabel ? (
-                              <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
-                                <span className="truncate">{t(item.label)}</span>
-                                <ChevronRight className="size-3.5 text-sidebar-foreground/40 transition-transform group-hover:translate-x-0.5" />
-                              </span>
-                            ) : null}
-                          </NavLink>
-                        </TooltipTrigger>
-                        {!showLabel ? <TooltipContent side="right">{t(item.label)}</TooltipContent> : null}
-                      </Tooltip>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
+                      return (
+                        <SidebarMenuItem key={item.to}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <NavLink
+                                to={item.to}
+                                end={item.to === "/"}
+                                onClick={handleNavigation}
+                                className={({ isActive }) =>
+                                  [
+                                    "group flex items-center gap-3 rounded-2xl border px-3 py-2.5 text-sm font-medium transition-colors transition-shadow",
+                                    showLabel ? `justify-start ${indentClass}` : "justify-center px-0",
+                                    isActive
+                                      ? "border-sidebar-border bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
+                                      : "border-transparent text-sidebar-foreground/72 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+                                  ].join(" ")
+                                }
+                              >
+                                <Icon className="size-4 shrink-0" />
+                                {showLabel ? (
+                                  <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                                    <span className="truncate">{t(item.label)}</span>
+                                    <ChevronRight className="size-3.5 text-sidebar-foreground/40 transition-transform group-hover:translate-x-0.5" />
+                                  </span>
+                                ) : null}
+                              </NavLink>
+                            </TooltipTrigger>
+                            {!showLabel ? <TooltipContent side="right">{t(item.label)}</TooltipContent> : null}
+                          </Tooltip>
+                        </SidebarMenuItem>
+                      );
+                    })}
+                  </SidebarMenu>
+                </React.Fragment>
+              ))}
             </SidebarGroupContent>
           </SidebarGroup>
         ))}

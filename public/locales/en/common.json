@@ -1,29 +1,38 @@
 {
   "nav": {
+    "admin": "Admin",
+    "belowReorderReport": "Below Reorder",
     "crm": "CRM",
     "crmLeads": "Leads",
     "crmOpportunities": "Opportunities",
     "crmQuotations": "Quotations",
     "crmReporting": "Pipeline Reporting",
     "crmSetup": "CRM Setup",
-    "createOpportunity": "Create Opportunity",
     "createCustomer": "Create Customer",
     "createInvoice": "Create Invoice",
+    "createOpportunity": "Create Opportunity",
     "dashboard": "Dashboard",
-    "language": "Language",
-    "overview": "Overview",
+    "finance": "Finance",
     "inventory": "Inventory",
+    "inventoryCategories": "Categories",
+    "inventoryReports": "Inventory Reports",
+    "inventoryValuation": "Valuation Report",
+    "invoiceReports": "Invoice Reports",
     "intelligence": "Intelligence",
-    "purchases": "Purchases",
-    "customers": "Customers",
-    "invoices": "Invoices",
+    "language": "Language",
     "newOrder": "New Order",
     "operations": "Operations",
     "orders": "Orders",
+    "overview": "Overview",
     "payments": "Payments",
+    "purchases": "Purchases",
+    "reports": "Reports",
     "revenue": "Revenue",
     "settings": "Settings",
-    "admin": "Admin"
+    "setup": "Setup",
+    "customers": "Customers",
+    "invoices": "Invoices",
+    "suppliers": "Suppliers"
   },
   "common": {
     "cancel": "Cancel",
@@ -154,6 +163,14 @@
     "inventorySuppliers": {
       "description": "Manage supplier master data and replenishment contacts used by inventory workflows.",
       "label": "Suppliers"
+    },
+    "inventoryReports": {
+      "description": "View inventory analytics and stock reports.",
+      "label": "Inventory Reports"
+    },
+    "invoiceReports": {
+      "description": "View invoice analytics and financial reports.",
+      "label": "Invoice Reports"
     },
     "supplierDetail": {
       "description": "Review one supplier profile, status, and planning defaults.",

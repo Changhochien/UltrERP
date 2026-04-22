@@ -3,6 +3,7 @@ import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 import { useSidebar, SidebarProvider } from "../../hooks/useSidebar";
 import { cn } from "../../lib/utils";
+import type { NavigationSectionType } from "../../lib/navigation";
 import { Button } from "./button";
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -98,6 +99,38 @@ const SidebarGroupContent = React.forwardRef<HTMLDivElement, React.HTMLAttribute
 );
 SidebarGroupContent.displayName = "SidebarGroupContent";
 
+// Section header component for reports/setup sections
+interface SidebarSectionHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+  label: string;
+  sectionType: NavigationSectionType;
+}
+
+const SidebarSectionHeader = React.forwardRef<HTMLDivElement, SidebarSectionHeaderProps>(
+  ({ label, sectionType, className, ...props }, ref) => {
+    const { open, openMobile, isMobile } = useSidebar();
+    const showLabel = isMobile ? openMobile : open;
+
+    // Don't render section headers in collapsed mode
+    if (!showLabel) return null;
+
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "mb-1 mt-3 px-2 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em]",
+          sectionType === 'reports' && "text-sidebar-foreground/50",
+          sectionType === 'setup' && "text-sidebar-foreground/40",
+          className,
+        )}
+        {...props}
+      >
+        {label}
+      </div>
+    );
+  },
+);
+SidebarSectionHeader.displayName = "SidebarSectionHeader";
+
 const SidebarMenu = React.forwardRef<HTMLUListElement, React.HTMLAttributes<HTMLUListElement>>(
   ({ className, ...props }, ref) => <ul ref={ref} className={cn("space-y-1", className)} {...props} />,
 );
@@ -160,6 +193,7 @@ export {
   SidebarMenu,
   SidebarMenuItem,
   SidebarProvider,
+  SidebarSectionHeader,
   SidebarTrigger,
   useSidebar,
 };

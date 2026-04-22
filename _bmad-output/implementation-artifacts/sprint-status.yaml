@@ -1304,3 +1304,39 @@ development_status:
         prerequisites: ["23.5", "23.6", "23.7"]
 
 last_updated: "2026-04-22"
+
+  # Epic 38 - Navigation Sidebar Enhancement
+  epic-38:
+    status: "backlog"
+    validation_note: "Epic 38 adds report section grouping, collapsible sections, and expanded module organization to the navigation sidebar based on ERPNext workspace patterns. Maintains UltrERP's permission-based filtering and i18n strengths."
+    stories:
+      38-1-nav-sidebar-grouping:
+        status: "review"
+        story_id: "38.1"
+        title: "Report Section Grouping and Navigation Group Expansion"
+        story_file: "38-1-nav-sidebar-grouping.md"
+        validation: ""
+        prerequisites: []
+      38-2-nav-collapsible-sections:
+        status: "backlog"
+        story_id: "38.2"
+        title: "Collapsible Navigation Sections"
+        story_file: ""
+        validation: ""
+        prerequisites: ["38.1"]
+      38-3-nav-quick-actions:
+        status: "backlog"
+        story_id: "38.3"
+        title: "Quick Action Shortcuts Integration"
+        story_file: ""
+        validation: ""
+        prerequisites: ["38.1"]
+      38-4-nav-visual-polish:
+        status: "backlog"
+        story_id: "38.4"
+        title: "Navigation Visual Polish"
+        story_file: ""
+        validation: ""
+        prerequisites: ["38.1", "38.2"]
+
+last_updated: "2026-04-22"

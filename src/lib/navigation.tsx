@@ -12,6 +12,9 @@ import {
   Users,
   WalletCards,
   LayoutDashboardIcon,
+  TrendingUp,
+  FileBarChart,
+  Package,
 } from "lucide-react";
 
 import type { AppFeature } from "../hooks/usePermissions";
@@ -49,6 +52,12 @@ import {
   SETTINGS_ROUTE,
 } from "./routes";
 
+// Navigation section types for organizing items
+// 'standard' = primary workflow items (no section header)
+// 'reports' = analytics and reporting tools (with "Reports" header, indented)
+// 'setup' = configuration and settings (with "Setup" header, indented)
+export type NavigationSectionType = 'standard' | 'reports' | 'setup';
+
 export interface NavigationItem {
   feature: AppFeature;
   label: string; // i18n key, e.g. "nav.dashboard"
@@ -57,136 +66,250 @@ export interface NavigationItem {
   icon: LucideIcon;
 }
 
+export interface NavigationSection {
+  type: NavigationSectionType;
+  label: string | null; // null = no header shown for standard section
+  items: NavigationItem[];
+}
+
 export interface NavigationGroup {
   label: string; // i18n key, e.g. "nav.overview"
-  items: NavigationItem[];
+  sections: NavigationSection[];
 }
 
 export const NAVIGATION_GROUPS: NavigationGroup[] = [
   {
     label: "nav.overview",
-    items: [
+    sections: [
       {
-        feature: "dashboard",
-        label: "nav.dashboard",
-        to: HOME_ROUTE,
-        description: "routes.dashboard.description",
-        icon: LayoutDashboard,
-      },
-      {
-        feature: "admin",
-        label: "nav.admin",
-        to: ADMIN_ROUTE,
-        description: "routes.admin.description",
-        icon: ShieldCheck,
-      },
-      {
-        feature: "owner_dashboard",
-        label: "nav.ownerDashboard",
-        to: OWNER_DASHBOARD_ROUTE,
-        description: "routes.ownerDashboard.description",
-        icon: LayoutDashboardIcon,
-      },
-      {
-        feature: "settings",
-        label: "nav.settings",
-        to: SETTINGS_ROUTE,
-        description: "routes.settings.description",
-        icon: Settings,
+        type: 'standard',
+        label: null,
+        items: [
+          {
+            feature: "dashboard",
+            label: "nav.dashboard",
+            to: HOME_ROUTE,
+            description: "routes.dashboard.description",
+            icon: LayoutDashboard,
+          },
+          {
+            feature: "admin",
+            label: "nav.admin",
+            to: ADMIN_ROUTE,
+            description: "routes.admin.description",
+            icon: ShieldCheck,
+          },
+          {
+            feature: "owner_dashboard",
+            label: "nav.ownerDashboard",
+            to: OWNER_DASHBOARD_ROUTE,
+            description: "routes.ownerDashboard.description",
+            icon: LayoutDashboardIcon,
+          },
+          {
+            feature: "settings",
+            label: "nav.settings",
+            to: SETTINGS_ROUTE,
+            description: "routes.settings.description",
+            icon: Settings,
+          },
+        ],
       },
     ],
   },
   {
-    label: "nav.revenue",
-    items: [
+    label: "nav.crm",
+    sections: [
       {
-        feature: "crm",
-        label: "nav.crmLeads",
-        to: CRM_LEADS_ROUTE,
-        description: "routes.crmLeads.description",
-        icon: Users,
+        type: 'standard',
+        label: null,
+        items: [
+          {
+            feature: "crm",
+            label: "nav.crmLeads",
+            to: CRM_LEADS_ROUTE,
+            description: "routes.crmLeads.description",
+            icon: Users,
+          },
+          {
+            feature: "crm",
+            label: "nav.crmOpportunities",
+            to: CRM_OPPORTUNITIES_ROUTE,
+            description: "routes.crmOpportunities.description",
+            icon: BriefcaseBusiness,
+          },
+          {
+            feature: "crm",
+            label: "nav.crmQuotations",
+            to: CRM_QUOTATIONS_ROUTE,
+            description: "routes.crmQuotations.description",
+            icon: ReceiptText,
+          },
+          {
+            feature: "customers",
+            label: "nav.customers",
+            to: CUSTOMERS_ROUTE,
+            description: "routes.customers.description",
+            icon: Users,
+          },
+          {
+            feature: "intelligence",
+            label: "nav.intelligence",
+            to: INTELLIGENCE_ROUTE,
+            description: "routes.intelligence.description",
+            icon: BrainCircuit,
+          },
+        ],
       },
       {
-        feature: "crm",
-        label: "nav.crmOpportunities",
-        to: CRM_OPPORTUNITIES_ROUTE,
-        description: "routes.crmOpportunities.description",
-        icon: BriefcaseBusiness,
+        type: 'reports',
+        label: "nav.reports",
+        items: [
+          {
+            feature: "crm",
+            label: "nav.crmReporting",
+            to: CRM_REPORTING_ROUTE,
+            description: "routes.crmReporting.description",
+            icon: TrendingUp,
+          },
+          {
+            feature: "intelligence",
+            label: "nav.intelligence",
+            to: INTELLIGENCE_ROUTE,
+            description: "routes.intelligence.description",
+            icon: BrainCircuit,
+          },
+        ],
       },
       {
-        feature: "crm",
-        label: "nav.crmQuotations",
-        to: CRM_QUOTATIONS_ROUTE,
-        description: "routes.crmQuotations.description",
-        icon: ReceiptText,
+        type: 'setup',
+        label: "nav.setup",
+        items: [
+          {
+            feature: "settings",
+            label: "nav.crmSetup",
+            to: CRM_SETUP_ROUTE,
+            description: "routes.crmSetup.description",
+            icon: Settings,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    label: "nav.finance",
+    sections: [
+      {
+        type: 'standard',
+        label: null,
+        items: [
+          {
+            feature: "invoices",
+            label: "nav.invoices",
+            to: INVOICES_ROUTE,
+            description: "routes.invoices.description",
+            icon: ReceiptText,
+          },
+          {
+            feature: "orders",
+            label: "nav.orders",
+            to: ORDERS_ROUTE,
+            description: "routes.orders.description",
+            icon: ShoppingCart,
+          },
+          {
+            feature: "payments",
+            label: "nav.payments",
+            to: PAYMENTS_ROUTE,
+            description: "routes.payments.description",
+            icon: WalletCards,
+          },
+        ],
       },
       {
-        feature: "crm",
-        label: "nav.crmReporting",
-        to: CRM_REPORTING_ROUTE,
-        description: "routes.crmReporting.description",
-        icon: BrainCircuit,
-      },
-      {
-        feature: "settings",
-        label: "nav.crmSetup",
-        to: CRM_SETUP_ROUTE,
-        description: "routes.crmSetup.description",
-        icon: Settings,
-      },
-      {
-        feature: "customers",
-        label: "nav.customers",
-        to: CUSTOMERS_ROUTE,
-        description: "routes.customers.description",
-        icon: Users,
-      },
-      {
-        feature: "intelligence",
-        label: "nav.intelligence",
-        to: INTELLIGENCE_ROUTE,
-        description: "routes.intelligence.description",
-        icon: BrainCircuit,
-      },
-      {
-        feature: "invoices",
-        label: "nav.invoices",
-        to: INVOICES_ROUTE,
-        description: "routes.invoices.description",
-        icon: ReceiptText,
-      },
-      {
-        feature: "orders",
-        label: "nav.orders",
-        to: ORDERS_ROUTE,
-        description: "routes.orders.description",
-        icon: ShoppingCart,
-      },
-      {
-        feature: "payments",
-        label: "nav.payments",
-        to: PAYMENTS_ROUTE,
-        description: "routes.payments.description",
-        icon: WalletCards,
+        type: 'reports',
+        label: "nav.reports",
+        items: [
+          {
+            feature: "invoices",
+            label: "nav.invoiceReports",
+            to: INVOICES_ROUTE,
+            description: "routes.invoiceReports.description",
+            icon: FileBarChart,
+          },
+        ],
       },
     ],
   },
   {
     label: "nav.operations",
-    items: [
+    sections: [
       {
-        feature: "inventory",
-        label: "nav.inventory",
-        to: INVENTORY_ROUTE,
-        description: "routes.inventory.description",
-        icon: Boxes,
+        type: 'standard',
+        label: null,
+        items: [
+          {
+            feature: "inventory",
+            label: "nav.inventory",
+            to: INVENTORY_ROUTE,
+            description: "routes.inventory.description",
+            icon: Boxes,
+          },
+          {
+            feature: "purchases",
+            label: "nav.purchases",
+            to: PURCHASES_ROUTE,
+            description: "routes.purchases.description",
+            icon: CircleDollarSign,
+          },
+        ],
       },
       {
-        feature: "purchases",
-        label: "nav.purchases",
-        to: PURCHASES_ROUTE,
-        description: "routes.purchases.description",
-        icon: CircleDollarSign,
+        type: 'reports',
+        label: "nav.reports",
+        items: [
+          {
+            feature: "inventory",
+            label: "nav.inventoryReports",
+            to: INVENTORY_ROUTE,
+            description: "routes.inventoryReports.description",
+            icon: Package,
+          },
+          {
+            feature: "inventory",
+            label: "nav.belowReorderReport",
+            to: INVENTORY_BELOW_REORDER_REPORT_ROUTE,
+            description: "routes.belowReorderReport.description",
+            icon: TrendingUp,
+          },
+          {
+            feature: "inventory",
+            label: "nav.inventoryValuation",
+            to: INVENTORY_VALUATION_ROUTE,
+            description: "routes.inventoryValuation.description",
+            icon: FileBarChart,
+          },
+        ],
+      },
+      {
+        type: 'setup',
+        label: "nav.setup",
+        items: [
+          {
+            feature: "inventory",
+            label: "nav.inventoryCategories",
+            to: INVENTORY_CATEGORIES_ROUTE,
+            description: "routes.inventoryCategories.description",
+            icon: Settings,
+          },
+          {
+            feature: "purchases",
+            label: "nav.suppliers",
+            to: INVENTORY_SUPPLIERS_ROUTE,
+            description: "routes.suppliers.description",
+            icon: Settings,
+          },
+        ],
       },
     ],
   },
@@ -358,7 +481,7 @@ export function getRouteContext(pathname: string) {
   const route = ROUTE_CONTEXT_KEYS.find((entry) => entry.match === pathname);
   if (route) {
     const group = NAVIGATION_GROUPS.find((candidate) =>
-      candidate.items.some((item) => item.to === pathname),
+      candidate.sections.flatMap((s) => s.items).some((item) => item.to === pathname),
     );
 
     return {
