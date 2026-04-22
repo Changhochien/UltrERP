@@ -1,7 +1,7 @@
 /** Form to create a new sales order with dynamic line items. */
 
 import { useEffect, useRef } from "react";
-import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { Controller, useFieldArray, useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslation } from "react-i18next";
 
@@ -83,7 +83,7 @@ export function OrderForm({
     watch,
     formState: { errors },
   } = useForm<OrderFormValues>({
-    resolver: zodResolver(orderFormSchema),
+    resolver: zodResolver(orderFormSchema as never) as Resolver<OrderFormValues>,
     defaultValues: buildDefaultValues(initialCustomerId, initialValues),
     mode: "onChange",
     reValidateMode: "onChange",

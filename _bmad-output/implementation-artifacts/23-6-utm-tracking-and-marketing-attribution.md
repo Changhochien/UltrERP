@@ -156,3 +156,10 @@ GPT-5.4
 - `src/tests/crm/CRMPipelineReportPage.test.tsx`
 - `src/tests/orders/OrderDetailConfirmationUX.test.tsx`
 - `src/tests/orders/OrderFormCustomerContext.test.tsx`
+
+## Change Log
+
+- 2026-04-22: Implemented Story 23.6 UTM attribution propagation, reporting extensions, focused validations, and review-fix follow-up.
+- 2026-04-22: Code-review follow-up fixed ordered revenue attribution inside opportunity and quotation slices, allowed explicit clearing of inherited order UTM values, and removed hard-coded English labels from the reporting page.
+- 2026-04-22: Simplification review - new CRM domain modules (_lead.py, _pipeline.py, _setup.py) are well-structured with clear separation of concerns; verified with 88 backend tests and 327 frontend tests passing.
+- 2026-04-22: Fixed 4 pre-existing lint errors by converting empty interfaces to type aliases (`CRMSettingsUpdatePayload`, `QuotationItemPayload`, `QuotationRevisionPayload`, `QuotationItemResponse`).

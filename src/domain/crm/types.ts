@@ -173,7 +173,7 @@ export interface CRMSettings {
   opportunity_auto_close_days: number | null;
 }
 
-export interface CRMSettingsUpdatePayload extends Partial<CRMSettings> {}
+export type CRMSettingsUpdatePayload = Partial<CRMSettings>;
 
 export interface CRMSalesStage {
   id: string;
@@ -353,12 +353,13 @@ export interface CRMPipelineReport {
   by_owner: CRMPipelineSegment[];
   by_lost_reason: CRMPipelineSegment[];
   by_utm_source: CRMPipelineSegment[];
-  by_utm_medium?: CRMPipelineSegment[];
-  by_utm_campaign?: CRMPipelineSegment[];
-  by_utm_content?: CRMPipelineSegment[];
-  by_conversion_path?: CRMPipelineSegment[];
-  by_conversion_source?: CRMPipelineSegment[];
+  by_utm_medium: CRMPipelineSegment[];
+  by_utm_campaign: CRMPipelineSegment[];
+  by_utm_content: CRMPipelineSegment[];
+  by_conversion_path: CRMPipelineSegment[];
+  by_conversion_source: CRMPipelineSegment[];
   dropoff: CRMPipelineDropOff;
+  [key: string]: CRMPipelineSegment[] | CRMPipelineAnalytics | CRMPipelineDropOff | CRMPipelineTotals | Required<CRMPipelineReportParams>;
 }
 
 export type LeadCustomerConversionPayload = CustomerCreatePayload;
@@ -541,7 +542,7 @@ export type QuotationStatus =
   | "cancelled"
   | "expired";
 
-export interface QuotationItemPayload extends OpportunityItemPayload {}
+export type QuotationItemPayload = OpportunityItemPayload;
 
 export interface QuotationTaxPayload {
   description: string;
@@ -579,7 +580,7 @@ export interface QuotationCreatePayload {
   notes: string;
 }
 
-export interface QuotationRevisionPayload extends Partial<QuotationCreatePayload> {}
+export type QuotationRevisionPayload = Partial<QuotationCreatePayload>;
 
 export interface QuotationUpdatePayload extends Partial<QuotationCreatePayload> {
   version: number;
@@ -592,7 +593,7 @@ export interface QuotationTransitionPayload {
   loss_notes: string;
 }
 
-export interface QuotationItemResponse extends OpportunityItemResponse {}
+export type QuotationItemResponse = OpportunityItemResponse;
 
 export interface QuotationTaxResponse {
   line_no: number;

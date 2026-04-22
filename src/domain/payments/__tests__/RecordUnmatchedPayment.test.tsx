@@ -5,7 +5,10 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import RecordUnmatchedPayment from "../components/RecordUnmatchedPayment";
 import { ToastProvider } from "../../../providers/ToastProvider";
 
-const MOCK_CUSTOMERS = {
+import type { CustomerSummary } from "../../../domain/customers/types";
+import type { Payment } from "../types";
+
+const MOCK_CUSTOMERS: { items: CustomerSummary[]; page: number; page_size: number; total_count: number; total_pages: number } = {
 	items: [
 		{ id: "cust-123", company_name: "Test Corp", normalized_business_number: "12345678", contact_phone: "09", status: "active" },
 	],
@@ -100,7 +103,7 @@ describe("RecordUnmatchedPayment", () => {
 		vi.restoreAllMocks();
 		mockFetchForCustomers({
 			ok: true,
-			json: async () => ({
+			json: async (): Promise<Payment> => ({
 				id: "pay-1",
 				invoice_id: null,
 				customer_id: "cust-123",

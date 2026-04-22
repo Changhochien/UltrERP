@@ -6,6 +6,7 @@ import { MemoryRouter } from "react-router-dom";
 
 import { OrderDetail } from "../../domain/orders/components/OrderDetail";
 import { ToastProvider } from "../../providers/ToastProvider";
+import type { OrderResponse } from "../../domain/orders/types";
 
 const navigateMock = vi.fn();
 const reloadMock = vi.fn();
@@ -14,9 +15,8 @@ const permissionMock = vi.hoisted(() => ({
   canWrite: vi.fn<(feature: string) => boolean>(),
 }));
 
-let mockOrder = {
+let mockOrder: OrderResponse = {
   id: "order-123",
-  tenant_id: "tenant-1",
   customer_id: "customer-1",
   customer_name: "Test Corp",
   order_number: "ORD-20260401-ABCD1234",
@@ -28,8 +28,10 @@ let mockOrder = {
   discount_percent: "0.00",
   tax_amount: "50.00",
   total_amount: "1050.00",
-  invoice_id: null,
-  invoice_number: null,
+  sales_team: [],
+  total_commission: "0.00",
+  invoice_id: null as string | null,
+  invoice_number: null as string | null,
   invoice_payment_status: null,
   notes: null,
   created_by: "system",

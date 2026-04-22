@@ -13,10 +13,8 @@ import type {
   CRMPipelineSegment,
 } from "../../domain/crm/types";
 import { getCRMPipelineReport } from "../../lib/api/crm";
+import { SELECT_CLASS_NAME } from "../../lib/constants";
 import { CRM_REPORTING_ROUTE, type AppRoute } from "../../lib/routes";
-
-const SELECT_CLASS_NAME =
-  "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
 const DEFAULT_FILTERS: CRMPipelineReportParams = {
   record_type: "all",
@@ -160,38 +158,42 @@ export default function CRMPipelineReportPage() {
     }
   }, [activeDrilldown, report]);
 
+  /**
+   * Mapping of segment group keys to their source report properties.
+   * This centralized mapping makes it easy to add/remove groups and ensures consistency.
+   */
+  const SEGMENT_GROUP_MAPPINGS = {
+    status: "by_status",
+    salesStage: "by_sales_stage",
+    territory: "by_territory",
+    customerGroup: "by_customer_group",
+    owner: "by_owner",
+    lostReason: "by_lost_reason",
+    utmSource: "by_utm_source",
+    utmMedium: "by_utm_medium",
+    utmCampaign: "by_utm_campaign",
+    utmContent: "by_utm_content",
+    conversionPath: "by_conversion_path",
+    conversionSource: "by_conversion_source",
+  } as const;
+
+  type GroupKey = keyof typeof SEGMENT_GROUP_MAPPINGS;
+
   const groups = useMemo(() => {
     if (!report) {
-      return {
-        status: [] as CRMPipelineSegment[],
-        salesStage: [] as CRMPipelineSegment[],
-        territory: [] as CRMPipelineSegment[],
-        customerGroup: [] as CRMPipelineSegment[],
-        owner: [] as CRMPipelineSegment[],
-        lostReason: [] as CRMPipelineSegment[],
-        utmSource: [] as CRMPipelineSegment[],
-        utmMedium: [] as CRMPipelineSegment[],
-        utmCampaign: [] as CRMPipelineSegment[],
-        utmContent: [] as CRMPipelineSegment[],
-        conversionPath: [] as CRMPipelineSegment[],
-        conversionSource: [] as CRMPipelineSegment[],
-      };
+      // Return empty arrays for all groups when report is not loaded
+      return Object.fromEntries(
+        Object.keys(SEGMENT_GROUP_MAPPINGS).map((key) => [key, [] as CRMPipelineSegment[]])
+      ) as Record<GroupKey, CRMPipelineSegment[]>;
     }
 
-    return {
-      status: report.by_status,
-      salesStage: report.by_sales_stage,
-      territory: report.by_territory,
-      customerGroup: report.by_customer_group,
-      owner: report.by_owner,
-      lostReason: report.by_lost_reason,
-      utmSource: report.by_utm_source,
-      utmMedium: report.by_utm_medium ?? [],
-      utmCampaign: report.by_utm_campaign ?? [],
-      utmContent: report.by_utm_content ?? [],
-      conversionPath: report.by_conversion_path ?? [],
-      conversionSource: report.by_conversion_source ?? [],
-    };
+    // Map each group key to its source property from the report
+    return Object.fromEntries(
+      Object.entries(SEGMENT_GROUP_MAPPINGS).map(([groupKey, reportProp]) => [
+        groupKey,
+        (report as Record<string, CRMPipelineSegment[] | undefined>)[reportProp] ?? [],
+      ])
+    ) as Record<GroupKey, CRMPipelineSegment[]>;
   }, [report]);
 
   const activeDrilldownGroup: CRMPipelineDrilldownGroup | null = useMemo(() => {

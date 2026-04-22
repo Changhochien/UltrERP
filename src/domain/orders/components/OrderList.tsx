@@ -7,7 +7,7 @@ import { useState } from "react";
 import { ActiveFilterBar } from "../../../components/filters/ActiveFilterBar";
 import { CustomerCombobox } from "../../../components/customers/CustomerCombobox";
 import type { CustomerSummary } from "../../customers/types";
-import { DataTableToolbar, type DataTableSortState } from "../../../components/layout/DataTable";
+import { DataTableToolbar, type DataTableSortDirection, type DataTableSortState } from "../../../components/layout/DataTable";
 import { DateRangeFilter } from "../../../components/filters/DateRangeFilter";
 import { SearchInput } from "../../../components/filters/SearchInput";
 import { StatusMultiSelect } from "../../../components/filters/StatusMultiSelect";
@@ -15,7 +15,7 @@ import { TanStackDataTable } from "../../../components/layout/TanStackDataTable"
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { StatusBadge } from "../../../components/ui/StatusBadge";
-import { useOrders, statusBadgeVariant, statusLabel } from "../hooks/useOrders";
+import { useOrders, statusLabel } from "../hooks/useOrders";
 import type { OrderBillingStatus, OrderStatus, OrderWorkflowView } from "../types";
 import { BILLING_STATUS_META, COMMERCIAL_STATUS_META, FULFILLMENT_STATUS_META, RESERVATION_STATUS_META } from "../workflowMeta";
 
@@ -132,7 +132,7 @@ export function OrderList({ onSelect }: OrderListProps) {
   const sortState = sortBy
     ? {
         columnId: sortBy,
-        direction: sortOrder,
+        direction: sortOrder as DataTableSortDirection,
       }
     : null;
 

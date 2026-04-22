@@ -121,7 +121,10 @@ export function ProductForm({
 
     const parsedValues = productFormSchema.safeParse(formData);
     if (!parsedValues.success) {
-      setErrors(toIssueErrorMap(parsedValues.error.issues));
+      setErrors(toIssueErrorMap(parsedValues.error.issues.map(issue => ({
+        path: issue.path.filter((p): p is string | number => typeof p === "string" || typeof p === "number"),
+        message: issue.message,
+      }))));
       setServerError(
         parsedValues.error.issues.find((issue) => issue.path.length === 0)?.message ?? null,
       );

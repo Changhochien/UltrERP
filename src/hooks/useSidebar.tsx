@@ -4,6 +4,7 @@ import { TooltipProvider } from "../components/ui/tooltip";
 
 const SIDEBAR_STORAGE_KEY = "ultrerp.sidebar.open";
 const COLLAPSED_SECTIONS_KEY = "ultrerp.sidebar.collapsed-sections";
+const COLLAPSED_GROUPS_KEY = "ultrerp.sidebar.collapsed-groups";
 
 interface SidebarContextValue {
   open: boolean;
@@ -15,6 +16,9 @@ interface SidebarContextValue {
   collapsedSections: Set<string>;
   toggleSection: (sectionId: string) => void;
   isSectionCollapsed: (sectionId: string) => boolean;
+  collapsedGroups: Set<string>;
+  toggleGroup: (groupId: string) => void;
+  isGroupCollapsed: (groupId: string) => boolean;
 }
 
 const SidebarContext = React.createContext<SidebarContextValue | null>(null);
@@ -64,6 +68,39 @@ function setStoredCollapsedSections(sections: Set<string>) {
   }
 }
 
+// Helper to safely get/set localStorage for collapsed groups
+function getStoredCollapsedGroups(): Set<string> {
+  if (typeof window === "undefined") {
+    return new Set();
+  }
+
+  try {
+    const stored = window.localStorage.getItem(COLLAPSED_GROUPS_KEY);
+    if (stored == null) {
+      return new Set();
+    }
+    const parsed = JSON.parse(stored);
+    if (Array.isArray(parsed)) {
+      return new Set(parsed);
+    }
+    return new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function setStoredCollapsedGroups(groups: Set<string>) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(COLLAPSED_GROUPS_KEY, JSON.stringify(Array.from(groups)));
+  } catch {
+    // Handle localStorage errors silently
+  }
+}
+
 function SidebarProvider({ defaultOpen = true, children }: { defaultOpen?: boolean; children: React.ReactNode }) {
   const isMobile = useIsMobile();
   const [openMobile, setOpenMobile] = React.useState(false);
@@ -79,6 +116,9 @@ function SidebarProvider({ defaultOpen = true, children }: { defaultOpen?: boole
   // Section collapse state
   const [collapsedSections, setCollapsedSections] = React.useState<Set<string>>(() => getStoredCollapsedSections());
 
+  // Group collapse state
+  const [collapsedGroups, setCollapsedGroups] = React.useState<Set<string>>(() => getStoredCollapsedGroups());
+
   // Persist open state
   React.useEffect(() => {
     if (typeof window === "undefined") {
@@ -92,6 +132,11 @@ function SidebarProvider({ defaultOpen = true, children }: { defaultOpen?: boole
   React.useEffect(() => {
     setStoredCollapsedSections(collapsedSections);
   }, [collapsedSections]);
+
+  // Persist collapsed groups
+  React.useEffect(() => {
+    setStoredCollapsedGroups(collapsedGroups);
+  }, [collapsedGroups]);
 
   const toggleSidebar = React.useCallback(() => {
     if (isMobile) {
@@ -119,6 +164,23 @@ function SidebarProvider({ defaultOpen = true, children }: { defaultOpen?: boole
     [collapsedSections],
   );
 
+  const toggleGroup = React.useCallback((groupId: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupId)) {
+        next.delete(groupId);
+      } else {
+        next.add(groupId);
+      }
+      return next;
+    });
+  }, []);
+
+  const isGroupCollapsed = React.useCallback(
+    (groupId: string) => collapsedGroups.has(groupId),
+    [collapsedGroups],
+  );
+
   const value = React.useMemo(
     () => ({
       open,
@@ -130,8 +192,11 @@ function SidebarProvider({ defaultOpen = true, children }: { defaultOpen?: boole
       collapsedSections,
       toggleSection,
       isSectionCollapsed,
+      collapsedGroups,
+      toggleGroup,
+      isGroupCollapsed,
     }),
-    [isMobile, open, openMobile, toggleSidebar, collapsedSections, toggleSection, isSectionCollapsed],
+    [isMobile, open, openMobile, toggleSidebar, collapsedSections, toggleSection, isSectionCollapsed, collapsedGroups, toggleGroup, isGroupCollapsed],
   );
 
   return (

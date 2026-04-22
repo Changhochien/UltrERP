@@ -16,6 +16,8 @@ from domains.crm._setup import _ensure_territory_supported, get_crm_settings
 from domains.crm.models import Lead
 from domains.crm.schemas import (
     CRMDuplicatePolicy,
+    LeadConversionRequest,
+    LeadConversionState,
     LeadCreate,
     LeadCustomerConversionResult,
     LeadListParams,
@@ -26,7 +28,7 @@ from domains.crm.schemas import (
 )
 from domains.customers.models import Customer
 from domains.customers.schemas import CustomerCreate
-from domains.customers.service import create_customer
+from domains.customers.service import create_customer, lookup_customer_by_ban
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,6 +69,60 @@ ALLOWED_LEAD_TRANSITIONS: dict[LeadStatus, frozenset[LeadStatus]] = {
     LeadStatus.CONVERTED: frozenset(),
     LeadStatus.DO_NOT_CONTACT: frozenset(),
 }
+
+
+# Conversion target constants for consistency across the codebase
+CONVERSION_TARGET_CUSTOMER = "customer"
+CONVERSION_TARGET_OPPORTUNITY = "opportunity"
+CONVERSION_TARGET_QUOTATION = "quotation"
+CONVERSION_TARGET_ORDER = (CONVERSION_TARGET_CUSTOMER, CONVERSION_TARGET_OPPORTUNITY, CONVERSION_TARGET_QUOTATION)
+
+
+def _canonical_conversion_path(targets: set[str]) -> str:
+    return "+".join(target for target in CONVERSION_TARGET_ORDER if target in targets)
+
+
+def _current_lead_success_targets(lead: Lead) -> set[str]:
+    targets: set[str] = set()
+    if lead.converted_customer_id is not None:
+        targets.add(CONVERSION_TARGET_CUSTOMER)
+    if getattr(lead, "converted_opportunity_id", None) is not None:
+        targets.add(CONVERSION_TARGET_OPPORTUNITY)
+    if getattr(lead, "converted_quotation_id", None) is not None:
+        targets.add(CONVERSION_TARGET_QUOTATION)
+    return targets
+
+
+def _resolve_conversion_state(
+    requested_targets: set[str],
+    successful_targets: set[str],
+) -> LeadConversionState:
+    if not successful_targets:
+        return LeadConversionState.NOT_CONVERTED
+    if not requested_targets or successful_targets == requested_targets:
+        return LeadConversionState.CONVERTED
+    return LeadConversionState.PARTIALLY_CONVERTED
+
+
+def _resolve_lead_status_after_conversion(successful_targets: set[str]) -> LeadStatus:
+    if CONVERSION_TARGET_QUOTATION in successful_targets:
+        return LeadStatus.QUOTATION
+    if CONVERSION_TARGET_OPPORTUNITY in successful_targets:
+        return LeadStatus.OPPORTUNITY
+    if CONVERSION_TARGET_CUSTOMER in successful_targets:
+        return LeadStatus.CONVERTED
+    return LeadStatus.OPEN
+
+
+def _selected_conversion_targets(data: LeadConversionRequest) -> set[str]:
+    targets: set[str] = set()
+    if data.reuse_customer_id is not None or data.customer is not None:
+        targets.add(CONVERSION_TARGET_CUSTOMER)
+    if data.opportunity is not None:
+        targets.add(CONVERSION_TARGET_OPPORTUNITY)
+    if data.quotation is not None:
+        targets.add(CONVERSION_TARGET_QUOTATION)
+    return targets
 
 
 def _normalize_company_name(value: str) -> str:
@@ -501,12 +557,58 @@ async def handoff_lead_to_opportunity(
     )
 
 
+async def _record_lead_conversion(
+    session: AsyncSession,
+    lead_id: uuid.UUID,
+    *,
+    tenant_id: uuid.UUID,
+    requested_targets: set[str] | None = None,
+    converted_by: str | None = None,
+    customer_id: uuid.UUID | None = None,
+    opportunity_id: uuid.UUID | None = None,
+    quotation_id: uuid.UUID | None = None,
+    status: LeadStatus | None = None,
+) -> Lead | None:
+    """Record lead conversion to customer, opportunity, and/or quotation."""
+    lead = await get_lead(session, lead_id, tenant_id=tenant_id)
+    if lead is None:
+        return None
+
+    now = datetime.now(tz=UTC)
+    async with session.begin():
+        await set_tenant(session, tenant_id)
+        if customer_id is not None:
+            lead.converted_customer_id = customer_id
+        if opportunity_id is not None:
+            lead.converted_opportunity_id = opportunity_id
+        if quotation_id is not None:
+            lead.converted_quotation_id = quotation_id
+        if status is not None:
+            lead.status = status
+
+        successful_targets = _current_lead_success_targets(lead)
+        effective_requested = requested_targets or successful_targets
+        lead.conversion_path = _canonical_conversion_path(effective_requested)
+        lead.conversion_state = _resolve_conversion_state(
+            effective_requested,
+            successful_targets,
+        ).value
+        if successful_targets and lead.converted_at is None:
+            lead.converted_at = now
+        if converted_by is not None:
+            lead.converted_by = converted_by
+        lead.updated_at = now
+    return lead
+
+
 async def convert_lead_to_customer(
     session: AsyncSession,
     lead_id: uuid.UUID,
     customer_data: CustomerCreate,
     tenant_id: uuid.UUID | None = None,
+    converted_by: str | None = None,
 ) -> LeadCustomerConversionResult:
+    """Convert a qualified lead directly to a customer."""
     tid = tenant_id or DEFAULT_TENANT_ID
     lead = await get_lead(session, lead_id, tenant_id=tid)
     if lead is None:
@@ -516,23 +618,24 @@ async def convert_lead_to_customer(
         != LeadQualificationStatus.QUALIFIED
     ):
         raise ValidationError(
-            [
-                {
-                    "field": "qualification_status",
-                    "message": "Lead must be qualified before customer conversion.",
-                }
-            ]
+            [{"field": "qualification_status", "message": "Lead must be qualified before customer conversion."}]
         )
 
-    customer = await create_customer(session, customer_data, tenant_id=tid)
-    async with session.begin():
-        await set_tenant(session, tid)
-        lead.status = LeadStatus.CONVERTED
-        lead.converted_customer_id = customer.id
-        lead.converted_at = datetime.now(tz=UTC)
-        lead.updated_at = datetime.now(tz=UTC)
-    return LeadCustomerConversionResult(
-        lead_id=lead.id,
+    customer = await lookup_customer_by_ban(session, customer_data.business_number, tenant_id=tid)
+    if customer is None:
+        customer = await create_customer(session, customer_data, tenant_id=tid)
+
+    lead = await _record_lead_conversion(
+        session,
+        lead.id,
+        tenant_id=tid,
+        requested_targets={"customer"},
+        converted_by=converted_by,
         customer_id=customer.id,
         status=LeadStatus.CONVERTED,
+    )
+    return LeadCustomerConversionResult(
+        lead_id=lead.id if lead is not None else lead_id,
+        customer_id=customer.id,
+        status=lead.status if lead is not None else LeadStatus.CONVERTED,
     )

@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslation } from "react-i18next";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -41,7 +41,7 @@ export default function CustomerForm({
     setError,
     formState: { errors },
   } = useForm<CustomerFormValues>({
-    resolver: zodResolver(customerFormSchema),
+    resolver: zodResolver(customerFormSchema as never) as Resolver<CustomerFormValues>,
     defaultValues: {
       company_name: initialValues?.company_name ?? "",
       business_number: initialValues?.business_number ?? "",

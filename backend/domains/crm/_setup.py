@@ -51,52 +51,35 @@ def _trim(value: str | None) -> str:
     return value.strip() if value else ""
 
 
-def _serialize_crm_settings(record: CRMSettings | object | None) -> CRMSettingsResponse:
-    if record is None:
-        return CRMSettingsResponse.model_validate(DEFAULT_CRM_SETTINGS.model_dump())
+def _extract_settings_fields(record: object) -> dict[str, object]:
+    """Extract CRM settings fields from a record, using defaults for missing fields."""
+    defaults = DEFAULT_CRM_SETTINGS.model_dump()
+    return {
+        "lead_duplicate_policy": CRMDuplicatePolicy(
+            getattr(record, "lead_duplicate_policy", defaults["lead_duplicate_policy"])
+        ),
+        "contact_creation_enabled": bool(
+            getattr(record, "contact_creation_enabled", defaults["contact_creation_enabled"])
+        ),
+        "default_quotation_validity_days": int(
+            getattr(record, "default_quotation_validity_days", defaults["default_quotation_validity_days"])
+        ),
+        "carry_forward_communications": bool(
+            getattr(record, "carry_forward_communications", defaults["carry_forward_communications"])
+        ),
+        "carry_forward_comments": bool(
+            getattr(record, "carry_forward_comments", defaults["carry_forward_comments"])
+        ),
+        "opportunity_auto_close_days": getattr(
+            record, "opportunity_auto_close_days", defaults["opportunity_auto_close_days"]
+        ),
+    }
 
-    return CRMSettingsResponse(
-        lead_duplicate_policy=CRMDuplicatePolicy(
-            getattr(
-                record,
-                "lead_duplicate_policy",
-                DEFAULT_CRM_SETTINGS.lead_duplicate_policy,
-            )
-        ),
-        contact_creation_enabled=bool(
-            getattr(
-                record,
-                "contact_creation_enabled",
-                DEFAULT_CRM_SETTINGS.contact_creation_enabled,
-            )
-        ),
-        default_quotation_validity_days=int(
-            getattr(
-                record,
-                "default_quotation_validity_days",
-                DEFAULT_CRM_SETTINGS.default_quotation_validity_days,
-            )
-        ),
-        carry_forward_communications=bool(
-            getattr(
-                record,
-                "carry_forward_communications",
-                DEFAULT_CRM_SETTINGS.carry_forward_communications,
-            )
-        ),
-        carry_forward_comments=bool(
-            getattr(
-                record,
-                "carry_forward_comments",
-                DEFAULT_CRM_SETTINGS.carry_forward_comments,
-            )
-        ),
-        opportunity_auto_close_days=getattr(
-            record,
-            "opportunity_auto_close_days",
-            DEFAULT_CRM_SETTINGS.opportunity_auto_close_days,
-        ),
-    )
+
+def _serialize_crm_settings(record: CRMSettings | None) -> CRMSettingsResponse:
+    if record is None:
+        return CRMSettingsResponse()
+    return CRMSettingsResponse(**_extract_settings_fields(record))
 
 
 async def get_crm_settings(
@@ -118,7 +101,6 @@ async def update_crm_settings(
     tenant_id: uuid.UUID | None = None,
 ) -> CRMSettingsResponse:
     tid = tenant_id or DEFAULT_TENANT_ID
-    fields = data.model_fields_set
 
     async with session.begin():
         await set_tenant(session, tid)
@@ -130,27 +112,11 @@ async def update_crm_settings(
             record = CRMSettings(tenant_id=tid)
             session.add(record)
 
-        if "lead_duplicate_policy" in fields and data.lead_duplicate_policy is not None:
-            record.lead_duplicate_policy = data.lead_duplicate_policy
-        if (
-            "contact_creation_enabled" in fields
-            and data.contact_creation_enabled is not None
-        ):
-            record.contact_creation_enabled = data.contact_creation_enabled
-        if (
-            "default_quotation_validity_days" in fields
-            and data.default_quotation_validity_days is not None
-        ):
-            record.default_quotation_validity_days = data.default_quotation_validity_days
-        if (
-            "carry_forward_communications" in fields
-            and data.carry_forward_communications is not None
-        ):
-            record.carry_forward_communications = data.carry_forward_communications
-        if "carry_forward_comments" in fields and data.carry_forward_comments is not None:
-            record.carry_forward_comments = data.carry_forward_comments
-        if "opportunity_auto_close_days" in fields:
-            record.opportunity_auto_close_days = data.opportunity_auto_close_days
+        # Apply non-None updates from data to record
+        for field_name in data.model_fields_set:
+            new_value = getattr(data, field_name)
+            if new_value is not None:
+                setattr(record, field_name, new_value)
         record.updated_at = datetime.now(tz=UTC)
 
     return _serialize_crm_settings(record)
@@ -544,6 +510,16 @@ async def update_territory(
     tenant_id: uuid.UUID | None = None,
 ) -> CRMTerritory | None:
     tid = tenant_id or DEFAULT_TENANT_ID
+
+    # Validate parent exists before starting the update transaction
+    parent_id = await _validate_tree_parent(
+        session,
+        CRMTerritory,
+        data.parent_id,
+        tid,
+        current_id=territory_id,
+    )
+
     async with session.begin():
         await set_tenant(session, tid)
         result = await session.execute(
@@ -556,24 +532,6 @@ async def update_territory(
         if territory is None:
             return None
 
-    parent_id = await _validate_tree_parent(
-        session,
-        CRMTerritory,
-        data.parent_id,
-        tid,
-        current_id=territory_id,
-    )
-    async with session.begin():
-        await set_tenant(session, tid)
-        result = await session.execute(
-            select(CRMTerritory).where(
-                CRMTerritory.id == territory_id,
-                CRMTerritory.tenant_id == tid,
-            )
-        )
-        territory = result.scalar_one_or_none()
-        if territory is None:
-            return None
         if data.name is not None:
             name = _trim(data.name)
             duplicate = await session.execute(
@@ -651,6 +609,16 @@ async def update_customer_group(
     tenant_id: uuid.UUID | None = None,
 ) -> CRMCustomerGroup | None:
     tid = tenant_id or DEFAULT_TENANT_ID
+
+    # Validate parent exists before starting the update transaction
+    parent_id = await _validate_tree_parent(
+        session,
+        CRMCustomerGroup,
+        data.parent_id,
+        tid,
+        current_id=customer_group_id,
+    )
+
     async with session.begin():
         await set_tenant(session, tid)
         result = await session.execute(
@@ -663,24 +631,6 @@ async def update_customer_group(
         if customer_group is None:
             return None
 
-    parent_id = await _validate_tree_parent(
-        session,
-        CRMCustomerGroup,
-        data.parent_id,
-        tid,
-        current_id=customer_group_id,
-    )
-    async with session.begin():
-        await set_tenant(session, tid)
-        result = await session.execute(
-            select(CRMCustomerGroup).where(
-                CRMCustomerGroup.id == customer_group_id,
-                CRMCustomerGroup.tenant_id == tid,
-            )
-        )
-        customer_group = result.scalar_one_or_none()
-        if customer_group is None:
-            return None
         if data.name is not None:
             name = _trim(data.name)
             duplicate = await session.execute(

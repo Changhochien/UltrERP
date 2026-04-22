@@ -1,7 +1,7 @@
 /** Form for recording a payment without a specific invoice (for reconciliation). */
 
 import { useEffect, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslation } from "react-i18next";
 
@@ -56,7 +56,7 @@ export default function RecordUnmatchedPayment({
 		register,
 		formState: { errors },
 	} = useForm<UnmatchedPaymentFormValues>({
-		resolver: zodResolver(unmatchedPaymentFormSchema),
+		resolver: zodResolver(unmatchedPaymentFormSchema as never) as Resolver<UnmatchedPaymentFormValues>,
 		defaultValues: {
 			customer_id: "",
 			amount: "",

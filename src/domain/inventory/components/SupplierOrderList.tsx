@@ -7,7 +7,6 @@ import { SectionCard } from "../../../components/layout/PageLayout";
 import { Button } from "../../../components/ui/button";
 import { StatusBadge } from "../../../components/ui/StatusBadge";
 import {
-  statusBadgeVariant,
   useSupplierOrders,
   statusLabel,
 } from "../hooks/useSupplierOrders";

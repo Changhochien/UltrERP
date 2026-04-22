@@ -731,17 +731,17 @@ export function LeadDetailPage({ onBack }: LeadDetailPageProps) {
             </dl>
             <div className="mt-4 flex flex-wrap gap-3">
               {lead.converted_customer_id ? (
-                <Button type="button" variant="outline" onClick={() => navigate(buildCustomerDetailPath(lead.converted_customer_id))}>
+                <Button type="button" variant="outline" onClick={() => navigate(buildCustomerDetailPath(lead.converted_customer_id!))}>
                   {t("crm.detailPage.viewCustomer")}
                 </Button>
               ) : null}
               {lead.converted_opportunity_id ? (
-                <Button type="button" variant="outline" onClick={() => navigate(buildOpportunityDetailPath(lead.converted_opportunity_id))}>
+                <Button type="button" variant="outline" onClick={() => navigate(buildOpportunityDetailPath(lead.converted_opportunity_id!))}>
                   {t("crm.detailPage.viewOpportunity")}
                 </Button>
               ) : null}
               {lead.converted_quotation_id ? (
-                <Button type="button" variant="outline" onClick={() => navigate(buildQuotationDetailPath(lead.converted_quotation_id))}>
+                <Button type="button" variant="outline" onClick={() => navigate(buildQuotationDetailPath(lead.converted_quotation_id!))}>
                   {t("crm.detailPage.viewQuotation")}
                 </Button>
               ) : null}

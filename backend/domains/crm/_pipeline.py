@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
+from functools import partial
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,6 +33,7 @@ from domains.crm.schemas import (
     QuotationStatus,
 )
 
+# Terminal statuses for each record type - used by _record_scope()
 TERMINAL_LEAD_STATUSES = frozenset(
     {
         LeadStatus.INTERESTED.value,
@@ -56,6 +58,22 @@ TERMINAL_QUOTATION_STATUSES = frozenset(
     }
 )
 
+# Scope resolution mapping: record_type -> frozenset of terminal statuses
+_SCOPE_MAP: dict[str, frozenset[str]] = {
+    "lead": TERMINAL_LEAD_STATUSES,
+    "opportunity": TERMINAL_OPPORTUNITY_STATUSES,
+    "quotation": TERMINAL_QUOTATION_STATUSES,
+}
+
+# Type aliases for bucket dictionaries used throughout the pipeline report
+_PipelineBucket = dict[str, object]
+_BucketDict = dict[tuple[str | None, str], _PipelineBucket]
+
+
+# =============================================================================
+# Utility Functions
+# =============================================================================
+
 
 def _quantized_amount(value: object | None) -> Decimal:
     if value is None or value == "":
@@ -63,9 +81,7 @@ def _quantized_amount(value: object | None) -> Decimal:
     return Decimal(str(value)).quantize(Decimal("0.01"))
 
 
-def _build_pipeline_segment_list(
-    buckets: dict[tuple[str | None, str], dict[str, object]],
-) -> list[CRMPipelineSegment]:
+def _build_pipeline_segment_list(buckets: _BucketDict) -> list[CRMPipelineSegment]:
     items = [CRMPipelineSegment.model_validate(item) for item in buckets.values()]
     return sorted(
         items,
@@ -74,7 +90,7 @@ def _build_pipeline_segment_list(
 
 
 def _upsert_pipeline_bucket(
-    buckets: dict[tuple[str | None, str], dict[str, object]],
+    buckets: _BucketDict,
     *,
     record_type: str | None,
     key: str,
@@ -103,11 +119,84 @@ def _upsert_pipeline_bucket(
     ).quantize(Decimal("0.01"))
 
 
+# =============================================================================
+# Snapshot & Attribution Helpers
+# =============================================================================
+
+
 def _extract_snapshot_text(snapshot: dict[str, object] | None, key: str) -> str:
+    """Extract a string value from a CRM context snapshot dict."""
     if not isinstance(snapshot, dict):
         return ""
     value = snapshot.get(key)
     return value.strip() if isinstance(value, str) else ""
+
+
+def _extract_utm_snapshot(snapshot: dict[str, object] | None) -> tuple[str, str, str, str]:
+    """Extract all UTM values from a CRM context snapshot.
+    
+    Returns:
+        Tuple of (utm_source, utm_medium, utm_campaign, utm_content)
+    """
+    return (
+        _extract_snapshot_text(snapshot, "utm_source"),
+        _extract_snapshot_text(snapshot, "utm_medium"),
+        _extract_snapshot_text(snapshot, "utm_campaign"),
+        _extract_snapshot_text(snapshot, "utm_content"),
+    )
+
+
+# =============================================================================
+# Scope Resolution
+# =============================================================================
+
+
+def _record_scope(record_type: str, status: str) -> CRMPipelineScope:
+    """Determine if a record is in OPEN or TERMINAL scope based on its type and status.
+    
+    Args:
+        record_type: One of 'lead', 'opportunity', or 'quotation'
+        status: The current status of the record
+        
+    Returns:
+        CRMPipelineScope.TERMINAL if status is terminal, CRMPipelineScope.OPEN otherwise
+    """
+    terminal_statuses = _SCOPE_MAP.get(record_type, frozenset())
+    return CRMPipelineScope.TERMINAL if status in terminal_statuses else CRMPipelineScope.OPEN
+
+
+# Convenience aliases for backward compatibility - marked as deprecated
+_lead_scope = partial(_record_scope, "lead")
+_opportunity_scope = partial(_record_scope, "opportunity")
+_quotation_scope = partial(_record_scope, "quotation")
+
+
+# =============================================================================
+# UTM/Attribution Filter Helpers
+# =============================================================================
+
+
+def _matches_utm_filters(
+    *,
+    params: CRMPipelineReportParams,
+    utm_source: str,
+    utm_medium: str,
+    utm_campaign: str,
+    utm_content: str,
+) -> bool:
+    """Check if record matches UTM attribution filters.
+    
+    Shared logic used by both report filtering and analytics filtering.
+    """
+    if params.utm_source and utm_source != params.utm_source:
+        return False
+    if params.utm_medium and utm_medium != params.utm_medium:
+        return False
+    if params.utm_campaign and utm_campaign != params.utm_campaign:
+        return False
+    if params.utm_content and utm_content != params.utm_content:
+        return False
+    return True
 
 
 def _matches_attribution_filters(
@@ -122,6 +211,7 @@ def _matches_attribution_filters(
     utm_campaign: str,
     utm_content: str,
 ) -> bool:
+    """Check if record matches all attribution filters for order attribution analysis."""
     if params.sales_stage and sales_stage != params.sales_stage:
         return False
     if params.territory and territory != params.territory:
@@ -130,39 +220,18 @@ def _matches_attribution_filters(
         return False
     if params.owner and owner != params.owner:
         return False
-    if params.utm_source and utm_source != params.utm_source:
-        return False
-    if params.utm_medium and utm_medium != params.utm_medium:
-        return False
-    if params.utm_campaign and utm_campaign != params.utm_campaign:
-        return False
-    if params.utm_content and utm_content != params.utm_content:
-        return False
-    return True
-
-
-def _lead_scope(status: str) -> CRMPipelineScope:
-    return (
-        CRMPipelineScope.TERMINAL
-        if status in TERMINAL_LEAD_STATUSES
-        else CRMPipelineScope.OPEN
+    return _matches_utm_filters(
+        params=params,
+        utm_source=utm_source,
+        utm_medium=utm_medium,
+        utm_campaign=utm_campaign,
+        utm_content=utm_content,
     )
 
 
-def _opportunity_scope(status: str) -> CRMPipelineScope:
-    return (
-        CRMPipelineScope.TERMINAL
-        if status in TERMINAL_OPPORTUNITY_STATUSES
-        else CRMPipelineScope.OPEN
-    )
-
-
-def _quotation_scope(status: str) -> CRMPipelineScope:
-    return (
-        CRMPipelineScope.TERMINAL
-        if status in TERMINAL_QUOTATION_STATUSES
-        else CRMPipelineScope.OPEN
-    )
+# =============================================================================
+# Filter Matching Functions
+# =============================================================================
 
 
 def _matches_common_filters(
@@ -179,6 +248,7 @@ def _matches_common_filters(
     utm_campaign: str,
     utm_content: str,
 ) -> bool:
+    """Check if record matches common report filters (scope, status, dimensions, UTM)."""
     if params.scope != CRMPipelineScope.ALL and scope != params.scope:
         return False
     if params.status and status != params.status:
@@ -191,15 +261,13 @@ def _matches_common_filters(
         return False
     if params.lost_reason and lost_reason != params.lost_reason:
         return False
-    if params.utm_source and utm_source != params.utm_source:
-        return False
-    if params.utm_medium and utm_medium != params.utm_medium:
-        return False
-    if params.utm_campaign and utm_campaign != params.utm_campaign:
-        return False
-    if params.utm_content and utm_content != params.utm_content:
-        return False
-    return True
+    return _matches_utm_filters(
+        params=params,
+        utm_source=utm_source,
+        utm_medium=utm_medium,
+        utm_campaign=utm_campaign,
+        utm_content=utm_content,
+    )
 
 
 def _matches_analytics_filters(
@@ -214,6 +282,10 @@ def _matches_analytics_filters(
     utm_campaign: str,
     utm_content: str,
 ) -> bool:
+    """Check if record matches analytics filters (dimensions, UTM).
+    
+    Note: Does not filter by scope/status as analytics computes those internally.
+    """
     if params.sales_stage and sales_stage != params.sales_stage:
         return False
     if params.territory and territory != params.territory:
@@ -222,15 +294,13 @@ def _matches_analytics_filters(
         return False
     if params.owner and owner != params.owner:
         return False
-    if params.utm_source and utm_source != params.utm_source:
-        return False
-    if params.utm_medium and utm_medium != params.utm_medium:
-        return False
-    if params.utm_campaign and utm_campaign != params.utm_campaign:
-        return False
-    if params.utm_content and utm_content != params.utm_content:
-        return False
-    return True
+    return _matches_utm_filters(
+        params=params,
+        utm_source=utm_source,
+        utm_medium=utm_medium,
+        utm_campaign=utm_campaign,
+        utm_content=utm_content,
+    )
 
 
 def _coerce_date(value: object | None) -> date | None:
@@ -271,17 +341,24 @@ def _comparison_metric(current_value: Decimal, previous_value: Decimal) -> CRMPi
 
 
 def _lead_conversion_targets(lead: object) -> set[str]:
+    # Import constants from _lead.py to maintain consistency
+    from domains.crm._lead import (
+        CONVERSION_TARGET_CUSTOMER,
+        CONVERSION_TARGET_OPPORTUNITY,
+        CONVERSION_TARGET_QUOTATION,
+    )
+
     targets = {
         part.strip()
         for part in str(getattr(lead, "conversion_path", "") or "").split("+")
         if part.strip()
     }
     if getattr(lead, "converted_customer_id", None) is not None:
-        targets.add("customer")
+        targets.add(CONVERSION_TARGET_CUSTOMER)
     if getattr(lead, "converted_opportunity_id", None) is not None:
-        targets.add("opportunity")
+        targets.add(CONVERSION_TARGET_OPPORTUNITY)
     if getattr(lead, "converted_quotation_id", None) is not None:
-        targets.add("quotation")
+        targets.add(CONVERSION_TARGET_QUOTATION)
     return targets
 
 
@@ -300,6 +377,97 @@ def _lead_is_converted_compatible(lead: object) -> bool:
     }
 
 
+# =============================================================================
+# Pre-computed Record Attributes
+# =============================================================================
+# Type alias for pre-computed record metadata to avoid repeated getattr calls
+_LeadAttrs = dict[str, object]
+_OpportunityAttrs = dict[str, object]
+_QuotationAttrs = dict[str, object]
+
+
+def _precompute_lead_attrs(lead: object) -> _LeadAttrs:
+    """Pre-compute common lead attributes to avoid repeated getattr calls."""
+    return {
+        "id": getattr(lead, "id", None),
+        "status": str(getattr(lead, "status", "") or ""),
+        "scope": _lead_scope(str(getattr(lead, "status", "") or "")),
+        "territory": str(getattr(lead, "territory", "") or ""),
+        "owner": str(getattr(lead, "lead_owner", "") or ""),
+        "utm_source": str(getattr(lead, "utm_source", "") or ""),
+        "utm_medium": str(getattr(lead, "utm_medium", "") or ""),
+        "utm_campaign": str(getattr(lead, "utm_campaign", "") or ""),
+        "utm_content": str(getattr(lead, "utm_content", "") or ""),
+        "qualification_status": str(getattr(lead, "qualification_status", "") or ""),
+        "conversion_state": str(getattr(lead, "conversion_state", "") or ""),
+        "conversion_path": str(getattr(lead, "conversion_path", "") or ""),
+        "source": str(getattr(lead, "source", "") or ""),
+        "created_at": getattr(lead, "created_at", None),
+        "converted_at": getattr(lead, "converted_at", None),
+        "company_name": getattr(lead, "company_name", None),
+        "lead_name": getattr(lead, "lead_name", None),
+        "converted_customer_id": getattr(lead, "converted_customer_id", None),
+        "converted_opportunity_id": getattr(lead, "converted_opportunity_id", None),
+        "converted_quotation_id": getattr(lead, "converted_quotation_id", None),
+    }
+
+
+def _precompute_opportunity_attrs(opportunity: object) -> _OpportunityAttrs:
+    """Pre-compute common opportunity attributes to avoid repeated getattr calls."""
+    status = str(getattr(opportunity, "status", "") or "")
+    return {
+        "id": getattr(opportunity, "id", None),
+        "status": status,
+        "scope": _opportunity_scope(status),
+        "sales_stage": str(getattr(opportunity, "sales_stage", "") or ""),
+        "territory": str(getattr(opportunity, "territory", "") or ""),
+        "customer_group": str(getattr(opportunity, "customer_group", "") or ""),
+        "owner": str(getattr(opportunity, "opportunity_owner", "") or ""),
+        "lost_reason": str(getattr(opportunity, "lost_reason", "") or ""),
+        "competitor_name": str(getattr(opportunity, "competitor_name", "") or ""),
+        "utm_source": str(getattr(opportunity, "utm_source", "") or ""),
+        "utm_medium": str(getattr(opportunity, "utm_medium", "") or ""),
+        "utm_campaign": str(getattr(opportunity, "utm_campaign", "") or ""),
+        "utm_content": str(getattr(opportunity, "utm_content", "") or ""),
+        "opportunity_amount": getattr(opportunity, "opportunity_amount", None),
+        "amount": _quantized_amount(getattr(opportunity, "opportunity_amount", None)),
+        "probability": Decimal(str(getattr(opportunity, "probability", 0) or 0)),
+        "expected_closing": getattr(opportunity, "expected_closing", None),
+        "created_at": getattr(opportunity, "created_at", None),
+        "opportunity_title": getattr(opportunity, "opportunity_title", None),
+    }
+
+
+def _precompute_quotation_attrs(quotation: object) -> _QuotationAttrs:
+    """Pre-compute common quotation attributes to avoid repeated getattr calls."""
+    status = str(getattr(quotation, "status", "") or "")
+    return {
+        "id": getattr(quotation, "id", None),
+        "status": status,
+        "scope": _quotation_scope(status),
+        "territory": str(getattr(quotation, "territory", "") or ""),
+        "customer_group": str(getattr(quotation, "customer_group", "") or ""),
+        "lost_reason": str(getattr(quotation, "lost_reason", "") or ""),
+        "competitor_name": str(getattr(quotation, "competitor_name", "") or ""),
+        "utm_source": str(getattr(quotation, "utm_source", "") or ""),
+        "utm_medium": str(getattr(quotation, "utm_medium", "") or ""),
+        "utm_campaign": str(getattr(quotation, "utm_campaign", "") or ""),
+        "utm_content": str(getattr(quotation, "utm_content", "") or ""),
+        "grand_total": getattr(quotation, "grand_total", None),
+        "amount": _quantized_amount(getattr(quotation, "grand_total", None)),
+        "transaction_date": getattr(quotation, "transaction_date", None),
+        "created_at": getattr(quotation, "created_at", None),
+        "party_label": getattr(quotation, "party_label", None),
+        "opportunity_id": getattr(quotation, "opportunity_id", None),
+        "order_count": int(getattr(quotation, "order_count", 0) or 0),
+    }
+
+
+# =============================================================================
+# Analytics Snapshot Builder
+# =============================================================================
+
+
 def _build_analytics_snapshot(
     *,
     leads: list[object],
@@ -312,14 +480,26 @@ def _build_analytics_snapshot(
     start_date: date | None,
     end_date: date | None,
 ) -> dict[str, object]:
+    # Pre-compute record attributes once to avoid repeated getattr calls
+    # This optimization reduces O(n*k) attribute lookups to O(n) where k is lookup count
+    precomputed_leads: list[tuple[object, _LeadAttrs]] = [
+        (lead, _precompute_lead_attrs(lead)) for lead in leads
+    ]
+    precomputed_opportunities: list[tuple[object, _OpportunityAttrs]] = [
+        (opp, _precompute_opportunity_attrs(opp)) for opp in opportunities
+    ]
+    precomputed_quotations: list[tuple[object, _QuotationAttrs]] = [
+        (quote, _precompute_quotation_attrs(quote)) for quote in quotations
+    ]
+
     filtered_leads: list[object] = []
     filtered_opportunities: list[object] = []
     filtered_quotations: list[object] = []
     filtered_orders: list[tuple[object, object | None, object | None]] = []
 
-    terminal_by_status: dict[tuple[str | None, str], dict[str, object]] = {}
-    terminal_by_lost_reason: dict[tuple[str | None, str], dict[str, object]] = {}
-    terminal_by_competitor: dict[tuple[str | None, str], dict[str, object]] = {}
+    terminal_by_status: _BucketDict = {}
+    terminal_by_lost_reason: _BucketDict = {}
+    terminal_by_competitor: _BucketDict = {}
     owner_buckets: dict[str, dict[str, object]] = {}
 
     weighted_pipeline_value = Decimal("0.00")
@@ -345,28 +525,28 @@ def _build_analytics_snapshot(
             },
         )
 
-    for lead in leads:
+    for lead, attrs in precomputed_leads:
         if not _matches_analytics_filters(
             params=params,
             sales_stage="",
-            territory=str(getattr(lead, "territory", "") or ""),
+            territory=attrs["territory"],
             customer_group="",
-            owner=str(getattr(lead, "lead_owner", "") or ""),
-            utm_source=str(getattr(lead, "utm_source", "") or ""),
-            utm_medium=str(getattr(lead, "utm_medium", "") or ""),
-            utm_campaign=str(getattr(lead, "utm_campaign", "") or ""),
-            utm_content=str(getattr(lead, "utm_content", "") or ""),
+            owner=attrs["owner"],
+            utm_source=attrs["utm_source"],
+            utm_medium=attrs["utm_medium"],
+            utm_campaign=attrs["utm_campaign"],
+            utm_content=attrs["utm_content"],
         ):
             continue
-        if not _matches_period(getattr(lead, "created_at", None), start_date, end_date):
+        if not _matches_period(attrs["created_at"], start_date, end_date):
             continue
         filtered_leads.append(lead)
-        owner = str(getattr(lead, "lead_owner", "") or "")
+        owner = attrs["owner"]
         owner_bucket(owner)["assigned_leads"] = int(owner_bucket(owner)["assigned_leads"]) + 1
 
         if _lead_is_converted_compatible(lead):
-            created_at = getattr(lead, "created_at", None)
-            converted_at = getattr(lead, "converted_at", None)
+            created_at = attrs["created_at"]
+            converted_at = attrs["converted_at"]
             if created_at is not None and converted_at is not None:
                 elapsed_days = Decimal(
                     str((converted_at - created_at).total_seconds() / 86400)
@@ -381,38 +561,30 @@ def _build_analytics_snapshot(
                 ).quantize(Decimal("0.01"))
                 bucket["time_samples"] = int(bucket["time_samples"]) + 1
 
-    for opportunity in opportunities:
-        sales_stage = str(getattr(opportunity, "sales_stage", "") or "")
-        territory = str(getattr(opportunity, "territory", "") or "")
-        customer_group = str(getattr(opportunity, "customer_group", "") or "")
-        owner = str(getattr(opportunity, "opportunity_owner", "") or "")
-        utm_source = str(getattr(opportunity, "utm_source", "") or "")
-        utm_medium = str(getattr(opportunity, "utm_medium", "") or "")
-        utm_campaign = str(getattr(opportunity, "utm_campaign", "") or "")
-        utm_content = str(getattr(opportunity, "utm_content", "") or "")
+    for opportunity, attrs in precomputed_opportunities:
         if not _matches_analytics_filters(
             params=params,
-            sales_stage=sales_stage,
-            territory=territory,
-            customer_group=customer_group,
-            owner=owner,
-            utm_source=utm_source,
-            utm_medium=utm_medium,
-            utm_campaign=utm_campaign,
-            utm_content=utm_content,
+            sales_stage=attrs["sales_stage"],
+            territory=attrs["territory"],
+            customer_group=attrs["customer_group"],
+            owner=attrs["owner"],
+            utm_source=attrs["utm_source"],
+            utm_medium=attrs["utm_medium"],
+            utm_campaign=attrs["utm_campaign"],
+            utm_content=attrs["utm_content"],
         ):
             continue
-        period_value = getattr(opportunity, "expected_closing", None) or getattr(opportunity, "created_at", None)
+        period_value = attrs["expected_closing"] or attrs["created_at"]
         if not _matches_period(period_value, start_date, end_date):
             continue
 
         filtered_opportunities.append(opportunity)
-        amount = _quantized_amount(getattr(opportunity, "opportunity_amount", None))
-        probability = Decimal(str(getattr(opportunity, "probability", 0) or 0))
-        status = str(getattr(opportunity, "status", "") or "")
-        bucket = owner_bucket(owner)
+        amount = attrs["amount"]
+        probability = attrs["probability"]
+        status = attrs["status"]
+        bucket = owner_bucket(attrs["owner"])
         bucket["owned_opportunities"] = int(bucket["owned_opportunities"]) + 1
-        if _opportunity_scope(status) == CRMPipelineScope.OPEN:
+        if attrs["scope"] == CRMPipelineScope.OPEN:
             bucket["open_pipeline_value"] = (
                 _quantized_amount(bucket["open_pipeline_value"]) + amount
             ).quantize(Decimal("0.01"))
@@ -427,7 +599,7 @@ def _build_analytics_snapshot(
         elif status == OpportunityStatus.LOST.value:
             terminal_lost += 1
 
-        if _opportunity_scope(status) == CRMPipelineScope.TERMINAL:
+        if attrs["scope"] == CRMPipelineScope.TERMINAL:
             _upsert_pipeline_bucket(
                 terminal_by_status,
                 record_type="opportunity",
@@ -435,7 +607,7 @@ def _build_analytics_snapshot(
                 label=status,
                 amount=amount,
             )
-            lost_reason = str(getattr(opportunity, "lost_reason", "") or "")
+            lost_reason = attrs["lost_reason"]
             if lost_reason:
                 _upsert_pipeline_bucket(
                     terminal_by_lost_reason,
@@ -444,7 +616,7 @@ def _build_analytics_snapshot(
                     label=lost_reason,
                     amount=amount,
                 )
-            competitor = str(getattr(opportunity, "competitor_name", "") or "")
+            competitor = attrs["competitor_name"]
             if competitor:
                 _upsert_pipeline_bucket(
                     terminal_by_competitor,
@@ -454,41 +626,34 @@ def _build_analytics_snapshot(
                     amount=amount,
                 )
 
-    for quotation in quotations:
-        territory = str(getattr(quotation, "territory", "") or "")
-        customer_group = str(getattr(quotation, "customer_group", "") or "")
-        utm_source = str(getattr(quotation, "utm_source", "") or "")
-        utm_medium = str(getattr(quotation, "utm_medium", "") or "")
-        utm_campaign = str(getattr(quotation, "utm_campaign", "") or "")
-        utm_content = str(getattr(quotation, "utm_content", "") or "")
+    for quotation, attrs in precomputed_quotations:
         if not _matches_analytics_filters(
             params=params,
             sales_stage="",
-            territory=territory,
-            customer_group=customer_group,
+            territory=attrs["territory"],
+            customer_group=attrs["customer_group"],
             owner="",
-            utm_source=utm_source,
-            utm_medium=utm_medium,
-            utm_campaign=utm_campaign,
-            utm_content=utm_content,
+            utm_source=attrs["utm_source"],
+            utm_medium=attrs["utm_medium"],
+            utm_campaign=attrs["utm_campaign"],
+            utm_content=attrs["utm_content"],
         ):
             continue
-        period_value = getattr(quotation, "transaction_date", None) or getattr(quotation, "created_at", None)
+        period_value = attrs["transaction_date"] or attrs["created_at"]
         if not _matches_period(period_value, start_date, end_date):
             continue
 
         filtered_quotations.append(quotation)
-        amount = _quantized_amount(getattr(quotation, "grand_total", None))
-        status = str(getattr(quotation, "status", "") or "")
-        if _quotation_scope(status) == CRMPipelineScope.TERMINAL:
+        amount = attrs["amount"]
+        if attrs["scope"] == CRMPipelineScope.TERMINAL:
             _upsert_pipeline_bucket(
                 terminal_by_status,
                 record_type="quotation",
-                key=status,
-                label=status,
+                key=attrs["status"],
+                label=attrs["status"],
                 amount=amount,
             )
-            lost_reason = str(getattr(quotation, "lost_reason", "") or "")
+            lost_reason = attrs["lost_reason"]
             if lost_reason:
                 _upsert_pipeline_bucket(
                     terminal_by_lost_reason,
@@ -497,7 +662,7 @@ def _build_analytics_snapshot(
                     label=lost_reason,
                     amount=amount,
                 )
-            competitor = str(getattr(quotation, "competitor_name", "") or "")
+            competitor = attrs["competitor_name"]
             if competitor:
                 _upsert_pipeline_bucket(
                     terminal_by_competitor,
@@ -512,15 +677,12 @@ def _build_analytics_snapshot(
         if source_quotation is None:
             continue
         source_opportunity = opportunity_by_id.get(getattr(source_quotation, "opportunity_id", None))
+        crm_context_snapshot = getattr(order, "crm_context_snapshot", None)
+        utm_source, utm_medium, utm_campaign, utm_content = _extract_utm_snapshot(crm_context_snapshot)
         territory = str(getattr(source_quotation, "territory", "") or "")
         customer_group = str(getattr(source_quotation, "customer_group", "") or "")
         owner = str(getattr(source_opportunity, "opportunity_owner", "") or "")
         sales_stage = str(getattr(source_opportunity, "sales_stage", "") or "")
-        crm_context_snapshot = getattr(order, "crm_context_snapshot", None)
-        utm_source = _extract_snapshot_text(crm_context_snapshot, "utm_source")
-        utm_medium = _extract_snapshot_text(crm_context_snapshot, "utm_medium")
-        utm_campaign = _extract_snapshot_text(crm_context_snapshot, "utm_campaign")
-        utm_content = _extract_snapshot_text(crm_context_snapshot, "utm_content")
         if not _matches_analytics_filters(
             params=params,
             sales_stage=sales_stage,
@@ -583,16 +745,14 @@ def _build_analytics_snapshot(
     ]
     funnel: list[CRMPipelineFunnelStage] = []
     previous_count = 0
-    for index, (key, label, count) in enumerate(funnel_counts):
-        conversion_rate = Decimal("100.00") if index == 0 and count > 0 else _percentage(count, previous_count)
-        dropoff_count = 0 if index == 0 else max(previous_count - count, 0)
+    for key, label, count in funnel_counts:
         funnel.append(
             CRMPipelineFunnelStage(
                 key=key,
                 label=label,
                 count=count,
-                dropoff_count=dropoff_count,
-                conversion_rate=conversion_rate,
+                dropoff_count=0 if previous_count == 0 else max(previous_count - count, 0),
+                conversion_rate=Decimal("100.00") if previous_count == 0 and count > 0 else _percentage(count, previous_count),
             )
         )
         previous_count = count
@@ -623,15 +783,36 @@ def _build_analytics_snapshot(
         )
     )
 
+    def _build_drilldown_record(
+        record_type: str,
+        record_id: str,
+        label: str,
+        status: str,
+        owner: str,
+        amount: Decimal,
+    ) -> CRMPipelineDrilldownRecord:
+        return CRMPipelineDrilldownRecord(
+            record_type=record_type,
+            record_id=record_id,
+            label=label,
+            status=status,
+            owner=owner,
+            amount=amount,
+        )
+
     drilldowns = [
         CRMPipelineDrilldownGroup(
             key="qualified_leads",
             label="Qualified Leads",
             records=[
-                CRMPipelineDrilldownRecord(
+                _build_drilldown_record(
                     record_type="lead",
                     record_id=str(getattr(lead, "id", "")),
-                    label=str(getattr(lead, "company_name", "") or getattr(lead, "lead_name", "") or getattr(lead, "id", "")),
+                    label=str(
+                        getattr(lead, "company_name", "")
+                        or getattr(lead, "lead_name", "")
+                        or getattr(lead, "id", "")
+                    ),
                     status=str(getattr(lead, "status", "") or ""),
                     owner=str(getattr(lead, "lead_owner", "") or ""),
                     amount=Decimal("0.00"),
@@ -643,16 +824,16 @@ def _build_analytics_snapshot(
             key="open_pipeline",
             label="Open Pipeline",
             records=[
-                CRMPipelineDrilldownRecord(
+                _build_drilldown_record(
                     record_type="opportunity",
-                    record_id=str(getattr(opportunity, "id", "")),
-                    label=str(getattr(opportunity, "opportunity_title", "") or getattr(opportunity, "id", "")),
-                    status=str(getattr(opportunity, "status", "") or ""),
-                    owner=str(getattr(opportunity, "opportunity_owner", "") or ""),
-                    amount=_quantized_amount(getattr(opportunity, "opportunity_amount", None)),
+                    record_id=str(getattr(opp, "id", "")),
+                    label=str(getattr(opp, "opportunity_title", "") or getattr(opp, "id", "")),
+                    status=str(getattr(opp, "status", "") or ""),
+                    owner=str(getattr(opp, "opportunity_owner", "") or ""),
+                    amount=_quantized_amount(getattr(opp, "opportunity_amount", None)),
                 )
-                for opportunity in filtered_opportunities
-                if _opportunity_scope(str(getattr(opportunity, "status", "") or "")) == CRMPipelineScope.OPEN
+                for opp in filtered_opportunities
+                if _opportunity_scope(str(getattr(opp, "status", "") or "")) == CRMPipelineScope.OPEN
             ],
         ),
         CRMPipelineDrilldownGroup(
@@ -660,28 +841,28 @@ def _build_analytics_snapshot(
             label="Terminal Outcomes",
             records=[
                 *[
-                    CRMPipelineDrilldownRecord(
+                    _build_drilldown_record(
                         record_type="opportunity",
-                        record_id=str(getattr(opportunity, "id", "")),
-                        label=str(getattr(opportunity, "opportunity_title", "") or getattr(opportunity, "id", "")),
-                        status=str(getattr(opportunity, "status", "") or ""),
-                        owner=str(getattr(opportunity, "opportunity_owner", "") or ""),
-                        amount=_quantized_amount(getattr(opportunity, "opportunity_amount", None)),
+                        record_id=str(getattr(opp, "id", "")),
+                        label=str(getattr(opp, "opportunity_title", "") or getattr(opp, "id", "")),
+                        status=str(getattr(opp, "status", "") or ""),
+                        owner=str(getattr(opp, "opportunity_owner", "") or ""),
+                        amount=_quantized_amount(getattr(opp, "opportunity_amount", None)),
                     )
-                    for opportunity in filtered_opportunities
-                    if _opportunity_scope(str(getattr(opportunity, "status", "") or "")) == CRMPipelineScope.TERMINAL
+                    for opp in filtered_opportunities
+                    if _opportunity_scope(str(getattr(opp, "status", "") or "")) == CRMPipelineScope.TERMINAL
                 ],
                 *[
-                    CRMPipelineDrilldownRecord(
+                    _build_drilldown_record(
                         record_type="quotation",
-                        record_id=str(getattr(quotation, "id", "")),
-                        label=str(getattr(quotation, "party_label", "") or getattr(quotation, "id", "")),
-                        status=str(getattr(quotation, "status", "") or ""),
+                        record_id=str(getattr(quote, "id", "")),
+                        label=str(getattr(quote, "party_label", "") or getattr(quote, "id", "")),
+                        status=str(getattr(quote, "status", "") or ""),
                         owner="",
-                        amount=_quantized_amount(getattr(quotation, "grand_total", None)),
+                        amount=_quantized_amount(getattr(quote, "grand_total", None)),
                     )
-                    for quotation in filtered_quotations
-                    if _quotation_scope(str(getattr(quotation, "status", "") or "")) == CRMPipelineScope.TERMINAL
+                    for quote in filtered_quotations
+                    if _quotation_scope(str(getattr(quote, "status", "") or "")) == CRMPipelineScope.TERMINAL
                 ],
             ],
         ),
@@ -689,12 +870,12 @@ def _build_analytics_snapshot(
             key="converted_orders",
             label="Converted Orders",
             records=[
-                CRMPipelineDrilldownRecord(
+                _build_drilldown_record(
                     record_type="order",
                     record_id=str(getattr(order, "id", "")),
                     label=f"Order {getattr(order, 'id', '')}",
                     status=str(getattr(order, "status", "") or ""),
-                    owner=str(getattr(source_opportunity, "opportunity_owner", "") or ""),
+                    owner=str(getattr(source_opportunity, "opportunity_owner", "") if source_opportunity else ""),
                     amount=_quantized_amount(getattr(order, "total_amount", None)),
                 )
                 for order, _source_quotation, source_opportunity in filtered_orders
@@ -760,18 +941,18 @@ async def get_crm_pipeline_report(
         orders = list(order_result.scalars().all())
 
     totals = CRMPipelineTotals()
-    by_status: dict[tuple[str | None, str], dict[str, object]] = {}
-    by_sales_stage: dict[tuple[str | None, str], dict[str, object]] = {}
-    by_territory: dict[tuple[str | None, str], dict[str, object]] = {}
-    by_customer_group: dict[tuple[str | None, str], dict[str, object]] = {}
-    by_owner: dict[tuple[str | None, str], dict[str, object]] = {}
-    by_lost_reason: dict[tuple[str | None, str], dict[str, object]] = {}
-    by_utm_source: dict[tuple[str | None, str], dict[str, object]] = {}
-    by_utm_medium: dict[tuple[str | None, str], dict[str, object]] = {}
-    by_utm_campaign: dict[tuple[str | None, str], dict[str, object]] = {}
-    by_utm_content: dict[tuple[str | None, str], dict[str, object]] = {}
-    by_conversion_path: dict[tuple[str | None, str], _PipelineBucket] = {}
-    by_conversion_source: dict[tuple[str | None, str], _PipelineBucket] = {}
+    by_status: _BucketDict = {}
+    by_sales_stage: _BucketDict = {}
+    by_territory: _BucketDict = {}
+    by_customer_group: _BucketDict = {}
+    by_owner: _BucketDict = {}
+    by_lost_reason: _BucketDict = {}
+    by_utm_source: _BucketDict = {}
+    by_utm_medium: _BucketDict = {}
+    by_utm_campaign: _BucketDict = {}
+    by_utm_content: _BucketDict = {}
+    by_conversion_path: _BucketDict = {}
+    by_conversion_source: _BucketDict = {}
     dropoff = CRMPipelineDropOff()
     quotation_by_id = {
         getattr(quotation, "id", None): quotation for quotation in quotations
@@ -782,27 +963,38 @@ async def get_crm_pipeline_report(
     conversion_time_total = Decimal("0.00")
     conversion_time_samples = 0
 
+    # Pre-compute record attributes to avoid repeated getattr calls
+    precomputed_leads: list[tuple[object, _LeadAttrs]] = [
+        (lead, _precompute_lead_attrs(lead)) for lead in leads
+    ]
+    precomputed_opportunities: list[tuple[object, _OpportunityAttrs]] = [
+        (opp, _precompute_opportunity_attrs(opp)) for opp in opportunities
+    ]
+    precomputed_quotations: list[tuple[object, _QuotationAttrs]] = [
+        (quote, _precompute_quotation_attrs(quote)) for quote in quotations
+    ]
+
     def include_record(record_type: CRMPipelineRecordType) -> bool:
         return params.record_type in {CRMPipelineRecordType.ALL, record_type}
 
-    for lead in leads:
+    for lead, attrs in precomputed_leads:
         if not include_record(CRMPipelineRecordType.LEAD):
             continue
-        scope = _lead_scope(str(lead.status))
+        scope = attrs["scope"]
         if params.sales_stage:
             continue
         if not _matches_common_filters(
             params=params,
             scope=scope,
-            status=str(lead.status),
-            territory=str(getattr(lead, "territory", "") or ""),
+            status=attrs["status"],
+            territory=attrs["territory"],
             customer_group="",
-            owner=str(getattr(lead, "lead_owner", "") or ""),
+            owner=attrs["owner"],
             lost_reason="",
-            utm_source=str(getattr(lead, "utm_source", "") or ""),
-            utm_medium=str(getattr(lead, "utm_medium", "") or ""),
-            utm_campaign=str(getattr(lead, "utm_campaign", "") or ""),
-            utm_content=str(getattr(lead, "utm_content", "") or ""),
+            utm_source=attrs["utm_source"],
+            utm_medium=attrs["utm_medium"],
+            utm_campaign=attrs["utm_campaign"],
+            utm_content=attrs["utm_content"],
         ):
             continue
 
@@ -811,7 +1003,7 @@ async def get_crm_pipeline_report(
             totals.open_count += 1
         else:
             totals.terminal_count += 1
-        if str(lead.status) not in {
+        if attrs["status"] not in {
             LeadStatus.OPPORTUNITY.value,
             LeadStatus.QUOTATION.value,
             LeadStatus.CONVERTED.value,
@@ -821,63 +1013,63 @@ async def get_crm_pipeline_report(
         _upsert_pipeline_bucket(
             by_status,
             record_type="lead",
-            key=str(lead.status),
-            label=str(lead.status),
+            key=attrs["status"],
+            label=attrs["status"],
             amount=Decimal("0.00"),
         )
-        if getattr(lead, "territory", ""):
+        if attrs["territory"]:
             _upsert_pipeline_bucket(
                 by_territory,
                 record_type="lead",
-                key=str(lead.territory),
-                label=str(lead.territory),
+                key=attrs["territory"],
+                label=attrs["territory"],
                 amount=Decimal("0.00"),
             )
-        if getattr(lead, "lead_owner", ""):
+        if attrs["owner"]:
             _upsert_pipeline_bucket(
                 by_owner,
                 record_type="lead",
-                key=str(lead.lead_owner),
-                label=str(lead.lead_owner),
+                key=attrs["owner"],
+                label=attrs["owner"],
                 amount=Decimal("0.00"),
             )
-        if getattr(lead, "utm_source", ""):
+        if attrs["utm_source"]:
             _upsert_pipeline_bucket(
                 by_utm_source,
                 record_type="lead",
-                key=str(lead.utm_source),
-                label=str(lead.utm_source),
+                key=attrs["utm_source"],
+                label=attrs["utm_source"],
                 amount=Decimal("0.00"),
             )
-        if getattr(lead, "utm_medium", ""):
+        if attrs["utm_medium"]:
             _upsert_pipeline_bucket(
                 by_utm_medium,
                 record_type="lead",
-                key=str(lead.utm_medium),
-                label=str(lead.utm_medium),
+                key=attrs["utm_medium"],
+                label=attrs["utm_medium"],
                 amount=Decimal("0.00"),
             )
-        if getattr(lead, "utm_campaign", ""):
+        if attrs["utm_campaign"]:
             _upsert_pipeline_bucket(
                 by_utm_campaign,
                 record_type="lead",
-                key=str(lead.utm_campaign),
-                label=str(lead.utm_campaign),
+                key=attrs["utm_campaign"],
+                label=attrs["utm_campaign"],
                 amount=Decimal("0.00"),
             )
-        if getattr(lead, "utm_content", ""):
+        if attrs["utm_content"]:
             _upsert_pipeline_bucket(
                 by_utm_content,
                 record_type="lead",
-                key=str(lead.utm_content),
-                label=str(lead.utm_content),
+                key=attrs["utm_content"],
+                label=attrs["utm_content"],
                 amount=Decimal("0.00"),
             )
-        conversion_state = str(getattr(lead, "conversion_state", "") or "")
-        converted_at = getattr(lead, "converted_at", None)
-        created_at = getattr(lead, "created_at", None)
-        conversion_path = str(getattr(lead, "conversion_path", "") or "")
-        conversion_source = str(getattr(lead, "source", "") or "")
+        conversion_state = attrs["conversion_state"]
+        converted_at = attrs["converted_at"]
+        created_at = attrs["created_at"]
+        conversion_path = attrs["conversion_path"]
+        conversion_source = attrs["source"]
         if conversion_state not in {"", "not_converted"} or converted_at is not None:
             totals.conversion_count += 1
             if conversion_path:
@@ -905,25 +1097,25 @@ async def get_crm_pipeline_report(
                 )
                 conversion_time_samples += 1
 
-    for opportunity in opportunities:
+    for opportunity, attrs in precomputed_opportunities:
         if not include_record(CRMPipelineRecordType.OPPORTUNITY):
             continue
-        scope = _opportunity_scope(str(opportunity.status))
-        if params.sales_stage and str(opportunity.sales_stage) != params.sales_stage:
+        scope = attrs["scope"]
+        if params.sales_stage and attrs["sales_stage"] != params.sales_stage:
             continue
-        amount = _quantized_amount(getattr(opportunity, "opportunity_amount", None))
+        amount = attrs["amount"]
         if not _matches_common_filters(
             params=params,
             scope=scope,
-            status=str(opportunity.status),
-            territory=str(getattr(opportunity, "territory", "") or ""),
-            customer_group=str(getattr(opportunity, "customer_group", "") or ""),
-            owner=str(getattr(opportunity, "opportunity_owner", "") or ""),
-            lost_reason=str(getattr(opportunity, "lost_reason", "") or ""),
-            utm_source=str(getattr(opportunity, "utm_source", "") or ""),
-            utm_medium=str(getattr(opportunity, "utm_medium", "") or ""),
-            utm_campaign=str(getattr(opportunity, "utm_campaign", "") or ""),
-            utm_content=str(getattr(opportunity, "utm_content", "") or ""),
+            status=attrs["status"],
+            territory=attrs["territory"],
+            customer_group=attrs["customer_group"],
+            owner=attrs["owner"],
+            lost_reason=attrs["lost_reason"],
+            utm_source=attrs["utm_source"],
+            utm_medium=attrs["utm_medium"],
+            utm_campaign=attrs["utm_campaign"],
+            utm_content=attrs["utm_content"],
         ):
             continue
 
@@ -938,7 +1130,7 @@ async def get_crm_pipeline_report(
             totals.terminal_pipeline_amount = (
                 totals.terminal_pipeline_amount + amount
             ).quantize(Decimal("0.01"))
-        if str(opportunity.status) not in {
+        if attrs["status"] not in {
             OpportunityStatus.QUOTATION.value,
             OpportunityStatus.CONVERTED.value,
         }:
@@ -947,101 +1139,101 @@ async def get_crm_pipeline_report(
         _upsert_pipeline_bucket(
             by_status,
             record_type="opportunity",
-            key=str(opportunity.status),
-            label=str(opportunity.status),
+            key=attrs["status"],
+            label=attrs["status"],
             amount=amount,
         )
         _upsert_pipeline_bucket(
             by_sales_stage,
             record_type="opportunity",
-            key=str(opportunity.sales_stage),
-            label=str(opportunity.sales_stage),
+            key=attrs["sales_stage"],
+            label=attrs["sales_stage"],
             amount=amount,
         )
-        if getattr(opportunity, "territory", ""):
+        if attrs["territory"]:
             _upsert_pipeline_bucket(
                 by_territory,
                 record_type="opportunity",
-                key=str(opportunity.territory),
-                label=str(opportunity.territory),
+                key=attrs["territory"],
+                label=attrs["territory"],
                 amount=amount,
             )
-        if getattr(opportunity, "customer_group", ""):
+        if attrs["customer_group"]:
             _upsert_pipeline_bucket(
                 by_customer_group,
                 record_type="opportunity",
-                key=str(opportunity.customer_group),
-                label=str(opportunity.customer_group),
+                key=attrs["customer_group"],
+                label=attrs["customer_group"],
                 amount=amount,
             )
-        if getattr(opportunity, "opportunity_owner", ""):
+        if attrs["owner"]:
             _upsert_pipeline_bucket(
                 by_owner,
                 record_type="opportunity",
-                key=str(opportunity.opportunity_owner),
-                label=str(opportunity.opportunity_owner),
+                key=attrs["owner"],
+                label=attrs["owner"],
                 amount=amount,
             )
-        if getattr(opportunity, "lost_reason", ""):
+        if attrs["lost_reason"]:
             _upsert_pipeline_bucket(
                 by_lost_reason,
                 record_type="opportunity",
-                key=str(opportunity.lost_reason),
-                label=str(opportunity.lost_reason),
+                key=attrs["lost_reason"],
+                label=attrs["lost_reason"],
                 amount=amount,
             )
-        if getattr(opportunity, "utm_source", ""):
+        if attrs["utm_source"]:
             _upsert_pipeline_bucket(
                 by_utm_source,
                 record_type="opportunity",
-                key=str(opportunity.utm_source),
-                label=str(opportunity.utm_source),
+                key=attrs["utm_source"],
+                label=attrs["utm_source"],
                 amount=amount,
             )
-        if getattr(opportunity, "utm_medium", ""):
+        if attrs["utm_medium"]:
             _upsert_pipeline_bucket(
                 by_utm_medium,
                 record_type="opportunity",
-                key=str(opportunity.utm_medium),
-                label=str(opportunity.utm_medium),
+                key=attrs["utm_medium"],
+                label=attrs["utm_medium"],
                 amount=amount,
             )
-        if getattr(opportunity, "utm_campaign", ""):
+        if attrs["utm_campaign"]:
             _upsert_pipeline_bucket(
                 by_utm_campaign,
                 record_type="opportunity",
-                key=str(opportunity.utm_campaign),
-                label=str(opportunity.utm_campaign),
+                key=attrs["utm_campaign"],
+                label=attrs["utm_campaign"],
                 amount=amount,
             )
-        if getattr(opportunity, "utm_content", ""):
+        if attrs["utm_content"]:
             _upsert_pipeline_bucket(
                 by_utm_content,
                 record_type="opportunity",
-                key=str(opportunity.utm_content),
-                label=str(opportunity.utm_content),
+                key=attrs["utm_content"],
+                label=attrs["utm_content"],
                 amount=amount,
             )
 
-    for quotation in quotations:
+    for quotation, attrs in precomputed_quotations:
         if not include_record(CRMPipelineRecordType.QUOTATION):
             continue
-        scope = _quotation_scope(str(quotation.status))
+        scope = attrs["scope"]
         if params.sales_stage:
             continue
-        amount = _quantized_amount(getattr(quotation, "grand_total", None))
+        amount = attrs["amount"]
         if not _matches_common_filters(
             params=params,
             scope=scope,
-            status=str(quotation.status),
-            territory=str(getattr(quotation, "territory", "") or ""),
-            customer_group=str(getattr(quotation, "customer_group", "") or ""),
+            status=attrs["status"],
+            territory=attrs["territory"],
+            customer_group=attrs["customer_group"],
             owner="",
-            lost_reason=str(getattr(quotation, "lost_reason", "") or ""),
-            utm_source=str(getattr(quotation, "utm_source", "") or ""),
-            utm_medium=str(getattr(quotation, "utm_medium", "") or ""),
-            utm_campaign=str(getattr(quotation, "utm_campaign", "") or ""),
-            utm_content=str(getattr(quotation, "utm_content", "") or ""),
+            lost_reason=attrs["lost_reason"],
+            utm_source=attrs["utm_source"],
+            utm_medium=attrs["utm_medium"],
+            utm_campaign=attrs["utm_campaign"],
+            utm_content=attrs["utm_content"],
         ):
             continue
 
@@ -1056,7 +1248,7 @@ async def get_crm_pipeline_report(
             totals.terminal_pipeline_amount = (
                 totals.terminal_pipeline_amount + amount
             ).quantize(Decimal("0.01"))
-        if int(getattr(quotation, "order_count", 0) or 0) > 0:
+        if attrs["order_count"] > 0:
             dropoff.quotation_with_order_count += 1
         else:
             dropoff.quotation_without_order_count += 1
@@ -1064,64 +1256,64 @@ async def get_crm_pipeline_report(
         _upsert_pipeline_bucket(
             by_status,
             record_type="quotation",
-            key=str(quotation.status),
-            label=str(quotation.status),
+            key=attrs["status"],
+            label=attrs["status"],
             amount=amount,
         )
-        if getattr(quotation, "territory", ""):
+        if attrs["territory"]:
             _upsert_pipeline_bucket(
                 by_territory,
                 record_type="quotation",
-                key=str(quotation.territory),
-                label=str(quotation.territory),
+                key=attrs["territory"],
+                label=attrs["territory"],
                 amount=amount,
             )
-        if getattr(quotation, "customer_group", ""):
+        if attrs["customer_group"]:
             _upsert_pipeline_bucket(
                 by_customer_group,
                 record_type="quotation",
-                key=str(quotation.customer_group),
-                label=str(quotation.customer_group),
+                key=attrs["customer_group"],
+                label=attrs["customer_group"],
                 amount=amount,
             )
-        if getattr(quotation, "lost_reason", ""):
+        if attrs["lost_reason"]:
             _upsert_pipeline_bucket(
                 by_lost_reason,
                 record_type="quotation",
-                key=str(quotation.lost_reason),
-                label=str(quotation.lost_reason),
+                key=attrs["lost_reason"],
+                label=attrs["lost_reason"],
                 amount=amount,
             )
-        if getattr(quotation, "utm_source", ""):
+        if attrs["utm_source"]:
             _upsert_pipeline_bucket(
                 by_utm_source,
                 record_type="quotation",
-                key=str(quotation.utm_source),
-                label=str(quotation.utm_source),
+                key=attrs["utm_source"],
+                label=attrs["utm_source"],
                 amount=amount,
             )
-        if getattr(quotation, "utm_medium", ""):
+        if attrs["utm_medium"]:
             _upsert_pipeline_bucket(
                 by_utm_medium,
                 record_type="quotation",
-                key=str(quotation.utm_medium),
-                label=str(quotation.utm_medium),
+                key=attrs["utm_medium"],
+                label=attrs["utm_medium"],
                 amount=amount,
             )
-        if getattr(quotation, "utm_campaign", ""):
+        if attrs["utm_campaign"]:
             _upsert_pipeline_bucket(
                 by_utm_campaign,
                 record_type="quotation",
-                key=str(quotation.utm_campaign),
-                label=str(quotation.utm_campaign),
+                key=attrs["utm_campaign"],
+                label=attrs["utm_campaign"],
                 amount=amount,
             )
-        if getattr(quotation, "utm_content", ""):
+        if attrs["utm_content"]:
             _upsert_pipeline_bucket(
                 by_utm_content,
                 record_type="quotation",
-                key=str(quotation.utm_content),
-                label=str(quotation.utm_content),
+                key=attrs["utm_content"],
+                label=attrs["utm_content"],
                 amount=amount,
             )
 
@@ -1132,10 +1324,7 @@ async def get_crm_pipeline_report(
     }:
         for order in orders:
             crm_context_snapshot = getattr(order, "crm_context_snapshot", None)
-            utm_source = _extract_snapshot_text(crm_context_snapshot, "utm_source")
-            utm_medium = _extract_snapshot_text(crm_context_snapshot, "utm_medium")
-            utm_campaign = _extract_snapshot_text(crm_context_snapshot, "utm_campaign")
-            utm_content = _extract_snapshot_text(crm_context_snapshot, "utm_content")
+            utm_source, utm_medium, utm_campaign, utm_content = _extract_utm_snapshot(crm_context_snapshot)
             if not any((utm_source, utm_medium, utm_campaign, utm_content)):
                 continue
 

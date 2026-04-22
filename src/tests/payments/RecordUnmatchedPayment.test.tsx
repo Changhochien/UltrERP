@@ -33,6 +33,8 @@ describe("RecordUnmatchedPayment", () => {
           id: "cust-1",
           company_name: "Acme Trading",
           normalized_business_number: "12345678",
+          contact_phone: "0912-345-678",
+          status: "active",
         },
       ],
       page: 1,
@@ -42,7 +44,24 @@ describe("RecordUnmatchedPayment", () => {
     });
     vi.mocked(createUnmatchedPayment).mockResolvedValue({
       ok: true,
-      data: { payment_ref: "PAY-001" },
+      data: {
+        id: "pay-1",
+        invoice_id: null,
+        customer_id: "cust-1",
+        payment_ref: "PAY-001",
+        amount: "100.00",
+        payment_method: "BANK_TRANSFER",
+        payment_date: "2026-03-31",
+        reference_number: null,
+        notes: null,
+        created_by: "system",
+        created_at: "2026-03-31T00:00:00Z",
+        updated_at: "2026-03-31T00:00:00Z",
+        match_status: "unmatched",
+        match_type: null,
+        matched_at: null,
+        suggested_invoice_id: null,
+      },
     });
   });
 

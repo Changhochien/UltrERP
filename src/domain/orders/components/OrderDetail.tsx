@@ -12,7 +12,7 @@ import { Button } from "../../../components/ui/button";
 import { StatusBadge } from "../../../components/ui/StatusBadge";
 import { usePermissions } from "../../../hooks/usePermissions";
 import { useToast } from "../../../hooks/useToast";
-import { useOrderDetail, statusBadgeVariant, statusLabel } from "../hooks/useOrders";
+import { useOrderDetail, statusLabel } from "../hooks/useOrders";
 import { updateOrderStatus } from "../../../lib/api/orders";
 import { buildQuotationDetailPath, ORDERS_ROUTE } from "../../../lib/routes";
 import type { OrderStatus } from "../types";

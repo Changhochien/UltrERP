@@ -10,7 +10,7 @@ import { StatusBadge } from "../../components/ui/StatusBadge";
 import { usePermissions } from "../../hooks/usePermissions";
 import { fetchOrders } from "../../lib/api/orders";
 import { ORDER_CREATE_ROUTE } from "../../lib/routes";
-import { statusBadgeVariant, statusLabel } from "../../domain/orders/hooks/useOrders";
+import { statusLabel } from "../../domain/orders/hooks/useOrders";
 import type { OrderListItem } from "../../domain/orders/types";
 
 interface CustomerOrdersTabProps {
