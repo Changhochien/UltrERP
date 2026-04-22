@@ -136,9 +136,8 @@ const SidebarSectionHeader = React.forwardRef<HTMLButtonElement, SidebarSectionH
         aria-expanded={!isCollapsed}
         aria-controls={`section-${sectionId}`}
         className={cn(
-          "mb-1 mt-3 flex w-full items-center justify-between px-2 py-1.5 text-left text-[11px] font-semibold uppercase tracking-[0.2em] transition-colors",
-          "text-sidebar-foreground/80",
-          "hover:text-sidebar-foreground",
+          "mb-1 mt-3 flex w-full items-center justify-between px-2 text-[11px] font-normal normal-case tracking-wide",
+          "text-sidebar-foreground/70",
           "focus-visible:outline-none",
           className,
         )}
@@ -146,8 +145,9 @@ const SidebarSectionHeader = React.forwardRef<HTMLButtonElement, SidebarSectionH
       >
         <span>{label}</span>
         <ChevronDown
+          size={12}
           className={cn(
-            "size-3 shrink-0 text-sidebar-foreground/60 transition-transform duration-200",
+            "text-sidebar-foreground/50 transition-transform duration-200",
             isCollapsed ? "-rotate-90" : "rotate-0",
           )}
         />
