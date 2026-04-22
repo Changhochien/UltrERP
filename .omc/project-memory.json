@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1776660810445,
+  "lastScanned": 1776747335544,
   "projectRoot": "/Users/changtom/Downloads/UltrERP",
   "techStack": {
     "languages": [
@@ -96,7 +96,7 @@
       "path": "_bmad",
       "purpose": null,
       "fileCount": 2,
-      "lastAccessed": 1776660810432,
+      "lastAccessed": 1776747335527,
       "keyFiles": [
         "00-design-log.md",
         "wds-project-outline.yaml"
@@ -106,7 +106,7 @@
       "path": "_bmad-output",
       "purpose": null,
       "fileCount": 2,
-      "lastAccessed": 1776660810432,
+      "lastAccessed": 1776747335528,
       "keyFiles": [
         "README.md"
       ]
@@ -115,7 +115,7 @@
       "path": "backend",
       "purpose": null,
       "fileCount": 5,
-      "lastAccessed": 1776660810434,
+      "lastAccessed": 1776747335530,
       "keyFiles": [
         "compute_rop.py",
         "compute_rop_sql.py",
@@ -127,7 +127,7 @@
       "path": "design-artifacts",
       "purpose": null,
       "fileCount": 1,
-      "lastAccessed": 1776660810434,
+      "lastAccessed": 1776747335530,
       "keyFiles": [
         "architecture-v1.md"
       ]
@@ -136,7 +136,7 @@
       "path": "dist",
       "purpose": "Distribution/build output",
       "fileCount": 1,
-      "lastAccessed": 1776660810435,
+      "lastAccessed": 1776747335530,
       "keyFiles": [
         "index.html"
       ]
@@ -145,7 +145,7 @@
       "path": "docs",
       "purpose": "Documentation",
       "fileCount": 9,
-      "lastAccessed": 1776660810435,
+      "lastAccessed": 1776747335530,
       "keyFiles": [
         "README.md",
         "low-stock-alert-business-requirements.md",
@@ -158,7 +158,7 @@
       "path": "erp-skills",
       "purpose": null,
       "fileCount": 1,
-      "lastAccessed": 1776660810435,
+      "lastAccessed": 1776747335530,
       "keyFiles": [
         "SKILL.md"
       ]
@@ -167,7 +167,7 @@
       "path": "legacy-migration-pipeline",
       "purpose": null,
       "fileCount": 3,
-      "lastAccessed": 1776660810435,
+      "lastAccessed": 1776747335530,
       "keyFiles": [
         "COLUMN_ANALYSIS.md",
         "FK_VALIDATION.md",
@@ -178,7 +178,7 @@
       "path": "migrations",
       "purpose": "Database migrations",
       "fileCount": 3,
-      "lastAccessed": 1776660810435,
+      "lastAccessed": 1776747335531,
       "keyFiles": [
         "alembic.ini",
         "env.py",
@@ -189,28 +189,28 @@
       "path": "public",
       "purpose": "Public files",
       "fileCount": 0,
-      "lastAccessed": 1776660810435,
+      "lastAccessed": 1776747335531,
       "keyFiles": []
     },
     "reference": {
       "path": "reference",
       "purpose": null,
       "fileCount": 1,
-      "lastAccessed": 1776660810435,
+      "lastAccessed": 1776747335531,
       "keyFiles": []
     },
     "research": {
       "path": "research",
       "purpose": null,
       "fileCount": 0,
-      "lastAccessed": 1776660810435,
+      "lastAccessed": 1776747335531,
       "keyFiles": []
     },
     "scripts": {
       "path": "scripts",
       "purpose": "Build/utility scripts",
       "fileCount": 4,
-      "lastAccessed": 1776660810435,
+      "lastAccessed": 1776747335531,
       "keyFiles": [
         "benchmark_api.py",
         "benchmark_frontend.py",
@@ -222,7 +222,7 @@
       "path": "src",
       "purpose": "Source code",
       "fileCount": 5,
-      "lastAccessed": 1776660810436,
+      "lastAccessed": 1776747335531,
       "keyFiles": [
         "App.tsx",
         "i18n.ts",
@@ -235,7 +235,7 @@
       "path": "src-tauri",
       "purpose": null,
       "fileCount": 4,
-      "lastAccessed": 1776660810436,
+      "lastAccessed": 1776747335531,
       "keyFiles": [
         "Cargo.lock",
         "Cargo.toml",
@@ -247,7 +247,7 @@
       "path": "state",
       "purpose": null,
       "fileCount": 2,
-      "lastAccessed": 1776660810436,
+      "lastAccessed": 1776747335531,
       "keyFiles": [
         "cancel-signal-state.json",
         "story159.diff"
@@ -257,7 +257,7 @@
       "path": "backend/app",
       "purpose": "Application code",
       "fileCount": 6,
-      "lastAccessed": 1776660810436,
+      "lastAccessed": 1776747335532,
       "keyFiles": [
         "__init__.py",
         "main.py",
@@ -268,7 +268,7 @@
       "path": "backend/docs",
       "purpose": "Documentation",
       "fileCount": 1,
-      "lastAccessed": 1776660810436,
+      "lastAccessed": 1776747335532,
       "keyFiles": [
         "SPEC-dual-source-staging.md"
       ]
@@ -277,18 +277,18 @@
       "path": "dist/assets",
       "purpose": "Static assets",
       "fileCount": 10,
-      "lastAccessed": 1776660810436,
+      "lastAccessed": 1776747335532,
       "keyFiles": [
         "InvoicePrintPreviewModal-CowwUBY4.css",
-        "InvoicePrintPreviewModal-DtUOgfuf.js",
-        "dist-js-BeIDCaio.js"
+        "InvoicePrintPreviewModal-Dhggv_LT.js",
+        "dist-js-BOH7NWnc.js"
       ]
     },
     "legacy-migration-pipeline/src": {
       "path": "legacy-migration-pipeline/src",
       "purpose": "Source code",
       "fileCount": 5,
-      "lastAccessed": 1776660810437,
+      "lastAccessed": 1776747335532,
       "keyFiles": [
         "__init__.py",
         "cleaner.py",
@@ -299,7 +299,7 @@
       "path": "src/components",
       "purpose": "UI components",
       "fileCount": 4,
-      "lastAccessed": 1776660810437,
+      "lastAccessed": 1776747335533,
       "keyFiles": [
         "AppNavigation.tsx",
         "LanguageSwitcher.tsx",
@@ -309,8 +309,8 @@
     "src/lib": {
       "path": "src/lib",
       "purpose": "Library code",
-      "fileCount": 14,
-      "lastAccessed": 1776660810437,
+      "fileCount": 15,
+      "lastAccessed": 1776747335533,
       "keyFiles": [
         "alertSeverity.ts",
         "analytics.ts",
@@ -320,19 +320,19 @@
     "src/pages": {
       "path": "src/pages",
       "purpose": "Page components",
-      "fileCount": 9,
-      "lastAccessed": 1776660810437,
+      "fileCount": 10,
+      "lastAccessed": 1776747335533,
       "keyFiles": [
+        "AdminPage.test.tsx",
         "AdminPage.tsx",
-        "IntelligencePage.tsx",
-        "InventoryPage.test.tsx"
+        "IntelligencePage.tsx"
       ]
     },
     "src-tauri/src": {
       "path": "src-tauri/src",
       "purpose": "Source code",
       "fileCount": 2,
-      "lastAccessed": 1776660810437,
+      "lastAccessed": 1776747335533,
       "keyFiles": [
         "lib.rs",
         "main.rs"
@@ -341,63 +341,303 @@
   },
   "hotPaths": [
     {
-      "path": "public/locales/en/common.json",
-      "accessCount": 7,
-      "lastAccessed": 1776660997485,
+      "path": "src",
+      "accessCount": 43,
+      "lastAccessed": 1776753526635,
+      "type": "directory"
+    },
+    {
+      "path": "",
+      "accessCount": 12,
+      "lastAccessed": 1776753504585,
+      "type": "directory"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/21-5-api-search-and-reporting-alignment.md",
+      "accessCount": 11,
+      "lastAccessed": 1776751549964,
       "type": "file"
     },
     {
-      "path": "src/components/customers/CustomerOrdersTab.tsx",
+      "path": "src/index.css",
+      "accessCount": 8,
+      "lastAccessed": 1776753504741,
+      "type": "directory"
+    },
+    {
+      "path": "reference/erpnext-develop",
       "accessCount": 6,
-      "lastAccessed": 1776660981539,
-      "type": "file"
+      "lastAccessed": 1776752237364,
+      "type": "directory"
     },
     {
-      "path": "src/domain/orders/components/OrderForm.tsx",
+      "path": "src/domain/dashboard",
       "accessCount": 5,
-      "lastAccessed": 1776660981196,
-      "type": "file"
+      "lastAccessed": 1776753496384,
+      "type": "directory"
     },
     {
-      "path": "src/domain/orders/components/OrderDetail.tsx",
+      "path": "src/domain/dashboard/types.ts",
       "accessCount": 5,
-      "lastAccessed": 1776660981955,
+      "lastAccessed": 1776753505497,
       "type": "file"
     },
     {
-      "path": "_bmad-output/implementation-artifacts/21-2-query-intake-and-confirmation-workflow.md",
-      "accessCount": 1,
-      "lastAccessed": 1776660833510,
+      "path": "src/domain/dashboard/components/RevenueTrendChart.tsx",
+      "accessCount": 5,
+      "lastAccessed": 1776753523975,
       "type": "file"
     },
     {
-      "path": "src/pages/orders/OrdersPage.tsx",
-      "accessCount": 1,
-      "lastAccessed": 1776660838097,
+      "path": "backend",
+      "accessCount": 5,
+      "lastAccessed": 1776778841574,
+      "type": "directory"
+    },
+    {
+      "path": "src/pages/dashboard/DashboardPage.tsx",
+      "accessCount": 4,
+      "lastAccessed": 1776752915730,
       "type": "file"
     },
     {
-      "path": "src/tests/orders/CustomerOrdersTab.test.tsx",
-      "accessCount": 1,
-      "lastAccessed": 1776660848280,
+      "path": "src/domain/dashboard/hooks/useDashboard.ts",
+      "accessCount": 4,
+      "lastAccessed": 1776753487689,
       "type": "file"
     },
     {
-      "path": "src/tests/orders/OrderFormCustomerContext.test.tsx",
-      "accessCount": 1,
-      "lastAccessed": 1776660848335,
+      "path": "src/domain/dashboard/components/CashFlowCard.tsx",
+      "accessCount": 4,
+      "lastAccessed": 1776753516206,
       "type": "file"
     },
     {
-      "path": "src/tests/orders/OrderDetailConfirmationUX.test.tsx",
-      "accessCount": 1,
-      "lastAccessed": 1776661008021,
+      "path": "src/domain/dashboard/components/ARAgingCard.tsx",
+      "accessCount": 4,
+      "lastAccessed": 1776753516847,
       "type": "file"
     },
     {
-      "path": "src/tests/orders/OrderWorkflowPresentation.test.tsx",
+      "path": "src/domain/dashboard/components/APAgingCard.tsx",
+      "accessCount": 4,
+      "lastAccessed": 1776753516898,
+      "type": "file"
+    },
+    {
+      "path": "src/domain/dashboard/components/VisitorStatsCard.tsx",
+      "accessCount": 4,
+      "lastAccessed": 1776753517255,
+      "type": "file"
+    },
+    {
+      "path": "src/lib/api/dashboard.ts",
+      "accessCount": 3,
+      "lastAccessed": 1776753481614,
+      "type": "file"
+    },
+    {
+      "path": "src/domain/owner-dashboard/OwnerDashboardPage.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1776753497730,
+      "type": "directory"
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/epic-22.md",
+      "accessCount": 2,
+      "lastAccessed": 1776752612281,
+      "type": "file"
+    },
+    {
+      "path": "src/domain/dashboard/components/KPISummaryCard.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1776752806444,
+      "type": "file"
+    },
+    {
+      "path": "reference/erpnext-develop/erpnext/setup/setup_wizard/data/dashboard_charts.py",
+      "accessCount": 2,
+      "lastAccessed": 1776752916446,
+      "type": "file"
+    },
+    {
+      "path": "backend/domains/dashboard/routes.py",
+      "accessCount": 2,
+      "lastAccessed": 1776753481562,
+      "type": "file"
+    },
+    {
+      "path": "backend/domains/dashboard/posthog_client.py",
+      "accessCount": 2,
+      "lastAccessed": 1776753481938,
+      "type": "file"
+    },
+    {
+      "path": "src/domain/dashboard/hooks",
+      "accessCount": 2,
+      "lastAccessed": 1776753481960,
+      "type": "directory"
+    },
+    {
+      "path": "src/lib/api",
+      "accessCount": 2,
+      "lastAccessed": 1776753488257,
+      "type": "directory"
+    },
+    {
+      "path": "src/domain/owner-dashboard",
+      "accessCount": 2,
+      "lastAccessed": 1776753489804,
+      "type": "directory"
+    },
+    {
+      "path": "backend/domains/dashboard/schemas.py",
+      "accessCount": 2,
+      "lastAccessed": 1776753493151,
+      "type": "directory"
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/epic-21.md",
       "accessCount": 1,
-      "lastAccessed": 1776661008126,
+      "lastAccessed": 1776751461374,
+      "type": "file"
+    },
+    {
+      "path": "reference/erpnext-develop/erpnext/stock/stock_dashboard/stock/stock.json",
+      "accessCount": 1,
+      "lastAccessed": 1776752236286,
+      "type": "file"
+    },
+    {
+      "path": "reference/erpnext-develop/erpnext/stock/dashboard_chart/warehouse_wise_stock_value/warehouse_wise_stock_value.json",
+      "accessCount": 1,
+      "lastAccessed": 1776752242567,
+      "type": "file"
+    },
+    {
+      "path": "reference/erpnext-develop/erpnext/stock/dashboard_chart/purchase_receipt_trends/purchase_receipt_trends.json",
+      "accessCount": 1,
+      "lastAccessed": 1776752243217,
+      "type": "file"
+    },
+    {
+      "path": "reference/erpnext-develop/erpnext/accounts/dashboard_chart/bank_balance/bank_balance.json",
+      "accessCount": 1,
+      "lastAccessed": 1776752243829,
+      "type": "file"
+    },
+    {
+      "path": "reference/erpnext-develop/erpnext/stock/report/stock_analytics/stock_analytics.js",
+      "accessCount": 1,
+      "lastAccessed": 1776752244926,
+      "type": "file"
+    },
+    {
+      "path": "reference/erpnext-develop/erpnext/accounts/dashboard_chart/profit_and_loss/profit_and_loss.json",
+      "accessCount": 1,
+      "lastAccessed": 1776752244981,
+      "type": "file"
+    },
+    {
+      "path": "src/domain/dashboard/components/RevenueCard.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1776752258730,
+      "type": "file"
+    },
+    {
+      "path": "src/domain/dashboard/components/TopProductsCard.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1776752259209,
+      "type": "file"
+    },
+    {
+      "path": "src/domain/dashboard/components/TopCustomersCard.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1776752259261,
+      "type": "file"
+    },
+    {
+      "path": "reference/erpnext-develop/erpnext/stock/dashboard_chart/stock_value_by_item_group/stock_value_by_item_group.json",
+      "accessCount": 1,
+      "lastAccessed": 1776752259764,
+      "type": "file"
+    },
+    {
+      "path": "reference/erpnext-develop/erpnext/accounts/dashboard_chart/accounts_receivable_ageing/accounts_receivable_ageing.json",
+      "accessCount": 1,
+      "lastAccessed": 1776752260870,
+      "type": "file"
+    },
+    {
+      "path": "reference/erpnext-develop/erpnext/selling/dashboard_chart/sales_order_trends/sales_order_trends.json",
+      "accessCount": 1,
+      "lastAccessed": 1776752261280,
+      "type": "file"
+    },
+    {
+      "path": "reference/erpnext-develop/erpnext/crm/dashboard_chart/lead_source/lead_source.json",
+      "accessCount": 1,
+      "lastAccessed": 1776752261343,
+      "type": "file"
+    },
+    {
+      "path": "reference/erpnext-develop/erpnext/buying/dashboard_chart/purchase_order_trends/purchase_order_trends.json",
+      "accessCount": 1,
+      "lastAccessed": 1776752269040,
+      "type": "file"
+    },
+    {
+      "path": "reference/erpnext-develop/erpnext/manufacturing/dashboard_chart/work_order_analysis/work_order_analysis.json",
+      "accessCount": 1,
+      "lastAccessed": 1776752269651,
+      "type": "file"
+    },
+    {
+      "path": "reference/erpnext-develop/erpnext/crm/dashboard_chart/opportunity_trends/opportunity_trends.json",
+      "accessCount": 1,
+      "lastAccessed": 1776752270093,
+      "type": "file"
+    },
+    {
+      "path": "reference/erpnext-develop/erpnext/selling/dashboard_chart/top_customers/top_customers.json",
+      "accessCount": 1,
+      "lastAccessed": 1776752270591,
+      "type": "file"
+    },
+    {
+      "path": "src/domain/dashboard/components/LowStockAlertsCard.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1776752270727,
+      "type": "file"
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/epics.md",
+      "accessCount": 1,
+      "lastAccessed": 1776752411826,
+      "type": "file"
+    },
+    {
+      "path": "_bmad-output/planning-artifacts/epic-19.md",
+      "accessCount": 1,
+      "lastAccessed": 1776752412414,
+      "type": "file"
+    },
+    {
+      "path": "backend/domains/reports",
+      "accessCount": 1,
+      "lastAccessed": 1776752604151,
+      "type": "directory"
+    },
+    {
+      "path": "backend/domains/reports/routes.py",
+      "accessCount": 1,
+      "lastAccessed": 1776752613480,
+      "type": "file"
+    },
+    {
+      "path": "src/lib/posthog.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776752618923,
       "type": "file"
     }
   ],
