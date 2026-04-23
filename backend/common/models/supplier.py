@@ -82,6 +82,14 @@ class Supplier(Base):
     )
 
     # ─────────────────────────────────────────────────────────────
+    # Subcontractor Flag (Story 24-5, used by Story 24-6)
+    # ─────────────────────────────────────────────────────────────
+    # If True, this supplier can be used in subcontracting workflows
+    is_subcontractor: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False,
+    )
+
+    # ─────────────────────────────────────────────────────────────
     # Helper methods for supplier control checks (Story 24-5)
     # ─────────────────────────────────────────────────────────────
 

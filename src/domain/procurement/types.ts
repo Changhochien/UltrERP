@@ -384,6 +384,11 @@ export interface PurchaseOrderCreatePayload {
   set_warehouse: string;
   terms_and_conditions: string;
   notes: string;
+  // Subcontracting metadata (Story 24-6)
+  is_subcontracted?: boolean;
+  finished_goods_item_code?: string | null;
+  finished_goods_item_name?: string | null;
+  expected_subcontracted_qty?: string | null;
   items: POItemPayload[];
 }
 
@@ -405,6 +410,11 @@ export interface PurchaseOrderUpdatePayload {
   set_warehouse?: string;
   terms_and_conditions?: string;
   notes?: string;
+  // Subcontracting metadata (Story 24-6)
+  is_subcontracted?: boolean;
+  finished_goods_item_code?: string | null;
+  finished_goods_item_name?: string | null;
+  expected_subcontracted_qty?: string | null;
 }
 
 export interface PurchaseOrderResponse {
@@ -436,6 +446,11 @@ export interface PurchaseOrderResponse {
   is_approved: boolean;
   approved_by: string;
   approved_at: string | null;
+  // Subcontracting metadata (Story 24-6)
+  is_subcontracted: boolean;
+  finished_goods_item_code: string | null;
+  finished_goods_item_name: string | null;
+  expected_subcontracted_qty: string | null;
   created_at: string;
   updated_at: string;
   items: POItemResponse[];
@@ -672,4 +687,171 @@ export interface SupplierPerformanceStats {
     prevent_rfq_count: number;
     prevent_po_count: number;
   };
+}
+
+// --------------------------------------------------------------------------
+// Subcontracting Types (Story 24-6)
+// --------------------------------------------------------------------------
+
+// --- Subcontracting Material Transfer Types ---
+
+export type SubcontractingMaterialTransferStatus = "draft" | "pending" | "in_transit" | "delivered" | "cancelled";
+
+export interface SMTItemPayload {
+  item_code: string;
+  item_name: string;
+  description: string;
+  qty: string;
+  uom: string;
+  warehouse: string;
+}
+
+export interface SMTItemResponse {
+  id: string;
+  material_transfer_id: string;
+  idx: number;
+  item_code: string;
+  item_name: string;
+  description: string;
+  qty: string;
+  uom: string;
+  warehouse: string;
+  created_at: string;
+}
+
+export interface SubcontractingMaterialTransferCreatePayload {
+  purchase_order_id: string;
+  transfer_date: string;
+  source_warehouse: string;
+  contact_person: string;
+  contact_email: string;
+  notes: string;
+  items: SMTItemPayload[];
+}
+
+export interface SubcontractingMaterialTransferResponse {
+  id: string;
+  tenant_id: string;
+  name: string;
+  status: SubcontractingMaterialTransferStatus;
+  purchase_order_id: string;
+  supplier_id: string | null;
+  supplier_name: string;
+  company: string;
+  transfer_date: string;
+  shipped_date: string | null;
+  received_date: string | null;
+  source_warehouse: string;
+  contact_person: string;
+  contact_email: string;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+  items: SMTItemResponse[];
+}
+
+export interface SubcontractingMaterialTransferSummary {
+  id: string;
+  name: string;
+  status: SubcontractingMaterialTransferStatus;
+  purchase_order_id: string;
+  supplier_name: string;
+  transfer_date: string;
+  shipped_date: string | null;
+  received_date: string | null;
+  created_at: string;
+}
+
+export interface SubcontractingMaterialTransferListResponse {
+  items: SubcontractingMaterialTransferSummary[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+}
+
+// --- Subcontracting Receipt Types ---
+
+export type SubcontractingReceiptStatus = "draft" | "submitted" | "cancelled";
+
+export interface SCRItemPayload {
+  item_code: string;
+  item_name: string;
+  description: string;
+  accepted_qty: string;
+  rejected_qty: string;
+  uom: string;
+  warehouse: string;
+  unit_rate: string;
+  exception_notes: string;
+}
+
+export interface SCRItemResponse {
+  id: string;
+  subcontracting_receipt_id: string;
+  idx: number;
+  item_code: string;
+  item_name: string;
+  description: string;
+  accepted_qty: string;
+  rejected_qty: string;
+  total_qty: string;
+  uom: string;
+  warehouse: string;
+  unit_rate: string;
+  exception_notes: string;
+  is_rejected: boolean;
+  created_at: string;
+}
+
+export interface SubcontractingReceiptCreatePayload {
+  purchase_order_id: string;
+  receipt_date: string;
+  posting_date?: string | null;
+  set_warehouse: string;
+  contact_person: string;
+  notes: string;
+  material_transfer_ids: string[];
+  items: SCRItemPayload[];
+}
+
+export interface SubcontractingReceiptResponse {
+  id: string;
+  tenant_id: string;
+  name: string;
+  status: SubcontractingReceiptStatus;
+  purchase_order_id: string;
+  supplier_id: string | null;
+  supplier_name: string;
+  company: string;
+  receipt_date: string;
+  posting_date: string | null;
+  set_warehouse: string;
+  contact_person: string;
+  notes: string;
+  inventory_mutated: boolean;
+  inventory_mutated_at: string | null;
+  created_at: string;
+  updated_at: string;
+  items: SCRItemResponse[];
+}
+
+export interface SubcontractingReceiptSummary {
+  id: string;
+  name: string;
+  status: SubcontractingReceiptStatus;
+  purchase_order_id: string;
+  supplier_name: string;
+  receipt_date: string;
+  posting_date: string | null;
+  inventory_mutated: boolean;
+  created_at: string;
+}
+
+export interface SubcontractingReceiptListResponse {
+  items: SubcontractingReceiptSummary[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
 }

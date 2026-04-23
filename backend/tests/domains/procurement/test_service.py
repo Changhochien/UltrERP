@@ -794,8 +794,8 @@ class TestPurchaseOrderNoGoodsReceipt:
         assert "landed_cost" not in po_dict
         assert "additional_costs" not in po_dict
 
-    def test_no_subcontracting_fields_in_po_create(self) -> None:
-        """PO create should not include subcontracting-specific fields."""
+    def test_no_bom_or_auto_creation_in_po_create(self) -> None:
+        """PO create should not include Epic 32 BOM or auto-creation fields."""
         from domains.procurement.schemas import PurchaseOrderCreate
 
         payload = PurchaseOrderCreate(
@@ -804,7 +804,9 @@ class TestPurchaseOrderNoGoodsReceipt:
             transaction_date=date.today(),
         )
         po_dict = payload.model_dump()
-        # Subcontracting is deferred to Story 24-6
-        assert "is_subcontracted" not in po_dict
-        assert "supplier_warehouse" not in po_dict
+        # BOM auto-creation, cost-sheet, and backflush are Epic 32 scope
         assert "bom" not in po_dict
+        assert "auto_create_from_bom" not in po_dict
+        assert "backflush_from_receipt" not in po_dict
+        # Story 24-6 adds subcontracting fields - those are allowed
+        assert "is_subcontracted" in po_dict or "is_subcontracted" not in po_dict

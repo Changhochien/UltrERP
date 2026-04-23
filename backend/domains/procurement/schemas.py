@@ -454,6 +454,11 @@ class PurchaseOrderCreate(BaseModel):
     # Extension hooks: blanket order and landed cost references (Story 24-5)
     blanket_order_reference_id: uuid.UUID | None = None
     landed_cost_reference_id: uuid.UUID | None = None
+    # Subcontracting metadata (Story 24-6)
+    is_subcontracted: bool = False
+    finished_goods_item_code: str | None = Field(default=None, max_length=100)
+    finished_goods_item_name: str | None = Field(default=None, max_length=200)
+    expected_subcontracted_qty: Decimal | None = Field(default=None, ge=Decimal("0"), decimal_places=3)
     items: list[POItemCreate] = Field(default_factory=list)
 
 
@@ -478,6 +483,11 @@ class PurchaseOrderUpdate(BaseModel):
     # Extension hooks: blanket order and landed cost references (Story 24-5)
     blanket_order_reference_id: uuid.UUID | None = None
     landed_cost_reference_id: uuid.UUID | None = None
+    # Subcontracting metadata (Story 24-6)
+    is_subcontracted: bool | None = None
+    finished_goods_item_code: str | None = Field(default=None, max_length=100)
+    finished_goods_item_name: str | None = Field(default=None, max_length=200)
+    expected_subcontracted_qty: Decimal | None = Field(default=None, ge=Decimal("0"), decimal_places=3)
 
 
 class PurchaseOrderResponse(BaseModel):
@@ -514,6 +524,11 @@ class PurchaseOrderResponse(BaseModel):
     # Extension hooks: blanket order and landed cost references (Story 24-5)
     blanket_order_reference_id: uuid.UUID | None = None
     landed_cost_reference_id: uuid.UUID | None = None
+    # Subcontracting metadata (Story 24-6)
+    is_subcontracted: bool = False
+    finished_goods_item_code: str | None = None
+    finished_goods_item_name: str | None = None
+    expected_subcontracted_qty: Decimal | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -746,6 +761,256 @@ class GoodsReceiptSummary(BaseModel):
 
 class GoodsReceiptListResponse(BaseModel):
     items: list[GoodsReceiptSummary]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+# ------------------------------------------------------------------
+# Subcontracting Schemas (Story 24-6)
+# ------------------------------------------------------------------
+
+
+class SubcontractingMaterialTransferStatus(StrEnum):
+    DRAFT = "draft"
+    PENDING = "pending"
+    IN_TRANSIT = "in_transit"
+    DELIVERED = "delivered"
+    CANCELLED = "cancelled"
+
+
+class SubcontractingReceiptStatus(StrEnum):
+    DRAFT = "draft"
+    SUBMITTED = "submitted"
+    CANCELLED = "cancelled"
+
+
+# --- Subcontracting Material Transfer Schemas ---
+
+
+class SMTItemCreate(BaseModel):
+    """Create a material transfer line."""
+
+    item_code: str = Field(default="", max_length=100)
+    item_name: str = Field(default="", max_length=200)
+    description: str = Field(default="", max_length=2000)
+    qty: Decimal = Field(default=Decimal("0"), ge=Decimal("0"), decimal_places=3)
+    uom: str = Field(default="", max_length=40)
+    warehouse: str = Field(default="", max_length=120)
+
+
+class SMTItemResponse(BaseModel):
+    """Response schema for a material transfer line."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    material_transfer_id: uuid.UUID
+    idx: int
+    item_code: str
+    item_name: str
+    description: str
+    qty: Decimal
+    uom: str
+    warehouse: str
+    created_at: datetime
+
+
+class SubcontractingMaterialTransferCreate(BaseModel):
+    """Create a material transfer to a subcontractor."""
+
+    purchase_order_id: uuid.UUID
+    transfer_date: date
+    source_warehouse: str = Field(default="", max_length=120)
+    contact_person: str = Field(default="", max_length=120)
+    contact_email: str = Field(default="", max_length=254)
+    notes: str = Field(default="", max_length=5000)
+    items: list[SMTItemCreate] = Field(default_factory=list)
+
+
+class SubcontractingMaterialTransferUpdate(BaseModel):
+    """Update a draft material transfer."""
+
+    transfer_date: date | None = None
+    source_warehouse: str | None = Field(default=None, max_length=120)
+    contact_person: str | None = Field(default=None, max_length=120)
+    contact_email: str | None = Field(default=None, max_length=254)
+    notes: str | None = Field(default=None, max_length=5000)
+
+
+class SubcontractingMaterialTransferResponse(BaseModel):
+    """Full response schema for a material transfer."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    name: str
+    status: str
+    purchase_order_id: uuid.UUID
+    supplier_id: uuid.UUID | None
+    supplier_name: str
+    company: str
+    transfer_date: date
+    shipped_date: date | None
+    received_date: date | None
+    source_warehouse: str
+    contact_person: str
+    contact_email: str
+    notes: str
+    created_at: datetime
+    updated_at: datetime
+
+    items: list[SMTItemResponse] = Field(default_factory=list)
+
+
+class SubcontractingMaterialTransferListParams(BaseModel):
+    purchase_order_id: uuid.UUID | None = None
+    status: SubcontractingMaterialTransferStatus | None = None
+    q: str | None = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=100)
+
+
+class SubcontractingMaterialTransferSummary(BaseModel):
+    """Summary view for listing."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    status: str
+    purchase_order_id: uuid.UUID
+    supplier_name: str
+    transfer_date: date
+    shipped_date: date | None
+    received_date: date | None
+    created_at: datetime
+
+
+class SubcontractingMaterialTransferListResponse(BaseModel):
+    items: list[SubcontractingMaterialTransferSummary]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+# --- Subcontracting Receipt Schemas ---
+
+
+class SCRItemCreate(BaseModel):
+    """Create a subcontracting receipt line."""
+
+    item_code: str = Field(default="", max_length=100)
+    item_name: str = Field(default="", max_length=200)
+    description: str = Field(default="", max_length=2000)
+    accepted_qty: Decimal = Field(default=Decimal("0"), ge=Decimal("0"), decimal_places=3)
+    rejected_qty: Decimal = Field(default=Decimal("0"), ge=Decimal("0"), decimal_places=3)
+    uom: str = Field(default="", max_length=40)
+    warehouse: str = Field(default="", max_length=120)
+    unit_rate: Decimal = Field(default=Decimal("0"), ge=Decimal("0"), decimal_places=4)
+    exception_notes: str = Field(default="", max_length=2000)
+
+
+class SCRItemResponse(BaseModel):
+    """Response schema for a subcontracting receipt line."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    subcontracting_receipt_id: uuid.UUID
+    idx: int
+    item_code: str
+    item_name: str
+    description: str
+    accepted_qty: Decimal
+    rejected_qty: Decimal
+    total_qty: Decimal
+    uom: str
+    warehouse: str
+    unit_rate: Decimal
+    exception_notes: str
+    is_rejected: bool
+    created_at: datetime
+
+
+class SubcontractingReceiptCreate(BaseModel):
+    """Create a subcontracting receipt."""
+
+    purchase_order_id: uuid.UUID
+    receipt_date: date
+    posting_date: date | None = None
+    set_warehouse: str = Field(default="", max_length=120)
+    contact_person: str = Field(default="", max_length=120)
+    notes: str = Field(default="", max_length=5000)
+    material_transfer_ids: list[uuid.UUID] = Field(default_factory=list)
+    items: list[SCRItemCreate] = Field(default_factory=list)
+
+
+class SubcontractingReceiptUpdate(BaseModel):
+    """Update a draft subcontracting receipt."""
+
+    receipt_date: date | None = None
+    posting_date: date | None = None
+    set_warehouse: str | None = Field(default=None, max_length=120)
+    contact_person: str | None = Field(default=None, max_length=120)
+    notes: str | None = Field(default=None, max_length=5000)
+
+
+class SubcontractingReceiptResponse(BaseModel):
+    """Full response schema for a subcontracting receipt."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    name: str
+    status: str
+    purchase_order_id: uuid.UUID
+    supplier_id: uuid.UUID | None
+    supplier_name: str
+    company: str
+    receipt_date: date
+    posting_date: date | None
+    set_warehouse: str
+    contact_person: str
+    notes: str
+    inventory_mutated: bool
+    inventory_mutated_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+    items: list[SCRItemResponse] = Field(default_factory=list)
+
+
+class SubcontractingReceiptListParams(BaseModel):
+    purchase_order_id: uuid.UUID | None = None
+    status: SubcontractingReceiptStatus | None = None
+    q: str | None = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=100)
+
+
+class SubcontractingReceiptSummary(BaseModel):
+    """Summary view for listing."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    status: str
+    purchase_order_id: uuid.UUID
+    supplier_name: str
+    receipt_date: date
+    posting_date: date | None
+    inventory_mutated: bool
+    created_at: datetime
+
+
+class SubcontractingReceiptListResponse(BaseModel):
+    items: list[SubcontractingReceiptSummary]
     total: int
     page: int
     page_size: int

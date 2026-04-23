@@ -1031,3 +1031,266 @@ async def get_supplier_performance_stats(
     """Get supplier performance statistics."""
     tenant_id, _ = tenant_user
     return await svc.get_supplier_performance_stats(db, tenant_id, supplier_id=supplier_id)
+
+
+# --------------------------------------------------------------------------
+# Subcontracting Material Transfer Routes (Story 24-6)
+# --------------------------------------------------------------------------
+
+
+@router.post(
+    "/subcontracting/material-transfers",
+    response_model=s.SubcontractingMaterialTransferResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_subcontracting_material_transfer(
+    data: s.SubcontractingMaterialTransferCreate,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.SubcontractingMaterialTransferResponse:
+    """Create a material transfer to a subcontractor.
+
+    Validates:
+    - PO is a subcontracting PO
+    - Supplier is marked as a subcontractor
+    """
+    tenant_id, current_user = tenant_user
+    try:
+        mt = await svc.create_subcontracting_material_transfer(
+            db,
+            tenant_id=tenant_id,
+            data=data.model_dump(),
+            current_user=current_user,
+        )
+    except ValidationError as exc:
+        errors = exc.errors if hasattr(exc, "errors") else [str(exc)]
+        return JSONResponse(status_code=422, content=error_response(errors))
+    return s.SubcontractingMaterialTransferResponse.model_validate(mt)
+
+
+@router.get("/subcontracting/material-transfers", response_model=s.SubcontractingMaterialTransferListResponse)
+async def list_subcontracting_material_transfers(
+    purchase_order_id: uuid.UUID | None = None,
+    status: s.SubcontractingMaterialTransferStatus | None = None,
+    q: str | None = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.SubcontractingMaterialTransferListResponse:
+    """List material transfers with optional filtering."""
+    tenant_id, _ = tenant_user
+    transfers, total = await svc.list_subcontracting_material_transfers(
+        db, tenant_id,
+        purchase_order_id=purchase_order_id,
+        status=status.value if status else None,
+        q=q,
+        page=page,
+        page_size=page_size,
+    )
+    return s.SubcontractingMaterialTransferListResponse(
+        items=[s.SubcontractingMaterialTransferSummary.model_validate(t) for t in transfers],
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=math.ceil(total / page_size) if total else 0,
+    )
+
+
+@router.get("/subcontracting/material-transfers/{mt_id}", response_model=s.SubcontractingMaterialTransferResponse)
+async def get_subcontracting_material_transfer(
+    mt_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.SubcontractingMaterialTransferResponse:
+    """Get a single material transfer with items."""
+    tenant_id, _ = tenant_user
+    try:
+        mt = await svc.get_subcontracting_material_transfer(db, tenant_id, mt_id)
+    except ValidationError as exc:
+        errors = exc.errors if hasattr(exc, "errors") else [str(exc)]
+        status_code = 404 if any(
+            isinstance(e, dict) and e.get("field") == "mt_id" for e in errors
+        ) else 422
+        return JSONResponse(status_code=status_code, content=error_response(errors))
+    return s.SubcontractingMaterialTransferResponse.model_validate(mt)
+
+
+@router.post("/subcontracting/material-transfers/{mt_id}/submit", response_model=s.SubcontractingMaterialTransferResponse)
+async def submit_subcontracting_material_transfer(
+    mt_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.SubcontractingMaterialTransferResponse:
+    """Submit a material transfer to mark it as pending."""
+    tenant_id, _ = tenant_user
+    try:
+        mt = await svc.submit_subcontracting_material_transfer(db, tenant_id, mt_id)
+    except ValidationError as exc:
+        errors = exc.errors if hasattr(exc, "errors") else [str(exc)]
+        return JSONResponse(status_code=422, content=error_response(errors))
+    return s.SubcontractingMaterialTransferResponse.model_validate(mt)
+
+
+@router.post("/subcontracting/material-transfers/{mt_id}/ship", response_model=s.SubcontractingMaterialTransferResponse)
+async def ship_subcontracting_material_transfer(
+    mt_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.SubcontractingMaterialTransferResponse:
+    """Mark material transfer as shipped."""
+    tenant_id, _ = tenant_user
+    try:
+        mt = await svc.ship_subcontracting_material_transfer(db, tenant_id, mt_id)
+    except ValidationError as exc:
+        errors = exc.errors if hasattr(exc, "errors") else [str(exc)]
+        return JSONResponse(status_code=422, content=error_response(errors))
+    return s.SubcontractingMaterialTransferResponse.model_validate(mt)
+
+
+@router.post("/subcontracting/material-transfers/{mt_id}/deliver", response_model=s.SubcontractingMaterialTransferResponse)
+async def deliver_subcontracting_material_transfer(
+    mt_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.SubcontractingMaterialTransferResponse:
+    """Mark material transfer as delivered."""
+    tenant_id, _ = tenant_user
+    try:
+        mt = await svc.deliver_subcontracting_material_transfer(db, tenant_id, mt_id)
+    except ValidationError as exc:
+        errors = exc.errors if hasattr(exc, "errors") else [str(exc)]
+        return JSONResponse(status_code=422, content=error_response(errors))
+    return s.SubcontractingMaterialTransferResponse.model_validate(mt)
+
+
+@router.post("/subcontracting/material-transfers/{mt_id}/cancel", response_model=s.SubcontractingMaterialTransferResponse)
+async def cancel_subcontracting_material_transfer(
+    mt_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.SubcontractingMaterialTransferResponse:
+    """Cancel a material transfer."""
+    tenant_id, _ = tenant_user
+    try:
+        mt = await svc.cancel_subcontracting_material_transfer(db, tenant_id, mt_id)
+    except ValidationError as exc:
+        errors = exc.errors if hasattr(exc, "errors") else [str(exc)]
+        return JSONResponse(status_code=422, content=error_response(errors))
+    return s.SubcontractingMaterialTransferResponse.model_validate(mt)
+
+
+# --------------------------------------------------------------------------
+# Subcontracting Receipt Routes (Story 24-6)
+# --------------------------------------------------------------------------
+
+
+@router.post(
+    "/subcontracting/receipts",
+    response_model=s.SubcontractingReceiptResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_subcontracting_receipt(
+    data: s.SubcontractingReceiptCreate,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.SubcontractingReceiptResponse:
+    """Create a subcontracting receipt for finished goods.
+
+    Validates:
+    - PO is a subcontracting PO
+    - Supplier is marked as a subcontractor
+    - Optional linking to material transfers
+    """
+    tenant_id, current_user = tenant_user
+    try:
+        scr = await svc.create_subcontracting_receipt(
+            db,
+            tenant_id=tenant_id,
+            data=data.model_dump(),
+            current_user=current_user,
+        )
+    except ValidationError as exc:
+        errors = exc.errors if hasattr(exc, "errors") else [str(exc)]
+        return JSONResponse(status_code=422, content=error_response(errors))
+    return s.SubcontractingReceiptResponse.model_validate(scr)
+
+
+@router.get("/subcontracting/receipts", response_model=s.SubcontractingReceiptListResponse)
+async def list_subcontracting_receipts(
+    purchase_order_id: uuid.UUID | None = None,
+    status: s.SubcontractingReceiptStatus | None = None,
+    q: str | None = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.SubcontractingReceiptListResponse:
+    """List subcontracting receipts with optional filtering."""
+    tenant_id, _ = tenant_user
+    receipts, total = await svc.list_subcontracting_receipts(
+        db, tenant_id,
+        purchase_order_id=purchase_order_id,
+        status=status.value if status else None,
+        q=q,
+        page=page,
+        page_size=page_size,
+    )
+    return s.SubcontractingReceiptListResponse(
+        items=[s.SubcontractingReceiptSummary.model_validate(r) for r in receipts],
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=math.ceil(total / page_size) if total else 0,
+    )
+
+
+@router.get("/subcontracting/receipts/{scr_id}", response_model=s.SubcontractingReceiptResponse)
+async def get_subcontracting_receipt(
+    scr_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.SubcontractingReceiptResponse:
+    """Get a single subcontracting receipt with items."""
+    tenant_id, _ = tenant_user
+    try:
+        scr = await svc.get_subcontracting_receipt(db, tenant_id, scr_id)
+    except ValidationError as exc:
+        errors = exc.errors if hasattr(exc, "errors") else [str(exc)]
+        status_code = 404 if any(
+            isinstance(e, dict) and e.get("field") == "scr_id" for e in errors
+        ) else 422
+        return JSONResponse(status_code=status_code, content=error_response(errors))
+    return s.SubcontractingReceiptResponse.model_validate(scr)
+
+
+@router.post("/subcontracting/receipts/{scr_id}/submit", response_model=s.SubcontractingReceiptResponse)
+async def submit_subcontracting_receipt(
+    scr_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.SubcontractingReceiptResponse:
+    """Submit a subcontracting receipt."""
+    tenant_id, _ = tenant_user
+    try:
+        scr = await svc.submit_subcontracting_receipt(db, tenant_id, scr_id)
+    except ValidationError as exc:
+        errors = exc.errors if hasattr(exc, "errors") else [str(exc)]
+        return JSONResponse(status_code=422, content=error_response(errors))
+    return s.SubcontractingReceiptResponse.model_validate(scr)
+
+
+@router.post("/subcontracting/receipts/{scr_id}/cancel", response_model=s.SubcontractingReceiptResponse)
+async def cancel_subcontracting_receipt(
+    scr_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.SubcontractingReceiptResponse:
+    """Cancel a subcontracting receipt."""
+    tenant_id, _ = tenant_user
+    try:
+        scr = await svc.cancel_subcontracting_receipt(db, tenant_id, scr_id)
+    except ValidationError as exc:
+        errors = exc.errors if hasattr(exc, "errors") else [str(exc)]
+        return JSONResponse(status_code=422, content=error_response(errors))
+    return s.SubcontractingReceiptResponse.model_validate(scr)

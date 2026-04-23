@@ -37,6 +37,11 @@ from domains.procurement.models import (
     SupplierQuotationItem,
     GoodsReceipt,
     GoodsReceiptItem,
+    SubcontractingMaterialTransfer,
+    SubcontractingMaterialTransferItem,
+    SubcontractingReceipt,
+    SubcontractingReceiptItem,
+    SubcontractingReceiptMaterialRef,
 )
 
 # --------------------------------------------------------------------------
@@ -894,6 +899,11 @@ async def create_purchase_order(
         # Extension hooks: blanket order and landed cost references (Story 24-5)
         blanket_order_reference_id=data.get("blanket_order_reference_id"),
         landed_cost_reference_id=data.get("landed_cost_reference_id"),
+        # Subcontracting metadata (Story 24-6)
+        is_subcontracted=data.get("is_subcontracted", False),
+        finished_goods_item_code=data.get("finished_goods_item_code"),
+        finished_goods_item_name=data.get("finished_goods_item_name"),
+        expected_subcontracted_qty=Decimal(str(data["expected_subcontracted_qty"])) if data.get("expected_subcontracted_qty") else None,
     )
     db.add(po)
     await db.flush()
@@ -1009,9 +1019,17 @@ async def update_purchase_order(
         # Extension hooks: blanket order and landed cost references (Story 24-5)
         "blanket_order_reference_id",
         "landed_cost_reference_id",
+        # Subcontracting metadata (Story 24-6)
+        "is_subcontracted",
+        "finished_goods_item_code",
+        "finished_goods_item_name",
+        "expected_subcontracted_qty",
     ):
         if field in data and data[field] is not None:
-            setattr(po, field, data[field])
+            if field == "expected_subcontracted_qty":
+                po.expected_subcontracted_qty = Decimal(str(data[field]))
+            else:
+                setattr(po, field, data[field])
 
     await db.commit()
     await db.refresh(po)
@@ -1859,3 +1877,532 @@ async def get_supplier_controls(
         "po_warned": po_warned,
         "po_control_reason": po_reason,
     }
+
+
+# --------------------------------------------------------------------------
+# Subcontracting Material Transfer Service (Story 24-6)
+# --------------------------------------------------------------------------
+
+
+async def check_subcontractor_eligibility(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    supplier_id: uuid.UUID | None,
+    supplier_name: str,
+) -> Supplier:
+    """Check if a supplier is eligible for subcontracting.
+
+    Args:
+        db: Database session
+        tenant_id: Tenant UUID
+        supplier_id: Supplier UUID
+        supplier_name: Supplier name for error messages
+
+    Returns:
+        Supplier if eligible
+
+    Raises:
+        ValidationError if supplier is not a subcontractor
+    """
+    if not supplier_id:
+        raise ValidationError([{
+            "field": "supplier_id",
+            "message": "Supplier ID is required for subcontracting workflow.",
+        }])
+
+    result = await db.execute(
+        select(Supplier).where(
+            Supplier.id == supplier_id,
+            Supplier.tenant_id == tenant_id,
+        )
+    )
+    supplier = result.scalar_one_or_none()
+
+    if not supplier:
+        raise ValidationError([{
+            "field": "supplier_id",
+            "message": f"Supplier {supplier_id} not found.",
+        }])
+
+    if not supplier.is_subcontractor:
+        raise ValidationError([{
+            "field": "supplier_id",
+            "message": f"Supplier '{supplier.name}' is not marked as a subcontractor. Only subcontractors can be used in subcontracting workflows.",
+        }])
+
+    return supplier
+
+
+async def create_subcontracting_material_transfer(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    data: dict,
+    current_user: str = "",
+) -> SubcontractingMaterialTransfer:
+    """Create a material transfer to a subcontractor.
+
+    Validates:
+    - PO exists and is a subcontracting PO
+    - Supplier is marked as a subcontractor
+    """
+    today = date.today()
+    transfer_date = data.get("transfer_date", today)
+    if isinstance(transfer_date, str):
+        transfer_date = date.fromisoformat(transfer_date)
+
+    po_id = data.get("purchase_order_id")
+    if not po_id:
+        raise ValidationError([{"field": "purchase_order_id", "message": "Purchase order ID is required."}])
+
+    # Fetch PO and validate it's a subcontracting PO
+    po = await get_purchase_order(db, tenant_id, uuid.UUID(str(po_id)))
+
+    if not po.is_subcontracted:
+        raise ValidationError([{
+            "field": "purchase_order_id",
+            "message": f"PO {po.name} is not marked as a subcontracting PO. Cannot create material transfer.",
+        }])
+
+    # Check supplier is a subcontractor
+    await check_subcontractor_eligibility(db, tenant_id, po.supplier_id, po.supplier_name)
+
+    # Generate name
+    count_q = select(func.count()).select_from(SubcontractingMaterialTransfer).where(
+        SubcontractingMaterialTransfer.tenant_id == tenant_id
+    )
+    result = await db.execute(count_q)
+    count = result.scalar() or 0
+    name = f"SMT-{count + 1:04d}"
+
+    mt = SubcontractingMaterialTransfer(
+        tenant_id=tenant_id,
+        name=name,
+        status="draft",
+        purchase_order_id=po.id,
+        supplier_id=po.supplier_id,
+        supplier_name=po.supplier_name,
+        company=po.company,
+        transfer_date=transfer_date,
+        source_warehouse=data.get("source_warehouse", ""),
+        contact_person=data.get("contact_person", ""),
+        contact_email=data.get("contact_email", ""),
+        notes=data.get("notes", ""),
+    )
+    db.add(mt)
+    await db.flush()
+
+    # Create items
+    for idx, item_data in enumerate(data.get("items", [])):
+        item = SubcontractingMaterialTransferItem(
+            tenant_id=tenant_id,
+            material_transfer_id=mt.id,
+            idx=idx,
+            item_code=item_data.get("item_code", ""),
+            item_name=item_data.get("item_name", ""),
+            description=item_data.get("description", ""),
+            qty=Decimal(str(item_data.get("qty", "0"))),
+            uom=item_data.get("uom", ""),
+            warehouse=item_data.get("warehouse", ""),
+        )
+        db.add(item)
+
+    await db.commit()
+    await db.refresh(mt)
+    return mt
+
+
+async def get_subcontracting_material_transfer(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    mt_id: uuid.UUID,
+) -> SubcontractingMaterialTransfer:
+    """Fetch a single material transfer with items."""
+    result = await db.execute(
+        select(SubcontractingMaterialTransfer)
+        .options(selectinload(SubcontractingMaterialTransfer.items))
+        .where(
+            SubcontractingMaterialTransfer.id == mt_id,
+            SubcontractingMaterialTransfer.tenant_id == tenant_id,
+        )
+    )
+    mt = result.scalar_one_or_none()
+    if not mt:
+        raise ValidationError([{"field": "mt_id", "message": f"Material transfer {mt_id} not found."}])
+    return mt
+
+
+async def list_subcontracting_material_transfers(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    *,
+    purchase_order_id: uuid.UUID | None = None,
+    status: str | None = None,
+    q: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+) -> tuple[list[SubcontractingMaterialTransfer], int]:
+    """List material transfers with optional filtering."""
+    query = select(SubcontractingMaterialTransfer).where(
+        SubcontractingMaterialTransfer.tenant_id == tenant_id
+    )
+    count_query = select(func.count()).select_from(SubcontractingMaterialTransfer).where(
+        SubcontractingMaterialTransfer.tenant_id == tenant_id
+    )
+
+    if purchase_order_id:
+        query = query.where(SubcontractingMaterialTransfer.purchase_order_id == purchase_order_id)
+        count_query = count_query.where(SubcontractingMaterialTransfer.purchase_order_id == purchase_order_id)
+    if status:
+        query = query.where(SubcontractingMaterialTransfer.status == status)
+        count_query = count_query.where(SubcontractingMaterialTransfer.status == status)
+    if q:
+        q_filter = SubcontractingMaterialTransfer.name.ilike(f"%{q}%")
+        query = query.where(q_filter)
+        count_query = count_query.where(q_filter)
+
+    query = query.order_by(SubcontractingMaterialTransfer.created_at.desc())
+    query = query.offset((page - 1) * page_size).limit(page_size)
+
+    result = await db.execute(query)
+    transfers = list(result.scalars().all())
+
+    count_result = await db.execute(count_query)
+    total = count_result.scalar() or 0
+
+    return transfers, total
+
+
+async def submit_subcontracting_material_transfer(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    mt_id: uuid.UUID,
+) -> SubcontractingMaterialTransfer:
+    """Submit a material transfer - changes status to pending.
+
+    Transition: draft -> pending
+    """
+    mt = await get_subcontracting_material_transfer(db, tenant_id, mt_id)
+
+    if mt.status != "draft":
+        raise ValidationError([{
+            "field": "status",
+            "message": f"Cannot submit material transfer in status '{mt.status}'.",
+        }])
+
+    if not mt.items:
+        raise ValidationError([{"field": "items", "message": "Material transfer must have at least one item."}])
+
+    mt.status = "pending"
+    await db.commit()
+    await db.refresh(mt)
+    return mt
+
+
+async def ship_subcontracting_material_transfer(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    mt_id: uuid.UUID,
+) -> SubcontractingMaterialTransfer:
+    """Mark material transfer as shipped.
+
+    Transition: pending -> in_transit
+    """
+    mt = await get_subcontracting_material_transfer(db, tenant_id, mt_id)
+
+    if mt.status != "pending":
+        raise ValidationError([{
+            "field": "status",
+            "message": f"Cannot ship material transfer in status '{mt.status}'.",
+        }])
+
+    mt.status = "in_transit"
+    mt.shipped_date = date.today()
+    await db.commit()
+    await db.refresh(mt)
+    return mt
+
+
+async def deliver_subcontracting_material_transfer(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    mt_id: uuid.UUID,
+) -> SubcontractingMaterialTransfer:
+    """Mark material transfer as delivered.
+
+    Transition: in_transit -> delivered
+    """
+    mt = await get_subcontracting_material_transfer(db, tenant_id, mt_id)
+
+    if mt.status != "in_transit":
+        raise ValidationError([{
+            "field": "status",
+            "message": f"Cannot mark delivered material transfer in status '{mt.status}'.",
+        }])
+
+    mt.status = "delivered"
+    mt.received_date = date.today()
+    await db.commit()
+    await db.refresh(mt)
+    return mt
+
+
+async def cancel_subcontracting_material_transfer(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    mt_id: uuid.UUID,
+) -> SubcontractingMaterialTransfer:
+    """Cancel a material transfer.
+
+    Only draft, pending, or in_transit transfers can be cancelled.
+    """
+    mt = await get_subcontracting_material_transfer(db, tenant_id, mt_id)
+
+    if mt.status in ("delivered", "cancelled"):
+        raise ValidationError([{
+            "field": "status",
+            "message": f"Cannot cancel material transfer in status '{mt.status}'.",
+        }])
+
+    mt.status = "cancelled"
+    await db.commit()
+    await db.refresh(mt)
+    return mt
+
+
+# --------------------------------------------------------------------------
+# Subcontracting Receipt Service (Story 24-6)
+# --------------------------------------------------------------------------
+
+
+async def create_subcontracting_receipt(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    data: dict,
+    current_user: str = "",
+) -> SubcontractingReceipt:
+    """Create a subcontracting receipt for finished goods.
+
+    Validates:
+    - PO exists and is a subcontracting PO
+    - Supplier is marked as a subcontractor
+    - Optional linking to material transfers
+    """
+    today = date.today()
+    receipt_date = data.get("receipt_date", today)
+    if isinstance(receipt_date, str):
+        receipt_date = date.fromisoformat(receipt_date)
+
+    po_id = data.get("purchase_order_id")
+    if not po_id:
+        raise ValidationError([{"field": "purchase_order_id", "message": "Purchase order ID is required."}])
+
+    # Fetch PO and validate it's a subcontracting PO
+    po = await get_purchase_order(db, tenant_id, uuid.UUID(str(po_id)))
+
+    if not po.is_subcontracted:
+        raise ValidationError([{
+            "field": "purchase_order_id",
+            "message": f"PO {po.name} is not marked as a subcontracting PO. Cannot create subcontracting receipt.",
+        }])
+
+    # Check supplier is a subcontractor
+    await check_subcontractor_eligibility(db, tenant_id, po.supplier_id, po.supplier_name)
+
+    # Generate name
+    count_q = select(func.count()).select_from(SubcontractingReceipt).where(
+        SubcontractingReceipt.tenant_id == tenant_id
+    )
+    result = await db.execute(count_q)
+    count = result.scalar() or 0
+    name = f"SCR-{count + 1:04d}"
+
+    scr = SubcontractingReceipt(
+        tenant_id=tenant_id,
+        name=name,
+        status="draft",
+        purchase_order_id=po.id,
+        supplier_id=po.supplier_id,
+        supplier_name=po.supplier_name,
+        company=po.company,
+        receipt_date=receipt_date,
+        posting_date=data.get("posting_date") or receipt_date,
+        set_warehouse=data.get("set_warehouse", ""),
+        contact_person=data.get("contact_person", ""),
+        notes=data.get("notes", ""),
+        inventory_mutated=False,
+        inventory_mutated_at=None,
+    )
+    db.add(scr)
+    await db.flush()
+
+    # Create items
+    for idx, item_data in enumerate(data.get("items", [])):
+        accepted_qty = Decimal(str(item_data.get("accepted_qty", "0")))
+        rejected_qty = Decimal(str(item_data.get("rejected_qty", "0")))
+
+        item = SubcontractingReceiptItem(
+            tenant_id=tenant_id,
+            subcontracting_receipt_id=scr.id,
+            idx=idx,
+            item_code=item_data.get("item_code", ""),
+            item_name=item_data.get("item_name", ""),
+            description=item_data.get("description", ""),
+            accepted_qty=accepted_qty,
+            rejected_qty=rejected_qty,
+            total_qty=accepted_qty + rejected_qty,
+            uom=item_data.get("uom", ""),
+            warehouse=item_data.get("warehouse", scr.set_warehouse),
+            unit_rate=Decimal(str(item_data.get("unit_rate", "0"))),
+            exception_notes=item_data.get("exception_notes", ""),
+            is_rejected=rejected_qty > 0,
+        )
+        db.add(item)
+
+    # Link to material transfers if provided
+    # Validate each transfer belongs to the same PO
+    for mt_id in data.get("material_transfer_ids", []):
+        mt_uuid = uuid.UUID(str(mt_id))
+        mt_result = await db.execute(
+            select(SubcontractingMaterialTransfer).where(
+                SubcontractingMaterialTransfer.id == mt_uuid,
+                SubcontractingMaterialTransfer.tenant_id == tenant_id,
+            )
+        )
+        mt = mt_result.scalar_one_or_none()
+        if not mt:
+            raise ValidationError([{
+                "field": "material_transfer_ids",
+                "message": f"Material transfer {mt_id} not found.",
+            }])
+        if mt.purchase_order_id != po.id:
+            raise ValidationError([{
+                "field": "material_transfer_ids",
+                "message": f"Material transfer {mt_id} belongs to a different PO.",
+            }])
+        ref = SubcontractingReceiptMaterialRef(
+            tenant_id=tenant_id,
+            subcontracting_receipt_id=scr.id,
+            material_transfer_id=mt_uuid,
+        )
+        db.add(ref)
+
+    await db.commit()
+    await db.refresh(scr)
+    return scr
+
+
+async def get_subcontracting_receipt(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    scr_id: uuid.UUID,
+) -> SubcontractingReceipt:
+    """Fetch a single subcontracting receipt with items and material transfer refs."""
+    result = await db.execute(
+        select(SubcontractingReceipt)
+        .options(
+            selectinload(SubcontractingReceipt.items),
+            selectinload(SubcontractingReceipt.material_transfer_refs),
+        )
+        .where(
+            SubcontractingReceipt.id == scr_id,
+            SubcontractingReceipt.tenant_id == tenant_id,
+        )
+    )
+    scr = result.scalar_one_or_none()
+    if not scr:
+        raise ValidationError([{"field": "scr_id", "message": f"Subcontracting receipt {scr_id} not found."}])
+    return scr
+
+
+async def list_subcontracting_receipts(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    *,
+    purchase_order_id: uuid.UUID | None = None,
+    status: str | None = None,
+    q: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+) -> tuple[list[SubcontractingReceipt], int]:
+    """List subcontracting receipts with optional filtering."""
+    query = select(SubcontractingReceipt).where(
+        SubcontractingReceipt.tenant_id == tenant_id
+    )
+    count_query = select(func.count()).select_from(SubcontractingReceipt).where(
+        SubcontractingReceipt.tenant_id == tenant_id
+    )
+
+    if purchase_order_id:
+        query = query.where(SubcontractingReceipt.purchase_order_id == purchase_order_id)
+        count_query = count_query.where(SubcontractingReceipt.purchase_order_id == purchase_order_id)
+    if status:
+        query = query.where(SubcontractingReceipt.status == status)
+        count_query = count_query.where(SubcontractingReceipt.status == status)
+    if q:
+        q_filter = SubcontractingReceipt.name.ilike(f"%{q}%")
+        query = query.where(q_filter)
+        count_query = count_query.where(q_filter)
+
+    query = query.order_by(SubcontractingReceipt.created_at.desc())
+    query = query.offset((page - 1) * page_size).limit(page_size)
+
+    result = await db.execute(query)
+    receipts = list(result.scalars().all())
+
+    count_result = await db.execute(count_query)
+    total = count_result.scalar() or 0
+
+    return receipts, total
+
+
+async def submit_subcontracting_receipt(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    scr_id: uuid.UUID,
+) -> SubcontractingReceipt:
+    """Submit a subcontracting receipt.
+
+    Sets inventory_mutated = True.
+    """
+    scr = await get_subcontracting_receipt(db, tenant_id, scr_id)
+
+    if scr.status != "draft":
+        raise ValidationError([{
+            "field": "status",
+            "message": f"Cannot submit subcontracting receipt in status '{scr.status}'.",
+        }])
+
+    if not scr.items:
+        raise ValidationError([{"field": "items", "message": "Subcontracting receipt must have at least one item."}])
+
+    scr.status = "submitted"
+    scr.inventory_mutated = True
+    scr.inventory_mutated_at = datetime.now(tz=UTC)
+
+    await db.commit()
+    await db.refresh(scr)
+    return scr
+
+
+async def cancel_subcontracting_receipt(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    scr_id: uuid.UUID,
+) -> SubcontractingReceipt:
+    """Cancel a subcontracting receipt."""
+    scr = await get_subcontracting_receipt(db, tenant_id, scr_id)
+
+    if scr.status not in ("draft", "submitted"):
+        raise ValidationError([{
+            "field": "status",
+            "message": f"Cannot cancel subcontracting receipt in status '{scr.status}'.",
+        }])
+
+    scr.status = "cancelled"
+
+    if scr.inventory_mutated:
+        scr.inventory_mutated = False
+
+    await db.commit()
+    await db.refresh(scr)
+    return scr

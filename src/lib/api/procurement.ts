@@ -508,3 +508,198 @@ export async function getSupplierPerformanceStats(supplierId?: string): Promise<
   if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to load supplier performance stats"));
   return resp.json();
 }
+
+// --------------------------------------------------------------------------
+// Subcontracting API (Story 24-6)
+// --------------------------------------------------------------------------
+
+import type {
+  SubcontractingMaterialTransferCreatePayload,
+  SubcontractingMaterialTransferResponse,
+  SubcontractingMaterialTransferListResponse,
+  SubcontractingReceiptCreatePayload,
+  SubcontractingReceiptResponse,
+  SubcontractingReceiptListResponse,
+} from "../../domain/procurement/types";
+
+// --- Subcontracting Material Transfer API ---
+
+/**
+ * Create a material transfer to a subcontractor (Story 24-6).
+ */
+export async function createSubcontractingMaterialTransfer(
+  payload: SubcontractingMaterialTransferCreatePayload,
+): Promise<SubcontractingMaterialTransferResponse> {
+  const resp = await apiFetch("/api/v1/procurement/subcontracting/material-transfers", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to create material transfer"));
+  return resp.json();
+}
+
+/**
+ * List material transfers (Story 24-6).
+ */
+export async function listSubcontractingMaterialTransfers(params?: {
+  purchase_order_id?: string;
+  status?: string;
+  q?: string;
+  page?: number;
+  page_size?: number;
+}): Promise<SubcontractingMaterialTransferListResponse> {
+  const qs = new URLSearchParams();
+  if (params?.purchase_order_id) qs.set("purchase_order_id", params.purchase_order_id);
+  if (params?.status) qs.set("status", params.status);
+  if (params?.q) qs.set("q", params.q);
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.page_size) qs.set("page_size", String(params.page_size));
+  const resp = await apiFetch(`/api/v1/procurement/subcontracting/material-transfers?${qs}`);
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to list material transfers"));
+  return resp.json();
+}
+
+/**
+ * Get a material transfer (Story 24-6).
+ */
+export async function getSubcontractingMaterialTransfer(
+  mtId: string,
+): Promise<SubcontractingMaterialTransferResponse> {
+  const resp = await apiFetch(`/api/v1/procurement/subcontracting/material-transfers/${mtId}`);
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to load material transfer"));
+  return resp.json();
+}
+
+/**
+ * Submit a material transfer (Story 24-6).
+ */
+export async function submitSubcontractingMaterialTransfer(
+  mtId: string,
+): Promise<SubcontractingMaterialTransferResponse> {
+  const resp = await apiFetch(
+    `/api/v1/procurement/subcontracting/material-transfers/${mtId}/submit`,
+    { method: "POST" },
+  );
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to submit material transfer"));
+  return resp.json();
+}
+
+/**
+ * Ship a material transfer (Story 24-6).
+ */
+export async function shipSubcontractingMaterialTransfer(
+  mtId: string,
+): Promise<SubcontractingMaterialTransferResponse> {
+  const resp = await apiFetch(
+    `/api/v1/procurement/subcontracting/material-transfers/${mtId}/ship`,
+    { method: "POST" },
+  );
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to ship material transfer"));
+  return resp.json();
+}
+
+/**
+ * Deliver a material transfer (Story 24-6).
+ */
+export async function deliverSubcontractingMaterialTransfer(
+  mtId: string,
+): Promise<SubcontractingMaterialTransferResponse> {
+  const resp = await apiFetch(
+    `/api/v1/procurement/subcontracting/material-transfers/${mtId}/deliver`,
+    { method: "POST" },
+  );
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to deliver material transfer"));
+  return resp.json();
+}
+
+/**
+ * Cancel a material transfer (Story 24-6).
+ */
+export async function cancelSubcontractingMaterialTransfer(
+  mtId: string,
+): Promise<SubcontractingMaterialTransferResponse> {
+  const resp = await apiFetch(
+    `/api/v1/procurement/subcontracting/material-transfers/${mtId}/cancel`,
+    { method: "POST" },
+  );
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to cancel material transfer"));
+  return resp.json();
+}
+
+// --- Subcontracting Receipt API ---
+
+/**
+ * Create a subcontracting receipt (Story 24-6).
+ */
+export async function createSubcontractingReceipt(
+  payload: SubcontractingReceiptCreatePayload,
+): Promise<SubcontractingReceiptResponse> {
+  const resp = await apiFetch("/api/v1/procurement/subcontracting/receipts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to create subcontracting receipt"));
+  return resp.json();
+}
+
+/**
+ * List subcontracting receipts (Story 24-6).
+ */
+export async function listSubcontractingReceipts(params?: {
+  purchase_order_id?: string;
+  status?: string;
+  q?: string;
+  page?: number;
+  page_size?: number;
+}): Promise<SubcontractingReceiptListResponse> {
+  const qs = new URLSearchParams();
+  if (params?.purchase_order_id) qs.set("purchase_order_id", params.purchase_order_id);
+  if (params?.status) qs.set("status", params.status);
+  if (params?.q) qs.set("q", params.q);
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.page_size) qs.set("page_size", String(params.page_size));
+  const resp = await apiFetch(`/api/v1/procurement/subcontracting/receipts?${qs}`);
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to list subcontracting receipts"));
+  return resp.json();
+}
+
+/**
+ * Get a subcontracting receipt (Story 24-6).
+ */
+export async function getSubcontractingReceipt(
+  scrId: string,
+): Promise<SubcontractingReceiptResponse> {
+  const resp = await apiFetch(`/api/v1/procurement/subcontracting/receipts/${scrId}`);
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to load subcontracting receipt"));
+  return resp.json();
+}
+
+/**
+ * Submit a subcontracting receipt (Story 24-6).
+ */
+export async function submitSubcontractingReceipt(
+  scrId: string,
+): Promise<SubcontractingReceiptResponse> {
+  const resp = await apiFetch(
+    `/api/v1/procurement/subcontracting/receipts/${scrId}/submit`,
+    { method: "POST" },
+  );
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to submit subcontracting receipt"));
+  return resp.json();
+}
+
+/**
+ * Cancel a subcontracting receipt (Story 24-6).
+ */
+export async function cancelSubcontractingReceipt(
+  scrId: string,
+): Promise<SubcontractingReceiptResponse> {
+  const resp = await apiFetch(
+    `/api/v1/procurement/subcontracting/receipts/${scrId}/cancel`,
+    { method: "POST" },
+  );
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to cancel subcontracting receipt"));
+  return resp.json();
+}

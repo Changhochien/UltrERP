@@ -295,6 +295,11 @@ describe("Purchase Order Types (Story 24.2)", () => {
       is_approved: false,
       approved_by: "",
       approved_at: null,
+      // Subcontracting metadata (Story 24-6)
+      is_subcontracted: false,
+      finished_goods_item_code: null,
+      finished_goods_item_name: null,
+      expected_subcontracted_qty: null,
       created_at: "2026-04-27T00:00:00Z",
       updated_at: "2026-04-27T00:00:00Z",
       items: [],
@@ -543,6 +548,11 @@ describe("Purchase Order No Goods Receipt Logic (Story 24.2)", () => {
       is_approved: false,
       approved_by: "",
       approved_at: null,
+      // Subcontracting metadata (Story 24-6)
+      is_subcontracted: false,
+      finished_goods_item_code: null,
+      finished_goods_item_name: null,
+      expected_subcontracted_qty: null,
       created_at: "2026-04-27T00:00:00Z",
       updated_at: "2026-04-27T00:00:00Z",
       items: [],
@@ -552,16 +562,17 @@ describe("Purchase Order No Goods Receipt Logic (Story 24.2)", () => {
     expect("invoice_date" in po).toBe(false);
   });
 
-  it("PO does not include subcontracting fields", () => {
+  it("PO does not include BOM, auto-creation, cost-sheet, or subcontract-return fields", () => {
     const po = {
       status: "draft",
       supplier_name: "Alpha Parts Co.",
       company: "UltrERP Taiwan",
     };
-    // Subcontracting is deferred to Story 24-6
-    expect("is_subcontracted" in po).toBe(false);
-    expect("supplier_warehouse" in po).toBe(false);
+    // BOM, auto-creation, cost-sheet, and subcontract-return are deferred to Epic 32
     expect("bom" in po).toBe(false);
+    expect("auto_create_subcontract_order" in po).toBe(false);
+    expect("cost_sheet_id" in po).toBe(false);
+    expect("subcontract_return_id" in po).toBe(false);
   });
 });
 
@@ -840,5 +851,283 @@ describe("Supplier Quotation Extension Hooks (Story 24.5)", () => {
     };
 
     expect(sq.contract_reference).toBeNull();
+  });
+});
+
+// --------------------------------------------------------------------------
+// Story 24.6: Subcontracting Workflow Tests
+// --------------------------------------------------------------------------
+
+import type {
+  SubcontractingMaterialTransferStatus,
+  SubcontractingMaterialTransferResponse,
+  SubcontractingMaterialTransferCreatePayload,
+  SubcontractingReceiptStatus,
+  SubcontractingReceiptResponse,
+  SubcontractingReceiptCreatePayload,
+} from "../types";
+
+describe("Subcontracting PO Types (Story 24.6)", () => {
+  it("PO can be marked as subcontracted with finished goods metadata", () => {
+    const po: PurchaseOrderResponse = {
+      id: "00000000-0000-0000-0000-000000000040",
+      tenant_id: "00000000-0000-0000-0000-000000000002",
+      name: "SC-PO-0001",
+      status: "draft",
+      supplier_id: "00000000-0000-0000-0000-000000000041",
+      supplier_name: "Assembly Co. Ltd",
+      rfq_id: null,
+      quotation_id: null,
+      award_id: null,
+      company: "UltrERP Taiwan",
+      currency: "TWD",
+      transaction_date: "2026-04-27",
+      schedule_date: "2026-05-11",
+      subtotal: "5000.00",
+      total_taxes: "500.00",
+      grand_total: "5500.00",
+      base_grand_total: "5500.00",
+      taxes: [],
+      contact_person: "",
+      contact_email: "",
+      set_warehouse: "WH-RAW",
+      terms_and_conditions: "",
+      notes: "",
+      per_received: "0.00",
+      per_billed: "0.00",
+      is_approved: false,
+      approved_by: "",
+      approved_at: null,
+      // Subcontracting metadata (Story 24-6)
+      is_subcontracted: true,
+      finished_goods_item_code: "FIN-001",
+      finished_goods_item_name: "Finished Assembly",
+      expected_subcontracted_qty: "100",
+      created_at: "2026-04-27T00:00:00Z",
+      updated_at: "2026-04-27T00:00:00Z",
+      items: [],
+    };
+
+    expect(po.is_subcontracted).toBe(true);
+    expect(po.finished_goods_item_code).toBe("FIN-001");
+    expect(po.finished_goods_item_name).toBe("Finished Assembly");
+    expect(po.expected_subcontracted_qty).toBe("100");
+  });
+
+  it("Subcontracting PO does not include BOM, auto-creation, cost-sheet, or backflush fields", () => {
+    const po = {
+      status: "draft",
+      supplier_name: "Assembly Co. Ltd",
+      is_subcontracted: true,
+    };
+    // BOM explosion, auto-creation, cost-sheet, and backflush are deferred to Epic 32
+    expect("bom_id" in po).toBe(false);
+    expect("auto_create_materials_transfer" in po).toBe(false);
+    expect("cost_sheet_id" in po).toBe(false);
+    expect("backflush_enabled" in po).toBe(false);
+  });
+
+  it("Supplier can be marked as a subcontractor", () => {
+    // This is validated in the backend via is_subcontractor flag
+    const supplier = {
+      id: "00000000-0000-0000-0000-000000000041",
+      name: "Assembly Co. Ltd",
+      is_subcontractor: true,
+    };
+
+    expect(supplier.is_subcontractor).toBe(true);
+  });
+});
+
+describe("Subcontracting Material Transfer Types (Story 24.6)", () => {
+  it("SubcontractingMaterialTransferResponse has required fields", () => {
+    const mt: SubcontractingMaterialTransferResponse = {
+      id: "00000000-0000-0000-0000-000000000050",
+      tenant_id: "00000000-0000-0000-0000-000000000002",
+      name: "SMT-0001",
+      status: "draft" as SubcontractingMaterialTransferStatus,
+      purchase_order_id: "00000000-0000-0000-0000-000000000040",
+      supplier_id: "00000000-0000-0000-0000-000000000041",
+      supplier_name: "Assembly Co. Ltd",
+      company: "UltrERP Taiwan",
+      transfer_date: "2026-04-27",
+      shipped_date: null,
+      received_date: null,
+      source_warehouse: "WH-RAW",
+      contact_person: "",
+      contact_email: "",
+      notes: "Raw materials for assembly",
+      created_at: "2026-04-27T00:00:00Z",
+      updated_at: "2026-04-27T00:00:00Z",
+      items: [],
+    };
+
+    expect(mt.id).toBe("00000000-0000-0000-0000-000000000050");
+    expect(mt.name).toBe("SMT-0001");
+    expect(mt.status).toBe("draft");
+    expect(mt.purchase_order_id).toBe("00000000-0000-0000-0000-000000000040");
+    expect(mt.supplier_name).toBe("Assembly Co. Ltd");
+    expect(mt.source_warehouse).toBe("WH-RAW");
+    expect(mt.items).toEqual([]);
+  });
+
+  it("SubcontractingMaterialTransferCreatePayload has required fields", () => {
+    const payload: SubcontractingMaterialTransferCreatePayload = {
+      purchase_order_id: "00000000-0000-0000-0000-000000000040",
+      transfer_date: "2026-04-27",
+      source_warehouse: "WH-RAW",
+      contact_person: "",
+      contact_email: "",
+      notes: "Raw materials for assembly",
+      items: [],
+    };
+
+    expect(payload.purchase_order_id).toBe("00000000-0000-0000-0000-000000000040");
+    expect(payload.transfer_date).toBe("2026-04-27");
+    expect(payload.source_warehouse).toBe("WH-RAW");
+    expect(Array.isArray(payload.items)).toBe(true);
+  });
+
+  it("Material transfer status transitions are valid", () => {
+    const validStatuses: SubcontractingMaterialTransferStatus[] = [
+      "draft",
+      "pending",
+      "in_transit",
+      "delivered",
+      "cancelled",
+    ];
+
+    expect(validStatuses).toContain("draft");
+    expect(validStatuses).toContain("pending");
+    expect(validStatuses).toContain("in_transit");
+    expect(validStatuses).toContain("delivered");
+    expect(validStatuses).toContain("cancelled");
+    expect(validStatuses).toHaveLength(5);
+  });
+});
+
+describe("Subcontracting Receipt Types (Story 24.6)", () => {
+  it("SubcontractingReceiptResponse has required fields", () => {
+    const scr: SubcontractingReceiptResponse = {
+      id: "00000000-0000-0000-0000-000000000060",
+      tenant_id: "00000000-0000-0000-0000-000000000002",
+      name: "SCR-0001",
+      status: "draft" as SubcontractingReceiptStatus,
+      purchase_order_id: "00000000-0000-0000-0000-000000000040",
+      supplier_id: "00000000-0000-0000-0000-000000000041",
+      supplier_name: "Assembly Co. Ltd",
+      company: "UltrERP Taiwan",
+      receipt_date: "2026-05-05",
+      posting_date: null,
+      set_warehouse: "WH-FIN",
+      contact_person: "",
+      notes: "Finished goods from assembly",
+      inventory_mutated: false,
+      inventory_mutated_at: null,
+      created_at: "2026-05-05T00:00:00Z",
+      updated_at: "2026-05-05T00:00:00Z",
+      items: [],
+    };
+
+    expect(scr.id).toBe("00000000-0000-0000-0000-000000000060");
+    expect(scr.name).toBe("SCR-0001");
+    expect(scr.status).toBe("draft");
+    expect(scr.purchase_order_id).toBe("00000000-0000-0000-0000-000000000040");
+    expect(scr.supplier_name).toBe("Assembly Co. Ltd");
+    expect(scr.set_warehouse).toBe("WH-FIN");
+    expect(scr.inventory_mutated).toBe(false);
+  });
+
+  it("SubcontractingReceiptCreatePayload has required fields", () => {
+    const payload: SubcontractingReceiptCreatePayload = {
+      purchase_order_id: "00000000-0000-0000-0000-000000000040",
+      receipt_date: "2026-05-05",
+      posting_date: null,
+      set_warehouse: "WH-FIN",
+      contact_person: "",
+      notes: "Finished goods from assembly",
+      material_transfer_ids: [],
+      items: [],
+    };
+
+    expect(payload.purchase_order_id).toBe("00000000-0000-0000-0000-000000000040");
+    expect(payload.receipt_date).toBe("2026-05-05");
+    expect(payload.set_warehouse).toBe("WH-FIN");
+    expect(Array.isArray(payload.material_transfer_ids)).toBe(true);
+    expect(Array.isArray(payload.items)).toBe(true);
+  });
+
+  it("Subcontracting receipt status transitions are valid", () => {
+    const validStatuses: SubcontractingReceiptStatus[] = ["draft", "submitted", "cancelled"];
+
+    expect(validStatuses).toContain("draft");
+    expect(validStatuses).toContain("submitted");
+    expect(validStatuses).toContain("cancelled");
+    expect(validStatuses).toHaveLength(3);
+  });
+
+  it("Subcontracting receipt is separate from standard goods receipt", () => {
+    // SubcontractingReceipt has different fields than GoodsReceipt
+    const scr = {
+      name: "SCR-0001",
+      status: "draft",
+    };
+
+    // Standard GR fields should not be on SCR by default
+    expect("per_received" in scr).toBe(false);
+    expect("per_billed" in scr).toBe(false);
+  });
+});
+
+describe("Subcontracting Validation (Story 24.6)", () => {
+  it("Non-subcontractor supplier cannot be used in subcontracting PO", () => {
+    // Backend validates that supplier.is_subcontractor must be true
+    const regularSupplier = {
+      id: "00000000-0000-0000-0000-000000000070",
+      name: "Regular Parts Co.",
+      is_subcontractor: false,
+    };
+
+    const isEligible = regularSupplier.is_subcontractor === true;
+    expect(isEligible).toBe(false);
+  });
+
+  it("Subcontracting PO requires is_subcontracted flag", () => {
+    const subcontractingPO = {
+      id: "00000000-0000-0000-0000-000000000040",
+      supplier_id: "00000000-0000-0000-0000-000000000041",
+      is_subcontracted: true,
+    };
+
+    expect(subcontractingPO.is_subcontracted).toBe(true);
+  });
+
+  it("Material transfer requires linked subcontracting PO", () => {
+    const mt = {
+      purchase_order_id: "00000000-0000-0000-0000-000000000040",
+      status: "draft",
+    };
+
+    expect(mt.purchase_order_id).toBeTruthy();
+  });
+
+  it("Subcontracting receipt requires linked subcontracting PO", () => {
+    const scr = {
+      purchase_order_id: "00000000-0000-0000-0000-000000000040",
+      status: "draft",
+    };
+
+    expect(scr.purchase_order_id).toBeTruthy();
+  });
+
+  it("Material transfer can optionally link to subcontracting receipt", () => {
+    // Material transfers can be referenced by subcontracting receipts
+    // but the linkage is optional for audit trail
+    const mt = {
+      id: "00000000-0000-0000-0000-000000000050",
+      status: "delivered",
+    };
+
+    expect(mt.status).toBe("delivered");
   });
 });

@@ -416,6 +416,19 @@ class PurchaseOrder(Base):
     # Landed cost reference: links to a landed cost allocation document
     landed_cost_reference_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
 
+    # ─────────────────────────────────────────────────────────────
+    # Subcontracting Metadata (Story 24-6)
+    # These fields are used when is_subcontracted is True to track
+    # the finished goods expected from the subcontractor.
+    # ─────────────────────────────────────────────────────────────
+    # Mark this PO as a subcontracting order
+    is_subcontracted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Finished goods item reference (the output expected from subcontractor)
+    finished_goods_item_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    finished_goods_item_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # Expected quantity of finished goods to be received
+    expected_subcontracted_qty: Mapped[Decimal | None] = mapped_column(Numeric(14, 3), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=UTC)
     )
@@ -433,6 +446,17 @@ class PurchaseOrder(Base):
         lazy="selectin",
     )
     goods_receipts: Mapped[list[GoodsReceipt]] = relationship(
+        back_populates="purchase_order",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    # Subcontracting relationships (Story 24-6)
+    material_transfers: Mapped[list[SubcontractingMaterialTransfer]] = relationship(
+        back_populates="purchase_order",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    subcontracting_receipts: Mapped[list[SubcontractingReceipt]] = relationship(
         back_populates="purchase_order",
         cascade="all, delete-orphan",
         lazy="selectin",
@@ -692,3 +716,289 @@ class GoodsReceiptItem(Base):
     )
 
     goods_receipt: Mapped[GoodsReceipt] = relationship(back_populates="items")
+
+
+# ------------------------------------------------------------------
+# Subcontracting Material Transfer (Story 24-6)
+# ------------------------------------------------------------------
+
+
+class SubcontractingMaterialTransfer(Base):
+    """Material Transfer - tracks materials sent to a subcontractor.
+
+    Created when materials are transferred from a source warehouse to a subcontractor
+    for processing. Tracks source warehouse, item, quantity, and transfer status.
+
+    Lifecycle: draft -> pending -> in_transit -> delivered -> cancelled
+    """
+
+    __tablename__ = "procurement_subcontracting_material_transfers"
+    __table_args__ = (
+        Index("ix_subcontracting_mt_tenant_status", "tenant_id", "status"),
+        Index("ix_subcontracting_mt_tenant_po", "tenant_id", "purchase_order_id"),
+        Index("ix_subcontracting_mt_tenant_supplier", "tenant_id", "supplier_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+
+    # Naming
+    name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="draft")
+
+    # PO linkage (subcontracting PO must have is_subcontracted=True)
+    purchase_order_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("procurement_purchase_orders.id"), nullable=False
+    )
+
+    # Supplier (subcontractor)
+    supplier_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    supplier_name: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+
+    # Company context
+    company: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+
+    # Transfer dates
+    transfer_date: Mapped[date] = mapped_column(Date, nullable=False)
+    shipped_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    received_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+    # Source warehouse (where materials are sent from)
+    source_warehouse: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+
+    # Contact
+    contact_person: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    contact_email: Mapped[str] = mapped_column(String(254), nullable=False, default="")
+
+    # Notes
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(tz=UTC),
+        onupdate=lambda: datetime.now(tz=UTC),
+    )
+
+    # Relationships
+    purchase_order: Mapped[PurchaseOrder] = relationship(back_populates="material_transfers")
+    items: Mapped[list[SubcontractingMaterialTransferItem]] = relationship(
+        back_populates="material_transfer",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+
+class SubcontractingMaterialTransferItem(Base):
+    """Line item on a Subcontracting Material Transfer.
+
+    Tracks individual items being sent to the subcontractor.
+    """
+
+    __tablename__ = "procurement_subcontracting_material_transfer_items"
+    __table_args__ = (
+        Index("ix_subcontracting_mt_items_transfer", "material_transfer_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    material_transfer_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("procurement_subcontracting_material_transfers.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+
+    # Stable display order
+    idx: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    # Item reference
+    item_code: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    item_name: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+    # Quantity being transferred
+    qty: Mapped[Decimal] = mapped_column(Numeric(14, 3), nullable=False, default=Decimal("0"))
+    uom: Mapped[str] = mapped_column(String(40), nullable=False, default="")
+
+    # Warehouse
+    warehouse: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=UTC)
+    )
+
+    material_transfer: Mapped[SubcontractingMaterialTransfer] = relationship(
+        back_populates="items"
+    )
+
+
+# ------------------------------------------------------------------
+# Subcontracting Receipt (Story 24-6)
+# ------------------------------------------------------------------
+
+
+class SubcontractingReceipt(Base):
+    """Subcontracting Receipt - records finished goods received from a subcontractor.
+
+    Created when finished output is received from a subcontractor.
+    Separate from standard GoodsReceipt to maintain audit trail for supplied-material work.
+
+    Lifecycle: draft -> submitted -> cancelled
+    """
+
+    __tablename__ = "procurement_subcontracting_receipts"
+    __table_args__ = (
+        Index("ix_subcontracting_receipt_tenant_status", "tenant_id", "status"),
+        Index("ix_subcontracting_receipt_tenant_po", "tenant_id", "purchase_order_id"),
+        Index("ix_subcontracting_receipt_tenant_supplier", "tenant_id", "supplier_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+
+    # Naming
+    name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="draft")
+
+    # PO linkage (subcontracting PO must have is_subcontracted=True)
+    purchase_order_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("procurement_purchase_orders.id"), nullable=False
+    )
+
+    # Supplier (subcontractor)
+    supplier_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    supplier_name: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+
+    # Company context
+    company: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+
+    # Dates
+    receipt_date: Mapped[date] = mapped_column(Date, nullable=False)
+    posting_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+    # Receiving warehouse (where finished goods are received)
+    set_warehouse: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+
+    # Contact
+    contact_person: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+
+    # Notes
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+    # Inventory mutation tracking
+    inventory_mutated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    inventory_mutated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(tz=UTC),
+        onupdate=lambda: datetime.now(tz=UTC),
+    )
+
+    # Relationships
+    purchase_order: Mapped[PurchaseOrder] = relationship(back_populates="subcontracting_receipts")
+    items: Mapped[list[SubcontractingReceiptItem]] = relationship(
+        back_populates="subcontracting_receipt",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    # Link to material transfers that were consumed
+    material_transfer_refs: Mapped[list[SubcontractingReceiptMaterialRef]] = relationship(
+        back_populates="subcontracting_receipt",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+
+class SubcontractingReceiptItem(Base):
+    """Line item on a Subcontracting Receipt.
+
+    Records finished goods received from the subcontractor.
+    """
+
+    __tablename__ = "procurement_subcontracting_receipt_items"
+    __table_args__ = (
+        Index("ix_subcontracting_receipt_items_receipt", "subcontracting_receipt_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    subcontracting_receipt_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("procurement_subcontracting_receipts.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+
+    # Stable display order
+    idx: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    # Finished goods item reference
+    item_code: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    item_name: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+    # Quantity received
+    accepted_qty: Mapped[Decimal] = mapped_column(Numeric(14, 3), nullable=False, default=Decimal("0"))
+    rejected_qty: Mapped[Decimal] = mapped_column(Numeric(14, 3), nullable=False, default=Decimal("0"))
+    total_qty: Mapped[Decimal] = mapped_column(Numeric(14, 3), nullable=False, default=Decimal("0"))
+
+    # UOM
+    uom: Mapped[str] = mapped_column(String(40), nullable=False, default="")
+
+    # Warehouse
+    warehouse: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+
+    # Unit rate from PO (for valuation)
+    unit_rate: Mapped[Decimal] = mapped_column(Numeric(14, 4), nullable=False, default=Decimal("0"))
+
+    # Exception handling
+    exception_notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    is_rejected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=UTC)
+    )
+
+    subcontracting_receipt: Mapped[SubcontractingReceipt] = relationship(
+        back_populates="items"
+    )
+
+
+class SubcontractingReceiptMaterialRef(Base):
+    """Reference linking a SubcontractingReceipt to the material transfers consumed.
+
+    Maintains audit trail of which material transfers were used for this receipt.
+    """
+
+    __tablename__ = "procurement_subcontracting_receipt_material_refs"
+    __table_args__ = (
+        Index("ix_subcontracting_receipt_ref_receipt", "subcontracting_receipt_id"),
+        Index("ix_subcontracting_receipt_ref_transfer", "material_transfer_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    subcontracting_receipt_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("procurement_subcontracting_receipts.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    material_transfer_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("procurement_subcontracting_material_transfers.id"),
+        nullable=False,
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=UTC)
+    )
+
+    subcontracting_receipt: Mapped[SubcontractingReceipt] = relationship(
+        back_populates="material_transfer_refs"
+    )
+    material_transfer: Mapped[SubcontractingMaterialTransfer] = relationship()
