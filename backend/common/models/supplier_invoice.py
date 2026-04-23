@@ -30,6 +30,18 @@ if TYPE_CHECKING:
 	from common.models.supplier_payment import SupplierPaymentAllocation
 
 
+class ProcurementMismatchStatus(str, enum.Enum):
+	"""Mismatch status for three-way-match readiness (Story 24-4).
+
+	Readiness signals only - no AP posting workflow is implemented here.
+	"""
+
+	NOT_CHECKED = "not_checked"
+	WITHIN_TOLERANCE = "within_tolerance"
+	OUTSIDE_TOLERANCE = "outside_tolerance"
+	REVIEW_REQUIRED = "review_required"
+
+
 class SupplierInvoiceStatus(str, enum.Enum):
 	OPEN = "open"
 	PAID = "paid"
@@ -75,6 +87,14 @@ class SupplierInvoice(Base):
 	)
 	notes: Mapped[str | None] = mapped_column(Text)
 	legacy_header_snapshot: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
+
+	# ------------------------------------------------------------------
+	# Procurement Lineage (Story 24-4) - header-level PO reference for navigation
+	# ------------------------------------------------------------------
+	purchase_order_id: Mapped[uuid.UUID | None] = mapped_column(
+		Uuid, nullable=True, index=True
+	)
+
 	created_at: Mapped[datetime] = mapped_column(
 		DateTime(timezone=True),
 		server_default=func.now(),
@@ -107,6 +127,8 @@ class SupplierInvoiceLine(Base):
 			"line_number",
 			unique=True,
 		),
+		Index("ix_supplier_invoice_lines_po_line", "purchase_order_line_id"),
+		Index("ix_supplier_invoice_lines_gr_line", "goods_receipt_line_id"),
 	)
 
 	id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
@@ -134,6 +156,52 @@ class SupplierInvoiceLine(Base):
 	tax_rate: Mapped[Decimal] = mapped_column(Numeric(6, 4), nullable=False)
 	tax_amount: Mapped[Decimal] = mapped_column(Numeric(20, 2), nullable=False)
 	total_amount: Mapped[Decimal] = mapped_column(Numeric(20, 2), nullable=False)
+
+	# ------------------------------------------------------------------
+	# Procurement Lineage (Story 24-4) - stable UUID references
+	# ------------------------------------------------------------------
+	rfq_item_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+	supplier_quotation_item_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+	purchase_order_line_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+	goods_receipt_line_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+
+	# ------------------------------------------------------------------
+	# Mismatch and Tolerance-Ready Structures (Story 24-4)
+	# ------------------------------------------------------------------
+	# Reference values from PO/receipt for comparison
+	reference_quantity: Mapped[Decimal | None] = mapped_column(Numeric(18, 3), nullable=True)
+	reference_unit_price: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
+	reference_total_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
+
+	# Variance fields (invoice_value - reference_value)
+	quantity_variance: Mapped[Decimal | None] = mapped_column(Numeric(18, 3), nullable=True)
+	unit_price_variance: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
+	total_amount_variance: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
+
+	# Variance as percentage (for quick review)
+	quantity_variance_pct: Mapped[Decimal | None] = mapped_column(Numeric(8, 4), nullable=True)
+	unit_price_variance_pct: Mapped[Decimal | None] = mapped_column(Numeric(8, 4), nullable=True)
+	total_amount_variance_pct: Mapped[Decimal | None] = mapped_column(Numeric(8, 4), nullable=True)
+
+	# Comparison basis snapshot (JSON for audit trail)
+	comparison_basis_snapshot: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
+
+	# Mismatch status
+	mismatch_status: Mapped[ProcurementMismatchStatus] = mapped_column(
+		Enum(
+			ProcurementMismatchStatus,
+			name="procurement_mismatch_status_enum",
+			values_callable=lambda enum_type: [member.value for member in enum_type],
+			create_constraint=True,
+		),
+		default=ProcurementMismatchStatus.NOT_CHECKED,
+		nullable=False,
+	)
+
+	# Tolerance rule reference (for audit explainability)
+	tolerance_rule_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
+	tolerance_rule_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+
 	created_at: Mapped[datetime] = mapped_column(
 		DateTime(timezone=True),
 		server_default=func.now(),

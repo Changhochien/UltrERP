@@ -1,8 +1,10 @@
 import { apiFetch } from "../apiFetch";
 import type {
   SupplierInvoice,
+  SupplierInvoiceWithLineage,
   SupplierInvoiceListResponse,
   SupplierInvoiceStatus,
+  LineageChainResponse,
 } from "../../domain/purchases/types";
 
 async function responseErrorMessage(
@@ -46,6 +48,46 @@ export async function fetchSupplierInvoice(invoiceId: string): Promise<SupplierI
     const fallback = resp.status === 404
       ? "Supplier invoice not found"
       : "Failed to load supplier invoice";
+    throw new Error(await responseErrorMessage(resp, fallback));
+  }
+  return resp.json();
+}
+
+/**
+ * Fetch supplier invoice with procurement lineage trace (Story 24-4).
+ * 
+ * Returns full lineage chain from RFQ through supplier quotation,
+ * PO, goods receipt, to supplier invoice for audit and three-way-match review.
+ * 
+ * Note: This is a readiness endpoint - no AP posting workflow is implemented.
+ */
+export async function fetchSupplierInvoiceWithLineage(invoiceId: string): Promise<SupplierInvoiceWithLineage> {
+  const resp = await apiFetch(
+    `/api/v1/purchases/supplier-invoices/${encodeURIComponent(invoiceId)}/lineage`,
+  );
+  if (!resp.ok) {
+    const fallback = resp.status === 404
+      ? "Supplier invoice not found"
+      : "Failed to load supplier invoice lineage";
+    throw new Error(await responseErrorMessage(resp, fallback));
+  }
+  return resp.json();
+}
+
+/**
+ * Fetch full lineage chain for a supplier invoice (Story 24-4).
+ * 
+ * Provides detailed lineage trace including upstream document references.
+ * Used for audit views and three-way-match review screens.
+ */
+export async function fetchSupplierInvoiceLineage(invoiceId: string): Promise<LineageChainResponse> {
+  const resp = await apiFetch(
+    `/api/v1/purchases/supplier-invoices/${encodeURIComponent(invoiceId)}/lineage-chain`,
+  );
+  if (!resp.ok) {
+    const fallback = resp.status === 404
+      ? "Supplier invoice not found"
+      : "Failed to load supplier invoice lineage chain";
     throw new Error(await responseErrorMessage(resp, fallback));
   }
   return resp.json();

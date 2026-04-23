@@ -366,3 +366,61 @@ export async function listReceiptsForPO(poId: string, params?: {
   if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to list receipts for PO"));
   return resp.json();
 }
+
+// ---------------------------------------------------------------------------
+// Procurement Lineage - Downstream Invoice Links (Story 24-4)
+// ---------------------------------------------------------------------------
+
+/**
+ * Invoices linked to a purchase order (Story 24-4).
+ */
+export interface POLineageResponse {
+  purchase_order_id: string;
+  purchase_order_name: string;
+  linked_invoices: {
+    invoice_id: string;
+    invoice_number: string;
+    invoice_date: string;
+    total_amount: string;
+    status: string;
+    linked_lines: number;
+  }[];
+}
+
+/**
+ * Invoices linked to a goods receipt line (Story 24-4).
+ */
+export interface GRLineageResponse {
+  goods_receipt_id: string;
+  goods_receipt_name: string;
+  linked_invoices: {
+    invoice_id: string;
+    invoice_number: string;
+    invoice_date: string;
+    total_amount: string;
+    status: string;
+    linked_lines: number;
+  }[];
+}
+
+/**
+ * Fetch downstream supplier invoices linked to a purchase order (Story 24-4).
+ * Allows procurement users to see what invoices reference their PO.
+ */
+export async function fetchPOLineage(poId: string): Promise<POLineageResponse> {
+  const resp = await apiFetch(`/api/v1/procurement/purchase-orders/${poId}/invoice-lineage`);
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to load PO invoice lineage"));
+  return resp.json();
+}
+
+/**
+ * Fetch downstream supplier invoices linked to a goods receipt line (Story 24-4).
+ * Allows procurement users to see what invoices reference their receipt.
+ */
+export async function fetchGRLineage(grId: string, grLineId: string): Promise<GRLineageResponse> {
+  const resp = await apiFetch(
+    `/api/v1/procurement/goods-receipts/${grId}/lines/${grLineId}/invoice-lineage`,
+  );
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to load GR invoice lineage"));
+  return resp.json();
+}

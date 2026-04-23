@@ -719,3 +719,156 @@ async def list_receipts_for_po(
         page_size=page_size,
         pages=math.ceil(total / page_size) if total else 0,
     )
+
+
+# ---------------------------------------------------------------------------
+# Procurement Lineage - Downstream Invoice Links (Story 24-4)
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/purchase-orders/{po_id}/invoice-lineage",
+    response_model=dict,
+    summary="Get downstream supplier invoices linked to a purchase order",
+    description="""
+    Returns supplier invoices that reference this purchase order via procurement lineage.
+    Allows procurement users to trace which invoices have been created against their PO.
+
+    **Story 24-4: Procurement Lineage and Three-Way-Match Readiness**
+
+    Note: This is a readiness endpoint - no AP posting workflow is implemented.
+    """,
+)
+async def get_po_invoice_lineage(
+    po_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> dict:
+    """Get downstream supplier invoices linked to a purchase order."""
+    tenant_id, _ = tenant_user
+
+    # Import here to avoid circular imports
+    from common.models.supplier_invoice import SupplierInvoice, SupplierInvoiceLine
+    from sqlalchemy import select, func
+    from sqlalchemy.orm import selectinload
+
+    async with db:
+        # Find all supplier invoices that reference this PO
+        result = await db.execute(
+            select(SupplierInvoice)
+            .options(selectinload(SupplierInvoice.lines))
+            .where(
+                SupplierInvoice.tenant_id == tenant_id,
+                SupplierInvoice.purchase_order_id == po_id,
+            )
+            .order_by(SupplierInvoice.invoice_date.desc())
+        )
+        invoices = result.scalars().unique().all()
+
+    linked_invoices = []
+    for inv in invoices:
+        # Count lines that reference PO lines
+        po_line_count = sum(
+            1 for line in inv.lines
+            if line.purchase_order_line_id is not None
+        )
+        linked_invoices.append({
+            "invoice_id": str(inv.id),
+            "invoice_number": inv.invoice_number,
+            "invoice_date": inv.invoice_date.isoformat(),
+            "total_amount": str(inv.total_amount),
+            "status": inv.status.value if hasattr(inv.status, "value") else str(inv.status),
+            "linked_lines": po_line_count,
+        })
+
+    # Fetch PO name
+    po_name = str(po_id)  # Fallback to ID if PO not found
+    from common.models.supplier_invoice import SupplierInvoice  # re-import for PO query
+    from domains.procurement.models import PurchaseOrder
+    async with db:
+        po_result = await db.execute(
+            select(PurchaseOrder.name).where(PurchaseOrder.id == po_id)
+        )
+        po_row = po_result.scalar_one_or_none()
+        if po_row:
+            po_name = po_row
+
+    return {
+        "purchase_order_id": str(po_id),
+        "purchase_order_name": po_name,
+        "linked_invoices": linked_invoices,
+    }
+
+
+@router.get(
+    "/goods-receipts/{gr_id}/lines/{gr_line_id}/invoice-lineage",
+    response_model=dict,
+    summary="Get downstream supplier invoices linked to a goods receipt line",
+    description="""
+    Returns supplier invoices that reference a specific goods receipt line via procurement lineage.
+    Allows procurement users to trace which invoices have been created against their receipt.
+
+    **Story 24-4: Procurement Lineage and Three-Way-Match Readiness**
+
+    Note: This is a readiness endpoint - no AP posting workflow is implemented.
+    """,
+)
+async def get_gr_line_invoice_lineage(
+    gr_id: uuid.UUID,
+    gr_line_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> dict:
+    """Get downstream supplier invoices linked to a goods receipt line."""
+    tenant_id, _ = tenant_user
+
+    from common.models.supplier_invoice import SupplierInvoice, SupplierInvoiceLine
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+
+    async with db:
+        # Find all supplier invoice lines that reference this GR line
+        result = await db.execute(
+            select(SupplierInvoice)
+            .options(selectinload(SupplierInvoice.lines))
+            .join(SupplierInvoiceLine)
+            .where(
+                SupplierInvoice.tenant_id == tenant_id,
+                SupplierInvoiceLine.goods_receipt_line_id == gr_line_id,
+            )
+            .order_by(SupplierInvoice.invoice_date.desc())
+        )
+        invoices = result.scalars().unique().all()
+
+    linked_invoices = []
+    for inv in invoices:
+        # Count lines that reference this GR line
+        gr_line_count = sum(
+            1 for line in inv.lines
+            if line.goods_receipt_line_id == gr_line_id
+        )
+        linked_invoices.append({
+            "invoice_id": str(inv.id),
+            "invoice_number": inv.invoice_number,
+            "invoice_date": inv.invoice_date.isoformat(),
+            "total_amount": str(inv.total_amount),
+            "status": inv.status.value if hasattr(inv.status, "value") else str(inv.status),
+            "linked_lines": gr_line_count,
+        })
+
+    # Fetch GR name
+    gr_name = str(gr_id)  # Fallback to ID if GR not found
+    from domains.procurement.models import GoodsReceipt
+    async with db:
+        gr_result = await db.execute(
+            select(GoodsReceipt.name).where(GoodsReceipt.id == gr_id)
+        )
+        gr_row = gr_result.scalar_one_or_none()
+        if gr_row:
+            gr_name = gr_row
+
+    return {
+        "goods_receipt_id": str(gr_id),
+        "goods_receipt_name": gr_name,
+        "linked_invoices": linked_invoices,
+    }

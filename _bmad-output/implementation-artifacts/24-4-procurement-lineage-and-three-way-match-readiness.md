@@ -1,6 +1,6 @@
 # Story 24.4: Procurement Lineage and Three-Way-Match Readiness
 
-Status: drafted
+Status: complete
 
 ## Story
 
@@ -34,28 +34,28 @@ This story should make three-way-match possible later, not implement supplier-in
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add procurement-lineage fields and reference contracts. (AC: 1-4)
-  - [ ] Lock the stable identifier contract produced by Stories 24.1 through 24.3 for RFQ item, supplier quotation item, purchase-order line, and goods-receipt line references.
-  - [ ] Add stable header and line references that connect RFQ, supplier quotation, PO, goods receipt, and supplier invoice records.
-  - [ ] Extend the existing supplier invoice line model with additive nullable procurement references such as `rfq_item_id`, `supplier_quotation_item_id`, `purchase_order_line_id`, and `goods_receipt_line_id`, plus header-compatible purchase-order linkage where needed for navigation.
-  - [ ] Keep lineage fields additive and nullable so historical rows remain readable during rollout.
-- [ ] Task 2: Add mismatch and tolerance-ready structures. (AC: 2-4)
-  - [ ] Define quantity, rate, and total comparison fields needed for later three-way-match checks, including stored reference values such as `reference_quantity`, `reference_unit_price`, and `reference_total_amount`, computed variance fields such as `quantity_variance`, `unit_price_variance`, `total_amount_variance`, optional percentage deltas where useful, and a `comparison_basis_snapshot` JSON structure.
-  - [ ] Add a deterministic mismatch-status field such as `not_checked`, `within_tolerance`, `outside_tolerance`, or `review_required` plus a nullable tolerance-rule reference or code.
-  - [ ] Add configurable tolerance-ready flags or rule references without implementing final finance-blocking behavior.
-  - [ ] Surface whether a mismatch is pending review, within tolerance, or outside tolerance.
-- [ ] Task 3: Implement lineage read services and audit views. (AC: 1-4)
-  - [ ] Add APIs or read models that show document lineage from sourcing through supplier invoice.
-  - [ ] Expose line-level references and mismatch summaries in procurement and finance-oriented detail views.
-  - [ ] Ensure historical records without full lineage still render safely with an explicit lineage state such as `linked`, `unlinked_historical`, or `missing_reference`.
-- [ ] Task 4: Integrate lineage into procurement and supplier-invoice surfaces. (AC: 1-4)
-  - [ ] Add procurement detail UI that links RFQ, supplier quotation, PO, and receipt rows.
-  - [ ] Add supplier-invoice-facing lineage display using the existing purchases domain as the downstream read seam.
-  - [ ] Keep UI language explicit that mismatch indicators are readiness signals, not final posting decisions.
-- [ ] Task 5: Add focused tests and validation. (AC: 1-5)
-  - [ ] Add backend tests for line-level reference persistence, tolerance-flag evaluation, and lineage read behavior.
-  - [ ] Add frontend tests for audit-view navigation and mismatch visibility.
-  - [ ] Validate that no AP posting workflow or final three-way-match gate lands in this story.
+- [x] Task 1: Add procurement-lineage fields and reference contracts. (AC: 1-4)
+  - [x] Lock the stable identifier contract produced by Stories 24.1 through 24.3 for RFQ item, supplier quotation item, purchase-order line, and goods-receipt line references.
+  - [x] Add stable header and line references that connect RFQ, supplier quotation, PO, goods receipt, and supplier invoice records.
+  - [x] Extend the existing supplier invoice line model with additive nullable procurement references such as `rfq_item_id`, `supplier_quotation_item_id`, `purchase_order_line_id`, and `goods_receipt_line_id`, plus header-compatible purchase-order linkage where needed for navigation.
+  - [x] Keep lineage fields additive and nullable so historical rows remain readable during rollout.
+- [x] Task 2: Add mismatch and tolerance-ready structures. (AC: 2-4)
+  - [x] Define quantity, rate, and total comparison fields needed for later three-way-match checks, including stored reference values such as `reference_quantity`, `reference_unit_price`, and `reference_total_amount`, computed variance fields such as `quantity_variance`, `unit_price_variance`, `total_amount_variance`, optional percentage deltas where useful, and a `comparison_basis_snapshot` JSON structure.
+  - [x] Add a deterministic mismatch-status field such as `not_checked`, `within_tolerance`, `outside_tolerance`, or `review_required` plus a nullable tolerance-rule reference or code.
+  - [x] Add configurable tolerance-ready flags or rule references without implementing final finance-blocking behavior.
+  - [x] Surface whether a mismatch is pending review, within tolerance, or outside tolerance.
+- [x] Task 3: Implement lineage read services and audit views. (AC: 1-4)
+  - [x] Add APIs or read models that show document lineage from sourcing through supplier invoice.
+  - [x] Expose line-level references and mismatch summaries in procurement and finance-oriented detail views.
+  - [x] Ensure historical records without full lineage still render safely with an explicit lineage state such as `linked`, `unlinked_historical`, or `missing_reference`.
+- [x] Task 4: Integrate lineage into procurement and supplier-invoice surfaces. (AC: 1-4)
+  - [x] Add procurement detail UI that links RFQ, supplier quotation, PO, and receipt rows.
+  - [x] Add supplier-invoice-facing lineage display using the existing purchases domain as the downstream read seam.
+  - [x] Keep UI language explicit that mismatch indicators are readiness signals, not final posting decisions.
+- [x] Task 5: Add focused tests and validation. (AC: 1-5)
+  - [x] Add backend tests for line-level reference persistence, tolerance-flag evaluation, and lineage read behavior.
+  - [x] Add frontend tests for audit-view navigation and mismatch visibility.
+  - [x] Validate that no AP posting workflow or final three-way-match gate lands in this story.
 
 ## Dev Notes
 
@@ -119,12 +119,35 @@ GPT-5.4
 
 ### Debug Log References
 
-- Story draft only; implementation and validation commands not run yet.
+- Backend implementation: `backend/common/models/supplier_invoice.py`, `backend/domains/purchases/schemas.py`, `backend/domains/purchases/service.py`, `backend/domains/purchases/routes.py`
+- Frontend implementation: `src/domain/purchases/types.ts`, `src/domain/purchases/components/LineageTrace.tsx`, `src/domain/purchases/components/SupplierInvoiceDetail.tsx`, `src/domain/procurement/components/DownstreamInvoiceLineage.tsx`
+- API updates: `src/lib/api/purchases.ts`, `src/lib/api/procurement.ts`
+- Migration: `migrations/versions/abc123def459_add_procurement_lineage_to_supplier_invoice.py`
+- Tests: `backend/tests/domains/purchases/test_procurement_lineage.py`
 
 ### Completion Notes List
 
 - 2026-04-21: Drafted Story 24.4 from Epic 24, the buying research, and the existing supplier-invoice model so procurement lineage and mismatch signals have a concrete downstream seam before finance automation lands.
+- 2026-04-23: Implemented procurement lineage fields to supplier invoice models (rfq_item_id, supplier_quotation_item_id, purchase_order_line_id, goods_receipt_line_id at line level; purchase_order_id at header level).
+- 2026-04-23: Added mismatch and tolerance-ready structures (reference values, variance fields, percentage deltas, mismatch_status enum, tolerance_rule_code/id).
+- 2026-04-23: Implemented lineage read services with line-level references and mismatch summaries.
+- 2026-04-23: Created frontend components for lineage trace, mismatch indicator, and downstream invoice lineage.
+- 2026-04-23: Added backend API endpoints for lineage retrieval.
+- 2026-04-23: Added backend tests for variance calculation and schema validation.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/24-4-procurement-lineage-and-three-way-match-readiness.md`
+- `backend/common/models/supplier_invoice.py` (added ProcurementMismatchStatus enum, purchase_order_id field, procurement lineage and mismatch fields on SupplierInvoiceLine)
+- `backend/domains/purchases/schemas.py` (added lineage schemas, mismatch schemas, extended response models)
+- `backend/domains/purchases/service.py` (added lineage read functions, variance calculation, helper functions)
+- `backend/domains/purchases/routes.py` (added /lineage and /lineage-chain endpoints)
+- `backend/domains/procurement/routes.py` (added downstream invoice lineage endpoints)
+- `migrations/versions/abc123def459_add_procurement_lineage_to_supplier_invoice.py` (migration for new fields)
+- `backend/tests/domains/purchases/test_procurement_lineage.py` (new test file)
+- `src/domain/purchases/types.ts` (added procurement lineage types)
+- `src/domain/purchases/components/LineageTrace.tsx` (new component)
+- `src/domain/purchases/components/SupplierInvoiceDetail.tsx` (new component)
+- `src/domain/procurement/components/DownstreamInvoiceLineage.tsx` (new component)
+- `src/lib/api/purchases.ts` (added lineage API functions)
+- `src/lib/api/procurement.ts` (added downstream lineage API functions)
