@@ -3,6 +3,9 @@
 import type {
   AwardCreatePayload,
   AwardResponse,
+  GoodsReceiptCreatePayload,
+  GoodsReceiptListResponse,
+  GoodsReceiptResponse,
   PurchaseOrderCreatePayload,
   PurchaseOrderListResponse,
   PurchaseOrderResponse,
@@ -291,5 +294,75 @@ export async function createPOFromAward(awardId: string): Promise<PurchaseOrderR
     method: "GET",
   });
   if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to create PO from award"));
+  return resp.json();
+}
+
+// ---------------------------------------------------------------------------
+// Goods Receipt API (Story 24-3)
+// ---------------------------------------------------------------------------
+
+export async function createGoodsReceipt(
+  payload: GoodsReceiptCreatePayload,
+): Promise<GoodsReceiptResponse> {
+  const resp = await apiFetch("/api/v1/procurement/goods-receipts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to create goods receipt"));
+  return resp.json();
+}
+
+export async function listGoodsReceipts(params?: {
+  purchase_order_id?: string;
+  status?: string;
+  q?: string;
+  page?: number;
+  page_size?: number;
+}): Promise<GoodsReceiptListResponse> {
+  const qs = new URLSearchParams();
+  if (params?.purchase_order_id) qs.set("purchase_order_id", params.purchase_order_id);
+  if (params?.status) qs.set("status", params.status);
+  if (params?.q) qs.set("q", params.q);
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.page_size) qs.set("page_size", String(params.page_size));
+  const resp = await apiFetch(`/api/v1/procurement/goods-receipts?${qs}`);
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to list goods receipts"));
+  return resp.json();
+}
+
+export async function getGoodsReceipt(grId: string): Promise<GoodsReceiptResponse> {
+  const resp = await apiFetch(`/api/v1/procurement/goods-receipts/${grId}`);
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to load goods receipt"));
+  return resp.json();
+}
+
+export async function submitGoodsReceipt(grId: string): Promise<GoodsReceiptResponse> {
+  const resp = await apiFetch(`/api/v1/procurement/goods-receipts/${grId}/submit`, {
+    method: "POST",
+  });
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to submit goods receipt"));
+  return resp.json();
+}
+
+export async function cancelGoodsReceipt(grId: string): Promise<GoodsReceiptResponse> {
+  const resp = await apiFetch(`/api/v1/procurement/goods-receipts/${grId}/cancel`, {
+    method: "POST",
+  });
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to cancel goods receipt"));
+  return resp.json();
+}
+
+export async function listReceiptsForPO(poId: string, params?: {
+  status?: string;
+  page?: number;
+  page_size?: number;
+}): Promise<GoodsReceiptListResponse> {
+  const qs = new URLSearchParams();
+  if (params?.status) qs.set("status", params.status);
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.page_size) qs.set("page_size", String(params.page_size));
+  const resp = await apiFetch(`/api/v1/procurement/purchase-orders/${poId}/receipts?${qs}`);
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to list receipts for PO"));
   return resp.json();
 }

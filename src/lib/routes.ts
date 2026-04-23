@@ -139,3 +139,20 @@ export function buildRFQDetailPath(rfqId: string): string {
 export const RFQ_LIST_ROUTE = PROCUREMENT_ROUTE;
 export const RFQ_CREATE_ROUTE = PROCUREMENT_RFQ_CREATE_ROUTE;
 export const RFQ_DETAIL_ROUTE = PROCUREMENT_RFQ_DETAIL_ROUTE;
+
+// Procurement Goods Receipt routes (story 24.3)
+export const PROCUREMENT_GOODS_RECEIPT_LIST_ROUTE = "/procurement/goods-receipts";
+export const PROCUREMENT_GOODS_RECEIPT_DETAIL_ROUTE = "/procurement/goods-receipts/:grId";
+export const PROCUREMENT_CREATE_GOODS_RECEIPT_ROUTE = "/procurement/purchase-orders/:poId/create-receipt";
+
+export const GOODS_RECEIPT_LIST_ROUTE = PROCUREMENT_GOODS_RECEIPT_LIST_ROUTE;
+export const GOODS_RECEIPT_DETAIL_ROUTE = PROCUREMENT_GOODS_RECEIPT_DETAIL_ROUTE;
+export const CREATE_GOODS_RECEIPT_ROUTE = PROCUREMENT_CREATE_GOODS_RECEIPT_ROUTE;
+
+export function buildGoodsReceiptDetailPath(grId: string): string {
+  return GOODS_RECEIPT_DETAIL_ROUTE.replace(":grId", encodeURIComponent(grId));
+}
+
+export function buildCreateGoodsReceiptPath(poId: string): string {
+  return CREATE_GOODS_RECEIPT_ROUTE.replace(":poId", encodeURIComponent(poId));
+}

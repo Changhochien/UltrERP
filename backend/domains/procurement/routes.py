@@ -575,3 +575,147 @@ async def create_po_from_award(
         errors = exc.errors if hasattr(exc, "errors") else [str(exc)]
         return JSONResponse(status_code=422, content=error_response(errors))
     return s.PurchaseOrderResponse.model_validate(po)
+
+
+# ---------------------------------------------------------------------------
+# Goods Receipt Routes (Story 24-3)
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/goods-receipts",
+    response_model=s.GoodsReceiptResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_goods_receipt(
+    data: s.GoodsReceiptCreate,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.GoodsReceiptResponse:
+    """Create a goods receipt against a purchase order.
+
+    Each line must link to a PO line via purchase_order_item_id.
+    Accepted and rejected quantities are validated to be non-negative.
+    """
+    tenant_id, current_user = tenant_user
+    try:
+        gr = await svc.create_goods_receipt(
+            db,
+            tenant_id=tenant_id,
+            data=data.model_dump(),
+            current_user=current_user,
+        )
+    except ValidationError as exc:
+        errors = exc.errors if hasattr(exc, "errors") else [str(exc)]
+        return JSONResponse(status_code=422, content=error_response(errors))
+    return s.GoodsReceiptResponse.model_validate(gr)
+
+
+@router.get("/goods-receipts", response_model=s.GoodsReceiptListResponse)
+async def list_goods_receipts(
+    purchase_order_id: uuid.UUID | None = None,
+    status: s.GoodsReceiptStatus | None = None,
+    q: str | None = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.GoodsReceiptListResponse:
+    """List goods receipts with optional filtering."""
+    tenant_id, _ = tenant_user
+    receipts, total = await svc.list_goods_receipts(
+        db, tenant_id,
+        purchase_order_id=purchase_order_id,
+        status=status.value if status else None,
+        q=q,
+        page=page,
+        page_size=page_size,
+    )
+    return s.GoodsReceiptListResponse(
+        items=[s.GoodsReceiptSummary.model_validate(r) for r in receipts],
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=math.ceil(total / page_size) if total else 0,
+    )
+
+
+@router.get("/goods-receipts/{gr_id}", response_model=s.GoodsReceiptResponse)
+async def get_goods_receipt(
+    gr_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.GoodsReceiptResponse:
+    """Get a single goods receipt with items."""
+    tenant_id, _ = tenant_user
+    try:
+        gr = await svc.get_goods_receipt(db, tenant_id, gr_id)
+    except ValidationError as exc:
+        errors = exc.errors if hasattr(exc, "errors") else [str(exc)]
+        status_code = 404 if any(
+            isinstance(e, dict) and e.get("field") == "gr_id" for e in errors
+        ) else 422
+        return JSONResponse(status_code=status_code, content=error_response(errors))
+    return s.GoodsReceiptResponse.model_validate(gr)
+
+
+@router.post("/goods-receipts/{gr_id}/submit", response_model=s.GoodsReceiptResponse)
+async def submit_goods_receipt(
+    gr_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.GoodsReceiptResponse:
+    """Submit a goods receipt to trigger inventory mutation and PO progress update."""
+    tenant_id, _ = tenant_user
+    try:
+        gr = await svc.submit_goods_receipt(db, tenant_id, gr_id)
+    except ValidationError as exc:
+        errors = exc.errors if hasattr(exc, "errors") else [str(exc)]
+        return JSONResponse(status_code=422, content=error_response(errors))
+    return s.GoodsReceiptResponse.model_validate(gr)
+
+
+@router.post("/goods-receipts/{gr_id}/cancel", response_model=s.GoodsReceiptResponse)
+async def cancel_goods_receipt(
+    gr_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.GoodsReceiptResponse:
+    """Cancel a goods receipt. Draft receipts are immediately cancelled.
+
+    Submitted receipts are cancelled and PO progress is recomputed.
+    """
+    tenant_id, _ = tenant_user
+    try:
+        gr = await svc.cancel_goods_receipt(db, tenant_id, gr_id)
+    except ValidationError as exc:
+        errors = exc.errors if hasattr(exc, "errors") else [str(exc)]
+        return JSONResponse(status_code=422, content=error_response(errors))
+    return s.GoodsReceiptResponse.model_validate(gr)
+
+
+@router.get("/purchase-orders/{po_id}/receipts", response_model=s.GoodsReceiptListResponse)
+async def list_receipts_for_po(
+    po_id: uuid.UUID,
+    status: s.GoodsReceiptStatus | None = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.GoodsReceiptListResponse:
+    """List all goods receipts for a specific purchase order."""
+    tenant_id, _ = tenant_user
+    receipts, total = await svc.list_goods_receipts(
+        db, tenant_id,
+        purchase_order_id=po_id,
+        status=status.value if status else None,
+        page=page,
+        page_size=page_size,
+    )
+    return s.GoodsReceiptListResponse(
+        items=[s.GoodsReceiptSummary.model_validate(r) for r in receipts],
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=math.ceil(total / page_size) if total else 0,
+    )

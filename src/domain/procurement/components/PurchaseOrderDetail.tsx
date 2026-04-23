@@ -414,25 +414,44 @@ export function PurchaseOrderDetail({ isNew = false, awardId, initialData }: Pur
       </div>
 
       {/* Actions */}
-      <div className="flex justify-end gap-3">
-        {canSubmit && (
-          <button
-            onClick={handleSubmit}
-            disabled={submitting}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            Submit for Approval
-          </button>
-        )}
-        {canHold && (
-          <button
-            onClick={handleHold}
-            disabled={submitting}
-            className="rounded-md bg-yellow-600 px-4 py-2 text-sm font-medium text-white hover:bg-yellow-700 disabled:opacity-50"
-          >
-            Hold
-          </button>
-        )}
+      <div className="flex justify-between">
+        <div className="flex gap-3">
+          {["submitted", "to_receive", "to_bill", "to_receive_and_bill", "on_hold"].includes(po.status) && (
+            <button
+              onClick={() => navigate(`/procurement/purchase-orders/${poId}/create-receipt`)}
+              className="rounded-md border border-green-600 bg-white px-4 py-2 text-sm font-medium text-green-600 hover:bg-green-50"
+            >
+              Create Receipt
+            </button>
+          )}
+          {poId && (
+            <button
+              onClick={() => navigate(`/procurement/goods-receipts?purchase_order_id=${poId}`)}
+              className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              View Receipts
+            </button>
+          )}
+        </div>
+        <div className="flex gap-3">
+          {canSubmit && (
+            <button
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              Submit for Approval
+            </button>
+          )}
+          {canHold && (
+            <button
+              onClick={handleHold}
+              disabled={submitting}
+              className="rounded-md bg-yellow-600 px-4 py-2 text-sm font-medium text-white hover:bg-yellow-700 disabled:opacity-50"
+            >
+              Hold
+            </button>
+          )}
         {canRelease && (
           <button
             onClick={handleRelease}
@@ -470,6 +489,7 @@ export function PurchaseOrderDetail({ isNew = false, awardId, initialData }: Pur
           </button>
         )}
       </div>
+    </div>
     </div>
   );
 }

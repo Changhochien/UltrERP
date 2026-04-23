@@ -406,6 +406,11 @@ class PurchaseOrder(Base):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
+    goods_receipts: Mapped[list[GoodsReceipt]] = relationship(
+        back_populates="purchase_order",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
 
 
 class PurchaseOrderItem(Base):
@@ -517,3 +522,147 @@ class ProcurementAward(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=UTC)
     )
+
+
+# ------------------------------------------------------------------
+# Goods Receipt (receiving inbound from suppliers)
+# ------------------------------------------------------------------
+
+
+class GoodsReceipt(Base):
+    """Goods Receipt - records what was actually received against a Purchase Order.
+
+    Created when a receiver processes inbound deliveries from a supplier.
+    Updates PO receipt progress and triggers inventory mutation from accepted quantities.
+
+    Linkage preserved for later supplier-invoice (Story 24-6) and procurement-lineage
+    stories without implementing them here.
+    """
+
+    __tablename__ = "procurement_goods_receipts"
+    __table_args__ = (
+        Index("ix_procurement_gr_tenant_status", "tenant_id", "status"),
+        Index("ix_procurement_gr_tenant_po", "tenant_id", "purchase_order_id"),
+        Index("ix_procurement_gr_tenant_supplier", "tenant_id", "supplier_id"),
+        # Unique constraint: only one GR per name per tenant
+        Index("uq_procurement_gr_name_tenant", "tenant_id", "name", unique=True),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+
+    # Naming
+    name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="draft")
+
+    # PO linkage
+    purchase_order_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("procurement_purchase_orders.id"), nullable=False
+    )
+
+    # Supplier reference
+    supplier_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    supplier_name: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+
+    # Company context
+    company: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+
+    # Dates
+    transaction_date: Mapped[date] = mapped_column(Date, nullable=False)
+    posting_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+    # Receiving warehouse context (default for lines)
+    set_warehouse: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+
+    # Contact
+    contact_person: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+
+    # Notes
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+    # Inventory mutation tracking
+    inventory_mutated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    inventory_mutated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(tz=UTC),
+        onupdate=lambda: datetime.now(tz=UTC),
+    )
+
+    # Relationships
+    purchase_order: Mapped[PurchaseOrder] = relationship(back_populates="goods_receipts")
+    items: Mapped[list[GoodsReceiptItem]] = relationship(
+        back_populates="goods_receipt",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+
+class GoodsReceiptItem(Base):
+    """Line item on a Goods Receipt with PO-line linkage and explicit accepted/rejected handling.
+
+    Stable UUID enables supplier-invoice lineage (Story 24-6) to reference receipt lines
+    without ambiguity.
+    """
+
+    __tablename__ = "procurement_goods_receipt_items"
+    __table_args__ = (
+        Index("ix_procurement_gr_items_receipt", "goods_receipt_id"),
+        Index("ix_procurement_gr_items_po_line", "purchase_order_item_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    goods_receipt_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("procurement_goods_receipts.id", ondelete="CASCADE"), nullable=False
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+
+    # Stable display order
+    idx: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    # PO line linkage (stable UUID from Story 24-2)
+    purchase_order_item_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("procurement_purchase_order_items.id"), nullable=False
+    )
+
+    # Item reference
+    item_code: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    item_name: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+    # Quantity handling (accepted + rejected = total received)
+    # Invariant: total_qty = accepted_qty + rejected_qty
+    accepted_qty: Mapped[Decimal] = mapped_column(Numeric(14, 3), nullable=False, default=Decimal("0"))
+    rejected_qty: Mapped[Decimal] = mapped_column(Numeric(14, 3), nullable=False, default=Decimal("0"))
+    total_qty: Mapped[Decimal] = mapped_column(Numeric(14, 3), nullable=False, default=Decimal("0"))
+
+    # UOM
+    uom: Mapped[str] = mapped_column(String(40), nullable=False, default="")
+
+    # Warehouse handling
+    warehouse: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    rejected_warehouse: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+
+    # Receiving metadata
+    batch_no: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    serial_no: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+
+    # Exception handling
+    exception_notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    is_rejected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    # Unit rate from PO (for valuation)
+    unit_rate: Mapped[Decimal] = mapped_column(Numeric(14, 4), nullable=False, default=Decimal("0"))
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=UTC)
+    )
+
+    goods_receipt: Mapped[GoodsReceipt] = relationship(back_populates="items")

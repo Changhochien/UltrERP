@@ -464,3 +464,98 @@ export interface PurchaseOrderListResponse {
   page_size: number;
   pages: number;
 }
+
+// ---------------------------------------------------------------------------
+// Goods Receipt Types (Story 24-3)
+// ---------------------------------------------------------------------------
+
+export type GoodsReceiptStatus = "draft" | "submitted" | "cancelled";
+
+export interface GRItemPayload {
+  purchase_order_item_id: string;
+  item_code: string;
+  item_name: string;
+  description: string;
+  accepted_qty: string;
+  rejected_qty: string;
+  uom: string;
+  warehouse: string;
+  rejected_warehouse: string;
+  batch_no: string;
+  serial_no: string;
+  exception_notes: string;
+  unit_rate: string;
+}
+
+export interface GRItemResponse {
+  id: string;
+  goods_receipt_id: string;
+  idx: number;
+  purchase_order_item_id: string;
+  item_code: string;
+  item_name: string;
+  description: string;
+  accepted_qty: string;
+  rejected_qty: string;
+  total_qty: string;
+  uom: string;
+  warehouse: string;
+  rejected_warehouse: string;
+  batch_no: string;
+  serial_no: string;
+  exception_notes: string;
+  is_rejected: boolean;
+  unit_rate: string;
+  created_at: string;
+}
+
+export interface GoodsReceiptCreatePayload {
+  purchase_order_id: string;
+  transaction_date: string;
+  posting_date?: string | null;
+  set_warehouse: string;
+  contact_person: string;
+  notes: string;
+  items: GRItemPayload[];
+}
+
+export interface GoodsReceiptResponse {
+  id: string;
+  tenant_id: string;
+  name: string;
+  status: GoodsReceiptStatus;
+  purchase_order_id: string;
+  supplier_id: string | null;
+  supplier_name: string;
+  company: string;
+  transaction_date: string;
+  posting_date: string | null;
+  set_warehouse: string;
+  contact_person: string;
+  notes: string;
+  inventory_mutated: boolean;
+  inventory_mutated_at: string | null;
+  created_at: string;
+  updated_at: string;
+  items: GRItemResponse[];
+}
+
+export interface GoodsReceiptSummary {
+  id: string;
+  name: string;
+  status: GoodsReceiptStatus;
+  purchase_order_id: string;
+  supplier_name: string;
+  transaction_date: string;
+  posting_date: string | null;
+  inventory_mutated: boolean;
+  created_at: string;
+}
+
+export interface GoodsReceiptListResponse {
+  items: GoodsReceiptSummary[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+}

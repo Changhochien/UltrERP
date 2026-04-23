@@ -58,6 +58,9 @@ import {
   PROCUREMENT_ROUTE,
   PROCUREMENT_RFQ_CREATE_ROUTE,
   PROCUREMENT_RFQ_DETAIL_ROUTE,
+  PROCUREMENT_GOODS_RECEIPT_LIST_ROUTE,
+  PROCUREMENT_GOODS_RECEIPT_DETAIL_ROUTE,
+  PROCUREMENT_CREATE_GOODS_RECEIPT_ROUTE,
   PURCHASES_ROUTE,
   SETTINGS_ROUTE,
   SUPPLIER_DETAIL_ROUTE,
@@ -96,6 +99,9 @@ import { PurchasesPage } from "./pages/PurchasesPage";
 import { RFQListPage } from "./pages/procurement/RFQListPage";
 import CreateRFQPage from "./pages/procurement/CreateRFQPage";
 import { RFQDetailPage } from "./pages/procurement/RFQDetailPage";
+import { GoodsReceiptListPage } from "./pages/procurement/GoodsReceiptListPage";
+import { GoodsReceiptDetailPage } from "./pages/procurement/GoodsReceiptDetailPage";
+import { CreateGoodsReceiptPage } from "./pages/procurement/CreateGoodsReceiptPage";
 import LoginPage from "./pages/LoginPage";
 import SettingsPage from "./pages/settings/SettingsPage";
 
@@ -624,6 +630,37 @@ export default function App() {
               <ProtectedAppRoute requiredFeature="procurement">
                 <RoutedPage>
                   <RFQDetailPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          {/* Goods Receipt Routes (Story 24-3) */}
+          <Route
+            path={PROCUREMENT_GOODS_RECEIPT_LIST_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="procurement">
+                <RoutedPage>
+                  <GoodsReceiptListPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={PROCUREMENT_GOODS_RECEIPT_DETAIL_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="procurement">
+                <RoutedPage>
+                  <GoodsReceiptDetailPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={PROCUREMENT_CREATE_GOODS_RECEIPT_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="procurement" requiredWrite>
+                <RoutedPage>
+                  <CreateGoodsReceiptPage />
                 </RoutedPage>
               </ProtectedAppRoute>
             }

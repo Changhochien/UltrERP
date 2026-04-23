@@ -20,6 +20,7 @@ from decimal import Decimal
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from common.errors import ValidationError
 from domains.procurement.models import (
@@ -31,6 +32,8 @@ from domains.procurement.models import (
     RFQSupplier,
     SupplierQuotation,
     SupplierQuotationItem,
+    GoodsReceipt,
+    GoodsReceiptItem,
 )
 
 # --------------------------------------------------------------------------
@@ -1014,3 +1017,360 @@ async def recompute_po_progress(
     await db.commit()
     await db.refresh(po)
     return po
+
+
+# --------------------------------------------------------------------------
+# Goods Receipt Service (Story 24-3)
+# --------------------------------------------------------------------------
+
+
+def _validate_gr_line_invariants(items: list[dict]) -> None:
+    """Validate that each GR line satisfies: total_qty = accepted_qty + rejected_qty."""
+    for item in items:
+        accepted = Decimal(str(item.get("accepted_qty", "0")))
+        rejected = Decimal(str(item.get("rejected_qty", "0")))
+        if accepted < 0 or rejected < 0:
+            raise ValidationError([{
+                "field": "qty",
+                "message": "Accepted and rejected quantities must be non-negative.",
+            }])
+        if accepted == 0 and rejected == 0:
+            raise ValidationError([{
+                "field": "qty",
+                "message": "At least one of accepted or rejected quantity must be greater than zero.",
+            }])
+
+
+def _compute_received_qty_for_po_item(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    po_item_id: uuid.UUID,
+) -> Decimal:
+    """Sum accepted_qty from all submitted GR items for a given PO line."""
+    result = db.execute(
+        select(func.coalesce(func.sum(GoodsReceiptItem.accepted_qty), Decimal("0")))
+        .select_from(GoodsReceiptItem)
+        .join(GoodsReceipt)
+        .where(
+            GoodsReceiptItem.purchase_order_item_id == po_item_id,
+            GoodsReceipt.tenant_id == tenant_id,
+            GoodsReceipt.status == "submitted",
+        )
+    )
+    return result.scalar() or Decimal("0")
+
+
+async def _update_po_line_received_qty(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    po_item_id: uuid.UUID,
+) -> None:
+    """Recompute received_qty for a single PO line from submitted GR coverage."""
+    result = await db.execute(
+        select(PurchaseOrderItem).where(
+            PurchaseOrderItem.id == po_item_id,
+            PurchaseOrderItem.purchase_order_id.in_(
+                select(PurchaseOrder.id).where(PurchaseOrder.tenant_id == tenant_id)
+            )
+        )
+    )
+    po_item = result.scalar_one_or_none()
+    if po_item:
+        po_item.received_qty = _compute_received_qty_for_po_item(db, tenant_id, po_item_id)
+
+
+async def _recompute_po_from_gr(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    po_id: uuid.UUID,
+) -> None:
+    """Recompute all PO line received quantities and PO per_received."""
+    # Get all PO items
+    result = await db.execute(
+        select(PurchaseOrderItem).where(PurchaseOrderItem.purchase_order_id == po_id)
+    )
+    po_items = list(result.scalars().all())
+
+    for po_item in po_items:
+        po_item.received_qty = _compute_received_qty_for_po_item(db, tenant_id, po_item.id)
+
+    # Recompute PO progress
+    po = await get_purchase_order(db, tenant_id, po_id)
+    po.per_received, po.per_billed = _compute_progress(po)
+
+    if po.is_approved and po.status not in ("on_hold", "cancelled", "closed"):
+        po.status = await _derive_po_status(po)
+
+
+async def create_goods_receipt(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    data: dict,
+    current_user: str = "",
+) -> GoodsReceipt:
+    """Create a goods receipt against a purchase order.
+
+    Validates:
+    - PO exists and is in a valid status for receiving
+    - Each GR line links to a valid PO line
+    - Quantity invariants (accepted + rejected = total, non-negative)
+    """
+    today = date.today()
+    transaction_date = data.get("transaction_date", today)
+    if isinstance(transaction_date, str):
+        transaction_date = date.fromisoformat(transaction_date)
+
+    po_id = data.get("purchase_order_id")
+    if not po_id:
+        raise ValidationError([{"field": "purchase_order_id", "message": "Purchase order ID is required."}])
+
+    # Fetch PO to get supplier context
+    po = await get_purchase_order(db, tenant_id, uuid.UUID(str(po_id)))
+
+    if po.status not in ("submitted", "to_receive", "to_bill", "to_receive_and_bill", "on_hold"):
+        raise ValidationError([{
+            "field": "purchase_order_id",
+            "message": f"Cannot receive against PO in status '{po.status}'.",
+        }])
+
+    # Validate line items
+    items_data = data.get("items", [])
+    if not items_data:
+        raise ValidationError([{"field": "items", "message": "At least one item is required."}])
+
+    _validate_gr_line_invariants(items_data)
+
+    # Generate GR name
+    count_q = select(func.count()).select_from(GoodsReceipt).where(
+        GoodsReceipt.tenant_id == tenant_id
+    )
+    result = await db.execute(count_q)
+    count = result.scalar() or 0
+    name = f"GR-{count + 1:04d}"
+
+    gr = GoodsReceipt(
+        tenant_id=tenant_id,
+        name=name,
+        status="draft",
+        purchase_order_id=po.id,
+        supplier_id=po.supplier_id,
+        supplier_name=po.supplier_name,
+        company=po.company,
+        transaction_date=transaction_date,
+        posting_date=data.get("posting_date") or transaction_date,
+        set_warehouse=data.get("set_warehouse", po.set_warehouse),
+        contact_person=data.get("contact_person", ""),
+        notes=data.get("notes", ""),
+        inventory_mutated=False,
+        inventory_mutated_at=None,
+    )
+    db.add(gr)
+    await db.flush()
+
+    # Create GR items
+    for idx, item_data in enumerate(items_data):
+        po_line_id = item_data.get("purchase_order_item_id")
+        if not po_line_id:
+            raise ValidationError([{"field": "purchase_order_item_id", "message": "PO line ID is required."}])
+
+        # Validate PO line exists and belongs to this PO
+        po_line_result = await db.execute(
+            select(PurchaseOrderItem).where(
+                PurchaseOrderItem.id == uuid.UUID(str(po_line_id)),
+                PurchaseOrderItem.purchase_order_id == po.id,
+            )
+        )
+        po_line = po_line_result.scalar_one_or_none()
+        if not po_line:
+            raise ValidationError([{
+                "field": "purchase_order_item_id",
+                "message": f"PO line {po_line_id} not found or does not belong to this PO.",
+            }])
+
+        accepted_qty = Decimal(str(item_data.get("accepted_qty", "0")))
+        rejected_qty = Decimal(str(item_data.get("rejected_qty", "0")))
+        total_qty = accepted_qty + rejected_qty
+
+        # Validate against remaining PO line quantity
+        remaining_qty = po_line.qty - po_line.received_qty
+        if total_qty > remaining_qty:
+            raise ValidationError([{
+                "field": "accepted_qty",
+                "message": f"Total qty {total_qty} exceeds remaining PO qty {remaining_qty} for item {po_line.item_code}.",
+            }])
+
+        gr_item = GoodsReceiptItem(
+            tenant_id=tenant_id,
+            goods_receipt_id=gr.id,
+            idx=idx,
+            purchase_order_item_id=po_line.id,
+            item_code=item_data.get("item_code", po_line.item_code),
+            item_name=item_data.get("item_name", po_line.item_name),
+            description=item_data.get("description", po_line.description),
+            accepted_qty=accepted_qty,
+            rejected_qty=rejected_qty,
+            total_qty=total_qty,
+            uom=item_data.get("uom", po_line.uom),
+            warehouse=item_data.get("warehouse", po_line.warehouse) or gr.set_warehouse,
+            rejected_warehouse=item_data.get("rejected_warehouse", ""),
+            batch_no=item_data.get("batch_no", ""),
+            serial_no=item_data.get("serial_no", ""),
+            exception_notes=item_data.get("exception_notes", ""),
+            is_rejected=rejected_qty > 0,
+            unit_rate=Decimal(str(item_data.get("unit_rate", po_line.unit_rate))),
+        )
+        db.add(gr_item)
+
+    await db.commit()
+    await db.refresh(gr)
+    return gr
+
+
+async def get_goods_receipt(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    gr_id: uuid.UUID,
+) -> GoodsReceipt:
+    """Fetch a single goods receipt with items (eager loaded)."""
+    result = await db.execute(
+        select(GoodsReceipt)
+        .options(selectinload(GoodsReceipt.items))
+        .where(
+            GoodsReceipt.id == gr_id,
+            GoodsReceipt.tenant_id == tenant_id,
+        )
+    )
+    gr = result.scalar_one_or_none()
+    if not gr:
+        raise ValidationError([{"field": "gr_id", "message": f"Goods receipt {gr_id} not found."}])
+    return gr
+
+
+async def list_goods_receipts(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    *,
+    purchase_order_id: uuid.UUID | None = None,
+    status: str | None = None,
+    q: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+) -> tuple[list[GoodsReceipt], int]:
+    """List goods receipts with optional filtering."""
+    query = select(GoodsReceipt).where(GoodsReceipt.tenant_id == tenant_id)
+    count_query = select(func.count()).select_from(GoodsReceipt).where(
+        GoodsReceipt.tenant_id == tenant_id
+    )
+
+    if purchase_order_id:
+        query = query.where(GoodsReceipt.purchase_order_id == purchase_order_id)
+        count_query = count_query.where(GoodsReceipt.purchase_order_id == purchase_order_id)
+    if status:
+        query = query.where(GoodsReceipt.status == status)
+        count_query = count_query.where(GoodsReceipt.status == status)
+    if q:
+        q_filter = GoodsReceipt.name.ilike(f"%{q}%")
+        query = query.where(q_filter)
+        count_query = count_query.where(q_filter)
+
+    query = query.order_by(GoodsReceipt.created_at.desc())
+    query = query.offset((page - 1) * page_size).limit(page_size)
+
+    result = await db.execute(query)
+    receipts = list(result.scalars().all())
+
+    count_result = await db.execute(count_query)
+    total = count_result.scalar() or 0
+
+    return receipts, total
+
+
+async def submit_goods_receipt(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    gr_id: uuid.UUID,
+) -> GoodsReceipt:
+    """Submit a goods receipt - triggers inventory mutation and PO progress update.
+
+    Validates:
+    - GR is in draft status
+    - At least one item has positive accepted or rejected quantity
+    - PO is in a valid receiving status
+
+    After submission:
+    - Sets inventory_mutated = True
+    - Calls _recompute_po_from_gr to update PO received quantities and progress
+    """
+    gr = await get_goods_receipt(db, tenant_id, gr_id)
+
+    if gr.status != "draft":
+        msg = f"Cannot submit goods receipt in status '{gr.status}'."
+        raise ValidationError([{"field": "status", "message": msg}])
+
+    if not gr.items:
+        raise ValidationError([{"field": "items", "message": "Goods receipt must have at least one item."}])
+
+    # Check PO status
+    po = await get_purchase_order(db, tenant_id, gr.purchase_order_id)
+    if po.status not in ("submitted", "to_receive", "to_bill", "to_receive_and_bill", "on_hold"):
+        raise ValidationError([{
+            "field": "status",
+            "message": f"Cannot submit receipt: PO is in status '{po.status}'.",
+        }])
+
+    gr.status = "submitted"
+    gr.inventory_mutated = True
+    gr.inventory_mutated_at = datetime.now(tz=UTC)
+
+    # Recompute PO received quantities from all submitted GRs
+    await _recompute_po_from_gr(db, tenant_id, gr.purchase_order_id)
+
+    await db.commit()
+    await db.refresh(gr)
+    return gr
+
+
+async def cancel_goods_receipt(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    gr_id: uuid.UUID,
+) -> GoodsReceipt:
+    """Cancel a goods receipt.
+
+    Only draft receipts can be cancelled.
+    Cancelled receipts recompute PO progress from remaining submitted receipts.
+    """
+    gr = await get_goods_receipt(db, tenant_id, gr_id)
+
+    if gr.status not in ("draft", "submitted"):
+        msg = f"Cannot cancel goods receipt in status '{gr.status}'."
+        raise ValidationError([{"field": "status", "message": msg}])
+
+    po_id = gr.purchase_order_id
+    previous_status = gr.status
+
+    gr.status = "cancelled"
+
+    # If was submitted, recompute PO progress from remaining receipts
+    if previous_status == "submitted":
+        gr.inventory_mutated = False
+        await _recompute_po_from_gr(db, tenant_id, po_id)
+
+    await db.commit()
+    await db.refresh(gr)
+    return gr
+
+
+async def list_receipts_for_po(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    po_id: uuid.UUID,
+) -> list[GoodsReceipt]:
+    """List all goods receipts for a specific purchase order."""
+    receipts, _ = await list_goods_receipts(
+        db, tenant_id,
+        purchase_order_id=po_id,
+        page=1,
+        page_size=100,
+    )
+    return receipts

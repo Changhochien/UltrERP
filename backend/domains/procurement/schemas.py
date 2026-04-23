@@ -594,3 +594,138 @@ class RFQComparisonResponse(BaseModel):
     status: str
     items: list[RFQItemResponse]
     quotations: list[SupplierComparisonRow]
+
+
+# ------------------------------------------------------------------
+# Goods Receipt Schemas
+# ------------------------------------------------------------------
+
+
+class GoodsReceiptStatus(StrEnum):
+    DRAFT = "draft"
+    SUBMITTED = "submitted"
+    CANCELLED = "cancelled"
+
+
+class GRItemCreate(BaseModel):
+    """Create a goods receipt line from PO line data."""
+
+    purchase_order_item_id: uuid.UUID
+    item_code: str = Field(default="", max_length=100)
+    item_name: str = Field(default="", max_length=200)
+    description: str = Field(default="", max_length=2000)
+    accepted_qty: Decimal = Field(default=Decimal("0"), ge=Decimal("0"), decimal_places=3)
+    rejected_qty: Decimal = Field(default=Decimal("0"), ge=Decimal("0"), decimal_places=3)
+    uom: str = Field(default="", max_length=40)
+    warehouse: str = Field(default="", max_length=120)
+    rejected_warehouse: str = Field(default="", max_length=120)
+    batch_no: str = Field(default="", max_length=100)
+    serial_no: str = Field(default="", max_length=100)
+    exception_notes: str = Field(default="", max_length=2000)
+    unit_rate: Decimal = Field(default=Decimal("0"), ge=Decimal("0"), decimal_places=4)
+
+
+class GRItemResponse(BaseModel):
+    """Response schema for a goods receipt line."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    goods_receipt_id: uuid.UUID
+    idx: int
+    purchase_order_item_id: uuid.UUID
+    item_code: str
+    item_name: str
+    description: str
+    accepted_qty: Decimal
+    rejected_qty: Decimal
+    total_qty: Decimal
+    uom: str
+    warehouse: str
+    rejected_warehouse: str
+    batch_no: str
+    serial_no: str
+    exception_notes: str
+    is_rejected: bool
+    unit_rate: Decimal
+    created_at: datetime
+
+
+class GoodsReceiptCreate(BaseModel):
+    """Create a goods receipt against a purchase order."""
+
+    purchase_order_id: uuid.UUID
+    transaction_date: date
+    posting_date: date | None = None
+    set_warehouse: str = Field(default="", max_length=120)
+    contact_person: str = Field(default="", max_length=120)
+    notes: str = Field(default="", max_length=5000)
+    items: list[GRItemCreate] = Field(default_factory=list)
+
+
+class GoodsReceiptUpdate(BaseModel):
+    """Update a draft goods receipt."""
+
+    transaction_date: date | None = None
+    posting_date: date | None = None
+    set_warehouse: str | None = Field(default=None, max_length=120)
+    contact_person: str | None = Field(default=None, max_length=120)
+    notes: str | None = Field(default=None, max_length=5000)
+
+
+class GoodsReceiptResponse(BaseModel):
+    """Full response schema for a goods receipt."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    name: str
+    status: str
+    purchase_order_id: uuid.UUID
+    supplier_id: uuid.UUID | None
+    supplier_name: str
+    company: str
+    transaction_date: date
+    posting_date: date | None
+    set_warehouse: str
+    contact_person: str
+    notes: str
+    inventory_mutated: bool
+    inventory_mutated_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+    items: list[GRItemResponse] = Field(default_factory=list)
+
+
+class GoodsReceiptListParams(BaseModel):
+    purchase_order_id: uuid.UUID | None = None
+    status: GoodsReceiptStatus | None = None
+    q: str | None = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=100)
+
+
+class GoodsReceiptSummary(BaseModel):
+    """Summary view for listing."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    status: str
+    purchase_order_id: uuid.UUID
+    supplier_name: str
+    transaction_date: date
+    posting_date: date | None
+    inventory_mutated: bool
+    created_at: datetime
+
+
+class GoodsReceiptListResponse(BaseModel):
+    items: list[GoodsReceiptSummary]
+    total: int
+    page: int
+    page_size: int
+    pages: int
