@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ChevronDown, ChevronRight, LogOut } from "lucide-react";
+import { ChevronDown, ChevronRight, FileBarChart, LogOut, Settings } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
@@ -133,6 +133,7 @@ export function AppNavigation() {
                             sectionId={sectionId}
                             isCollapsed={collapsed}
                             onToggle={() => toggleSection(sectionId)}
+                            icon={section.type === 'reports' ? FileBarChart : section.type === 'setup' ? Settings : undefined}
                           />
                         )}
                         {/* Only render items if not collapsed */}
@@ -156,7 +157,7 @@ export function AppNavigation() {
                                             "group flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm font-medium transition-all duration-150",
                                             showLabel ? `justify-start ${indentClass}` : "justify-center px-0",
                                             isActive
-                                              ? "border-sidebar-accent/50 bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
+                                              ? "border-sidebar-accent/50 bg-sidebar-accent text-sidebar-accent-foreground shadow-sm [&_.nav-chevron]:text-sidebar-accent-foreground [&_.nav-chevron]:opacity-100"
                                               : isQuickAction
                                                 ? "border-sidebar-accent/20 bg-sidebar-accent/10 text-sidebar-accent hover:border-sidebar-accent/40 hover:bg-sidebar-accent/30 hover:text-sidebar-accent"
                                                 : "border-transparent text-sidebar-foreground/90 hover:border-sidebar-accent/30 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
@@ -167,7 +168,7 @@ export function AppNavigation() {
                                         {showLabel ? (
                                           <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
                                             <span className="truncate">{t(item.label)}</span>
-                                            <ChevronRight className="size-3.5 text-sidebar-foreground/50 transition-transform group-hover:translate-x-0.5" />
+                                            <ChevronRight className="nav-chevron size-3.5 text-sidebar-foreground/50 opacity-30 transition-all duration-150 group-hover:translate-x-0.5 group-hover:opacity-60" />
                                           </span>
                                         ) : null}
                                       </NavLink>

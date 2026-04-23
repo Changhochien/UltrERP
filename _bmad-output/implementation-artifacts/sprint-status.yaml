@@ -1307,7 +1307,7 @@ last_updated: "2026-04-22"
 
   # Epic 38 - Navigation Sidebar Enhancement
   epic-38:
-    status: "backlog"
+    status: "in-progress"
     validation_note: "Epic 38 adds report section grouping, collapsible sections, and expanded module organization to the navigation sidebar based on ERPNext workspace patterns. Maintains UltrERP's permission-based filtering and i18n strengths."
     stories:
       38-1-nav-sidebar-grouping:
@@ -1332,11 +1332,11 @@ last_updated: "2026-04-22"
         validation: "Implemented quick actions section with Create Lead, Create Opportunity, Create Invoice, New Order shortcuts. All tests pass (327/327), TypeScript clean, ESLint clean. Simplification applied to getSectionIndentClass logic."
         prerequisites: ["38.1"]
       38-4-nav-visual-polish:
-        status: "backlog"
+        status: "review"
         story_id: "38.4"
         title: "Navigation Visual Polish"
-        story_file: ""
-        validation: ""
+        story_file: "38-4-nav-visual-polish.md"
+        validation: "TypeScript clean, ESLint clean, 327/327 tests pass"
         prerequisites: ["38.1", "38.2"]
 
 last_updated: "2026-04-22"

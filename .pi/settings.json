@@ -4,6 +4,7 @@
 
   "defaultModel": "MiniMax-M2.7-highspeed",
   "defaultThinkingLevel": "high",
+  "agentScope": "both",
 
   "skills": [
     ".agents/skills",

@@ -1,5 +1,6 @@
 import * as React from "react";
-import { ChevronDown, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ChevronDown, FileBarChart, PanelLeftClose, PanelLeftOpen, Settings } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 import { useSidebar, SidebarProvider } from "../../hooks/useSidebar";
 import { cn } from "../../lib/utils";
@@ -106,10 +107,11 @@ interface SidebarSectionHeaderProps extends React.HTMLAttributes<HTMLDivElement>
   sectionId: string;
   isCollapsed?: boolean;
   onToggle?: () => void;
+  icon?: LucideIcon;
 }
 
 const SidebarSectionHeader = React.forwardRef<HTMLDivElement, SidebarSectionHeaderProps>(
-  ({ label, sectionType, sectionId: _sectionId, isCollapsed = false, onToggle, className, ...props }, ref) => {
+  ({ label, sectionType, sectionId: _sectionId, isCollapsed = false, onToggle, className, icon, ...props }, ref) => {
     const { open, openMobile, isMobile } = useSidebar();
     const showLabel = isMobile ? openMobile : open;
 
@@ -144,22 +146,31 @@ const SidebarSectionHeader = React.forwardRef<HTMLDivElement, SidebarSectionHead
       );
     }
 
+    // Determine icon based on section type if not provided
+    const SectionIcon = icon || (sectionType === 'reports' ? FileBarChart : sectionType === 'setup' ? Settings : null);
+
+    // Reports and Setup sections: uppercase with tracking
+    const isIndentedSection = sectionType === 'reports' || sectionType === 'setup';
+
     return (
       <div
         ref={ref}
         onClick={onToggle}
         className={cn(
-          "mb-1 mt-3 flex w-full cursor-pointer items-center justify-between px-2 text-[11px] font-normal normal-case tracking-wide",
-          "text-sidebar-foreground/70",
+          "mb-1 mt-3 flex w-full cursor-pointer items-center gap-1.5 px-2 text-[11px]",
+          isIndentedSection
+            ? "font-semibold uppercase tracking-[0.2em] text-sidebar-foreground/60"
+            : "font-normal normal-case tracking-wide text-sidebar-foreground/70",
           className,
         )}
         {...props}
       >
+        {SectionIcon && <SectionIcon className="size-3" />}
         <span>{label}</span>
         <ChevronDown
           size={12}
           className={cn(
-            "text-sidebar-foreground/50 transition-transform duration-200",
+            "ml-auto text-sidebar-foreground/50 transition-transform duration-200",
             isCollapsed ? "-rotate-90" : "rotate-0",
           )}
         />
