@@ -43,45 +43,75 @@ from domains.procurement.models import (
 # Supplier Control Result Types (Story 24-5)
 # --------------------------------------------------------------------------
 
+from dataclasses import dataclass, asdict
 
+
+@dataclass
 class SupplierControlResult:
-    """Result of supplier control check.
+    """Result of supplier control check."""
+    is_blocked: bool = False
+    is_warned: bool = False
+    reason: str = ""
+    supplier_name: str = ""
+    controls: dict | None = None
 
-    Attributes:
-        is_blocked: True if the workflow should be blocked
-        is_warned: True if a warning should be shown
-        reason: Human-readable explanation
-        supplier_name: Name of the supplier checked
-        controls: Raw control flags from the supplier
-    """
-
-    def __init__(
-        self,
-        is_blocked: bool = False,
-        is_warned: bool = False,
-        reason: str = "",
-        supplier_name: str = "",
-        controls: dict | None = None,
-    ):
-        self.is_blocked = is_blocked
-        self.is_warned = is_warned
-        self.reason = reason
-        self.supplier_name = supplier_name
-        self.controls = controls or {}
+    def __post_init__(self):
+        if self.controls is None:
+            self.controls = {}
 
     def to_dict(self) -> dict:
-        return {
-            "is_blocked": self.is_blocked,
-            "is_warned": self.is_warned,
-            "reason": self.reason,
-            "supplier_name": self.supplier_name,
-            "controls": self.controls,
-        }
+        return asdict(self)
 
 
 # --------------------------------------------------------------------------
 # Supplier Control Functions (Story 24-5)
 # --------------------------------------------------------------------------
+
+
+async def _check_supplier_controls(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    supplier_id: uuid.UUID | None,
+    supplier_name: str,
+    control_type: str,  # "rfq" or "po"
+) -> SupplierControlResult:
+    """Generic supplier control check - fetches supplier and applies control type."""
+    if not supplier_id:
+        return SupplierControlResult(supplier_name=supplier_name)
+
+    supplier = (await db.execute(
+        select(Supplier).where(
+            Supplier.id == supplier_id,
+            Supplier.tenant_id == tenant_id,
+        )
+    )).scalar_one_or_none()
+
+    if not supplier:
+        return SupplierControlResult(supplier_name=supplier_name)
+
+    # Get controls based on type
+    controls = supplier.get_rfq_controls() if control_type == "rfq" else supplier.get_po_controls()
+    is_blocked, is_warned, reason = controls
+
+    # Build control flags based on type
+    base_controls = {
+        "on_hold": supplier.on_hold,
+        "hold_type": supplier.hold_type,
+        "release_date": str(supplier.release_date) if supplier.release_date else None,
+        "scorecard_standing": supplier.scorecard_standing,
+    }
+    type_controls = {
+        "rfq": {"warn_rfqs": supplier.warn_rfqs, "prevent_rfqs": supplier.prevent_rfqs},
+        "po": {"warn_pos": supplier.warn_pos, "prevent_pos": supplier.prevent_pos},
+    }[control_type]
+
+    return SupplierControlResult(
+        is_blocked=is_blocked,
+        is_warned=is_warned,
+        reason=reason,
+        supplier_name=supplier.name,
+        controls={**base_controls, **type_controls},
+    )
 
 
 async def check_supplier_rfq_controls(
@@ -90,47 +120,8 @@ async def check_supplier_rfq_controls(
     supplier_id: uuid.UUID | None,
     supplier_name: str = "",
 ) -> SupplierControlResult:
-    """Check supplier controls for RFQ workflow.
-
-    Args:
-        db: Database session
-        tenant_id: Tenant UUID
-        supplier_id: Supplier UUID (optional)
-        supplier_name: Supplier name fallback if supplier_id not provided
-
-    Returns:
-        SupplierControlResult with block/warn status
-    """
-    if not supplier_id:
-        return SupplierControlResult(supplier_name=supplier_name)
-
-    result = await db.execute(
-        select(Supplier).where(
-            Supplier.id == supplier_id,
-            Supplier.tenant_id == tenant_id,
-        )
-    )
-    supplier = result.scalar_one_or_none()
-
-    if not supplier:
-        return SupplierControlResult(supplier_name=supplier_name)
-
-    is_blocked, is_warned, reason = supplier.get_rfq_controls()
-
-    return SupplierControlResult(
-        is_blocked=is_blocked,
-        is_warned=is_warned,
-        reason=reason,
-        supplier_name=supplier.name,
-        controls={
-            "on_hold": supplier.on_hold,
-            "hold_type": supplier.hold_type,
-            "release_date": str(supplier.release_date) if supplier.release_date else None,
-            "scorecard_standing": supplier.scorecard_standing,
-            "warn_rfqs": supplier.warn_rfqs,
-            "prevent_rfqs": supplier.prevent_rfqs,
-        },
-    )
+    """Check supplier controls for RFQ workflow."""
+    return await _check_supplier_controls(db, tenant_id, supplier_id, supplier_name, "rfq")
 
 
 async def check_supplier_po_controls(
@@ -139,47 +130,8 @@ async def check_supplier_po_controls(
     supplier_id: uuid.UUID | None,
     supplier_name: str = "",
 ) -> SupplierControlResult:
-    """Check supplier controls for PO workflow.
-
-    Args:
-        db: Database session
-        tenant_id: Tenant UUID
-        supplier_id: Supplier UUID (optional)
-        supplier_name: Supplier name fallback if supplier_id not provided
-
-    Returns:
-        SupplierControlResult with block/warn status
-    """
-    if not supplier_id:
-        return SupplierControlResult(supplier_name=supplier_name)
-
-    result = await db.execute(
-        select(Supplier).where(
-            Supplier.id == supplier_id,
-            Supplier.tenant_id == tenant_id,
-        )
-    )
-    supplier = result.scalar_one_or_none()
-
-    if not supplier:
-        return SupplierControlResult(supplier_name=supplier_name)
-
-    is_blocked, is_warned, reason = supplier.get_po_controls()
-
-    return SupplierControlResult(
-        is_blocked=is_blocked,
-        is_warned=is_warned,
-        reason=reason,
-        supplier_name=supplier.name,
-        controls={
-            "on_hold": supplier.on_hold,
-            "hold_type": supplier.hold_type,
-            "release_date": str(supplier.release_date) if supplier.release_date else None,
-            "scorecard_standing": supplier.scorecard_standing,
-            "warn_pos": supplier.warn_pos,
-            "prevent_pos": supplier.prevent_pos,
-        },
-    )
+    """Check supplier controls for PO workflow."""
+    return await _check_supplier_controls(db, tenant_id, supplier_id, supplier_name, "po")
 
 
 def enforce_supplier_controls(
