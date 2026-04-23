@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ChevronDown, FileBarChart, PanelLeftClose, PanelLeftOpen, Settings } from "lucide-react";
+import { ChevronDown, FileBarChart, PanelLeftClose, PanelLeftOpen, Settings, Zap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { useSidebar, SidebarProvider } from "../../hooks/useSidebar";
@@ -129,18 +129,7 @@ const SidebarSectionHeader = React.forwardRef<HTMLDivElement, SidebarSectionHead
           )}
           {...props}
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="size-3"
-          >
-            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-          </svg>
+          <Zap className="size-3" />
           <span>{label}</span>
         </div>
       );

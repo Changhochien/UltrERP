@@ -33,73 +33,37 @@ function useSidebar() {
   return context;
 }
 
-// Helper to safely get/set localStorage with error handling
-function getStoredCollapsedSections(): Set<string> {
-  if (typeof window === "undefined") {
-    return new Set();
-  }
-
-  try {
-    const stored = window.localStorage.getItem(COLLAPSED_SECTIONS_KEY);
-    if (stored == null) {
-      return new Set();
+// Generic localStorage helpers with error handling for SSR compatibility
+function createLocalStorageSet<T>(key: string) {
+  return (value: T): void => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(key, JSON.stringify(value));
+    } catch {
+      // Silently fail (quota exceeded, private browsing, etc.)
     }
-    const parsed = JSON.parse(stored);
-    if (Array.isArray(parsed)) {
-      return new Set(parsed);
-    }
-    return new Set();
-  } catch {
-    // Handle malformed JSON or other localStorage errors
-    return new Set();
-  }
+  };
 }
 
-function setStoredCollapsedSections(sections: Set<string>) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  try {
-    window.localStorage.setItem(COLLAPSED_SECTIONS_KEY, JSON.stringify(Array.from(sections)));
-  } catch {
-    // Handle localStorage errors (quota exceeded, private browsing, etc.)
-    // Silently fail - state will still work in memory
-  }
-}
-
-// Helper to safely get/set localStorage for collapsed groups
-function getStoredCollapsedGroups(): Set<string> {
-  if (typeof window === "undefined") {
-    return new Set();
-  }
-
-  try {
-    const stored = window.localStorage.getItem(COLLAPSED_GROUPS_KEY);
-    if (stored == null) {
-      return new Set();
+function createLocalStorageGet<T>(key: string, defaultValue: T) {
+  return (): T => {
+    if (typeof window === "undefined") return defaultValue;
+    try {
+      const stored = window.localStorage.getItem(key);
+      if (stored == null) return defaultValue;
+      const parsed = JSON.parse(stored) as T;
+      return Array.isArray(parsed) ? parsed : defaultValue;
+    } catch {
+      return defaultValue;
     }
-    const parsed = JSON.parse(stored);
-    if (Array.isArray(parsed)) {
-      return new Set(parsed);
-    }
-    return new Set();
-  } catch {
-    return new Set();
-  }
+  };
 }
 
-function setStoredCollapsedGroups(groups: Set<string>) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  try {
-    window.localStorage.setItem(COLLAPSED_GROUPS_KEY, JSON.stringify(Array.from(groups)));
-  } catch {
-    // Handle localStorage errors silently
-  }
-}
+// Specific localStorage helpers for sidebar state
+const getStoredCollapsedSections = createLocalStorageGet<string[]>(COLLAPSED_SECTIONS_KEY, []);
+const setStoredCollapsedSections = createLocalStorageSet<string[]>(COLLAPSED_SECTIONS_KEY);
+const getStoredCollapsedGroups = createLocalStorageGet<string[]>(COLLAPSED_GROUPS_KEY, []);
+const setStoredCollapsedGroups = createLocalStorageSet<string[]>(COLLAPSED_GROUPS_KEY);
 
 function SidebarProvider({ defaultOpen = true, children }: { defaultOpen?: boolean; children: React.ReactNode }) {
   const isMobile = useIsMobile();
@@ -113,11 +77,11 @@ function SidebarProvider({ defaultOpen = true, children }: { defaultOpen?: boole
     return stored == null ? defaultOpen : stored === "true";
   });
 
-  // Section collapse state
-  const [collapsedSections, setCollapsedSections] = React.useState<Set<string>>(() => getStoredCollapsedSections());
+  // Section collapse state (stored as array, converted to Set for runtime)
+  const [collapsedSections, setCollapsedSections] = React.useState<Set<string>>(() => new Set(getStoredCollapsedSections()));
 
-  // Group collapse state
-  const [collapsedGroups, setCollapsedGroups] = React.useState<Set<string>>(() => getStoredCollapsedGroups());
+  // Group collapse state (stored as array, converted to Set for runtime)
+  const [collapsedGroups, setCollapsedGroups] = React.useState<Set<string>>(() => new Set(getStoredCollapsedGroups()));
 
   // Persist open state
   React.useEffect(() => {
@@ -128,14 +92,14 @@ function SidebarProvider({ defaultOpen = true, children }: { defaultOpen?: boole
     window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(open));
   }, [open]);
 
-  // Persist collapsed sections
+  // Persist collapsed sections (convert Set to array for storage)
   React.useEffect(() => {
-    setStoredCollapsedSections(collapsedSections);
+    setStoredCollapsedSections(Array.from(collapsedSections));
   }, [collapsedSections]);
 
-  // Persist collapsed groups
+  // Persist collapsed groups (convert Set to array for storage)
   React.useEffect(() => {
-    setStoredCollapsedGroups(collapsedGroups);
+    setStoredCollapsedGroups(Array.from(collapsedGroups));
   }, [collapsedGroups]);
 
   const toggleSidebar = React.useCallback(() => {

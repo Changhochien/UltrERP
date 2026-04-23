@@ -331,119 +331,43 @@ export const ROUTE_CONTEXT_KEYS = [
   { match: LOGIN_ROUTE, labelKey: "routes.login.label", descriptionKey: "routes.login.description" },
 ] as const;
 
-export function getRouteContext(pathname: string) {
-  if (pathname === INVENTORY_CATEGORIES_ROUTE) {
-    return {
-      labelKey: "routes.inventoryCategories.label",
-      descriptionKey: "routes.inventoryCategories.description",
-      sectionKey: "nav.operations",
-    };
-  }
+// Lookup table for exact route matches - single route detail pages
+const EXACT_ROUTE_CONTEXT: Record<string, { labelKey: string; descriptionKey: string; sectionKey: string }> = {
+  [INVENTORY_CATEGORIES_ROUTE]: { labelKey: "routes.inventoryCategories.label", descriptionKey: "routes.inventoryCategories.description", sectionKey: "nav.operations" },
+  [INVENTORY_UNITS_ROUTE]: { labelKey: "routes.inventoryUnits.label", descriptionKey: "routes.inventoryUnits.description", sectionKey: "nav.operations" },
+  [INVENTORY_TRANSFERS_ROUTE]: { labelKey: "routes.inventoryTransfers.label", descriptionKey: "routes.inventoryTransfers.description", sectionKey: "nav.operations" },
+  [INVENTORY_BELOW_REORDER_REPORT_ROUTE]: { labelKey: "routes.belowReorderReport.label", descriptionKey: "routes.belowReorderReport.description", sectionKey: "nav.operations" },
+  [INVENTORY_VALUATION_ROUTE]: { labelKey: "routes.inventoryValuation.label", descriptionKey: "routes.inventoryValuation.description", sectionKey: "nav.operations" },
+  [INVENTORY_REORDER_SUGGESTIONS_ROUTE]: { labelKey: "routes.reorderSuggestions.label", descriptionKey: "routes.reorderSuggestions.description", sectionKey: "nav.operations" },
+  [INVENTORY_SUPPLIERS_ROUTE]: { labelKey: "routes.inventorySuppliers.label", descriptionKey: "routes.suppliers.description", sectionKey: "nav.operations" },
+  [INVENTORY_COUNT_SESSIONS_ROUTE]: { labelKey: "routes.inventoryCountSessions.label", descriptionKey: "routes.inventoryCountSessions.description", sectionKey: "nav.operations" },
+} as const;
 
-  if (pathname === INVENTORY_UNITS_ROUTE) {
-    return {
-      labelKey: "routes.inventoryUnits.label",
-      descriptionKey: "routes.inventoryUnits.description",
-      sectionKey: "nav.operations",
-    };
-  }
+// Lookup table for prefix route matches (nested routes like /suppliers/:id)
+const PREFIX_ROUTE_CONTEXT: ReadonlyArray<{ prefix: string; labelKey: string; descriptionKey: string; sectionKey: string }> = [
+  { prefix: `${INVENTORY_COUNT_SESSIONS_ROUTE}/`, labelKey: "routes.inventoryCountSessionDetail.label", descriptionKey: "routes.inventoryCountSessionDetail.description", sectionKey: "nav.operations" },
+  { prefix: `${INVENTORY_SUPPLIERS_ROUTE}/`, labelKey: "routes.supplierDetail.label", descriptionKey: "routes.supplierDetail.description", sectionKey: "nav.operations" },
+];
 
-  if (pathname === INVENTORY_TRANSFERS_ROUTE) {
-    return {
-      labelKey: "routes.inventoryTransfers.label",
-      descriptionKey: "routes.inventoryTransfers.description",
-      sectionKey: "nav.operations",
-    };
-  }
-
-  if (pathname === INVENTORY_BELOW_REORDER_REPORT_ROUTE) {
-    return {
-      labelKey: "routes.belowReorderReport.label",
-      descriptionKey: "routes.belowReorderReport.description",
-      sectionKey: "nav.operations",
-    };
-  }
-
-  if (pathname === INVENTORY_VALUATION_ROUTE) {
-    return {
-      labelKey: "routes.inventoryValuation.label",
-      descriptionKey: "routes.inventoryValuation.description",
-      sectionKey: "nav.operations",
-    };
-  }
-
-  if (pathname === INVENTORY_REORDER_SUGGESTIONS_ROUTE) {
-    return {
-      labelKey: "routes.reorderSuggestions.label",
-      descriptionKey: "routes.reorderSuggestions.description",
-      sectionKey: "nav.operations",
-    };
-  }
-
-  if (pathname === INVENTORY_SUPPLIERS_ROUTE) {
-    return {
-      labelKey: "routes.inventorySuppliers.label",
-      descriptionKey: "routes.inventorySuppliers.description",
-      sectionKey: "nav.operations",
-    };
-  }
-
-  if (pathname === INVENTORY_COUNT_SESSIONS_ROUTE) {
-    return {
-      labelKey: "routes.inventoryCountSessions.label",
-      descriptionKey: "routes.inventoryCountSessions.description",
-      sectionKey: "nav.operations",
-    };
-  }
-
-  if (pathname.startsWith(`${INVENTORY_COUNT_SESSIONS_ROUTE}/`)) {
-    return {
-      labelKey: "routes.inventoryCountSessionDetail.label",
-      descriptionKey: "routes.inventoryCountSessionDetail.description",
-      sectionKey: "nav.operations",
-    };
-  }
-
-  if (pathname.startsWith(INVENTORY_SUPPLIERS_ROUTE + "/")) {
-    return {
-      labelKey: "routes.supplierDetail.label",
-      descriptionKey: "routes.supplierDetail.description",
-      sectionKey: "nav.operations",
-    };
-  }
-
+// Conditional detail routes requiring additional path logic
+function getConditionalRouteContext(pathname: string) {
+  // Order detail: /orders/* but not /orders/new
   if (pathname.startsWith(`${ORDERS_ROUTE}/`) && pathname !== ORDER_CREATE_ROUTE) {
-    return {
-      labelKey: "routes.orderDetail.label",
-      descriptionKey: "routes.orderDetail.description",
-      sectionKey: "routes.orderDetail.section",
-    };
+    return { labelKey: "routes.orderDetail.label", descriptionKey: "routes.orderDetail.description", sectionKey: "routes.orderDetail.section" };
   }
-
+  // Lead detail: /crm/leads/* but not /crm/leads/new
   if (pathname.startsWith(`${CRM_LEADS_ROUTE}/`) && pathname !== CRM_LEAD_CREATE_ROUTE) {
-    return {
-      labelKey: "routes.leadDetail.label",
-      descriptionKey: "routes.leadDetail.description",
-      sectionKey: "nav.revenue",
-    };
+    return { labelKey: "routes.leadDetail.label", descriptionKey: "routes.leadDetail.description", sectionKey: "nav.revenue" };
   }
-
+  // Opportunity detail: /crm/opportunities/* but not /crm/opportunities/new
   if (pathname.startsWith(`${CRM_OPPORTUNITIES_ROUTE}/`) && pathname !== CRM_OPPORTUNITY_CREATE_ROUTE) {
-    return {
-      labelKey: "routes.opportunityDetail.label",
-      descriptionKey: "routes.opportunityDetail.description",
-      sectionKey: "nav.revenue",
-    };
+    return { labelKey: "routes.opportunityDetail.label", descriptionKey: "routes.opportunityDetail.description", sectionKey: "nav.revenue" };
   }
-
+  // Quotation detail: /crm/quotations/* but not /crm/quotations/new
   if (pathname.startsWith(`${CRM_QUOTATIONS_ROUTE}/`) && pathname !== CRM_QUOTATION_CREATE_ROUTE) {
-    return {
-      labelKey: "routes.quotationDetail.label",
-      descriptionKey: "routes.quotationDetail.description",
-      sectionKey: "nav.revenue",
-    };
+    return { labelKey: "routes.quotationDetail.label", descriptionKey: "routes.quotationDetail.description", sectionKey: "nav.revenue" };
   }
-
+  // Product detail: /inventory/* excluding sub-routes
   if (
     pathname.startsWith(`${INVENTORY_ROUTE}/`) &&
     pathname !== INVENTORY_ROUTE &&
@@ -452,19 +376,37 @@ export function getRouteContext(pathname: string) {
     !pathname.startsWith(INVENTORY_COUNT_SESSIONS_ROUTE) &&
     !pathname.startsWith(INVENTORY_SUPPLIERS_ROUTE)
   ) {
-    return {
-      labelKey: "routes.productDetail.label",
-      descriptionKey: "routes.productDetail.description",
-      sectionKey: "nav.operations",
-    };
+    return { labelKey: "routes.productDetail.label", descriptionKey: "routes.productDetail.description", sectionKey: "nav.operations" };
+  }
+  return null;
+}
+
+export function getRouteContext(pathname: string) {
+  // 1. Check exact route matches (O(1) lookup)
+  const exactMatch = EXACT_ROUTE_CONTEXT[pathname];
+  if (exactMatch) {
+    return exactMatch;
   }
 
+  // 2. Check prefix route matches (nested routes)
+  for (const { prefix, labelKey, descriptionKey, sectionKey } of PREFIX_ROUTE_CONTEXT) {
+    if (pathname.startsWith(prefix)) {
+      return { labelKey, descriptionKey, sectionKey };
+    }
+  }
+
+  // 3. Check conditional routes (requires additional logic)
+  const conditional = getConditionalRouteContext(pathname);
+  if (conditional) {
+    return conditional;
+  }
+
+  // 4. Fall back to ROUTE_CONTEXT_KEYS lookup
   const route = ROUTE_CONTEXT_KEYS.find((entry) => entry.match === pathname);
   if (route) {
     const group = NAVIGATION_GROUPS.find((candidate) =>
       candidate.sections.flatMap((s) => s.items).some((item) => item.to === pathname),
     );
-
     return {
       labelKey: route.labelKey,
       descriptionKey: route.descriptionKey,
@@ -472,6 +414,7 @@ export function getRouteContext(pathname: string) {
     };
   }
 
+  // 5. Default fallback
   return {
     labelKey: "routes.workspace.label",
     descriptionKey: "routes.workspace.description",

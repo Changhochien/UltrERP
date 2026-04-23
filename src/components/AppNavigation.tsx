@@ -39,16 +39,20 @@ export function AppNavigation() {
   const { canAccess } = usePermissions();
   const { open, openMobile, isMobile, setOpenMobile, isSectionCollapsed, toggleSection, isGroupCollapsed, toggleGroup } = useSidebar();
 
-  // Filter sections by permission, then filter out groups with no visible sections
-  const visibleGroups = NAVIGATION_GROUPS.map((group) => ({
-    ...group,
-    sections: group.sections
-      .map((section) => ({
-        ...section,
-        items: section.items.filter((item) => canAccess(item.feature)),
-      }))
-      .filter((section) => section.items.length > 0),
-  })).filter((group) => group.sections.length > 0);
+  // Memoize visible groups to avoid recomputation on every render
+  // Recomputes only when permissions change
+  const visibleGroups = React.useMemo(() =>
+    NAVIGATION_GROUPS.map((group) => ({
+      ...group,
+      sections: group.sections
+        .map((section) => ({
+          ...section,
+          items: section.items.filter((item) => canAccess(item.feature)),
+        }))
+        .filter((section) => section.items.length > 0),
+    })).filter((group) => group.sections.length > 0),
+    [canAccess],
+  );
 
   const showLabel = isMobile ? openMobile : open;
 
