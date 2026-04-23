@@ -4,11 +4,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  createPurchaseOrder,
   createPOFromAward,
   listPurchaseOrders,
   getPurchaseOrder,
-  updatePurchaseOrder,
   submitPurchaseOrder,
   holdPurchaseOrder,
   releasePurchaseOrder,
@@ -17,10 +15,8 @@ import {
   closePurchaseOrder,
 } from "@/lib/api/procurement";
 import type {
-  PurchaseOrderCreatePayload,
   PurchaseOrderListResponse,
   PurchaseOrderResponse,
-  PurchaseOrderUpdatePayload,
 } from "../types";
 
 export interface UsePurchaseOrderListOptions {
@@ -141,9 +137,7 @@ export function usePurchaseOrder(poId: string | null): UsePurchaseOrderResult {
 }
 
 export interface PurchaseOrderActions {
-  create: (payload: PurchaseOrderCreatePayload) => Promise<PurchaseOrderResponse>;
   createFromAward: (awardId: string) => Promise<PurchaseOrderResponse>;
-  update: (poId: string, payload: PurchaseOrderUpdatePayload) => Promise<PurchaseOrderResponse>;
   submit: (poId: string) => Promise<PurchaseOrderResponse>;
   hold: (poId: string) => Promise<PurchaseOrderResponse>;
   release: (poId: string) => Promise<PurchaseOrderResponse>;
@@ -153,50 +147,13 @@ export interface PurchaseOrderActions {
 }
 
 export function usePurchaseOrderActions(): PurchaseOrderActions {
-  const create = useCallback(
-    async (payload: PurchaseOrderCreatePayload): Promise<PurchaseOrderResponse> => {
-      return createPurchaseOrder(payload);
-    },
-    [],
-  );
+  const createFromAward = useCallback((awardId: string) => createPOFromAward(awardId), []);
+  const submit = useCallback((poId: string) => submitPurchaseOrder(poId), []);
+  const hold = useCallback((poId: string) => holdPurchaseOrder(poId), []);
+  const release = useCallback((poId: string) => releasePurchaseOrder(poId), []);
+  const complete = useCallback((poId: string) => completePurchaseOrder(poId), []);
+  const cancel = useCallback((poId: string) => cancelPurchaseOrder(poId), []);
+  const close = useCallback((poId: string) => closePurchaseOrder(poId), []);
 
-  const createFromAward = useCallback(
-    async (awardId: string): Promise<PurchaseOrderResponse> => {
-      return createPOFromAward(awardId);
-    },
-    [],
-  );
-
-  const update = useCallback(
-    async (poId: string, payload: PurchaseOrderUpdatePayload): Promise<PurchaseOrderResponse> => {
-      return updatePurchaseOrder(poId, payload);
-    },
-    [],
-  );
-
-  const submit = useCallback(async (poId: string): Promise<PurchaseOrderResponse> => {
-    return submitPurchaseOrder(poId);
-  }, []);
-
-  const hold = useCallback(async (poId: string): Promise<PurchaseOrderResponse> => {
-    return holdPurchaseOrder(poId);
-  }, []);
-
-  const release = useCallback(async (poId: string): Promise<PurchaseOrderResponse> => {
-    return releasePurchaseOrder(poId);
-  }, []);
-
-  const complete = useCallback(async (poId: string): Promise<PurchaseOrderResponse> => {
-    return completePurchaseOrder(poId);
-  }, []);
-
-  const cancel = useCallback(async (poId: string): Promise<PurchaseOrderResponse> => {
-    return cancelPurchaseOrder(poId);
-  }, []);
-
-  const close = useCallback(async (poId: string): Promise<PurchaseOrderResponse> => {
-    return closePurchaseOrder(poId);
-  }, []);
-
-  return { create, createFromAward, update, submit, hold, release, complete, cancel, close };
+  return { createFromAward, submit, hold, release, complete, cancel, close };
 }

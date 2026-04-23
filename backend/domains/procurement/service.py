@@ -576,50 +576,39 @@ async def recompute_rfq_quote_status(
 # --------------------------------------------------------------------------
 
 
-async def _derive_po_status(po: PurchaseOrder) -> str:
-    """Derive PO status from approval and progress state.
-
-    Status derivation rules:
-    - If cancelled: cancelled
-    - If closed: closed
-    - If not approved: draft (needs approval before activation)
-    - If on_hold: on_hold
-    - Compute per_received and per_billed
-    - If both are 100%: completed
-    - If per_received < 100% and per_billed < 100%: to_receive_and_bill
-    - If per_received < 100%: to_receive
-    - If per_billed < 100%: to_bill
-    - Otherwise: submitted (all done)
-    """
-    if po.status in ("cancelled", "closed"):
-        return po.status
-
-    # Recompute progress
+def _compute_progress(po: PurchaseOrder) -> tuple[Decimal, Decimal]:
+    """Compute per_received and per_billed from PO items. Returns (per_received, per_billed)."""
     total_qty = sum(item.qty for item in po.items) if po.items else Decimal("0")
     received_qty = sum(item.received_qty for item in po.items) if po.items else Decimal("0")
     total_amount = po.grand_total
     billed_amount = sum(item.billed_amount for item in po.items) if po.items else Decimal("0")
 
     if total_qty > 0:
-        po.per_received = min(Decimal("100.00"), (received_qty / total_qty) * Decimal("100"))
+        per_received = min(Decimal("100.00"), (received_qty / total_qty) * Decimal("100"))
     else:
-        po.per_received = Decimal("0.00")
+        per_received = Decimal("0.00")
 
     if total_amount > 0:
-        po.per_billed = min(Decimal("100.00"), (billed_amount / total_amount) * Decimal("100"))
+        per_billed = min(Decimal("100.00"), (billed_amount / total_amount) * Decimal("100"))
     else:
-        po.per_billed = Decimal("0.00")
+        per_billed = Decimal("0.00")
 
-    # Status logic
+    return per_received, per_billed
+
+
+async def _derive_po_status(po: PurchaseOrder) -> str:
+    """Derive PO status from approval and progress state."""
+    if po.status in ("cancelled", "closed"):
+        return po.status
+
+    po.per_received, po.per_billed = _compute_progress(po)
+
     if not po.is_approved:
         return "draft"
-
     if po.status == "on_hold":
         return "on_hold"
 
-    per_rec = po.per_received
-    per_bil = po.per_billed
-
+    per_rec, per_bil = po.per_received, po.per_billed
     if per_rec >= Decimal("100.00") and per_bil >= Decimal("100.00"):
         return "completed"
     if per_rec < Decimal("100.00") and per_bil < Decimal("100.00"):
@@ -1014,27 +1003,11 @@ async def recompute_po_progress(
 ) -> PurchaseOrder:
     """Recompute per_received and per_billed from downstream coverage.
 
-    Called by goods receipt (Story 24-3) and supplier invoice (Story 24-6)
-    to update PO progress fields without full status derivation.
+    Called by goods receipt (Story 24-3) and supplier invoice (Story 24-6).
     """
     po = await get_purchase_order(db, tenant_id, po_id)
+    po.per_received, po.per_billed = _compute_progress(po)
 
-    total_qty = sum(item.qty for item in po.items) if po.items else Decimal("0")
-    received_qty = sum(item.received_qty for item in po.items) if po.items else Decimal("0")
-    total_amount = po.grand_total
-    billed_amount = sum(item.billed_amount for item in po.items) if po.items else Decimal("0")
-
-    if total_qty > 0:
-        po.per_received = min(Decimal("100.00"), (received_qty / total_qty) * Decimal("100"))
-    else:
-        po.per_received = Decimal("0.00")
-
-    if total_amount > 0:
-        po.per_billed = min(Decimal("100.00"), (billed_amount / total_amount) * Decimal("100"))
-    else:
-        po.per_billed = Decimal("0.00")
-
-    # Derive status
     if po.is_approved and po.status not in ("on_hold", "cancelled", "closed"):
         po.status = await _derive_po_status(po)
 
