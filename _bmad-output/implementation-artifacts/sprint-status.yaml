@@ -1305,6 +1305,23 @@ development_status:
 
 last_updated: "2026-04-22"
 
+  # Epic 24 - RFQ and Supplier Quotation Sourcing Workspace
+  epic-24:
+    status: "in-progress"
+    validation_note: "Story 24.1 implements the sourcing workspace (RFQ and Supplier Quotation) as the first procurement slice. RFQ and Supplier Quotation are kept separate from Purchase Order ownership. Explicit sourcing lineage is preserved for Stories 24.2 and 24.4. No PO, receiving, or AP posting logic is implemented."
+    recommended_execution_order:
+      - "24.1 RFQ and Supplier Quotation Workspace (current)"
+      - "24.2 Purchase Order Creation from Awarded Quotation"
+      - "24.4 Supplier Invoice from Purchase Order"
+    stories:
+      24-1-rfq-and-supplier-quotation-workspace:
+        status: "review"
+        story_id: "24.1"
+        title: "RFQ and Supplier Quotation Workspace"
+        story_file: "24-1-rfq-and-supplier-quotation-workspace.md"
+        validation: "All 25 backend procurement tests pass (uv run pytest tests/domains/procurement -q), 10 frontend procurement tests pass (vitest run), TypeScript clean (tsc --noEmit), Ruff clean (all checks passed), Alembic upgrade head clean, broader backend domain suite 911/911 passed."
+        prerequisites: []
+
   # Epic 38 - Navigation Sidebar Enhancement
   epic-38:
     status: "in-progress"

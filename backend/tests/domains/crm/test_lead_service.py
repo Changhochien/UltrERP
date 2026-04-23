@@ -333,6 +333,43 @@ class TestLeadLifecycle:
         ]
 
     @pytest.mark.asyncio
+    async def test_update_lead_trims_and_normalizes_string_fields(self) -> None:
+        lead = _FakeLead()
+        session = FakeSession(
+            execute_results=[
+                _FakeScalarResult(lead),
+                _FakeListResult([]),
+                _FakeListResult([]),
+            ]
+        )
+
+        updated = await update_lead(
+            session,
+            lead.id,
+            LeadUpdate(
+                version=lead.version,
+                company_name="  New Prospect Co  ",
+                email_id="  NEW@EXAMPLE.TEST  ",
+                phone=" 02-3456-7890 ",
+                mobile_no=" 0912-000-111 ",
+                notes="  Updated note  ",
+            ),
+            tenant_id=lead.tenant_id,
+        )
+
+        assert updated is lead
+        assert lead.company_name == "New Prospect Co"
+        assert lead.normalized_company_name == "newprospectco"
+        assert lead.email_id == "NEW@EXAMPLE.TEST"
+        assert lead.normalized_email_id == "new@example.test"
+        assert lead.phone == "02-3456-7890"
+        assert lead.normalized_phone == "0234567890"
+        assert lead.mobile_no == "0912-000-111"
+        assert lead.normalized_mobile_no == "0912000111"
+        assert lead.notes == "Updated note"
+        assert lead.version == 2
+
+    @pytest.mark.asyncio
     async def test_opportunity_handoff_updates_status_and_preserves_context(self) -> None:
         lead = _FakeLead(
             status=LeadStatus.REPLIED,

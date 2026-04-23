@@ -14,6 +14,9 @@ export const INVENTORY_SUPPLIERS_ROUTE = "/inventory/suppliers";
 export const SUPPLIER_DETAIL_ROUTE = "/inventory/suppliers/:supplierId";
 export const PRODUCT_DETAIL_ROUTE = "/inventory/:productId";
 export const PURCHASES_ROUTE = "/purchases";
+export const PROCUREMENT_ROUTE = "/procurement";
+export const PROCUREMENT_RFQ_CREATE_ROUTE = "/procurement/rfq/new";
+export const PROCUREMENT_RFQ_DETAIL_ROUTE = "/procurement/rfq/:rfqId";
 export const CRM_LEADS_ROUTE = "/crm/leads";
 export const CRM_LEAD_DETAIL_ROUTE = "/crm/leads/:leadId";
 export const CRM_LEAD_CREATE_ROUTE = "/crm/leads/new";
@@ -55,6 +58,9 @@ export type AppRoute =
   | typeof SUPPLIER_DETAIL_ROUTE
   | typeof PRODUCT_DETAIL_ROUTE
   | typeof PURCHASES_ROUTE
+  | typeof PROCUREMENT_ROUTE
+  | typeof PROCUREMENT_RFQ_CREATE_ROUTE
+  | typeof PROCUREMENT_RFQ_DETAIL_ROUTE
   | typeof CRM_LEADS_ROUTE
   | typeof CRM_LEAD_DETAIL_ROUTE
   | typeof CRM_LEAD_CREATE_ROUTE
@@ -124,3 +130,12 @@ export function buildInventoryTransfersPath(productId?: string, warehouseId?: st
   const query = params.toString();
   return `${INVENTORY_TRANSFERS_ROUTE}${query ? `?${query}` : ""}`;
 }
+
+export function buildRFQDetailPath(rfqId: string): string {
+  return PROCUREMENT_RFQ_DETAIL_ROUTE.replace(":rfqId", encodeURIComponent(rfqId));
+}
+
+// Procurement RFQ routes (story 24.1)
+export const RFQ_LIST_ROUTE = PROCUREMENT_ROUTE;
+export const RFQ_CREATE_ROUTE = PROCUREMENT_RFQ_CREATE_ROUTE;
+export const RFQ_DETAIL_ROUTE = PROCUREMENT_RFQ_DETAIL_ROUTE;

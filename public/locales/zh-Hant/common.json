@@ -40,7 +40,9 @@
     "setup": "設定",
     "customers": "客戶",
     "invoices": "發票",
-    "suppliers": "供應商"
+    "suppliers": "供應商",
+    "procurement": "採購尋源",
+    "createRFQ": "建立詢價"
   },
   "common": {
     "cancel": "取消",
@@ -195,6 +197,18 @@
     "purchases": {
       "description": "檢視已匯入的供應商發票與應付歷史。",
       "label": "採購"
+    },
+    "procurement": {
+      "description": "發出詢價單並比較供應商報價，再據以建立採購訂單。",
+      "label": "採購尋源"
+    },
+    "procurementRFQCreate": {
+      "description": "建立新詢價單並分發給供應商。",
+      "label": "建立詢價"
+    },
+    "procurementRFQDetail": {
+      "description": "檢視詢價項目、追蹤供應商回覆並比較報價。",
+      "label": "詢價詳情"
     },
     "invoices": {
       "description": "瀏覽發票狀態與付款進度。",
@@ -3269,5 +3283,93 @@
   },
   "infoPopover": {
     "ariaLabel": "更多資訊"
+  },
+  "procurement": {
+    "rfq": {
+      "title": "詢價單",
+      "description": "管理詢價單並比較供應商報價。",
+      "create": "建立詢價",
+      "createDescription": "向供應商發出新詢價單。",
+      "empty": "找不到詢價單。",
+      "searchPlaceholder": "搜尋詢價單...",
+      "fields": {
+        "name": "詢價單號",
+        "status": "狀態",
+        "company": "公司",
+        "currency": "幣別",
+        "transactionDate": "日期",
+        "scheduleDate": "排程日期",
+        "suppliers": "供應商",
+        "quotesReceived": "已收報價",
+        "terms": "條款",
+        "notes": "備註",
+        "itemCode": "品號",
+        "itemCodePlaceholder": "例如 MAT-001",
+        "itemName": "品名",
+        "itemNamePlaceholder": "品名或說明",
+        "qty": "數量",
+        "uom": "單位",
+        "warehouse": "倉庫",
+        "supplierName": "供應商名稱",
+        "supplierNamePlaceholder": "例如 ABC 供應商",
+        "contactEmail": "聯絡信箱",
+        "quoteStatus": "報價狀態",
+        "companyPlaceholder": "公司名稱"
+      },
+      "termsPlaceholder": "交貨條款、付款條款、品質要求...",
+      "notesPlaceholder": "此詢價的內部備註...",
+      "status": {
+        "draft": "草稿",
+        "submitted": "已送出",
+        "closed": "已結案",
+        "cancelled": "已取消"
+      },
+      "quoteStatus": {
+        "pending": "待回覆",
+        "received": "已收到",
+        "lost": "未得標",
+        "cancelled": "已取消"
+      },
+      "sectionHeader": "詢價單詳情",
+      "items": "項目",
+      "suppliers": "供應商收件人",
+      "terms": "條款與備註",
+      "addItem": "新增項目",
+      "addSupplier": "新增供應商",
+      "save": "儲存詢價",
+      "submit": "送出詢價",
+      "submitted": "詢價單已成功送出。",
+      "submitError": "無法送出詢價單。",
+      "createError": "無法建立詢價單。",
+      "created": "詢價單已成功建立。",
+      "noItems": "尚未新增項目。",
+      "noSuppliers": "尚未新增供應商收件人。",
+      "noQuotations": "尚未收到供應商報價。",
+      "tabs": {
+        "items": "項目",
+        "suppliers": "供應商",
+        "compare": "比較"
+      }
+    },
+    "sq": {
+      "add": "新增報價",
+      "createError": "無法建立供應商報價。",
+      "created": "供應商報價已建立。",
+      "save": "儲存報價",
+      "expired": "已過期",
+      "fields": {
+        "grandTotal": "總計",
+        "leadTime": "交期",
+        "validTill": "有效期至",
+        "leadTimeDays": "交期（天）"
+      }
+    },
+    "award": {
+      "success": "已將供應商報價設為得標來源。",
+      "error": "無法決標。",
+      "selectAsWinner": "設為得標",
+      "winner": "得標",
+      "selected": "得標來源：{supplier}"
+    }
   }
 }

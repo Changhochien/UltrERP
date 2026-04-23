@@ -14,6 +14,7 @@ import {
   TrendingUp,
   FileBarChart,
   Package,
+  FileText,
 } from "lucide-react";
 
 import type { AppFeature } from "../hooks/usePermissions";
@@ -48,6 +49,9 @@ import {
   OWNER_DASHBOARD_ROUTE,
   PAYMENTS_ROUTE,
   PURCHASES_ROUTE,
+  PROCUREMENT_ROUTE,
+  PROCUREMENT_RFQ_CREATE_ROUTE,
+  PROCUREMENT_RFQ_DETAIL_ROUTE,
   SETTINGS_ROUTE,
 } from "./routes";
 
@@ -147,6 +151,13 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
             description: "routes.createOrder.description",
             icon: ShoppingCart,
           },
+          {
+            feature: "procurement",
+            label: "nav.createRFQ",
+            to: PROCUREMENT_RFQ_CREATE_ROUTE,
+            description: "routes.createRFQ.description",
+            icon: FileText,
+          },
         ],
       },
     ],
@@ -224,6 +235,13 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
             to: PURCHASES_ROUTE,
             description: "routes.purchases.description",
             icon: CircleDollarSign,
+          },
+          {
+            feature: "procurement",
+            label: "nav.procurement",
+            to: PROCUREMENT_ROUTE,
+            description: "routes.procurement.description",
+            icon: FileText,
           },
         ],
       },
@@ -325,6 +343,9 @@ export const ROUTE_CONTEXT_KEYS = [
   { match: INVENTORY_REORDER_SUGGESTIONS_ROUTE, labelKey: "routes.reorderSuggestions.label", descriptionKey: "routes.reorderSuggestions.description" },
   { match: INVENTORY_SUPPLIERS_ROUTE, labelKey: "routes.inventorySuppliers.label", descriptionKey: "routes.inventorySuppliers.description" },
   { match: PURCHASES_ROUTE, labelKey: "routes.purchases.label", descriptionKey: "routes.purchases.description" },
+  { match: PROCUREMENT_ROUTE, labelKey: "routes.procurement.label", descriptionKey: "routes.procurement.description" },
+  { match: PROCUREMENT_RFQ_CREATE_ROUTE, labelKey: "routes.procurementRFQCreate.label", descriptionKey: "routes.procurementRFQCreate.description" },
+  { match: PROCUREMENT_RFQ_DETAIL_ROUTE, labelKey: "routes.procurementRFQDetail.label", descriptionKey: "routes.procurementRFQDetail.description" },
   { match: ADMIN_ROUTE, labelKey: "routes.admin.label", descriptionKey: "routes.admin.description" },
   { match: OWNER_DASHBOARD_ROUTE, labelKey: "routes.ownerDashboard.label", descriptionKey: "routes.ownerDashboard.description" },
   { match: SETTINGS_ROUTE, labelKey: "routes.settings.label", descriptionKey: "routes.settings.description" },
@@ -341,12 +362,14 @@ const EXACT_ROUTE_CONTEXT: Record<string, { labelKey: string; descriptionKey: st
   [INVENTORY_REORDER_SUGGESTIONS_ROUTE]: { labelKey: "routes.reorderSuggestions.label", descriptionKey: "routes.reorderSuggestions.description", sectionKey: "nav.operations" },
   [INVENTORY_SUPPLIERS_ROUTE]: { labelKey: "routes.inventorySuppliers.label", descriptionKey: "routes.suppliers.description", sectionKey: "nav.operations" },
   [INVENTORY_COUNT_SESSIONS_ROUTE]: { labelKey: "routes.inventoryCountSessions.label", descriptionKey: "routes.inventoryCountSessions.description", sectionKey: "nav.operations" },
+  [PROCUREMENT_RFQ_CREATE_ROUTE]: { labelKey: "routes.procurementRFQCreate.label", descriptionKey: "routes.procurementRFQCreate.description", sectionKey: "nav.operations" },
 } as const;
 
 // Lookup table for prefix route matches (nested routes like /suppliers/:id)
 const PREFIX_ROUTE_CONTEXT: ReadonlyArray<{ prefix: string; labelKey: string; descriptionKey: string; sectionKey: string }> = [
   { prefix: `${INVENTORY_COUNT_SESSIONS_ROUTE}/`, labelKey: "routes.inventoryCountSessionDetail.label", descriptionKey: "routes.inventoryCountSessionDetail.description", sectionKey: "nav.operations" },
   { prefix: `${INVENTORY_SUPPLIERS_ROUTE}/`, labelKey: "routes.supplierDetail.label", descriptionKey: "routes.supplierDetail.description", sectionKey: "nav.operations" },
+  { prefix: `${PROCUREMENT_ROUTE}/`, labelKey: "routes.procurementRFQDetail.label", descriptionKey: "routes.procurementRFQDetail.description", sectionKey: "nav.operations" },
 ];
 
 // Conditional detail routes requiring additional path logic

@@ -37,7 +37,9 @@
     "setup": "Setup",
     "customers": "Customers",
     "invoices": "Invoices",
-    "suppliers": "Suppliers"
+    "suppliers": "Suppliers",
+    "procurement": "Sourcing",
+    "createRFQ": "Create RFQ"
   },
   "common": {
     "cancel": "Cancel",
@@ -188,6 +190,18 @@
     "purchases": {
       "description": "Inspect imported supplier invoices and AP history.",
       "label": "Purchases"
+    },
+    "procurement": {
+      "description": "Issue RFQs and compare supplier quotations before creating purchase orders.",
+      "label": "Sourcing"
+    },
+    "procurementRFQCreate": {
+      "description": "Create a new Request for Quotation to distribute to suppliers.",
+      "label": "Create RFQ"
+    },
+    "procurementRFQDetail": {
+      "description": "Review RFQ items, track supplier responses, and compare quotations.",
+      "label": "RFQ Detail"
     },
     "invoices": {
       "description": "Browse invoice status and payment progress.",
@@ -3400,5 +3414,93 @@
   },
   "infoPopover": {
     "ariaLabel": "More information"
+  },
+  "procurement": {
+    "rfq": {
+      "title": "Request for Quotation",
+      "description": "Manage RFQs and compare supplier quotations.",
+      "create": "Create RFQ",
+      "createDescription": "Issue a new Request for Quotation to suppliers.",
+      "empty": "No RFQs found.",
+      "searchPlaceholder": "Search RFQs...",
+      "fields": {
+        "name": "RFQ #",
+        "status": "Status",
+        "company": "Company",
+        "currency": "Currency",
+        "transactionDate": "Date",
+        "scheduleDate": "Schedule Date",
+        "suppliers": "Suppliers",
+        "quotesReceived": "Quotes Received",
+        "terms": "Terms",
+        "notes": "Notes",
+        "itemCode": "Item Code",
+        "itemCodePlaceholder": "e.g. MAT-001",
+        "itemName": "Item Name",
+        "itemNamePlaceholder": "Item name or description",
+        "qty": "Qty",
+        "uom": "UOM",
+        "warehouse": "Warehouse",
+        "supplierName": "Supplier Name",
+        "supplierNamePlaceholder": "e.g. ABC Supplies Ltd.",
+        "contactEmail": "Contact Email",
+        "quoteStatus": "Quote Status",
+        "companyPlaceholder": "Your company name"
+      },
+      "termsPlaceholder": "Delivery terms, payment terms, quality requirements...",
+      "notesPlaceholder": "Internal notes about this RFQ...",
+      "status": {
+        "draft": "Draft",
+        "submitted": "Submitted",
+        "closed": "Closed",
+        "cancelled": "Cancelled"
+      },
+      "quoteStatus": {
+        "pending": "Pending",
+        "received": "Received",
+        "lost": "Lost",
+        "cancelled": "Cancelled"
+      },
+      "sectionHeader": "RFQ Details",
+      "items": "Items",
+      "suppliers": "Supplier Recipients",
+      "terms": "Terms & Notes",
+      "addItem": "Add Item",
+      "addSupplier": "Add Supplier",
+      "save": "Save RFQ",
+      "submit": "Submit RFQ",
+      "submitted": "RFQ submitted successfully.",
+      "submitError": "Failed to submit RFQ.",
+      "createError": "Failed to create RFQ.",
+      "created": "RFQ created successfully.",
+      "noItems": "No items have been added yet.",
+      "noSuppliers": "No supplier recipients have been added yet.",
+      "noQuotations": "No supplier quotations received yet.",
+      "tabs": {
+        "items": "Items",
+        "suppliers": "Suppliers",
+        "compare": "Compare"
+      }
+    },
+    "sq": {
+      "add": "Add Quotation",
+      "createError": "Failed to create supplier quotation.",
+      "created": "Supplier quotation created.",
+      "save": "Save Quotation",
+      "expired": "Expired",
+      "fields": {
+        "grandTotal": "Grand Total",
+        "leadTime": "Lead Time",
+        "validTill": "Valid Until",
+        "leadTimeDays": "Lead Time (days)"
+      }
+    },
+    "award": {
+      "success": "Supplier quotation selected as winning source.",
+      "error": "Failed to award quotation.",
+      "selectAsWinner": "Select as Winner",
+      "winner": "Winner",
+      "selected": "Winning source: {supplier}"
+    }
   }
 }

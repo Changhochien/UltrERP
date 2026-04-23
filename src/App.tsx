@@ -55,6 +55,9 @@ import {
   ORDER_DETAIL_ROUTE,
   OWNER_DASHBOARD_ROUTE,
   PAYMENTS_ROUTE,
+  PROCUREMENT_ROUTE,
+  PROCUREMENT_RFQ_CREATE_ROUTE,
+  PROCUREMENT_RFQ_DETAIL_ROUTE,
   PURCHASES_ROUTE,
   SETTINGS_ROUTE,
   SUPPLIER_DETAIL_ROUTE,
@@ -90,6 +93,9 @@ import { InvoicesPage } from "./pages/InvoicesPage";
 import { OrdersPage } from "./pages/orders/OrdersPage";
 import { PaymentsPage } from "./pages/PaymentsPage";
 import { PurchasesPage } from "./pages/PurchasesPage";
+import { RFQListPage } from "./pages/procurement/RFQListPage";
+import CreateRFQPage from "./pages/procurement/CreateRFQPage";
+import { RFQDetailPage } from "./pages/procurement/RFQDetailPage";
 import LoginPage from "./pages/LoginPage";
 import SettingsPage from "./pages/settings/SettingsPage";
 
@@ -587,6 +593,37 @@ export default function App() {
               <ProtectedAppRoute requiredFeature="purchases">
                 <RoutedPage>
                   <PurchasesPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          {/* Procurement - RFQ and Supplier Quotation workspace (Epic 24) */}
+          <Route
+            path={PROCUREMENT_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="procurement">
+                <RoutedPage>
+                  <RFQListPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={PROCUREMENT_RFQ_CREATE_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="procurement" requiredWrite>
+                <RoutedPage>
+                  <CreateRFQPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={PROCUREMENT_RFQ_DETAIL_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="procurement">
+                <RoutedPage>
+                  <RFQDetailPage />
                 </RoutedPage>
               </ProtectedAppRoute>
             }

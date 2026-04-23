@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import json
 import uuid
+from collections.abc import Callable, Mapping
 from datetime import date
 from decimal import Decimal
+from enum import Enum
+from typing import Any, TypeVar
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +24,9 @@ from domains.crm.schemas import (
 )
 from domains.customers.models import Customer
 
+_StatusT = TypeVar("_StatusT", bound=Enum)
+_MergeFieldT = TypeVar("_MergeFieldT")
+
 # ---------------------------------------------------------------------------
 # String utilities
 # ---------------------------------------------------------------------------
@@ -29,6 +35,78 @@ from domains.customers.models import Customer
 def _trim(value: str | None) -> str:
     """Strip whitespace from a string value."""
     return value.strip() if value else ""
+
+
+def _ensure_status_transition_allowed(
+    current: _StatusT,
+    target: _StatusT,
+    allowed_transitions: Mapping[_StatusT, frozenset[_StatusT]],
+    error_factory: Callable[[_StatusT, _StatusT], Exception],
+) -> None:
+    """Validate a status transition against an allowed-transition map."""
+    if target not in allowed_transitions.get(current, frozenset()):
+        raise error_factory(current, target)
+
+
+def _merge_optional_update_field(
+    data: object,
+    fields: set[str],
+    field_name: str,
+    existing_value: _MergeFieldT,
+    *,
+    transform: Callable[[Any], _MergeFieldT] | None = None,
+) -> _MergeFieldT:
+    """Use the update value when present and non-None, otherwise keep existing."""
+    if field_name not in fields:
+        return existing_value
+    value = getattr(data, field_name)
+    if value is None:
+        return existing_value
+    return transform(value) if transform is not None else value
+
+
+def _merge_present_update_field(
+    data: object,
+    fields: set[str],
+    field_name: str,
+    existing_value: _MergeFieldT,
+    *,
+    transform: Callable[[Any], _MergeFieldT] | None = None,
+) -> _MergeFieldT:
+    """Use the update value whenever the field is present, including explicit None."""
+    if field_name not in fields:
+        return existing_value
+    value = getattr(data, field_name)
+    return transform(value) if transform is not None else value
+
+
+def _resolve_contact_context_fields(
+    source: object,
+    defaults: Mapping[str, str] | None = None,
+) -> dict[str, str]:
+    """Resolve trimmed contact, attribution, and note fields with optional defaults."""
+    resolved_defaults = defaults or {}
+    return {
+        "contact_person": _trim(getattr(source, "contact_person", None))
+        or resolved_defaults.get("contact_person", ""),
+        "contact_email": _trim(getattr(source, "contact_email", None))
+        or resolved_defaults.get("contact_email", ""),
+        "contact_mobile": _trim(getattr(source, "contact_mobile", None))
+        or resolved_defaults.get("contact_mobile", ""),
+        "job_title": _trim(getattr(source, "job_title", None)),
+        "territory": _trim(getattr(source, "territory", None))
+        or resolved_defaults.get("territory", ""),
+        "customer_group": _trim(getattr(source, "customer_group", None)),
+        "utm_source": _trim(getattr(source, "utm_source", None))
+        or resolved_defaults.get("utm_source", ""),
+        "utm_medium": _trim(getattr(source, "utm_medium", None))
+        or resolved_defaults.get("utm_medium", ""),
+        "utm_campaign": _trim(getattr(source, "utm_campaign", None))
+        or resolved_defaults.get("utm_campaign", ""),
+        "utm_content": _trim(getattr(source, "utm_content", None))
+        or resolved_defaults.get("utm_content", ""),
+        "notes": _trim(getattr(source, "notes", None)),
+    }
 
 
 # ---------------------------------------------------------------------------

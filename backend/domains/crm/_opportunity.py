@@ -19,6 +19,10 @@ from domains.crm._setup import (
 )
 from domains.crm._shared import (
     _deserialize_opportunity_items,
+    _ensure_status_transition_allowed,
+    _merge_optional_update_field,
+    _merge_present_update_field,
+    _resolve_contact_context_fields,
     _resolve_party_context,
     _resolve_total_amount,
     _serialize_opportunity_items,
@@ -73,10 +77,17 @@ def _ensure_opportunity_transition_allowed(
     target: OpportunityStatus,
 ) -> None:
     """Validate opportunity status transition."""
-    if target not in ALLOWED_OPPORTUNITY_TRANSITIONS.get(current, frozenset()):
-        raise ValidationError(
-            [{"field": "status", "message": f"Cannot transition from '{current.value}' to '{target.value}'."}]
-        )
+    _ensure_status_transition_allowed(
+        current,
+        target,
+        ALLOWED_OPPORTUNITY_TRANSITIONS,
+        lambda source, destination: ValidationError(
+            [{
+                "field": "status",
+                "message": f"Cannot transition from '{source.value}' to '{destination.value}'.",
+            }]
+        ),
+    )
 
 
 def _ensure_lost_context(data: OpportunityTransition) -> None:
@@ -115,110 +126,132 @@ def _build_opportunity_merged(
     )
 
     return OpportunityCreate(
-        opportunity_title=(
-            data.opportunity_title
-            if "opportunity_title" in fields and data.opportunity_title is not None
-            else existing.opportunity_title
+        opportunity_title=_merge_optional_update_field(
+            data,
+            fields,
+            "opportunity_title",
+            existing.opportunity_title,
         ),
-        opportunity_from=(
-            OpportunityPartyKind(data.opportunity_from)
-            if "opportunity_from" in fields and data.opportunity_from is not None
-            else OpportunityPartyKind(existing.opportunity_from)
+        opportunity_from=_merge_optional_update_field(
+            data,
+            fields,
+            "opportunity_from",
+            OpportunityPartyKind(existing.opportunity_from),
+            transform=OpportunityPartyKind,
         ),
-        party_name=(
-            data.party_name
-            if "party_name" in fields and data.party_name is not None
-            else existing.party_name
+        party_name=_merge_optional_update_field(
+            data,
+            fields,
+            "party_name",
+            existing.party_name,
         ),
-        sales_stage=(
-            data.sales_stage
-            if "sales_stage" in fields and data.sales_stage is not None
-            else existing.sales_stage
+        sales_stage=_merge_optional_update_field(
+            data,
+            fields,
+            "sales_stage",
+            existing.sales_stage,
         ),
-        probability=(
-            data.probability
-            if "probability" in fields and data.probability is not None
-            else existing.probability
+        probability=_merge_optional_update_field(
+            data,
+            fields,
+            "probability",
+            existing.probability,
         ),
-        expected_closing=(
-            data.expected_closing
-            if "expected_closing" in fields
-            else existing.expected_closing
+        expected_closing=_merge_present_update_field(
+            data,
+            fields,
+            "expected_closing",
+            existing.expected_closing,
         ),
-        currency=(
-            data.currency
-            if "currency" in fields and data.currency is not None
-            else existing.currency
+        currency=_merge_optional_update_field(
+            data,
+            fields,
+            "currency",
+            existing.currency,
         ),
-        opportunity_amount=(
-            data.opportunity_amount
-            if "opportunity_amount" in fields
-            else existing.opportunity_amount
+        opportunity_amount=_merge_present_update_field(
+            data,
+            fields,
+            "opportunity_amount",
+            existing.opportunity_amount,
         ),
-        opportunity_owner=(
-            data.opportunity_owner
-            if "opportunity_owner" in fields and data.opportunity_owner is not None
-            else existing.opportunity_owner
+        opportunity_owner=_merge_optional_update_field(
+            data,
+            fields,
+            "opportunity_owner",
+            existing.opportunity_owner,
         ),
-        territory=(
-            data.territory
-            if "territory" in fields and data.territory is not None
-            else existing.territory
+        territory=_merge_optional_update_field(
+            data,
+            fields,
+            "territory",
+            existing.territory,
         ),
-        customer_group=(
-            data.customer_group
-            if "customer_group" in fields and data.customer_group is not None
-            else existing.customer_group
+        customer_group=_merge_optional_update_field(
+            data,
+            fields,
+            "customer_group",
+            existing.customer_group,
         ),
-        contact_person=(
-            data.contact_person
-            if "contact_person" in fields and data.contact_person is not None
-            else existing.contact_person
+        contact_person=_merge_optional_update_field(
+            data,
+            fields,
+            "contact_person",
+            existing.contact_person,
         ),
-        contact_email=(
-            data.contact_email
-            if "contact_email" in fields and data.contact_email is not None
-            else existing.contact_email
+        contact_email=_merge_optional_update_field(
+            data,
+            fields,
+            "contact_email",
+            existing.contact_email,
         ),
-        contact_mobile=(
-            data.contact_mobile
-            if "contact_mobile" in fields and data.contact_mobile is not None
-            else existing.contact_mobile
+        contact_mobile=_merge_optional_update_field(
+            data,
+            fields,
+            "contact_mobile",
+            existing.contact_mobile,
         ),
-        job_title=(
-            data.job_title
-            if "job_title" in fields and data.job_title is not None
-            else existing.job_title
+        job_title=_merge_optional_update_field(
+            data,
+            fields,
+            "job_title",
+            existing.job_title,
         ),
-        utm_source=(
-            data.utm_source
-            if "utm_source" in fields and data.utm_source is not None
-            else existing.utm_source
+        utm_source=_merge_optional_update_field(
+            data,
+            fields,
+            "utm_source",
+            existing.utm_source,
         ),
-        utm_medium=(
-            data.utm_medium
-            if "utm_medium" in fields and data.utm_medium is not None
-            else existing.utm_medium
+        utm_medium=_merge_optional_update_field(
+            data,
+            fields,
+            "utm_medium",
+            existing.utm_medium,
         ),
-        utm_campaign=(
-            data.utm_campaign
-            if "utm_campaign" in fields and data.utm_campaign is not None
-            else existing.utm_campaign
+        utm_campaign=_merge_optional_update_field(
+            data,
+            fields,
+            "utm_campaign",
+            existing.utm_campaign,
         ),
-        utm_content=(
-            data.utm_content
-            if "utm_content" in fields and data.utm_content is not None
-            else existing.utm_content
+        utm_content=_merge_optional_update_field(
+            data,
+            fields,
+            "utm_content",
+            existing.utm_content,
         ),
-        items=(
-            data.items
-            if "items" in fields and data.items is not None
-            else existing_items
+        items=_merge_optional_update_field(
+            data,
+            fields,
+            "items",
+            existing_items,
         ),
-        notes=(
-            data.notes
-            if "notes" in fields and data.notes is not None
-            else existing.notes
+        notes=_merge_optional_update_field(
+            data,
+            fields,
+            "notes",
+            existing.notes,
         ),
     )
 
@@ -234,6 +267,7 @@ def _apply_opportunity_fields_to_record(
 ) -> None:
     """Apply merged OpportunityCreate fields to an existing record."""
     defaults = party_defaults or {}
+    common_fields = _resolve_contact_context_fields(merged, defaults)
 
     record.opportunity_title = merged.opportunity_title.strip()
     record.opportunity_from = merged.opportunity_from
@@ -247,18 +281,9 @@ def _apply_opportunity_fields_to_record(
     record.opportunity_amount = resolved_amount if resolved_amount is not None else merged.opportunity_amount
     record.base_opportunity_amount = record.opportunity_amount
     record.opportunity_owner = _trim(merged.opportunity_owner)
-    record.territory = _trim(merged.territory) or defaults.get("territory", "")
-    record.customer_group = _trim(merged.customer_group)
-    record.contact_person = _trim(merged.contact_person) or defaults.get("contact_person", "")
-    record.contact_email = _trim(merged.contact_email) or defaults.get("contact_email", "")
-    record.contact_mobile = _trim(merged.contact_mobile) or defaults.get("contact_mobile", "")
-    record.job_title = _trim(merged.job_title)
-    record.utm_source = _trim(merged.utm_source) or defaults.get("utm_source", "")
-    record.utm_medium = _trim(merged.utm_medium) or defaults.get("utm_medium", "")
-    record.utm_campaign = _trim(merged.utm_campaign) or defaults.get("utm_campaign", "")
-    record.utm_content = _trim(merged.utm_content) or defaults.get("utm_content", "")
+    for field_name, value in common_fields.items():
+        setattr(record, field_name, value)
     record.items = serialized_items if serialized_items is not None else record.items
-    record.notes = _trim(merged.notes)
     record.version += 1
     record.updated_at = datetime.now(tz=UTC)
 
@@ -332,6 +357,9 @@ async def create_opportunity(
         data.party_name,
         tid,
     )
+    common_fields = _resolve_contact_context_fields(data, party_defaults)
+    common_fields["territory"] = territory or common_fields["territory"]
+    common_fields["customer_group"] = customer_group
 
     opportunity = Opportunity(
         tenant_id=tid,
@@ -347,18 +375,8 @@ async def create_opportunity(
         opportunity_amount=opportunity_amount,
         base_opportunity_amount=opportunity_amount,
         opportunity_owner=_trim(data.opportunity_owner),
-        territory=territory or party_defaults.get("territory", ""),
-        customer_group=customer_group,
-        contact_person=_trim(data.contact_person) or party_defaults.get("contact_person", ""),
-        contact_email=_trim(data.contact_email) or party_defaults.get("contact_email", ""),
-        contact_mobile=_trim(data.contact_mobile) or party_defaults.get("contact_mobile", ""),
-        job_title=_trim(data.job_title),
-        utm_source=_trim(data.utm_source) or party_defaults.get("utm_source", ""),
-        utm_medium=_trim(data.utm_medium) or party_defaults.get("utm_medium", ""),
-        utm_campaign=_trim(data.utm_campaign) or party_defaults.get("utm_campaign", ""),
-        utm_content=_trim(data.utm_content) or party_defaults.get("utm_content", ""),
+        **common_fields,
         items=serialized_items,
-        notes=_trim(data.notes),
     )
 
     async with session.begin():

@@ -23,6 +23,10 @@ from domains.crm._setup import (
 from domains.crm._shared import (
     _deserialize_opportunity_items,
     _deserialize_quotation_taxes,
+    _ensure_status_transition_allowed,
+    _merge_optional_update_field,
+    _merge_present_update_field,
+    _resolve_contact_context_fields,
     _resolve_party_context,
     _resolve_serialized_decimal_sum,
     _resolve_total_amount,
@@ -72,10 +76,14 @@ def _ensure_quotation_transition_allowed(
     target: QuotationStatus,
 ) -> None:
     """Validate quotation status transition."""
-    if target not in ALLOWED_QUOTATION_TRANSITIONS.get(current, frozenset()):
-        raise ValueError(
-            f"Cannot transition quotation from {current.value} to {target.value}"
-        )
+    _ensure_status_transition_allowed(
+        current,
+        target,
+        ALLOWED_QUOTATION_TRANSITIONS,
+        lambda source, destination: ValueError(
+            f"Cannot transition quotation from {source.value} to {destination.value}"
+        ),
+    )
 
 
 def _ensure_quotation_lost_context(data: QuotationTransition) -> None:
@@ -137,140 +145,168 @@ def _build_quotation_merged(
     )
 
     return QuotationCreate(
-        quotation_to=(
-            QuotationPartyKind(data.quotation_to)
-            if "quotation_to" in fields and data.quotation_to is not None
-            else QuotationPartyKind(existing.quotation_to)
+        quotation_to=_merge_optional_update_field(
+            data,
+            fields,
+            "quotation_to",
+            QuotationPartyKind(existing.quotation_to),
+            transform=QuotationPartyKind,
         ),
-        party_name=(
-            data.party_name
-            if "party_name" in fields and data.party_name is not None
-            else existing.party_name
+        party_name=_merge_optional_update_field(
+            data,
+            fields,
+            "party_name",
+            existing.party_name,
         ),
-        transaction_date=(
-            data.transaction_date
-            if "transaction_date" in fields and data.transaction_date is not None
-            else existing.transaction_date
+        transaction_date=_merge_optional_update_field(
+            data,
+            fields,
+            "transaction_date",
+            existing.transaction_date,
         ),
-        valid_till=(
-            data.valid_till
-            if "valid_till" in fields and data.valid_till is not None
-            else existing.valid_till
+        valid_till=_merge_optional_update_field(
+            data,
+            fields,
+            "valid_till",
+            existing.valid_till,
         ),
-        company=(
-            data.company
-            if "company" in fields and data.company is not None
-            else existing.company
+        company=_merge_optional_update_field(
+            data,
+            fields,
+            "company",
+            existing.company,
         ),
-        currency=(
-            data.currency
-            if "currency" in fields and data.currency is not None
-            else existing.currency
+        currency=_merge_optional_update_field(
+            data,
+            fields,
+            "currency",
+            existing.currency,
         ),
-        contact_person=(
-            data.contact_person
-            if "contact_person" in fields and data.contact_person is not None
-            else existing.contact_person
+        contact_person=_merge_optional_update_field(
+            data,
+            fields,
+            "contact_person",
+            existing.contact_person,
         ),
-        contact_email=(
-            data.contact_email
-            if "contact_email" in fields and data.contact_email is not None
-            else existing.contact_email
+        contact_email=_merge_optional_update_field(
+            data,
+            fields,
+            "contact_email",
+            existing.contact_email,
         ),
-        contact_mobile=(
-            data.contact_mobile
-            if "contact_mobile" in fields and data.contact_mobile is not None
-            else existing.contact_mobile
+        contact_mobile=_merge_optional_update_field(
+            data,
+            fields,
+            "contact_mobile",
+            existing.contact_mobile,
         ),
-        job_title=(
-            data.job_title
-            if "job_title" in fields and data.job_title is not None
-            else existing.job_title
+        job_title=_merge_optional_update_field(
+            data,
+            fields,
+            "job_title",
+            existing.job_title,
         ),
-        territory=(
-            data.territory
-            if "territory" in fields and data.territory is not None
-            else existing.territory
+        territory=_merge_optional_update_field(
+            data,
+            fields,
+            "territory",
+            existing.territory,
         ),
-        customer_group=(
-            data.customer_group
-            if "customer_group" in fields and data.customer_group is not None
-            else existing.customer_group
+        customer_group=_merge_optional_update_field(
+            data,
+            fields,
+            "customer_group",
+            existing.customer_group,
         ),
-        billing_address=(
-            data.billing_address
-            if "billing_address" in fields and data.billing_address is not None
-            else existing.billing_address
+        billing_address=_merge_optional_update_field(
+            data,
+            fields,
+            "billing_address",
+            existing.billing_address,
         ),
-        shipping_address=(
-            data.shipping_address
-            if "shipping_address" in fields and data.shipping_address is not None
-            else existing.shipping_address
+        shipping_address=_merge_optional_update_field(
+            data,
+            fields,
+            "shipping_address",
+            existing.shipping_address,
         ),
-        utm_source=(
-            data.utm_source
-            if "utm_source" in fields and data.utm_source is not None
-            else existing.utm_source
+        utm_source=_merge_optional_update_field(
+            data,
+            fields,
+            "utm_source",
+            existing.utm_source,
         ),
-        utm_medium=(
-            data.utm_medium
-            if "utm_medium" in fields and data.utm_medium is not None
-            else existing.utm_medium
+        utm_medium=_merge_optional_update_field(
+            data,
+            fields,
+            "utm_medium",
+            existing.utm_medium,
         ),
-        utm_campaign=(
-            data.utm_campaign
-            if "utm_campaign" in fields and data.utm_campaign is not None
-            else existing.utm_campaign
+        utm_campaign=_merge_optional_update_field(
+            data,
+            fields,
+            "utm_campaign",
+            existing.utm_campaign,
         ),
-        utm_content=(
-            data.utm_content
-            if "utm_content" in fields and data.utm_content is not None
-            else existing.utm_content
+        utm_content=_merge_optional_update_field(
+            data,
+            fields,
+            "utm_content",
+            existing.utm_content,
         ),
-        opportunity_id=(
-            data.opportunity_id
-            if "opportunity_id" in fields
-            else existing.opportunity_id
+        opportunity_id=_merge_present_update_field(
+            data,
+            fields,
+            "opportunity_id",
+            existing.opportunity_id,
         ),
-        items=(
-            data.items
-            if "items" in fields and data.items is not None
-            else existing_items
+        items=_merge_optional_update_field(
+            data,
+            fields,
+            "items",
+            existing_items,
         ),
-        taxes=(
-            data.taxes
-            if "taxes" in fields and data.taxes is not None
-            else existing_taxes
+        taxes=_merge_optional_update_field(
+            data,
+            fields,
+            "taxes",
+            existing_taxes,
         ),
-        terms_template=(
-            data.terms_template
-            if "terms_template" in fields and data.terms_template is not None
-            else existing.terms_template
+        terms_template=_merge_optional_update_field(
+            data,
+            fields,
+            "terms_template",
+            existing.terms_template,
         ),
-        terms_and_conditions=(
-            data.terms_and_conditions
-            if "terms_and_conditions" in fields and data.terms_and_conditions is not None
-            else existing.terms_and_conditions
+        terms_and_conditions=_merge_optional_update_field(
+            data,
+            fields,
+            "terms_and_conditions",
+            existing.terms_and_conditions,
         ),
-        auto_repeat_enabled=(
-            data.auto_repeat_enabled
-            if "auto_repeat_enabled" in fields and data.auto_repeat_enabled is not None
-            else existing.auto_repeat_enabled
+        auto_repeat_enabled=_merge_optional_update_field(
+            data,
+            fields,
+            "auto_repeat_enabled",
+            existing.auto_repeat_enabled,
         ),
-        auto_repeat_frequency=(
-            data.auto_repeat_frequency
-            if "auto_repeat_frequency" in fields and data.auto_repeat_frequency is not None
-            else existing.auto_repeat_frequency
+        auto_repeat_frequency=_merge_optional_update_field(
+            data,
+            fields,
+            "auto_repeat_frequency",
+            existing.auto_repeat_frequency,
         ),
-        auto_repeat_until=(
-            data.auto_repeat_until
-            if "auto_repeat_until" in fields
-            else existing.auto_repeat_until
+        auto_repeat_until=_merge_present_update_field(
+            data,
+            fields,
+            "auto_repeat_until",
+            existing.auto_repeat_until,
         ),
-        notes=(
-            data.notes
-            if "notes" in fields and data.notes is not None
-            else existing.notes
+        notes=_merge_optional_update_field(
+            data,
+            fields,
+            "notes",
+            existing.notes,
         ),
     )
 
@@ -284,6 +320,7 @@ def _apply_quotation_fields_to_record(
 ) -> None:
     """Apply merged QuotationCreate fields to an existing record."""
     defaults = party_defaults or {}
+    common_fields = _resolve_contact_context_fields(merged, defaults)
 
     record.quotation_to = merged.quotation_to
     record.party_name = party_name
@@ -292,25 +329,16 @@ def _apply_quotation_fields_to_record(
     record.valid_till = merged.valid_till
     record.company = merged.company.strip()
     record.currency = merged.currency.strip().upper()
-    record.contact_person = _trim(merged.contact_person) or defaults.get("contact_person", "")
-    record.contact_email = _trim(merged.contact_email) or defaults.get("contact_email", "")
-    record.contact_mobile = _trim(merged.contact_mobile) or defaults.get("contact_mobile", "")
-    record.job_title = _trim(merged.job_title)
-    record.territory = _trim(merged.territory) or defaults.get("territory", "")
-    record.customer_group = _trim(merged.customer_group)
+    for field_name, value in common_fields.items():
+        setattr(record, field_name, value)
     record.billing_address = _trim(merged.billing_address)
     record.shipping_address = _trim(merged.shipping_address)
-    record.utm_source = _trim(merged.utm_source) or defaults.get("utm_source", "")
-    record.utm_medium = _trim(merged.utm_medium) or defaults.get("utm_medium", "")
-    record.utm_campaign = _trim(merged.utm_campaign) or defaults.get("utm_campaign", "")
-    record.utm_content = _trim(merged.utm_content) or defaults.get("utm_content", "")
     record.terms_template = _trim(merged.terms_template)
     record.terms_and_conditions = _trim(merged.terms_and_conditions)
     record.opportunity_id = merged.opportunity_id
     record.auto_repeat_enabled = merged.auto_repeat_enabled
     record.auto_repeat_frequency = _trim(merged.auto_repeat_frequency)
     record.auto_repeat_until = merged.auto_repeat_until
-    record.notes = _trim(merged.notes)
     record.version += 1
     record.updated_at = datetime.now(tz=UTC)
 
@@ -350,6 +378,9 @@ def _build_quotation_record(
     effective_valid_till = valid_till_override if valid_till_override is not None else merged.valid_till
     effective_territory = territory_override if territory_override is not None else (_trim(merged.territory) or defaults.get("territory", ""))
     effective_customer_group = customer_group_override if customer_group_override is not None else _trim(merged.customer_group)
+    common_fields = _resolve_contact_context_fields(merged, defaults)
+    common_fields["territory"] = effective_territory
+    common_fields["customer_group"] = effective_customer_group
 
     return Quotation(
         tenant_id=tenant_id,
@@ -367,18 +398,9 @@ def _build_quotation_record(
         base_grand_total=grand_total,
         ordered_amount=Decimal("0.00"),
         order_count=0,
-        contact_person=_trim(merged.contact_person) or defaults.get("contact_person", ""),
-        contact_email=_trim(merged.contact_email) or defaults.get("contact_email", ""),
-        contact_mobile=_trim(merged.contact_mobile) or defaults.get("contact_mobile", ""),
-        job_title=_trim(merged.job_title),
-        territory=effective_territory,
-        customer_group=effective_customer_group,
+        **common_fields,
         billing_address=_trim(merged.billing_address),
         shipping_address=_trim(merged.shipping_address),
-        utm_source=_trim(merged.utm_source) or defaults.get("utm_source", ""),
-        utm_medium=_trim(merged.utm_medium) or defaults.get("utm_medium", ""),
-        utm_campaign=_trim(merged.utm_campaign) or defaults.get("utm_campaign", ""),
-        utm_content=_trim(merged.utm_content) or defaults.get("utm_content", ""),
         items=serialized_items,
         taxes=serialized_taxes,
         terms_template=_trim(merged.terms_template),
@@ -389,7 +411,6 @@ def _build_quotation_record(
         auto_repeat_enabled=merged.auto_repeat_enabled,
         auto_repeat_frequency=_trim(merged.auto_repeat_frequency),
         auto_repeat_until=merged.auto_repeat_until,
-        notes=_trim(merged.notes),
     )
 
 

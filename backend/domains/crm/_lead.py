@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -12,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.errors import DuplicateLeadConflictError, ValidationError, VersionConflictError
 from common.tenant import DEFAULT_TENANT_ID, set_tenant
+from domains.crm._shared import _ensure_status_transition_allowed
 from domains.crm._setup import _ensure_territory_supported, get_crm_settings
 from domains.crm.models import Lead
 from domains.crm.schemas import (
@@ -137,19 +139,43 @@ def _normalize_phone(value: str) -> str:
     return re.sub(r"\D", "", value)
 
 
+def _apply_trimmed_update_field(
+    lead: Lead,
+    data: LeadUpdate,
+    fields: set[str],
+    field_name: str,
+    *,
+    normalized_field: str | None = None,
+    normalizer: Callable[[str], str] | None = None,
+) -> None:
+    if field_name not in fields:
+        return
+    value = getattr(data, field_name)
+    if value is None:
+        return
+    trimmed = value.strip()
+    setattr(lead, field_name, trimmed)
+    if normalized_field is not None and normalizer is not None:
+        setattr(lead, normalized_field, normalizer(trimmed))
+
+
 def _ensure_transition_allowed(current_status: LeadStatus, target_status: LeadStatus) -> None:
-    if target_status not in ALLOWED_LEAD_TRANSITIONS.get(current_status, frozenset()):
-        raise ValidationError(
+    _ensure_status_transition_allowed(
+        current_status,
+        target_status,
+        ALLOWED_LEAD_TRANSITIONS,
+        lambda current, target: ValidationError(
             [
                 {
                     "field": "status",
                     "message": (
-                        f"Cannot transition from '{current_status.value}' "
-                        f"to '{target_status.value}'."
+                        f"Cannot transition from '{current.value}' "
+                        f"to '{target.value}'."
                     ),
                 }
             ]
-        )
+        ),
+    )
 
 
 def _ensure_opportunity_handoff_allowed(current_status: LeadStatus) -> None:
@@ -445,48 +471,56 @@ async def update_lead(
 
     async with session.begin():
         await set_tenant(session, tid)
-        if "lead_name" in fields and data.lead_name is not None:
-            lead.lead_name = data.lead_name.strip()
-        if "company_name" in fields and data.company_name is not None:
-            lead.company_name = data.company_name.strip()
-            lead.normalized_company_name = _normalize_company_name(data.company_name)
-        if "email_id" in fields and data.email_id is not None:
-            lead.email_id = data.email_id.strip()
-            lead.normalized_email_id = _normalize_email(data.email_id)
-        if "phone" in fields and data.phone is not None:
-            lead.phone = data.phone.strip()
-            lead.normalized_phone = _normalize_phone(data.phone)
-        if "mobile_no" in fields and data.mobile_no is not None:
-            lead.mobile_no = data.mobile_no.strip()
-            lead.normalized_mobile_no = _normalize_phone(data.mobile_no)
-        if "territory" in fields and data.territory is not None:
-            lead.territory = data.territory.strip()
-        if "lead_owner" in fields and data.lead_owner is not None:
-            lead.lead_owner = data.lead_owner.strip()
-        if "source" in fields and data.source is not None:
-            lead.source = data.source.strip()
+        _apply_trimmed_update_field(lead, data, fields, "lead_name")
+        _apply_trimmed_update_field(
+            lead,
+            data,
+            fields,
+            "company_name",
+            normalized_field="normalized_company_name",
+            normalizer=_normalize_company_name,
+        )
+        _apply_trimmed_update_field(
+            lead,
+            data,
+            fields,
+            "email_id",
+            normalized_field="normalized_email_id",
+            normalizer=_normalize_email,
+        )
+        _apply_trimmed_update_field(
+            lead,
+            data,
+            fields,
+            "phone",
+            normalized_field="normalized_phone",
+            normalizer=_normalize_phone,
+        )
+        _apply_trimmed_update_field(
+            lead,
+            data,
+            fields,
+            "mobile_no",
+            normalized_field="normalized_mobile_no",
+            normalizer=_normalize_phone,
+        )
+        _apply_trimmed_update_field(lead, data, fields, "territory")
+        _apply_trimmed_update_field(lead, data, fields, "lead_owner")
+        _apply_trimmed_update_field(lead, data, fields, "source")
         if "qualification_status" in fields and data.qualification_status is not None:
             lead.qualification_status = data.qualification_status
-        if "qualified_by" in fields and data.qualified_by is not None:
-            lead.qualified_by = data.qualified_by.strip()
+        _apply_trimmed_update_field(lead, data, fields, "qualified_by")
         if "annual_revenue" in fields:
             lead.annual_revenue = data.annual_revenue
         if "no_of_employees" in fields:
             lead.no_of_employees = data.no_of_employees
-        if "industry" in fields and data.industry is not None:
-            lead.industry = data.industry.strip()
-        if "market_segment" in fields and data.market_segment is not None:
-            lead.market_segment = data.market_segment.strip()
-        if "utm_source" in fields and data.utm_source is not None:
-            lead.utm_source = data.utm_source.strip()
-        if "utm_medium" in fields and data.utm_medium is not None:
-            lead.utm_medium = data.utm_medium.strip()
-        if "utm_campaign" in fields and data.utm_campaign is not None:
-            lead.utm_campaign = data.utm_campaign.strip()
-        if "utm_content" in fields and data.utm_content is not None:
-            lead.utm_content = data.utm_content.strip()
-        if "notes" in fields and data.notes is not None:
-            lead.notes = data.notes.strip()
+        _apply_trimmed_update_field(lead, data, fields, "industry")
+        _apply_trimmed_update_field(lead, data, fields, "market_segment")
+        _apply_trimmed_update_field(lead, data, fields, "utm_source")
+        _apply_trimmed_update_field(lead, data, fields, "utm_medium")
+        _apply_trimmed_update_field(lead, data, fields, "utm_campaign")
+        _apply_trimmed_update_field(lead, data, fields, "utm_content")
+        _apply_trimmed_update_field(lead, data, fields, "notes")
 
         lead.version += 1
         lead.updated_at = datetime.now(tz=UTC)

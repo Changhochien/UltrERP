@@ -68,13 +68,33 @@ class TestBuildQuotationMerged:
             contact_email="john@example.com",
             contact_mobile="0912-345-678",
         )
-        # Simulating partial update where these fields weren't touched
-        update_data = QuotationUpdate(version=1)
+        update_data = QuotationUpdate(
+            version=1,
+            contact_email=None,
+            contact_mobile=None,
+        )
 
         merged = _build_quotation_merged(update_data, existing)
 
         assert merged.contact_email == "john@example.com"
         assert merged.contact_mobile == "0912-345-678"
+
+    def test_clears_nullable_fields_when_explicit_none_is_provided(self) -> None:
+        """Nullable fields that support clearing should honor explicit None."""
+        existing = _mock_quotation(
+            opportunity_id=uuid.UUID("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"),
+            auto_repeat_until=date(2026, 12, 31),
+        )
+        update_data = QuotationUpdate(
+            version=1,
+            opportunity_id=None,
+            auto_repeat_until=None,
+        )
+
+        merged = _build_quotation_merged(update_data, existing)
+
+        assert merged.opportunity_id is None
+        assert merged.auto_repeat_until is None
 
     def test_handles_party_kind_conversion(self) -> None:
         """quotation_to is stored as string but schema expects enum."""

@@ -99,6 +99,26 @@ class TestBuildOpportunityMerged:
         assert len(merged.items) == 1
         assert merged.items[0].item_name == "Widget"
 
+    def test_preserves_optional_fields_but_clears_nullable_fields_on_explicit_none(self) -> None:
+        """Explicit None preserves ordinary optional fields but clears nullable ones."""
+        existing = _mock_opportunity(
+            contact_email="old@example.com",
+            expected_closing=date(2026, 6, 30),
+            opportunity_amount=Decimal("12345.00"),
+        )
+        update_data = OpportunityUpdate(
+            version=1,
+            contact_email=None,
+            expected_closing=None,
+            opportunity_amount=None,
+        )
+
+        merged = _build_opportunity_merged(update_data, existing)
+
+        assert merged.contact_email == "old@example.com"
+        assert merged.expected_closing is None
+        assert merged.opportunity_amount is None
+
     def test_handles_all_opportunity_fields(self) -> None:
         """Verify all fields are correctly merged."""
         existing = _mock_opportunity(

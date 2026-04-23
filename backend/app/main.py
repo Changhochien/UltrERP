@@ -28,6 +28,7 @@ from domains.legacy_import.staging import close_raw_connection_pool
 from domains.line.webhook import router as line_router
 from domains.orders.routes import router as orders_router
 from domains.payments.routes import router as payments_router
+from domains.procurement.routes import router as procurement_router
 from domains.purchases.routes import router as purchases_router
 from domains.reports.routes import router as reports_router
 from domains.settings.routes import router as settings_router
@@ -94,6 +95,7 @@ def create_app() -> FastAPI:
 	api_v1.include_router(line_router, prefix="/line", tags=["LINE"])
 	api_v1.include_router(orders_router, prefix="/orders", tags=["orders"])
 	api_v1.include_router(payments_router, prefix="/payments", tags=["payments"])
+	api_v1.include_router(procurement_router, prefix="/procurement", tags=["procurement"])
 	api_v1.include_router(purchases_router, prefix="/purchases", tags=["purchases"])
 	api_v1.include_router(reports_router, prefix="/reports", tags=["reports"])
 	api_v1.include_router(settings_router, prefix="/settings", tags=["settings"])
