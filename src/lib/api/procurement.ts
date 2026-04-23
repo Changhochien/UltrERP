@@ -1,8 +1,12 @@
-/** Procurement API client - RFQ and Supplier Quotation workspace. */
+/** Procurement API client - RFQ, Supplier Quotation, and Purchase Order workspace. */
 
 import type {
   AwardCreatePayload,
   AwardResponse,
+  PurchaseOrderCreatePayload,
+  PurchaseOrderListResponse,
+  PurchaseOrderResponse,
+  PurchaseOrderUpdatePayload,
   RFQComparisonResponse,
   RFQCreatePayload,
   RFQListResponse,
@@ -178,5 +182,114 @@ export async function listAwards(params?: {
 export async function getRFQAward(rfqId: string): Promise<AwardResponse | null> {
   const resp = await apiFetch(`/api/v1/procurement/rfqs/${rfqId}/award`);
   if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to load RFQ award"));
+  return resp.json();
+}
+
+// ---------------------------------------------------------------------------
+// Purchase Order API
+// ---------------------------------------------------------------------------
+
+export async function createPurchaseOrder(
+  payload: PurchaseOrderCreatePayload,
+): Promise<PurchaseOrderResponse> {
+  const resp = await apiFetch("/api/v1/procurement/purchase-orders", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to create purchase order"));
+  return resp.json();
+}
+
+export async function listPurchaseOrders(params?: {
+  status?: string;
+  supplier_id?: string;
+  q?: string;
+  page?: number;
+  page_size?: number;
+}): Promise<PurchaseOrderListResponse> {
+  const qs = new URLSearchParams();
+  if (params?.status) qs.set("status", params.status);
+  if (params?.supplier_id) qs.set("supplier_id", params.supplier_id);
+  if (params?.q) qs.set("q", params.q);
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.page_size) qs.set("page_size", String(params.page_size));
+  const resp = await apiFetch(`/api/v1/procurement/purchase-orders?${qs}`);
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to list purchase orders"));
+  return resp.json();
+}
+
+export async function getPurchaseOrder(poId: string): Promise<PurchaseOrderResponse> {
+  const resp = await apiFetch(`/api/v1/procurement/purchase-orders/${poId}`);
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to load purchase order"));
+  return resp.json();
+}
+
+export async function updatePurchaseOrder(
+  poId: string,
+  payload: PurchaseOrderUpdatePayload,
+): Promise<PurchaseOrderResponse> {
+  const resp = await apiFetch(`/api/v1/procurement/purchase-orders/${poId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to update purchase order"));
+  return resp.json();
+}
+
+export async function submitPurchaseOrder(poId: string): Promise<PurchaseOrderResponse> {
+  const resp = await apiFetch(`/api/v1/procurement/purchase-orders/${poId}/submit`, {
+    method: "POST",
+  });
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to submit purchase order"));
+  return resp.json();
+}
+
+export async function holdPurchaseOrder(poId: string): Promise<PurchaseOrderResponse> {
+  const resp = await apiFetch(`/api/v1/procurement/purchase-orders/${poId}/hold`, {
+    method: "POST",
+  });
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to hold purchase order"));
+  return resp.json();
+}
+
+export async function releasePurchaseOrder(poId: string): Promise<PurchaseOrderResponse> {
+  const resp = await apiFetch(`/api/v1/procurement/purchase-orders/${poId}/release`, {
+    method: "POST",
+  });
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to release purchase order"));
+  return resp.json();
+}
+
+export async function completePurchaseOrder(poId: string): Promise<PurchaseOrderResponse> {
+  const resp = await apiFetch(`/api/v1/procurement/purchase-orders/${poId}/complete`, {
+    method: "POST",
+  });
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to complete purchase order"));
+  return resp.json();
+}
+
+export async function cancelPurchaseOrder(poId: string): Promise<PurchaseOrderResponse> {
+  const resp = await apiFetch(`/api/v1/procurement/purchase-orders/${poId}/cancel`, {
+    method: "POST",
+  });
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to cancel purchase order"));
+  return resp.json();
+}
+
+export async function closePurchaseOrder(poId: string): Promise<PurchaseOrderResponse> {
+  const resp = await apiFetch(`/api/v1/procurement/purchase-orders/${poId}/close`, {
+    method: "POST",
+  });
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to close purchase order"));
+  return resp.json();
+}
+
+export async function createPOFromAward(awardId: string): Promise<PurchaseOrderResponse> {
+  const resp = await apiFetch(`/api/v1/procurement/awards/${awardId}/create-po`, {
+    method: "GET",
+  });
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to create PO from award"));
   return resp.json();
 }

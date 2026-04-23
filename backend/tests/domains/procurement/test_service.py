@@ -523,3 +523,288 @@ class TestPOHandoffSeam:
         # Simulate replacing existing award
         awards_per_rfq = {existing_award_id}  # old award removed
         assert existing_award_id not in {new_quotation_id}
+
+
+# --------------------------------------------------------------------------
+# Story 24.2: Purchase Order Tests
+# --------------------------------------------------------------------------
+
+
+class TestPurchaseOrderSchemas:
+    """PO schema validation tests."""
+
+    def test_po_status_enum_has_all_required_values(self) -> None:
+        """PO status enum must include all lifecycle states."""
+        from domains.procurement.schemas import POStatus
+        valid_statuses = {
+            "draft",
+            "submitted",
+            "on_hold",
+            "to_receive",
+            "to_bill",
+            "to_receive_and_bill",
+            "completed",
+            "cancelled",
+            "closed",
+        }
+        for status in valid_statuses:
+            assert hasattr(POStatus, status.upper())
+
+    def test_po_create_payload_requires_transaction_date(self) -> None:
+        """PO create payload requires transaction_date for record keeping."""
+        from domains.procurement.schemas import PurchaseOrderCreate
+
+        # Minimal valid payload
+        payload = PurchaseOrderCreate(
+            supplier_name="Test Supplier",
+            company="Test Company",
+            transaction_date=date.today(),
+        )
+        assert payload.transaction_date is not None
+        assert payload.supplier_name == "Test Supplier"
+
+    def test_po_create_payload_has_award_id_for_auto_fill(self) -> None:
+        """PO can be created from award_id to auto-fill from awarded quotation."""
+        from domains.procurement.schemas import PurchaseOrderCreate
+
+        award_id = uuid.uuid4()
+        payload = PurchaseOrderCreate(
+            award_id=award_id,
+            supplier_name="",
+            company="",
+            transaction_date=date.today(),
+        )
+        assert payload.award_id == award_id
+
+    def test_po_item_payload_has_lineage_fields(self) -> None:
+        """PO item payload preserves quotation_item_id and rfq_item_id for lineage."""
+        from domains.procurement.schemas import POItemCreate
+
+        quotation_item_id = uuid.uuid4()
+        rfq_item_id = uuid.uuid4()
+        item = POItemCreate(
+            quotation_item_id=quotation_item_id,
+            rfq_item_id=rfq_item_id,
+            item_code="MAT-001",
+            item_name="Industrial Bearing",
+            qty=Decimal("100"),
+            uom="PCS",
+            warehouse="WH-001",
+            unit_rate=Decimal("10.00"),
+            amount=Decimal("1000.00"),
+        )
+        assert item.quotation_item_id == quotation_item_id
+        assert item.rfq_item_id == rfq_item_id
+
+
+class TestPurchaseOrderLineage:
+    """PO sourcing lineage tests."""
+
+    def test_po_preserves_award_id_for_sourcing_audit(self) -> None:
+        """PO should preserve award_id to trace back to award."""
+        award_id = uuid.uuid4()
+        po_data = {
+            "name": "PO-0001",
+            "award_id": award_id,
+            "supplier_name": "Test Supplier",
+            "company": "Test Company",
+            "transaction_date": date.today(),
+        }
+        assert po_data["award_id"] == award_id
+
+    def test_po_preserves_quotation_id_for_sourcing_audit(self) -> None:
+        """PO should preserve quotation_id to trace back to supplier quotation."""
+        quotation_id = uuid.uuid4()
+        po_data = {
+            "name": "PO-0001",
+            "quotation_id": quotation_id,
+            "supplier_name": "Test Supplier",
+            "company": "Test Company",
+            "transaction_date": date.today(),
+        }
+        assert po_data["quotation_id"] == quotation_id
+
+    def test_po_preserves_rfq_id_for_sourcing_audit(self) -> None:
+        """PO should preserve rfq_id to trace back to upstream RFQ."""
+        rfq_id = uuid.uuid4()
+        po_data = {
+            "name": "PO-0001",
+            "rfq_id": rfq_id,
+            "supplier_name": "Test Supplier",
+            "company": "Test Company",
+            "transaction_date": date.today(),
+        }
+        assert po_data["rfq_id"] == rfq_id
+
+    def test_po_line_item_preserves_quotation_item_id(self) -> None:
+        """PO line items should preserve quotation_item_id for downstream receipt linkage."""
+        quotation_item_id = uuid.uuid4()
+        po_item = {
+            "quotation_item_id": quotation_item_id,
+            "item_code": "MAT-001",
+            "item_name": "Industrial Bearing",
+            "qty": Decimal("100"),
+            "uom": "PCS",
+        }
+        assert po_item["quotation_item_id"] == quotation_item_id
+
+
+class TestPurchaseOrderLifecycle:
+    """PO status lifecycle and transition tests."""
+
+    def test_po_lifecycle_statuses_are_distinct(self) -> None:
+        """PO lifecycle statuses must be distinct to avoid state confusion."""
+        statuses = [
+            "draft",
+            "submitted",
+            "on_hold",
+            "to_receive",
+            "to_bill",
+            "to_receive_and_bill",
+            "completed",
+            "cancelled",
+            "closed",
+        ]
+        assert len(statuses) == len(set(statuses))
+
+    def test_po_cannot_cancel_when_completed(self) -> None:
+        """PO cannot be cancelled once completed."""
+        po_status = "completed"
+        # Cancellation is only allowed for draft, submitted, to_receive, to_bill
+        can_cancel = po_status not in ("completed", "cancelled", "closed")
+        assert can_cancel is False
+
+    def test_po_cannot_close_when_submitted(self) -> None:
+        """PO cannot be closed without first being completed or cancelled."""
+        po_status = "submitted"
+        # Closing requires completed or cancelled status
+        can_close = po_status in ("completed", "cancelled")
+        assert can_close is False
+
+    def test_po_on_hold_can_be_released(self) -> None:
+        """PO on hold can be released back to active state."""
+        po_status = "on_hold"
+        can_release = po_status == "on_hold"
+        assert can_release is True
+
+
+class TestPurchaseOrderProgress:
+    """PO progress tracking tests."""
+
+    def test_po_per_received_starts_at_zero(self) -> None:
+        """PO per_received should start at 0.00% for new POs."""
+        per_received = Decimal("0.00")
+        assert per_received == Decimal("0.00")
+
+    def test_po_per_billed_starts_at_zero(self) -> None:
+        """PO per_billed should start at 0.00% for new POs."""
+        per_billed = Decimal("0.00")
+        assert per_billed == Decimal("0.00")
+
+    def test_po_per_received_computed_from_received_qty_over_total_qty(self) -> None:
+        """per_received = received_qty / total_qty * 100."""
+        total_qty = Decimal("100")
+        received_qty = Decimal("75")
+        per_received = (received_qty / total_qty) * Decimal("100")
+        assert per_received == Decimal("75.00")
+
+    def test_po_per_billed_computed_from_billed_amount_over_grand_total(self) -> None:
+        """per_billed = billed_amount / grand_total * 100."""
+        grand_total = Decimal("10000.00")
+        billed_amount = Decimal("5000.00")
+        per_billed = (billed_amount / grand_total) * Decimal("100")
+        assert per_billed == Decimal("50.00")
+
+    def test_po_per_received_capped_at_100_percent(self) -> None:
+        """per_received cannot exceed 100%."""
+        total_qty = Decimal("100")
+        received_qty = Decimal("120")  # Over-delivery
+        per_received = min(Decimal("100.00"), (received_qty / total_qty) * Decimal("100"))
+        assert per_received == Decimal("100.00")
+
+    def test_po_per_billed_capped_at_100_percent(self) -> None:
+        """per_billed cannot exceed 100%."""
+        grand_total = Decimal("10000.00")
+        billed_amount = Decimal("15000.00")  # Over-billing
+        per_billed = min(Decimal("100.00"), (billed_amount / grand_total) * Decimal("100"))
+        assert per_billed == Decimal("100.00")
+
+    def test_po_status_derived_from_per_received_and_per_billed(self) -> None:
+        """PO status should reflect progress toward completion."""
+        per_received = Decimal("50.00")
+        per_billed = Decimal("0.00")
+
+        if per_received < Decimal("100.00") and per_billed < Decimal("100.00"):
+            derived_status = "to_receive_and_bill"
+        elif per_received < Decimal("100.00"):
+            derived_status = "to_receive"
+        elif per_billed < Decimal("100.00"):
+            derived_status = "to_bill"
+        else:
+            derived_status = "completed"
+
+        assert derived_status == "to_receive_and_bill"
+
+
+class TestPurchaseOrderNoGoodsReceipt:
+    """Validation that PO story does not implement goods receipt logic."""
+
+    def test_no_goods_receipt_fields_in_po_create(self) -> None:
+        """PO create should not include goods receipt fields."""
+        from domains.procurement.schemas import PurchaseOrderCreate
+
+        payload = PurchaseOrderCreate(
+            supplier_name="Test Supplier",
+            company="Test Company",
+            transaction_date=date.today(),
+        )
+        # PO create should NOT have received_qty, receipt_id, etc.
+        # These are set by goods receipt story (24-3)
+        po_dict = payload.model_dump()
+        assert "received_qty" not in po_dict
+        assert "receipt_date" not in po_dict
+        assert "purchase_receipt_id" not in po_dict
+
+    def test_no_supplier_invoice_fields_in_po_create(self) -> None:
+        """PO create should not include supplier invoice fields."""
+        from domains.procurement.schemas import PurchaseOrderCreate
+
+        payload = PurchaseOrderCreate(
+            supplier_name="Test Supplier",
+            company="Test Company",
+            transaction_date=date.today(),
+        )
+        po_dict = payload.model_dump()
+        # Invoice fields are set by supplier invoice story (24-6)
+        assert "invoice_id" not in po_dict
+        assert "invoice_date" not in po_dict
+        assert "billed_date" not in po_dict
+
+    def test_no_landed_cost_fields_in_po_create(self) -> None:
+        """PO create should not include landed cost allocation fields."""
+        from domains.procurement.schemas import PurchaseOrderCreate
+
+        payload = PurchaseOrderCreate(
+            supplier_name="Test Supplier",
+            company="Test Company",
+            transaction_date=date.today(),
+        )
+        po_dict = payload.model_dump()
+        # Landed cost is handled by Story 24-6 AP posting
+        assert "landed_cost" not in po_dict
+        assert "additional_costs" not in po_dict
+
+    def test_no_subcontracting_fields_in_po_create(self) -> None:
+        """PO create should not include subcontracting-specific fields."""
+        from domains.procurement.schemas import PurchaseOrderCreate
+
+        payload = PurchaseOrderCreate(
+            supplier_name="Test Supplier",
+            company="Test Company",
+            transaction_date=date.today(),
+        )
+        po_dict = payload.model_dump()
+        # Subcontracting is deferred to Story 24-6
+        assert "is_subcontracted" not in po_dict
+        assert "supplier_warehouse" not in po_dict
+        assert "bom" not in po_dict

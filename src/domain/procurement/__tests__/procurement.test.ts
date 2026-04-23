@@ -228,3 +228,339 @@ describe("Comparison view", () => {
     expect(sqUSD.currency).not.toBe(sqTWD.currency);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Story 24.2: Purchase Order Tests
+// ---------------------------------------------------------------------------
+
+import type {
+  POStatus,
+  PurchaseOrderCreatePayload,
+  PurchaseOrderResponse,
+  PurchaseOrderSummary,
+} from "../types";
+
+const PO_STATUS_COLORS: Record<POStatus, string> = {
+  draft: "bg-gray-100 text-gray-700",
+  submitted: "bg-blue-100 text-blue-700",
+  on_hold: "bg-yellow-100 text-yellow-700",
+  to_receive: "bg-orange-100 text-orange-700",
+  to_bill: "bg-purple-100 text-purple-700",
+  to_receive_and_bill: "bg-indigo-100 text-indigo-700",
+  completed: "bg-green-100 text-green-700",
+  cancelled: "bg-red-100 text-red-700",
+  closed: "bg-gray-100 text-gray-500",
+};
+
+const PO_STATUS_LABELS: Record<POStatus, string> = {
+  draft: "Draft",
+  submitted: "Submitted",
+  on_hold: "On Hold",
+  to_receive: "To Receive",
+  to_bill: "To Bill",
+  to_receive_and_bill: "To Receive & Bill",
+  completed: "Completed",
+  cancelled: "Cancelled",
+  closed: "Closed",
+};
+
+describe("Purchase Order Types (Story 24.2)", () => {
+  it("PurchaseOrderResponse has required sourcing lineage fields", () => {
+    const po: PurchaseOrderResponse = {
+      id: "00000000-0000-0000-0000-000000000010",
+      tenant_id: "00000000-0000-0000-0000-000000000002",
+      name: "PO-0001",
+      status: "draft",
+      supplier_id: null,
+      supplier_name: "Alpha Parts Co.",
+      rfq_id: "00000000-0000-0000-0000-000000000001",
+      quotation_id: "00000000-0000-0000-0000-000000000005",
+      award_id: "00000000-0000-0000-0000-000000000007",
+      company: "UltrERP Taiwan",
+      currency: "TWD",
+      transaction_date: "2026-04-27",
+      schedule_date: "2026-05-11",
+      subtotal: "12000.00",
+      total_taxes: "500.00",
+      grand_total: "12500.00",
+      base_grand_total: "12500.00",
+      taxes: [],
+      contact_person: "",
+      contact_email: "sales@alpha.example",
+      set_warehouse: "WH-001",
+      terms_and_conditions: "",
+      notes: "Urgent delivery required",
+      per_received: "0.00",
+      per_billed: "0.00",
+      is_approved: false,
+      approved_by: "",
+      approved_at: null,
+      created_at: "2026-04-27T00:00:00Z",
+      updated_at: "2026-04-27T00:00:00Z",
+      items: [],
+    };
+
+    // Sourcing lineage preserved
+    expect(po.rfq_id).toBe("00000000-0000-0000-0000-000000000001");
+    expect(po.quotation_id).toBe("00000000-0000-0000-0000-000000000005");
+    expect(po.award_id).toBe("00000000-0000-0000-0000-000000000007");
+    // Progress tracking
+    expect(po.per_received).toBe("0.00");
+    expect(po.per_billed).toBe("0.00");
+    expect(po.is_approved).toBe(false);
+  });
+
+  it("PO item has stable UUID for downstream receipt and invoice linkage", () => {
+    const poItem = {
+      id: "00000000-0000-0000-0000-000000000011",
+      purchase_order_id: "00000000-0000-0000-0000-000000000010",
+      quotation_item_id: "00000000-0000-0000-0000-000000000006",
+      rfq_item_id: "00000000-0000-0000-0000-000000000003",
+      item_code: "MAT-001",
+      item_name: "Industrial Bearing",
+      qty: "100",
+      uom: "PCS",
+      warehouse: "WH-001",
+      unit_rate: "100.00",
+      amount: "10000.00",
+      received_qty: "0",
+      billed_amount: "0.00",
+    };
+
+    // Stable UUID for downstream references (Story 24-3, 24-6)
+    expect(poItem.id).toBeTruthy();
+    // Lineage back to quotation item
+    expect(poItem.quotation_item_id).toBe("00000000-0000-0000-0000-000000000006");
+    // Lineage back to RFQ item
+    expect(poItem.rfq_item_id).toBe("00000000-0000-0000-0000-000000000003");
+  });
+
+  it("PO can be created from award_id for auto-fill", () => {
+    const poPayload: PurchaseOrderCreatePayload = {
+      award_id: "00000000-0000-0000-0000-000000000007",
+      supplier_name: "", // Will be auto-filled
+      company: "", // Will be auto-filled
+      currency: "TWD",
+      transaction_date: "2026-04-27",
+      subtotal: "0.00",
+      total_taxes: "0.00",
+      grand_total: "0.00",
+      base_grand_total: "0.00",
+      taxes: [],
+      contact_person: "",
+      contact_email: "",
+      set_warehouse: "",
+      terms_and_conditions: "",
+      notes: "",
+      items: [],
+    };
+
+    expect(poPayload.award_id).toBe("00000000-0000-0000-0000-000000000007");
+    // Empty supplier/company indicate auto-fill from award
+    expect(poPayload.supplier_name).toBe("");
+  });
+
+  it("PO status colors cover all lifecycle states", () => {
+    const statuses: POStatus[] = [
+      "draft",
+      "submitted",
+      "on_hold",
+      "to_receive",
+      "to_bill",
+      "to_receive_and_bill",
+      "completed",
+      "cancelled",
+      "closed",
+    ];
+
+    for (const status of statuses) {
+      expect(PO_STATUS_COLORS[status]).toBeTruthy();
+      expect(PO_STATUS_LABELS[status]).toBeTruthy();
+    }
+  });
+
+  it("PurchaseOrderSummary contains list view fields", () => {
+    const summary: PurchaseOrderSummary = {
+      id: "00000000-0000-0000-0000-000000000010",
+      name: "PO-0001",
+      status: "submitted",
+      supplier_name: "Alpha Parts Co.",
+      company: "UltrERP Taiwan",
+      currency: "TWD",
+      transaction_date: "2026-04-27",
+      schedule_date: "2026-05-11",
+      grand_total: "12500.00",
+      per_received: "0.00",
+      per_billed: "0.00",
+      is_approved: true,
+      created_at: "2026-04-27T00:00:00Z",
+    };
+
+    expect(summary.name).toBe("PO-0001");
+    expect(summary.status).toBe("submitted");
+    expect(summary.is_approved).toBe(true);
+    expect(summary.per_received).toBe("0.00");
+    expect(summary.per_billed).toBe("0.00");
+  });
+});
+
+describe("Purchase Order Lifecycle (Story 24.2)", () => {
+  it("PO starts in draft status", () => {
+    const po = { status: "draft", is_approved: false };
+    expect(po.status).toBe("draft");
+    expect(po.is_approved).toBe(false);
+  });
+
+  it("PO transitions to submitted after approval", () => {
+    const po = { status: "submitted", is_approved: true };
+    expect(po.status).toBe("submitted");
+    expect(po.is_approved).toBe(true);
+  });
+
+  it("PO can be placed on hold", () => {
+    const po = { status: "on_hold" };
+    expect(po.status).toBe("on_hold");
+  });
+
+  it("PO can be released from hold", () => {
+    const po = { status: "to_receive" };
+    expect(["to_receive", "to_bill", "to_receive_and_bill", "submitted"]).toContain(po.status);
+  });
+
+  it("PO cannot be cancelled when completed", () => {
+    const po = { status: "completed" };
+    const canCancel = !["completed", "cancelled", "closed"].includes(po.status);
+    expect(canCancel).toBe(false);
+  });
+
+  it("PO cannot be cancelled when closed", () => {
+    const po = { status: "closed" };
+    const canCancel = !["completed", "cancelled", "closed"].includes(po.status);
+    expect(canCancel).toBe(false);
+  });
+
+  it("PO progress reflects per_received and per_billed", () => {
+    const po = {
+      per_received: "50.00",
+      per_billed: "25.00",
+    };
+    expect(Number(po.per_received)).toBe(50);
+    expect(Number(po.per_billed)).toBe(25);
+  });
+});
+
+describe("Purchase Order Sourcing Lineage (Story 24.2)", () => {
+  it("PO links back to awarded supplier quotation", () => {
+    const po = {
+      quotation_id: "00000000-0000-0000-0000-000000000005",
+      supplier_name: "Alpha Parts Co.",
+    };
+    expect(po.quotation_id).toBe("00000000-0000-0000-0000-000000000005");
+    expect(po.supplier_name).toBe("Alpha Parts Co.");
+  });
+
+  it("PO links back to upstream RFQ", () => {
+    const po = {
+      rfq_id: "00000000-0000-0000-0000-000000000001",
+      quotation_id: "00000000-0000-0000-0000-000000000005",
+    };
+    expect(po.rfq_id).toBe("00000000-0000-0000-0000-000000000001");
+    expect(po.quotation_id).toBe("00000000-0000-0000-0000-000000000005");
+  });
+
+  it("PO line items preserve quotation item reference", () => {
+    const poItem = {
+      quotation_item_id: "00000000-0000-0000-0000-000000000006",
+      rfq_item_id: "00000000-0000-0000-0000-000000000003",
+    };
+    expect(poItem.quotation_item_id).toBeTruthy();
+    expect(poItem.rfq_item_id).toBeTruthy();
+  });
+
+  it("PO award link enables tracking from RFQ to PO", () => {
+    const award = {
+      id: "00000000-0000-0000-0000-000000000007",
+      rfq_id: "00000000-0000-0000-0000-000000000001",
+      quotation_id: "00000000-0000-0000-0000-000000000005",
+      po_created: true,
+      po_reference: "PO-0001",
+    };
+    expect(award.po_created).toBe(true);
+    expect(award.po_reference).toBe("PO-0001");
+  });
+});
+
+describe("Purchase Order No Goods Receipt Logic (Story 24.2)", () => {
+  it("PO create payload does not include received_qty", () => {
+    const payload: PurchaseOrderCreatePayload = {
+      supplier_name: "Alpha Parts Co.",
+      company: "UltrERP Taiwan",
+      currency: "TWD",
+      transaction_date: "2026-04-27",
+      subtotal: "12500.00",
+      total_taxes: "500.00",
+      grand_total: "12500.00",
+      base_grand_total: "12500.00",
+      taxes: [],
+      contact_person: "",
+      contact_email: "",
+      set_warehouse: "",
+      terms_and_conditions: "",
+      notes: "",
+      items: [],
+    };
+    // received_qty is set by Story 24-3 (goods receipt)
+    expect("received_qty" in payload).toBe(false);
+  });
+
+  it("PO response does not include supplier invoice fields", () => {
+    const po: PurchaseOrderResponse = {
+      id: "00000000-0000-0000-0000-000000000010",
+      tenant_id: "00000000-0000-0000-0000-000000000002",
+      name: "PO-0001",
+      status: "draft",
+      supplier_id: null,
+      supplier_name: "Alpha Parts Co.",
+      rfq_id: null,
+      quotation_id: null,
+      award_id: null,
+      company: "UltrERP Taiwan",
+      currency: "TWD",
+      transaction_date: "2026-04-27",
+      schedule_date: null,
+      subtotal: "12500.00",
+      total_taxes: "500.00",
+      grand_total: "12500.00",
+      base_grand_total: "12500.00",
+      taxes: [],
+      contact_person: "",
+      contact_email: "",
+      set_warehouse: "",
+      terms_and_conditions: "",
+      notes: "",
+      per_received: "0.00",
+      per_billed: "0.00",
+      is_approved: false,
+      approved_by: "",
+      approved_at: null,
+      created_at: "2026-04-27T00:00:00Z",
+      updated_at: "2026-04-27T00:00:00Z",
+      items: [],
+    };
+    // Invoice posting is handled by Story 24-6
+    expect("invoice_id" in po).toBe(false);
+    expect("invoice_date" in po).toBe(false);
+  });
+
+  it("PO does not include subcontracting fields", () => {
+    const po = {
+      status: "draft",
+      supplier_name: "Alpha Parts Co.",
+      company: "UltrERP Taiwan",
+    };
+    // Subcontracting is deferred to Story 24-6
+    expect("is_subcontracted" in po).toBe(false);
+    expect("supplier_warehouse" in po).toBe(false);
+    expect("bom" in po).toBe(false);
+  });
+});

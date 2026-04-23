@@ -343,6 +343,197 @@ class SupplierQuotationListResponse(BaseModel):
 
 
 # ------------------------------------------------------------------
+# Purchase Order Schemas
+# ------------------------------------------------------------------
+
+
+class POStatus(StrEnum):
+    DRAFT = "draft"
+    SUBMITTED = "submitted"
+    ON_HOLD = "on_hold"
+    TO_RECEIVE = "to_receive"
+    TO_BILL = "to_bill"
+    TO_RECEIVE_AND_BILL = "to_receive_and_bill"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+    CLOSED = "closed"
+
+
+class POItemCreate(BaseModel):
+    quotation_item_id: uuid.UUID | None = None
+    rfq_item_id: uuid.UUID | None = None
+    item_code: str = Field(default="", max_length=100)
+    item_name: str = Field(default="", max_length=200)
+    description: str = Field(default="", max_length=2000)
+    qty: Decimal = Field(default=Decimal("0"), ge=Decimal("0"), decimal_places=3)
+    uom: str = Field(default="", max_length=40)
+    warehouse: str = Field(default="", max_length=120)
+    unit_rate: Decimal = Field(default=Decimal("0"), ge=Decimal("0"), decimal_places=4)
+    amount: Decimal = Field(default=Decimal("0"), ge=Decimal("0"), decimal_places=2)
+    tax_rate: Decimal = Field(default=Decimal("0"), ge=Decimal("0"), decimal_places=3)
+    tax_amount: Decimal = Field(default=Decimal("0"), decimal_places=2)
+    tax_code: str = Field(default="", max_length=40)
+
+
+class POItemUpdate(BaseModel):
+    qty: Decimal | None = Field(default=None, ge=Decimal("0"), decimal_places=3)
+    warehouse: str | None = Field(default=None, max_length=120)
+    unit_rate: Decimal | None = Field(default=None, ge=Decimal("0"), decimal_places=4)
+    amount: Decimal | None = Field(default=None, ge=Decimal("0"), decimal_places=2)
+    tax_rate: Decimal | None = Field(default=None, ge=Decimal("0"), decimal_places=3)
+    tax_amount: Decimal | None = Field(default=None, decimal_places=2)
+    tax_code: str | None = Field(default=None, max_length=40)
+
+
+class POItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    purchase_order_id: uuid.UUID
+    idx: int
+    quotation_item_id: uuid.UUID | None
+    rfq_item_id: uuid.UUID | None
+    item_code: str
+    item_name: str
+    description: str
+    qty: Decimal
+    uom: str
+    warehouse: str
+    unit_rate: Decimal
+    amount: Decimal
+    tax_rate: Decimal
+    tax_amount: Decimal
+    tax_code: str
+    received_qty: Decimal
+    billed_amount: Decimal
+    created_at: datetime
+
+
+class PurchaseOrderCreate(BaseModel):
+    name: str = Field(default="", max_length=100)
+    status: POStatus = POStatus.DRAFT
+    # Supplier
+    supplier_id: uuid.UUID | None = None
+    supplier_name: str = Field(default="", max_length=200)
+    # Sourcing lineage (award_id triggers auto-fill from awarded quotation)
+    award_id: uuid.UUID | None = None
+    rfq_id: uuid.UUID | None = None
+    quotation_id: uuid.UUID | None = None
+    # Company context
+    company: str = Field(default="", max_length=200)
+    currency: str = Field(default="TWD", max_length=3)
+    # Dates
+    transaction_date: date
+    schedule_date: date | None = None
+    # Pricing
+    subtotal: Decimal = Field(default=Decimal("0.00"), decimal_places=2)
+    total_taxes: Decimal = Field(default=Decimal("0.00"), decimal_places=2)
+    grand_total: Decimal = Field(default=Decimal("0.00"), decimal_places=2)
+    base_grand_total: Decimal = Field(default=Decimal("0.00"), decimal_places=2)
+    taxes: list[dict[str, object]] = Field(default_factory=list)
+    # Contact
+    contact_person: str = Field(default="", max_length=120)
+    contact_email: str = Field(default="", max_length=254)
+    # Warehouse
+    set_warehouse: str = Field(default="", max_length=120)
+    # Terms
+    terms_and_conditions: str = Field(default="", max_length=5000)
+    notes: str = Field(default="", max_length=5000)
+    items: list[POItemCreate] = Field(default_factory=list)
+
+
+class PurchaseOrderUpdate(BaseModel):
+    name: str | None = Field(default=None, max_length=100)
+    status: POStatus | None = None
+    supplier_name: str | None = Field(default=None, max_length=200)
+    company: str | None = Field(default=None, max_length=200)
+    currency: str | None = Field(default=None, max_length=3)
+    transaction_date: date | None = None
+    schedule_date: date | None = None
+    subtotal: Decimal | None = Field(default=None, decimal_places=2)
+    total_taxes: Decimal | None = Field(default=None, decimal_places=2)
+    grand_total: Decimal | None = Field(default=None, decimal_places=2)
+    base_grand_total: Decimal | None = Field(default=None, decimal_places=2)
+    taxes: list[dict[str, object]] | None = None
+    contact_person: str | None = Field(default=None, max_length=120)
+    contact_email: str | None = Field(default=None, max_length=254)
+    set_warehouse: str | None = Field(default=None, max_length=120)
+    terms_and_conditions: str | None = Field(default=None, max_length=5000)
+    notes: str | None = Field(default=None, max_length=5000)
+
+
+class PurchaseOrderResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    name: str
+    status: str
+    supplier_id: uuid.UUID | None
+    supplier_name: str
+    rfq_id: uuid.UUID | None
+    quotation_id: uuid.UUID | None
+    award_id: uuid.UUID | None
+    company: str
+    currency: str
+    transaction_date: date
+    schedule_date: date | None
+    subtotal: Decimal
+    total_taxes: Decimal
+    grand_total: Decimal
+    base_grand_total: Decimal
+    taxes: list[dict[str, object]]
+    contact_person: str
+    contact_email: str
+    set_warehouse: str
+    terms_and_conditions: str
+    notes: str
+    per_received: Decimal
+    per_billed: Decimal
+    is_approved: bool
+    approved_by: str
+    approved_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+    items: list[POItemResponse] = Field(default_factory=list)
+
+
+class PurchaseOrderListParams(BaseModel):
+    status: POStatus | None = None
+    supplier_id: uuid.UUID | None = None
+    q: str | None = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=100)
+
+
+class PurchaseOrderSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    status: str
+    supplier_name: str
+    company: str
+    currency: str
+    transaction_date: date
+    schedule_date: date | None
+    grand_total: Decimal
+    per_received: Decimal
+    per_billed: Decimal
+    is_approved: bool
+    created_at: datetime
+
+
+class PurchaseOrderListResponse(BaseModel):
+    items: list[PurchaseOrderSummary]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+# ------------------------------------------------------------------
 # Award Schemas
 # ------------------------------------------------------------------
 

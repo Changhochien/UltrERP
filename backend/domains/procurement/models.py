@@ -317,6 +317,155 @@ class SupplierQuotationItem(Base):
 
 
 # ------------------------------------------------------------------
+# Purchase Order (buyer commitment from awarded supplier quotation)
+# ------------------------------------------------------------------
+
+
+class PurchaseOrder(Base):
+    """Purchase Order - formal buyer-side commitment record.
+
+    Created from an awarded supplier quotation without rekeying supplier and item data.
+    Preserves explicit sourcing lineage back to the awarded quotation and upstream RFQ.
+    """
+
+    __tablename__ = "procurement_purchase_orders"
+    __table_args__ = (
+        Index("ix_procurement_po_tenant_status", "tenant_id", "status"),
+        Index("ix_procurement_po_tenant_supplier", "tenant_id", "supplier_id"),
+        Index("ix_procurement_po_tenant_award", "tenant_id", "award_id"),
+        # Unique constraint: only one PO per name per tenant
+        Index("uq_procurement_po_name_tenant", "tenant_id", "name", unique=True),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+
+    # Naming
+    name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="draft")
+
+    # Supplier reference (reuse supplier master)
+    supplier_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    supplier_name: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+
+    # Sourcing lineage
+    rfq_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    quotation_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    award_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+
+    # Company context
+    company: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="TWD")
+
+    # Dates
+    transaction_date: Mapped[date] = mapped_column(Date, nullable=False)
+    schedule_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+    # Pricing
+    subtotal: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0.00"))
+    total_taxes: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0.00"))
+    grand_total: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0.00"))
+    base_grand_total: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0.00"))
+
+    # Tax metadata (templates / row-level)
+    taxes: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False, default=list)
+
+    # Contact
+    contact_person: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    contact_email: Mapped[str] = mapped_column(String(254), nullable=False, default="")
+
+    # Warehouse context (default for lines)
+    set_warehouse: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+
+    # Terms
+    terms_and_conditions: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+    # Progress tracking (computed from downstream coverage)
+    per_received: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=Decimal("0.00"))
+    per_billed: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=Decimal("0.00"))
+
+    # Approval state
+    is_approved: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    approved_by: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(tz=UTC),
+        onupdate=lambda: datetime.now(tz=UTC),
+    )
+
+    # Relationships
+    items: Mapped[list[PurchaseOrderItem]] = relationship(
+        back_populates="purchase_order",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+
+class PurchaseOrderItem(Base):
+    """Line item on a Purchase Order with a stable UUID for downstream references.
+
+    Stable identifiers enable receipt (Story 24-3) and supplier invoice (Story 24-6)
+    to reference PO lines without ambiguity.
+    """
+
+    __tablename__ = "procurement_purchase_order_items"
+    __table_args__ = (
+        Index("ix_procurement_po_items_po", "purchase_order_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    purchase_order_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("procurement_purchase_orders.id", ondelete="CASCADE"), nullable=False
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+
+    # Stable display order
+    idx: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    # Lineage back to supplier quotation item (for auditing)
+    quotation_item_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    rfq_item_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+
+    # Item reference (reuse product master)
+    item_code: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    item_name: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+    # Quantity and UOM
+    qty: Mapped[Decimal] = mapped_column(Numeric(14, 3), nullable=False, default=Decimal("0"))
+    uom: Mapped[str] = mapped_column(String(40), nullable=False, default="")
+
+    # Warehouse for this line
+    warehouse: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+
+    # Pricing
+    unit_rate: Mapped[Decimal] = mapped_column(Numeric(14, 4), nullable=False, default=Decimal("0"))
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0.00"))
+
+    # Tax metadata
+    tax_rate: Mapped[Decimal] = mapped_column(Numeric(6, 3), nullable=False, default=Decimal("0"))
+    tax_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0.00"))
+    tax_code: Mapped[str] = mapped_column(String(40), nullable=False, default="")
+
+    # Progress tracking per line
+    received_qty: Mapped[Decimal] = mapped_column(Numeric(14, 3), nullable=False, default=Decimal("0"))
+    billed_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0.00"))
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=UTC)
+    )
+
+    purchase_order: Mapped[PurchaseOrder] = relationship(back_populates="items")
+
+
+# ------------------------------------------------------------------
 # Procurement Award (winner selection before PO creation)
 # ------------------------------------------------------------------
 

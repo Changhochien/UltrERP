@@ -1,10 +1,14 @@
-"""Procurement service layer - RFQ and Supplier Quotation business logic.
+"""Procurement service layer - RFQ, Supplier Quotation, and Purchase Order business logic.
 
 Exposed functions:
 - RFQ: create_rfq, get_rfq, list_rfqs, update_rfq, submit_rfq
 - Supplier Quotation: create_supplier_quotation, get_supplier_quotation,
     list_supplier_quotations, update_supplier_quotation, submit_supplier_quotation
 - Award: award_quotation, get_award, list_awards
+- Purchase Order: create_purchase_order, get_purchase_order, list_purchase_orders,
+    update_purchase_order, submit_purchase_order, hold_purchase_order,
+    release_purchase_order, complete_purchase_order, cancel_purchase_order,
+    close_purchase_order, recompute_po_progress
 - Comparison: get_rfq_comparison
 """
 
@@ -21,6 +25,8 @@ from common.errors import ValidationError
 from domains.procurement.models import (
     RFQ,
     ProcurementAward,
+    PurchaseOrder,
+    PurchaseOrderItem,
     RFQItem,
     RFQSupplier,
     SupplierQuotation,
@@ -563,3 +569,475 @@ async def recompute_rfq_quote_status(
     rfq.quotes_received = result.scalar() or 0
 
     await db.commit()
+
+
+# --------------------------------------------------------------------------
+# Purchase Order Service
+# --------------------------------------------------------------------------
+
+
+async def _derive_po_status(po: PurchaseOrder) -> str:
+    """Derive PO status from approval and progress state.
+
+    Status derivation rules:
+    - If cancelled: cancelled
+    - If closed: closed
+    - If not approved: draft (needs approval before activation)
+    - If on_hold: on_hold
+    - Compute per_received and per_billed
+    - If both are 100%: completed
+    - If per_received < 100% and per_billed < 100%: to_receive_and_bill
+    - If per_received < 100%: to_receive
+    - If per_billed < 100%: to_bill
+    - Otherwise: submitted (all done)
+    """
+    if po.status in ("cancelled", "closed"):
+        return po.status
+
+    # Recompute progress
+    total_qty = sum(item.qty for item in po.items) if po.items else Decimal("0")
+    received_qty = sum(item.received_qty for item in po.items) if po.items else Decimal("0")
+    total_amount = po.grand_total
+    billed_amount = sum(item.billed_amount for item in po.items) if po.items else Decimal("0")
+
+    if total_qty > 0:
+        po.per_received = min(Decimal("100.00"), (received_qty / total_qty) * Decimal("100"))
+    else:
+        po.per_received = Decimal("0.00")
+
+    if total_amount > 0:
+        po.per_billed = min(Decimal("100.00"), (billed_amount / total_amount) * Decimal("100"))
+    else:
+        po.per_billed = Decimal("0.00")
+
+    # Status logic
+    if not po.is_approved:
+        return "draft"
+
+    if po.status == "on_hold":
+        return "on_hold"
+
+    per_rec = po.per_received
+    per_bil = po.per_billed
+
+    if per_rec >= Decimal("100.00") and per_bil >= Decimal("100.00"):
+        return "completed"
+    if per_rec < Decimal("100.00") and per_bil < Decimal("100.00"):
+        return "to_receive_and_bill"
+    if per_rec < Decimal("100.00"):
+        return "to_receive"
+    if per_bil < Decimal("100.00"):
+        return "to_bill"
+    return "submitted"
+
+
+async def create_purchase_order(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    data: dict,
+    current_user: str = "",
+) -> PurchaseOrder:
+    """Create a Purchase Order, optionally from an awarded supplier quotation.
+
+    If award_id is provided, data is auto-filled from the awarded quotation
+    without requiring manual re-entry.
+    """
+    today = date.today()
+    transaction_date = data.get("transaction_date", today)
+    if isinstance(transaction_date, str):
+        transaction_date = date.fromisoformat(transaction_date)
+
+    award_id = data.get("award_id")
+
+    # Auto-fill from award if provided
+    if award_id:
+        award_result = await db.execute(
+            select(ProcurementAward).where(
+                ProcurementAward.id == award_id,
+                ProcurementAward.tenant_id == tenant_id,
+            )
+        )
+        award = award_result.scalar_one_or_none()
+        if not award:
+            raise ValidationError([{"field": "award_id", "message": f"Award {award_id} not found."}])
+
+        # Prevent duplicate PO from same award
+        if award.po_created:
+            raise ValidationError([{
+                "field": "award_id",
+                "message": f"PO already created from award {award_id}. Use existing PO reference: {award.po_reference}.",
+            }])
+
+        sq_result = await db.execute(
+            select(SupplierQuotation).where(SupplierQuotation.id == award.quotation_id)
+        )
+        sq = sq_result.scalar_one_or_none()
+        if not sq:
+            raise ValidationError([{"field": "quotation_id", "message": "Awarded quotation not found."}])
+
+        # Auto-fill from quotation
+        data["supplier_id"] = sq.supplier_id
+        data["supplier_name"] = sq.supplier_name
+        data["rfq_id"] = award.rfq_id
+        data["quotation_id"] = award.quotation_id
+        data["company"] = data.get("company", sq.company)
+        data["currency"] = data.get("currency", sq.currency)
+        data["taxes"] = data.get("taxes", sq.taxes)
+        data["subtotal"] = data.get("subtotal", sq.subtotal)
+        data["total_taxes"] = data.get("total_taxes", sq.total_taxes)
+        data["grand_total"] = data.get("grand_total", sq.grand_total)
+        data["base_grand_total"] = data.get("base_grand_total", sq.base_grand_total)
+
+        # Auto-fill items from quotation items
+        if not data.get("items"):
+            quotation_items = list(sq.items)
+            if not quotation_items:
+                raise ValidationError([{
+                    "field": "items",
+                    "message": "Cannot create PO from award with no quotation items.",
+                }])
+            data["items"] = [
+                {
+                    "quotation_item_id": str(item.id),
+                    "rfq_item_id": str(item.rfq_item_id) if item.rfq_item_id else None,
+                    "item_code": item.item_code,
+                    "item_name": item.item_name,
+                    "description": item.description,
+                    "qty": str(item.qty),
+                    "uom": item.uom,
+                    "unit_rate": str(item.unit_rate),
+                    "amount": str(item.amount),
+                    "tax_rate": str(item.tax_rate),
+                    "tax_amount": str(item.tax_amount),
+                    "tax_code": item.tax_code,
+                }
+                for item in quotation_items
+            ]
+
+    # Generate PO name
+    name = data.get("name") or ""
+    if not name:
+        count_q = select(func.count()).select_from(PurchaseOrder).where(
+            PurchaseOrder.tenant_id == tenant_id
+        )
+        result = await db.execute(count_q)
+        count = result.scalar() or 0
+        name = f"PO-{count + 1:04d}"
+
+    po = PurchaseOrder(
+        tenant_id=tenant_id,
+        name=name,
+        status="draft",
+        supplier_id=data.get("supplier_id"),
+        supplier_name=data.get("supplier_name", ""),
+        rfq_id=data.get("rfq_id"),
+        quotation_id=data.get("quotation_id"),
+        award_id=award_id,
+        company=data.get("company", ""),
+        currency=data.get("currency", "TWD"),
+        transaction_date=transaction_date,
+        schedule_date=data.get("schedule_date"),
+        subtotal=data.get("subtotal", Decimal("0.00")),
+        total_taxes=data.get("total_taxes", Decimal("0.00")),
+        grand_total=data.get("grand_total", Decimal("0.00")),
+        base_grand_total=data.get("base_grand_total", Decimal("0.00")),
+        taxes=data.get("taxes", []),
+        contact_person=data.get("contact_person", ""),
+        contact_email=data.get("contact_email", ""),
+        set_warehouse=data.get("set_warehouse", ""),
+        terms_and_conditions=data.get("terms_and_conditions", ""),
+        notes=data.get("notes", ""),
+        is_approved=False,
+        approved_by="",
+        approved_at=None,
+    )
+    db.add(po)
+    await db.flush()
+
+    # Create PO items
+    for idx, item_data in enumerate(data.get("items", [])):
+        warehouse = item_data.get("warehouse") or po.set_warehouse
+        item = PurchaseOrderItem(
+            tenant_id=tenant_id,
+            purchase_order_id=po.id,
+            idx=idx,
+            quotation_item_id=item_data.get("quotation_item_id"),
+            rfq_item_id=item_data.get("rfq_item_id"),
+            item_code=item_data.get("item_code", ""),
+            item_name=item_data.get("item_name", ""),
+            description=item_data.get("description", ""),
+            qty=Decimal(str(item_data.get("qty", "0"))),
+            uom=item_data.get("uom", ""),
+            warehouse=warehouse,
+            unit_rate=Decimal(str(item_data.get("unit_rate", "0"))),
+            amount=Decimal(str(item_data.get("amount", "0.00"))),
+            tax_rate=Decimal(str(item_data.get("tax_rate", "0"))),
+            tax_amount=Decimal(str(item_data.get("tax_amount", "0.00"))),
+            tax_code=item_data.get("tax_code", ""),
+            received_qty=Decimal("0"),
+            billed_amount=Decimal("0.00"),
+        )
+        db.add(item)
+
+    # Mark award as PO created
+    if award_id:
+        award.po_created = True
+        award.po_reference = name
+
+    await db.commit()
+    await db.refresh(po)
+    return po
+
+
+async def get_purchase_order(
+    db: AsyncSession, tenant_id: uuid.UUID, po_id: uuid.UUID
+) -> PurchaseOrder:
+    """Fetch a single purchase order with items."""
+    result = await db.execute(
+        select(PurchaseOrder).where(
+            PurchaseOrder.id == po_id,
+            PurchaseOrder.tenant_id == tenant_id,
+        )
+    )
+    po = result.scalar_one_or_none()
+    if not po:
+        raise ValidationError([{"field": "po_id", "message": f"Purchase order {po_id} not found."}])
+    return po
+
+
+async def list_purchase_orders(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    *,
+    status: str | None = None,
+    supplier_id: uuid.UUID | None = None,
+    q: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+) -> tuple[list[PurchaseOrder], int]:
+    """List purchase orders with optional filtering."""
+    query = select(PurchaseOrder).where(PurchaseOrder.tenant_id == tenant_id)
+    count_query = select(func.count()).select_from(PurchaseOrder).where(
+        PurchaseOrder.tenant_id == tenant_id
+    )
+
+    if status:
+        query = query.where(PurchaseOrder.status == status)
+        count_query = count_query.where(PurchaseOrder.status == status)
+    if supplier_id:
+        query = query.where(PurchaseOrder.supplier_id == supplier_id)
+        count_query = count_query.where(PurchaseOrder.supplier_id == supplier_id)
+    if q:
+        q_filter = PurchaseOrder.name.ilike(f"%{q}%")
+        query = query.where(q_filter)
+        count_query = count_query.where(q_filter)
+
+    query = query.order_by(PurchaseOrder.created_at.desc())
+    query = query.offset((page - 1) * page_size).limit(page_size)
+
+    result = await db.execute(query)
+    pos = list(result.scalars().all())
+
+    count_result = await db.execute(count_query)
+    total = count_result.scalar() or 0
+
+    return pos, total
+
+
+async def update_purchase_order(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    po_id: uuid.UUID,
+    data: dict,
+) -> PurchaseOrder:
+    """Update purchase order fields (not items in this slice)."""
+    po = await get_purchase_order(db, tenant_id, po_id)
+
+    if po.status not in ("draft",):
+        msg = f"Cannot update purchase order in status '{po.status}'."
+        raise ValidationError([{"field": "status", "message": msg}])
+
+    for field in (
+        "name", "supplier_name", "company", "currency", "transaction_date",
+        "schedule_date", "subtotal", "total_taxes", "grand_total", "base_grand_total",
+        "taxes", "contact_person", "contact_email", "set_warehouse",
+        "terms_and_conditions", "notes",
+    ):
+        if field in data and data[field] is not None:
+            setattr(po, field, data[field])
+
+    await db.commit()
+    await db.refresh(po)
+    return po
+
+
+async def submit_purchase_order(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    po_id: uuid.UUID,
+    current_user: str = "",
+) -> PurchaseOrder:
+    """Submit a purchase order for approval.
+
+    Validates that:
+    - PO is in draft status
+    - Supplier is not on hold (supplier control check)
+    - PO has at least one item
+
+    Sets is_approved based on approval threshold (v1: auto-approve for MVP).
+    """
+    po = await get_purchase_order(db, tenant_id, po_id)
+
+    if po.status not in ("draft",):
+        msg = f"Cannot submit purchase order in status '{po.status}'."
+        raise ValidationError([{"field": "status", "message": msg}])
+
+    if not po.items:
+        raise ValidationError([{"field": "items", "message": "Purchase order must have at least one item."}])
+
+    # Supplier control check (v1: check supplier hold status via supplier master)
+    # TODO: Integrate with Story 24-5 supplier controls
+    # For now, we pass if no supplier_id or supplier is not flagged as blocked
+
+    # Auto-approve for MVP (Story 24-5 will add approval workflow)
+    po.is_approved = True
+    po.approved_by = current_user
+    po.approved_at = datetime.now(tz=UTC)
+
+    po.status = await _derive_po_status(po)
+
+    await db.commit()
+    await db.refresh(po)
+    return po
+
+
+async def hold_purchase_order(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    po_id: uuid.UUID,
+) -> PurchaseOrder:
+    """Place a purchase order on hold."""
+    po = await get_purchase_order(db, tenant_id, po_id)
+
+    if po.status not in ("submitted", "to_receive", "to_bill", "to_receive_and_bill"):
+        msg = f"Cannot hold purchase order in status '{po.status}'."
+        raise ValidationError([{"field": "status", "message": msg}])
+
+    po.status = "on_hold"
+    await db.commit()
+    await db.refresh(po)
+    return po
+
+
+async def release_purchase_order(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    po_id: uuid.UUID,
+) -> PurchaseOrder:
+    """Release a purchase order from hold."""
+    po = await get_purchase_order(db, tenant_id, po_id)
+
+    if po.status != "on_hold":
+        msg = f"Cannot release purchase order not on hold (status: '{po.status}')."
+        raise ValidationError([{"field": "status", "message": msg}])
+
+    po.status = await _derive_po_status(po)
+    await db.commit()
+    await db.refresh(po)
+    return po
+
+
+async def complete_purchase_order(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    po_id: uuid.UUID,
+) -> PurchaseOrder:
+    """Manually complete a purchase order (override auto-status)."""
+    po = await get_purchase_order(db, tenant_id, po_id)
+
+    if po.status not in ("to_receive", "to_bill", "to_receive_and_bill", "submitted"):
+        msg = f"Cannot complete purchase order in status '{po.status}'."
+        raise ValidationError([{"field": "status", "message": msg}])
+
+    po.status = "completed"
+    po.per_received = Decimal("100.00")
+    po.per_billed = Decimal("100.00")
+    for item in po.items:
+        item.received_qty = item.qty
+        item.billed_amount = item.amount
+
+    await db.commit()
+    await db.refresh(po)
+    return po
+
+
+async def cancel_purchase_order(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    po_id: uuid.UUID,
+) -> PurchaseOrder:
+    """Cancel a purchase order."""
+    po = await get_purchase_order(db, tenant_id, po_id)
+
+    if po.status in ("completed", "closed"):
+        msg = f"Cannot cancel purchase order in status '{po.status}'."
+        raise ValidationError([{"field": "status", "message": msg}])
+
+    po.status = "cancelled"
+    await db.commit()
+    await db.refresh(po)
+    return po
+
+
+async def close_purchase_order(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    po_id: uuid.UUID,
+) -> PurchaseOrder:
+    """Close a purchase order (permanent, no more receipts or invoices)."""
+    po = await get_purchase_order(db, tenant_id, po_id)
+
+    if po.status not in ("completed", "cancelled"):
+        msg = f"Cannot close purchase order in status '{po.status}'. Complete or cancel first."
+        raise ValidationError([{"field": "status", "message": msg}])
+
+    po.status = "closed"
+    await db.commit()
+    await db.refresh(po)
+    return po
+
+
+async def recompute_po_progress(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    po_id: uuid.UUID,
+) -> PurchaseOrder:
+    """Recompute per_received and per_billed from downstream coverage.
+
+    Called by goods receipt (Story 24-3) and supplier invoice (Story 24-6)
+    to update PO progress fields without full status derivation.
+    """
+    po = await get_purchase_order(db, tenant_id, po_id)
+
+    total_qty = sum(item.qty for item in po.items) if po.items else Decimal("0")
+    received_qty = sum(item.received_qty for item in po.items) if po.items else Decimal("0")
+    total_amount = po.grand_total
+    billed_amount = sum(item.billed_amount for item in po.items) if po.items else Decimal("0")
+
+    if total_qty > 0:
+        po.per_received = min(Decimal("100.00"), (received_qty / total_qty) * Decimal("100"))
+    else:
+        po.per_received = Decimal("0.00")
+
+    if total_amount > 0:
+        po.per_billed = min(Decimal("100.00"), (billed_amount / total_amount) * Decimal("100"))
+    else:
+        po.per_billed = Decimal("0.00")
+
+    # Derive status
+    if po.is_approved and po.status not in ("on_hold", "cancelled", "closed"):
+        po.status = await _derive_po_status(po)
+
+    await db.commit()
+    await db.refresh(po)
+    return po

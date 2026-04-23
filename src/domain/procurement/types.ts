@@ -308,3 +308,159 @@ export interface RFQComparisonResponse {
   items: RFQItemResponse[];
   quotations: SupplierComparisonRow[];
 }
+
+// ---------------------------------------------------------------------------
+// Purchase Order Types
+// ---------------------------------------------------------------------------
+
+export type POStatus =
+  | "draft"
+  | "submitted"
+  | "on_hold"
+  | "to_receive"
+  | "to_bill"
+  | "to_receive_and_bill"
+  | "completed"
+  | "cancelled"
+  | "closed";
+
+export interface POItemPayload {
+  quotation_item_id?: string | null;
+  rfq_item_id?: string | null;
+  item_code: string;
+  item_name: string;
+  description: string;
+  qty: string;
+  uom: string;
+  warehouse: string;
+  unit_rate: string;
+  amount: string;
+  tax_rate: string;
+  tax_amount: string;
+  tax_code: string;
+}
+
+export interface POItemResponse {
+  id: string;
+  purchase_order_id: string;
+  idx: number;
+  quotation_item_id: string | null;
+  rfq_item_id: string | null;
+  item_code: string;
+  item_name: string;
+  description: string;
+  qty: string;
+  uom: string;
+  warehouse: string;
+  unit_rate: string;
+  amount: string;
+  tax_rate: string;
+  tax_amount: string;
+  tax_code: string;
+  received_qty: string;
+  billed_amount: string;
+  created_at: string;
+}
+
+export interface PurchaseOrderCreatePayload {
+  name?: string;
+  status?: POStatus;
+  award_id?: string | null;
+  rfq_id?: string | null;
+  quotation_id?: string | null;
+  supplier_id?: string | null;
+  supplier_name: string;
+  company: string;
+  currency: string;
+  transaction_date: string;
+  schedule_date?: string | null;
+  subtotal: string;
+  total_taxes: string;
+  grand_total: string;
+  base_grand_total: string;
+  taxes: Record<string, unknown>[];
+  contact_person: string;
+  contact_email: string;
+  set_warehouse: string;
+  terms_and_conditions: string;
+  notes: string;
+  items: POItemPayload[];
+}
+
+export interface PurchaseOrderUpdatePayload {
+  name?: string;
+  status?: POStatus;
+  supplier_name?: string;
+  company?: string;
+  currency?: string;
+  transaction_date?: string;
+  schedule_date?: string | null;
+  subtotal?: string;
+  total_taxes?: string;
+  grand_total?: string;
+  base_grand_total?: string;
+  taxes?: Record<string, unknown>[] | null;
+  contact_person?: string;
+  contact_email?: string;
+  set_warehouse?: string;
+  terms_and_conditions?: string;
+  notes?: string;
+}
+
+export interface PurchaseOrderResponse {
+  id: string;
+  tenant_id: string;
+  name: string;
+  status: POStatus;
+  supplier_id: string | null;
+  supplier_name: string;
+  rfq_id: string | null;
+  quotation_id: string | null;
+  award_id: string | null;
+  company: string;
+  currency: string;
+  transaction_date: string;
+  schedule_date: string | null;
+  subtotal: string;
+  total_taxes: string;
+  grand_total: string;
+  base_grand_total: string;
+  taxes: Record<string, unknown>[];
+  contact_person: string;
+  contact_email: string;
+  set_warehouse: string;
+  terms_and_conditions: string;
+  notes: string;
+  per_received: string;
+  per_billed: string;
+  is_approved: boolean;
+  approved_by: string;
+  approved_at: string | null;
+  created_at: string;
+  updated_at: string;
+  items: POItemResponse[];
+}
+
+export interface PurchaseOrderSummary {
+  id: string;
+  name: string;
+  status: POStatus;
+  supplier_name: string;
+  company: string;
+  currency: string;
+  transaction_date: string;
+  schedule_date: string | null;
+  grand_total: string;
+  per_received: string;
+  per_billed: string;
+  is_approved: boolean;
+  created_at: string;
+}
+
+export interface PurchaseOrderListResponse {
+  items: PurchaseOrderSummary[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+}

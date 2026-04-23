@@ -334,3 +334,244 @@ async def get_rfq_award(
     tenant_id, _ = tenant_user
     award = await svc.get_award(db, tenant_id, rfq_id)
     return s.AwardResponse.model_validate(award) if award else None
+
+
+# ---------------------------------------------------------------------------
+# Purchase Order Routes
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/purchase-orders",
+    response_model=s.PurchaseOrderResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_purchase_order(
+    data: s.PurchaseOrderCreate,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.PurchaseOrderResponse:
+    """Create a Purchase Order, optionally from an awarded supplier quotation.
+
+    Provide award_id to auto-fill supplier, items, and commercial data from
+    the awarded supplier quotation without manual re-entry.
+    """
+    tenant_id, current_user = tenant_user
+    po = await svc.create_purchase_order(
+        db,
+        tenant_id=tenant_id,
+        data=data.model_dump(),
+        current_user=current_user,
+    )
+    return s.PurchaseOrderResponse.model_validate(po)
+
+
+@router.get("/purchase-orders", response_model=s.PurchaseOrderListResponse)
+async def list_purchase_orders(
+    status: s.POStatus | None = None,
+    supplier_id: uuid.UUID | None = None,
+    q: str | None = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.PurchaseOrderListResponse:
+    """List purchase orders with optional filtering."""
+    tenant_id, _ = tenant_user
+    pos, total = await svc.list_purchase_orders(
+        db, tenant_id,
+        status=status.value if status else None,
+        supplier_id=supplier_id,
+        q=q,
+        page=page,
+        page_size=page_size,
+    )
+    return s.PurchaseOrderListResponse(
+        items=[s.PurchaseOrderSummary.model_validate(p) for p in pos],
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=math.ceil(total / page_size) if total else 0,
+    )
+
+
+@router.get("/purchase-orders/{po_id}", response_model=s.PurchaseOrderResponse)
+async def get_purchase_order(
+    po_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.PurchaseOrderResponse:
+    """Get a single purchase order with items."""
+    tenant_id, _ = tenant_user
+    try:
+        po = await svc.get_purchase_order(db, tenant_id, po_id)
+    except ValidationError as exc:
+        errors = exc.errors if hasattr(exc, "errors") else [str(exc)]
+        status_code = 404 if any(
+            isinstance(e, dict) and e.get("field") == "po_id" for e in errors
+        ) else 422
+        return JSONResponse(status_code=status_code, content=error_response(errors))
+    return s.PurchaseOrderResponse.model_validate(po)
+
+
+@router.patch("/purchase-orders/{po_id}", response_model=s.PurchaseOrderResponse)
+async def update_purchase_order(
+    po_id: uuid.UUID,
+    data: s.PurchaseOrderUpdate,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.PurchaseOrderResponse:
+    """Update purchase order fields."""
+    tenant_id, _ = tenant_user
+    try:
+        po = await svc.update_purchase_order(
+            db, tenant_id, po_id, data.model_dump(exclude_none=True)
+        )
+    except ValidationError as exc:
+        errors = exc.errors if hasattr(exc, "errors") else [str(exc)]
+        status_code = 404 if any(
+            isinstance(e, dict) and e.get("field") == "po_id" for e in errors
+        ) else 422
+        return JSONResponse(status_code=status_code, content=error_response(errors))
+    return s.PurchaseOrderResponse.model_validate(po)
+
+
+@router.post("/purchase-orders/{po_id}/submit", response_model=s.PurchaseOrderResponse)
+async def submit_purchase_order(
+    po_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.PurchaseOrderResponse:
+    """Submit a purchase order for approval."""
+    tenant_id, current_user = tenant_user
+    try:
+        po = await svc.submit_purchase_order(db, tenant_id, po_id, current_user=current_user)
+    except ValidationError as exc:
+        errors = exc.errors if hasattr(exc, "errors") else [str(exc)]
+        status_code = 422
+        return JSONResponse(status_code=status_code, content=error_response(errors))
+    return s.PurchaseOrderResponse.model_validate(po)
+
+
+@router.post("/purchase-orders/{po_id}/hold", response_model=s.PurchaseOrderResponse)
+async def hold_purchase_order(
+    po_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.PurchaseOrderResponse:
+    """Place a purchase order on hold."""
+    tenant_id, _ = tenant_user
+    try:
+        po = await svc.hold_purchase_order(db, tenant_id, po_id)
+    except ValidationError as exc:
+        errors = exc.errors if hasattr(exc, "errors") else [str(exc)]
+        return JSONResponse(status_code=422, content=error_response(errors))
+    return s.PurchaseOrderResponse.model_validate(po)
+
+
+@router.post("/purchase-orders/{po_id}/release", response_model=s.PurchaseOrderResponse)
+async def release_purchase_order(
+    po_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.PurchaseOrderResponse:
+    """Release a purchase order from hold."""
+    tenant_id, _ = tenant_user
+    try:
+        po = await svc.release_purchase_order(db, tenant_id, po_id)
+    except ValidationError as exc:
+        errors = exc.errors if hasattr(exc, "errors") else [str(exc)]
+        return JSONResponse(status_code=422, content=error_response(errors))
+    return s.PurchaseOrderResponse.model_validate(po)
+
+
+@router.post("/purchase-orders/{po_id}/complete", response_model=s.PurchaseOrderResponse)
+async def complete_purchase_order(
+    po_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.PurchaseOrderResponse:
+    """Manually complete a purchase order."""
+    tenant_id, _ = tenant_user
+    try:
+        po = await svc.complete_purchase_order(db, tenant_id, po_id)
+    except ValidationError as exc:
+        errors = exc.errors if hasattr(exc, "errors") else [str(exc)]
+        return JSONResponse(status_code=422, content=error_response(errors))
+    return s.PurchaseOrderResponse.model_validate(po)
+
+
+@router.post("/purchase-orders/{po_id}/cancel", response_model=s.PurchaseOrderResponse)
+async def cancel_purchase_order(
+    po_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.PurchaseOrderResponse:
+    """Cancel a purchase order."""
+    tenant_id, _ = tenant_user
+    try:
+        po = await svc.cancel_purchase_order(db, tenant_id, po_id)
+    except ValidationError as exc:
+        errors = exc.errors if hasattr(exc, "errors") else [str(exc)]
+        return JSONResponse(status_code=422, content=error_response(errors))
+    return s.PurchaseOrderResponse.model_validate(po)
+
+
+@router.post("/purchase-orders/{po_id}/close", response_model=s.PurchaseOrderResponse)
+async def close_purchase_order(
+    po_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.PurchaseOrderResponse:
+    """Close a purchase order."""
+    tenant_id, _ = tenant_user
+    try:
+        po = await svc.close_purchase_order(db, tenant_id, po_id)
+    except ValidationError as exc:
+        errors = exc.errors if hasattr(exc, "errors") else [str(exc)]
+        return JSONResponse(status_code=422, content=error_response(errors))
+    return s.PurchaseOrderResponse.model_validate(po)
+
+
+@router.post("/purchase-orders/{po_id}/recompute-progress", response_model=s.PurchaseOrderResponse)
+async def recompute_po_progress(
+    po_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.PurchaseOrderResponse:
+    """Recompute per_received and per_billed from downstream coverage.
+
+    Called by goods receipt (Story 24-3) and supplier invoice (Story 24-6)
+    to update PO progress fields.
+    """
+    tenant_id, _ = tenant_user
+    try:
+        po = await svc.recompute_po_progress(db, tenant_id, po_id)
+    except ValidationError as exc:
+        errors = exc.errors if hasattr(exc, "errors") else [str(exc)]
+        return JSONResponse(status_code=422, content=error_response(errors))
+    return s.PurchaseOrderResponse.model_validate(po)
+
+
+@router.get("/awards/{award_id}/create-po", response_model=s.PurchaseOrderResponse)
+async def create_po_from_award(
+    award_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> s.PurchaseOrderResponse:
+    """Create a PO directly from an award ID.
+
+    Convenience endpoint that auto-fills all data from the awarded quotation.
+    """
+    tenant_id, current_user = tenant_user
+    try:
+        po = await svc.create_purchase_order(
+            db,
+            tenant_id=tenant_id,
+            data={"award_id": str(award_id)},
+            current_user=current_user,
+        )
+    except ValidationError as exc:
+        errors = exc.errors if hasattr(exc, "errors") else [str(exc)]
+        return JSONResponse(status_code=422, content=error_response(errors))
+    return s.PurchaseOrderResponse.model_validate(po)
