@@ -11,75 +11,63 @@ import {
   updateRFQ,
 } from "../../../lib/api/procurement";
 import type {
-  RFQComparisonResponse,
   RFQCreatePayload,
-  RFQListResponse,
   RFQResponse,
   RFQUpdatePayload,
 } from "../types";
 
-export function useRFQList(initialParams?: { status?: string; q?: string; page?: number }) {
-  const [data, setData] = useState<RFQListResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [params, setParams] = useState(initialParams ?? {});
+// ---------------------------------------------------------------------------
+// Shared fetch hook for RFQ operations
+// ---------------------------------------------------------------------------
 
-  const fetch = useCallback(
-    (overrides?: typeof params) => {
-      const p = { ...params, ...overrides };
-      setLoading(true);
-      setError(null);
-      listRFQs(p)
-        .then(setData)
-        .catch((err) => setError(err instanceof Error ? err.message : "Failed to load RFQs"))
-        .finally(() => setLoading(false));
-    },
-    [params],
-  );
-
-  useEffect(() => { fetch(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  return { data, loading, error, params, setParams, refetch: fetch };
-}
-
-export function useRFQ(rfqId: string | undefined) {
-  const [rfq, setRfq] = useState<RFQResponse | null>(null);
+function useFetch<T>(fetcher: () => Promise<T>, deps: React.DependencyList) {
+  const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetch = useCallback(() => {
-    if (!rfqId) return;
     setLoading(true);
     setError(null);
-    getRFQ(rfqId)
-      .then(setRfq)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load RFQ"))
-      .finally(() => setLoading(false));
-  }, [rfqId]);
-
-  useEffect(() => { fetch(); }, [fetch]);
-
-  return { rfq, loading, error, refetch: fetch };
-}
-
-export function useRFQComparison(rfqId: string | undefined) {
-  const [data, setData] = useState<RFQComparisonResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetch = useCallback(() => {
-    if (!rfqId) return;
-    setLoading(true);
-    setError(null);
-    getRFQComparison(rfqId)
+    fetcher()
       .then(setData)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load comparison"))
+      .catch((err) => setError(err instanceof Error ? err.message : "Unknown error"))
       .finally(() => setLoading(false));
-  }, [rfqId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
 
   useEffect(() => { fetch(); }, [fetch]);
 
   return { data, loading, error, refetch: fetch };
+}
+
+// ---------------------------------------------------------------------------
+// Hooks
+// ---------------------------------------------------------------------------
+
+export function useRFQList(initialParams?: { status?: string; q?: string; page?: number }) {
+  const [params, setParams] = useState(initialParams ?? {});
+  const { data, loading, error, refetch } = useFetch(
+    () => listRFQs(params),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [params],
+  );
+  return { data, loading, error, params, setParams, refetch };
+}
+
+export function useRFQ(rfqId: string | undefined) {
+  const { data, loading, error, refetch } = useFetch(
+    () => (rfqId ? getRFQ(rfqId) : Promise.resolve(null)),
+    [rfqId],
+  );
+  return { rfq: data, loading, error, refetch };
+}
+
+export function useRFQComparison(rfqId: string | undefined) {
+  const { data, loading, error, refetch } = useFetch(
+    () => (rfqId ? getRFQComparison(rfqId) : Promise.resolve(null)),
+    [rfqId],
+  );
+  return { data, loading, error, refetch };
 }
 
 export function useCreateRFQ() {
@@ -92,8 +80,7 @@ export function useCreateRFQ() {
     try {
       return await createRFQ(payload);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to create RFQ";
-      setError(msg);
+      setError(err instanceof Error ? err.message : "Failed to create RFQ");
       throw err;
     } finally {
       setLoading(false);
@@ -113,8 +100,7 @@ export function useUpdateRFQ() {
     try {
       return await updateRFQ(rfqId, payload);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to update RFQ";
-      setError(msg);
+      setError(err instanceof Error ? err.message : "Failed to update RFQ");
       throw err;
     } finally {
       setLoading(false);
@@ -134,8 +120,7 @@ export function useSubmitRFQ() {
     try {
       return await submitRFQ(rfqId);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to submit RFQ";
-      setError(msg);
+      setError(err instanceof Error ? err.message : "Failed to submit RFQ");
       throw err;
     } finally {
       setLoading(false);

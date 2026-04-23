@@ -16,7 +16,6 @@ import {
   useRFQAward,
 } from "../../domain/procurement/hooks/useSupplierQuotation";
 import { createSupplierQuotation } from "../../lib/api/procurement";
-import type { SQItemPayload } from "../../domain/procurement/types";
 
 export function RFQDetailPage() {
   const { t } = useTranslation("common");
@@ -25,7 +24,7 @@ export function RFQDetailPage() {
 
   const { rfq, loading, error, refetch } = useRFQ(rfqId);
   const { data: comparison, refetch: refetchComparison } = useRFQComparison(rfqId);
-  const { award, loading: awarding } = useAward();
+  const { award: awardQuotation, loading: awarding } = useAward();
   const { award: existingAward } = useRFQAward(rfqId);
   const { submit, loading: submitting } = useSubmitRFQ();
 
@@ -38,7 +37,6 @@ export function RFQDetailPage() {
     grand_total: "",
     notes: "",
   });
-  const [quotationItems] = useState<SQItemPayload[]>([]);
   const [creatingSQ, setCreatingSQ] = useState(false);
 
   if (loading) return <p className="text-muted-foreground">{t("common.status.loading")}</p>;
@@ -62,20 +60,20 @@ export function RFQDetailPage() {
     }
     setCreatingSQ(true);
     try {
-      const items = (comparison?.items ?? []).map((rfqItem, idx) => ({
+      const items = (comparison?.items ?? []).map((rfqItem) => ({
         rfq_item_id: rfqItem.id,
         item_code: rfqItem.item_code,
         item_name: rfqItem.item_name,
         description: rfqItem.description,
         qty: rfqItem.qty,
         uom: rfqItem.uom,
-        unit_rate: quotationItems[idx]?.unit_rate ?? "0",
-        amount: quotationItems[idx]?.amount ?? "0",
+        unit_rate: "0",
+        amount: "0",
         tax_rate: "0",
         tax_amount: "0",
         tax_code: "",
-        normalized_unit_rate: quotationItems[idx]?.unit_rate ?? "0",
-        normalized_amount: quotationItems[idx]?.amount ?? "0",
+        normalized_unit_rate: "0",
+        normalized_amount: "0",
       }));
       await createSupplierQuotation({
         rfq_id: rfqId,
@@ -110,7 +108,7 @@ export function RFQDetailPage() {
 
   async function handleAward(quotationId: string) {
     try {
-      await award({ rfq_id: rfqId!, quotation_id: quotationId, awarded_by: "buyer" });
+      await awardQuotation({ rfq_id: rfqId!, quotation_id: quotationId, awarded_by: "buyer" });
       toast({ title: t("procurement.award.success"), variant: "success" });
       refetchComparison();
     } catch {

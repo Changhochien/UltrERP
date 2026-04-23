@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import os
 import uuid
 from typing import Annotated
 
@@ -30,15 +31,12 @@ async def get_tenant_and_user(
     # TODO: wire up real auth context (Epic 11 RBAC)
     if x_tenant_id:
         try:
-            tenant_id = uuid.UUID(x_tenant_id)
-            return tenant_id, "authenticated_user"
+            return uuid.UUID(x_tenant_id), "authenticated_user"
         except ValueError:
             raise ValidationError([{"field": "tenant_id", "message": "Invalid tenant ID format"}])
-    # Development fallback - in production, this should raise an error
-    import os
-    if os.environ.get("ENVIRONMENT", "development") == "production":
+    # Development fallback
+    if os.environ.get("ENVIRONMENT") == "production":
         raise ValidationError([{"field": "tenant_id", "message": "X-Tenant-Id header required in production"}])
-    # Development mode fallback to a default tenant
     return uuid.UUID("00000000-0000-0000-0000-000000000001"), "dev_user"
 
 

@@ -15,21 +15,19 @@ import type {
 } from "../../domain/procurement/types";
 import { apiFetch } from "../apiFetch";
 
-export interface ProcurementApiError {
-  detail: Array<{ field: string; message: string }>;
-}
+// ---------------------------------------------------------------------------
+// Error helper
+// ---------------------------------------------------------------------------
 
-const NETWORK_ERROR_MESSAGE = "Unable to reach the server. Please try again.";
-
-async function parseErrorDetails(resp: Response): Promise<ProcurementApiError["detail"]> {
-  const body = await resp.json().catch(() => null);
-  if (Array.isArray(body?.detail)) {
-    return body.detail;
+async function parseErrorMessage(resp: Response, fallback: string): Promise<string> {
+  try {
+    const body = await resp.json();
+    if (Array.isArray(body?.detail)) return body.detail[0]?.message ?? fallback;
+    if (typeof body?.detail === "string") return body.detail;
+  } catch {
+    // ignore parse errors
   }
-  if (typeof body?.detail === "string") {
-    return [{ field: "", message: body.detail }];
-  }
-  return [{ field: "", message: NETWORK_ERROR_MESSAGE }];
+  return fallback;
 }
 
 // ---------------------------------------------------------------------------
@@ -42,10 +40,7 @@ export async function createRFQ(payload: RFQCreatePayload): Promise<RFQResponse>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  if (!resp.ok) {
-    const details = await parseErrorDetails(resp);
-    throw new Error(details[0]?.message ?? "Failed to create RFQ");
-  }
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to create RFQ"));
   return resp.json();
 }
 
@@ -61,55 +56,35 @@ export async function listRFQs(params?: {
   if (params?.page) qs.set("page", String(params.page));
   if (params?.page_size) qs.set("page_size", String(params.page_size));
   const resp = await apiFetch(`/api/v1/procurement/rfqs?${qs}`);
-  if (!resp.ok) {
-    const details = await parseErrorDetails(resp);
-    throw new Error(details[0]?.message ?? "Failed to list RFQs");
-  }
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to list RFQs"));
   return resp.json();
 }
 
 export async function getRFQ(rfqId: string): Promise<RFQResponse> {
   const resp = await apiFetch(`/api/v1/procurement/rfqs/${rfqId}`);
-  if (!resp.ok) {
-    const details = await parseErrorDetails(resp);
-    throw new Error(details[0]?.message ?? "Failed to load RFQ");
-  }
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to load RFQ"));
   return resp.json();
 }
 
-export async function updateRFQ(
-  rfqId: string,
-  payload: RFQUpdatePayload,
-): Promise<RFQResponse> {
+export async function updateRFQ(rfqId: string, payload: RFQUpdatePayload): Promise<RFQResponse> {
   const resp = await apiFetch(`/api/v1/procurement/rfqs/${rfqId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  if (!resp.ok) {
-    const details = await parseErrorDetails(resp);
-    throw new Error(details[0]?.message ?? "Failed to update RFQ");
-  }
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to update RFQ"));
   return resp.json();
 }
 
 export async function submitRFQ(rfqId: string): Promise<RFQResponse> {
-  const resp = await apiFetch(`/api/v1/procurement/rfqs/${rfqId}/submit`, {
-    method: "POST",
-  });
-  if (!resp.ok) {
-    const details = await parseErrorDetails(resp);
-    throw new Error(details[0]?.message ?? "Failed to submit RFQ");
-  }
+  const resp = await apiFetch(`/api/v1/procurement/rfqs/${rfqId}/submit`, { method: "POST" });
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to submit RFQ"));
   return resp.json();
 }
 
 export async function getRFQComparison(rfqId: string): Promise<RFQComparisonResponse> {
   const resp = await apiFetch(`/api/v1/procurement/rfqs/${rfqId}/comparison`);
-  if (!resp.ok) {
-    const details = await parseErrorDetails(resp);
-    throw new Error(details[0]?.message ?? "Failed to load comparison");
-  }
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to load comparison"));
   return resp.json();
 }
 
@@ -125,10 +100,7 @@ export async function createSupplierQuotation(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  if (!resp.ok) {
-    const details = await parseErrorDetails(resp);
-    throw new Error(details[0]?.message ?? "Failed to create supplier quotation");
-  }
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to create quotation"));
   return resp.json();
 }
 
@@ -146,19 +118,13 @@ export async function listSupplierQuotations(params?: {
   if (params?.page) qs.set("page", String(params.page));
   if (params?.page_size) qs.set("page_size", String(params.page_size));
   const resp = await apiFetch(`/api/v1/procurement/supplier-quotations?${qs}`);
-  if (!resp.ok) {
-    const details = await parseErrorDetails(resp);
-    throw new Error(details[0]?.message ?? "Failed to list supplier quotations");
-  }
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to list quotations"));
   return resp.json();
 }
 
 export async function getSupplierQuotation(quotationId: string): Promise<SupplierQuotationResponse> {
   const resp = await apiFetch(`/api/v1/procurement/supplier-quotations/${quotationId}`);
-  if (!resp.ok) {
-    const details = await parseErrorDetails(resp);
-    throw new Error(details[0]?.message ?? "Failed to load supplier quotation");
-  }
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to load quotation"));
   return resp.json();
 }
 
@@ -171,10 +137,7 @@ export async function updateSupplierQuotation(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  if (!resp.ok) {
-    const details = await parseErrorDetails(resp);
-    throw new Error(details[0]?.message ?? "Failed to update supplier quotation");
-  }
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to update quotation"));
   return resp.json();
 }
 
@@ -182,10 +145,7 @@ export async function submitSupplierQuotation(quotationId: string): Promise<Supp
   const resp = await apiFetch(`/api/v1/procurement/supplier-quotations/${quotationId}/submit`, {
     method: "POST",
   });
-  if (!resp.ok) {
-    const details = await parseErrorDetails(resp);
-    throw new Error(details[0]?.message ?? "Failed to submit supplier quotation");
-  }
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to submit quotation"));
   return resp.json();
 }
 
@@ -199,10 +159,7 @@ export async function createAward(payload: AwardCreatePayload): Promise<AwardRes
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  if (!resp.ok) {
-    const details = await parseErrorDetails(resp);
-    throw new Error(details[0]?.message ?? "Failed to award quotation");
-  }
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to award quotation"));
   return resp.json();
 }
 
@@ -214,18 +171,12 @@ export async function listAwards(params?: {
   if (params?.page) qs.set("page", String(params.page));
   if (params?.page_size) qs.set("page_size", String(params.page_size));
   const resp = await apiFetch(`/api/v1/procurement/awards?${qs}`);
-  if (!resp.ok) {
-    const details = await parseErrorDetails(resp);
-    throw new Error(details[0]?.message ?? "Failed to list awards");
-  }
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to list awards"));
   return resp.json();
 }
 
 export async function getRFQAward(rfqId: string): Promise<AwardResponse | null> {
   const resp = await apiFetch(`/api/v1/procurement/rfqs/${rfqId}/award`);
-  if (!resp.ok) {
-    const details = await parseErrorDetails(resp);
-    throw new Error(details[0]?.message ?? "Failed to load RFQ award");
-  }
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to load RFQ award"));
   return resp.json();
 }

@@ -14,10 +14,37 @@ import type {
   AwardCreatePayload,
   AwardResponse,
   SupplierQuotationCreatePayload,
-  SupplierQuotationListResponse,
   SupplierQuotationResponse,
   SupplierQuotationUpdatePayload,
 } from "../types";
+
+// ---------------------------------------------------------------------------
+// Shared fetch hook
+// ---------------------------------------------------------------------------
+
+function useFetch<T>(fetcher: () => Promise<T>, deps: React.DependencyList) {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetch = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    fetcher()
+      .then(setData)
+      .catch((err) => setError(err instanceof Error ? err.message : "Unknown error"))
+      .finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+
+  useEffect(() => { fetch(); }, [fetch]);
+
+  return { data, loading, error, refetch: fetch };
+}
+
+// ---------------------------------------------------------------------------
+// Hooks
+// ---------------------------------------------------------------------------
 
 export function useSupplierQuotationList(params?: {
   rfq_id?: string;
@@ -25,42 +52,19 @@ export function useSupplierQuotationList(params?: {
   q?: string;
   page?: number;
 }) {
-  const [data, setData] = useState<SupplierQuotationListResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetch = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    listSupplierQuotations(params)
-      .then(setData)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load quotations"))
-      .finally(() => setLoading(false));
-  }, [params?.rfq_id, params?.status, params?.q, params?.page]);
-
-  useEffect(() => { fetch(); }, [fetch]);
-
-  return { data, loading, error, refetch: fetch };
+  const { data, loading, error, refetch } = useFetch(
+    () => listSupplierQuotations(params),
+    [params?.rfq_id, params?.status, params?.q, params?.page],
+  );
+  return { data, loading, error, refetch };
 }
 
 export function useSupplierQuotation(quotationId: string | undefined) {
-  const [sq, setSq] = useState<SupplierQuotationResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetch = useCallback(() => {
-    if (!quotationId) return;
-    setLoading(true);
-    setError(null);
-    getSupplierQuotation(quotationId)
-      .then(setSq)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load quotation"))
-      .finally(() => setLoading(false));
-  }, [quotationId]);
-
-  useEffect(() => { fetch(); }, [fetch]);
-
-  return { sq, loading, error, refetch: fetch };
+  const { data, loading, error, refetch } = useFetch(
+    () => (quotationId ? getSupplierQuotation(quotationId) : Promise.resolve(null)),
+    [quotationId],
+  );
+  return { sq: data, loading, error, refetch };
 }
 
 export function useCreateSupplierQuotation() {
@@ -74,8 +78,7 @@ export function useCreateSupplierQuotation() {
       try {
         return await createSupplierQuotation(payload);
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Failed to create quotation";
-        setError(msg);
+        setError(err instanceof Error ? err.message : "Failed to create quotation");
         throw err;
       } finally {
         setLoading(false);
@@ -98,8 +101,7 @@ export function useUpdateSupplierQuotation() {
       try {
         return await updateSupplierQuotation(quotationId, payload);
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Failed to update quotation";
-        setError(msg);
+        setError(err instanceof Error ? err.message : "Failed to update quotation");
         throw err;
       } finally {
         setLoading(false);
@@ -121,8 +123,7 @@ export function useAward() {
     try {
       return await createAward(payload);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to award quotation";
-      setError(msg);
+      setError(err instanceof Error ? err.message : "Failed to award quotation");
       throw err;
     } finally {
       setLoading(false);
@@ -133,21 +134,9 @@ export function useAward() {
 }
 
 export function useRFQAward(rfqId: string | undefined) {
-  const [award, setAward] = useState<AwardResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetch = useCallback(() => {
-    if (!rfqId) return;
-    setLoading(true);
-    setError(null);
-    getRFQAward(rfqId)
-      .then((data) => setAward(data))
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load award"))
-      .finally(() => setLoading(false));
-  }, [rfqId]);
-
-  useEffect(() => { fetch(); }, [fetch]);
-
-  return { award, loading, error, refetch: fetch };
+  const { data, loading, error, refetch } = useFetch(
+    () => (rfqId ? getRFQAward(rfqId) : Promise.resolve(null)),
+    [rfqId],
+  );
+  return { award: data, loading, error, refetch };
 }
