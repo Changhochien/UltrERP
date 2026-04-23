@@ -111,6 +111,8 @@ class RFQCreate(BaseModel):
     schedule_date: date | None = None
     terms_and_conditions: str = Field(default="", max_length=5000)
     notes: str = Field(default="", max_length=5000)
+    # Extension hook: contract reference (Story 24-5)
+    contract_reference: str | None = Field(default=None, max_length=200)
     items: list[RFQItemCreate] = Field(default_factory=list)
     suppliers: list[RFQSupplierCreate] = Field(default_factory=list)
 
@@ -124,6 +126,8 @@ class RFQUpdate(BaseModel):
     schedule_date: date | None = None
     terms_and_conditions: str | None = Field(default=None, max_length=5000)
     notes: str | None = Field(default=None, max_length=5000)
+    # Extension hook: contract reference (Story 24-5)
+    contract_reference: str | None = Field(default=None, max_length=200)
 
 
 class RFQResponse(BaseModel):
@@ -141,6 +145,8 @@ class RFQResponse(BaseModel):
     notes: str
     supplier_count: int
     quotes_received: int
+    # Extension hook: contract reference (Story 24-5)
+    contract_reference: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -253,6 +259,8 @@ class SupplierQuotationCreate(BaseModel):
     terms_and_conditions: str = Field(default="", max_length=5000)
     notes: str = Field(default="", max_length=5000)
     comparison_base_total: Decimal = Field(default=Decimal("0.00"), decimal_places=2)
+    # Extension hook: contract reference (Story 24-5)
+    contract_reference: str | None = Field(default=None, max_length=200)
     items: list[SQItemCreate] = Field(default_factory=list)
 
 
@@ -272,6 +280,8 @@ class SupplierQuotationUpdate(BaseModel):
     terms_and_conditions: str | None = Field(default=None, max_length=5000)
     notes: str | None = Field(default=None, max_length=5000)
     comparison_base_total: Decimal | None = Field(default=None, decimal_places=2)
+    # Extension hook: contract reference (Story 24-5)
+    contract_reference: str | None = Field(default=None, max_length=200)
 
 
 class SupplierQuotationResponse(BaseModel):
@@ -301,6 +311,8 @@ class SupplierQuotationResponse(BaseModel):
     notes: str
     comparison_base_total: Decimal
     is_awarded: bool
+    # Extension hook: contract reference (Story 24-5)
+    contract_reference: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -439,6 +451,9 @@ class PurchaseOrderCreate(BaseModel):
     # Terms
     terms_and_conditions: str = Field(default="", max_length=5000)
     notes: str = Field(default="", max_length=5000)
+    # Extension hooks: blanket order and landed cost references (Story 24-5)
+    blanket_order_reference_id: uuid.UUID | None = None
+    landed_cost_reference_id: uuid.UUID | None = None
     items: list[POItemCreate] = Field(default_factory=list)
 
 
@@ -460,6 +475,9 @@ class PurchaseOrderUpdate(BaseModel):
     set_warehouse: str | None = Field(default=None, max_length=120)
     terms_and_conditions: str | None = Field(default=None, max_length=5000)
     notes: str | None = Field(default=None, max_length=5000)
+    # Extension hooks: blanket order and landed cost references (Story 24-5)
+    blanket_order_reference_id: uuid.UUID | None = None
+    landed_cost_reference_id: uuid.UUID | None = None
 
 
 class PurchaseOrderResponse(BaseModel):
@@ -493,6 +511,9 @@ class PurchaseOrderResponse(BaseModel):
     is_approved: bool
     approved_by: str
     approved_at: datetime | None
+    # Extension hooks: blanket order and landed cost references (Story 24-5)
+    blanket_order_reference_id: uuid.UUID | None = None
+    landed_cost_reference_id: uuid.UUID | None = None
     created_at: datetime
     updated_at: datetime
 

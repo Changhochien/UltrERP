@@ -10,6 +10,8 @@ Exposed functions:
     release_purchase_order, complete_purchase_order, cancel_purchase_order,
     close_purchase_order, recompute_po_progress
 - Comparison: get_rfq_comparison
+- Supplier Controls: check_supplier_rfq_controls, check_supplier_po_controls (Story 24-5)
+- Procurement Reporting: get_procurement_summary, get_quote_turnaround_stats (Story 24-5)
 """
 
 from __future__ import annotations
@@ -23,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from common.errors import ValidationError
+from common.models.supplier import Supplier
 from domains.procurement.models import (
     RFQ,
     ProcurementAward,
@@ -35,6 +38,168 @@ from domains.procurement.models import (
     GoodsReceipt,
     GoodsReceiptItem,
 )
+
+# --------------------------------------------------------------------------
+# Supplier Control Result Types (Story 24-5)
+# --------------------------------------------------------------------------
+
+
+class SupplierControlResult:
+    """Result of supplier control check.
+
+    Attributes:
+        is_blocked: True if the workflow should be blocked
+        is_warned: True if a warning should be shown
+        reason: Human-readable explanation
+        supplier_name: Name of the supplier checked
+        controls: Raw control flags from the supplier
+    """
+
+    def __init__(
+        self,
+        is_blocked: bool = False,
+        is_warned: bool = False,
+        reason: str = "",
+        supplier_name: str = "",
+        controls: dict | None = None,
+    ):
+        self.is_blocked = is_blocked
+        self.is_warned = is_warned
+        self.reason = reason
+        self.supplier_name = supplier_name
+        self.controls = controls or {}
+
+    def to_dict(self) -> dict:
+        return {
+            "is_blocked": self.is_blocked,
+            "is_warned": self.is_warned,
+            "reason": self.reason,
+            "supplier_name": self.supplier_name,
+            "controls": self.controls,
+        }
+
+
+# --------------------------------------------------------------------------
+# Supplier Control Functions (Story 24-5)
+# --------------------------------------------------------------------------
+
+
+async def check_supplier_rfq_controls(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    supplier_id: uuid.UUID | None,
+    supplier_name: str = "",
+) -> SupplierControlResult:
+    """Check supplier controls for RFQ workflow.
+
+    Args:
+        db: Database session
+        tenant_id: Tenant UUID
+        supplier_id: Supplier UUID (optional)
+        supplier_name: Supplier name fallback if supplier_id not provided
+
+    Returns:
+        SupplierControlResult with block/warn status
+    """
+    if not supplier_id:
+        return SupplierControlResult(supplier_name=supplier_name)
+
+    result = await db.execute(
+        select(Supplier).where(
+            Supplier.id == supplier_id,
+            Supplier.tenant_id == tenant_id,
+        )
+    )
+    supplier = result.scalar_one_or_none()
+
+    if not supplier:
+        return SupplierControlResult(supplier_name=supplier_name)
+
+    is_blocked, is_warned, reason = supplier.get_rfq_controls()
+
+    return SupplierControlResult(
+        is_blocked=is_blocked,
+        is_warned=is_warned,
+        reason=reason,
+        supplier_name=supplier.name,
+        controls={
+            "on_hold": supplier.on_hold,
+            "hold_type": supplier.hold_type,
+            "release_date": str(supplier.release_date) if supplier.release_date else None,
+            "scorecard_standing": supplier.scorecard_standing,
+            "warn_rfqs": supplier.warn_rfqs,
+            "prevent_rfqs": supplier.prevent_rfqs,
+        },
+    )
+
+
+async def check_supplier_po_controls(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    supplier_id: uuid.UUID | None,
+    supplier_name: str = "",
+) -> SupplierControlResult:
+    """Check supplier controls for PO workflow.
+
+    Args:
+        db: Database session
+        tenant_id: Tenant UUID
+        supplier_id: Supplier UUID (optional)
+        supplier_name: Supplier name fallback if supplier_id not provided
+
+    Returns:
+        SupplierControlResult with block/warn status
+    """
+    if not supplier_id:
+        return SupplierControlResult(supplier_name=supplier_name)
+
+    result = await db.execute(
+        select(Supplier).where(
+            Supplier.id == supplier_id,
+            Supplier.tenant_id == tenant_id,
+        )
+    )
+    supplier = result.scalar_one_or_none()
+
+    if not supplier:
+        return SupplierControlResult(supplier_name=supplier_name)
+
+    is_blocked, is_warned, reason = supplier.get_po_controls()
+
+    return SupplierControlResult(
+        is_blocked=is_blocked,
+        is_warned=is_warned,
+        reason=reason,
+        supplier_name=supplier.name,
+        controls={
+            "on_hold": supplier.on_hold,
+            "hold_type": supplier.hold_type,
+            "release_date": str(supplier.release_date) if supplier.release_date else None,
+            "scorecard_standing": supplier.scorecard_standing,
+            "warn_pos": supplier.warn_pos,
+            "prevent_pos": supplier.prevent_pos,
+        },
+    )
+
+
+def enforce_supplier_controls(
+    result: SupplierControlResult,
+    operation: str = "operation",
+) -> None:
+    """Raise ValidationError if supplier controls block the operation.
+
+    Args:
+        result: Supplier control check result
+        operation: Human-readable operation name for error message
+
+    Raises:
+        ValidationError: If supplier is blocked
+    """
+    if result.is_blocked:
+        raise ValidationError([{
+            "field": "supplier_id",
+            "message": f"Cannot proceed with {operation}: {result.reason}",
+        }])
 
 # --------------------------------------------------------------------------
 # RFQ Service
@@ -72,6 +237,8 @@ async def create_rfq(
         notes=data.get("notes", ""),
         supplier_count=len(data.get("suppliers", [])),
         quotes_received=0,
+        # Extension hook: contract reference (Story 24-5)
+        contract_reference=data.get("contract_reference"),
     )
     db.add(rfq)
     await db.flush()
@@ -163,6 +330,7 @@ async def update_rfq(
     for field in (
         "name", "status", "company", "currency", "transaction_date",
         "schedule_date", "terms_and_conditions", "notes",
+        "contract_reference",  # Extension hook (Story 24-5)
     ):
         if field in data and data[field] is not None:
             setattr(rfq, field, data[field])
@@ -177,11 +345,37 @@ async def submit_rfq(
     tenant_id: uuid.UUID,
     rfq_id: uuid.UUID,
 ) -> RFQ:
-    """Submit an RFQ - changes status to submitted."""
+    """Submit an RFQ - changes status to submitted.
+
+    Checks supplier controls for each RFQ supplier recipient.
+    Blocks submission if any supplier has prevent_rfqs or is on hold.
+    """
     rfq = await get_rfq(db, tenant_id, rfq_id)
     if rfq.status not in ("draft",):
         msg = f"Cannot submit RFQ in status '{rfq.status}'."
         raise ValidationError([{"field": "status", "message": msg}])
+
+    # Check supplier controls for each RFQ supplier (Story 24-5)
+    warnings = []
+    for rfq_supplier in rfq.suppliers:
+        if rfq_supplier.supplier_id:
+            control_result = await check_supplier_rfq_controls(
+                db,
+                tenant_id,
+                rfq_supplier.supplier_id,
+                rfq_supplier.supplier_name,
+            )
+            if control_result.is_blocked:
+                enforce_supplier_controls(control_result, "RFQ submission")
+            elif control_result.is_warned:
+                warnings.append(control_result.to_dict())
+
+    # Store warnings on RFQ for UI feedback (as JSON in notes or separate field)
+    if warnings:
+        warning_msg = f"[Supplier Control Warning] {len(warnings)} supplier(s) have warnings: "
+        warning_msg += "; ".join(w["reason"] for w in warnings)
+        rfq.notes = f"{rfq.notes}\n{warning_msg}" if rfq.notes else warning_msg
+
     rfq.status = "submitted"
     await db.commit()
     await db.refresh(rfq)
@@ -241,6 +435,8 @@ async def create_supplier_quotation(
         notes=data.get("notes", ""),
         comparison_base_total=data.get("comparison_base_total", Decimal("0.00")),
         is_awarded=False,
+        # Extension hook: contract reference (Story 24-5)
+        contract_reference=data.get("contract_reference"),
     )
     db.add(quotation)
     await db.flush()
@@ -368,6 +564,7 @@ async def update_supplier_quotation(
         "subtotal", "total_taxes", "grand_total", "base_grand_total",
         "taxes", "contact_person", "contact_email",
         "terms_and_conditions", "notes", "comparison_base_total",
+        "contract_reference",  # Extension hook (Story 24-5)
     ):
         if field in data and data[field] is not None:
             setattr(sq, field, data[field])
@@ -742,6 +939,9 @@ async def create_purchase_order(
         is_approved=False,
         approved_by="",
         approved_at=None,
+        # Extension hooks: blanket order and landed cost references (Story 24-5)
+        blanket_order_reference_id=data.get("blanket_order_reference_id"),
+        landed_cost_reference_id=data.get("landed_cost_reference_id"),
     )
     db.add(po)
     await db.flush()
@@ -854,6 +1054,9 @@ async def update_purchase_order(
         "schedule_date", "subtotal", "total_taxes", "grand_total", "base_grand_total",
         "taxes", "contact_person", "contact_email", "set_warehouse",
         "terms_and_conditions", "notes",
+        # Extension hooks: blanket order and landed cost references (Story 24-5)
+        "blanket_order_reference_id",
+        "landed_cost_reference_id",
     ):
         if field in data and data[field] is not None:
             setattr(po, field, data[field])
@@ -873,7 +1076,7 @@ async def submit_purchase_order(
 
     Validates that:
     - PO is in draft status
-    - Supplier is not on hold (supplier control check)
+    - Supplier is not blocked by procurement controls (Story 24-5)
     - PO has at least one item
 
     Sets is_approved based on approval threshold (v1: auto-approve for MVP).
@@ -887,9 +1090,15 @@ async def submit_purchase_order(
     if not po.items:
         raise ValidationError([{"field": "items", "message": "Purchase order must have at least one item."}])
 
-    # Supplier control check (v1: check supplier hold status via supplier master)
-    # TODO: Integrate with Story 24-5 supplier controls
-    # For now, we pass if no supplier_id or supplier is not flagged as blocked
+    # Supplier control check - block if supplier is on hold or prevented from POs (Story 24-5)
+    if po.supplier_id:
+        control_result = await check_supplier_po_controls(
+            db,
+            tenant_id,
+            po.supplier_id,
+            po.supplier_name,
+        )
+        enforce_supplier_controls(control_result, "PO submission")
 
     # Auto-approve for MVP (Story 24-5 will add approval workflow)
     po.is_approved = True
@@ -1041,13 +1250,13 @@ def _validate_gr_line_invariants(items: list[dict]) -> None:
             }])
 
 
-def _compute_received_qty_for_po_item(
+async def _compute_received_qty_for_po_item(
     db: AsyncSession,
     tenant_id: uuid.UUID,
     po_item_id: uuid.UUID,
 ) -> Decimal:
     """Sum accepted_qty from all submitted GR items for a given PO line."""
-    result = db.execute(
+    result = await db.execute(
         select(func.coalesce(func.sum(GoodsReceiptItem.accepted_qty), Decimal("0")))
         .select_from(GoodsReceiptItem)
         .join(GoodsReceipt)
@@ -1065,11 +1274,13 @@ async def _recompute_po_from_gr(
     tenant_id: uuid.UUID,
     po_id: uuid.UUID,
 ) -> None:
-    """Recompute all PO line received quantities and PO per_received."""
-    # Get all PO items
+    """Recompute all PO line received quantities and PO per_received from GR coverage.
 
-
-    # Recompute PO progress
+    This is a helper for Story 24-3 that recomputes PO progress from all
+    submitted goods receipts. The actual implementation delegates to the
+    existing recompute_po_progress function.
+    """
+    await recompute_po_progress(db, tenant_id, po_id)
 
 
 async def create_goods_receipt(
@@ -1344,3 +1555,355 @@ async def list_receipts_for_po(
         page=1,
         page_size=100,
     )
+
+
+# --------------------------------------------------------------------------
+# Procurement Reporting (Story 24-5)
+# --------------------------------------------------------------------------
+
+
+async def get_procurement_summary(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    date_from: date | None = None,
+    date_to: date | None = None,
+) -> dict:
+    """Get procurement summary statistics.
+
+    Args:
+        db: Database session
+        tenant_id: Tenant UUID
+        date_from: Optional start date filter
+        date_to: Optional end date filter
+
+    Returns:
+        Dict with RFQ, quotation, PO, and supplier statistics
+    """
+    today = date.today()
+    from_date = date_from or today.replace(day=1)  # First day of month
+    to_date = date_to or today
+
+    # RFQ stats
+    rfq_count_result = await db.execute(
+        select(func.count(RFQ.id)).where(
+            RFQ.tenant_id == tenant_id,
+            RFQ.transaction_date >= from_date,
+            RFQ.transaction_date <= to_date,
+        )
+    )
+    rfq_count = rfq_count_result.scalar() or 0
+
+    rfq_submitted_result = await db.execute(
+        select(func.count(RFQ.id)).where(
+            RFQ.tenant_id == tenant_id,
+            RFQ.status == "submitted",
+            RFQ.transaction_date >= from_date,
+            RFQ.transaction_date <= to_date,
+        )
+    )
+    rfq_submitted = rfq_submitted_result.scalar() or 0
+
+    # Supplier quotation stats
+    sq_count_result = await db.execute(
+        select(func.count(SupplierQuotation.id)).where(
+            SupplierQuotation.tenant_id == tenant_id,
+            SupplierQuotation.transaction_date >= from_date,
+            SupplierQuotation.transaction_date <= to_date,
+        )
+    )
+    sq_count = sq_count_result.scalar() or 0
+
+    sq_submitted_result = await db.execute(
+        select(func.count(SupplierQuotation.id)).where(
+            SupplierQuotation.tenant_id == tenant_id,
+            SupplierQuotation.status == "submitted",
+            SupplierQuotation.transaction_date >= from_date,
+            SupplierQuotation.transaction_date <= to_date,
+        )
+    )
+    sq_submitted = sq_submitted_result.scalar() or 0
+
+    # Award stats
+    award_count_result = await db.execute(
+        select(func.count(ProcurementAward.id)).where(
+            ProcurementAward.tenant_id == tenant_id,
+            ProcurementAward.awarded_at >= datetime.combine(from_date, datetime.min.time(), tzinfo=UTC),
+            ProcurementAward.awarded_at <= datetime.combine(to_date, datetime.max.time(), tzinfo=UTC),
+        )
+    )
+    award_count = award_count_result.scalar() or 0
+
+    # PO stats
+    po_count_result = await db.execute(
+        select(func.count(PurchaseOrder.id)).where(
+            PurchaseOrder.tenant_id == tenant_id,
+            PurchaseOrder.transaction_date >= from_date,
+            PurchaseOrder.transaction_date <= to_date,
+        )
+    )
+    po_count = po_count_result.scalar() or 0
+
+    po_submitted_result = await db.execute(
+        select(func.count(PurchaseOrder.id)).where(
+            PurchaseOrder.tenant_id == tenant_id,
+            PurchaseOrder.status.in_(["submitted", "to_receive", "to_bill", "to_receive_and_bill", "completed"]),
+            PurchaseOrder.transaction_date >= from_date,
+            PurchaseOrder.transaction_date <= to_date,
+        )
+    )
+    po_submitted = po_submitted_result.scalar() or 0
+
+    # Supplier control stats
+    blocked_suppliers_result = await db.execute(
+        select(func.count(Supplier.id)).where(
+            Supplier.tenant_id == tenant_id,
+            Supplier.on_hold == True,
+        )
+    )
+    blocked_suppliers = blocked_suppliers_result.scalar() or 0
+
+    warned_suppliers_result = await db.execute(
+        select(func.count(Supplier.id)).where(
+            Supplier.tenant_id == tenant_id,
+            (Supplier.warn_rfqs == True) | (Supplier.warn_pos == True),
+        )
+    )
+    warned_suppliers = warned_suppliers_result.scalar() or 0
+
+    return {
+        "period": {
+            "from": str(from_date),
+            "to": str(to_date),
+        },
+        "rfqs": {
+            "total": rfq_count,
+            "submitted": rfq_submitted,
+            "pending": rfq_count - rfq_submitted,
+        },
+        "supplier_quotations": {
+            "total": sq_count,
+            "submitted": sq_submitted,
+            "pending": sq_count - sq_submitted,
+        },
+        "awards": {
+            "total": award_count,
+        },
+        "purchase_orders": {
+            "total": po_count,
+            "active": po_submitted,
+            "draft": po_count - po_submitted,
+        },
+        "supplier_controls": {
+            "blocked_suppliers": blocked_suppliers,
+            "warned_suppliers": warned_suppliers,
+        },
+    }
+
+
+async def get_quote_turnaround_stats(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    rfq_id: uuid.UUID | None = None,
+) -> dict:
+    """Get quote turnaround statistics.
+
+    Measures how quickly suppliers respond to RFQs based on timestamps
+    from RFQ submission to quotation receipt.
+
+    Args:
+        db: Database session
+        tenant_id: Tenant UUID
+        rfq_id: Optional specific RFQ to analyze
+
+    Returns:
+        Dict with turnaround time statistics
+    """
+    # Get quotations with their linked RFQs for turnaround calculation
+    query = (
+        select(
+            SupplierQuotation,
+            RFQ,
+        )
+        .join(RFQ, SupplierQuotation.rfq_id == RFQ.id)
+        .where(
+            SupplierQuotation.tenant_id == tenant_id,
+            SupplierQuotation.status == "submitted",
+        )
+    )
+
+    if rfq_id:
+        query = query.where(SupplierQuotation.rfq_id == rfq_id)
+
+    result = await db.execute(query)
+    rows = result.all()
+
+    turnaround_days: list[float] = []
+    for sq, rfq in rows:
+        if rfq.status == "submitted" and sq.created_at:
+            delta = sq.created_at - rfq.updated_at
+            turnaround_days.append(delta.total_seconds() / 86400)  # Convert to days
+
+    if not turnaround_days:
+        return {
+            "rfq_id": str(rfq_id) if rfq_id else None,
+            "total_quotes": 0,
+            "avg_turnaround_days": None,
+            "min_turnaround_days": None,
+            "max_turnaround_days": None,
+        }
+
+    return {
+        "rfq_id": str(rfq_id) if rfq_id else None,
+        "total_quotes": len(turnaround_days),
+        "avg_turnaround_days": round(sum(turnaround_days) / len(turnaround_days), 2),
+        "min_turnaround_days": round(min(turnaround_days), 2),
+        "max_turnaround_days": round(max(turnaround_days), 2),
+    }
+
+
+async def get_supplier_performance_stats(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    supplier_id: uuid.UUID | None = None,
+) -> dict:
+    """Get supplier performance statistics.
+
+    Aggregates award outcomes, average response times, and scorecard status
+    for procurement analytics.
+
+    Args:
+        db: Database session
+        tenant_id: Tenant UUID
+        supplier_id: Optional specific supplier to analyze
+
+    Returns:
+        Dict with supplier performance metrics
+    """
+    # Base query for quotations
+    sq_query = select(SupplierQuotation).where(
+        SupplierQuotation.tenant_id == tenant_id,
+        SupplierQuotation.status == "submitted",
+    )
+
+    if supplier_id:
+        sq_query = sq_query.where(SupplierQuotation.supplier_id == supplier_id)
+
+    sq_result = await db.execute(sq_query)
+    quotations = sq_result.scalars().all()
+
+    total_quotes = len(quotations)
+    awarded_quotes = sum(1 for sq in quotations if sq.is_awarded)
+
+    # Award rates by supplier
+    supplier_stats: dict[str, dict] = {}
+    for sq in quotations:
+        supplier_key = str(sq.supplier_id) if sq.supplier_id else sq.supplier_name
+        if supplier_key not in supplier_stats:
+            supplier_stats[supplier_key] = {
+                "supplier_name": sq.supplier_name,
+                "supplier_id": str(sq.supplier_id) if sq.supplier_id else None,
+                "total_quotes": 0,
+                "awarded_quotes": 0,
+                "award_rate": 0.0,
+            }
+        supplier_stats[supplier_key]["total_quotes"] += 1
+        if sq.is_awarded:
+            supplier_stats[supplier_key]["awarded_quotes"] += 1
+
+    # Calculate award rates
+    for stats in supplier_stats.values():
+        if stats["total_quotes"] > 0:
+            stats["award_rate"] = round(
+                stats["awarded_quotes"] / stats["total_quotes"] * 100, 2
+            )
+
+    # Get supplier controls summary
+    supplier_control_query = select(Supplier).where(Supplier.tenant_id == tenant_id)
+    if supplier_id:
+        supplier_control_query = supplier_control_query.where(Supplier.id == supplier_id)
+
+    ctrl_result = await db.execute(supplier_control_query)
+    suppliers = ctrl_result.scalars().all()
+
+    control_summary = {
+        "total_suppliers": len(suppliers),
+        "blocked_count": sum(1 for s in suppliers if s.on_hold),
+        "warn_rfq_count": sum(1 for s in suppliers if s.warn_rfqs),
+        "warn_po_count": sum(1 for s in suppliers if s.warn_pos),
+        "prevent_rfq_count": sum(1 for s in suppliers if s.prevent_rfqs),
+        "prevent_po_count": sum(1 for s in suppliers if s.prevent_pos),
+    }
+
+    return {
+        "supplier_id": str(supplier_id) if supplier_id else None,
+        "overall": {
+            "total_quotes": total_quotes,
+            "awarded_quotes": awarded_quotes,
+            "award_rate": round(awarded_quotes / total_quotes * 100, 2) if total_quotes > 0 else 0.0,
+        },
+        "by_supplier": list(supplier_stats.values()),
+        "supplier_controls": control_summary,
+    }
+
+
+async def get_supplier_controls(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    supplier_id: uuid.UUID,
+) -> dict:
+    """Get detailed supplier control status for a specific supplier.
+
+    Args:
+        db: Database session
+        tenant_id: Tenant UUID
+        supplier_id: Supplier UUID
+
+    Returns:
+        Dict with supplier control details and computed statuses
+    """
+    result = await db.execute(
+        select(Supplier).where(
+            Supplier.id == supplier_id,
+            Supplier.tenant_id == tenant_id,
+        )
+    )
+    supplier = result.scalar_one_or_none()
+
+    if not supplier:
+        raise ValidationError([{
+            "field": "supplier_id",
+            "message": f"Supplier {supplier_id} not found.",
+        }])
+
+    # Get computed control statuses
+    rfq_blocked, rfq_warned, rfq_reason = supplier.get_rfq_controls()
+    po_blocked, po_warned, po_reason = supplier.get_po_controls()
+
+    return {
+        "supplier_id": str(supplier.id),
+        "supplier_name": supplier.name,
+        "is_active": supplier.is_active,
+        # Hold status
+        "on_hold": supplier.on_hold,
+        "hold_type": supplier.hold_type,
+        "release_date": str(supplier.release_date) if supplier.release_date else None,
+        "is_effectively_on_hold": supplier.is_effectively_on_hold(),
+        # Scorecard controls
+        "scorecard_standing": supplier.scorecard_standing,
+        "scorecard_last_evaluated_at": (
+            supplier.scorecard_last_evaluated_at.isoformat()
+            if supplier.scorecard_last_evaluated_at else None
+        ),
+        # RFQ controls
+        "warn_rfqs": supplier.warn_rfqs,
+        "prevent_rfqs": supplier.prevent_rfqs,
+        "rfq_blocked": rfq_blocked,
+        "rfq_warned": rfq_warned,
+        "rfq_control_reason": rfq_reason,
+        # PO controls
+        "warn_pos": supplier.warn_pos,
+        "prevent_pos": supplier.prevent_pos,
+        "po_blocked": po_blocked,
+        "po_warned": po_warned,
+        "po_control_reason": po_reason,
+    }

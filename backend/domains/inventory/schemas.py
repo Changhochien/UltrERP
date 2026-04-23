@@ -714,6 +714,53 @@ class SupplierStatusUpdate(BaseModel):
     is_active: bool
 
 
+class SupplierProcurementControlsUpdate(BaseModel):
+    """Update procurement controls for a supplier (Story 24-5)."""
+
+    # Hold controls
+    on_hold: bool | None = None
+    hold_type: str | None = Field(default=None, max_length=50)
+    release_date: date | None = None
+
+    # Scorecard controls
+    scorecard_standing: str | None = Field(default=None, max_length=30)
+    scorecard_last_evaluated_at: datetime | None = None
+    warn_rfqs: bool | None = None
+    prevent_rfqs: bool | None = None
+    warn_pos: bool | None = None
+    prevent_pos: bool | None = None
+
+
+class SupplierProcurementStatus(BaseModel):
+    """Procurement control status for a supplier (Story 24-5)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    # Hold status
+    on_hold: bool = False
+    hold_type: str | None = None
+    release_date: date | None = None
+    is_effectively_on_hold: bool = False
+
+    # Scorecard controls
+    scorecard_standing: str | None = None
+    scorecard_last_evaluated_at: datetime | None = None
+    warn_rfqs: bool = False
+    prevent_rfqs: bool = False
+    warn_pos: bool = False
+    prevent_pos: bool = False
+
+    # Computed controls for RFQ
+    rfq_blocked: bool = False
+    rfq_warned: bool = False
+    rfq_control_reason: str = ""
+
+    # Computed controls for PO
+    po_blocked: bool = False
+    po_warned: bool = False
+    po_control_reason: str = ""
+
+
 class SupplierResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -727,6 +774,22 @@ class SupplierResponse(BaseModel):
     is_active: bool
     legacy_master_snapshot: dict[str, Any] | None = None
     created_at: datetime
+
+    # Procurement controls (Story 24-5)
+    on_hold: bool = False
+    hold_type: str | None = None
+    release_date: date | None = None
+    scorecard_standing: str | None = None
+    scorecard_last_evaluated_at: datetime | None = None
+    warn_rfqs: bool = False
+    prevent_rfqs: bool = False
+    warn_pos: bool = False
+    prevent_pos: bool = False
+
+
+class SupplierListResponse(BaseModel):
+    items: list[SupplierResponse]
+    total: int
 
 
 class SupplierListResponse(BaseModel):

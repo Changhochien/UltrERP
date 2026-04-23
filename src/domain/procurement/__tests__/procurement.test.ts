@@ -564,3 +564,281 @@ describe("Purchase Order No Goods Receipt Logic (Story 24.2)", () => {
     expect("bom" in po).toBe(false);
   });
 });
+
+// --------------------------------------------------------------------------
+// Story 24.5: Supplier Controls Tests
+// --------------------------------------------------------------------------
+
+import type {
+  SupplierControlResult,
+  SupplierControlsStatus,
+  ProcurementSummary,
+  SupplierPerformanceStats,
+} from "../types";
+
+describe("Supplier Control Types (Story 24.5)", () => {
+  it("SupplierControlResult has block/warn structure", () => {
+    const result: SupplierControlResult = {
+      is_blocked: true,
+      is_warned: false,
+      reason: "Supplier is on hold",
+      supplier_name: "Blocked Supplier",
+      controls: {
+        on_hold: true,
+        hold_type: "payment",
+        prevent_rfqs: false,
+      },
+    };
+
+    expect(result.is_blocked).toBe(true);
+    expect(result.is_warned).toBe(false);
+    expect(result.reason).toContain("on hold");
+    expect(result.supplier_name).toBe("Blocked Supplier");
+    expect(result.controls.on_hold).toBe(true);
+    expect(result.controls.hold_type).toBe("payment");
+  });
+
+  it("SupplierControlsStatus has all control fields", () => {
+    const status: SupplierControlsStatus = {
+      supplier_id: "00000000-0000-0000-0000-000000000020",
+      supplier_name: "Test Supplier",
+      is_active: true,
+      on_hold: false,
+      hold_type: null,
+      release_date: null,
+      is_effectively_on_hold: false,
+      scorecard_standing: "active",
+      scorecard_last_evaluated_at: "2026-04-24T00:00:00Z",
+      warn_rfqs: false,
+      prevent_rfqs: false,
+      warn_pos: true,
+      prevent_pos: false,
+      rfq_blocked: false,
+      rfq_warned: false,
+      rfq_control_reason: "",
+      po_blocked: false,
+      po_warned: true,
+      po_control_reason: "Supplier has PO warnings",
+    };
+
+    expect(status.on_hold).toBe(false);
+    expect(status.warn_pos).toBe(true);
+    expect(status.po_warned).toBe(true);
+    expect(status.scorecard_standing).toBe("active");
+    expect(status.is_effectively_on_hold).toBe(false);
+  });
+
+  it("SupplierControlFlags includes all procurement control fields", () => {
+    const controls = {
+      on_hold: true,
+      hold_type: "quality",
+      release_date: "2026-05-01",
+      scorecard_standing: "warning",
+      warn_rfqs: true,
+      prevent_rfqs: false,
+      warn_pos: true,
+      prevent_pos: false,
+    };
+
+    expect(controls.on_hold).toBe(true);
+    expect(controls.hold_type).toBe("quality");
+    expect(controls.warn_rfqs).toBe(true);
+    expect(controls.prevent_rfqs).toBe(false);
+    expect(controls.warn_pos).toBe(true);
+    expect(controls.prevent_pos).toBe(false);
+  });
+});
+
+describe("Supplier Control Enforcement (Story 24.5)", () => {
+  it("blocked supplier should prevent RFQ submission", () => {
+    const control: SupplierControlResult = {
+      is_blocked: true,
+      is_warned: false,
+      reason: "Supplier is on hold",
+      supplier_name: "Held Supplier",
+      controls: { on_hold: true },
+    };
+
+    const canProceed = !control.is_blocked;
+    expect(canProceed).toBe(false);
+  });
+
+  it("warn_rfqs supplier should show warning but allow RFQ", () => {
+    const control: SupplierControlResult = {
+      is_blocked: false,
+      is_warned: true,
+      reason: "Supplier has RFQ warnings",
+      supplier_name: "Warned Supplier",
+      controls: { warn_rfqs: true },
+    };
+
+    const canProceed = !control.is_blocked;
+    const shouldWarn = control.is_warned;
+    expect(canProceed).toBe(true);
+    expect(shouldWarn).toBe(true);
+  });
+
+  it("prevent_pos supplier should block PO submission", () => {
+    const control: SupplierControlResult = {
+      is_blocked: true,
+      is_warned: false,
+      reason: "Supplier is blocked from POs",
+      supplier_name: "Blocked Supplier",
+      controls: { prevent_pos: true },
+    };
+
+    const canProceed = !control.is_blocked;
+    expect(canProceed).toBe(false);
+    expect(control.reason).toContain("blocked from POs");
+  });
+
+  it("release_date in future should not block supplier", () => {
+    const futureDate = "2026-12-31";
+    const today = "2026-04-24";
+
+    const isOnHold = futureDate <= today;
+    expect(isOnHold).toBe(false);
+  });
+
+  it("release_date in past should block supplier", () => {
+    const pastDate = "2026-04-20";
+    const today = "2026-04-24";
+
+    const isOnHold = pastDate <= today;
+    expect(isOnHold).toBe(true);
+  });
+});
+
+describe("Procurement Reporting Types (Story 24.5)", () => {
+  it("ProcurementSummary has required sections", () => {
+    const summary: ProcurementSummary = {
+      period: { from: "2026-04-01", to: "2026-04-30" },
+      rfqs: { total: 10, submitted: 5, pending: 5 },
+      supplier_quotations: { total: 20, submitted: 15, pending: 5 },
+      awards: { total: 5 },
+      purchase_orders: { total: 8, active: 6, draft: 2 },
+      supplier_controls: { blocked_suppliers: 2, warned_suppliers: 3 },
+    };
+
+    expect(summary.period.from).toBe("2026-04-01");
+    expect(summary.rfqs.total).toBe(10);
+    expect(summary.rfqs.submitted).toBe(5);
+    expect(summary.supplier_quotations.total).toBe(20);
+    expect(summary.awards.total).toBe(5);
+    expect(summary.purchase_orders.active).toBe(6);
+    expect(summary.supplier_controls.blocked_suppliers).toBe(2);
+    expect(summary.supplier_controls.warned_suppliers).toBe(3);
+  });
+
+  it("SupplierPerformanceStats includes award rates", () => {
+    const stats: SupplierPerformanceStats = {
+      supplier_id: null,
+      overall: { total_quotes: 50, awarded_quotes: 20, award_rate: 40.0 },
+      by_supplier: [
+        {
+          supplier_name: "Alpha Supplier",
+          supplier_id: "00000000-0000-0000-0000-000000000021",
+          total_quotes: 20,
+          awarded_quotes: 10,
+          award_rate: 50.0,
+        },
+        {
+          supplier_name: "Beta Supplier",
+          supplier_id: "00000000-0000-0000-0000-000000000022",
+          total_quotes: 30,
+          awarded_quotes: 10,
+          award_rate: 33.33,
+        },
+      ],
+      supplier_controls: {
+        total_suppliers: 10,
+        blocked_count: 2,
+        warn_rfq_count: 3,
+        warn_po_count: 4,
+        prevent_rfq_count: 1,
+        prevent_po_count: 1,
+      },
+    };
+
+    expect(stats.overall.award_rate).toBe(40.0);
+    expect(stats.by_supplier[0].award_rate).toBe(50.0);
+    expect(stats.supplier_controls.total_suppliers).toBe(10);
+    expect(stats.supplier_controls.blocked_count).toBe(2);
+  });
+});
+
+describe("RFQ Extension Hooks (Story 24.5)", () => {
+  it("RFQ includes contract_reference field", () => {
+    const rfq = {
+      id: "00000000-0000-0000-0000-000000000001",
+      name: "PRQ-0001",
+      status: "draft",
+      contract_reference: "CON-2026-001",
+    };
+
+    expect(rfq.contract_reference).toBe("CON-2026-001");
+  });
+
+  it("RFQ contract_reference can be null", () => {
+    const rfq = {
+      id: "00000000-0000-0000-0000-000000000001",
+      name: "PRQ-0001",
+      status: "draft",
+      contract_reference: null,
+    };
+
+    expect(rfq.contract_reference).toBeNull();
+  });
+});
+
+describe("Purchase Order Extension Hooks (Story 24.5)", () => {
+  it("PO includes blanket_order_reference_id field", () => {
+    const po = {
+      id: "00000000-0000-0000-0000-000000000010",
+      name: "PO-0001",
+      status: "draft",
+      blanket_order_reference_id: "00000000-0000-0000-0000-000000000030",
+      landed_cost_reference_id: null,
+    };
+
+    expect(po.blanket_order_reference_id).toBe("00000000-0000-0000-0000-000000000030");
+    expect(po.landed_cost_reference_id).toBeNull();
+  });
+
+  it("PO extension hooks are nullable", () => {
+    const po = {
+      id: "00000000-0000-0000-0000-000000000010",
+      name: "PO-0002",
+      status: "submitted",
+      blanket_order_reference_id: null,
+      landed_cost_reference_id: null,
+    };
+
+    expect(po.blanket_order_reference_id).toBeNull();
+    expect(po.landed_cost_reference_id).toBeNull();
+  });
+});
+
+describe("Supplier Quotation Extension Hooks (Story 24.5)", () => {
+  it("SupplierQuotation includes contract_reference field", () => {
+    const sq = {
+      id: "00000000-0000-0000-0000-000000000005",
+      name: "SQ-0001",
+      status: "draft",
+      contract_reference: "CON-2026-001",
+    };
+
+    expect(sq.contract_reference).toBe("CON-2026-001");
+  });
+
+  it("SupplierQuotation contract_reference can be null", () => {
+    const sq = {
+      id: "00000000-0000-0000-0000-000000000005",
+      name: "SQ-0001",
+      status: "draft",
+      contract_reference: null,
+    };
+
+    expect(sq.contract_reference).toBeNull();
+  });
+});

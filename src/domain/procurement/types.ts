@@ -559,3 +559,117 @@ export interface GoodsReceiptListResponse {
   page_size: number;
   pages: number;
 }
+
+// --------------------------------------------------------------------------
+// Supplier Control Types (Story 24-5)
+// --------------------------------------------------------------------------
+
+export interface SupplierControlResult {
+  is_blocked: boolean;
+  is_warned: boolean;
+  reason: string;
+  supplier_name: string;
+  controls: SupplierControlFlags;
+}
+
+export interface SupplierControlFlags {
+  on_hold?: boolean;
+  hold_type?: string | null;
+  release_date?: string | null;
+  scorecard_standing?: string | null;
+  warn_rfqs?: boolean;
+  prevent_rfqs?: boolean;
+  warn_pos?: boolean;
+  prevent_pos?: boolean;
+}
+
+export interface SupplierControlsStatus {
+  supplier_id: string;
+  supplier_name: string;
+  is_active: boolean;
+  // Hold status
+  on_hold: boolean;
+  hold_type: string | null;
+  release_date: string | null;
+  is_effectively_on_hold: boolean;
+  // Scorecard controls
+  scorecard_standing: string | null;
+  scorecard_last_evaluated_at: string | null;
+  // RFQ controls
+  warn_rfqs: boolean;
+  prevent_rfqs: boolean;
+  rfq_blocked: boolean;
+  rfq_warned: boolean;
+  rfq_control_reason: string;
+  // PO controls
+  warn_pos: boolean;
+  prevent_pos: boolean;
+  po_blocked: boolean;
+  po_warned: boolean;
+  po_control_reason: string;
+}
+
+// --------------------------------------------------------------------------
+// Procurement Reporting Types (Story 24-5)
+// --------------------------------------------------------------------------
+
+export interface ProcurementSummary {
+  period: {
+    from: string;
+    to: string;
+  };
+  rfqs: {
+    total: number;
+    submitted: number;
+    pending: number;
+  };
+  supplier_quotations: {
+    total: number;
+    submitted: number;
+    pending: number;
+  };
+  awards: {
+    total: number;
+  };
+  purchase_orders: {
+    total: number;
+    active: number;
+    draft: number;
+  };
+  supplier_controls: {
+    blocked_suppliers: number;
+    warned_suppliers: number;
+  };
+}
+
+export interface QuoteTurnaroundStats {
+  rfq_id: string | null;
+  total_quotes: number;
+  avg_turnaround_days: number | null;
+  min_turnaround_days: number | null;
+  max_turnaround_days: number | null;
+}
+
+export interface SupplierPerformanceStats {
+  supplier_id: string | null;
+  overall: {
+    total_quotes: number;
+    awarded_quotes: number;
+    award_rate: number;
+  };
+  by_supplier: {
+    supplier_name: string;
+    supplier_id: string | null;
+    total_quotes: number;
+    awarded_quotes: number;
+    award_rate: number;
+  }[];
+  supplier_controls: {
+    total_suppliers: number;
+    blocked_count: number;
+    warn_rfq_count: number;
+    warn_po_count: number;
+    prevent_rfq_count: number;
+    prevent_po_count: number;
+  };
+}

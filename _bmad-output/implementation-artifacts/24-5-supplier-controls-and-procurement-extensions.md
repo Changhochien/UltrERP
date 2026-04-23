@@ -1,6 +1,6 @@
 # Story 24.5: Supplier Controls and Procurement Extensions
 
-Status: drafted
+Status: review
 
 ## Story
 
@@ -33,27 +33,27 @@ This story should add policy controls and extension seams, not implement blanket
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Extend the supplier model for procurement controls. (AC: 1-2)
-  - [ ] Add procurement hold fields such as `on_hold`, `hold_type`, and `release_date` or compatible equivalents to the supplier model.
-  - [ ] Add supplier scorecard summary fields or scorecard-compatible status fields such as `scorecard_standing`, `scorecard_last_evaluated_at`, `warn_rfqs`, `prevent_rfqs`, `warn_pos`, and `prevent_pos` needed to warn or block RFQ and PO workflows.
-  - [ ] Keep these procurement controls separate from Epic 25 commercial defaults such as currency and payment terms.
-- [ ] Task 2: Enforce supplier controls in sourcing and PO flows. (AC: 1-2)
-  - [ ] Apply supplier hold and scorecard checks during RFQ draft or submit actions in Story 24.1 and during PO create or submit actions in Story 24.2.
-  - [ ] Distinguish warning outcomes from blocking outcomes so operator intent and policy are visible, with blocking as validation failure and warning as explicit banner or status messaging.
-  - [ ] Enforce release-date behavior through deterministic validation logic, with optional scheduler cleanup as a later optimization rather than the only control path.
-  - [ ] Keep enforcement deterministic and tenant-scoped.
-- [ ] Task 3: Add extension hooks for later procurement capabilities. (AC: 3)
-  - [ ] Add additive nullable fields on procurement records for contract references, blanket-order-compatible references, and landed-cost-compatible references such as `contract_reference` on RFQ and Supplier Quotation records plus `blanket_order_reference_id` and `landed_cost_reference_id` on Purchase Order records.
-  - [ ] Keep these hooks explicit but non-executing so later stories can attach behavior without schema churn.
-  - [ ] Ensure these extension references remain tenant-scoped and compatible with procurement lineage plus supplier-invoice readiness rather than replacing those links.
-- [ ] Task 4: Build procurement control reporting and UI feedback. (AC: 1-4)
-  - [ ] Surface supplier hold or scorecard warnings in RFQ and PO create flows.
-  - [ ] Add reporting views for quote turnaround, award outcomes, and supplier performance signals derived from Stories 24.1 through 24.4.
-  - [ ] Reuse Epic 22 shared feedback, tables, filters, and status-display patterns.
-- [ ] Task 5: Add focused tests and validation. (AC: 1-5)
-  - [ ] Add backend tests for hold-state enforcement, scorecard warning versus blocking behavior, extension-field rollout, and procurement reporting summaries.
-  - [ ] Add frontend tests for warning banners, blocked-submit messaging, and procurement performance views.
-  - [ ] Validate that no blanket-order execution or landed-cost automation lands in this story.
+- [x] Task 1: Extend the supplier model for procurement controls. (AC: 1-2)
+  - [x] Add procurement hold fields such as `on_hold`, `hold_type`, and `release_date` or compatible equivalents to the supplier model.
+  - [x] Add supplier scorecard summary fields or scorecard-compatible status fields such as `scorecard_standing`, `scorecard_last_evaluated_at`, `warn_rfqs`, `prevent_rfqs`, `warn_pos`, and `prevent_pos` needed to warn or block RFQ and PO workflows.
+  - [x] Keep these procurement controls separate from Epic 25 commercial defaults such as currency and payment terms.
+- [x] Task 2: Enforce supplier controls in sourcing and PO flows. (AC: 1-2)
+  - [x] Apply supplier hold and scorecard checks during RFQ draft or submit actions in Story 24.1 and during PO create or submit actions in Story 24.2.
+  - [x] Distinguish warning outcomes from blocking outcomes so operator intent and policy are visible, with blocking as validation failure and warning as explicit banner or status messaging.
+  - [x] Enforce release-date behavior through deterministic validation logic, with optional scheduler cleanup as a later optimization rather than the only control path.
+  - [x] Keep enforcement deterministic and tenant-scoped.
+- [x] Task 3: Add extension hooks for later procurement capabilities. (AC: 3)
+  - [x] Add additive nullable fields on procurement records for contract references, blanket-order-compatible references, and landed-cost-compatible references such as `contract_reference` on RFQ and Supplier Quotation records plus `blanket_order_reference_id` and `landed_cost_reference_id` on Purchase Order records.
+  - [x] Keep these hooks explicit but non-executing so later stories can attach behavior without schema churn.
+  - [x] Ensure these extension references remain tenant-scoped and compatible with procurement lineage plus supplier-invoice readiness rather than replacing those links.
+- [x] Task 4: Build procurement control reporting and UI feedback. (AC: 1-4)
+  - [x] Surface supplier hold or scorecard warnings in RFQ and PO create flows.
+  - [x] Add reporting views for quote turnaround, award outcomes, and supplier performance signals derived from Stories 24.1 through 24.4.
+  - [x] Reuse Epic 22 shared feedback, tables, filters, and status-display patterns.
+- [x] Task 5: Add focused tests and validation. (AC: 1-5)
+  - [x] Add backend tests for hold-state enforcement, scorecard warning versus blocking behavior, extension-field rollout, and procurement reporting summaries.
+  - [x] Add frontend tests for warning banners, blocked-submit messaging, and procurement performance views.
+  - [x] Validate that no blanket-order execution or landed-cost automation lands in this story.
 
 ## Dev Notes
 
@@ -121,6 +121,15 @@ GPT-5.4
 ### Completion Notes List
 
 - 2026-04-21: Drafted Story 24.5 from Epic 24, the buying research, and the current supplier model so procurement controls, reporting, and future procurement extensions can land without stealing Epic 25 commercial-default scope.
+- 2026-04-24: Implemented Story 24.5:
+  - Extended Supplier model with procurement controls (on_hold, hold_type, release_date, scorecard fields)
+  - Added helper methods for supplier control checks (get_rfq_controls, get_po_controls)
+  - Enforced supplier controls in RFQ submit and PO submit workflows
+  - Added extension hooks: contract_reference on RFQ/SQ, blanket_order_reference_id and landed_cost_reference_id on PO
+  - Added procurement reporting endpoints (summary, quote turnaround, supplier performance)
+  - Created migrations for new columns
+  - Added backend and frontend tests
+  - No blanket-order execution or landed-cost automation implemented
 
 ### File List
 

@@ -872,3 +872,162 @@ async def get_gr_line_invoice_lineage(
         "goods_receipt_name": gr_name,
         "linked_invoices": linked_invoices,
     }
+
+
+# --------------------------------------------------------------------------
+# Supplier Controls (Story 24-5)
+# --------------------------------------------------------------------------
+
+
+@router.get(
+    "/suppliers/{supplier_id}/controls",
+    response_model=dict,
+    summary="Get supplier procurement control status",
+    description="""
+    Returns detailed supplier control status including hold state, scorecard flags,
+    and computed RFQ/PO block or warning status.
+
+    **Story 24-5: Supplier Controls and Procurement Extensions**
+    """,
+)
+async def get_supplier_controls(
+    supplier_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> dict:
+    """Get detailed supplier control status."""
+    tenant_id, _ = tenant_user
+    try:
+        controls = await svc.get_supplier_controls(db, tenant_id, supplier_id)
+    except ValidationError as exc:
+        errors = exc.errors if hasattr(exc, "errors") else [str(exc)]
+        return JSONResponse(status_code=404, content=error_response(errors))
+    return controls
+
+
+@router.post(
+    "/suppliers/{supplier_id}/check-rfq-controls",
+    response_model=dict,
+    summary="Check RFQ controls for a supplier",
+    description="""
+    Returns whether a supplier can be used in RFQ workflows.
+    Indicates if RFQ is blocked or warned.
+
+    **Story 24-5: Supplier Controls and Procurement Extensions**
+    """,
+)
+async def check_supplier_rfq_controls(
+    supplier_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> dict:
+    """Check RFQ controls for a supplier."""
+    tenant_id, _ = tenant_user
+    result = await svc.check_supplier_rfq_controls(
+        db, tenant_id, supplier_id
+    )
+    return result.to_dict()
+
+
+@router.post(
+    "/suppliers/{supplier_id}/check-po-controls",
+    response_model=dict,
+    summary="Check PO controls for a supplier",
+    description="""
+    Returns whether a supplier can be used in PO workflows.
+    Indicates if PO creation/submission is blocked or warned.
+
+    **Story 24-5: Supplier Controls and Procurement Extensions**
+    """,
+)
+async def check_supplier_po_controls(
+    supplier_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> dict:
+    """Check PO controls for a supplier."""
+    tenant_id, _ = tenant_user
+    result = await svc.check_supplier_po_controls(
+        db, tenant_id, supplier_id
+    )
+    return result.to_dict()
+
+
+# --------------------------------------------------------------------------
+# Procurement Reporting (Story 24-5)
+# --------------------------------------------------------------------------
+
+
+@router.get(
+    "/reports/procurement-summary",
+    response_model=dict,
+    summary="Get procurement summary statistics",
+    description="""
+    Returns aggregated statistics for RFQs, supplier quotations, awards,
+    purchase orders, and supplier control status for a date range.
+
+    **Story 24-5: Supplier Controls and Procurement Extensions**
+    """,
+)
+async def get_procurement_summary(
+    date_from: str | None = Query(default=None, description="Start date (YYYY-MM-DD)"),
+    date_to: str | None = Query(default=None, description="End date (YYYY-MM-DD)"),
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> dict:
+    """Get procurement summary statistics."""
+    tenant_id, _ = tenant_user
+
+    from_date = None
+    to_date = None
+
+    if date_from:
+        from_date = date.fromisoformat(date_from)
+    if date_to:
+        to_date = date.fromisoformat(date_to)
+
+    return await svc.get_procurement_summary(
+        db, tenant_id, date_from=from_date, date_to=to_date
+    )
+
+
+@router.get(
+    "/reports/quote-turnaround",
+    response_model=dict,
+    summary="Get quote turnaround statistics",
+    description="""
+    Returns turnaround time statistics measuring how quickly suppliers respond to RFQs.
+    Based on timestamps from RFQ submission to quotation receipt.
+
+    **Story 24-5: Supplier Controls and Procurement Extensions**
+    """,
+)
+async def get_quote_turnaround_stats(
+    rfq_id: uuid.UUID | None = Query(default=None, description="Specific RFQ to analyze"),
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> dict:
+    """Get quote turnaround statistics."""
+    tenant_id, _ = tenant_user
+    return await svc.get_quote_turnaround_stats(db, tenant_id, rfq_id=rfq_id)
+
+
+@router.get(
+    "/reports/supplier-performance",
+    response_model=dict,
+    summary="Get supplier performance statistics",
+    description="""
+    Returns supplier performance metrics including award rates and scorecard status.
+    Aggregates quotation outcomes across all RFQs.
+
+    **Story 24-5: Supplier Controls and Procurement Extensions**
+    """,
+)
+async def get_supplier_performance_stats(
+    supplier_id: uuid.UUID | None = Query(default=None, description="Specific supplier to analyze"),
+    db: AsyncSession = Depends(get_db),
+    tenant_user: TenantUser = Depends(get_tenant_and_user),
+) -> dict:
+    """Get supplier performance statistics."""
+    tenant_id, _ = tenant_user
+    return await svc.get_supplier_performance_stats(db, tenant_id, supplier_id=supplier_id)

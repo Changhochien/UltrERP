@@ -70,6 +70,14 @@ class RFQ(Base):
     # Quotes received count snapshot (recomputed via service)
     quotes_received: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
+    # ─────────────────────────────────────────────────────────────
+    # Extension Hooks for Later Procurement Capabilities (Story 24-5)
+    # These fields are nullable and non-executing - later stories
+    # will attach behavior without schema churn.
+    # ─────────────────────────────────────────────────────────────
+    # Contract reference: links to a master contract or agreement
+    contract_reference: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=UTC)
     )
@@ -245,6 +253,14 @@ class SupplierQuotation(Base):
     # Award flag
     is_awarded: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
+    # ─────────────────────────────────────────────────────────────
+    # Extension Hooks for Later Procurement Capabilities (Story 24-5)
+    # These fields are nullable and non-executing - later stories
+    # will attach behavior without schema churn.
+    # ─────────────────────────────────────────────────────────────
+    # Contract reference: links to a master contract or agreement
+    contract_reference: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=UTC)
     )
@@ -389,6 +405,16 @@ class PurchaseOrder(Base):
     is_approved: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     approved_by: Mapped[str] = mapped_column(String(120), nullable=False, default="")
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # ─────────────────────────────────────────────────────────────
+    # Extension Hooks for Later Procurement Capabilities (Story 24-5)
+    # These fields are nullable and non-executing - later stories
+    # will attach behavior without schema churn.
+    # ─────────────────────────────────────────────────────────────
+    # Blanket order reference: links to a blanket purchase agreement
+    blanket_order_reference_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    # Landed cost reference: links to a landed cost allocation document
+    landed_cost_reference_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=UTC)

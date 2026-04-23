@@ -424,3 +424,87 @@ export async function fetchGRLineage(grId: string, grLineId: string): Promise<GR
   if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to load GR invoice lineage"));
   return resp.json();
 }
+
+// --------------------------------------------------------------------------
+// Supplier Controls API (Story 24-5)
+// --------------------------------------------------------------------------
+
+import type {
+  SupplierControlResult,
+  SupplierControlsStatus,
+  ProcurementSummary,
+  QuoteTurnaroundStats,
+  SupplierPerformanceStats,
+} from "../../domain/procurement/types";
+
+/**
+ * Get detailed supplier control status (Story 24-5).
+ */
+export async function getSupplierControls(supplierId: string): Promise<SupplierControlsStatus> {
+  const resp = await apiFetch(`/api/v1/procurement/suppliers/${supplierId}/controls`);
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to load supplier controls"));
+  return resp.json();
+}
+
+/**
+ * Check RFQ controls for a supplier (Story 24-5).
+ */
+export async function checkSupplierRFQControls(supplierId: string): Promise<SupplierControlResult> {
+  const resp = await apiFetch(`/api/v1/procurement/suppliers/${supplierId}/check-rfq-controls`, {
+    method: "POST",
+  });
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to check RFQ controls"));
+  return resp.json();
+}
+
+/**
+ * Check PO controls for a supplier (Story 24-5).
+ */
+export async function checkSupplierPOControls(supplierId: string): Promise<SupplierControlResult> {
+  const resp = await apiFetch(`/api/v1/procurement/suppliers/${supplierId}/check-po-controls`, {
+    method: "POST",
+  });
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to check PO controls"));
+  return resp.json();
+}
+
+// --------------------------------------------------------------------------
+// Procurement Reporting API (Story 24-5)
+// --------------------------------------------------------------------------
+
+/**
+ * Get procurement summary statistics (Story 24-5).
+ */
+export async function getProcurementSummary(params?: {
+  date_from?: string;
+  date_to?: string;
+}): Promise<ProcurementSummary> {
+  const qs = new URLSearchParams();
+  if (params?.date_from) qs.set("date_from", params.date_from);
+  if (params?.date_to) qs.set("date_to", params.date_to);
+  const resp = await apiFetch(`/api/v1/procurement/reports/procurement-summary?${qs}`);
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to load procurement summary"));
+  return resp.json();
+}
+
+/**
+ * Get quote turnaround statistics (Story 24-5).
+ */
+export async function getQuoteTurnaroundStats(rfqId?: string): Promise<QuoteTurnaroundStats> {
+  const qs = new URLSearchParams();
+  if (rfqId) qs.set("rfq_id", rfqId);
+  const resp = await apiFetch(`/api/v1/procurement/reports/quote-turnaround?${qs}`);
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to load quote turnaround stats"));
+  return resp.json();
+}
+
+/**
+ * Get supplier performance statistics (Story 24-5).
+ */
+export async function getSupplierPerformanceStats(supplierId?: string): Promise<SupplierPerformanceStats> {
+  const qs = new URLSearchParams();
+  if (supplierId) qs.set("supplier_id", supplierId);
+  const resp = await apiFetch(`/api/v1/procurement/reports/supplier-performance?${qs}`);
+  if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to load supplier performance stats"));
+  return resp.json();
+}
