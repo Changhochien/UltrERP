@@ -1,4 +1,4 @@
-"""Read models for supplier invoices and purchase history."""
+"""Supplier invoice service with procurement lineage support (Story 24-4)."""
 
 from __future__ import annotations
 
@@ -13,11 +13,29 @@ from sqlalchemy.orm import selectinload
 from common.models.product import Product
 from common.models.supplier import Supplier
 from common.models.supplier_invoice import (
+    ProcurementMismatchStatus,
     SupplierInvoice,
     SupplierInvoiceLine,
-    ProcurementMismatchStatus,
 )
 from common.tenant import DEFAULT_TENANT_ID, set_tenant
+
+# Procurement lineage reference fields (Story 24-4)
+LINEAGE_REF_FIELDS = (
+    "rfq_item_id",
+    "supplier_quotation_item_id",
+    "purchase_order_line_id",
+    "goods_receipt_line_id",
+)
+
+# Variance and reference fields for mismatch detection
+VARIANCE_FIELDS = (
+    "quantity_variance",
+    "unit_price_variance",
+    "total_amount_variance",
+    "reference_quantity",
+    "reference_unit_price",
+    "reference_total_amount",
+)
 
 
 async def _load_supplier_name_map(
@@ -44,16 +62,24 @@ async def _load_product_name_map(
     return {row[0]: row[1] for row in result.all()}
 
 
+def _mismatch_status_str(line: SupplierInvoiceLine) -> str:
+    """Get mismatch_status as string, defaulting to NOT_CHECKED."""
+    status = getattr(line, "mismatch_status", None)
+    if status is None:
+        return ProcurementMismatchStatus.NOT_CHECKED.value
+    if isinstance(status, ProcurementMismatchStatus):
+        return status.value
+    return str(status)
+
+
+def _has_lineage(line: SupplierInvoiceLine) -> bool:
+    """Check if a line has any procurement lineage references."""
+    return any(getattr(line, field, None) for field in LINEAGE_REF_FIELDS)
+
+
 def _line_to_dict(line: SupplierInvoiceLine, product_names: dict[uuid.UUID, str]) -> dict:
     """Convert a supplier invoice line to dict including procurement lineage fields."""
-    # Determine mismatch_status value
-    mismatch_status = getattr(line, "mismatch_status", None)
-    if mismatch_status is None:
-        mismatch_status_str = ProcurementMismatchStatus.NOT_CHECKED.value
-    elif isinstance(mismatch_status, ProcurementMismatchStatus):
-        mismatch_status_str = mismatch_status.value
-    else:
-        mismatch_status_str = str(mismatch_status)
+    mismatch_status = _mismatch_status_str(line)
 
     return {
         "id": line.id,
@@ -73,92 +99,41 @@ def _line_to_dict(line: SupplierInvoiceLine, product_names: dict[uuid.UUID, str]
         "total_amount": line.total_amount,
         "created_at": line.created_at,
         # Procurement lineage references (Story 24-4)
-        "rfq_item_id": getattr(line, "rfq_item_id", None),
-        "supplier_quotation_item_id": getattr(line, "supplier_quotation_item_id", None),
-        "purchase_order_line_id": getattr(line, "purchase_order_line_id", None),
-        "goods_receipt_line_id": getattr(line, "goods_receipt_line_id", None),
-        # Mismatch and tolerance-ready fields (Story 24-4)
-        "reference_quantity": getattr(line, "reference_quantity", None),
-        "reference_unit_price": getattr(line, "reference_unit_price", None),
-        "reference_total_amount": getattr(line, "reference_total_amount", None),
-        "quantity_variance": getattr(line, "quantity_variance", None),
-        "unit_price_variance": getattr(line, "unit_price_variance", None),
-        "total_amount_variance": getattr(line, "total_amount_variance", None),
+        **{field: getattr(line, field, None) for field in LINEAGE_REF_FIELDS},
+        # Mismatch and variance fields (Story 24-4)
+        **{field: getattr(line, field, None) for field in VARIANCE_FIELDS},
         "quantity_variance_pct": getattr(line, "quantity_variance_pct", None),
         "unit_price_variance_pct": getattr(line, "unit_price_variance_pct", None),
         "total_amount_variance_pct": getattr(line, "total_amount_variance_pct", None),
         "comparison_basis_snapshot": getattr(line, "comparison_basis_snapshot", None),
-        "mismatch_status": mismatch_status_str,
+        "mismatch_status": mismatch_status,
         "tolerance_rule_code": getattr(line, "tolerance_rule_code", None),
         "tolerance_rule_id": getattr(line, "tolerance_rule_id", None),
     }
 
 
-def _has_lineage(line: SupplierInvoiceLine) -> bool:
-    """Check if a line has any procurement lineage references."""
-    return any([
-        getattr(line, "rfq_item_id", None) is not None,
-        getattr(line, "supplier_quotation_item_id", None) is not None,
-        getattr(line, "purchase_order_line_id", None) is not None,
-        getattr(line, "goods_receipt_line_id", None) is not None,
-    ])
-
-
-def _determine_lineage_state(line: SupplierInvoiceLine) -> str:
-    """Determine the lineage state for a supplier invoice line.
-
-    States:
-    - linked: Has at least one procurement reference
-    - unlinked_historical: No references (pre-procurement lineage)
-
-    Note: missing_reference state is out of scope for v1; entity existence
-    validation would require cross-domain queries that add latency.
-    """
-    if _has_lineage(line):
-        return "linked"
-    return "unlinked_historical"
-
-
 def _build_lineage_response(line: SupplierInvoiceLine) -> dict:
     """Build the procurement lineage response for a line."""
     return {
-        "rfq_item_id": getattr(line, "rfq_item_id", None),
-        "supplier_quotation_item_id": getattr(line, "supplier_quotation_item_id", None),
-        "purchase_order_line_id": getattr(line, "purchase_order_line_id", None),
-        "goods_receipt_line_id": getattr(line, "goods_receipt_line_id", None),
-        "lineage_state": _determine_lineage_state(line),
+        **{field: getattr(line, field, None) for field in LINEAGE_REF_FIELDS},
+        "lineage_state": "linked" if _has_lineage(line) else "unlinked_historical",
     }
 
 
 def _build_mismatch_summary(line: SupplierInvoiceLine) -> dict | None:
     """Build the mismatch summary for a line if any mismatch data exists."""
-    mismatch_status = getattr(line, "mismatch_status", None)
-    if mismatch_status is None:
-        mismatch_status_str = ProcurementMismatchStatus.NOT_CHECKED.value
-    elif isinstance(mismatch_status, ProcurementMismatchStatus):
-        mismatch_status_str = mismatch_status.value
-    else:
-        mismatch_status_str = str(mismatch_status)
+    mismatch_status = _mismatch_status_str(line)
 
-    # Only return if there's actual mismatch data
-    has_mismatch_data = any([
-        getattr(line, "quantity_variance", None) is not None,
-        getattr(line, "unit_price_variance", None) is not None,
-        getattr(line, "total_amount_variance", None) is not None,
-        getattr(line, "reference_quantity", None) is not None,
-        getattr(line, "reference_unit_price", None) is not None,
-        getattr(line, "reference_total_amount", None) is not None,
-        mismatch_status_str != ProcurementMismatchStatus.NOT_CHECKED.value,
-    ])
-
+    has_mismatch_data = (
+        any(getattr(line, field, None) is not None for field in VARIANCE_FIELDS)
+        or mismatch_status != ProcurementMismatchStatus.NOT_CHECKED.value
+    )
     if not has_mismatch_data:
         return None
 
     return {
-        "mismatch_status": mismatch_status_str,
-        "quantity_variance": getattr(line, "quantity_variance", None),
-        "unit_price_variance": getattr(line, "unit_price_variance", None),
-        "total_amount_variance": getattr(line, "total_amount_variance", None),
+        "mismatch_status": mismatch_status,
+        **{field: getattr(line, field, None) for field in VARIANCE_FIELDS},
         "quantity_variance_pct": getattr(line, "quantity_variance_pct", None),
         "unit_price_variance_pct": getattr(line, "unit_price_variance_pct", None),
         "total_amount_variance_pct": getattr(line, "total_amount_variance_pct", None),
@@ -315,11 +290,6 @@ async def list_supplier_invoices(
         for invoice in invoices
     ]
     return items, total, status_totals
-
-
-# ------------------------------------------------------------------
-# Procurement Lineage Service (Story 24-4)
-# ------------------------------------------------------------------
 
 
 async def get_lineage_for_supplier_invoice(

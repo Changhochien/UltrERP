@@ -31,10 +31,7 @@ if TYPE_CHECKING:
 
 
 class ProcurementMismatchStatus(str, enum.Enum):
-	"""Mismatch status for three-way-match readiness (Story 24-4).
-
-	Readiness signals only - no AP posting workflow is implemented here.
-	"""
+	"""Mismatch status for three-way-match readiness (Story 24-4)."""
 
 	NOT_CHECKED = "not_checked"
 	WITHIN_TOLERANCE = "within_tolerance"
@@ -88,33 +85,21 @@ class SupplierInvoice(Base):
 	notes: Mapped[str | None] = mapped_column(Text)
 	legacy_header_snapshot: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
 
-	# ------------------------------------------------------------------
-	# Procurement Lineage (Story 24-4) - header-level PO reference for navigation
-	# ------------------------------------------------------------------
-	purchase_order_id: Mapped[uuid.UUID | None] = mapped_column(
-		Uuid, nullable=True, index=True
-	)
+	# Procurement Lineage (Story 24-4)
+	purchase_order_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True, index=True)
 
 	created_at: Mapped[datetime] = mapped_column(
-		DateTime(timezone=True),
-		server_default=func.now(),
-		nullable=False,
+		DateTime(timezone=True), server_default=func.now(), nullable=False
 	)
 	updated_at: Mapped[datetime] = mapped_column(
-		DateTime(timezone=True),
-		server_default=func.now(),
-		onupdate=func.now(),
-		nullable=False,
+		DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
 	)
 
 	lines: Mapped[list[SupplierInvoiceLine]] = relationship(
-		back_populates="supplier_invoice",
-		cascade="all, delete-orphan",
-		order_by="SupplierInvoiceLine.line_number",
+		back_populates="supplier_invoice", cascade="all, delete-orphan", order_by="SupplierInvoiceLine.line_number"
 	)
 	payment_allocations: Mapped[list[SupplierPaymentAllocation]] = relationship(
-		back_populates="supplier_invoice",
-		order_by="SupplierPaymentAllocation.allocation_date",
+		back_populates="supplier_invoice", order_by="SupplierPaymentAllocation.allocation_date"
 	)
 
 
@@ -157,36 +142,23 @@ class SupplierInvoiceLine(Base):
 	tax_amount: Mapped[Decimal] = mapped_column(Numeric(20, 2), nullable=False)
 	total_amount: Mapped[Decimal] = mapped_column(Numeric(20, 2), nullable=False)
 
-	# ------------------------------------------------------------------
-	# Procurement Lineage (Story 24-4) - stable UUID references
-	# ------------------------------------------------------------------
+	# Procurement Lineage (Story 24-4)
 	rfq_item_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
 	supplier_quotation_item_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
 	purchase_order_line_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
 	goods_receipt_line_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
 
-	# ------------------------------------------------------------------
-	# Mismatch and Tolerance-Ready Structures (Story 24-4)
-	# ------------------------------------------------------------------
-	# Reference values from PO/receipt for comparison
+	# Mismatch and variance fields (Story 24-4)
 	reference_quantity: Mapped[Decimal | None] = mapped_column(Numeric(18, 3), nullable=True)
 	reference_unit_price: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
 	reference_total_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
-
-	# Variance fields (invoice_value - reference_value)
 	quantity_variance: Mapped[Decimal | None] = mapped_column(Numeric(18, 3), nullable=True)
 	unit_price_variance: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
 	total_amount_variance: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
-
-	# Variance as percentage (for quick review)
 	quantity_variance_pct: Mapped[Decimal | None] = mapped_column(Numeric(8, 4), nullable=True)
 	unit_price_variance_pct: Mapped[Decimal | None] = mapped_column(Numeric(8, 4), nullable=True)
 	total_amount_variance_pct: Mapped[Decimal | None] = mapped_column(Numeric(8, 4), nullable=True)
-
-	# Comparison basis snapshot (JSON for audit trail)
 	comparison_basis_snapshot: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
-
-	# Mismatch status
 	mismatch_status: Mapped[ProcurementMismatchStatus] = mapped_column(
 		Enum(
 			ProcurementMismatchStatus,
@@ -197,15 +169,12 @@ class SupplierInvoiceLine(Base):
 		default=ProcurementMismatchStatus.NOT_CHECKED,
 		nullable=False,
 	)
-
-	# Tolerance rule reference (for audit explainability)
+	# Tolerance rule reference (Story 24-4)
 	tolerance_rule_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
 	tolerance_rule_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
 
 	created_at: Mapped[datetime] = mapped_column(
-		DateTime(timezone=True),
-		server_default=func.now(),
-		nullable=False,
+		DateTime(timezone=True), server_default=func.now(), nullable=False
 	)
 
 	supplier_invoice: Mapped[SupplierInvoice] = relationship(back_populates="lines")
