@@ -28,7 +28,7 @@ export function GoodsReceiptDetail({ isNew = false, purchaseOrderId, initialData
   const [actionError, setActionError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const grDataOrInitial = grData ?? initialData ?? null;
+  const gr = (grData ?? initialData ?? null) as GoodsReceiptResponse | null;
 
   const handleSubmit = useCallback(async () => {
     if (!grId) return;
@@ -97,10 +97,16 @@ export function GoodsReceiptDetail({ isNew = false, purchaseOrderId, initialData
     );
   }
 
-  const gr = grDataOrInitial as GoodsReceiptResponse;
+  if (!gr) {
+    return (
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center text-gray-500">
+        Goods receipt not found.
+      </div>
+    );
+  }
 
-  const canSubmit = gr.status === "draft";
-  const canCancel = gr.status === "draft" || gr.status === "submitted";
+  const statusClass = (status: string) => GR_STATUS_COLORS[status as GoodsReceiptStatus] ?? "bg-gray-100 text-gray-700";
+  const statusLabel = (status: string) => GR_STATUS_LABELS[status as GoodsReceiptStatus] ?? status;
 
   return (
     <div className="space-y-6">
@@ -108,30 +114,18 @@ export function GoodsReceiptDetail({ isNew = false, purchaseOrderId, initialData
       <nav className="text-sm text-gray-500">
         {gr.purchase_order_id && (
           <>
-            <Link to="/procurement/purchase-orders" className="hover:text-blue-600">
-              Purchase Orders
-            </Link>{" "}
-            /{" "}
+            <Link to="/procurement/purchase-orders" className="hover:text-blue-600">Purchase Orders</Link> /{" "}
             <Link to={`/procurement/purchase-orders/${gr.purchase_order_id}`} className="hover:text-blue-600">
               {gr.purchase_order_id.slice(0, 8)}...
-            </Link>{" "}
-            /{" "}
+            </Link> /{" "}
           </>
         )}
         {gr.name}
       </nav>
 
-      {/* Success/Error Messages */}
-      {successMessage && (
-        <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-green-700">
-          {successMessage}
-        </div>
-      )}
-      {actionError && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
-          {actionError}
-        </div>
-      )}
+      {/* Messages */}
+      {successMessage && <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-green-700">{successMessage}</div>}
+      {actionError && <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">{actionError}</div>}
 
       {/* Header */}
       <div className="rounded-lg border border-gray-200 bg-white p-6">
@@ -143,12 +137,8 @@ export function GoodsReceiptDetail({ isNew = false, purchaseOrderId, initialData
             </p>
           </div>
           <div className="flex items-center gap-4">
-            <span
-              className={`inline-flex rounded-full px-3 py-1 text-sm font-medium ${
-                GR_STATUS_COLORS[gr.status as GoodsReceiptStatus] ?? "bg-gray-100 text-gray-700"
-              }`}
-            >
-              {GR_STATUS_LABELS[gr.status as GoodsReceiptStatus] ?? gr.status}
+            <span className={`inline-flex rounded-full px-3 py-1 text-sm font-medium ${statusClass(gr.status)}`}>
+              {statusLabel(gr.status)}
             </span>
             {gr.inventory_mutated && (
               <span className="inline-flex rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-700">
@@ -174,29 +164,22 @@ export function GoodsReceiptDetail({ isNew = false, purchaseOrderId, initialData
         <div className="mt-6 grid grid-cols-2 gap-6">
           <div>
             <h3 className="text-sm font-medium text-gray-500">Transaction Date</h3>
-            <p className="mt-1 text-gray-900">
-              {format(new Date(gr.transaction_date), "yyyy-MM-dd")}
-            </p>
+            <p className="mt-1 text-gray-900">{format(new Date(gr.transaction_date), "yyyy-MM-dd")}</p>
           </div>
           {gr.posting_date && (
             <div>
               <h3 className="text-sm font-medium text-gray-500">Posting Date</h3>
-              <p className="mt-1 text-gray-900">
-                {format(new Date(gr.posting_date), "yyyy-MM-dd")}
-              </p>
+              <p className="mt-1 text-gray-900">{format(new Date(gr.posting_date), "yyyy-MM-dd")}</p>
             </div>
           )}
         </div>
 
-        {/* Warehouse */}
         {gr.set_warehouse && (
           <div className="mt-6">
             <h3 className="text-sm font-medium text-gray-500">Receiving Warehouse</h3>
             <p className="mt-1 text-gray-900">{gr.set_warehouse}</p>
           </div>
         )}
-
-        {/* Notes */}
         {gr.notes && (
           <div className="mt-6">
             <h3 className="text-sm font-medium text-gray-500">Notes</h3>
@@ -205,35 +188,21 @@ export function GoodsReceiptDetail({ isNew = false, purchaseOrderId, initialData
         )}
       </div>
 
-      {/* Receipt History for this PO */}
+      {/* Receipt History */}
       {receiptsData && receiptsData.items.length > 1 && (
         <div className="rounded-lg border border-gray-200 bg-white p-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">Receipt History for this PO</h2>
           <div className="space-y-2">
             {receiptsData.items.map((receipt) => (
-              <div
-                key={receipt.id}
-                className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50 p-3"
-              >
+              <div key={receipt.id} className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50 p-3">
                 <div className="flex items-center gap-4">
                   <span className="text-sm font-medium text-gray-900">{receipt.name}</span>
-                  <span
-                    className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                      GR_STATUS_COLORS[receipt.status as GoodsReceiptStatus] ?? "bg-gray-100 text-gray-700"
-                    }`}
-                  >
-                    {GR_STATUS_LABELS[receipt.status as GoodsReceiptStatus] ?? receipt.status}
+                  <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusClass(receipt.status)}`}>
+                    {statusLabel(receipt.status)}
                   </span>
-                  <span className="text-sm text-gray-500">
-                    {format(new Date(receipt.transaction_date), "yyyy-MM-dd")}
-                  </span>
+                  <span className="text-sm text-gray-500">{format(new Date(receipt.transaction_date), "yyyy-MM-dd")}</span>
                 </div>
-                <Link
-                  to={`/procurement/goods-receipts/${receipt.id}`}
-                  className="text-sm text-blue-600 hover:text-blue-800"
-                >
-                  View
-                </Link>
+                <Link to={`/procurement/goods-receipts/${receipt.id}`} className="text-sm text-blue-600 hover:text-blue-800">View</Link>
               </div>
             ))}
           </div>
@@ -249,24 +218,12 @@ export function GoodsReceiptDetail({ isNew = false, purchaseOrderId, initialData
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  #
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Item
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Accepted
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Rejected
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Total
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Warehouse
-                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">#</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Item</th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Accepted</th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Rejected</th>
+                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">Total</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Warehouse</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -276,27 +233,17 @@ export function GoodsReceiptDetail({ isNew = false, purchaseOrderId, initialData
                   <td className="px-4 py-3">
                     <div className="text-sm font-medium text-gray-900">{item.item_name}</div>
                     <div className="text-xs text-gray-500">{item.item_code}</div>
-                    {item.exception_notes && (
-                      <div className="mt-1 text-xs text-orange-600">
-                        Note: {item.exception_notes}
-                      </div>
-                    )}
+                    {item.exception_notes && <div className="mt-1 text-xs text-orange-600">Note: {item.exception_notes}</div>}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-green-700 font-medium">
-                    {item.accepted_qty} {item.uom}
-                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-green-700 font-medium">{item.accepted_qty} {item.uom}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-red-700 font-medium">
                     {Number(item.rejected_qty) > 0 ? `${item.rejected_qty} ${item.uom}` : "-"}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-center text-sm text-gray-900">
-                    {item.total_qty} {item.uom}
-                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-center text-sm text-gray-900">{item.total_qty} {item.uom}</td>
                   <td className="px-4 py-3">
                     <div className="text-sm text-gray-900">{item.warehouse || gr.set_warehouse}</div>
                     {Number(item.rejected_qty) > 0 && item.rejected_warehouse && (
-                      <div className="text-xs text-red-600">
-                        Rejected: {item.rejected_warehouse}
-                      </div>
+                      <div className="text-xs text-red-600">Rejected: {item.rejected_warehouse}</div>
                     )}
                   </td>
                 </tr>
@@ -308,28 +255,17 @@ export function GoodsReceiptDetail({ isNew = false, purchaseOrderId, initialData
 
       {/* Actions */}
       <div className="flex justify-between">
-        <button
-          onClick={handleBackToPO}
-          className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
+        <button onClick={handleBackToPO} className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
           Back to PO
         </button>
         <div className="flex gap-3">
-          {canSubmit && (
-            <button
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
-            >
+          {gr.status === "draft" && (
+            <button onClick={handleSubmit} disabled={submitting} className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50">
               Submit Receipt
             </button>
           )}
-          {canCancel && (
-            <button
-              onClick={handleCancel}
-              disabled={submitting}
-              className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-            >
+          {(gr.status === "draft" || gr.status === "submitted") && (
+            <button onClick={handleCancel} disabled={submitting} className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50">
               Cancel
             </button>
           )}

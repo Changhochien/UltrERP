@@ -1060,25 +1060,6 @@ def _compute_received_qty_for_po_item(
     return result.scalar() or Decimal("0")
 
 
-async def _update_po_line_received_qty(
-    db: AsyncSession,
-    tenant_id: uuid.UUID,
-    po_item_id: uuid.UUID,
-) -> None:
-    """Recompute received_qty for a single PO line from submitted GR coverage."""
-    result = await db.execute(
-        select(PurchaseOrderItem).where(
-            PurchaseOrderItem.id == po_item_id,
-            PurchaseOrderItem.purchase_order_id.in_(
-                select(PurchaseOrder.id).where(PurchaseOrder.tenant_id == tenant_id)
-            )
-        )
-    )
-    po_item = result.scalar_one_or_none()
-    if po_item:
-        po_item.received_qty = _compute_received_qty_for_po_item(db, tenant_id, po_item_id)
-
-
 async def _recompute_po_from_gr(
     db: AsyncSession,
     tenant_id: uuid.UUID,
@@ -1086,20 +1067,9 @@ async def _recompute_po_from_gr(
 ) -> None:
     """Recompute all PO line received quantities and PO per_received."""
     # Get all PO items
-    result = await db.execute(
-        select(PurchaseOrderItem).where(PurchaseOrderItem.purchase_order_id == po_id)
-    )
-    po_items = list(result.scalars().all())
 
-    for po_item in po_items:
-        po_item.received_qty = _compute_received_qty_for_po_item(db, tenant_id, po_item.id)
 
     # Recompute PO progress
-    po = await get_purchase_order(db, tenant_id, po_id)
-    po.per_received, po.per_billed = _compute_progress(po)
-
-    if po.is_approved and po.status not in ("on_hold", "cancelled", "closed"):
-        po.status = await _derive_po_status(po)
 
 
 async def create_goods_receipt(
@@ -1365,12 +1335,12 @@ async def list_receipts_for_po(
     db: AsyncSession,
     tenant_id: uuid.UUID,
     po_id: uuid.UUID,
-) -> list[GoodsReceipt]:
+) -> tuple[list[GoodsReceipt], int]:
     """List all goods receipts for a specific purchase order."""
-    receipts, _ = await list_goods_receipts(
-        db, tenant_id,
+    return await list_goods_receipts(
+        db,
+        tenant_id,
         purchase_order_id=po_id,
         page=1,
         page_size=100,
     )
-    return receipts
