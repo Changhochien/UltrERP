@@ -4,22 +4,22 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import UTC, date, datetime
+from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.errors import ValidationError
 from common.tenant import DEFAULT_TENANT_ID, set_tenant
-from domains.crm.models import Lead, Opportunity, Quotation
-from domains.customers.models import Customer
+from domains.crm.models import Lead
 from domains.crm.schemas import (
     OpportunityItemInput,
     OpportunityPartyKind,
     QuotationPartyKind,
     QuotationTaxInput,
 )
+from domains.customers.models import Customer
 
 # ---------------------------------------------------------------------------
 # String utilities
@@ -147,4 +147,87 @@ def _resolve_serialized_decimal_sum(
     ).quantize(Decimal("0.01"))
 
 
-# Party context resolution moved to _opportunity.py for test compatibility
+# ---------------------------------------------------------------------------
+# Party context resolution
+# ---------------------------------------------------------------------------
+
+
+async def _resolve_party_context(
+    session: AsyncSession,
+    party_kind: OpportunityPartyKind | QuotationPartyKind,
+    party_name: str,
+    tenant_id: uuid.UUID,
+) -> tuple[str, str, dict[str, str]]:
+    """Resolve party context including defaults.
+
+    Returns:
+        tuple of (party_name, party_label, party_defaults)
+    """
+    party_defaults: dict[str, str] = {}
+
+    if party_kind in {OpportunityPartyKind.CUSTOMER, QuotationPartyKind.CUSTOMER}:
+        try:
+            customer_id = uuid.UUID(party_name)
+        except ValueError:
+            return party_name, party_name, party_defaults
+
+        async with session.begin():
+            await set_tenant(session, tenant_id)
+            result = await session.execute(
+                select(Customer).where(
+                    Customer.id == customer_id,
+                    Customer.tenant_id == tenant_id,
+                )
+            )
+            customer = result.scalar_one_or_none()
+
+        if customer is not None:
+            return (
+                str(customer.id),
+                customer.company_name,
+                {
+                    "contact_person": customer.contact_name,
+                    "contact_email": customer.contact_email,
+                    "contact_mobile": customer.contact_phone,
+                },
+            )
+        raise ValidationError(
+            [{"field": "party_name", "message": "Customer party not found."}]
+        )
+
+    if party_kind in {OpportunityPartyKind.LEAD, QuotationPartyKind.LEAD}:
+        try:
+            lead_id = uuid.UUID(party_name)
+        except ValueError:
+            return party_name, party_name, party_defaults
+
+        async with session.begin():
+            await set_tenant(session, tenant_id)
+            result = await session.execute(
+                select(Lead).where(
+                    Lead.id == lead_id,
+                    Lead.tenant_id == tenant_id,
+                )
+            )
+            lead = result.scalar_one_or_none()
+
+        if lead is not None:
+            return (
+                str(lead.id),
+                lead.company_name or lead.lead_name,
+                {
+                    "contact_person": lead.lead_name,
+                    "contact_email": lead.email_id,
+                    "contact_mobile": lead.mobile_no or lead.phone,
+                    "territory": lead.territory,
+                    "utm_source": lead.utm_source,
+                    "utm_medium": lead.utm_medium,
+                    "utm_campaign": lead.utm_campaign,
+                    "utm_content": lead.utm_content,
+                },
+            )
+        raise ValidationError(
+            [{"field": "party_name", "message": "Lead party not found."}]
+        )
+
+    return party_name, party_name, party_defaults

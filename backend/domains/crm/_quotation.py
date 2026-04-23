@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import UTC, date, datetime
 from decimal import Decimal
@@ -22,14 +23,13 @@ from domains.crm._setup import (
 from domains.crm._shared import (
     _deserialize_opportunity_items,
     _deserialize_quotation_taxes,
+    _resolve_party_context,
     _resolve_serialized_decimal_sum,
     _resolve_total_amount,
     _serialize_opportunity_items,
     _serialize_quotation_taxes,
     _trim,
 )
-# Import _resolve_party_context from _opportunity.py
-from domains.crm._opportunity import _resolve_party_context
 from domains.crm.models import Lead, Quotation
 from domains.crm.schemas import QuotationCreate as QuotationCreateSchema
 from domains.crm.schemas import (
@@ -746,8 +746,6 @@ async def _synchronize_quotation_status(
 # ---------------------------------------------------------------------------
 # Public CRUD functions
 # ---------------------------------------------------------------------------
-
-import json
 
 
 async def create_quotation(

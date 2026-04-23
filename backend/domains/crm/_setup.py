@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.errors import ValidationError
 from common.tenant import DEFAULT_TENANT_ID, set_tenant
+from domains.crm._shared import _trim
 from domains.crm.models import CRMCustomerGroup, CRMSalesStage, CRMSettings, CRMTerritory
 from domains.crm.schemas import (
     CRMCustomerGroupCreate,
@@ -45,12 +46,6 @@ DEFAULT_CRM_CUSTOMER_GROUPS: tuple[tuple[str, int], ...] = (
     ("Dealer", 20),
     ("End User", 30),
 )
-
-
-def _trim(value: str | None) -> str:
-    return value.strip() if value else ""
-
-
 def _extract_settings_fields(record: object) -> dict[str, object]:
     """Extract CRM settings fields from a record, using defaults for missing fields."""
     defaults = DEFAULT_CRM_SETTINGS.model_dump()

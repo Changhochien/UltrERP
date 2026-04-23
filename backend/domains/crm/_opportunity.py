@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -18,6 +19,7 @@ from domains.crm._setup import (
 )
 from domains.crm._shared import (
     _deserialize_opportunity_items,
+    _resolve_party_context,
     _resolve_total_amount,
     _serialize_opportunity_items,
     _trim,
@@ -262,94 +264,6 @@ def _apply_opportunity_fields_to_record(
 
 
 # ---------------------------------------------------------------------------
-# Party context resolution
-# ---------------------------------------------------------------------------
-
-
-async def _resolve_party_context(
-    session: AsyncSession,
-    party_kind: OpportunityPartyKind | QuotationPartyKind,
-    party_name: str,
-    tenant_id: uuid.UUID,
-) -> tuple[str, str, dict[str, str]]:
-    """Resolve party context including defaults.
-
-    Returns:
-        tuple of (party_name, party_label, party_defaults)
-    """
-    from domains.customers.models import Customer
-
-    party_defaults: dict[str, str] = {}
-
-    if party_kind in {OpportunityPartyKind.CUSTOMER, QuotationPartyKind.CUSTOMER}:
-        try:
-            customer_id = uuid.UUID(party_name)
-        except ValueError:
-            return party_name, party_name, party_defaults
-
-        async with session.begin():
-            await set_tenant(session, tenant_id)
-            result = await session.execute(
-                select(Customer).where(
-                    Customer.id == customer_id,
-                    Customer.tenant_id == tenant_id,
-                )
-            )
-            customer = result.scalar_one_or_none()
-
-        if customer is not None:
-            return (
-                str(customer.id),
-                customer.company_name,
-                {
-                    "contact_person": customer.contact_name,
-                    "contact_email": customer.contact_email,
-                    "contact_mobile": customer.contact_phone,
-                },
-            )
-        raise ValidationError(
-            [{"field": "party_name", "message": "Customer party not found."}]
-        )
-
-    if party_kind in {OpportunityPartyKind.LEAD, QuotationPartyKind.LEAD}:
-        try:
-            lead_id = uuid.UUID(party_name)
-        except ValueError:
-            return party_name, party_name, party_defaults
-
-        async with session.begin():
-            await set_tenant(session, tenant_id)
-            result = await session.execute(
-                select(Lead).where(
-                    Lead.id == lead_id,
-                    Lead.tenant_id == tenant_id,
-                )
-            )
-            lead = result.scalar_one_or_none()
-
-        if lead is not None:
-            return (
-                str(lead.id),
-                lead.company_name or lead.lead_name,
-                {
-                    "contact_person": lead.lead_name,
-                    "contact_email": lead.email_id,
-                    "contact_mobile": lead.mobile_no or lead.phone,
-                    "territory": lead.territory,
-                    "utm_source": lead.utm_source,
-                    "utm_medium": lead.utm_medium,
-                    "utm_campaign": lead.utm_campaign,
-                    "utm_content": lead.utm_content,
-                },
-            )
-        raise ValidationError(
-            [{"field": "party_name", "message": "Lead party not found."}]
-        )
-
-    return party_name, party_name, party_defaults
-
-
-# ---------------------------------------------------------------------------
 # Conversion payload builders
 # ---------------------------------------------------------------------------
 
@@ -398,8 +312,6 @@ async def _record_lead_opportunity_conversion(
 # ---------------------------------------------------------------------------
 # Public CRUD functions
 # ---------------------------------------------------------------------------
-
-import json
 
 
 async def create_opportunity(
