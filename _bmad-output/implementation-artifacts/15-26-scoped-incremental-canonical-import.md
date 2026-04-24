@@ -10,7 +10,7 @@ parts: 1
 
 ## Story Overview
 - Story 15.26: Scoped Incremental Canonical Import
-- Status: review
+- Status: reviewed and validated
 - Purpose: canonical import consumes incremental entity scope instead of rescanning implicit full batch; delta runs update only impacted canonical records while preserving deterministic lineage
 
 ## Problem
@@ -85,3 +85,5 @@ parts: 1
 ## Dev Agent Record
 - Agent model: GPT-5.4
 - 2026-04-24: Drafted Story 15.26 to formalize scoped canonical import, deterministic rerun behavior, incremental review-required boundaries
+- 2026-04-24 review pass: fixed the manifest-to-canonical contract mismatch so `closure_keys` shaped like `{"document_number": "..."}` are parsed correctly for scoped imports instead of being ignored
+- Validation: `cd backend && source .venv/bin/activate && python -m pytest tests/domains/legacy_import/test_canonical.py -q -k "scoped_incremental_import_filters_sales_by_entity_scope or scoped_import_preserves_deterministic_ids_on_rerun or build_entity_scope_closure_keys_extracts_correctly"` (3 passed, 36 deselected)

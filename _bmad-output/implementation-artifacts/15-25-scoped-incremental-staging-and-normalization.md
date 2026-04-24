@@ -11,7 +11,7 @@ parts: 1
 ## Story Identity
 - Story ID: 15.25
 - Title: Scoped Incremental Staging And Normalization
-- Status: review (from "draft")
+- Status: reviewed and validated
 - Role: platform engineer
 - Value: routine freshness updates stop restaging/renormalizing entire legacy lane
 
@@ -85,11 +85,12 @@ Manifest-driven staging/normalization slice that:
 ## Dev Agent Record
 - Model: GPT-5.4
 - Implementation date: 2026-04-24
-- Status: implemented and validated
+- Status: reviewed and validated
 
 ## Validation Results (from completion notes)
-- `test_incremental_normalization.py`: 12/12 tests pass
-- `test_run_incremental_legacy_refresh.py`: 12/12 tests pass
+- Review fix: full-mode normalization now rejects incremental-only scope inputs even when `selected_domains` was omitted, closing the silent full-batch fallback path
+- `test_incremental_normalization.py`: 15/15 tests pass
+- `test_run_incremental_legacy_refresh.py`: 13/13 tests pass
 - `test_normalization.py`: 28/28 tests pass (backward compatibility)
 - AC coverage: AC1-AC5 all covered
 - Files changed: normalization.py, run_legacy_refresh.py, test_incremental_normalization.py, story artifact

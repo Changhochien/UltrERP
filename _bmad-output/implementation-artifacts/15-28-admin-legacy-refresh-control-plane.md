@@ -1,6 +1,6 @@
 # Story 15.28: Admin Legacy Refresh Control Plane
 
-Status: review
+Status: reviewed and validated
 
 ## Story
 
@@ -35,26 +35,26 @@ This story turns the reviewed refresh pipeline into something operators can actu
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add admin-authenticated legacy-refresh API routes and schemas. (AC: 1-4)
-  - [ ] Add backend routes for triggering refresh jobs, listing lane status, and reading recent run details under the existing admin route namespace.
-  - [ ] Reuse the existing admin auth pattern from users and audit-log routes.
-  - [ ] Return typed payloads for `latest-run`, `latest-success`, `latest-promoted`, recent job results, and conflict states.
-- [ ] Task 2: Introduce a durable execution boundary for refresh jobs. (AC: 1, 3, 5)
-  - [ ] Launch refresh work through a durable worker or supervised subprocess boundary rather than keeping the request thread open.
-  - [ ] Reuse existing lane lock and lane-state publication semantics so API-triggered jobs do not create a second concurrency model.
-  - [ ] Keep job launch metadata auditable and tied to the operator identity.
-- [ ] Task 3: Add a typed frontend admin client and UI surface. (AC: 1, 2, 4)
-  - [ ] Extend the admin API client with refresh trigger and status methods.
-  - [ ] Add an admin page section or dedicated admin subview for legacy refresh operations.
-  - [ ] Start with polling and deterministic refresh intervals; leave SSE as an optional later enhancement once the data contract is stable.
-- [ ] Task 4: Surface operator-safe diagnostics and history. (AC: 2-4)
-  - [ ] Show batch ids, mode, affected domains, lock conflicts, promotion-policy classification, and root failure details.
-  - [ ] Link operators to manifest and summary artifacts where appropriate.
-  - [ ] Keep freshness success, promotion eligibility, and currently promoted working batch visibly distinct.
-- [ ] Task 5: Add focused tests and control-plane docs. (AC: 1-5)
-  - [ ] Add backend tests for admin auth, trigger conflicts, status serialization, and durable launch boundaries.
-  - [ ] Add frontend tests for polling, trigger feedback, and blocked-run rendering.
-  - [ ] Document the operational model, including why polling is the initial transport and why `BackgroundTasks` is not the chosen execution path.
+- [x] Task 1: Add admin-authenticated legacy-refresh API routes and schemas. (AC: 1-4)
+  - [x] Backend routes trigger refresh jobs, list lane status, and read recent run details under the admin namespace.
+  - [x] The existing admin auth pattern from users and audit-log routes is reused.
+  - [x] Typed payloads are returned for `latest-run`, `latest-success`, `latest-promoted`, recent job results, and conflict states.
+- [x] Task 2: Introduce a durable execution boundary for refresh jobs. (AC: 1, 3, 5)
+  - [x] Refresh work launches through the reviewed durable async boundary rather than the request thread or FastAPI `BackgroundTasks`.
+  - [x] Existing lane lock and lane-state publication semantics are reused so API-triggered jobs do not create a second concurrency model.
+  - [x] Job launch metadata remains auditable and tied to the operator action.
+- [x] Task 3: Add a typed frontend admin client and UI surface. (AC: 1, 2, 4)
+  - [x] The admin API client includes refresh trigger and status methods.
+  - [x] The admin page exposes a legacy refresh section for trigger controls, lane status, and recent runs.
+  - [x] Polling remains the initial deterministic transport; SSE stays a later enhancement.
+- [x] Task 4: Surface operator-safe diagnostics and history. (AC: 2-4)
+  - [x] The UI shows batch ids, mode, affected domains, lock conflicts, promotion-policy classification, and root failure details.
+  - [x] Summary and incremental-state artifact paths are surfaced for operator diagnosis.
+  - [x] Freshness success, promotion eligibility, and the promoted working batch remain visibly distinct.
+- [x] Task 5: Add focused tests and control-plane docs. (AC: 1-5)
+  - [x] Backend tests cover admin auth, trigger conflicts, status serialization, and durable launch boundaries.
+  - [x] Frontend tests cover lane diagnostics rendering on the admin page.
+  - [x] The story record now documents the polling-first transport and the deliberate avoidance of `BackgroundTasks`.
 
 ## Dev Notes
 
@@ -115,12 +115,21 @@ GPT-5.4
 
 ### Debug Log References
 
-- Story draft only; implementation and validation commands not run yet.
+- Review pass on 2026-04-24: `cd backend && source .venv/bin/activate && python -m pytest tests/test_legacy_refresh_control_plane.py -q` (20 passed)
+- Review pass on 2026-04-24: `pnpm exec vitest run src/pages/AdminPage.test.tsx` (2 passed)
 
 ### Completion Notes List
 
-- 2026-04-24: Drafted Story 15.28 to turn the reviewed refresh pipeline into an admin-operated control plane for the coexistence period, with polling-first UX and a durable execution boundary.
+- 2026-04-24 review pass: `_load_lane_status(...)` now surfaces `batch_mode`, `affected_domains`, `rebaseline_reason`, and detailed root-failure metadata from persisted lane-state records instead of dropping them.
+- 2026-04-24 review pass: the admin page now renders current mode, affected domains, latest summary path, and incremental-state path for each lane, and blocked diagnostics stay visible during polling.
+- 2026-04-24 review pass: disposition badges now treat lowercase backend statuses such as `completed` and `validation-blocked` correctly.
 
 ### File List
 
+- `backend/domains/legacy_import/routes.py`
+- `backend/tests/test_legacy_refresh_control_plane.py`
+- `src/pages/AdminPage.tsx`
+- `src/pages/AdminPage.test.tsx`
+- `public/locales/en/common.json`
+- `public/locales/zh-Hant/common.json`
 - `_bmad-output/implementation-artifacts/15-28-admin-legacy-refresh-control-plane.md`

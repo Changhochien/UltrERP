@@ -20,9 +20,11 @@ from domains.legacy_import import source_resolution
 from domains.legacy_import.mapping import UNKNOWN_PRODUCT_CODE
 from domains.legacy_import.normalization import deterministic_legacy_uuid, normalize_legacy_date
 from domains.legacy_import.shared import (
+    DOMAIN_PARTIES,
     DOMAIN_PRODUCTS,
     DOMAIN_PURCHASE_INVOICES,
     DOMAIN_SALES,
+    DOMAIN_WAREHOUSES,
     execute_many,
 )
 from domains.legacy_import.shared import (
@@ -1427,15 +1429,41 @@ def _build_entity_scope_closure_keys(
     if entity_scope is None:
         return {}
 
+    domain_value_fields: dict[str, tuple[str, ...]] = {
+        DOMAIN_SALES: ("document_number",),
+        DOMAIN_PURCHASE_INVOICES: ("document_number",),
+        DOMAIN_PRODUCTS: ("product-code", "product_code"),
+        DOMAIN_PARTIES: ("party-code", "party_code"),
+        DOMAIN_WAREHOUSES: ("warehouse-code", "warehouse_code"),
+    }
+
     result: dict[str, frozenset[str]] = {}
     for domain, spec in entity_scope.items():
         if not isinstance(spec, Mapping):
             continue
         keys = spec.get("closure_keys")
-        if isinstance(keys, (list, tuple, frozenset)):
-            result[domain] = frozenset(str(k) for k in keys)
-        elif isinstance(keys, frozenset):
-            result[domain] = keys
+        if not isinstance(keys, (list, tuple, frozenset)):
+            continue
+
+        extracted: set[str] = set()
+        for key_entry in keys:
+            if isinstance(key_entry, Mapping):
+                for field_name in domain_value_fields.get(domain, ()):
+                    value = key_entry.get(field_name)
+                    if value is None:
+                        continue
+                    text = str(value).strip()
+                    if text:
+                        extracted.add(text)
+                        break
+                continue
+
+            text = str(key_entry).strip()
+            if text:
+                extracted.add(text)
+
+        if extracted:
+            result[domain] = frozenset(extracted)
     return result
 
 

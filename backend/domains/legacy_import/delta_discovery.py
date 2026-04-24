@@ -95,6 +95,27 @@ def _cursor_key(
     return {component: row.get(component) for component in contract.cursor_components}
 
 
+def _require_row_value(
+    *,
+    domain_name: str,
+    row: Mapping[str, Any],
+    field_name: str,
+    purpose: str,
+) -> Any:
+    value = row.get(field_name)
+    if value is None:
+        raise ValueError(
+            f"Projected row for domain '{domain_name}' is missing required {purpose} "
+            f"field '{field_name}'"
+        )
+    if isinstance(value, str) and not value.strip():
+        raise ValueError(
+            f"Projected row for domain '{domain_name}' is missing required {purpose} "
+            f"field '{field_name}'"
+        )
+    return value
+
+
 def discover_delta(
     *,
     plan: Mapping[str, Any],
@@ -137,31 +158,59 @@ def discover_delta(
         seen: set[Any] = set()
 
         for row in rows:
+            for component in contract.cursor_components:
+                _require_row_value(
+                    domain_name=domain_name,
+                    row=row,
+                    field_name=component,
+                    purpose="cursor",
+                )
             changed_keys_list.append(_cursor_key(contract, row))
             if contract.cursor_components:
                 candidate = tuple(row.get(c) for c in contract.cursor_components)
-                if not any(v is None for v in candidate) and (
-                    best_cursor is None or candidate > best_cursor
-                ):
+                if best_cursor is None or candidate > best_cursor:
                     best_cursor = candidate
                     best_row = row
 
             # Track unique closure keys based on batch rule
             if rule == "single-table":
                 entity_comp = contract.cursor_components[-1]
-                entity_val = row.get(entity_comp)
+                entity_val = _require_row_value(
+                    domain_name=domain_name,
+                    row=row,
+                    field_name=entity_comp,
+                    purpose="closure",
+                )
                 if entity_val not in seen:
                     seen.add(entity_val)
                     closure_list.append({entity_comp: entity_val})
 
             elif rule == "warehouse-product-pair":
-                sig = (row.get("warehouse_code"), row.get("product_code"))
+                sig = (
+                    _require_row_value(
+                        domain_name=domain_name,
+                        row=row,
+                        field_name="warehouse_code",
+                        purpose="closure",
+                    ),
+                    _require_row_value(
+                        domain_name=domain_name,
+                        row=row,
+                        field_name="product_code",
+                        purpose="closure",
+                    ),
+                )
                 if sig not in seen:
                     seen.add(sig)
                     closure_list.append({"warehouse_code": sig[0], "product_code": sig[1]})
 
             elif rule == "header-and-line-pair":
-                doc_num = row.get("document_number")
+                doc_num = _require_row_value(
+                    domain_name=domain_name,
+                    row=row,
+                    field_name="document_number",
+                    purpose="closure",
+                )
                 if doc_num not in seen:
                     seen.add(doc_num)
                     closure_list.append({"document_number": doc_num})

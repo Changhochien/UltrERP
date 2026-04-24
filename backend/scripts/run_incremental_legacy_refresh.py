@@ -26,6 +26,7 @@ import json
 import sys
 import uuid
 from collections.abc import Mapping, Sequence
+from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -38,6 +39,9 @@ from domains.legacy_import.delta_discovery import (
 )
 from domains.legacy_import.live_delta_projection import build_live_source_projection
 from domains.legacy_import.incremental_refresh import build_incremental_refresh_plan
+from domains.legacy_import.incremental_state import (
+    record_incremental_candidate_result,
+)
 from domains.legacy_import.shared import (
     DOMAIN_INVENTORY,
     DOMAIN_PARTIES,
@@ -57,6 +61,7 @@ from scripts.legacy_refresh_common import (
 from scripts.legacy_runtime_schema import ensure_legacy_refresh_schema_current
 from scripts.legacy_refresh_state import (
     build_lane_state_paths,
+    lane_key,
     read_json_file,
     write_json_atomically,
 )
@@ -67,6 +72,13 @@ from scripts.run_legacy_refresh import (
 )
 
 DEFAULT_BATCH_PREFIX = "legacy-incremental"
+_INCREMENTAL_SUCCESS_DISPOSITIONS = frozenset(
+    {
+        RefreshDisposition.COMPLETED.value,
+        RefreshDisposition.COMPLETED_REVIEW_REQUIRED.value,
+        RefreshDisposition.COMPLETED_NO_OP.value,
+    }
+)
 
 
 def utc_now() -> datetime:
@@ -194,6 +206,136 @@ def build_incremental_batch_id(
 ) -> str:
     current = now or utc_now()
     return build_timestamped_batch_id(batch_prefix, now=current)
+
+
+def _build_incremental_state_record_from_summary(
+    *,
+    scheduler_run_id: str,
+    batch_id: str,
+    tenant_id: uuid.UUID,
+    schema_name: str,
+    source_schema: str,
+    started_at: str,
+    completed_at: str,
+    reconciliation_threshold: int,
+    summary_path: Path,
+    summary: Mapping[str, Any],
+    exit_code: int,
+) -> dict[str, Any]:
+    validation_gate = (
+        summary.get("promotion_gate_status", {}).get("validation", {})
+        if isinstance(summary.get("promotion_gate_status"), Mapping)
+        else {}
+    )
+    validation_status = (
+        validation_gate.get("status") if isinstance(validation_gate, Mapping) else None
+    )
+    return {
+        "state_version": 1,
+        "scheduler_run_id": scheduler_run_id,
+        "lane_key": lane_key(
+            tenant_id=tenant_id,
+            schema_name=schema_name,
+            source_schema=source_schema,
+        ),
+        "tenant_id": str(tenant_id),
+        "schema_name": schema_name,
+        "source_schema": source_schema,
+        "batch_id": batch_id,
+        "summary_path": str(summary_path),
+        "started_at": started_at,
+        "completed_at": completed_at,
+        "final_disposition": summary.get("final_disposition", RefreshDisposition.FAILED.value),
+        "exit_code": exit_code,
+        "validation_status": validation_status or "not-run",
+        "blocking_issue_count": validation_gate.get("blocking_issue_count")
+        if isinstance(validation_gate, Mapping)
+        else None,
+        "reconciliation_gap_count": summary.get("reconciliation_gap_count"),
+        "reconciliation_threshold": reconciliation_threshold,
+        "analyst_review_required": bool(summary.get("analyst_review_required")),
+        "promotion_readiness": bool(summary.get("promotion_readiness")),
+        "promotion_policy": summary.get("promotion_policy"),
+        "batch_mode": summary.get("batch_mode", RefreshBatchMode.INCREMENTAL.value),
+        "affected_domains": list(summary.get("affected_domains") or []),
+        "summary_valid": validation_status == "passed",
+        "freshness_success": bool(summary.get("freshness_success")),
+        "watermark_advanced": bool(summary.get("watermark_advanced")),
+        "advanced_domains": list(summary.get("advanced_domains") or []),
+        "root_failed_step": summary.get("root_failed_step"),
+        "root_error_message": summary.get("root_error_message"),
+        "requires_rebaseline": bool(summary.get("requires_rebaseline")),
+        "rebaseline_reason": summary.get("rebaseline_reason"),
+    }
+
+
+def _extract_committed_watermarks(
+    manifest: Mapping[str, Any],
+    advanced_domains: Sequence[str],
+) -> dict[str, Mapping[str, object]]:
+    manifest_domains = manifest.get("domains")
+    if not isinstance(manifest_domains, Mapping):
+        return {}
+
+    committed: dict[str, Mapping[str, object]] = {}
+    for domain_name in advanced_domains:
+        domain_entry = manifest_domains.get(domain_name)
+        if not isinstance(domain_entry, Mapping):
+            continue
+        watermark = domain_entry.get("watermark_out_proposed")
+        if isinstance(watermark, Mapping):
+            committed[domain_name] = deepcopy(dict(watermark))
+    return committed
+
+
+def _publish_incremental_lane_state(
+    *,
+    lane_paths: Any,
+    scheduler_run_id: str,
+    batch_id: str,
+    tenant_id: uuid.UUID,
+    schema_name: str,
+    source_schema: str,
+    started_at: str,
+    reconciliation_threshold: int,
+    summary_path: Path,
+    summary: Mapping[str, Any],
+    exit_code: int,
+    manifest: Mapping[str, Any],
+) -> None:
+    completed_at = utc_now().isoformat()
+    state_record = _build_incremental_state_record_from_summary(
+        scheduler_run_id=scheduler_run_id,
+        batch_id=batch_id,
+        tenant_id=tenant_id,
+        schema_name=schema_name,
+        source_schema=source_schema,
+        started_at=started_at,
+        completed_at=completed_at,
+        reconciliation_threshold=reconciliation_threshold,
+        summary_path=summary_path,
+        summary=summary,
+        exit_code=exit_code,
+    )
+    write_json_atomically(lane_paths.latest_run_path, state_record)
+
+    if state_record["final_disposition"] in _INCREMENTAL_SUCCESS_DISPOSITIONS:
+        write_json_atomically(lane_paths.latest_success_path, state_record)
+
+    incremental_state = _load_incremental_state(lane_paths.incremental_state_path)
+    committed_watermarks = _extract_committed_watermarks(
+        manifest,
+        state_record.get("advanced_domains") or [],
+    )
+    next_incremental_state = record_incremental_candidate_result(
+        state=incremental_state,
+        candidate_state=state_record,
+        latest_promoted_state=read_json_file(lane_paths.latest_promoted_path),
+        committed_watermarks=committed_watermarks or None,
+        advance_watermarks=bool(state_record.get("watermark_advanced")),
+        recorded_at=completed_at,
+    )
+    write_json_atomically(lane_paths.incremental_state_path, next_incremental_state)
 
 
 def _load_incremental_state(incremental_state_path: Path) -> dict[str, Any]:
@@ -371,8 +513,12 @@ async def run_incremental_legacy_refresh(
     summary_root: Path | None = None,
     state_root: Path | None = None,
     source_projection: SourceProjection | None = None,
+    scheduler_run_id: str | None = None,
+    started_at: str | None = None,
 ) -> LegacyRefreshExecution:
     resolved_summary_root = summary_root or DEFAULT_SUMMARY_ROOT
+    resolved_scheduler_run_id = scheduler_run_id or str(uuid.uuid4())
+    resolved_started_at = started_at or utc_now().isoformat()
     lane_paths = build_lane_state_paths(
         tenant_id=tenant_id,
         schema_name=schema_name,
@@ -428,13 +574,27 @@ async def run_incremental_legacy_refresh(
             ),
         }
         write_json_atomically(summary_path, summary)
+        _publish_incremental_lane_state(
+            lane_paths=lane_paths,
+            scheduler_run_id=resolved_scheduler_run_id,
+            batch_id=batch_id,
+            tenant_id=tenant_id,
+            schema_name=schema_name,
+            source_schema=source_schema,
+            started_at=resolved_started_at,
+            reconciliation_threshold=reconciliation_threshold,
+            summary_path=summary_path,
+            summary=summary,
+            exit_code=0,
+            manifest=manifest,
+        )
         return LegacyRefreshExecution(
             exit_code=0,
             summary_path=summary_path,
             summary=summary,
         )
 
-    return await run_legacy_refresh(
+    result = await run_legacy_refresh(
         batch_id=batch_id,
         tenant_id=tenant_id,
         schema_name=schema_name,
@@ -448,6 +608,21 @@ async def run_incremental_legacy_refresh(
         entity_scope=_build_entity_scope(manifest, affected_domains),
         last_successful_batch_ids=_build_last_successful_batch_ids(plan, affected_domains),
     )
+    _publish_incremental_lane_state(
+        lane_paths=lane_paths,
+        scheduler_run_id=resolved_scheduler_run_id,
+        batch_id=batch_id,
+        tenant_id=tenant_id,
+        schema_name=schema_name,
+        source_schema=source_schema,
+        started_at=resolved_started_at,
+        reconciliation_threshold=reconciliation_threshold,
+        summary_path=result.summary_path,
+        summary=result.summary,
+        exit_code=result.exit_code,
+        manifest=manifest,
+    )
+    return result
 
 
 def build_incremental_discovery_for_dry_run(

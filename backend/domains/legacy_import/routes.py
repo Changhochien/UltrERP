@@ -262,6 +262,10 @@ def _load_lane_status(
             promotion_policy=pp if isinstance(pp, dict) else None,
         )
 
+    latest_run_raw, latest_run_err = read_json_file_with_error(lane_paths.latest_run_path)
+    if latest_run_err is not None or latest_run_raw is None:
+        latest_run_raw = {}
+
     latest_run = _load_pointer(lane_paths.latest_run_path)
     latest_success = _load_pointer(lane_paths.latest_success_path)
     latest_promoted = _load_pointer(lane_paths.latest_promoted_path)
@@ -281,7 +285,16 @@ def _load_lane_status(
 
     # Root failure
     root_failure: str | None = None
-    if latest_run is not None and latest_run.final_disposition in (
+    if isinstance(latest_run_raw, dict):
+        root_failed_step = latest_run_raw.get("root_failed_step")
+        root_error_message = latest_run_raw.get("root_error_message")
+        if root_error_message:
+            root_failure = (
+                f"{root_failed_step}: {root_error_message}"
+                if root_failed_step
+                else str(root_error_message)
+            )
+    if root_failure is None and latest_run is not None and latest_run.final_disposition in (
         RefreshDisposition.FAILED.value,
         RefreshDisposition.VALIDATION_BLOCKED.value,
     ):
@@ -295,7 +308,11 @@ def _load_lane_status(
 
     # Blocked reason
     blocked_reason: str | None = None
-    if latest_run is not None:
+    if isinstance(latest_run_raw, dict):
+        rebaseline_reason = latest_run_raw.get("rebaseline_reason")
+        if isinstance(rebaseline_reason, str) and rebaseline_reason.strip():
+            blocked_reason = rebaseline_reason.strip()
+    if blocked_reason is None and latest_run is not None:
         disp = latest_run.final_disposition
         if disp == RefreshDisposition.OVERLAP_BLOCKED.value:
             blocked_reason = "concurrent refresh blocked"
@@ -304,12 +321,26 @@ def _load_lane_status(
 
     # Current batch mode from latest run
     current_batch_mode: str | None = None
-    if latest_run is not None:
+    if isinstance(latest_run_raw, dict):
+        raw_batch_mode = latest_run_raw.get("batch_mode")
+        if isinstance(raw_batch_mode, str) and raw_batch_mode.strip():
+            current_batch_mode = raw_batch_mode.strip()
+    if current_batch_mode is None and latest_run is not None:
         if latest_run.batch_id:
             if "shadow" in latest_run.batch_id or "full" in latest_run.batch_id:
                 current_batch_mode = "full-rebaseline"
             elif "incremental" in latest_run.batch_id:
                 current_batch_mode = "incremental"
+
+    affected_domains: list[str] = []
+    if isinstance(latest_run_raw, dict):
+        raw_affected_domains = latest_run_raw.get("affected_domains")
+        if isinstance(raw_affected_domains, list):
+            affected_domains = [
+                str(domain).strip()
+                for domain in raw_affected_domains
+                if str(domain).strip()
+            ]
 
     return RefreshLaneStatus(
         lane_key=lane_key,
@@ -325,7 +356,7 @@ def _load_lane_status(
         current_batch_mode=current_batch_mode,
         promotion_eligible=promotion_eligible,
         promotion_classification=promotion_classification,
-        affected_domains=[],
+        affected_domains=affected_domains,
         root_failure=root_failure,
         blocked_reason=blocked_reason,
         incremental_state_path=str(lane_paths.incremental_state_path)
@@ -476,6 +507,8 @@ async def _launch_incremental(
             reconciliation_threshold=reconciliation_threshold,
             batch_prefix="legacy-incremental",
             source_projection=source_projection,
+            scheduler_run_id=job_id,
+            started_at=job_meta["started_at"],
         )
         job_meta["status"] = "completed"
         job_meta["exit_code"] = result.exit_code

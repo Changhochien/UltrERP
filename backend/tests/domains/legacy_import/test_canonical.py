@@ -3357,7 +3357,7 @@ async def test_scoped_incremental_import_filters_sales_by_entity_scope(monkeypat
         schema_name="raw_legacy",
         selected_domains=["customers", "products", "sales_history"],
         entity_scope={
-            "sales": {"closure_keys": ["IN-SCOPE-001"]}
+            "sales": {"closure_keys": [{"document_number": "IN-SCOPE-001"}]}
         },
         batch_mode="incremental",
     )
@@ -3465,7 +3465,9 @@ async def test_scoped_import_preserves_deterministic_ids_on_rerun(monkeypatch) -
         schema_name="raw_legacy",
         selected_domains=["customers", "products", "sales_history"],
         entity_scope={
-            "sales": {"closure_keys": ["DETERMINISTIC-001"]}
+            "sales": {
+                "closure_keys": [{"document_number": "DETERMINISTIC-001"}]
+            }
         },
         batch_mode="incremental",
     )
@@ -3486,7 +3488,9 @@ async def test_scoped_import_preserves_deterministic_ids_on_rerun(monkeypatch) -
         schema_name="raw_legacy",
         selected_domains=["customers", "products", "sales_history"],
         entity_scope={
-            "sales": {"closure_keys": ["DETERMINISTIC-001"]}
+            "sales": {
+                "closure_keys": [{"document_number": "DETERMINISTIC-001"}]
+            }
         },
         batch_mode="incremental",
     )
@@ -3597,9 +3601,21 @@ async def test_scoped_import_full_batch_mode_processes_all_domains(monkeypatch) 
 async def test_build_entity_scope_closure_keys_extracts_correctly() -> None:
     """Helper function correctly extracts closure keys from entity_scope."""
     entity_scope = {
-        "sales": {"closure_keys": ["DOC-001", "DOC-002"]},
-        "purchase-invoices": {"closure_keys": ["PO-001"]},
-        "products": {"closure_keys": ["P001", "P002"]},
+        "sales": {
+            "closure_keys": [
+                {"document_number": "DOC-001"},
+                {"document_number": "DOC-002"},
+            ]
+        },
+        "purchase-invoices": {
+            "closure_keys": [{"document_number": "PO-001"}]
+        },
+        "products": {
+            "closure_keys": [
+                {"product-code": "P001"},
+                {"product_code": "P002"},
+            ]
+        },
     }
 
     result = canonical._build_entity_scope_closure_keys(entity_scope)

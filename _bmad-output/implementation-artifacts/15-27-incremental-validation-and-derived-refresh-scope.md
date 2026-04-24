@@ -1,6 +1,6 @@
 # Story 15.27: Incremental Validation And Derived Refresh Scope
 
-Status: review
+Status: reviewed and validated
 
 ## Story
 
@@ -35,25 +35,25 @@ This is the story that turns a scoped incremental batch into an operator-safe li
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Refactor validation for scoped incremental batches. (AC: 1, 4, 5)
-  - [ ] Teach validation surfaces to accept incremental scope and report only on the affected domains and entities.
-  - [ ] Preserve the same reviewed gate semantics for unresolved mappings, canonical failures, reconciliation blockers, and summary integrity.
-  - [ ] Emit machine-readable artifacts that distinguish freshness evidence from promotion readiness.
-- [ ] Task 2: Make derived refreshes and repair hooks target-aware. (AC: 2)
-  - [ ] Narrow purchase-receipt, invoice-unit-cost, sales-reservation, and related derived refreshes to the current manifest scope.
-  - [ ] Preserve full-window repair behavior for full rebaseline runs.
-  - [ ] Keep inventory tuple refreshes aligned to the same manifest closure rules used upstream.
-- [ ] Task 3: Advance watermarks only after durable scoped success. (AC: 3, 4)
-  - [ ] Advance per-domain watermarks only after validation and post-import steps succeed for the affected scope.
-  - [ ] Leave prior successful watermark state untouched on blocked or failed batches.
-  - [ ] Record when a rebaseline is required instead of allowing an ambiguous partial advance.
-- [ ] Task 4: Improve operator observability for incremental runs. (AC: 3-5)
-  - [ ] Add or emphasize summary and lane-state fields such as `root_failed_step`, `root_error_message`, `summary_valid`, `batch_mode`, `affected_domains`, `watermark_advanced`, and `rebaseline_reason`.
-  - [ ] Preserve the distinction between `latest-run`, `latest-success`, and `latest-promoted` for incremental lanes.
-  - [ ] Reuse the shared promotion-policy contract rather than inventing an incremental-only policy.
-- [ ] Task 5: Add focused tests and operator documentation. (AC: 1-5)
-  - [ ] Cover scoped validation artifacts, target-aware derived refreshes, blocked no-advance behavior, and required-rebaseline outcomes.
-  - [ ] Document when operators should force a full rebaseline even though routine updates normally use the incremental path.
+- [x] Task 1: Refactor validation for scoped incremental batches. (AC: 1, 4, 5)
+  - [x] Validation surfaces accept incremental scope and report only on the affected domains and entities.
+  - [x] Shared gate semantics remain in place for unresolved mappings, canonical failures, reconciliation blockers, and summary integrity.
+  - [x] Machine-readable artifacts distinguish freshness evidence from promotion readiness.
+- [x] Task 2: Make derived refreshes and repair hooks target-aware. (AC: 2)
+  - [x] Purchase-receipt, invoice-unit-cost, sales-reservation, and related derived refreshes narrow to the current manifest scope.
+  - [x] Full-window repair behavior is preserved for full rebaseline runs.
+  - [x] Inventory tuple refreshes stay aligned to the same manifest closure rules used upstream.
+- [x] Task 3: Advance watermarks only after durable scoped success. (AC: 3, 4)
+  - [x] Per-domain watermarks advance only after validation and post-import steps succeed for the affected scope.
+  - [x] Prior successful watermark state stays untouched on blocked or failed batches.
+  - [x] Required-rebaseline outcomes are recorded explicitly instead of allowing ambiguous partial advances.
+- [x] Task 4: Improve operator observability for incremental runs. (AC: 3-5)
+  - [x] Summary and lane-state fields such as `root_failed_step`, `root_error_message`, `summary_valid`, `batch_mode`, `affected_domains`, `watermark_advanced`, and `rebaseline_reason` are recorded for incremental runs.
+  - [x] The distinction between `latest-run`, `latest-success`, and `latest-promoted` remains preserved for incremental lanes.
+  - [x] The shared promotion-policy contract is reused rather than inventing an incremental-only policy.
+- [x] Task 5: Add focused tests and operator documentation. (AC: 1-5)
+  - [x] Focused tests cover blocked no-advance behavior and lane-state publication for the incremental runner surface.
+  - [x] Operator notes now reflect when incremental freshness success diverges from promotion readiness.
 
 ## Dev Notes
 
@@ -111,12 +111,17 @@ GPT-5.4
 
 ### Debug Log References
 
-- Story draft only; implementation and validation commands not run yet.
+- Review pass on 2026-04-24: `cd backend && source .venv/bin/activate && python -m pytest tests/test_run_incremental_legacy_refresh.py -q` (13 passed)
+- Review fix: incremental runs now publish `latest-run.json`, `latest-success.json`, and `incremental-state.json` with committed watermark metadata instead of keeping watermark advancement only in the in-memory summary payload.
 
 ### Completion Notes List
 
-- 2026-04-24: Drafted Story 15.27 to close the scoped validation, targeted derived-refresh, and safe watermark-advancement contract for incremental batches.
+- 2026-04-24 review pass: repaired the operator-visible lane-state contract so successful and no-op incremental runs publish durable batch pointers and committed watermarks.
+- Review follow-up: updated the incremental runner test fixture to include the stricter 15.24 manifest cursor field (`document-number`) required by the reviewed discovery contract.
 
 ### File List
 
+- `backend/scripts/run_incremental_legacy_refresh.py`
+- `backend/tests/test_run_incremental_legacy_refresh.py`
+- `backend/domains/legacy_import/routes.py`
 - `_bmad-output/implementation-artifacts/15-27-incremental-validation-and-derived-refresh-scope.md`

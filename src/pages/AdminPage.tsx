@@ -1357,11 +1357,12 @@ function formatDisposition(disp: string | null | undefined): string {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function dispositionVariant(disp: string | null | undefined): "success" | "warning" | "danger" | "info" | "outline" {
+function dispositionVariant(disp: string | null | undefined): "success" | "warning" | "destructive" | "info" | "outline" {
   if (!disp) return "outline";
-  if (disp.includes("COMPLETED") || disp.includes("success") || disp.includes("eligible")) return "success";
-  if (disp.includes("REVIEW") || disp.includes("warning")) return "warning";
-  if (disp.includes("BLOCKED") || disp.includes("failed") || disp.includes("FAILED")) return "danger";
+  const normalized = disp.toLowerCase();
+  if (normalized.includes("completed") || normalized.includes("success") || normalized.includes("eligible")) return "success";
+  if (normalized.includes("review") || normalized.includes("warning")) return "warning";
+  if (normalized.includes("blocked") || normalized.includes("failed")) return "destructive";
   return "info";
 }
 
@@ -1401,6 +1402,10 @@ function BatchPointerDisplay({ ptr, label }: { ptr: BatchPointer | null; label: 
 
 function LaneStatusCard({ status }: { status: LegacyRefreshLaneStatus }) {
   const { t } = useTranslation("common");
+  const affectedDomainsLabel = status.affected_domains.length > 0
+    ? status.affected_domains.join(", ")
+    : t("adminPage.legacyRefresh.details.noAffectedDomains");
+
   return (
     <div className="rounded-2xl border border-border/70 bg-muted/10 p-4 space-y-3">
       <div className="flex items-start justify-between gap-2">
@@ -1444,6 +1449,37 @@ function LaneStatusCard({ status }: { status: LegacyRefreshLaneStatus }) {
           {status.root_failure}
         </SurfaceMessage>
       )}
+
+      <div className="grid gap-3 rounded-xl border border-border/50 bg-background/70 p-3 text-xs sm:grid-cols-2">
+        <div className="space-y-1">
+          <p className="font-medium text-muted-foreground">
+            {t("adminPage.legacyRefresh.details.currentMode")}
+          </p>
+          <p>{status.current_batch_mode ? formatDisposition(status.current_batch_mode) : "-"}</p>
+        </div>
+        <div className="space-y-1">
+          <p className="font-medium text-muted-foreground">
+            {t("adminPage.legacyRefresh.details.affectedDomains")}
+          </p>
+          <p>{affectedDomainsLabel}</p>
+        </div>
+        <div className="space-y-1 sm:col-span-2">
+          <p className="font-medium text-muted-foreground">
+            {t("adminPage.legacyRefresh.details.summaryPath")}
+          </p>
+          <p className="break-all font-mono text-[11px]">
+            {status.latest_run?.summary_path ?? "-"}
+          </p>
+        </div>
+        <div className="space-y-1 sm:col-span-2">
+          <p className="font-medium text-muted-foreground">
+            {t("adminPage.legacyRefresh.details.incrementalStatePath")}
+          </p>
+          <p className="break-all font-mono text-[11px]">
+            {status.incremental_state_path ?? "-"}
+          </p>
+        </div>
+      </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
         <BatchPointerDisplay

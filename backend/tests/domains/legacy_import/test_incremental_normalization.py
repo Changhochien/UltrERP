@@ -72,6 +72,18 @@ async def test_run_normalization_full_rejects_incremental_kwargs() -> None:
         )
 
 
+@pytest.mark.asyncio
+async def test_run_normalization_full_rejects_entity_scope_without_selected_domains() -> None:
+    with pytest.raises(ValueError, match="incremental-mode kwargs"):
+        await normalization.run_normalization(
+            batch_id="batch-x",
+            tenant_id=TENANT_ID,
+            schema_name="raw_legacy",
+            batch_mode="full",
+            entity_scope={"parties": {"closure_keys": [{"party-code": "P-001"}]}},
+        )
+
+
 # ---------------------------------------------------------------------------
 # NormalizationBatchResult default
 

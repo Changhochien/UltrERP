@@ -247,6 +247,34 @@ def test_discover_delta_rejects_unknown_domain_in_plan() -> None:
         discover_delta(plan=plan, source_projection=lambda contract, watermark: [])
 
 
+def test_discover_delta_rejects_rows_missing_required_closure_fields() -> None:
+    state = _bootstrap_state()
+    state = _advance_domain_watermark(
+        state,
+        domain="sales",
+        watermark={
+            "document-date": "2026-04-17",
+            "document-number": "S000000",
+            "line-number": 0,
+        },
+    )
+    plan = build_incremental_refresh_plan(state=state)
+
+    def projection(contract, watermark):
+        if contract.name == "sales":
+            return [
+                {
+                    "document-date": "2026-04-18",
+                    "document-number": "S000001",
+                    "line-number": 1,
+                }
+            ]
+        return []
+
+    with pytest.raises(ValueError, match="missing required closure field 'document_number'"):
+        discover_delta(plan=plan, source_projection=projection)
+
+
 def test_build_delta_manifest_shape_is_append_only_and_audit_ready() -> None:
     state = _bootstrap_state()
     state = _advance_domain_watermark(

@@ -1935,6 +1935,63 @@
         "appearance": "主題與介面呈現設定",
         "data": "資料處理與營運設定"
       }
+    },
+    "legacyRefresh": {
+      "eyebrow": "舊系統資料",
+      "title": "舊資料刷新控制台",
+      "description": "在並行運作期間啟動並監控舊系統資料刷新作業。",
+      "loading": "正在載入舊資料刷新狀態…",
+      "columns": {
+        "latestRun": "最新執行",
+        "latestSuccess": "最新成功",
+        "latestPromoted": "最新升級"
+      },
+      "status": {
+        "locked": "已鎖定",
+        "idle": "閒置",
+        "eligible": "可升級",
+        "blocked": "已阻擋"
+      },
+      "trigger": {
+        "title": "觸發刷新作業",
+        "description": "為所選 lane 啟動完整重建或增量刷新。",
+        "launch": "啟動刷新",
+        "launching": "啟動中…",
+        "launched": "刷新作業已啟動"
+      },
+      "fields": {
+        "tenantId": "租戶 ID",
+        "tenantIdPlaceholder": "例如 00000000-0000-0000-0000-000000000000",
+        "schemaName": "目標 Schema",
+        "schemaNamePlaceholder": "例如 erpnext_prod",
+        "sourceSchema": "來源 Schema",
+        "mode": "刷新模式",
+        "lookbackDays": "回看天數",
+        "reconciliationThreshold": "對帳閾值",
+        "dryRun": "試跑"
+      },
+      "modes": {
+        "incremental": "增量",
+        "fullRebaseline": "完整重建"
+      },
+      "recentRuns": {
+        "title": "近期執行",
+        "description": "所有 lane 最近的刷新作業執行情況。",
+        "refresh": "重新整理",
+        "empty": "尚未記錄任何近期執行。"
+      },
+      "lanes": {
+        "title": "Lane 狀態",
+        "description": "各舊資料刷新 lane 的即時狀態。",
+        "refresh": "重新整理"
+      },
+      "details": {
+        "currentMode": "目前模式",
+        "affectedDomains": "受影響領域",
+        "summaryPath": "最新摘要路徑",
+        "incrementalStatePath": "增量狀態路徑",
+        "noAffectedDomains": "未回報範圍領域"
+      }
     }
   },
   "purchase": {

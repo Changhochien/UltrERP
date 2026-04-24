@@ -293,6 +293,41 @@ async def test_status_returns_root_failure(
 
 
 @pytest.mark.asyncio
+async def test_status_surfaces_incremental_scope_and_detailed_failure_reason(
+    temp_lane: tuple[Path, uuid.UUID, str, str],
+) -> None:
+    tmp_path, tenant_id, schema_name, source_schema = temp_lane
+    lane_paths = build_lane_state_paths(
+        tenant_id=tenant_id,
+        schema_name=schema_name,
+        source_schema=source_schema,
+        summary_root=tmp_path,
+    )
+
+    detailed_record = {
+        "batch_id": "legacy-incremental-20240424T140000Z",
+        "batch_mode": "incremental",
+        "affected_domains": ["sales", "products"],
+        "final_disposition": RefreshDisposition.RECONCILIATION_BLOCKED.value,
+        "root_failed_step": "verify_reconciliation",
+        "root_error_message": "Targeted reconciliation exceeded threshold",
+        "rebaseline_reason": "Incremental reconciliation drift requires full rebaseline",
+        "promotion_policy": {
+            "classification": "blocked",
+            "reason_codes": ["reconciliation"],
+        },
+    }
+    write_json_atomically(lane_paths.latest_run_path, detailed_record)
+
+    status = _load_lane_status(tenant_id, schema_name, source_schema, summary_root=tmp_path)
+
+    assert status.current_batch_mode == "incremental"
+    assert status.affected_domains == ["sales", "products"]
+    assert status.root_failure == "verify_reconciliation: Targeted reconciliation exceeded threshold"
+    assert status.blocked_reason == "Incremental reconciliation drift requires full rebaseline"
+
+
+@pytest.mark.asyncio
 async def test_status_endpoint_requires_auth() -> None:
     """Status endpoint returns 401 without authentication."""
     session = FakeAsyncSession()

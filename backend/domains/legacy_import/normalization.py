@@ -1359,7 +1359,11 @@ async def run_normalization(
             )
     else:
         # Story 15.25 AC5: reject incremental-mode kwargs in full mode.
-        if selected_domains is not None:
+        if (
+            selected_domains is not None
+            or entity_scope is not None
+            or last_successful_batch_ids is not None
+        ):
             raise ValueError(
                 "incremental-mode kwargs (selected_domains, entity_scope, "
                 "last_successful_batch_ids) are not allowed in full batch mode"

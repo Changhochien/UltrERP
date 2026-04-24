@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -515,6 +516,105 @@ def test_run_incremental_writes_delta_manifest_and_scopes_active_domains(
     assert manifest["domains"]["parties"]["changed_key_count"] == 1
 
 
+def test_run_incremental_publishes_lane_state_and_advances_watermarks(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    summary_root = _seed_incremental_state(tmp_path)
+
+    async def fake_run_legacy_refresh(**kwargs):
+        summary_path = summary_root / f"{kwargs['batch_id']}-summary.json"
+        summary_path.parent.mkdir(parents=True, exist_ok=True)
+        summary_path.write_text("{}", encoding="utf-8")
+        return LegacyRefreshExecution(
+            exit_code=0,
+            summary_path=summary_path,
+            summary={
+                "batch_id": kwargs["batch_id"],
+                "batch_mode": RefreshBatchMode.INCREMENTAL.value,
+                "affected_domains": list(kwargs["affected_domains"]),
+                "final_disposition": "completed",
+                "promotion_gate_status": {
+                    "validation": {
+                        "status": "passed",
+                        "blocking_issue_count": 0,
+                    }
+                },
+                "reconciliation_gap_count": 0,
+                "analyst_review_required": False,
+                "promotion_readiness": True,
+                "promotion_policy": {
+                    "classification": "eligible",
+                    "reason_codes": [],
+                },
+                "watermark_advanced": True,
+                "advanced_domains": list(kwargs["affected_domains"]),
+                "freshness_success": True,
+            },
+        )
+
+    monkeypatch.setattr(incremental, "run_legacy_refresh", fake_run_legacy_refresh)
+    monkeypatch.setattr(
+        incremental,
+        "utc_now",
+        lambda: datetime(2026, 4, 19, 6, 5, 4, tzinfo=timezone.utc),
+    )
+
+    def projection(contract, watermark):
+        if contract.name == "parties":
+            return [
+                {
+                    "source-change-ts": "2026-04-18T03:00:00+00:00",
+                    "party-code": "P-001",
+                }
+            ]
+        return []
+
+    result = asyncio.run(
+        incremental.run_incremental_legacy_refresh(
+            tenant_id=TENANT_ID,
+            schema_name="raw_legacy",
+            source_schema="public",
+            lookback_days=10000,
+            reconciliation_threshold=0,
+            summary_root=summary_root,
+            source_projection=projection,
+            scheduler_run_id="job-123",
+            started_at="2026-04-19T06:05:04+00:00",
+        )
+    )
+
+    lane_paths = build_lane_state_paths(
+        tenant_id=TENANT_ID,
+        schema_name="raw_legacy",
+        source_schema="public",
+        summary_root=summary_root,
+    )
+    latest_run = json.loads(lane_paths.latest_run_path.read_text(encoding="utf-8"))
+    latest_success = json.loads(
+        lane_paths.latest_success_path.read_text(encoding="utf-8")
+    )
+    updated_state = json.loads(
+        lane_paths.incremental_state_path.read_text(encoding="utf-8")
+    )
+
+    assert latest_run["scheduler_run_id"] == "job-123"
+    assert latest_run["batch_id"] == result.summary["batch_id"]
+    assert latest_run["watermark_advanced"] is True
+    assert latest_run["advanced_domains"] == ["parties"]
+    assert latest_success["batch_id"] == result.summary["batch_id"]
+    assert updated_state["current_shadow_candidate"]["batch_id"] == result.summary["batch_id"]
+    assert (
+        updated_state["last_successful_shadow_candidate"]["batch_id"]
+        == result.summary["batch_id"]
+    )
+    assert updated_state["domains"]["parties"]["last_successful_watermark"] == {
+        "source-change-ts": "2026-04-18T03:00:00+00:00",
+        "party-code": "P-001",
+    }
+    assert updated_state["domains"]["parties"]["last_successful_batch_id"] == result.summary["batch_id"]
+
+
 def test_run_incremental_threads_entity_scope_and_last_successful_batch_ids(
     monkeypatch,
     tmp_path: Path,
@@ -640,6 +740,7 @@ def test_run_incremental_adds_dependent_master_batch_ids_for_sales_scope(
         return [
             {
                 "document-date": "2026-04-18",
+                "document-number": "S-100",
                 "document_number": "S-100",
                 "line-number": 1,
             }

@@ -47,7 +47,7 @@ parts: 1
   - Manifest JSON materialized before downstream writes
   - Includes per-domain status, resume mode, parent-child rule, replay window, changed keys, closure keys, watermark inputs/proposals
   - Persisted under lane state root or run artifact root for later stage consumption
-- [ ] Task 4: Integrate manifest into runner output and dry-run (AC: 3, 4)
+- [x] Task 4: Integrate manifest into runner output and dry-run (AC: 3, 4)
   - --dry-run surfaces manifest contract without invoking stage, normalize, canonical steps
   - Manifest path threaded into incremental runner summary
   - active_domains and no_op_domains kept distinct for operator diagnosis
@@ -81,6 +81,8 @@ parts: 1
 
 ## Dev Record
 - Model: GPT-5.4
-- Status: review
+- Status: reviewed and validated
 - Tests added: 4 (test_discover_delta_does_not_mutate_plan, test_discover_delta_applies_header_and_line_closure_for_purchase_invoices, test_manifest_includes_parent_child_batch_rule_and_replay_window, test_discover_delta_is_deterministic_on_rerun)
-- All 12 tests pass
+- Review fix: tightened `discover_delta(...)` so projected rows missing required cursor or closure fields fail closed instead of emitting malformed manifest `closure_keys`
+- Regression added: `test_discover_delta_rejects_rows_missing_required_closure_fields`
+- Validation: `cd backend && source .venv/bin/activate && python -m pytest tests/domains/legacy_import/test_delta_discovery.py -q` (13 passed)

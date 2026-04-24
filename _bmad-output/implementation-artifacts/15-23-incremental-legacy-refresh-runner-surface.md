@@ -1,6 +1,6 @@
 # Story 15.23: Incremental Legacy Refresh Runner Surface
 
-Status: done
+Status: reviewed
 
 ## Story
 
@@ -112,10 +112,12 @@ GPT-5.4
 
 - Story 15.23 validation on 2026-04-24: `cd backend && uv run pytest tests/test_run_incremental_legacy_refresh.py tests/domains/legacy_import/test_canonical.py tests/domains/legacy_import/test_ap_payment_import.py -q` (46 passed)
 - Fixes applied: Added DOMAIN_* constants to shared.py, RefreshBatchMode enum and coerce_refresh_batch_mode to legacy_refresh_common.py, missing build_timestamped_batch_id and parse_batch_prefix functions, RefreshDisposition.COMPLETED_NO_OP enum value, SUPPORTED_FULL_REFRESH_DOMAINS to run_legacy_refresh.py.
+- Review pass on 2026-04-24: `cd backend && source .venv/bin/activate && python -m pytest tests/test_run_incremental_legacy_refresh.py -q` (13 passed) after downstream incremental lane-state publication changes confirmed the runner surface still held.
 
 ### Completion Notes List
 
 - 2026-04-24: Story 15.23 implementation completed.
+- 2026-04-24 review pass: No story-specific runner-surface defect remained after inspection; the reviewed operator boundary stayed valid while downstream Story 15.27 fixes repaired lane-state publication.
 
 Fixed missing dependencies for the incremental refresh runner:
 1. Added DOMAIN_* constants to shared.py (matching IncrementalDomainContract names)

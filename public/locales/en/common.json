@@ -2109,6 +2109,13 @@
         "title": "Lane Status",
         "description": "Live state for each active legacy refresh lane.",
         "refresh": "Refresh"
+      },
+      "details": {
+        "currentMode": "Current Mode",
+        "affectedDomains": "Affected Domains",
+        "summaryPath": "Latest Summary Path",
+        "incrementalStatePath": "Incremental State Path",
+        "noAffectedDomains": "No scoped domains reported"
       }
     }
   },
