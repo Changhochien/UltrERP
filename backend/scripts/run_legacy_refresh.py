@@ -607,6 +607,7 @@ async def run_legacy_refresh(
                         status=RefreshGateStatus.PASSED.value,
                     )
 
+            # Story 15.26: Pass incremental scope to canonical import
             canonical_result = await _execute_step(
                 summary,
                 step_records,
@@ -616,15 +617,29 @@ async def run_legacy_refresh(
                     batch_id=batch_id,
                     tenant_id=tenant_id,
                     schema_name=schema_name,
+                    selected_domains=affected_domains,
+                    entity_scope=entity_scope,
+                    batch_mode=batch_mode,
+                    last_successful_batch_ids=last_successful_batch_ids,
                 ),
                 partial_state_preserved=True,
                 details_factory=lambda result: {
                     "attempt_number": result.attempt_number,
                     "lineage_count": result.lineage_count,
                     "holding_count": result.holding_count,
+                    "selected_domains": list(result.selected_domains),
+                    "scoped_document_count": result.scoped_document_count,
+                    "skipped_domains": list(result.skipped_domains),
                 },
             )
             summary["canonical_attempt_number"] = canonical_result.attempt_number
+            # Story 15.26: Track scoped metadata for downstream steps
+            if canonical_result.selected_domains:
+                summary["canonical_selected_domains"] = list(canonical_result.selected_domains)
+            if canonical_result.scoped_document_count:
+                summary["canonical_scoped_document_count"] = canonical_result.scoped_document_count
+            if canonical_result.skipped_domains:
+                summary["canonical_skipped_domains"] = list(canonical_result.skipped_domains)
 
             validation_result = await _execute_step(
                 summary,

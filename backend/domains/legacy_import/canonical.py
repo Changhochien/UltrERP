@@ -11,15 +11,23 @@ import zlib
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
-from typing import Any, AsyncIterable, AsyncIterator, Mapping, cast
+from typing import Any, AsyncIterable, AsyncIterator, Mapping, Sequence, cast
 
 from common.config import settings
 from common.models.stock_adjustment import ReasonCode
 from common.tenant import DEFAULT_TENANT_ID
+from domains.legacy_import import source_resolution
 from domains.legacy_import.mapping import UNKNOWN_PRODUCT_CODE
 from domains.legacy_import.normalization import deterministic_legacy_uuid, normalize_legacy_date
-from domains.legacy_import import source_resolution
-from domains.legacy_import.shared import execute_many, resolve_row_identity as _resolve_row_identity
+from domains.legacy_import.shared import (
+    DOMAIN_PRODUCTS,
+    DOMAIN_PURCHASE_INVOICES,
+    DOMAIN_SALES,
+    execute_many,
+)
+from domains.legacy_import.shared import (
+    resolve_row_identity as _resolve_row_identity,
+)
 from domains.legacy_import.staging import _open_raw_connection, _quoted_identifier
 
 _DIGITS_ONLY_RE = re.compile(r"\D+")
@@ -27,6 +35,24 @@ _LOGGER = logging.getLogger(__name__)
 
 # Legacy source table code for receiving audit slip detail (tbsslipdtj = TBS-SLIP-DTJ)
 LEGACY_RECEIVING_SOURCE = "tbsslipdtj"
+
+# =============================================================================
+# Domain name constants (documented in shared.py)
+# =============================================================================
+# These constants must match IncrementalDomainContract.name values in
+# incremental_state.py. They are imported from shared.py for consistency:
+#   DOMAIN_CUSTOMERS = "customers"
+#   DOMAIN_PRODUCTS = "products"
+#   DOMAIN_SALES = "sales"
+#   DOMAIN_PURCHASE_INVOICES = "purchase-invoices"
+#   (see domains/legacy_import/shared.py for the full set)
+#
+# Note: The canonical import uses canonical_table names ("customers", "suppliers",
+# "products", etc.) for lineage and "sales_history" / "purchase_history" for
+# step selection. The incremental domains use different names ("sales",
+# "purchase-invoices"). The entity_scope manifest uses the incremental domain
+# names ("sales", "purchase-invoices", "parties", "products").
+# =============================================================================
 
 # Module-level fallback counters — used as a mutable accumulator passed through
 # the date-resolution call chain. Reset via .clear() at the start of each
@@ -53,6 +79,11 @@ class CanonicalImportResult:
     supplier_count: int = 0
     supplier_invoice_count: int = 0
     supplier_invoice_line_count: int = 0
+    # Story 15.26: Scoped incremental metadata
+    selected_domains: tuple[str, ...] = ()
+    scoped_document_count: int = 0
+    skipped_domains: tuple[str, ...] = ()
+    review_required_issues: tuple[str, ...] = ()
 
 
 @dataclass(slots=True, frozen=True)
@@ -1260,6 +1291,246 @@ def _resolve_legacy_receiving_created_at(
     return _as_timestamp(None)
 
 
+# =============================================================================
+# AC5: Master lookup from prior successful batch lineage
+# =============================================================================
+
+async def _resolve_master_uuid_from_prior_batch(
+    connection,
+    schema_name: str,
+    tenant_id: uuid.UUID,
+    canonical_table: str,
+    source_table: str,
+    source_identifier: str,
+    last_successful_batch_id: str | None,
+) -> uuid.UUID | None:
+    """Look up canonical UUID from a prior successful batch's lineage.
+
+    AC5: When a master entity (party, product) is not found in the current
+    normalized staging during a scoped rerun, this function looks up its
+    canonical UUID from the last successful batch's lineage. This prevents
+    creating duplicate master records when a scoped run only processes a
+    subset of the data.
+
+    Args:
+        connection: Database connection
+        schema_name: Legacy schema name
+        tenant_id: Tenant UUID
+        canonical_table: Canonical table name (e.g., "customers", "product")
+        source_table: Source table name (e.g., "tbscust", "tbsstock")
+        source_identifier: Source identifier (e.g., legacy_code)
+        last_successful_batch_id: Batch ID of the last successful import, or None
+
+    Returns:
+        The canonical UUID from the prior batch's lineage, or None if not found.
+    """
+    if last_successful_batch_id is None:
+        return None
+
+    quoted_schema = _quoted_identifier(schema_name)
+    row = await connection.fetchrow(
+        f"""
+        SELECT canonical_id
+        FROM {quoted_schema}.canonical_record_lineage
+        WHERE batch_id = $1
+          AND tenant_id = $2
+          AND canonical_table = $3
+          AND source_table = $4
+          AND source_identifier = $5
+          AND canonical_table != '__holding__'
+        LIMIT 1
+        """,
+        last_successful_batch_id,
+        tenant_id,
+        canonical_table,
+        source_table,
+        source_identifier,
+    )
+    if row is None:
+        return None
+    return cast(uuid.UUID, row["canonical_id"])
+
+
+async def _build_prior_master_lookup(
+    connection,
+    schema_name: str,
+    tenant_id: uuid.UUID,
+    last_successful_batch_ids: Mapping[str, str] | None,
+    canonical_table: str,
+    source_table: str,
+    legacy_codes: Sequence[str],
+) -> dict[str, uuid.UUID]:
+    """Build a lookup of legacy_code -> canonical_uuid from prior batch lineage.
+
+    For each legacy code not found in current staging, attempt to resolve
+    the canonical UUID from the last successful batch's lineage.
+
+    Args:
+        connection: Database connection
+        schema_name: Legacy schema name
+        tenant_id: Tenant UUID
+        last_successful_batch_ids: Mapping of domain -> batch_id
+        canonical_table: Canonical table name
+        source_table: Source table name
+        legacy_codes: Sequence of legacy codes to look up
+
+    Returns:
+        Dict mapping legacy_code -> canonical_uuid for codes found in prior lineage.
+    """
+    result: dict[str, uuid.UUID] = {}
+    if not legacy_codes or last_successful_batch_ids is None:
+        return result
+
+    # Map canonical_table names to the domain names used in last_successful_batch_ids.
+    # The last_successful_batch_ids mapping uses incremental domain names:
+    # "customers", "suppliers", "products", "sales", "purchase-invoices".
+    # The canonical_table names in lineage are: "customers", "supplier", "product".
+    # For parties (customers + suppliers), we check "customers" domain.
+    domain_map = {
+        "customers": "customers",   # lineage: customers, domain: customers
+        "supplier": "suppliers",   # lineage: supplier, domain: suppliers
+        "product": "products",     # lineage: product, domain: products
+    }
+    domain_name = domain_map.get(canonical_table)
+    if domain_name is None:
+        return result
+
+    last_batch_id = last_successful_batch_ids.get(domain_name)
+    if last_batch_id is None:
+        return result
+
+    for legacy_code in legacy_codes:
+        prior_uuid = await _resolve_master_uuid_from_prior_batch(
+            connection,
+            schema_name,
+            tenant_id,
+            canonical_table,
+            source_table,
+            legacy_code,
+            last_batch_id,
+        )
+        if prior_uuid is not None:
+            result[legacy_code] = prior_uuid
+
+    return result
+
+
+def _build_entity_scope_closure_keys(
+    entity_scope: Mapping[str, object] | None,
+) -> dict[str, frozenset[str]]:
+    """Extract per-domain closure_key sets from the entity_scope manifest.
+
+    The entity_scope is a dict of domain_name -> {closure_keys: [...], ...}.
+    Returns a dict of domain_name -> frozenset of closure keys for efficient
+    membership tests. If entity_scope is None, returns empty dict.
+    """
+    if entity_scope is None:
+        return {}
+
+    result: dict[str, frozenset[str]] = {}
+    for domain, spec in entity_scope.items():
+        if not isinstance(spec, Mapping):
+            continue
+        keys = spec.get("closure_keys")
+        if isinstance(keys, (list, tuple, frozenset)):
+            result[domain] = frozenset(str(k) for k in keys)
+        elif isinstance(keys, frozenset):
+            result[domain] = keys
+    return result
+
+
+def _domain_in_selected(
+    domain: str,
+    selected_domains: tuple[str, ...] | Sequence[str] | None,
+) -> bool:
+    """Check if a domain is in the selected set (or all if None)."""
+    if not selected_domains:
+        return True
+    return domain in selected_domains
+
+
+def _is_sales_domain_selected(selected_domains: tuple[str, ...] | None) -> bool:
+    """Check if sales domain is selected (or all if None)."""
+    return _domain_in_selected(DOMAIN_SALES, selected_domains)
+
+
+def _is_purchase_domain_selected(selected_domains: tuple[str, ...] | None) -> bool:
+    """Check if purchase-invoices domain is selected (or all if None)."""
+    return _domain_in_selected(DOMAIN_PURCHASE_INVOICES, selected_domains)
+
+
+def _filter_sales_headers_by_scope(
+    headers: list[dict[str, object]],
+    entity_scope_closure_keys: dict[str, frozenset[str]],
+) -> list[dict[str, object]]:
+    """Filter sales headers to only those in entity_scope.
+
+    For sales documents, the closure_key is the doc_number. If entity_scope
+    is empty (full batch), return all headers.
+    """
+    sales_keys = entity_scope_closure_keys.get(DOMAIN_SALES)
+    if not sales_keys:
+        return headers
+
+    return [
+        h for h in headers
+        if _as_text(h.get("doc_number")) in sales_keys
+    ]
+
+
+def _filter_purchase_headers_by_scope(
+    headers: list[dict[str, object]],
+    entity_scope_closure_keys: dict[str, frozenset[str]],
+) -> list[dict[str, object]]:
+    """Filter purchase headers to only those in entity_scope.
+
+    For purchase invoices, the closure_key is the doc_number. If entity_scope
+    is empty (full batch), return all headers.
+    """
+    purchase_keys = entity_scope_closure_keys.get(DOMAIN_PURCHASE_INVOICES)
+    if not purchase_keys:
+        return headers
+
+    return [
+        h for h in headers
+        if _as_text(h.get("doc_number")) in purchase_keys
+    ]
+
+
+def _filter_sales_lines_by_scope(
+    lines: list[dict[str, object]],
+    scoped_header_doc_numbers: frozenset[str],
+) -> list[dict[str, object]]:
+    """Filter sales lines to only those belonging to scoped headers.
+
+    Full document families are rebuilt: if a header is in scope, ALL its lines
+    are included (deterministic lineage preservation).
+    """
+    if not scoped_header_doc_numbers:
+        return lines
+    return [
+        line for line in lines
+        if _as_text(line.get("doc_number")) in scoped_header_doc_numbers
+    ]
+
+
+def _filter_purchase_lines_by_scope(
+    lines: list[dict[str, object]],
+    scoped_header_doc_numbers: frozenset[str],
+) -> list[dict[str, object]]:
+    """Filter purchase lines to only those belonging to scoped headers.
+
+    Full document families are rebuilt: if a header is in scope, ALL its lines
+    are included (deterministic lineage preservation).
+    """
+    if not scoped_header_doc_numbers:
+        return lines
+    return [
+        line for line in lines
+        if _as_text(line.get("doc_number")) in scoped_header_doc_numbers
+    ]
+
+
 async def _import_customers(
     connection,
     schema_name: str,
@@ -1604,9 +1875,15 @@ def _resolve_order_line_product_snapshots(
     master_category = product_snapshot.get("category")
 
     if mapped_product_code == UNKNOWN_PRODUCT_CODE:
-        return fallback_name or master_name or mapped_product_code, fallback_category or master_category
+        return (
+            fallback_name or master_name or mapped_product_code,
+            fallback_category or master_category,
+        )
 
-    return master_name or fallback_name or mapped_product_code, master_category or fallback_category
+    return (
+        master_name or fallback_name or mapped_product_code,
+        master_category or fallback_category,
+    )
 
 
 async def _import_warehouses(
@@ -2125,7 +2402,10 @@ async def _import_sales_history(
                     f"cannot resolve product {legacy_product_code}"
                 )
 
-            product_name_snapshot, product_category_snapshot = _resolve_order_line_product_snapshots(
+            (
+                product_name_snapshot,
+                product_category_snapshot,
+            ) = _resolve_order_line_product_snapshots(
                 line,
                 legacy_product_code=legacy_product_code,
                 mapped_product_code=mapped_product_code,
@@ -2247,8 +2527,14 @@ async def _import_sales_history(
 					subtotal_amount = EXCLUDED.subtotal_amount,
 					total_amount = EXCLUDED.total_amount,
 					description = EXCLUDED.description,
-                    product_name_snapshot = COALESCE(order_lines.product_name_snapshot, EXCLUDED.product_name_snapshot),
-                    product_category_snapshot = COALESCE(order_lines.product_category_snapshot, EXCLUDED.product_category_snapshot),
+                    product_name_snapshot=COALESCE(
+                        order_lines.product_name_snapshot,
+                        EXCLUDED.product_name_snapshot,
+                    ),
+                    product_category_snapshot=COALESCE(
+                        order_lines.product_category_snapshot,
+                        EXCLUDED.product_category_snapshot,
+                    ),
 					available_stock_snapshot = EXCLUDED.available_stock_snapshot
 				""",
                 order_line_id,
@@ -2783,7 +3069,67 @@ async def run_canonical_import(
     batch_id: str,
     tenant_id: uuid.UUID = DEFAULT_TENANT_ID,
     schema_name: str | None = None,
+    # Story 15.26: Scoped incremental parameters
+    selected_domains: Sequence[str] | None = None,
+    entity_scope: Mapping[str, object] | None = None,
+    batch_mode: str | None = None,
+    last_successful_batch_ids: Mapping[str, str] | None = None,
 ) -> CanonicalImportResult:
+    """Run canonical import with optional incremental scope.
+
+    Args:
+        batch_id: The batch identifier for this import run.
+        tenant_id: The tenant UUID (defaults to DEFAULT_TENANT_ID).
+        schema_name: The raw legacy schema name (defaults to settings.legacy_import_schema).
+        selected_domains: Optional sequence of domain names to process.
+            If None, all domains are processed (full batch behavior).
+        entity_scope: Optional per-domain closure keys from the delta manifest.
+            Maps domain_name -> {closure_keys: [...], ...}.
+            For sales/purchase: closure_keys are doc_numbers.
+            For parties/products/warehouses/inventory: closure_keys are legacy codes.
+        batch_mode: Optional batch mode ('full' or 'incremental').
+            If 'incremental', respects selected_domains and entity_scope.
+        last_successful_batch_ids: Optional mapping of domain -> last successful batch_id.
+            Used for deterministic dependent-master lookup in scoped reruns.
+
+    Returns:
+        CanonicalImportResult with counts and scoped metadata.
+
+    AC1: When selected_domains and entity_scope are provided with batch_mode=incremental,
+         only impacted masters, inventory tuples, and full document families are upserted.
+    AC2: Full header+line families are rebuilt deterministically for in-scope documents.
+    AC3: Unresolved issues outside scope do not make the batch review-required.
+    AC4: Same manifest scope produces idempotent results (deterministic IDs preserved).
+    AC5: Dependent master resolution uses scoped handoff deterministically.
+    """
+    from collections.abc import Mapping as MappingABC
+
+    # Normalize batch_mode for scope determination
+    is_incremental = str(batch_mode).lower() == "incremental" if batch_mode else False
+
+    # Normalize selected_domains to tuple (only used when incremental)
+    # In full batch mode, selected_domains is ignored
+    normalized_selected: tuple[str, ...] = ()
+    if is_incremental and selected_domains is not None:
+        normalized_selected = tuple(str(d) for d in selected_domains)
+
+    # Build entity_scope closure keys lookup (only used when incremental)
+    scope_closure_keys = _build_entity_scope_closure_keys(
+        entity_scope if is_incremental and isinstance(entity_scope, MappingABC) else None
+    )
+
+    # Determine which domains are skipped (not in scope)
+    ALL_CANONICAL_DOMAINS = frozenset({
+        "customers", "suppliers", "products", "warehouses",
+        "inventory", "receiving_audit", "sales_history", "purchase_history",
+    })
+    skipped_domains_list: list[str] = []
+    if is_incremental and normalized_selected:
+        for domain in ALL_CANONICAL_DOMAINS:
+            if domain not in normalized_selected:
+                skipped_domains_list.append(domain)
+    skipped_domains_tuple = tuple(skipped_domains_list)
+
     _receiving_date_fallback_counts.clear()
     _receiving_date_fallback_counts.update({
         "receiving_date_fallback_receipt_to_invoice": 0,
@@ -2811,7 +3157,25 @@ async def run_canonical_import(
         "holding_count": 0,
         "lineage_count": 0,
     }
+    # Story 15.26: Track scoped document count
+    scoped_document_count = 0
     current_step: str | None = None
+
+    # Track unresolved mapping issues seen in current scope
+    scope_review_required_issues: list[str] = []
+
+    # Initialize lineage counts for all domains (may be skipped in scoped runs)
+    customer_lineage_count = 0
+    supplier_lineage_count = 0
+    product_lineage_count = 0
+    warehouse_lineage_count = 0
+    inventory_lineage_count = 0
+    receiving_audit_lineage_count = 0
+    receiving_holding_count = 0
+    receiving_date_fallback_count = 0
+    sales_lineage_count = 0
+    purchase_lineage_count = 0
+
     try:
         await _ensure_canonical_support_tables(connection, resolved_schema)
         attempt_number = await _next_attempt_number(
@@ -2833,248 +3197,491 @@ async def run_canonical_import(
                 None,
             )
 
+            # Initialize master lookups (needed even if domain is skipped, for dependent resolution)
+            # Story 15.26: customers domain
             current_step = "customers"
-            (
-                counts["customer_count"],
-                customer_lineage_count,
-                customer_by_code,
-                business_number_by_code,
-            ) = await _import_customers(
-                connection,
-                resolved_schema,
-                run_id,
-                tenant_id,
-                batch_id,
-                _iter_normalized_parties(connection, resolved_schema, batch_id, tenant_id),
-            )
-            counts["lineage_count"] += customer_lineage_count
-            step_outcomes.append(("customers", counts["customer_count"], "completed", None))
-            await _upsert_step_row(
-                connection,
-                resolved_schema,
-                run_id,
-                "customers",
-                counts["customer_count"],
-                "completed",
-            )
+            customer_by_code: dict[str, uuid.UUID] = {}
+            business_number_by_code: dict[str, str] = {}
+            if _domain_in_selected("customers", normalized_selected):
+                (
+                    counts["customer_count"],
+                    customer_lineage_count,
+                    customer_by_code,
+                    business_number_by_code,
+                ) = await _import_customers(
+                    connection,
+                    resolved_schema,
+                    run_id,
+                    tenant_id,
+                    batch_id,
+                    _iter_normalized_parties(connection, resolved_schema, batch_id, tenant_id),
+                )
+                counts["lineage_count"] += customer_lineage_count
+                step_outcomes.append(("customers", counts["customer_count"], "completed", None))
+                await _upsert_step_row(
+                    connection,
+                    resolved_schema,
+                    run_id,
+                    "customers",
+                    counts["customer_count"],
+                    "completed",
+                )
+            else:
+                step_outcomes.append(("customers", 0, "skipped", "domain not in scope"))
+                await _upsert_step_row(
+                    connection,
+                    resolved_schema,
+                    run_id,
+                    "customers",
+                    0,
+                    "skipped",
+                )
 
+            # Story 15.26: suppliers domain
             current_step = "suppliers"
-            (
-                counts["supplier_count"],
-                supplier_lineage_count,
-                supplier_by_code,
-            ) = await _import_suppliers(
-                connection,
-                resolved_schema,
-                run_id,
-                tenant_id,
-                batch_id,
-                _iter_normalized_parties(connection, resolved_schema, batch_id, tenant_id),
-            )
-            counts["lineage_count"] += supplier_lineage_count
-            step_outcomes.append(("suppliers", counts["supplier_count"], "completed", None))
-            await _upsert_step_row(
-                connection,
-                resolved_schema,
-                run_id,
-                "suppliers",
-                counts["supplier_count"],
-                "completed",
-            )
+            supplier_by_code: dict[str, uuid.UUID] = {}
+            if _domain_in_selected("suppliers", normalized_selected):
+                (
+                    counts["supplier_count"],
+                    supplier_lineage_count,
+                    supplier_by_code,
+                ) = await _import_suppliers(
+                    connection,
+                    resolved_schema,
+                    run_id,
+                    tenant_id,
+                    batch_id,
+                    _iter_normalized_parties(connection, resolved_schema, batch_id, tenant_id),
+                )
+                counts["lineage_count"] += supplier_lineage_count
+                step_outcomes.append(("suppliers", counts["supplier_count"], "completed", None))
+                await _upsert_step_row(
+                    connection,
+                    resolved_schema,
+                    run_id,
+                    "suppliers",
+                    counts["supplier_count"],
+                    "completed",
+                )
+            else:
+                step_outcomes.append(("suppliers", 0, "skipped", "domain not in scope"))
+                await _upsert_step_row(
+                    connection,
+                    resolved_schema,
+                    run_id,
+                    "suppliers",
+                    0,
+                    "skipped",
+                )
 
+            # Story 15.26: products domain
             current_step = "products"
-            (
-                counts["product_count"],
-                product_lineage_count,
-                product_by_code,
-                product_snapshot_by_code,
-            ) = await _import_products(
-                connection,
-                resolved_schema,
-                run_id,
-                tenant_id,
-                batch_id,
-                _iter_normalized_products(connection, resolved_schema, batch_id, tenant_id),
-            )
-            counts["lineage_count"] += product_lineage_count
-            step_outcomes.append(("products", counts["product_count"], "completed", None))
-            await _upsert_step_row(
-                connection,
-                resolved_schema,
-                run_id,
-                "products",
-                counts["product_count"],
-                "completed",
-            )
+            product_by_code: dict[str, uuid.UUID] = {}
+            product_snapshot_by_code: dict[str, dict[str, str | None]] = {}
+            if _domain_in_selected("products", normalized_selected):
+                (
+                    counts["product_count"],
+                    product_lineage_count,
+                    product_by_code,
+                    product_snapshot_by_code,
+                ) = await _import_products(
+                    connection,
+                    resolved_schema,
+                    run_id,
+                    tenant_id,
+                    batch_id,
+                    _iter_normalized_products(connection, resolved_schema, batch_id, tenant_id),
+                )
+                counts["lineage_count"] += product_lineage_count
+                step_outcomes.append(("products", counts["product_count"], "completed", None))
+                await _upsert_step_row(
+                    connection,
+                    resolved_schema,
+                    run_id,
+                    "products",
+                    counts["product_count"],
+                    "completed",
+                )
+            else:
+                step_outcomes.append(("products", 0, "skipped", "domain not in scope"))
+                await _upsert_step_row(
+                    connection,
+                    resolved_schema,
+                    run_id,
+                    "products",
+                    0,
+                    "skipped",
+                )
 
+            # Story 15.26: warehouses domain
             current_step = "warehouses"
-            (
-                counts["warehouse_count"],
-                warehouse_lineage_count,
-                warehouse_by_code,
-            ) = await _import_warehouses(
-                connection,
-                resolved_schema,
-                run_id,
-                tenant_id,
-                batch_id,
-                _iter_normalized_warehouses(connection, resolved_schema, batch_id, tenant_id),
-            )
-            counts["lineage_count"] += warehouse_lineage_count
-            step_outcomes.append(("warehouses", counts["warehouse_count"], "completed", None))
-            await _upsert_step_row(
-                connection,
-                resolved_schema,
-                run_id,
-                "warehouses",
-                counts["warehouse_count"],
-                "completed",
-            )
+            warehouse_by_code: dict[str, uuid.UUID] = {}
+            if _domain_in_selected("warehouses", normalized_selected):
+                (
+                    counts["warehouse_count"],
+                    warehouse_lineage_count,
+                    warehouse_by_code,
+                ) = await _import_warehouses(
+                    connection,
+                    resolved_schema,
+                    run_id,
+                    tenant_id,
+                    batch_id,
+                    _iter_normalized_warehouses(connection, resolved_schema, batch_id, tenant_id),
+                )
+                counts["lineage_count"] += warehouse_lineage_count
+                step_outcomes.append(("warehouses", counts["warehouse_count"], "completed", None))
+                await _upsert_step_row(
+                    connection,
+                    resolved_schema,
+                    run_id,
+                    "warehouses",
+                    counts["warehouse_count"],
+                    "completed",
+                )
+            else:
+                step_outcomes.append(("warehouses", 0, "skipped", "domain not in scope"))
+                await _upsert_step_row(
+                    connection,
+                    resolved_schema,
+                    run_id,
+                    "warehouses",
+                    0,
+                    "skipped",
+                )
 
+            # Story 15.26: inventory domain
             current_step = "inventory"
-            counts["inventory_count"], inventory_lineage_count = await _import_inventory(
-                connection,
-                resolved_schema,
-                run_id,
-                tenant_id,
-                batch_id,
-                _iter_normalized_inventory(connection, resolved_schema, batch_id, tenant_id),
-                product_by_code,
-                warehouse_by_code,
-            )
-            counts["lineage_count"] += inventory_lineage_count
-            step_outcomes.append(("inventory", counts["inventory_count"], "completed", None))
-            await _upsert_step_row(
-                connection,
-                resolved_schema,
-                run_id,
-                "inventory",
-                counts["inventory_count"],
-                "completed",
-            )
+            if _domain_in_selected("inventory", normalized_selected):
+                counts["inventory_count"], inventory_lineage_count = await _import_inventory(
+                    connection,
+                    resolved_schema,
+                    run_id,
+                    tenant_id,
+                    batch_id,
+                    _iter_normalized_inventory(connection, resolved_schema, batch_id, tenant_id),
+                    product_by_code,
+                    warehouse_by_code,
+                )
+                counts["lineage_count"] += inventory_lineage_count
+                step_outcomes.append(("inventory", counts["inventory_count"], "completed", None))
+                await _upsert_step_row(
+                    connection,
+                    resolved_schema,
+                    run_id,
+                    "inventory",
+                    counts["inventory_count"],
+                    "completed",
+                )
+            else:
+                step_outcomes.append(("inventory", 0, "skipped", "domain not in scope"))
+                await _upsert_step_row(
+                    connection,
+                    resolved_schema,
+                    run_id,
+                    "inventory",
+                    0,
+                    "skipped",
+                )
 
-            purchase_headers = (
+            # Story 15.26: Fetch purchase data with scope filtering
+            # Note: receiving_audit needs ALL lines (including blank doc_numbers for holding)
+            # while purchase_history needs only scoped lines by header doc_number
+            purchase_headers_all = (
                 await _fetch_purchase_headers(connection, resolved_schema, batch_id)
                 if await _table_exists(connection, resolved_schema, "tbsslipj")
                 else []
             )
-            purchase_lines = (
+            purchase_lines_all = (
                 await _fetch_purchase_lines(connection, resolved_schema, batch_id)
                 if await _table_exists(connection, resolved_schema, LEGACY_RECEIVING_SOURCE)
                 else []
             )
 
-            current_step = "receiving_audit"
-            (
-                counts["receiving_audit_count"],
-                receiving_audit_lineage_count,
-                receiving_holding_count,
-                receiving_date_fallback_count,
-            ) = await _import_legacy_receiving_audit(
-                connection,
-                resolved_schema,
-                run_id,
-                tenant_id,
-                batch_id,
-                purchase_headers,
-                purchase_lines,
-                product_by_code,
-                warehouse_by_code,
-                product_mappings,
+            # Apply scope filtering to purchase headers
+            scoped_purchase_headers = _filter_purchase_headers_by_scope(
+                purchase_headers_all, scope_closure_keys
             )
-            counts["lineage_count"] += receiving_audit_lineage_count
-            counts["holding_count"] += receiving_holding_count
-            step_outcomes.append(
+
+            # Story 15.26: receiving_audit domain gets ALL lines (including blank doc_numbers)
+            # because blank doc_number lines need to be routed to holding
+            current_step = "receiving_audit"
+            if _domain_in_selected("receiving_audit", normalized_selected):
                 (
+                    counts["receiving_audit_count"],
+                    receiving_audit_lineage_count,
+                    receiving_holding_count,
+                    receiving_date_fallback_count,
+                ) = await _import_legacy_receiving_audit(
+                    connection,
+                    resolved_schema,
+                    run_id,
+                    tenant_id,
+                    batch_id,
+                    scoped_purchase_headers,
+                    purchase_lines_all,  # All lines for receiving audit (handles blank doc_numbers)
+                    product_by_code,
+                    warehouse_by_code,
+                    product_mappings,
+                )
+                counts["lineage_count"] += receiving_audit_lineage_count
+                counts["holding_count"] += receiving_holding_count
+                step_outcomes.append(
+                    (
+                        "receiving_audit",
+                        counts["receiving_audit_count"],
+                        "completed",
+                        None,
+                    )
+                )
+                await _upsert_step_row(
+                    connection,
+                    resolved_schema,
+                    run_id,
                     "receiving_audit",
                     counts["receiving_audit_count"],
                     "completed",
-                    None,
                 )
+            else:
+                step_outcomes.append(("receiving_audit", 0, "skipped", "domain not in scope"))
+                await _upsert_step_row(
+                    connection,
+                    resolved_schema,
+                    run_id,
+                    "receiving_audit",
+                    0,
+                    "skipped",
+                )
+
+            # Story 15.26: Fetch sales data with scope filtering
+            sales_headers_all = await _fetch_sales_headers(connection, resolved_schema, batch_id)
+            sales_lines_all = await _fetch_sales_lines(connection, resolved_schema, batch_id)
+
+            # Apply scope filtering to sales documents
+            scoped_sales_headers = _filter_sales_headers_by_scope(
+                sales_headers_all, scope_closure_keys
             )
-            await _upsert_step_row(
-                connection,
-                resolved_schema,
-                run_id,
-                "receiving_audit",
-                counts["receiving_audit_count"],
-                "completed",
+            scoped_sales_doc_numbers = frozenset(
+                _as_text(h.get("doc_number")) for h in scoped_sales_headers
+            )
+            scoped_sales_lines = _filter_sales_lines_by_scope(
+                sales_lines_all, scoped_sales_doc_numbers
             )
 
-            current_step = "sales_history"
-            (
-                counts["order_count"],
-                counts["order_line_count"],
-                counts["invoice_count"],
-                counts["invoice_line_count"],
-                sales_lineage_count,
-            ) = await _import_sales_history(
-                connection,
-                resolved_schema,
-                run_id,
-                tenant_id,
-                batch_id,
-                await _fetch_sales_headers(connection, resolved_schema, batch_id),
-                await _fetch_sales_lines(connection, resolved_schema, batch_id),
-                customer_by_code,
-                business_number_by_code,
-                product_by_code,
-                product_snapshot_by_code,
-                product_mappings,
+            # Apply scope filtering to purchase lines for purchase_history
+            scoped_purchase_doc_numbers = frozenset(
+                _as_text(h.get("doc_number")) for h in scoped_purchase_headers
             )
-            counts["lineage_count"] += sales_lineage_count
-            step_outcomes.append(
+            scoped_purchase_lines = _filter_purchase_lines_by_scope(
+                purchase_lines_all, scoped_purchase_doc_numbers
+            )
+
+            scoped_document_count = len(scoped_sales_headers) + len(scoped_purchase_headers)
+
+            # =================================================================
+            # AC5: Enrich master lookups from prior batch lineage
+            # When a scoped run doesn't have all master entities in staging,
+            # look them up from the last successful batch's lineage.
+            # =================================================================
+            if is_incremental and last_successful_batch_ids is not None:
+                # Get customer codes needed for scoped sales headers
+                needed_customer_codes = frozenset(
+                    _as_text(h.get("customer_code"))
+                    for h in scoped_sales_headers
+                    if _as_text(h.get("customer_code"))
+                )
+                missing_customer_codes = [
+                    code for code in needed_customer_codes
+                    if code and code not in customer_by_code
+                ]
+                if missing_customer_codes:
+                    prior_customers = await _build_prior_master_lookup(
+                        connection,
+                        resolved_schema,
+                        tenant_id,
+                        last_successful_batch_ids,
+                        "customers",
+                        "tbscust",
+                        missing_customer_codes,
+                    )
+                    customer_by_code.update(prior_customers)
+                    _LOGGER.info(
+                        "AC5: Resolved %d missing customer codes from prior batch lineage",
+                        len(prior_customers),
+                    )
+
+                # Get product codes needed for scoped sales lines
+                needed_product_codes = frozenset(
+                    _as_text(line.get("product_code"))
+                    for line in scoped_sales_lines
+                    if _as_text(line.get("product_code"))
+                )
+                missing_product_codes = [
+                    code for code in needed_product_codes
+                    if code and code not in product_by_code
+                ]
+                if missing_product_codes:
+                    prior_products = await _build_prior_master_lookup(
+                        connection,
+                        resolved_schema,
+                        tenant_id,
+                        last_successful_batch_ids,
+                        "product",
+                        "tbsstock",
+                        missing_product_codes,
+                    )
+                    product_by_code.update(prior_products)
+                    _LOGGER.info(
+                        "AC5: Resolved %d missing product codes from prior batch lineage",
+                        len(prior_products),
+                    )
+
+            # =================================================================
+            # AC3: Track unknown product codes for review-required issues
+            # Only mark in-scope issues as review-required.
+            # =================================================================
+            if is_incremental and _domain_in_selected(DOMAIN_PRODUCTS, normalized_selected):
+                # Check if any product codes in scope map to UNKNOWN_PRODUCT_CODE
+                scoped_product_codes = frozenset(
+                    scope_closure_keys.get(DOMAIN_PRODUCTS, frozenset())
+                )
+                if scoped_product_codes:
+                    for product_code in scoped_product_codes:
+                        if product_code not in product_by_code:
+                            # Product in scope but not found - this is a review-required issue
+                            issue = f"unknown_product_code:{product_code}"
+                            scope_review_required_issues.append(issue)
+
+            # Story 15.26: sales_history domain
+            current_step = "sales_history"
+            if _domain_in_selected("sales_history", normalized_selected):
                 (
+                    counts["order_count"],
+                    counts["order_line_count"],
+                    counts["invoice_count"],
+                    counts["invoice_line_count"],
+                    sales_lineage_count,
+                ) = await _import_sales_history(
+                    connection,
+                    resolved_schema,
+                    run_id,
+                    tenant_id,
+                    batch_id,
+                    scoped_sales_headers,
+                    scoped_sales_lines,
+                    customer_by_code,
+                    business_number_by_code,
+                    product_by_code,
+                    product_snapshot_by_code,
+                    product_mappings,
+                )
+                counts["lineage_count"] += sales_lineage_count
+                step_outcomes.append(
+                    (
+                        "sales_history",
+                        counts["order_line_count"] + counts["invoice_line_count"],
+                        "completed",
+                        None,
+                    )
+                )
+                await _upsert_step_row(
+                    connection,
+                    resolved_schema,
+                    run_id,
                     "sales_history",
                     counts["order_line_count"] + counts["invoice_line_count"],
                     "completed",
-                    None,
                 )
-            )
-            await _upsert_step_row(
-                connection,
-                resolved_schema,
-                run_id,
-                "sales_history",
-                counts["order_line_count"] + counts["invoice_line_count"],
-                "completed",
-            )
+            else:
+                step_outcomes.append(("sales_history", 0, "skipped", "domain not in scope"))
+                await _upsert_step_row(
+                    connection,
+                    resolved_schema,
+                    run_id,
+                    "sales_history",
+                    0,
+                    "skipped",
+                )
 
+            # =================================================================
+            # AC5: Enrich supplier lookup from prior batch lineage for purchase
+            # Only needed here since purchase_history requires supplier codes.
+            # =================================================================
+            if is_incremental and last_successful_batch_ids is not None:
+                # Get supplier codes needed for scoped purchase headers
+                needed_supplier_codes = frozenset(
+                    _as_text(h.get("supplier_code"))
+                    for h in scoped_purchase_headers
+                    if _as_text(h.get("supplier_code"))
+                )
+                missing_supplier_codes = [
+                    code for code in needed_supplier_codes
+                    if code and code not in supplier_by_code
+                ]
+                if missing_supplier_codes:
+                    prior_suppliers = await _build_prior_master_lookup(
+                        connection,
+                        resolved_schema,
+                        tenant_id,
+                        last_successful_batch_ids,
+                        "supplier",
+                        "tbscust",
+                        missing_supplier_codes,
+                    )
+                    supplier_by_code.update(prior_suppliers)
+                    _LOGGER.info(
+                        "AC5: Resolved %d missing supplier codes from prior batch lineage",
+                        len(prior_suppliers),
+                    )
+
+            # Story 15.26: purchase_history domain
             current_step = "purchase_history"
-            (
-                counts["supplier_invoice_count"],
-                counts["supplier_invoice_line_count"],
-                purchase_lineage_count,
-            ) = await _import_purchase_history(
-                connection,
-                resolved_schema,
-                run_id,
-                tenant_id,
-                batch_id,
-                purchase_headers,
-                purchase_lines,
-                supplier_by_code,
-                product_by_code,
-                product_mappings,
-            )
-            counts["lineage_count"] += purchase_lineage_count
-            step_outcomes.append(
+            if _domain_in_selected("purchase_history", normalized_selected):
                 (
+                    counts["supplier_invoice_count"],
+                    counts["supplier_invoice_line_count"],
+                    purchase_lineage_count,
+                ) = await _import_purchase_history(
+                    connection,
+                    resolved_schema,
+                    run_id,
+                    tenant_id,
+                    batch_id,
+                    scoped_purchase_headers,
+                    scoped_purchase_lines,
+                    supplier_by_code,
+                    product_by_code,
+                    product_mappings,
+                )
+                counts["lineage_count"] += purchase_lineage_count
+                step_outcomes.append(
+                    (
+                        "purchase_history",
+                        counts["supplier_invoice_count"] + counts["supplier_invoice_line_count"],
+                        "completed",
+                        None,
+                    )
+                )
+                await _upsert_step_row(
+                    connection,
+                    resolved_schema,
+                    run_id,
                     "purchase_history",
                     counts["supplier_invoice_count"] + counts["supplier_invoice_line_count"],
                     "completed",
-                    None,
                 )
-            )
-            await _upsert_step_row(
-                connection,
-                resolved_schema,
-                run_id,
-                "purchase_history",
-                counts["supplier_invoice_count"] + counts["supplier_invoice_line_count"],
-                "completed",
-            )
+            else:
+                step_outcomes.append(("purchase_history", 0, "skipped", "domain not in scope"))
+                await _upsert_step_row(
+                    connection,
+                    resolved_schema,
+                    run_id,
+                    "purchase_history",
+                    0,
+                    "skipped",
+                )
 
+            # Story 15.26: unsupported_history is always processed (payment-adjacent cleanup)
             current_step = "unsupported_history"
             payment_holding_count = await _hold_payment_adjacent_history(
                 connection,
@@ -3083,7 +3690,7 @@ async def run_canonical_import(
                 tenant_id,
                 batch_id,
             )
-            counts["holding_count"] = payment_holding_count
+            counts["holding_count"] += payment_holding_count
             step_outcomes.append(
                 ("unsupported_history", counts["holding_count"], "completed", None)
             )
@@ -3127,6 +3734,11 @@ async def run_canonical_import(
             holding_count=counts["holding_count"],
             lineage_count=counts["lineage_count"],
             receiving_date_fallback_count=receiving_date_fallback_count,
+            # Story 15.26: Scoped incremental metadata
+            selected_domains=normalized_selected,
+            scoped_document_count=scoped_document_count,
+            skipped_domains=skipped_domains_tuple,
+            review_required_issues=tuple(scope_review_required_issues),
         )
     except Exception as exc:
         if current_step is not None:

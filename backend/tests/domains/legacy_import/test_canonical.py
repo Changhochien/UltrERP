@@ -1861,6 +1861,7 @@ async def test_run_canonical_import_receiving_audit_routes_blank_doc_number_to_h
             # doc_number is blank — should be routed to holding, not cause UUID collision
             "purchase_lines": [
                 {
+                    "col_1": "4",  # required for SQL filter COALESCE(col_1, '') = '4'
                     "doc_number": "",  # blank doc_number
                     "line_number": 3,
                     "product_code": "P001",
@@ -2546,6 +2547,7 @@ async def test_holding_state_created_on_blank_doc_number_hold(monkeypatch) -> No
             # doc_number is blank — should be routed to holding
             "purchase_lines": [
                 {
+                    "col_1": "4",  # required for SQL filter COALESCE(col_1, '') = '4'
                     "doc_number": "",  # blank doc_number triggers hold
                     "line_number": 3,
                     "product_code": "P001",
@@ -3155,3 +3157,507 @@ async def test_drain_updates_holding_lineage_entry(monkeypatch) -> None:
     assert source_table == "tbsspay"
     assert source_identifier == "DRAIN-002"
     assert source_row_number == 2
+
+
+# ---------------------------------------------------------------------------
+# Story 15.26 — Scoped Incremental Canonical Import
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_scoped_incremental_import_skips_domains_not_in_scope(monkeypatch) -> None:
+    """AC1: When selected_domains is provided with batch_mode=incremental,
+    only the specified domains are processed."""
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000001526")
+    connection = FakeCanonicalConnection(
+        {
+            "normalized_parties": [
+                {
+                    "legacy_code": "C001",
+                    "role": "customer",
+                    "company_name": "Scoped Customer",
+                    "tax_id": "12345678",
+                    "full_address": "Taipei",
+                    "address": "Taipei",
+                    "phone": "02-1234",
+                    "email": "",
+                    "contact_person": "Alice",
+                    "deterministic_id": deterministic_legacy_uuid("party", "customer", "C001"),
+                }
+            ],
+            "normalized_products": [
+                {
+                    "legacy_code": "P001",
+                    "name": "Widget",
+                    "category": "BELT",
+                    "unit": "pcs",
+                    "status": "A",
+                    "deterministic_id": deterministic_legacy_uuid("product", "P001"),
+                }
+            ],
+            "normalized_warehouses": [
+                {
+                    "code": "LEGACY_DEFAULT",
+                    "name": "Legacy Default Warehouse",
+                    "location": None,
+                    "address": None,
+                    "deterministic_id": deterministic_legacy_uuid("warehouse", "LEGACY_DEFAULT"),
+                }
+            ],
+            "normalized_inventory_prep": [],
+            "product_code_mapping": [],
+            "sales_headers": [],
+            "sales_lines": [],
+            "purchase_headers": [],
+            "purchase_lines": [],
+        }
+    )
+
+    async def fake_open_raw_connection() -> FakeCanonicalConnection:
+        return connection
+
+    monkeypatch.setattr(canonical, "_open_raw_connection", fake_open_raw_connection)
+
+    # Only process customers domain
+    result = await canonical.run_canonical_import(
+        batch_id="batch-scoped-001",
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+        selected_domains=["customers"],
+        batch_mode="incremental",
+    )
+
+    # AC1: Only customers domain was processed
+    assert result.customer_count == 1
+    assert result.selected_domains == ("customers",)
+    assert "suppliers" in result.skipped_domains
+    assert "products" in result.skipped_domains
+    assert "warehouses" in result.skipped_domains
+    assert "inventory" in result.skipped_domains
+    assert "sales_history" in result.skipped_domains
+    assert "purchase_history" in result.skipped_domains
+
+    # AC3: No upserts for skipped domains
+    suppliers_upserts = [
+        q for q, _ in connection.execute_calls
+        if "INSERT INTO supplier" in q
+    ]
+    products_upserts = [
+        q for q, _ in connection.execute_calls
+        if "INSERT INTO product" in q
+    ]
+    assert len(suppliers_upserts) == 0, "Suppliers should be skipped"
+    assert len(products_upserts) == 0, "Products should be skipped"
+
+
+@pytest.mark.asyncio
+async def test_scoped_incremental_import_filters_sales_by_entity_scope(monkeypatch) -> None:
+    """AC2: Full document families are rebuilt deterministically for in-scope documents.
+    When entity_scope specifies sales doc_numbers, only those headers+lines are processed."""
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000001527")
+    connection = FakeCanonicalConnection(
+        {
+            "normalized_parties": [
+                {
+                    "legacy_code": "C001",
+                    "role": "customer",
+                    "company_name": "Scoped Customer",
+                    "tax_id": "12345678",
+                    "full_address": "Taipei",
+                    "address": "Taipei",
+                    "phone": "02-1234",
+                    "email": "",
+                    "contact_person": "Alice",
+                    "deterministic_id": deterministic_legacy_uuid("party", "customer", "C001"),
+                }
+            ],
+            "normalized_products": [
+                {
+                    "legacy_code": "P001",
+                    "name": "Widget",
+                    "category": "BELT",
+                    "unit": "pcs",
+                    "status": "A",
+                    "deterministic_id": deterministic_legacy_uuid("product", "P001"),
+                }
+            ],
+            "normalized_warehouses": [],
+            "normalized_inventory_prep": [],
+            "product_code_mapping": [],
+            "sales_headers": [
+                {
+                    "doc_number": "IN-SCOPE-001",
+                    "invoice_date": "2024-08-26",
+                    "customer_code": "C001",
+                    "customer_name": "Scoped Customer",
+                    "address": "Taipei",
+                    "currency_code": "TWD",
+                    "exchange_rate": "1.0",
+                    "subtotal": "100.00",
+                    "tax_type": "1",
+                    "tax_amount": "5.00",
+                    "total_amount": "105.00",
+                    "remark": "in scope",
+                    "created_by": "SYSTEM",
+                    "tax_rate": "0.0500",
+                },
+                {
+                    "doc_number": "OUT-OF-SCOPE-002",
+                    "invoice_date": "2024-08-27",
+                    "customer_code": "C001",
+                    "customer_name": "Scoped Customer",
+                    "address": "Taipei",
+                    "currency_code": "TWD",
+                    "exchange_rate": "1.0",
+                    "subtotal": "200.00",
+                    "tax_type": "1",
+                    "tax_amount": "10.00",
+                    "total_amount": "210.00",
+                    "remark": "out of scope",
+                    "created_by": "SYSTEM",
+                    "tax_rate": "0.0500",
+                },
+            ],
+            "sales_lines": [
+                {
+                    "doc_number": "IN-SCOPE-001",
+                    "line_number": 1,
+                    "product_code": "P001",
+                    "product_name": "Widget",
+                    "unit": "pcs",
+                    "qty": "2",
+                    "unit_price": "50.00",
+                    "extended_amount": "100.00",
+                    "tax_amount": "5.00",
+                },
+                {
+                    "doc_number": "OUT-OF-SCOPE-002",
+                    "line_number": 1,
+                    "product_code": "P001",
+                    "product_name": "Widget",
+                    "unit": "pcs",
+                    "qty": "4",
+                    "unit_price": "50.00",
+                    "extended_amount": "200.00",
+                    "tax_amount": "10.00",
+                },
+            ],
+            "purchase_headers": [],
+            "purchase_lines": [],
+        }
+    )
+
+    async def fake_open_raw_connection() -> FakeCanonicalConnection:
+        return connection
+
+    monkeypatch.setattr(canonical, "_open_raw_connection", fake_open_raw_connection)
+
+    # Entity scope includes only IN-SCOPE-001
+    result = await canonical.run_canonical_import(
+        batch_id="batch-scoped-002",
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+        selected_domains=["customers", "products", "sales_history"],
+        entity_scope={
+            "sales": {"closure_keys": ["IN-SCOPE-001"]}
+        },
+        batch_mode="incremental",
+    )
+
+    # AC2: Only in-scope documents were processed
+    assert result.order_count == 1, "Only in-scope order should be created"
+    assert result.invoice_count == 1, "Only in-scope invoice should be created"
+    assert result.scoped_document_count == 1
+
+    # AC4: Out-of-scope documents were NOT processed
+    orders_upserts = [
+        args for q, args in connection.execute_calls
+        if "INSERT INTO orders" in q
+    ]
+    assert len(orders_upserts) == 1, "Only one order should be upserted"
+    assert orders_upserts[0][3] == "IN-SCOPE-001", "Order number should match in-scope doc"
+
+    # Verify out-of-scope lines were NOT processed (only one order_line upsert)
+    order_lines_upserts = [
+        args for q, args in connection.execute_calls
+        if "INSERT INTO order_lines" in q
+    ]
+    assert len(order_lines_upserts) == 1, "Only in-scope lines should be upserted"
+
+
+@pytest.mark.asyncio
+async def test_scoped_import_preserves_deterministic_ids_on_rerun(monkeypatch) -> None:
+    """AC4: Same manifest scope produces idempotent results.
+    Deterministic UUIDs are stable across reruns of the same scope."""
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000001528")
+    connection = FakeCanonicalConnection(
+        {
+            "normalized_parties": [
+                {
+                    "legacy_code": "C001",
+                    "role": "customer",
+                    "company_name": "Deterministic Customer",
+                    "tax_id": "12345678",
+                    "full_address": "Taipei",
+                    "address": "Taipei",
+                    "phone": "02-1234",
+                    "email": "",
+                    "contact_person": "Alice",
+                    "deterministic_id": deterministic_legacy_uuid("party", "customer", "C001"),
+                }
+            ],
+            "normalized_products": [
+                {
+                    "legacy_code": "P001",
+                    "name": "Widget",
+                    "category": "BELT",
+                    "unit": "pcs",
+                    "status": "A",
+                    "deterministic_id": deterministic_legacy_uuid("product", "P001"),
+                }
+            ],
+            "normalized_warehouses": [],
+            "normalized_inventory_prep": [],
+            "product_code_mapping": [],
+            "sales_headers": [
+                {
+                    "doc_number": "DETERMINISTIC-001",
+                    "invoice_date": "2024-08-26",
+                    "customer_code": "C001",
+                    "customer_name": "Deterministic Customer",
+                    "address": "Taipei",
+                    "currency_code": "TWD",
+                    "exchange_rate": "1.0",
+                    "subtotal": "100.00",
+                    "tax_type": "1",
+                    "tax_amount": "5.00",
+                    "total_amount": "105.00",
+                    "remark": "",
+                    "created_by": "SYSTEM",
+                    "tax_rate": "0.0500",
+                }
+            ],
+            "sales_lines": [
+                {
+                    "doc_number": "DETERMINISTIC-001",
+                    "line_number": 1,
+                    "product_code": "P001",
+                    "product_name": "Widget",
+                    "unit": "pcs",
+                    "qty": "2",
+                    "unit_price": "50.00",
+                    "extended_amount": "100.00",
+                    "tax_amount": "5.00",
+                }
+            ],
+            "purchase_headers": [],
+            "purchase_lines": [],
+        }
+    )
+
+    async def fake_open_raw_connection() -> FakeCanonicalConnection:
+        return connection
+
+    monkeypatch.setattr(canonical, "_open_raw_connection", fake_open_raw_connection)
+
+    # First run
+    result1 = await canonical.run_canonical_import(
+        batch_id="batch-det-001",
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+        selected_domains=["customers", "products", "sales_history"],
+        entity_scope={
+            "sales": {"closure_keys": ["DETERMINISTIC-001"]}
+        },
+        batch_mode="incremental",
+    )
+
+    # Collect order IDs from first run
+    order_ids_run1 = [
+        args[0] for q, args in connection.execute_calls
+        if "INSERT INTO orders" in q
+    ]
+
+    # Clear execute calls and reset connection state
+    connection.execute_calls.clear()
+
+    # Second run with same scope
+    result2 = await canonical.run_canonical_import(
+        batch_id="batch-det-002",
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+        selected_domains=["customers", "products", "sales_history"],
+        entity_scope={
+            "sales": {"closure_keys": ["DETERMINISTIC-001"]}
+        },
+        batch_mode="incremental",
+    )
+
+    # Collect order IDs from second run
+    order_ids_run2 = [
+        args[0] for q, args in connection.execute_calls
+        if "INSERT INTO orders" in q
+    ]
+
+    # AC4: Same scope produces same deterministic IDs
+    assert len(order_ids_run1) == 1
+    assert len(order_ids_run2) == 1
+    assert order_ids_run1[0] == order_ids_run2[0], (
+        "Deterministic order ID must be stable across reruns of same scope"
+    )
+
+    # Result counts should also be consistent
+    assert result1.order_count == result2.order_count
+    assert result1.invoice_count == result2.invoice_count
+    assert result1.order_line_count == result2.order_line_count
+
+
+@pytest.mark.asyncio
+async def test_scoped_import_full_batch_mode_processes_all_domains(monkeypatch) -> None:
+    """Full batch behavior preserved when batch_mode is not 'incremental'."""
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000001529")
+    connection = FakeCanonicalConnection(
+        {
+            "normalized_parties": [
+                {
+                    "legacy_code": "C001",
+                    "role": "customer",
+                    "company_name": "Full Batch Customer",
+                    "tax_id": "12345678",
+                    "full_address": "Taipei",
+                    "address": "Taipei",
+                    "phone": "02-1234",
+                    "email": "",
+                    "contact_person": "Alice",
+                    "deterministic_id": deterministic_legacy_uuid("party", "customer", "C001"),
+                },
+                {
+                    "legacy_code": "T067",
+                    "role": "supplier",
+                    "company_name": "Full Batch Supplier",
+                    "tax_id": "22345678",
+                    "full_address": "Taoyuan",
+                    "address": "Taoyuan",
+                    "phone": "03-1234",
+                    "email": "",
+                    "contact_person": "Betty",
+                    "deterministic_id": deterministic_legacy_uuid("party", "supplier", "T067"),
+                }
+            ],
+            "normalized_products": [
+                {
+                    "legacy_code": "P001",
+                    "name": "Widget",
+                    "category": "BELT",
+                    "unit": "pcs",
+                    "status": "A",
+                    "deterministic_id": deterministic_legacy_uuid("product", "P001"),
+                }
+            ],
+            "normalized_warehouses": [
+                {
+                    "code": "LEGACY_DEFAULT",
+                    "name": "Legacy Default Warehouse",
+                    "location": None,
+                    "address": None,
+                    "deterministic_id": deterministic_legacy_uuid("warehouse", "LEGACY_DEFAULT"),
+                }
+            ],
+            "normalized_inventory_prep": [],
+            "product_code_mapping": [],
+            "sales_headers": [],
+            "sales_lines": [],
+            "purchase_headers": [],
+            "purchase_lines": [],
+        }
+    )
+
+    async def fake_open_raw_connection() -> FakeCanonicalConnection:
+        return connection
+
+    monkeypatch.setattr(canonical, "_open_raw_connection", fake_open_raw_connection)
+
+    # batch_mode=None or 'full' should process all domains
+    result = await canonical.run_canonical_import(
+        batch_id="batch-full-001",
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+        # selected_domains provided but batch_mode is None (full batch)
+        selected_domains=["customers"],  # Would restrict scope if batch_mode=incremental
+        batch_mode=None,  # Full batch - selected_domains should be ignored
+    )
+
+    # Full batch: all domains should be processed despite selected_domains
+    assert result.customer_count == 1
+    assert result.supplier_count == 1, "Suppliers should be processed in full batch"
+    assert result.product_count >= 1, "Products should be processed in full batch"
+    assert result.warehouse_count >= 1, "Warehouses should be processed in full batch"
+    assert len(result.skipped_domains) == 0, "No domains should be skipped in full batch"
+
+
+@pytest.mark.asyncio
+async def test_build_entity_scope_closure_keys_extracts_correctly() -> None:
+    """Helper function correctly extracts closure keys from entity_scope."""
+    entity_scope = {
+        "sales": {"closure_keys": ["DOC-001", "DOC-002"]},
+        "purchase-invoices": {"closure_keys": ["PO-001"]},
+        "products": {"closure_keys": ["P001", "P002"]},
+    }
+
+    result = canonical._build_entity_scope_closure_keys(entity_scope)
+
+    assert "sales" in result
+    assert result["sales"] == frozenset({"DOC-001", "DOC-002"})
+    assert result["purchase-invoices"] == frozenset({"PO-001"})
+    assert result["products"] == frozenset({"P001", "P002"})
+
+
+@pytest.mark.asyncio
+async def test_filter_sales_headers_by_scope_includes_matching() -> None:
+    """Sales headers are filtered to only in-scope doc_numbers."""
+    headers = [
+        {"doc_number": "DOC-001"},
+        {"doc_number": "DOC-002"},
+        {"doc_number": "DOC-003"},
+    ]
+    scope_keys = {"sales": frozenset({"DOC-001", "DOC-002"})}
+
+    result = canonical._filter_sales_headers_by_scope(headers, scope_keys)
+
+    assert len(result) == 2
+    assert all(h["doc_number"] in {"DOC-001", "DOC-002"} for h in result)
+
+
+@pytest.mark.asyncio
+async def test_filter_sales_headers_by_scope_empty_scope_returns_all() -> None:
+    """When entity_scope is empty (full batch), all headers are returned."""
+    headers = [
+        {"doc_number": "DOC-001"},
+        {"doc_number": "DOC-002"},
+    ]
+    scope_keys = {}  # Empty = full batch
+
+    result = canonical._filter_sales_headers_by_scope(headers, scope_keys)
+
+    assert len(result) == 2
+
+
+@pytest.mark.asyncio
+async def test_filter_sales_lines_preserves_full_family() -> None:
+    """When header is in scope, ALL its lines are included (full family rebuild)."""
+    lines = [
+        {"doc_number": "DOC-001", "line_number": 1},
+        {"doc_number": "DOC-001", "line_number": 2},
+        {"doc_number": "DOC-002", "line_number": 1},
+        {"doc_number": "DOC-003", "line_number": 1},  # Out of scope
+    ]
+    scoped_doc_numbers = frozenset({"DOC-001", "DOC-002"})
+
+    result = canonical._filter_sales_lines_by_scope(lines, scoped_doc_numbers)
+
+    # Both lines of DOC-001 should be included
+    assert len(result) == 3
+    doc_001_lines = [l for l in result if l["doc_number"] == "DOC-001"]
+    assert len(doc_001_lines) == 2, "Full family of DOC-001 should be preserved"
+    assert any(l["line_number"] == 1 for l in doc_001_lines)
+    assert any(l["line_number"] == 2 for l in doc_001_lines)

@@ -10,7 +10,16 @@ from common.config import settings
 
 # Domain name constants used for incremental refresh, delta discovery, and live projection.
 # These names must match the IncrementalDomainContract.name values in incremental_state.py.
-DOMAIN_PARTIES = "parties"
+#
+# Canonical import uses canonical_table names for lineage: "customers", "suppliers", "product".
+# Entity scope and incremental domains use different names: "parties", "products", "sales", etc.
+# This file provides constants for BOTH naming conventions to ensure consistency.
+#
+# Canonical table names (used in canonical_record_lineage.canonical_table):
+DOMAIN_CUSTOMERS = "customers"
+DOMAIN_SUPPLIERS = "suppliers"
+# Incremental domain names (used in entity_scope and IncrementalDomainContract.name):
+DOMAIN_PARTIES = "parties"  # Covers both customers and suppliers
 DOMAIN_PRODUCTS = "products"
 DOMAIN_WAREHOUSES = "warehouses"
 DOMAIN_INVENTORY = "inventory"
