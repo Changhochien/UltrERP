@@ -1,10 +1,10 @@
 ---
 name: ultr-erp-dump-import
-description: Use when asked to "/UltrERP-dump-import", "import a dump", "dump import", "import legacy data", "extract a SQL dump", "run legacy import", "stage legacy data", "normalize legacy data", "map products", "canonical import", or "validate a legacy import batch". This skill guides the UltrERP dump-import workflow through the stable backend CLI — extract, stage, normalize, map, canonical-import, and validate.
+description: Use when asked to "/UltrERP-dump-import", "import a dump", "dump import", "extract a SQL dump", or stage archival legacy CSV exports. This skill is for archival or break-glass dump workflows, not the routine live refresh path.
 argument-hint: "[phase] --batch-id <batch-id> [--schema raw_legacy] [--tenant-id <uuid>]"
 ---
 
-Use this skill when the operator wants to run or plan the reviewed legacy-import workflow, starting from a raw SQL dump file or from already-extracted CSV files.
+Use this skill when the operator explicitly wants to run or plan the reviewed dump-based legacy-import workflow, starting from a raw SQL dump file or from already-extracted CSV files. Do not use it for routine live legacy DB refreshes; those should go through the reviewed live refresh and promotion surfaces.
 
 This skill is an orchestration wrapper around the backend CLI. Do not reimplement import business logic in Markdown, Python snippets, or ad hoc shell pipelines. Always route workflow execution through the reviewed CLI in [the command map](./command-map.md).
 
@@ -29,16 +29,16 @@ When the operator provides a SQL dump path, auto-derive parameters without askin
 | Parameter | Derivation |
 |---|---|
 | `--batch-id` | Stem of the input filename (e.g. `cao50001.sql` → `cao50001`) |
-| `--output` | `legacy-migration-pipeline/extracted_data/<batch-id>` (relative to repo root) |
+| `--output` | Ask for an explicit archival path; do not default to `legacy-migration-pipeline/extracted_data` |
 | `--format` | `csv` (the only format consumed by the import pipeline) |
 | `--schema` | `raw_legacy` (always correct) |
 | `--tenant-id` | `00000000-0000-0000-0000-000000000001` (DEFAULT_TENANT_ID) |
 
-Only stop and ask if the operator wants to override a derived value.
+Only auto-derive `--batch-id`, `--format`, `--schema`, and `--tenant-id`. Always ask for an explicit archival `--output` path.
 
 ### Suggested execution flow
 
-1. Read the requested phase in [the command map](./command-map.md). `extract` (phase 0) is the entry point when starting from a raw SQL dump; `stage` (phase 1) is the entry point when CSV files already exist.
+1. Read the requested phase in [the command map](./command-map.md). `extract` (phase 0) is the entry point when starting from a raw SQL dump; `stage` (phase 1) is the entry point when archival CSV files already exist.
 2. If the operator needs syntax or available flags, run the corresponding `--help` command first.
 3. If the phase writes data or files, apply the confirmation checklist from [the safety and validation guide](./safety-and-validation.md).
 4. Run the reviewed CLI command.

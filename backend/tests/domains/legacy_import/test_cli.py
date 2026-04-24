@@ -59,6 +59,19 @@ def test_stage_cli_invokes_stage_import(monkeypatch, capsys) -> None:
     assert "tbscust: 2 rows" in output
 
 
+def test_stage_cli_reports_missing_dump_source_dir(monkeypatch, capsys) -> None:
+    async def fake_run_stage_import(**kwargs):
+        raise ValueError("Dump-era file import requires an explicit --source-dir or LEGACY_IMPORT_DATA_DIR.")
+
+    monkeypatch.setattr(cli, "run_stage_import", fake_run_stage_import)
+
+    result = cli.main(["stage", "--batch-id", "batch-001"])
+    captured = capsys.readouterr()
+
+    assert result == 1
+    assert "Dump-era file import requires an explicit --source-dir" in captured.err
+
+
 def test_live_stage_cli_invokes_live_stage_import(monkeypatch, capsys) -> None:
     async def fake_run_live_stage_import(**kwargs):
         assert kwargs["batch_id"] == "batch-live-001"
@@ -370,6 +383,19 @@ def test_currency_import_cli_invokes_import(monkeypatch, capsys, tmp_path: Path)
     assert result == 0
     assert "Imported 6 currencies" in output
     assert "default=TWD" in output
+
+
+def test_currency_import_cli_reports_missing_dump_export_dir(monkeypatch, capsys) -> None:
+    async def fake_run_currency_import(**kwargs):
+        raise ValueError("Dump-era file import requires an explicit --export-dir or LEGACY_IMPORT_DATA_DIR.")
+
+    monkeypatch.setattr(cli, "run_currency_import", fake_run_currency_import)
+
+    result = cli.main(["currency-import"])
+    captured = capsys.readouterr()
+
+    assert result == 1
+    assert "Dump-era file import requires an explicit --export-dir" in captured.err
 
 
 def test_ap_payment_import_cli_invokes_import(monkeypatch, capsys) -> None:

@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy.dialects import postgresql
 
 import domains.legacy_import.currency as currency
+from domains.legacy_import import shared as legacy_shared
 
 
 class FakeSession:
@@ -177,3 +178,13 @@ async def test_run_currency_import_upserts_settings_and_tracks_attempt(
         for statement in statements
     )
     assert any("currency.default" in statement and "TWD" in statement for statement in statements)
+
+
+@pytest.mark.asyncio
+async def test_run_currency_import_requires_explicit_export_dir_when_not_configured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(legacy_shared.settings, "legacy_import_data_dir", "")
+
+    with pytest.raises(ValueError, match="Dump-era file import requires an explicit --export-dir"):
+        await currency.run_currency_import(batch_id="currency-settings")

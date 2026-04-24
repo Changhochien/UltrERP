@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from domains.legacy_import import staging
+from domains.legacy_import import shared as legacy_shared
 from domains.legacy_import.staging import (
     DiscoveredLegacyTable,
     LegacySourceColumnMetadata,
@@ -1477,6 +1478,16 @@ async def test_stage_table_fails_on_purchase_supplier_fk_violation(tmp_path: Pat
             schema_name="raw_legacy",
             batch_id="batch-016",
         )
+
+
+@pytest.mark.asyncio
+async def test_run_stage_import_requires_explicit_source_dir_when_not_configured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(legacy_shared.settings, "legacy_import_data_dir", "")
+
+    with pytest.raises(ValueError, match="Dump-era file import requires an explicit --source-dir"):
+        await staging.run_stage_import(batch_id="batch-missing-source")
 
 
 @pytest.mark.asyncio

@@ -1,5 +1,7 @@
 # Legacy Import Command Map
 
+This command map is archival or break-glass for dump-era workflows. The routine operator path is the live legacy DB flow in sections 8-10: `run_legacy_refresh`, scheduled shadow refresh, and promotion evaluation.
+
 Run every legacy-import command from the backend directory so the repo uses the reviewed `uv` environment and import paths.
 
 ## Stable Invocation Path
@@ -57,7 +59,9 @@ cd backend && uv run python -m domains.legacy_import.cli extract \
 ```
 
 This is the entry point when starting from a raw SQL dump. It has no database
-dependency. Re-running overwrites the output directory. After extraction, use `stage`
+dependency. Re-running overwrites the output directory. Use an explicit archival output
+directory; do not treat `legacy-migration-pipeline/extracted_data` as the default
+working location. After extraction, use `stage`
 (phase 1) to load the CSVs into the staging schema.
 
 ### 1. Stage extracted legacy CSVs into raw staging
@@ -75,6 +79,9 @@ Optional repeatable scope limiter:
 ```bash
   --table <table-name>
 ```
+
+Pass `--source-dir` explicitly unless `LEGACY_IMPORT_DATA_DIR` is intentionally set to
+an archival dump directory.
 
 ### 1A. Stage directly from the live legacy DB over Tailscale
 

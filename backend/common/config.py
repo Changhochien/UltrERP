@@ -576,10 +576,10 @@ class Settings(BaseSettings):
 		},
 	)
 	legacy_import_data_dir: str = Field(
-		default=str(PROJECT_ROOT / "legacy-migration-pipeline" / "extracted_data"),
+		default="",
 		validation_alias=AliasChoices("LEGACY_IMPORT_DATA_DIR", "legacy_import_data_dir"),
 		json_schema_extra={
-			"description": "Directory containing legacy import data files",
+			"description": "Optional archival dump directory for file-based legacy import commands",
 			"category": "legacy_import",
 			"is_sensitive": False,
 			"value_type": "str",

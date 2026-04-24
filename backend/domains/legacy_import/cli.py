@@ -60,7 +60,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Load extracted legacy CSVs into the raw staging schema",
     )
     stage_parser.add_argument("--batch-id", required=True, help="Deterministic batch identifier")
-    stage_parser.add_argument("--source-dir", help="Override legacy export directory")
+    stage_parser.add_argument(
+        "--source-dir",
+        help="Legacy export directory (required unless LEGACY_IMPORT_DATA_DIR is set)",
+    )
     stage_parser.add_argument("--schema", help="Override target raw schema name")
     stage_parser.add_argument(
         "--tenant-id",
@@ -241,7 +244,7 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         help=(
             "Directory containing tbscurrency.csv "
-            "(defaults to the configured legacy import directory)"
+			"(required unless LEGACY_IMPORT_DATA_DIR is set)"
         ),
     )
     currency_parser.add_argument(
@@ -331,13 +334,17 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 async def _run_stage(args: argparse.Namespace) -> int:
-    result = await run_stage_import(
-        batch_id=args.batch_id,
-        source_dir=args.source_dir,
-        selected_tables=tuple(args.tables or ()),
-        tenant_id=args.tenant_id,
-        schema_name=args.schema,
-    )
+    try:
+        result = await run_stage_import(
+            batch_id=args.batch_id,
+            source_dir=args.source_dir,
+            selected_tables=tuple(args.tables or ()),
+            tenant_id=args.tenant_id,
+            schema_name=args.schema,
+        )
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
     _print_stage_summary(result)
     return 0
 
@@ -426,11 +433,15 @@ async def _run_import_category_review(args: argparse.Namespace) -> int:
 
 
 async def _run_currency_import(args: argparse.Namespace) -> int:
-    result = await run_currency_import(
-        batch_id=args.batch_id,
-        export_dir=args.export_dir,
-        tenant_id=args.tenant_id,
-    )
+    try:
+        result = await run_currency_import(
+            batch_id=args.batch_id,
+            export_dir=args.export_dir,
+            tenant_id=args.tenant_id,
+        )
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
     _print_currency_import_summary(result)
     return 0
 

@@ -10,10 +10,10 @@ from pathlib import Path
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 
-from common.config import settings
 from common.database import AsyncSessionLocal
 from common.models.legacy_import import LegacyImportRun, LegacyImportTableRun
 from common.tenant import DEFAULT_TENANT_ID
+from domains.legacy_import.shared import resolve_dump_data_dir
 from domains.legacy_import.staging import iter_legacy_rows
 from domains.settings.models import AppSetting
 
@@ -211,7 +211,7 @@ async def run_currency_import(
     export_dir: Path | None = None,
     tenant_id: uuid.UUID = DEFAULT_TENANT_ID,
 ) -> CurrencyImportResult:
-    resolved_export_dir = Path(export_dir or settings.legacy_import_data_dir)
+    resolved_export_dir = resolve_dump_data_dir(export_dir, argument_name="--export-dir")
     source = _load_currency_source(resolved_export_dir)
     attempt_number: int | None = None
 

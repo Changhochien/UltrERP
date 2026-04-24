@@ -1,10 +1,10 @@
 ---
 name: legacy-import
-description: Guide the reviewed UltrERP legacy-import workflow through the stable backend CLI. Use when asked to extract a raw SQL dump, plan, stage from files or the live legacy DB, normalize, export or import product review CSVs, map products, run canonical import, or validate a legacy import batch.
+description: Guide the reviewed UltrERP legacy-import workflow through the stable backend CLI. Default to the live legacy DB path for routine refreshes; use dump extraction or file-based staging only when the operator explicitly starts from an archival SQL dump or preserved CSV export.
 argument-hint: "[phase] --batch-id <batch-id> [--schema raw_legacy] [--tenant-id <uuid>]"
 ---
 
-Use this skill when the operator wants to run or plan the reviewed legacy-import workflow, starting from a raw SQL dump file, already-extracted CSV files, or the live legacy PostgreSQL source over Tailscale.
+Use this skill when the operator wants to run or plan the reviewed legacy-import workflow. The routine operator path is the live legacy PostgreSQL source over Tailscale plus the reviewed refresh and promotion surfaces. Dump extraction and file-based staging are archival or break-glass paths only.
 
 This skill is an orchestration wrapper around the backend CLI. Do not reimplement import business logic in Markdown, Python snippets, or ad hoc shell pipelines. Always route workflow execution through the reviewed CLI in [the command map](./command-map.md).
 
@@ -26,7 +26,7 @@ Use these operating rules:
 
 Suggested execution flow:
 
-1. Read the requested phase in [the command map](./command-map.md). `extract` (phase 0) is the entry point when starting from a raw SQL dump; `stage` (phase 1) is the entry point when CSV files already exist; `live-stage` is the entry point when the operator wants to stage directly from the live legacy DB.
+1. Read the requested phase in [the command map](./command-map.md). Prefer the live-source and reviewed refresh surfaces for routine work. Use `extract` (phase 0) only when starting from a raw SQL dump, `stage` (phase 1) only when archival CSV files already exist, and `live-stage` when the operator wants to stage directly from the live legacy DB.
 2. If the operator needs syntax or available flags, run the corresponding `--help` command first.
 3. If the phase writes data or files, apply the confirmation checklist from [the safety and validation guide](./safety-and-validation.md).
 4. Run the reviewed CLI command.

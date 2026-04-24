@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from pathlib import Path
 from typing import Any
+
+from common.config import settings
 
 # Domain name constants used for incremental refresh, delta discovery, and live projection.
 # These names must match the IncrementalDomainContract.name values in incremental_state.py.
@@ -34,6 +37,21 @@ def coerce_mapping(record: Mapping[str, object] | object) -> dict[str, object]:
 
 def resolve_row_identity(source_row_number: int | None, fallback: int) -> int:
     return source_row_number if source_row_number not in (None, 0) else fallback
+
+
+def resolve_dump_data_dir(explicit_path: Path | None, *, argument_name: str) -> Path:
+    if explicit_path is not None:
+        return Path(explicit_path)
+
+    configured_path = settings.legacy_import_data_dir.strip()
+    if configured_path:
+        return Path(configured_path)
+
+    raise ValueError(
+        "Dump-era file import requires an explicit "
+        f"{argument_name} or LEGACY_IMPORT_DATA_DIR. "
+        "Routine operator workflows should use live-stage or run_legacy_refresh."
+    )
 
 
 async def execute_many(

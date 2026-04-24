@@ -21,6 +21,7 @@ from common.config import settings
 from common.database import AsyncSessionLocal
 from common.models.legacy_import import LegacyImportRun, LegacyImportTableRun
 from common.tenant import DEFAULT_TENANT_ID
+from domains.legacy_import.shared import resolve_dump_data_dir
 
 _IDENTIFIER_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _MANIFEST_ROW_RE = re.compile(r"^\|\s*([a-z0-9_]+)\s*\|\s*([0-9,]+)\s*\|")
@@ -1648,7 +1649,7 @@ async def run_stage_import(
     tenant_id: uuid.UUID = DEFAULT_TENANT_ID,
     schema_name: str | None = None,
 ) -> StageBatchResult:
-    resolved_source_dir = Path(source_dir or settings.legacy_import_data_dir)
+    resolved_source_dir = resolve_dump_data_dir(source_dir, argument_name="--source-dir")
     return await run_stage_import_from_source(
         batch_id=batch_id,
         source=FileLegacyStageSourceAdapter(resolved_source_dir),
