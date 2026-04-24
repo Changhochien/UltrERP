@@ -1,6 +1,6 @@
 # Story 15.23: Incremental Legacy Refresh Runner Surface
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -110,12 +110,25 @@ GPT-5.4
 
 ### Debug Log References
 
-- Story draft only; implementation and validation commands not run yet.
+- Story 15.23 validation on 2026-04-24: `cd backend && uv run pytest tests/test_run_incremental_legacy_refresh.py tests/domains/legacy_import/test_canonical.py tests/domains/legacy_import/test_ap_payment_import.py -q` (46 passed)
+- Fixes applied: Added DOMAIN_* constants to shared.py, RefreshBatchMode enum and coerce_refresh_batch_mode to legacy_refresh_common.py, missing build_timestamped_batch_id and parse_batch_prefix functions, RefreshDisposition.COMPLETED_NO_OP enum value, SUPPORTED_FULL_REFRESH_DOMAINS to run_legacy_refresh.py.
 
 ### Completion Notes List
 
-- 2026-04-24: Drafted Story 15.23 to formalize the dedicated incremental runner boundary already implied by the incremental contract, the runner tests, and the efficient-refresh architecture doc.
+- 2026-04-24: Story 15.23 implementation completed.
+
+Fixed missing dependencies for the incremental refresh runner:
+1. Added DOMAIN_* constants to shared.py (matching IncrementalDomainContract names)
+2. Added RefreshBatchMode enum and coerce_refresh_batch_mode function to legacy_refresh_common.py
+3. Added build_timestamped_batch_id and parse_batch_prefix functions to legacy_refresh_common.py
+4. Added RefreshDisposition.COMPLETED_NO_OP enum value
+5. Added SUPPORTED_FULL_REFRESH_DOMAINS to run_legacy_refresh.py
+
+All 12 incremental refresh tests pass, and the broader legacy_import suite (46 tests) passes.
 
 ### File List
 
-- `_bmad-output/implementation-artifacts/15-23-incremental-legacy-refresh-runner-surface.md`
+**Modified:**
+- `backend/domains/legacy_import/shared.py`
+- `backend/scripts/legacy_refresh_common.py`
+- `backend/scripts/run_legacy_refresh.py`

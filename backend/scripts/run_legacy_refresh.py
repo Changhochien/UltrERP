@@ -22,6 +22,14 @@ from domains.legacy_import.mapping import (
 )
 from domains.legacy_import.normalization import run_normalization
 from domains.legacy_import.promotion_policy import evaluate_promotion_policy_from_summary
+from domains.legacy_import.shared import (
+    DOMAIN_INVENTORY,
+    DOMAIN_PARTIES,
+    DOMAIN_PRODUCTS,
+    DOMAIN_PURCHASE_INVOICES,
+    DOMAIN_SALES,
+    DOMAIN_WAREHOUSES,
+)
 from domains.legacy_import.staging import run_live_stage_import
 from domains.legacy_import.validation import validate_import_batch
 from scripts.backfill_purchase_receipts import backfill as backfill_purchase_receipts
@@ -36,10 +44,21 @@ from scripts.legacy_refresh_common import (
 )
 from scripts.verify_reconciliation import verify as verify_reconciliation
 
-
 register_all_models()
 
 DEFAULT_SUMMARY_ROOT = PROJECT_ROOT / "_bmad-output" / "operations" / "legacy-refresh"
+
+SUPPORTED_FULL_REFRESH_DOMAINS = frozenset(
+    {
+        DOMAIN_PARTIES,
+        DOMAIN_PRODUCTS,
+        DOMAIN_WAREHOUSES,
+        DOMAIN_INVENTORY,
+        DOMAIN_SALES,
+        DOMAIN_PURCHASE_INVOICES,
+    }
+)
+
 STEP_ORDER = (
     "live-stage",
     "normalize",

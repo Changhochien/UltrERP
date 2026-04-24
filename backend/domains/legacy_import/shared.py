@@ -5,6 +5,26 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+# Domain name constants used for incremental refresh, delta discovery, and live projection.
+# These names must match the IncrementalDomainContract.name values in incremental_state.py.
+DOMAIN_PARTIES = "parties"
+DOMAIN_PRODUCTS = "products"
+DOMAIN_WAREHOUSES = "warehouses"
+DOMAIN_INVENTORY = "inventory"
+DOMAIN_SALES = "sales"
+DOMAIN_PURCHASE_INVOICES = "purchase-invoices"
+
+SUPPORTED_INCREMENTAL_DOMAINS = frozenset(
+    {
+        DOMAIN_PARTIES,
+        DOMAIN_PRODUCTS,
+        DOMAIN_WAREHOUSES,
+        DOMAIN_INVENTORY,
+        DOMAIN_SALES,
+        DOMAIN_PURCHASE_INVOICES,
+    }
+)
+
 
 def coerce_mapping(record: Mapping[str, object] | object) -> dict[str, object]:
     if isinstance(record, Mapping):
