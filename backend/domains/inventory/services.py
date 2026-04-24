@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import uuid
 from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
@@ -10,8 +9,6 @@ from typing import TYPE_CHECKING, Any, cast
 
 from sqlalchemy import and_, asc, case, desc, distinct, func, literal, or_, select, text, update
 from sqlalchemy.exc import IntegrityError, ProgrammingError
-
-_logger = logging.getLogger(__name__)
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, selectinload
 
@@ -41,7 +38,6 @@ from common.models.supplier_order import SupplierOrder, SupplierOrderLine, Suppl
 from common.models.unit_of_measure import UnitOfMeasure
 from common.models.warehouse import Warehouse
 from common.time import today, utc_now
-from domains.product_analytics.service import read_sales_monthly_range
 
 if TYPE_CHECKING:
     from domains.inventory.schemas import (
@@ -3884,10 +3880,6 @@ async def get_monthly_demand(
     Uses Asia/Taipei timezone for date truncation to match the business timezone.
     """
     twelve_months_ago = utc_now().replace(day=1) - __import__("datetime").timedelta(days=365)
-    _logger.warning(
-        f"[DEBUG get_monthly_demand] product_id={product_id}, "
-        f"twelve_months_ago={twelve_months_ago}, tenant_id={tenant_id}"
-    )
 
     # Convert to Taiwan timezone before truncating month, so month boundaries align with
     # Taiwan calendar months (UTC+8). Without this conversion, data stored with end-of-
@@ -3923,7 +3915,6 @@ async def get_monthly_demand(
         for row in rows
     ]
     total = sum(item["total_qty"] for item in items)
-    _logger.warning(f"[DEBUG get_monthly_demand] result: {items}")
     return {"items": items, "total": total}
 
 
@@ -3935,6 +3926,13 @@ async def get_planning_support(
     months: int = 12,
     include_current_month: bool = True,
 ) -> dict | None:
+    """Return planning support metrics for a product.
+
+    Calculates monthly sales quantities directly from stock_adjustment table
+    using Taiwan timezone (Asia/Taipei), consistent with the business timezone.
+    This replaces the previous approach that relied on a pre-aggregated
+    SalesMonthly table, ensuring data is always available.
+    """
     current_month_start = utc_now().date().replace(day=1)
     end_month = (
         current_month_start
@@ -3945,25 +3943,36 @@ async def get_planning_support(
     requested_months = _iter_month_starts(start_month, end_month)
     includes_current_month = include_current_month and current_month_start in requested_months
 
-    monthly_result = await read_sales_monthly_range(
-        session,
-        tenant_id,
-        start_month=start_month,
-        end_month=end_month,
-    )
+    # Calculate monthly quantities directly from stock_adjustment using Taiwan timezone.
+    # This is the same approach used by get_monthly_demand for consistency.
+    taiwan_month_expr = func.date_trunc(
+        "month",
+        func.timezone("Asia/Taipei", StockAdjustment.created_at),
+    ).label("month")
 
-    monthly_quantities: dict[date, Decimal] = {}
-    for item in monthly_result.items:
-        if item.product_id != product_id:
-            continue
-        monthly_quantities[item.month_start] = (
-            monthly_quantities.get(item.month_start, _ZERO_QUANTITY)
-            + item.quantity_sold
+    # Get all months in the window with their totals
+    stmt = (
+        select(
+            taiwan_month_expr,
+            func.sum(StockAdjustment.quantity_change).label("total_qty"),
         )
-    monthly_quantities = {
-        month_start: _quantize_quantity(quantity)
-        for month_start, quantity in monthly_quantities.items()
-    }
+        .where(
+            StockAdjustment.tenant_id == tenant_id,
+            StockAdjustment.product_id == product_id,
+            StockAdjustment.reason_code == ReasonCode.SALES_RESERVATION,
+        )
+        .group_by(taiwan_month_expr)
+    )
+    result = await session.execute(stmt)
+    rows = result.all()
+
+    # Build a dict of month_start -> quantity (absolute value for display)
+    monthly_quantities: dict[date, Decimal] = {}
+    for row in rows:
+        month_start = row.month.date() if hasattr(row.month, 'date') else row.month
+        if start_month <= month_start <= end_month:
+            # quantity_change is negative for sales, take absolute value for display
+            monthly_quantities[month_start] = abs(_quantize_quantity(row.total_qty or 0))
 
     product_exists = await session.scalar(
         select(Product.id).where(
