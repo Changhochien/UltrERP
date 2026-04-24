@@ -112,8 +112,9 @@ Shadow-mode exists to prove correctness before cutover, not to approximate succe
 - The reviewed operator entry point for a full live shadow refresh is
   `cd backend && uv run python -m scripts.run_legacy_refresh ...`.
 - It runs the live-stage, normalize, map-products, optional review export/import,
-  canonical-import, validate-import, stock backfills, and reconciliation report in one
-  controlled order, then writes a machine-readable summary under
+  canonical-import, validate-import, the closed-month `sales_monthly` refresh,
+  stock backfills, and reconciliation report in one controlled order, then writes
+  a machine-readable summary under
   `_bmad-output/operations/legacy-refresh/`.
 - Each summary now carries one shared `promotion_policy` record with explicit
   `classification` (`eligible`, `blocked`, or `exception-required`),

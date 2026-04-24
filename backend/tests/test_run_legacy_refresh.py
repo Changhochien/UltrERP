@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
+from datetime import date
 from pathlib import Path
 
 from domains.legacy_import.canonical import CanonicalImportResult
@@ -22,6 +23,8 @@ from domains.legacy_import.validation import (
     MigrationValidationReport,
     ProductMappingValidationSummary,
 )
+from scripts.legacy_refresh_common import RefreshBatchMode
+from scripts.refresh_sales_monthly import SalesMonthlyHistoryRefreshResult
 from scripts import run_legacy_refresh as refresh
 
 TENANT_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
@@ -139,6 +142,26 @@ def _validation_result(
     )
 
 
+def _sales_monthly_result(
+    *,
+    batch_mode: str = "full",
+    affected_domains: tuple[str, ...] = (),
+    skipped_reason: str | None = None,
+) -> SalesMonthlyHistoryRefreshResult:
+    return SalesMonthlyHistoryRefreshResult(
+        batch_mode=batch_mode,
+        affected_domains=affected_domains,
+        start_month=None if skipped_reason else date(2024, 1, 1),
+        end_month=None if skipped_reason else date(2026, 3, 1),
+        refreshed_month_count=0 if skipped_reason else 27,
+        total_upserted_row_count=0 if skipped_reason else 42,
+        total_deleted_row_count=0,
+        skipped_line_count=0,
+        cleared_row_count=0,
+        skipped_reason=skipped_reason,
+    )
+
+
 def test_run_legacy_refresh_orders_steps_and_marks_review_required(
     monkeypatch,
     tmp_path: Path,
@@ -187,17 +210,40 @@ def test_run_legacy_refresh_orders_steps_and_marks_review_required(
         events.append("validate-import")
         return _validation_result(batch_id, validation_dir)
 
-    async def fake_backfill_purchase_receipts(*, lookback_days: int, dry_run: bool, tenant_id):
+    async def fake_refresh_closed_sales_monthly_history(**kwargs):
+        events.append("refresh_sales_monthly")
+        assert kwargs["tenant_id"] == TENANT_ID
+        return _sales_monthly_result()
+
+    async def fake_backfill_purchase_receipts(
+        *,
+        lookback_days: int,
+        dry_run: bool,
+        tenant_id,
+        entity_scope=None,
+        affected_domains=None,
+    ):
         events.append("backfill_purchase_receipts")
         assert lookback_days == 10000
         assert dry_run is False
         assert tenant_id == TENANT_ID
+        assert entity_scope is None
+        assert affected_domains is None
 
-    async def fake_backfill_sales_reservations(*, lookback_days: int, dry_run: bool, tenant_id):
+    async def fake_backfill_sales_reservations(
+        *,
+        lookback_days: int,
+        dry_run: bool,
+        tenant_id,
+        entity_scope=None,
+        affected_domains=None,
+    ):
         events.append("backfill_sales_reservations")
         assert lookback_days == 10000
         assert dry_run is False
         assert tenant_id == TENANT_ID
+        assert entity_scope is None
+        assert affected_domains is None
 
     async def fake_verify_reconciliation(*, tenant_id):
         events.append("verify_reconciliation")
@@ -214,6 +260,11 @@ def test_run_legacy_refresh_orders_steps_and_marks_review_required(
     )
     monkeypatch.setattr(refresh, "run_canonical_import", fake_run_canonical_import)
     monkeypatch.setattr(refresh, "validate_import_batch", fake_validate_import_batch)
+    monkeypatch.setattr(
+        refresh,
+        "refresh_closed_sales_monthly_history",
+        fake_refresh_closed_sales_monthly_history,
+    )
     monkeypatch.setattr(refresh, "backfill_purchase_receipts", fake_backfill_purchase_receipts)
     monkeypatch.setattr(refresh, "backfill_sales_reservations", fake_backfill_sales_reservations)
     monkeypatch.setattr(refresh, "verify_reconciliation", fake_verify_reconciliation)
@@ -238,6 +289,7 @@ def test_run_legacy_refresh_orders_steps_and_marks_review_required(
         "export-product-review",
         "canonical-import",
         "validate-import",
+        "refresh_sales_monthly",
         "backfill_purchase_receipts",
         "backfill_sales_reservations",
         "verify_reconciliation",
@@ -253,6 +305,7 @@ def test_run_legacy_refresh_orders_steps_and_marks_review_required(
         "import-product-review",
         "canonical-import",
         "validate-import",
+        "refresh_sales_monthly",
         "backfill_purchase_receipts",
         "backfill_sales_reservations",
         "verify_reconciliation",
@@ -304,6 +357,9 @@ def test_run_legacy_refresh_stops_after_blocked_validation(
             blocking_issue_count=2,
         )
 
+    async def fail_sales_monthly(**kwargs):
+        raise AssertionError("sales monthly refresh should not run after blocked validation")
+
     async def fail_backfill(**kwargs):
         raise AssertionError("backfill should not run after blocked validation")
 
@@ -312,6 +368,7 @@ def test_run_legacy_refresh_stops_after_blocked_validation(
     monkeypatch.setattr(refresh, "run_product_mapping_seed", fake_run_product_mapping_seed)
     monkeypatch.setattr(refresh, "run_canonical_import", fake_run_canonical_import)
     monkeypatch.setattr(refresh, "validate_import_batch", fake_validate_import_batch)
+    monkeypatch.setattr(refresh, "refresh_closed_sales_monthly_history", fail_sales_monthly)
     monkeypatch.setattr(refresh, "backfill_purchase_receipts", fail_backfill)
     monkeypatch.setattr(refresh, "backfill_sales_reservations", fail_backfill)
 
@@ -347,6 +404,7 @@ def test_run_legacy_refresh_stops_after_blocked_validation(
     assert summary["steps"][7]["status"] == "skipped"
     assert summary["steps"][8]["status"] == "skipped"
     assert summary["steps"][9]["status"] == "skipped"
+    assert summary["steps"][10]["status"] == "skipped"
 
 
 def test_run_legacy_refresh_blocks_on_reconciliation_threshold(
@@ -378,6 +436,10 @@ def test_run_legacy_refresh_blocks_on_reconciliation_threshold(
         events.append("validate-import")
         return _validation_result(batch_id, validation_dir)
 
+    async def fake_refresh_closed_sales_monthly_history(**kwargs):
+        events.append("refresh_sales_monthly")
+        return _sales_monthly_result()
+
     async def fake_backfill_purchase_receipts(**kwargs):
         events.append("backfill_purchase_receipts")
 
@@ -393,6 +455,11 @@ def test_run_legacy_refresh_blocks_on_reconciliation_threshold(
     monkeypatch.setattr(refresh, "run_product_mapping_seed", fake_run_product_mapping_seed)
     monkeypatch.setattr(refresh, "run_canonical_import", fake_run_canonical_import)
     monkeypatch.setattr(refresh, "validate_import_batch", fake_validate_import_batch)
+    monkeypatch.setattr(
+        refresh,
+        "refresh_closed_sales_monthly_history",
+        fake_refresh_closed_sales_monthly_history,
+    )
     monkeypatch.setattr(refresh, "backfill_purchase_receipts", fake_backfill_purchase_receipts)
     monkeypatch.setattr(refresh, "backfill_sales_reservations", fake_backfill_sales_reservations)
     monkeypatch.setattr(refresh, "verify_reconciliation", fake_verify_reconciliation)
@@ -412,7 +479,8 @@ def test_run_legacy_refresh_blocks_on_reconciliation_threshold(
     summary = json.loads(execution.summary_path.read_text(encoding="utf-8"))
 
     assert execution.exit_code == 1
-    assert events[-3:] == [
+    assert events[-4:] == [
+        "refresh_sales_monthly",
         "backfill_purchase_receipts",
         "backfill_sales_reservations",
         "verify_reconciliation",
@@ -490,6 +558,9 @@ def test_run_legacy_refresh_same_batch_rerun_writes_new_summary(
     async def fake_validate_import_batch(**kwargs):
         return _validation_result(batch_id, validation_dir)
 
+    async def fake_refresh_closed_sales_monthly_history(**kwargs):
+        return _sales_monthly_result()
+
     async def fake_backfill_purchase_receipts(**kwargs):
         return None
 
@@ -504,6 +575,11 @@ def test_run_legacy_refresh_same_batch_rerun_writes_new_summary(
     monkeypatch.setattr(refresh, "run_product_mapping_seed", fake_run_product_mapping_seed)
     monkeypatch.setattr(refresh, "run_canonical_import", fake_run_canonical_import)
     monkeypatch.setattr(refresh, "validate_import_batch", fake_validate_import_batch)
+    monkeypatch.setattr(
+        refresh,
+        "refresh_closed_sales_monthly_history",
+        fake_refresh_closed_sales_monthly_history,
+    )
     monkeypatch.setattr(refresh, "backfill_purchase_receipts", fake_backfill_purchase_receipts)
     monkeypatch.setattr(refresh, "backfill_sales_reservations", fake_backfill_sales_reservations)
     monkeypatch.setattr(refresh, "verify_reconciliation", fake_verify_reconciliation)
@@ -569,6 +645,9 @@ def test_run_legacy_refresh_marks_the_actual_failed_backfill_step(
     async def fake_validate_import_batch(**kwargs):
         return _validation_result(batch_id, validation_dir)
 
+    async def fake_refresh_closed_sales_monthly_history(**kwargs):
+        return _sales_monthly_result()
+
     async def fake_backfill_purchase_receipts(**kwargs):
         return None
 
@@ -580,6 +659,11 @@ def test_run_legacy_refresh_marks_the_actual_failed_backfill_step(
     monkeypatch.setattr(refresh, "run_product_mapping_seed", fake_run_product_mapping_seed)
     monkeypatch.setattr(refresh, "run_canonical_import", fake_run_canonical_import)
     monkeypatch.setattr(refresh, "validate_import_batch", fake_validate_import_batch)
+    monkeypatch.setattr(
+        refresh,
+        "refresh_closed_sales_monthly_history",
+        fake_refresh_closed_sales_monthly_history,
+    )
     monkeypatch.setattr(refresh, "backfill_purchase_receipts", fake_backfill_purchase_receipts)
     monkeypatch.setattr(refresh, "backfill_sales_reservations", fake_backfill_sales_reservations)
 
@@ -599,6 +683,86 @@ def test_run_legacy_refresh_marks_the_actual_failed_backfill_step(
 
     assert execution.exit_code == 1
     assert summary["failed_step"] == "backfill_sales_reservations"
-    assert summary["steps"][7]["status"] == "completed"
-    assert summary["steps"][8]["status"] == "failed"
-    assert summary["steps"][8]["error"] == "sales backfill exploded"
+    assert summary["steps"][8]["status"] == "completed"
+    assert summary["steps"][9]["status"] == "failed"
+    assert summary["steps"][9]["error"] == "sales backfill exploded"
+
+
+def test_run_legacy_refresh_skips_sales_monthly_when_incremental_scope_excludes_sales(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    batch_id = "legacy-incremental-001"
+    validation_dir = tmp_path / "validation"
+    validation_dir.mkdir()
+
+    async def fake_live_stage_import(**kwargs):
+        return _stage_result(batch_id)
+
+    async def fake_run_normalization(**kwargs):
+        return _normalize_result(batch_id)
+
+    async def fake_run_product_mapping_seed(**kwargs):
+        return _mapping_result(batch_id, unknown_count=0)
+
+    async def fake_run_canonical_import(**kwargs):
+        return _canonical_result(batch_id)
+
+    async def fake_validate_import_batch(**kwargs):
+        return _validation_result(batch_id, validation_dir)
+
+    async def fake_refresh_closed_sales_monthly_history(**kwargs):
+        assert kwargs["batch_mode"] == RefreshBatchMode.INCREMENTAL
+        assert kwargs["affected_domains"] == ("products",)
+        return _sales_monthly_result(
+            batch_mode="incremental",
+            affected_domains=("products",),
+            skipped_reason="sales_domain_not_affected",
+        )
+
+    async def fake_backfill_purchase_receipts(**kwargs):
+        return None
+
+    async def fake_backfill_sales_reservations(**kwargs):
+        return None
+
+    async def fake_verify_reconciliation(**kwargs):
+        return 0
+
+    monkeypatch.setattr(refresh, "run_live_stage_import", fake_live_stage_import)
+    monkeypatch.setattr(refresh, "run_normalization", fake_run_normalization)
+    monkeypatch.setattr(refresh, "run_product_mapping_seed", fake_run_product_mapping_seed)
+    monkeypatch.setattr(refresh, "run_canonical_import", fake_run_canonical_import)
+    monkeypatch.setattr(refresh, "validate_import_batch", fake_validate_import_batch)
+    monkeypatch.setattr(
+        refresh,
+        "refresh_closed_sales_monthly_history",
+        fake_refresh_closed_sales_monthly_history,
+    )
+    monkeypatch.setattr(refresh, "backfill_purchase_receipts", fake_backfill_purchase_receipts)
+    monkeypatch.setattr(refresh, "backfill_sales_reservations", fake_backfill_sales_reservations)
+    monkeypatch.setattr(refresh, "verify_reconciliation", fake_verify_reconciliation)
+
+    execution = asyncio.run(
+        refresh.run_legacy_refresh(
+            batch_id=batch_id,
+            tenant_id=TENANT_ID,
+            schema_name="raw_legacy",
+            source_schema="public",
+            lookback_days=10000,
+            reconciliation_threshold=0,
+            summary_root=tmp_path / "operations",
+            batch_mode=RefreshBatchMode.INCREMENTAL,
+            affected_domains=("products",),
+        )
+    )
+
+    summary = json.loads(execution.summary_path.read_text(encoding="utf-8"))
+    sales_step = next(
+        step for step in summary["steps"] if step["name"] == "refresh_sales_monthly"
+    )
+
+    assert execution.exit_code == 0
+    assert sales_step["status"] == "skipped"
+    assert sales_step["details"]["reason"] == "sales_domain_not_affected"
+    assert sales_step["details"]["affected_domains"] == ["products"]

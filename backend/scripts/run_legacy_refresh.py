@@ -34,6 +34,7 @@ from domains.legacy_import.staging import run_live_stage_import
 from domains.legacy_import.validation import validate_import_batch
 from scripts.backfill_purchase_receipts import backfill as backfill_purchase_receipts
 from scripts.backfill_sales_reservations import backfill as backfill_sales_reservations
+from scripts.refresh_sales_monthly import refresh_closed_sales_monthly_history
 from scripts.legacy_refresh_common import (
     RefreshBatchMode,
     RefreshDisposition,
@@ -68,6 +69,7 @@ STEP_ORDER = (
     "import-product-review",
     "canonical-import",
     "validate-import",
+    "refresh_sales_monthly",
     "backfill_purchase_receipts",
     "backfill_sales_reservations",
     "verify_reconciliation",
@@ -743,6 +745,55 @@ async def run_legacy_refresh(
                 "validate-import",
                 details=validation_details,
             )
+
+            sales_monthly_result = await _execute_step(
+                summary,
+                step_records,
+                steps_by_name,
+                "refresh_sales_monthly",
+                lambda: refresh_closed_sales_monthly_history(
+                    tenant_id=tenant_id,
+                    batch_mode=normalized_batch_mode,
+                    affected_domains=affected_domains,
+                ),
+                partial_state_preserved=True,
+                complete_on_success=False,
+            )
+            sales_monthly_details = {
+                "batch_mode": sales_monthly_result.batch_mode,
+                "affected_domains": list(sales_monthly_result.affected_domains),
+                "start_month": (
+                    sales_monthly_result.start_month.isoformat()
+                    if sales_monthly_result.start_month is not None
+                    else None
+                ),
+                "end_month": (
+                    sales_monthly_result.end_month.isoformat()
+                    if sales_monthly_result.end_month is not None
+                    else None
+                ),
+                "refreshed_month_count": sales_monthly_result.refreshed_month_count,
+                "total_upserted_row_count": sales_monthly_result.total_upserted_row_count,
+                "total_deleted_row_count": sales_monthly_result.total_deleted_row_count,
+                "skipped_line_count": sales_monthly_result.skipped_line_count,
+                "cleared_row_count": sales_monthly_result.cleared_row_count,
+                "skipped_reason": sales_monthly_result.skipped_reason,
+            }
+            if sales_monthly_result.skipped_reason is not None:
+                _skip_step(
+                    steps_by_name["refresh_sales_monthly"],
+                    reason=sales_monthly_result.skipped_reason,
+                )
+                steps_by_name["refresh_sales_monthly"]["details"].update(
+                    sales_monthly_details
+                )
+            else:
+                _complete_named_step(
+                    summary,
+                    steps_by_name,
+                    "refresh_sales_monthly",
+                    details=sales_monthly_details,
+                )
 
             # Story 15.27: Target-aware derived refresh calls (AC2).
             # For incremental runs, pass entity_scope and affected_domains.

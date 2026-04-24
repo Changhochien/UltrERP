@@ -1,0 +1,10 @@
+{
+  "batch_id": "legacy-incremental-20260424T093252Z",
+  "job_id": "89e9d041-ae8e-4674-a7f2-c7edbfe9b15a",
+  "mode": "incremental",
+  "schema_name": "test_schema",
+  "source_schema": "public",
+  "started_at": "2026-04-24T09:32:52.351625+00:00",
+  "status": "running",
+  "tenant_id": "85a0afc6-4fc5-474f-b732-131250ff3bba"
+}

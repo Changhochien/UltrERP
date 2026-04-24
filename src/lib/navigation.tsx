@@ -15,6 +15,7 @@ import {
   FileBarChart,
   Package,
   FileText,
+  Lightbulb,
 } from "lucide-react";
 
 import type { AppFeature } from "../hooks/usePermissions";
@@ -316,6 +317,24 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
             to: PAYMENTS_ROUTE,
             description: "routes.payments.description",
             icon: WalletCards,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    label: "nav.intelligence",
+    sections: [
+      {
+        type: 'standard',
+        label: null,
+        items: [
+          {
+            feature: "intelligence",
+            label: "nav.intelligence",
+            to: INTELLIGENCE_ROUTE,
+            description: "routes.intelligence.description",
+            icon: Lightbulb,
           },
         ],
       },

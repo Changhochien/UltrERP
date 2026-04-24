@@ -7,7 +7,7 @@ The current scheduled refresh path is intentionally a full rebaseline path, not 
 Today the control flow is:
 
 1. `scripts.run_scheduled_legacy_shadow_refresh` calls `scripts.run_legacy_refresh`
-2. `run_legacy_refresh` performs `live-stage`, `normalize`, `map-products`, `canonical-import`, validation, stock backfills, and reconciliation
+2. `run_legacy_refresh` performs `live-stage`, `normalize`, `map-products`, `canonical-import`, validation, closed-month `sales_monthly` refresh, stock backfills, and reconciliation
 3. `--lookback-days` only scopes the stock backfill scripts after validation; it does not reduce how much source data is staged, normalized, or canonically imported
 
 This means a run that is operationally described as an update still behaves like a full refresh for the main import pipeline.
@@ -211,7 +211,7 @@ Promotion eligibility remains shared across both paths.
 
 ### 9. Downstream Derived Data Refresh
 
-Stock backfills and derived repair steps should become target-aware.
+Stock backfills, `sales_monthly`, and other derived repair steps should become target-aware.
 
 Instead of running broad backfill windows after every update, the incremental path should refresh only:
 
