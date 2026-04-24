@@ -35,6 +35,7 @@ from domains.legacy_import.validation import validate_import_batch
 from scripts.backfill_purchase_receipts import backfill as backfill_purchase_receipts
 from scripts.backfill_sales_reservations import backfill as backfill_sales_reservations
 from scripts.legacy_refresh_common import (
+    RefreshBatchMode,
     RefreshDisposition,
     RefreshGateStatus,
     RefreshStepStatus,
@@ -401,9 +402,21 @@ async def run_legacy_refresh(
     review_input_path: Path | None = None,
     approved_by: str | None = None,
     summary_root: Path | None = None,
+    # Story 15.25: incremental execution parameters
+    batch_mode: str | RefreshBatchMode | None = None,
+    affected_domains: Sequence[str] | None = None,
+    entity_scope: dict[str, dict[str, Any]] | None = None,
+    last_successful_batch_ids: dict[str, str] | None = None,
 ) -> LegacyRefreshExecution:
     if review_input_path is not None and not approved_by:
         raise ValueError("approved_by is required when review_input_path is provided")
+
+    # Story 15.25: Normalize batch_mode for summary tagging.
+    normalized_batch_mode = batch_mode
+    if normalized_batch_mode is None:
+        normalized_batch_mode = RefreshBatchMode.FULL
+    elif isinstance(normalized_batch_mode, str):
+        normalized_batch_mode = RefreshBatchMode(normalized_batch_mode.lower())
 
     resolved_summary_root = summary_root or DEFAULT_SUMMARY_ROOT
     run_id = str(uuid.uuid4())
@@ -416,6 +429,15 @@ async def run_legacy_refresh(
         reconciliation_threshold=reconciliation_threshold,
         review_input_path=review_input_path,
     )
+    # Story 15.25: Tag summary with incremental scope for operator visibility.
+    if normalized_batch_mode == RefreshBatchMode.INCREMENTAL:
+        summary["batch_mode"] = normalized_batch_mode.value
+        if affected_domains is not None:
+            summary["affected_domains"] = list(affected_domains)
+        if entity_scope is not None:
+            summary["entity_scope_domains"] = list(entity_scope.keys())
+        if last_successful_batch_ids:
+            summary["last_successful_batch_ids"] = dict(last_successful_batch_ids)
     step_records = summary["steps"]
     steps_by_name = {step["name"]: step for step in step_records}
     summary_path = _summary_path_for_run(
@@ -447,6 +469,11 @@ async def run_legacy_refresh(
                 },
             )
 
+            # Story 15.25: Determine normalization parameters based on batch mode.
+            norm_batch_mode = batch_mode
+            norm_selected_domains = affected_domains
+            norm_last_batch_ids = last_successful_batch_ids
+
             await _execute_step(
                 summary,
                 step_records,
@@ -456,6 +483,10 @@ async def run_legacy_refresh(
                     batch_id=batch_id,
                     tenant_id=tenant_id,
                     schema_name=schema_name,
+                    batch_mode=norm_batch_mode,
+                    selected_domains=norm_selected_domains,
+                    entity_scope=entity_scope,
+                    last_successful_batch_ids=norm_last_batch_ids,
                 ),
                 partial_state_preserved=True,
                 details_factory=lambda result: {
@@ -463,6 +494,7 @@ async def run_legacy_refresh(
                     "product_count": result.product_count,
                     "warehouse_count": result.warehouse_count,
                     "inventory_count": result.inventory_count,
+                    "reused_from_batch_ids": result.reused_from_batch_ids,
                 },
             )
 

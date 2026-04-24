@@ -38,6 +38,18 @@ async def test_run_normalization_rejects_unknown_batch_mode() -> None:
 
 
 @pytest.mark.asyncio
+async def test_run_normalization_incremental_rejects_invalid_domain_names() -> None:
+    with pytest.raises(ValueError, match="does not support these domain names"):
+        await normalization.run_normalization(
+            batch_id="batch-x",
+            tenant_id=TENANT_ID,
+            schema_name="raw_legacy",
+            batch_mode="incremental",
+            selected_domains=("invalid_xyz",),
+        )
+
+
+@pytest.mark.asyncio
 async def test_run_normalization_incremental_requires_selected_domains() -> None:
     with pytest.raises(ValueError, match="non-empty selected_domains"):
         await normalization.run_normalization(
@@ -187,9 +199,14 @@ async def test_carry_forward_prior_batch_parses_insert_rowcount() -> None:
     assert args == ("batch-new", TENANT_ID, "batch-prev")
     assert "INSERT INTO" in query
     assert "normalized_parties" in query
-    assert 'WHERE prior.batch_id = $3 AND prior.tenant_id = $2' in query
+    # Check WHERE clause uses the correct parameter positions.
+    assert "prior.batch_id = $3" in query
+    assert "prior.tenant_id = $2" in query
     assert "NOT EXISTS" in query
-    assert 'current."deterministic_id" = prior."deterministic_id"' in query
+    # Parties uses (tenant_id, role, legacy_code) composite key.
+    assert 'current."tenant_id" = prior."tenant_id"' in query
+    assert 'current."role" = prior."role"' in query
+    assert 'current."legacy_code" = prior."legacy_code"' in query
 
 
 @pytest.mark.asyncio
@@ -206,9 +223,14 @@ async def test_carry_forward_prior_batch_uses_all_composite_key_columns() -> Non
     )
 
     query, _args = conn.calls[0]
-    assert 'current."product_deterministic_id" = prior."product_deterministic_id"' in query
+    # Inventory uses (tenant_id, product_legacy_code, warehouse_code) composite key.
+    assert 'current."tenant_id" = prior."tenant_id"' in query
     assert (
-        'current."warehouse_deterministic_id" = prior."warehouse_deterministic_id"'
+        'current."product_legacy_code" = prior."product_legacy_code"'
+        in query
+    )
+    assert (
+        'current."warehouse_code" = prior."warehouse_code"'
         in query
     )
 
@@ -228,6 +250,81 @@ async def test_carry_forward_prior_batch_returns_zero_for_unexpected_status() ->
     )
 
     assert copied == 0
+
+
+@pytest.mark.asyncio
+async def test_incremental_carryforward_verifies_call_args(monkeypatch) -> None:
+    """Verify _carry_forward_prior_batch is called with correct domain names."""
+    connection = FakeNormalizationConnection(
+        {"tbscust": [], "tbsstock": [], "tbsstkhouse": []},
+        stage_run_rows=[
+            {
+                "tenant_id": TENANT_ID,
+                "status": "completed",
+                "batch_id": "batch-inc",
+                "target_schema": "raw_legacy",
+            }
+        ],
+    )
+
+    async def fake_open_raw_connection() -> FakeNormalizationConnection:
+        return connection
+
+    recorded_calls: list[dict[str, object]] = []
+
+    async def fake_carry_forward_prior_batch(
+        _conn,
+        _schema,
+        domain,
+        *,
+        current_batch_id: str,
+        prior_batch_id: str,
+        tenant_id: uuid.UUID,
+    ) -> int:
+        recorded_calls.append(
+            {
+                "domain": domain,
+                "current_batch_id": current_batch_id,
+                "prior_batch_id": prior_batch_id,
+                "tenant_id": tenant_id,
+            }
+        )
+        return 0
+
+    monkeypatch.setattr(normalization, "_open_raw_connection", fake_open_raw_connection)
+    monkeypatch.setattr(
+        normalization,
+        "_carry_forward_prior_batch",
+        fake_carry_forward_prior_batch,
+    )
+
+    await normalization.run_normalization(
+        batch_id="batch-inc",
+        tenant_id=TENANT_ID,
+        schema_name="raw_legacy",
+        batch_mode="incremental",
+        selected_domains=("parties", "products"),
+        last_successful_batch_ids={
+            "parties": "batch-prev-parties",
+            "products": "batch-prev-products",
+            "warehouses": "batch-prev-warehouses",
+            "inventory": "batch-prev-inventory",
+        },
+    )
+
+    # Verify the domains passed to carry_forward match the valid master domains.
+    # Carryforward is called for all master domains that don't have fresh staging
+    # and have an entry in last_successful_batch_ids.
+    recorded_domains = {call["domain"] for call in recorded_calls}
+    assert recorded_domains == _MASTER_NORMALIZATION_DOMAINS
+
+    # Verify prior_batch_ids are correctly routed per domain.
+    for call in recorded_calls:
+        domain = call["domain"]
+        prior_batch = call["prior_batch_id"]
+        assert (
+            prior_batch == f"batch-prev-{domain}"
+        ), f"Expected prior_batch_id for {domain} to be batch-prev-{domain}, got {prior_batch}"
 
 
 # ---------------------------------------------------------------------------
@@ -277,7 +374,7 @@ async def test_incremental_sales_scope_reuses_dependent_master_snapshots(
         tenant_id=TENANT_ID,
         schema_name="raw_legacy",
         batch_mode=RefreshBatchMode.INCREMENTAL,
-        selected_domains=("sales",),
+        selected_domains=("parties", "products"),
         last_successful_batch_ids={
             "parties": "batch-prev",
             "products": "batch-prev",

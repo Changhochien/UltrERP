@@ -4,18 +4,21 @@ from __future__ import annotations
 
 import re
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal, InvalidOperation
-from typing import Mapping
+from typing import Any, Mapping, Sequence
 
 from common.config import settings
 from common.tenant import DEFAULT_TENANT_ID
 from domains.legacy_import.shared import (
     coerce_mapping as _coerce_mapping,
+)
+from domains.legacy_import.shared import (
     execute_many as _execute_many,
 )
 from domains.legacy_import.staging import _open_raw_connection, _quoted_identifier
+from scripts.legacy_refresh_common import RefreshBatchMode
 
 _NAMESPACE = uuid.UUID("4e59177d-61e5-48f4-b1f8-6b2141739ab9")
 _DEFAULT_WAREHOUSE_CODE = "LEGACY_DEFAULT"
@@ -127,10 +130,13 @@ _TIMING_CODE_PREFIXES = (
     "8YU",
 )
 _TIMING_SERIES_RE = re.compile(
-    r"^(?:(?:S)?\d{1,2}(?:\.\d+)?M(?:[-*]|$)|\d+XL(?:[-*]|$)|\d+H(?:[-*]|$)|\d+GT(?:[-* ]|$)|\d+-\d+M(?:[-*]|$))"
+    r"^(?:(?:S)?\d{1,2}(?:\.\d+)?M(?:[-*]|$)|\d+XL(?:[-*]|$)"
+    r"|\d+H(?:[-*]|$)|\d+GT(?:[-* ]|$)|\d+-\d+M(?:[-*]|$))"
 )
 _TIMING_PITCH_RE = re.compile(r"(?:^| )(?:S)?\d{1,2}(?:\.\d+)?M(?:[-*]|$)")
-_TIMING_FAMILY_RE = re.compile(r"^(?:H\d+-|L(?:\d|-[0-9])|LS-|PU\d+(?:XL|L)|225L|240L|R240L|T2\.5|U10|YU\d+)")
+_TIMING_FAMILY_RE = re.compile(
+    r"^(?:H\d+-|L(?:\d|-[0-9])|LS-|PU\d+(?:XL|L)|225L|240L|R240L|T2\.5|U10|YU\d+)"
+)
 _VEHICLE_CODE_PREFIXES = ("BMT", "MBT", "3NW", "3GF", "SRCV", "AVX", "17641")
 _V_BELT_CODE_PREFIXES = (
     "PA",
@@ -193,6 +199,108 @@ _MATCHING_NOISE_TOKENS = ("進口",)
 _MATCHING_TEXT_RE = re.compile(r"[^A-Z0-9\u4E00-\u9FFF]+")
 _LEGACY_IMPORT_CONTROL_SCHEMA = "public"
 
+#: Story 15.25: Master domains that normalization can carry forward from prior
+#: successful batches. These domains are the foundational entities that
+#: document domains (sales, purchase-invoices) depend on.
+_MASTER_NORMALIZATION_DOMAINS = frozenset(
+    {"parties", "products", "warehouses", "inventory"}
+)
+
+#: Story 15.25: Metadata for scoped incremental normalization.
+#: Maps each master domain to (table_name, column_tuple, primary_key_columns).
+#: This enables carryforward to rewrite batch_id in the correct table with
+#: the correct composite key columns.
+_INCREMENTAL_NORMALIZED_TABLE_META: dict[
+    str, tuple[str, tuple[str, ...], tuple[str, ...]]
+] = {
+    "parties": (
+        "normalized_parties",
+        (
+            "batch_id",
+            "tenant_id",
+            "deterministic_id",
+            "legacy_code",
+            "legacy_type",
+            "role",
+            "company_name",
+            "short_name",
+            "tax_id",
+            "full_address",
+            "address",
+            "phone",
+            "email",
+            "contact_person",
+            "is_active",
+            "created_date",
+            "updated_date",
+            "customer_type",
+            "source_table",
+            "source_row_number",
+        ),
+        ("tenant_id", "role", "legacy_code"),
+    ),
+    "products": (
+        "normalized_products",
+        (
+            "batch_id",
+            "tenant_id",
+            "deterministic_id",
+            "legacy_code",
+            "name",
+            "category",
+            "legacy_category",
+            "stock_kind",
+            "category_source",
+            "category_rule_id",
+            "category_confidence",
+            "supplier_legacy_code",
+            "supplier_deterministic_id",
+            "origin",
+            "unit",
+            "status",
+            "created_date",
+            "last_sale_date",
+            "avg_cost",
+            "source_table",
+            "source_row_number",
+        ),
+        ("tenant_id", "legacy_code"),
+    ),
+    "warehouses": (
+        "normalized_warehouses",
+        (
+            "batch_id",
+            "tenant_id",
+            "deterministic_id",
+            "legacy_code",
+            "code",
+            "name",
+            "location",
+            "address",
+            "source_kind",
+            "source_table",
+            "source_row_number",
+        ),
+        ("tenant_id", "code"),
+    ),
+    "inventory": (
+        "normalized_inventory_prep",
+        (
+            "batch_id",
+            "tenant_id",
+            "product_deterministic_id",
+            "warehouse_deterministic_id",
+            "product_legacy_code",
+            "warehouse_code",
+            "quantity_on_hand",
+            "reorder_point",
+            "source_table",
+            "source_row_number",
+        ),
+        ("tenant_id", "product_legacy_code", "warehouse_code"),
+    ),
+}
+
 
 @dataclass(slots=True, frozen=True)
 class NormalizationBatchResult:
@@ -202,6 +310,8 @@ class NormalizationBatchResult:
     product_count: int
     warehouse_count: int
     inventory_count: int
+    # Story 15.25: tracks which prior batch ids were used for carryforward
+    reused_from_batch_ids: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)
@@ -709,7 +819,9 @@ async def _replace_product_category_review_candidates(
     review_candidates: tuple[tuple[object, ...], ...],
 ) -> None:
     quoted_schema = _quoted_identifier(schema_name)
-    review_rows = [(tenant_id, batch_id, *review_candidate) for review_candidate in review_candidates]
+    review_rows = [
+        (tenant_id, batch_id, *review_candidate) for review_candidate in review_candidates
+    ]
     await _execute_many(
         connection,
         f"""
@@ -938,6 +1050,136 @@ async def _clear_batch_rows(
         )
 
 
+#: Story 15.25: Deletion order respects FK ordering for scoped batches.
+#: Dependents must be deleted before their dependencies to avoid constraint
+#: violations. This mirrors the ordering in _clear_batch_rows but scoped.
+_SCOPED_DELETE_ORDER = (
+    "normalized_inventory_prep",  # depends on products + warehouses
+    "product_category_review_candidates",  # depends on products
+    "normalized_warehouses",
+    "normalized_products",
+    "normalized_parties",
+)
+
+
+async def _clear_scoped_batch_rows(
+    connection,
+    schema_name: str,
+    batch_id: str,
+    tenant_id: uuid.UUID,
+    scoped_domains: frozenset[str],
+) -> None:
+    """Story 15.25: Delete normalized rows for scoped domains only.
+
+    Unlike ``_clear_batch_rows`` which deletes all normalized rows for the
+    batch, this function only clears the tables corresponding to the domains
+    in ``scoped_domains``. This enables incremental normalization to replace
+    only the impacted domains while leaving unrelated domains untouched.
+
+    Args:
+        connection: Database connection.
+        schema_name: Target schema.
+        batch_id: Current batch id being processed.
+        tenant_id: Tenant for scope.
+        scoped_domains: Set of domain names to clear (subset of master domains).
+    """
+    quoted_schema = _quoted_identifier(schema_name)
+    for table_name in _SCOPED_DELETE_ORDER:
+        domain_for_table = _domain_for_normalized_table(table_name)
+        if domain_for_table not in scoped_domains:
+            continue
+        quoted_table = _quoted_identifier(table_name)
+        await connection.execute(
+            f"DELETE FROM {quoted_schema}.{quoted_table} WHERE batch_id = $1 AND tenant_id = $2",
+            batch_id,
+            tenant_id,
+        )
+
+
+def _domain_for_normalized_table(table_name: str) -> str | None:
+    """Return the master domain that owns a normalized table.
+
+    Returns None if the table is not a scoped master-domain table.
+    product_category_review_candidates is tied to the products domain.
+    """
+    mapping = {
+        "normalized_parties": "parties",
+        "normalized_products": "products",
+        "normalized_warehouses": "warehouses",
+        "normalized_inventory_prep": "inventory",
+        "product_category_review_candidates": "products",
+    }
+    return mapping.get(table_name)
+
+
+async def _carry_forward_prior_batch(
+    connection,
+    schema_name: str,
+    domain: str,
+    *,
+    current_batch_id: str,
+    prior_batch_id: str,
+    tenant_id: uuid.UUID,
+) -> int:
+    """Story 15.25: Reuse normalized rows from the last successful prior batch.
+
+    When incremental normalization scopes to a subset of domains, unchanged
+    master entities that are still needed by the scoped batch (e.g., products
+    required by a scoped sales invoice) must be available. Instead of forcing
+    a full restage of unchanged data, this function copies rows from the
+    prior successful batch into the current batch's normalized tables.
+
+    The copy is an INSERT ... SELECT with NOT EXISTS on the composite key columns
+    so rows already present in the current batch (from fresh staging) are not
+    duplicated.
+
+    Args:
+        connection: Database connection.
+        schema_name: Target schema.
+        domain: Master domain being carried forward.
+        current_batch_id: The incremental batch id receiving the carryforward.
+        prior_batch_id: The last successful batch to copy from.
+        tenant_id: Tenant scope.
+
+    Returns:
+        The number of rows copied from the prior batch.
+    """
+    if domain not in _INCREMENTAL_NORMALIZED_TABLE_META:
+        return 0
+
+    table_name, columns, key_columns = _INCREMENTAL_NORMALIZED_TABLE_META[domain]
+    quoted_schema = _quoted_identifier(schema_name)
+    quoted_table = _quoted_identifier(table_name)
+
+    # Rewrite batch_id from prior to current; preserve all other columns.
+    # Use NOT EXISTS so fresh-staged rows take precedence.
+    select_columns = ["$1" if col == "batch_id" else f"prior.\"{col}\"" for col in columns]
+    not_exists_conditions = [f'current."{kc}" = prior."{kc}"' for kc in key_columns]
+
+    query = f"""
+        INSERT INTO {quoted_schema}.{quoted_table} ({', '.join(f'"{c}"' for c in columns)})
+        SELECT {', '.join(select_columns)}
+        FROM {quoted_schema}.{quoted_table} AS prior
+        WHERE prior.batch_id = $3
+          AND prior.tenant_id = $2
+          AND NOT EXISTS (
+              SELECT 1
+              FROM {quoted_schema}.{quoted_table} AS current
+              WHERE {' AND '.join(not_exists_conditions)}
+          )
+    """
+
+    result = await connection.execute(query, current_batch_id, tenant_id, prior_batch_id)
+
+    # Parse INSERT N rows output.
+    if result.startswith("INSERT 0 "):
+        try:
+            return int(result.split()[2])
+        except (IndexError, ValueError):
+            return 0
+    return 0
+
+
 async def _fetch_stage_rows(
     connection,
     schema_name: str,
@@ -1054,19 +1296,99 @@ async def run_normalization(
     batch_id: str,
     tenant_id: uuid.UUID = DEFAULT_TENANT_ID,
     schema_name: str | None = None,
+    # Story 15.25: incremental mode parameters
+    batch_mode: str | RefreshBatchMode | None = None,
+    selected_domains: Sequence[str] | None = None,
+    entity_scope: Mapping[str, Mapping[str, Any]] | None = None,
+    last_successful_batch_ids: Mapping[str, str] | None = None,
 ) -> NormalizationBatchResult:
+    """Story 15.25: Normalize staged legacy data with optional incremental scope.
+
+    In full-batch mode (the default), all domains are normalized from staged data.
+    In incremental mode, only the domains in ``selected_domains`` are normalized,
+    and unchanged master domains are carried forward from ``last_successful_batch_ids``.
+
+    Args:
+        batch_id: The batch identifier for this normalization run.
+        tenant_id: Tenant scope for all operations.
+        schema_name: Target raw schema (defaults to settings.legacy_import_schema).
+        batch_mode: Either "full" (default) or "incremental". Raises ValueError for
+            unknown values.
+        selected_domains: Required for incremental mode; the domains to normalize.
+            Must be non-empty when batch_mode="incremental".
+        entity_scope: Per-domain manifest scope used by downstream adapters;
+            accepted but not used by normalization itself (carried from manifest).
+        last_successful_batch_ids: Map of domain -> prior batch id for carryforward.
+            Used only in incremental mode to reuse unchanged master data.
+
+    Returns:
+        NormalizationBatchResult with counts and reused_from_batch_ids for
+        incremental mode.
+
+    Raises:
+        ValueError: If batch_mode is unknown, incremental mode is selected but
+            selected_domains is empty, or incremental-mode kwargs are passed
+            to full mode.
+    """
     resolved_schema = schema_name or settings.legacy_import_schema
+
+    # Normalize batch_mode to enum or string.
+    if batch_mode is None:
+        mode: str = "full"
+    elif isinstance(batch_mode, RefreshBatchMode):
+        mode = batch_mode.value
+    else:
+        mode = str(batch_mode).strip().lower()
+
+    if mode not in ("full", "incremental"):
+        raise ValueError(f"unsupported batch_mode: {batch_mode!r}")
+
+    # Story 15.25 AC2: incremental requires selected_domains.
+    if mode == "incremental":
+        if not selected_domains:
+            raise ValueError(
+                "non-empty selected_domains is required for incremental batch mode"
+            )
+        selected = tuple(selected_domains)
+        # Story 15.25 Fix: Validate all requested domains against the known set.
+        unknown_domains = set(selected) - _MASTER_NORMALIZATION_DOMAINS
+        if unknown_domains:
+            raise ValueError(
+                f"Incremental mode does not support these domain names: {sorted(unknown_domains)}. "
+                f"Supported domains are: {sorted(_MASTER_NORMALIZATION_DOMAINS)}"
+            )
+    else:
+        # Story 15.25 AC5: reject incremental-mode kwargs in full mode.
+        if selected_domains is not None:
+            raise ValueError(
+                "incremental-mode kwargs (selected_domains, entity_scope, "
+                "last_successful_batch_ids) are not allowed in full batch mode"
+            )
+        selected = ("parties", "products", "warehouses", "inventory")
+
     connection = await _open_raw_connection()
+    reused_from_batch_ids: dict[str, int] = {}
+
     try:
         await _ensure_staged_batch_ready(connection, resolved_schema, batch_id, tenant_id)
         async with connection.transaction():
             await _ensure_normalized_tables(connection, resolved_schema)
 
-            party_rows = await _fetch_stage_rows(
-                connection,
-                resolved_schema,
-                "tbscust",
-                """
+            # ----------------------------------------------------------------
+            # Fetch and normalize staged rows for selected domains.
+            # ----------------------------------------------------------------
+            party_records: list[tuple] = []
+            product_records: list[tuple] = []
+            warehouse_records: list[tuple] = []
+            inventory_records: list[tuple] = []
+            product_review_candidates: list[tuple[object, ...]] = []
+
+            if "parties" in selected:
+                party_rows = await _fetch_stage_rows(
+                    connection,
+                    resolved_schema,
+                    "tbscust",
+                    """
 				col_1 AS legacy_code,
 				col_2 AS legacy_type,
 				col_3 AS company_name,
@@ -1083,16 +1405,23 @@ async def run_normalization(
 				col_75 AS record_status,
 				_source_row_number AS source_row_number
 				""",
-                batch_id,
-            )
-            if not party_rows:
-                raise ValueError(f"No staged tbscust rows found for batch {batch_id}")
+                    batch_id,
+                )
+                # Story 15.25 AC3: empty parties is tolerated in incremental mode
+                # (carryforward will fill the gap).
+                if not party_rows and mode == "full":
+                    raise ValueError(f"No staged tbscust rows found for batch {batch_id}")
+                party_records = [
+                    normalize_party_record(row, batch_id, tenant_id)
+                    for row in party_rows
+                ]
 
-            product_rows = await _fetch_stage_rows(
-                connection,
-                resolved_schema,
-                "tbsstock",
-                """
+            if "products" in selected:
+                product_rows = await _fetch_stage_rows(
+                    connection,
+                    resolved_schema,
+                    "tbsstock",
+                    """
 				col_1 AS legacy_code,
 				col_3 AS name,
 				col_5 AS legacy_category,
@@ -1106,203 +1435,287 @@ async def run_normalization(
 				col_85 AS status,
 				_source_row_number AS source_row_number
 				""",
-                batch_id,
-            )
-            if not product_rows:
-                raise ValueError(f"No staged tbsstock rows found for batch {batch_id}")
+                    batch_id,
+                )
+                if not product_rows and mode == "full":
+                    raise ValueError(f"No staged tbsstock rows found for batch {batch_id}")
 
-            category_overrides = await _fetch_category_overrides(
-                connection,
-                resolved_schema,
-                tenant_id,
-            )
+                category_overrides = await _fetch_category_overrides(
+                    connection,
+                    resolved_schema,
+                    tenant_id,
+                )
 
-            inventory_rows = await _fetch_stage_rows(
-                connection,
-                resolved_schema,
-                "tbsstkhouse",
-                """
+                for row in product_rows:
+                    category_derivation = _resolve_product_category(
+                        row,
+                        category_overrides=category_overrides,
+                    )
+                    product_records.append(
+                        _normalize_product_record(
+                            row,
+                            batch_id,
+                            tenant_id,
+                            category_derivation=category_derivation,
+                        )
+                    )
+                    review_reason = _review_reason_for_derivation(category_derivation)
+                    if review_reason is not None:
+                        product_review_candidates.append(
+                            (
+                                str(row.get("legacy_code") or "").strip(),
+                                str(row.get("name") or "").strip(),
+                                _normalize_text(row.get("legacy_category")),
+                                _normalize_text(row.get("stock_kind")),
+                                category_derivation.category,
+                                category_derivation.source,
+                                category_derivation.rule_id,
+                                category_derivation.confidence,
+                                review_reason,
+                                "tbsstock",
+                                int(row.get("source_row_number") or 0),
+                            )
+                        )
+
+                synthetic_product_records = await _fetch_existing_synthetic_product_records(
+                    connection,
+                    resolved_schema,
+                    batch_id,
+                    tenant_id,
+                )
+                synthetic_review_codes = await _fetch_current_synthetic_review_codes(
+                    connection,
+                    resolved_schema,
+                    batch_id,
+                    tenant_id,
+                )
+                known_product_codes = {str(record[3]) for record in product_records}
+                preserved_synthetic_records = [
+                    record
+                    for record in synthetic_product_records
+                    if str(record[3]) not in known_product_codes
+                    and str(record[3]) in synthetic_review_codes
+                ]
+            else:
+                synthetic_product_records = []
+                preserved_synthetic_records = []
+
+            if "warehouses" in selected or "inventory" in selected:
+                inventory_rows = await _fetch_stage_rows(
+                    connection,
+                    resolved_schema,
+                    "tbsstkhouse",
+                    """
 				col_1 AS product_code,
 				col_2 AS warehouse_code,
 				col_7 AS qty_on_hand,
 				_source_row_number AS source_row_number
 				""",
-                batch_id,
-            )
-            if not inventory_rows:
-                raise ValueError(f"No staged tbsstkhouse rows found for batch {batch_id}")
-
-            _validate_inventory_product_codes(product_rows, inventory_rows)
-
-            party_records = [normalize_party_record(row, batch_id, tenant_id) for row in party_rows]
-            product_records: list[tuple] = []
-            product_review_candidates: list[tuple[object, ...]] = []
-            for row in product_rows:
-                category_derivation = _resolve_product_category(
-                    row,
-                    category_overrides=category_overrides,
+                    batch_id,
                 )
-                product_records.append(
-                    _normalize_product_record(
-                        row,
+                if not inventory_rows and mode == "full":
+                    raise ValueError(
+                        f"No staged tbsstkhouse rows found for batch {batch_id}"
+                    )
+
+                # Validate product codes if both products and inventory are selected.
+                if product_records and inventory_rows:
+                    _validate_inventory_product_codes(product_rows, inventory_rows)
+
+                if "warehouses" in selected:
+                    warehouse_records = _normalized_warehouse_records(
+                        inventory_rows,
                         batch_id,
                         tenant_id,
-                        category_derivation=category_derivation,
                     )
+                if "inventory" in selected:
+                    inventory_records = [
+                        _normalize_inventory_record(row, batch_id, tenant_id)
+                        for row in inventory_rows
+                    ]
+
+            # ----------------------------------------------------------------
+            # Story 15.25: Clear and write normalized rows.
+            # In incremental mode, only clear/write the scoped domains.
+            # ----------------------------------------------------------------
+            scoped_domains = frozenset(selected)
+
+            if mode == "incremental":
+                await _clear_scoped_batch_rows(
+                    connection,
+                    resolved_schema,
+                    batch_id,
+                    tenant_id,
+                    scoped_domains,
                 )
-                review_reason = _review_reason_for_derivation(category_derivation)
-                if review_reason is not None:
-                    product_review_candidates.append(
-                        (
-                            str(row.get("legacy_code") or "").strip(),
-                            str(row.get("name") or "").strip(),
-                            _normalize_text(row.get("legacy_category")),
-                            _normalize_text(row.get("stock_kind")),
-                            category_derivation.category,
-                            category_derivation.source,
-                            category_derivation.rule_id,
-                            category_derivation.confidence,
-                            review_reason,
-                            "tbsstock",
-                            int(row.get("source_row_number") or 0),
-                        )
+            else:
+                await _clear_batch_rows(connection, resolved_schema, batch_id, tenant_id)
+
+            # Write product review candidates (only if products are in scope).
+            if "products" in selected and product_review_candidates:
+                await _replace_product_category_review_candidates(
+                    connection,
+                    resolved_schema,
+                    batch_id,
+                    tenant_id,
+                    tuple(product_review_candidates),
+                )
+
+            # Write normalized records for each scoped domain.
+            if "parties" in selected and party_records:
+                await connection.copy_records_to_table(
+                    "normalized_parties",
+                    schema_name=resolved_schema,
+                    columns=(
+                        "batch_id",
+                        "tenant_id",
+                        "deterministic_id",
+                        "legacy_code",
+                        "legacy_type",
+                        "role",
+                        "company_name",
+                        "short_name",
+                        "tax_id",
+                        "full_address",
+                        "address",
+                        "phone",
+                        "email",
+                        "contact_person",
+                        "is_active",
+                        "created_date",
+                        "updated_date",
+                        "customer_type",
+                        "source_table",
+                        "source_row_number",
+                    ),
+                    records=party_records,
+                )
+
+            if "products" in selected and product_records:
+                await connection.copy_records_to_table(
+                    "normalized_products",
+                    schema_name=resolved_schema,
+                    columns=(
+                        "batch_id",
+                        "tenant_id",
+                        "deterministic_id",
+                        "legacy_code",
+                        "name",
+                        "category",
+                        "legacy_category",
+                        "stock_kind",
+                        "category_source",
+                        "category_rule_id",
+                        "category_confidence",
+                        "supplier_legacy_code",
+                        "supplier_deterministic_id",
+                        "origin",
+                        "unit",
+                        "status",
+                        "created_date",
+                        "last_sale_date",
+                        "avg_cost",
+                        "source_table",
+                        "source_row_number",
+                    ),
+                    records=[*product_records, *preserved_synthetic_records],
+                )
+
+            if "warehouses" in selected and warehouse_records:
+                await connection.copy_records_to_table(
+                    "normalized_warehouses",
+                    schema_name=resolved_schema,
+                    columns=(
+                        "batch_id",
+                        "tenant_id",
+                        "deterministic_id",
+                        "legacy_code",
+                        "code",
+                        "name",
+                        "location",
+                        "address",
+                        "source_kind",
+                        "source_table",
+                        "source_row_number",
+                    ),
+                    records=warehouse_records,
+                )
+
+            if "inventory" in selected and inventory_records:
+                await connection.copy_records_to_table(
+                    "normalized_inventory_prep",
+                    schema_name=resolved_schema,
+                    columns=(
+                        "batch_id",
+                        "tenant_id",
+                        "product_deterministic_id",
+                        "warehouse_deterministic_id",
+                        "product_legacy_code",
+                        "warehouse_code",
+                        "quantity_on_hand",
+                        "reorder_point",
+                        "source_table",
+                        "source_row_number",
+                    ),
+                    records=inventory_records,
+                )
+
+            # ----------------------------------------------------------------
+            # Story 15.25 AC3: Carryforward from last successful batch.
+            # Only carry forward master domains that were not freshly staged.
+            # The carryforward rows contribute to the domain counts so operators
+            # see the total rows in each normalized table for this batch.
+            # ----------------------------------------------------------------
+            carryforward_party_count = 0
+            carryforward_product_count = 0
+            carryforward_warehouse_count = 0
+            carryforward_inventory_count = 0
+
+            if mode == "incremental" and last_successful_batch_ids:
+                for domain in _MASTER_NORMALIZATION_DOMAINS:
+                    # Skip if domain was freshly staged (has rows).
+                    has_fresh_staging = (
+                        (domain == "parties" and party_records)
+                        or (domain == "products" and product_records)
+                        or (domain == "warehouses" and warehouse_records)
+                        or (domain == "inventory" and inventory_records)
                     )
-            synthetic_product_records = await _fetch_existing_synthetic_product_records(
-                connection,
-                resolved_schema,
-                batch_id,
-                tenant_id,
-            )
-            synthetic_review_codes = await _fetch_current_synthetic_review_codes(
-                connection,
-                resolved_schema,
-                batch_id,
-                tenant_id,
-            )
-            warehouse_records = _normalized_warehouse_records(
-                inventory_rows,
-                batch_id,
-                tenant_id,
-            )
-            inventory_records = [
-                _normalize_inventory_record(row, batch_id, tenant_id) for row in inventory_rows
-            ]
+                    if has_fresh_staging:
+                        continue
 
-            known_product_codes = {str(record[3]) for record in product_records}
-            preserved_synthetic_records = [
-                record
-                for record in synthetic_product_records
-                if str(record[3]) not in known_product_codes
-                and str(record[3]) in synthetic_review_codes
-            ]
+                    prior_batch = last_successful_batch_ids.get(domain)
+                    if not prior_batch:
+                        continue
 
-            await _clear_batch_rows(connection, resolved_schema, batch_id, tenant_id)
-            await _replace_product_category_review_candidates(
-                connection,
-                resolved_schema,
-                batch_id,
-                tenant_id,
-                tuple(product_review_candidates),
-            )
+                    copied = await _carry_forward_prior_batch(
+                        connection,
+                        resolved_schema,
+                        domain,
+                        current_batch_id=batch_id,
+                        prior_batch_id=prior_batch,
+                        tenant_id=tenant_id,
+                    )
+                    if copied > 0:
+                        reused_from_batch_ids[domain] = copied
+                        # Accumulate carryforward counts for result reporting.
+                        if domain == "parties":
+                            carryforward_party_count += copied
+                        elif domain == "products":
+                            carryforward_product_count += copied
+                        elif domain == "warehouses":
+                            carryforward_warehouse_count += copied
+                        elif domain == "inventory":
+                            carryforward_inventory_count += copied
 
-            await connection.copy_records_to_table(
-                "normalized_parties",
-                schema_name=resolved_schema,
-                columns=(
-                    "batch_id",
-                    "tenant_id",
-                    "deterministic_id",
-                    "legacy_code",
-                    "legacy_type",
-                    "role",
-                    "company_name",
-                    "short_name",
-                    "tax_id",
-                    "full_address",
-                    "address",
-                    "phone",
-                    "email",
-                    "contact_person",
-                    "is_active",
-                    "created_date",
-                    "updated_date",
-                    "customer_type",
-                    "source_table",
-                    "source_row_number",
-                ),
-                records=party_records,
-            )
-            await connection.copy_records_to_table(
-                "normalized_products",
-                schema_name=resolved_schema,
-                columns=(
-                    "batch_id",
-                    "tenant_id",
-                    "deterministic_id",
-                    "legacy_code",
-                    "name",
-                    "category",
-                    "legacy_category",
-                    "stock_kind",
-                    "category_source",
-                    "category_rule_id",
-                    "category_confidence",
-                    "supplier_legacy_code",
-                    "supplier_deterministic_id",
-                    "origin",
-                    "unit",
-                    "status",
-                    "created_date",
-                    "last_sale_date",
-                    "avg_cost",
-                    "source_table",
-                    "source_row_number",
-                ),
-                records=[*product_records, *preserved_synthetic_records],
-            )
-            await connection.copy_records_to_table(
-                "normalized_warehouses",
-                schema_name=resolved_schema,
-                columns=(
-                    "batch_id",
-                    "tenant_id",
-                    "deterministic_id",
-                    "legacy_code",
-                    "code",
-                    "name",
-                    "location",
-                    "address",
-                    "source_kind",
-                    "source_table",
-                    "source_row_number",
-                ),
-                records=warehouse_records,
-            )
-            await connection.copy_records_to_table(
-                "normalized_inventory_prep",
-                schema_name=resolved_schema,
-                columns=(
-                    "batch_id",
-                    "tenant_id",
-                    "product_deterministic_id",
-                    "warehouse_deterministic_id",
-                    "product_legacy_code",
-                    "warehouse_code",
-                    "quantity_on_hand",
-                    "reorder_point",
-                    "source_table",
-                    "source_row_number",
-                ),
-                records=inventory_records,
-            )
     finally:
         await connection.close()
 
     return NormalizationBatchResult(
         batch_id=batch_id,
         schema_name=resolved_schema,
-        party_count=len(party_records),
-        product_count=len(product_records),
-        warehouse_count=len(warehouse_records),
-        inventory_count=len(inventory_records),
+        party_count=len(party_records) + carryforward_party_count,
+        product_count=len(product_records) + carryforward_product_count,
+        warehouse_count=len(warehouse_records) + carryforward_warehouse_count,
+        inventory_count=len(inventory_records) + carryforward_inventory_count,
+        reused_from_batch_ids=reused_from_batch_ids,
     )
