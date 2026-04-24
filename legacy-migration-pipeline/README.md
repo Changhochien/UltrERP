@@ -1,5 +1,9 @@
 # Legacy Migration Pipeline
 
+Historical reference only. This directory is preserved for research context, schema notes, and git history from the dump-era migration workflow. Routine operator work should use the reviewed live legacy DB path through `cd backend && uv run python -m scripts.run_legacy_refresh`, `scripts.run_scheduled_legacy_shadow_refresh`, and `scripts.run_legacy_promotion`.
+
+If an operator intentionally works from a preserved SQL dump or CSV export, store new archival batches outside the repo and pass the location explicitly through `--output`, `--source-dir`, `--export-dir`, or `LEGACY_IMPORT_DATA_DIR`.
+
 Extracts and migrates data from legacy Taiwanese ERP SQL dumps to clean UTF-8 data with documented schema.
 
 ## Project Structure
@@ -56,6 +60,8 @@ The sales detail table uses numeric product codes (`1138`, `1000`, `2206`) while
 - See `FK_VALIDATION.md` for details
 
 ## Usage
+
+The commands below are archival workflow references. They are not the routine operator path for Epic 15.
 
 ### Extract Data from SQL Dump
 

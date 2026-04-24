@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Mapping
+from copy import deepcopy
 from typing import Any
 
 import pytest
@@ -335,3 +336,185 @@ def test_build_delta_manifest_preserves_no_op_domains_separately() -> None:
         manifest["domains"]["products"]["watermark_out_proposed"]
         == manifest["domains"]["products"]["watermark_in"]
     )
+
+
+def test_discover_delta_does_not_mutate_plan() -> None:
+    """AC1: Verify discovery is read-only and does not advance any watermark."""
+    state = _bootstrap_state()
+    state = _advance_domain_watermark(
+        state,
+        domain="parties",
+        watermark={"source-change-ts": "2026-04-17T00:00:00+00:00", "party-code": "P0"},
+    )
+    plan = build_incremental_refresh_plan(state=state)
+    # Capture plan snapshot before discovery
+    parties_watermark_before = deepcopy(
+        plan["domains"]["parties"]["resume_from_watermark"]
+    )
+
+    def projection(contract, watermark):
+        if contract.name == "parties":
+            return [
+                {"source-change-ts": "2026-04-18T01:00:00+00:00", "party-code": "P1"}
+            ]
+        return []
+
+    discover_delta(plan=plan, source_projection=projection)
+
+    # Plan watermarks must be unchanged after discovery
+    assert (
+        plan["domains"]["parties"]["resume_from_watermark"] == parties_watermark_before
+    )
+
+
+def test_discover_delta_applies_header_and_line_closure_for_purchase_invoices() -> None:
+    """AC2: Purchase-invoices should expand to full document families via document_number."""
+    state = _bootstrap_state()
+    state = _advance_domain_watermark(
+        state,
+        domain="purchase-invoices",
+        watermark={
+            "document-date": "2026-04-17",
+            "document-number": "PI000000",
+            "line-number": 0,
+        },
+    )
+    plan = build_incremental_refresh_plan(state=state)
+
+    def projection(contract, watermark):
+        if contract.name == "purchase-invoices":
+            return [
+                {
+                    "document-date": "2026-04-18",
+                    "document-number": "PI000001",
+                    "line-number": 1,
+                    "document_number": "PI000001",
+                },
+                {
+                    "document-date": "2026-04-18",
+                    "document-number": "PI000001",
+                    "line-number": 2,
+                    "document_number": "PI000001",
+                },
+                {
+                    "document-date": "2026-04-18",
+                    "document-number": "PI000001",
+                    "line-number": 3,
+                    "document_number": "PI000001",
+                },
+                {
+                    "document-date": "2026-04-18",
+                    "document-number": "PI000002",
+                    "line-number": 1,
+                    "document_number": "PI000002",
+                },
+            ]
+        return []
+
+    discovery = discover_delta(plan=plan, source_projection=projection)
+
+    pi = next(
+        domain for domain in discovery.domains if domain.name == "purchase-invoices"
+    )
+    assert pi.status == "active"
+    assert pi.parent_child_batch_rule == "header-and-line-pair"
+    assert pi.closure_count == 2
+    assert pi.closure_keys == (
+        {"document_number": "PI000001"},
+        {"document_number": "PI000002"},
+    )
+
+
+def test_manifest_includes_parent_child_batch_rule_and_replay_window() -> None:
+    """AC3: Manifest domain entries must include replay_window and parent_child_batch_rule."""
+    state = _bootstrap_state()
+    state = _advance_domain_watermark(
+        state,
+        domain="inventory",
+        watermark={
+            "source-change-ts": "2026-04-17T00:00:00+00:00",
+            "warehouse-code": "W0",
+            "product-code": "P0",
+        },
+    )
+    plan = build_incremental_refresh_plan(state=state)
+
+    def projection(contract, watermark):
+        if contract.name == "inventory":
+            return [
+                {
+                    "source-change-ts": "2026-04-18T01:00:00+00:00",
+                    "warehouse-code": "W1",
+                    "product-code": "P1",
+                    "warehouse_code": "W1",
+                    "product_code": "P1",
+                }
+            ]
+        return []
+
+    discovery = discover_delta(plan=plan, source_projection=projection)
+    manifest = build_delta_manifest(
+        run_id="run-ac3",
+        batch_id="legacy-incremental-20260418T030000Z",
+        tenant_id=TENANT_ID,
+        schema_name="raw_legacy",
+        source_schema="public",
+        recorded_at="2026-04-18T03:00:00+00:00",
+        plan=plan,
+        discovery=discovery,
+    )
+
+    inventory_entry = manifest["domains"]["inventory"]
+    assert "replay_window" in inventory_entry
+    assert "parent_child_batch_rule" in inventory_entry
+    assert inventory_entry["parent_child_batch_rule"] == "warehouse-product-pair"
+    assert "replay" in inventory_entry["replay_window"].lower()
+
+
+def test_discover_delta_is_deterministic_on_rerun() -> None:
+    """AC5: Same source projection must produce identical delta discovery on rerun."""
+    state = _bootstrap_state()
+    state = _advance_domain_watermark(
+        state,
+        domain="parties",
+        watermark={"source-change-ts": "2026-04-17T00:00:00+00:00", "party-code": "P0"},
+    )
+    state = _advance_domain_watermark(
+        state,
+        domain="products",
+        watermark={"source-change-ts": "2026-04-17T00:00:00+00:00", "product-code": "P0"},
+    )
+    plan = build_incremental_refresh_plan(state=state)
+
+    def projection(contract, watermark):
+        if contract.name == "parties":
+            return [
+                {"source-change-ts": "2026-04-18T01:00:00+00:00", "party-code": "P1"},
+                {"source-change-ts": "2026-04-18T01:05:00+00:00", "party-code": "P2"},
+            ]
+        if contract.name == "products":
+            return []
+        return []
+
+    first_run = discover_delta(plan=plan, source_projection=projection)
+    second_run = discover_delta(plan=plan, source_projection=projection)
+
+    # Results must be structurally identical
+    assert first_run.batch_mode == second_run.batch_mode
+    assert first_run.planned_domains == second_run.planned_domains
+    assert first_run.active_domains == second_run.active_domains
+    assert first_run.no_op_domains == second_run.no_op_domains
+    for first_domain, second_domain in zip(
+        first_run.domains, second_run.domains, strict=True
+    ):
+        assert first_domain.name == second_domain.name
+        assert first_domain.status == second_domain.status
+        assert first_domain.resume_mode == second_domain.resume_mode
+        assert first_domain.changed_keys == second_domain.changed_keys
+        assert first_domain.closure_keys == second_domain.closure_keys
+        assert first_domain.closure_count == second_domain.closure_count
+        assert first_domain.watermark_in == second_domain.watermark_in
+        assert (
+            first_domain.watermark_out_proposed
+            == second_domain.watermark_out_proposed
+        )

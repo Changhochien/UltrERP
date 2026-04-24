@@ -854,19 +854,20 @@ development_status:
         last_updated: "2026-04-18"
         prerequisites: ["15.15", "15.16", "15.17"]
       15-19-incremental-refresh-and-auto-promotion-watermark-contract:
-        status: "in-progress"
+        status: "done"
         story_id: "15.19"
         title: "Incremental Refresh And Auto-Promotion Watermark Contract"
         story_file: "15-19-incremental-refresh-and-auto-promotion-watermark-contract.md"
-        validation: "none"
-        last_updated: "2026-04-18"
+        validation: "Validated on 2026-04-19 with focused incremental, refresh, scheduler, and promotion-policy coverage. The reviewed watermark contract now persists last successful watermarks, shadow candidate metadata, promoted-lane state, and nightly rebaseline anchors under `_bmad-output/operations/legacy-refresh/state/`, and `uv run pytest tests/domains/legacy_import/test_incremental_refresh.py tests/test_run_scheduled_legacy_shadow_refresh.py -q` passed after review follow-up (`18 passed`)."
+        last_updated: "2026-04-19"
         prerequisites: ["15.16", "15.17", "15.18"]
       15-20-legacy-dump-and-manual-promotion-surface-retirement:
-        status: "ready-for-dev"
+        status: "done"
         story_id: "15.20"
         title: "Legacy Dump And Manual-Promotion Surface Retirement"
         story_file: "15-20-legacy-dump-and-manual-promotion-surface-retirement.md"
-        validation: "none"
+        validation: "Validated on 2026-04-24 with focused dump-era fail-closed regression coverage (`cd backend && uv run pytest tests/domains/legacy_import/test_staging.py -k 'explicit_source_dir' tests/domains/legacy_import/test_currency.py -k 'explicit_export_dir' tests/domains/legacy_import/test_cli.py -k 'missing_dump or currency_import_cli_invokes_import or stage_cli_invokes_stage_import' -q`, `4 passed`) plus doc audit of `backend/common/config.py`, the legacy-import skills, `docs/legacy/migration-plan.md`, and `legacy-migration-pipeline/README.md`. File-based dump workflows now require explicit archival paths, live gated refresh is the documented default, and retained dump/manual surfaces are recorded as archival or break-glass only."
+        last_updated: "2026-04-24"
         prerequisites: ["15.12", "15.15", "15.16", "15.17", "15.18"]
       15-21-canonical-source-resolution-state-model-refactor:
         status: "done"
@@ -883,11 +884,12 @@ development_status:
         validation: "Validated on 2026-04-19: the live category-review backlog closed through grounded rule additions plus audited review imports, and validation attempt 22 finished clean with blockers=0 and 0 remaining category-review candidates."
         prerequisites: ["15.4", "15.5", "15.9"]
       15-23-incremental-legacy-refresh-runner-surface:
-        status: "ready-for-dev"
+        status: "done"
         story_id: "15.23"
         title: "Incremental Legacy Refresh Runner Surface"
         story_file: "15-23-incremental-legacy-refresh-runner-surface.md"
-        validation: "none"
+        validation: "Validated on 2026-04-24: the incremental runner now supports dry-run and completed-no-op outcomes, loads reviewed lane state instead of using the full scheduler wrapper, delegates active execution into `run_legacy_refresh(...)` with incremental metadata, and preserves prior success state on planner or lane-state failures. Focused validation passed with `cd backend && uv run pytest tests/test_run_incremental_legacy_refresh.py tests/domains/legacy_import/test_canonical.py tests/domains/legacy_import/test_ap_payment_import.py -q` (`46 passed`)."
+        last_updated: "2026-04-24"
         prerequisites: ["15.12", "15.15", "15.16", "15.19"]
       15-24-delta-discovery-and-manifest-contract:
         status: "ready-for-dev"

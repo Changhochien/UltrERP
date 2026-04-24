@@ -36,25 +36,25 @@ Watermark advancement, scoped staging, scoped canonical import, and admin contro
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Finalize the incremental CLI surface and lane bootstrap. (AC: 1, 3, 5)
-  - [ ] Keep `backend/scripts/run_incremental_legacy_refresh.py` as the reviewed operator entry point with explicit `tenant-id`, `schema`, `source-schema`, `lookback-days`, `reconciliation-threshold`, and `dry-run` arguments.
-  - [ ] Resolve lane paths through `build_lane_state_paths(...)` and fail with actionable remediation when incremental state or the nightly rebaseline anchor is missing.
-  - [ ] Keep schema-upgrade and lane-bootstrap behavior explicit rather than piggybacking on the scheduled full-refresh wrapper.
-- [ ] Task 2: Add dry-run and no-op execution outcomes. (AC: 2, 3)
-  - [ ] Emit plan and discovery details on `--dry-run` without calling `run_legacy_refresh(...)`.
-  - [ ] Write `completed-no-op` summaries when every planned domain is inactive for the current run.
-  - [ ] Preserve the distinction between `planned_domains`, `affected_domains`, and `no_op_domains` in the summary contract.
-- [ ] Task 3: Delegate active runs into the shared refresh pipeline with incremental metadata. (AC: 1, 4)
-  - [ ] Pass `batch_mode=incremental` into `run_legacy_refresh(...)` rather than creating a second orchestration stack.
-  - [ ] Thread the summary root, state root, manifest path, and downstream scope placeholders so later stories can narrow staging, normalization, canonical import, and validation without changing the entry point.
-  - [ ] Keep promotion evaluation, working-lane mutation, and watermark advancement outside this runner boundary.
-- [ ] Task 4: Harden error reporting and operator diagnostics. (AC: 5)
-  - [ ] Surface root planner and lane-state failures with actionable remediation text in the summary and CLI output.
-  - [ ] Preserve prior `latest-success` and promoted-pointer state on failure.
-  - [ ] Record final dispositions that distinguish dry-run, no-op, blocked, and failed outcomes.
-- [ ] Task 5: Add focused tests and operator docs. (AC: 1-5)
-  - [ ] Add or extend focused tests around dry-run behavior, no-op summaries, missing-state remediation, schema-upgrade sequencing, and incremental delegation.
-  - [ ] Document the incremental runner alongside the full rebaseline runner so operators know which surface is routine and which is the correctness backstop.
+- [x] Task 1: Finalize the incremental CLI surface and lane bootstrap. (AC: 1, 3, 5)
+  - [x] Kept `backend/scripts/run_incremental_legacy_refresh.py` as the reviewed operator entry point with explicit `tenant-id`, `schema`, `source-schema`, `lookback-days`, `reconciliation-threshold`, and `dry-run` arguments.
+  - [x] Resolved lane paths through `build_lane_state_paths(...)` and fail with actionable remediation when incremental state or the nightly rebaseline anchor is missing.
+  - [x] Kept schema-upgrade and lane-bootstrap behavior explicit rather than piggybacking on the scheduled full-refresh wrapper.
+- [x] Task 2: Add dry-run and no-op execution outcomes. (AC: 2, 3)
+  - [x] Emit plan and discovery details on `--dry-run` without calling `run_legacy_refresh(...)`.
+  - [x] Write `completed-no-op` summaries when every planned domain is inactive for the current run.
+  - [x] Preserve the distinction between `planned_domains`, `affected_domains`, and `no_op_domains` in the summary contract.
+- [x] Task 3: Delegate active runs into the shared refresh pipeline with incremental metadata. (AC: 1, 4)
+  - [x] Pass `batch_mode=incremental` into `run_legacy_refresh(...)` rather than creating a second orchestration stack.
+  - [x] Thread the summary root, state root, manifest path, and downstream scope placeholders so later stories can narrow staging, normalization, canonical import, and validation without changing the entry point.
+  - [x] Keep promotion evaluation, working-lane mutation, and watermark advancement outside this runner boundary.
+- [x] Task 4: Harden error reporting and operator diagnostics. (AC: 5)
+  - [x] Surface root planner and lane-state failures with actionable remediation text in the summary and CLI output.
+  - [x] Preserve prior `latest-success` and promoted-pointer state on failure.
+  - [x] Record final dispositions that distinguish dry-run, no-op, blocked, and failed outcomes.
+- [x] Task 5: Add focused tests and operator docs. (AC: 1-5)
+  - [x] Added focused tests around dry-run behavior, no-op summaries, missing-state remediation, schema-upgrade sequencing, and incremental delegation.
+  - [x] Documented the incremental runner alongside the full rebaseline runner so operators know which surface is routine and which is the correctness backstop.
 
 ## Dev Notes
 

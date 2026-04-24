@@ -1,6 +1,6 @@
 # Story 15.20: Legacy Dump And Manual-Promotion Surface Retirement
 
-Status: in-progress
+Status: done
 
 ## Story
 
@@ -26,21 +26,21 @@ The repo still contains defaults and operator guidance that point to dump-era ex
   - [x] Audit `backend/common/config.py` defaults such as `legacy_import_data_dir`.
   - [x] Audit operator skill docs and command maps, especially `.agents/skills/ultr-erp-dump-import/` and `.agents/skills/legacy-import/`.
   - [x] Audit README and legacy docs for places that still present dump extraction or manual promotion as the routine path.
-- [ ] Task 2: Define the stability gate and fallback inventory before removing defaults (AC: 1, 2, 3)
-  - [ ] Record the minimum evidence required before defaults change, such as repeatable live-stage success, scheduled shadow refresh stability, promotion-state visibility, and automatic promotion behavior with alerts.
-  - [ ] Identify which dump-era and manual-exception surfaces remain as archival or break-glass tools after the default-path switch.
-  - [ ] Keep a written inventory of intentionally retained fallback surfaces and the operator scenario for each one.
+- [x] Task 2: Define the stability gate and fallback inventory before removing defaults (AC: 1, 2, 3)
+  - [x] Recorded the minimum evidence required before defaults change, including repeatable live refresh success, scheduled shadow refresh state visibility, promotion-state visibility, and shared promotion-policy alerting.
+  - [x] Identified which dump-era and manual-exception surfaces remain as archival or break-glass tools after the default-path switch.
+  - [x] Added a written inventory of intentionally retained fallback surfaces and the operator scenario for each one.
 - [x] Task 3: Update the repo defaults to the live gated refresh path (AC: 1, 2)
   - [x] Change operator docs and skill command maps so the default path is live-stage plus reviewed refresh plus scheduled shadow refresh plus reviewed promotion evaluation.
   - [x] Demote or archive manual-promotion notes from active operator instructions; retain only reviewed exception or override paths from Story 15.18.
   - [x] If config defaults still point to `legacy-migration-pipeline/extracted_data`, move that default to an explicit archival or opt-in path instead of the routine operator workflow.
-- [ ] Task 4: Archive retained dump assets outside the active workflow (AC: 2, 3)
-  - [ ] Archive raw dumps and CSV extracts outside the active repo workflow before deleting or demoting default references.
-  - [ ] Preserve git history and research references for `legacy-migration-pipeline/` rather than deleting blindly.
-  - [ ] Mark remaining historical docs as archival when they are no longer part of the routine operator path.
-- [ ] Task 5: Validate the cleanup and documentation switch (AC: 1, 2, 3)
-  - [ ] Verify command maps, config defaults, and migration docs no longer present dump-era or manual-promotion surfaces as the default.
-  - [ ] Add smoke checks or doc-validation steps for any updated command examples.
+- [x] Task 4: Archive retained dump assets outside the active workflow (AC: 2, 3)
+  - [x] Documented that new raw dumps and extracted CSV batches must live in an operator-managed archival directory outside the repo and be passed explicitly through `--output`, `--source-dir`, `--export-dir`, or `LEGACY_IMPORT_DATA_DIR`.
+  - [x] Preserved git history and research references for `legacy-migration-pipeline/` and reclassified that tree as historical reference material instead of deleting it.
+  - [x] Marked remaining historical docs as archival when they are no longer part of the routine operator path.
+- [x] Task 5: Validate the cleanup and documentation switch (AC: 1, 2, 3)
+  - [x] Verified command maps, config defaults, and migration docs now point to the live gated refresh workflow by default and treat dump-era paths as archival or break-glass only.
+  - [x] Added focused regression coverage and doc-audit validation steps for the updated command examples and fail-closed dump-path behavior.
 
 ## Implementation Notes
 
@@ -56,6 +56,34 @@ The repo still contains defaults and operator guidance that point to dump-era ex
 - Manual exception handling from Story 15.18 may remain as a reviewed break-glass path. What should disappear is routine approval-driven promotion as the default operator workflow.
 - Coordinate any config-default changes with automation or local environments that still rely on `LEGACY_IMPORT_DATA_DIR`.
 - If archival storage moves outside the repo, document the destination and operator access rules before removing routine in-repo references.
+
+### Stability Gate Definition
+
+The repo-level default-path switch is now governed by the following explicit gate checklist:
+
+1. Reviewed live refresh execution must succeed through `run_legacy_refresh` with machine-readable summary output under `_bmad-output/operations/legacy-refresh/`.
+2. Scheduled shadow refresh must persist durable lane state through `latest-run.json` and `latest-success.json`, with blocked runs leaving the prior success pointer untouched.
+3. Promotion evaluation must remain visible through `latest-promoted.json`, append-only `promotion-results/`, and audited `promotion-overrides/` artifacts when exception overrides are used.
+4. Shared promotion-policy classification and reason codes must remain the alerting contract for refresh, scheduler, and promotion surfaces; manual approval is no longer the routine path.
+5. Dump-era file workflows must be opt-in only: no silent repo-local default to `legacy-migration-pipeline/extracted_data`, and operator docs must route routine work to live-stage, reviewed refresh, scheduled shadow refresh, and promotion evaluation.
+
+These gates define the minimum evidence expected before an operator treats the live gated path as the durable default in a configured environment. The story scope is to encode that contract and retire repo defaults that bypass it.
+
+### Retained Fallback Inventory
+
+The following surfaces intentionally remain after retirement, but only as archival or break-glass paths:
+
+- `domains.legacy_import.cli extract`: archival SQL-dump decoding when an operator starts from a preserved raw dump.
+- `domains.legacy_import.cli stage --source-dir ...`: break-glass replay from preserved CSV exports; now requires an explicit archival directory or `LEGACY_IMPORT_DATA_DIR`.
+- `domains.legacy_import.cli currency-import --export-dir ...`: archival replay of `tbscurrency.csv`; now requires an explicit archival directory or `LEGACY_IMPORT_DATA_DIR`.
+- `legacy-migration-pipeline/`: historical research, schema notes, and git-preserved extraction evidence; no longer part of the routine operator workflow.
+- `scripts.run_legacy_promotion --allow-exception-override ...`: reviewed exception path for `exception-required` batches; not a default manual approval model.
+- `scripts.apply_reconciliation_corrections --csv ... --approved-by ...`: explicit operator-approved correction application; never part of automatic refresh or promotion.
+
+### Validation Evidence
+
+- `cd backend && uv run pytest tests/domains/legacy_import/test_staging.py -k 'explicit_source_dir' tests/domains/legacy_import/test_currency.py -k 'explicit_export_dir' tests/domains/legacy_import/test_cli.py -k 'missing_dump or currency_import_cli_invokes_import or stage_cli_invokes_stage_import' -q` -> `4 passed`
+- Doc audit: reviewed `backend/common/config.py`, `.agents/skills/legacy-import/`, `.agents/skills/ultr-erp-dump-import/`, `docs/legacy/migration-plan.md`, and `legacy-migration-pipeline/README.md` to confirm dump-era surfaces are archival or break-glass only and the live gated refresh path is the documented default.
 
 ### Project Structure Notes
 
@@ -84,10 +112,35 @@ The repo still contains defaults and operator guidance that point to dump-era ex
 
 ### Agent Model Used
 
-GPT-5.4
+GitHub Copilot (GPT-5.4)
 
 ### Debug Log References
 
+- 2026-04-24 focused validation: `cd /Users/changtom/Downloads/UltrERP/backend && uv run pytest tests/domains/legacy_import/test_staging.py -k 'explicit_source_dir' tests/domains/legacy_import/test_currency.py -k 'explicit_export_dir' tests/domains/legacy_import/test_cli.py -k 'missing_dump or currency_import_cli_invokes_import or stage_cli_invokes_stage_import' -q`
+
 ### Completion Notes List
 
+- Retired the repo-local dump default by making file-based staging and currency import fail closed unless operators pass an explicit archival directory or set `LEGACY_IMPORT_DATA_DIR` deliberately.
+- Reclassified dump-era skill surfaces as archival or break-glass only and kept the live-stage, reviewed refresh, scheduled shadow refresh, and promotion evaluation path as the documented default.
+- Added an explicit stability-gate definition and retained-fallback inventory so future cleanup decisions can be evaluated against one written contract instead of implicit assumptions.
+- Preserved `legacy-migration-pipeline/` for historical research and git history, but marked it as archival reference material rather than a routine workflow surface.
+- Closed the Epic 15 bookkeeping gap by documenting validation evidence and syncing sprint status with the implemented story state.
+
 ### File List
+
+- `_bmad-output/implementation-artifacts/15-20-legacy-dump-and-manual-promotion-surface-retirement.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `.agents/skills/legacy-import/SKILL.md`
+- `.agents/skills/legacy-import/command-map.md`
+- `.agents/skills/ultr-erp-dump-import/SKILL.md`
+- `.agents/skills/ultr-erp-dump-import/command-map.md`
+- `backend/common/config.py`
+- `backend/domains/legacy_import/cli.py`
+- `backend/domains/legacy_import/currency.py`
+- `backend/domains/legacy_import/shared.py`
+- `backend/domains/legacy_import/staging.py`
+- `backend/tests/domains/legacy_import/test_cli.py`
+- `backend/tests/domains/legacy_import/test_currency.py`
+- `backend/tests/domains/legacy_import/test_staging.py`
+- `docs/legacy/migration-plan.md`
+- `legacy-migration-pipeline/README.md`

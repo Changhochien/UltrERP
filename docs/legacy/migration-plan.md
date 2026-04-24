@@ -4,6 +4,8 @@
 
 This document consolidates the verified legacy ERP findings into an implementation-ready migration decision record for UltrERP. It is based on the existing extraction, relationship, FK validation, and PoC analysis already present in the repository.
 
+Routine operator workflows no longer default to dump-era extracts or manual approval-driven promotion. The reviewed default path is the live legacy DB flow through `run_legacy_refresh`, scheduled shadow refresh, and promotion evaluation. Dump-era extraction and file-based staging remain archival or break-glass tools only.
+
 ## Source Artifacts
 
 - `legacy-migration-pipeline/README.md`
@@ -210,6 +212,35 @@ Reviewed cron example:
 - If the import produces unresolved Severity 1 discrepancies, stop cutover and continue shadow-mode.
 - If product-code mapping quality is insufficient, keep unresolved rows on `UNKNOWN` and prevent product-level analytics from being treated as authoritative.
 - If staging counts do not reconcile with the planning baseline, freeze the migration pipeline and reconcile the `94 logical tables` versus `96 CSV files` discrepancy before production decisions.
+
+## Stability Gate And Fallback Policy
+
+### Default-Path Stability Gate
+
+The repo considers the dump-era default retired only when the following evidence remains available and legible:
+
+1. A reviewed live refresh can complete through `run_legacy_refresh` and emit a durable summary under `_bmad-output/operations/legacy-refresh/`.
+2. Scheduled shadow refresh persists `latest-run.json` and `latest-success.json` for the lane and keeps blocked or failed runs from replacing the last trusted success record.
+3. Promotion evaluation persists `latest-promoted.json` and append-only `promotion-results/` artifacts, while exception-driven advancement remains auditable through `promotion-overrides/`.
+4. Shared `promotion_policy` classification and reason codes remain the operator and alerting contract across refresh, scheduler, and promotion surfaces.
+5. Routine operator docs and command maps default to the live gated path. Dump-era file workflows are opt-in only and require an explicit archival directory rather than a repo-local default.
+
+### Retained Archival And Break-Glass Surfaces
+
+The following surfaces intentionally remain after retirement:
+
+- `legacy-import extract` for preserved raw SQL dumps.
+- `legacy-import stage --source-dir ...` for preserved CSV exports.
+- `legacy-import currency-import --export-dir ...` for archival `tbscurrency.csv` replay.
+- `legacy-migration-pipeline/` for historical research, schema notes, and git-preserved extraction evidence.
+- `run_legacy_promotion --allow-exception-override ...` for reviewed `exception-required` promotions.
+- `apply_reconciliation_corrections --csv ... --approved-by ...` for explicit operator-approved correction application.
+
+These surfaces are not part of the routine refresh path and should not be presented as such in active operator instructions.
+
+### Archival Storage Rule
+
+New SQL dumps and extracted CSV batches must be archived outside the working repo. Operators should pass an explicit archive directory through `--output`, `--source-dir`, `--export-dir`, or `LEGACY_IMPORT_DATA_DIR` when invoking dump-era commands. Keeping new dump artifacts outside the repo preserves audit retention without reintroducing `legacy-migration-pipeline/extracted_data` as a default working location.
 
 ## Implementation Notes
 

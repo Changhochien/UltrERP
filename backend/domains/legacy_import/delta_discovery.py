@@ -134,62 +134,42 @@ def discover_delta(
         closure_list: list[dict[str, Any]] = []
 
         rule = contract.parent_child_batch_rule
+        seen: set[Any] = set()
 
-        if rule == "single-table":
-            entity_component = (
-                contract.cursor_components[-1] if contract.cursor_components else None
-            )
-            seen_entities: set[Any] = set()
-            for row in rows:
-                changed_keys_list.append(_cursor_key(contract, row))
-                if entity_component is not None:
-                    candidate = tuple(
-                        row.get(c) for c in contract.cursor_components
-                    )
-                    if not any(v is None for v in candidate) and (
-                        best_cursor is None or candidate > best_cursor
-                    ):
-                        best_cursor = candidate
-                        best_row = row
-                    entity_val = row.get(entity_component)
-                    if entity_val not in seen_entities:
-                        seen_entities.add(entity_val)
-                        closure_list.append({entity_component: entity_val})
-
-        elif rule == "warehouse-product-pair":
-            seen_pairs: set[tuple[Any, ...]] = set()
-            for row in rows:
-                changed_keys_list.append(_cursor_key(contract, row))
+        for row in rows:
+            changed_keys_list.append(_cursor_key(contract, row))
+            if contract.cursor_components:
                 candidate = tuple(row.get(c) for c in contract.cursor_components)
                 if not any(v is None for v in candidate) and (
                     best_cursor is None or candidate > best_cursor
                 ):
                     best_cursor = candidate
                     best_row = row
+
+            # Track unique closure keys based on batch rule
+            if rule == "single-table":
+                entity_comp = contract.cursor_components[-1]
+                entity_val = row.get(entity_comp)
+                if entity_val not in seen:
+                    seen.add(entity_val)
+                    closure_list.append({entity_comp: entity_val})
+
+            elif rule == "warehouse-product-pair":
                 sig = (row.get("warehouse_code"), row.get("product_code"))
-                if sig not in seen_pairs:
-                    seen_pairs.add(sig)
+                if sig not in seen:
+                    seen.add(sig)
                     closure_list.append({"warehouse_code": sig[0], "product_code": sig[1]})
 
-        elif rule == "header-and-line-pair":
-            seen_docs: set[Any] = set()
-            for row in rows:
-                changed_keys_list.append(_cursor_key(contract, row))
-                candidate = tuple(row.get(c) for c in contract.cursor_components)
-                if not any(v is None for v in candidate) and (
-                    best_cursor is None or candidate > best_cursor
-                ):
-                    best_cursor = candidate
-                    best_row = row
+            elif rule == "header-and-line-pair":
                 doc_num = row.get("document_number")
-                if doc_num not in seen_docs:
-                    seen_docs.add(doc_num)
+                if doc_num not in seen:
+                    seen.add(doc_num)
                     closure_list.append({"document_number": doc_num})
 
-        else:
-            raise ValueError(
-                f"Unsupported parent_child_batch_rule '{rule}' for domain '{domain_name}'"
-            )
+            else:
+                raise ValueError(
+                    f"Unsupported parent_child_batch_rule '{rule}' for domain '{domain_name}'"
+                )
 
         changed_keys = tuple(changed_keys_list)
         closure_keys = tuple(closure_list)
