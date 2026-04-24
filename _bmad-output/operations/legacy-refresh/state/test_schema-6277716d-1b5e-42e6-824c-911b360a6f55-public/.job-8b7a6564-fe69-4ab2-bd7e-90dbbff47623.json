@@ -1,0 +1,12 @@
+{
+  "batch_id": "legacy-shadow-20260423T000000Z",
+  "completed_at": "2026-04-24T08:58:57.138000+00:00",
+  "exit_code": 2,
+  "job_id": "8b7a6564-fe69-4ab2-bd7e-90dbbff47623",
+  "mode": "full-rebaseline",
+  "schema_name": "test_schema",
+  "source_schema": "public",
+  "started_at": "2026-04-24T08:58:57.135256+00:00",
+  "status": "completed",
+  "tenant_id": "6277716d-1b5e-42e6-824c-911b360a6f55"
+}

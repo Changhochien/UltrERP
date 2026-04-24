@@ -1,6 +1,6 @@
 # Story 15.28: Admin Legacy Refresh Control Plane
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 

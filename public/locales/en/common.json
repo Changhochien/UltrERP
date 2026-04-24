@@ -2060,6 +2060,56 @@
         "appearance": "Theme and interface presentation settings",
         "data": "Data-handling and operational configuration"
       }
+    },
+    "legacyRefresh": {
+      "eyebrow": "Legacy Data",
+      "title": "Legacy Refresh Control Plane",
+      "description": "Launch and monitor legacy data refresh jobs for the coexistence period.",
+      "loading": "Loading legacy refresh status…",
+      "columns": {
+        "latestRun": "Latest Run",
+        "latestSuccess": "Latest Success",
+        "latestPromoted": "Latest Promoted"
+      },
+      "status": {
+        "locked": "Locked",
+        "idle": "Idle",
+        "eligible": "Promotion Eligible",
+        "blocked": "Blocked"
+      },
+      "trigger": {
+        "title": "Trigger Refresh Job",
+        "description": "Launch a full rebaseline or incremental refresh for the selected lane.",
+        "launch": "Launch Refresh",
+        "launching": "Launching…",
+        "launched": "Refresh job launched"
+      },
+      "fields": {
+        "tenantId": "Tenant ID",
+        "tenantIdPlaceholder": "e.g. 00000000-0000-0000-0000-000000000000",
+        "schemaName": "Target Schema",
+        "schemaNamePlaceholder": "e.g. erpnext_prod",
+        "sourceSchema": "Source Schema",
+        "mode": "Refresh Mode",
+        "lookbackDays": "Lookback Days",
+        "reconciliationThreshold": "Reconciliation Threshold",
+        "dryRun": "Dry run"
+      },
+      "modes": {
+        "incremental": "Incremental",
+        "fullRebaseline": "Full Rebaseline"
+      },
+      "recentRuns": {
+        "title": "Recent Runs",
+        "description": "Most recent refresh job executions across all lanes.",
+        "refresh": "Refresh",
+        "empty": "No recent runs recorded."
+      },
+      "lanes": {
+        "title": "Lane Status",
+        "description": "Live state for each active legacy refresh lane.",
+        "refresh": "Refresh"
+      }
     }
   },
   "purchase": {

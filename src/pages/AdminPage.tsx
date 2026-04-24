@@ -42,13 +42,22 @@ import {
   ADMIN_USER_STATUSES,
   createUser,
   fetchAuditLogs,
+  fetchLegacyRefreshLanes,
+  fetchLegacyRefreshRecentRuns,
   fetchUsers,
+  triggerLegacyRefresh,
   type AdminUser,
   type AdminUserCreateRequest,
   type AdminUserRole,
   type AdminUserStatus,
   type AdminUserUpdateRequest,
   type AuditLogEntry,
+  type BatchPointer,
+  type LegacyRefreshConflict,
+  type LegacyRefreshJobLaunched,
+  type LegacyRefreshLaneStatus,
+  type RefreshJobRecord,
+  type RefreshMode,
   updateUser,
 } from "../lib/api/admin";
 import {
@@ -1064,6 +1073,9 @@ export function AdminPage() {
             </ul>
           </SectionCard>
         </div>
+
+        {/* Legacy Refresh Control Plane (Story 15.28) */}
+        <LegacyRefreshSection />
       </div>
 
       <Dialog
@@ -1309,5 +1321,419 @@ export function AdminPage() {
         </SheetContent>
       </Sheet>
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Legacy Refresh Control Plane (Story 15.28)
+// ---------------------------------------------------------------------------
+
+const LEGACY_REFRESH_POLL_INTERVAL_MS = 10_000;
+
+interface LegacyRefreshTriggerFormState {
+  tenantId: string;
+  schemaName: string;
+  sourceSchema: string;
+  mode: RefreshMode;
+  dryRun: boolean;
+  lookbackDays: number;
+  reconciliationThreshold: number;
+}
+
+const DEFAULT_REFRESH_FORM: LegacyRefreshTriggerFormState = {
+  tenantId: "",
+  schemaName: "",
+  sourceSchema: "public",
+  mode: "incremental",
+  dryRun: false,
+  lookbackDays: 0,
+  reconciliationThreshold: 0,
+};
+
+function formatDisposition(disp: string | null | undefined): string {
+  if (!disp) return "unknown";
+  return disp
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function dispositionVariant(disp: string | null | undefined): "success" | "warning" | "danger" | "info" | "outline" {
+  if (!disp) return "outline";
+  if (disp.includes("COMPLETED") || disp.includes("success") || disp.includes("eligible")) return "success";
+  if (disp.includes("REVIEW") || disp.includes("warning")) return "warning";
+  if (disp.includes("BLOCKED") || disp.includes("failed") || disp.includes("FAILED")) return "danger";
+  return "info";
+}
+
+function BatchPointerDisplay({ ptr, label }: { ptr: BatchPointer | null; label: string }) {
+  if (!ptr) {
+    return (
+      <div className="space-y-1">
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+        <p className="text-sm text-muted-foreground">—</p>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-1">
+      <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+      <div className="space-y-0.5 text-xs">
+        <p className="font-mono">{ptr.batch_id ?? "—"}</p>
+        {ptr.started_at && (
+          <p className="text-muted-foreground">
+            {new Date(ptr.started_at).toLocaleString()}
+          </p>
+        )}
+        {ptr.final_disposition && (
+          <Badge variant={dispositionVariant(ptr.final_disposition)} className="normal-case tracking-normal">
+            {formatDisposition(ptr.final_disposition)}
+          </Badge>
+        )}
+        {ptr.promotion_policy && (
+          <p className="text-muted-foreground">
+            Promotion: {String(ptr.promotion_policy.classification ?? "unknown")}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LaneStatusCard({ status }: { status: LegacyRefreshLaneStatus }) {
+  const { t } = useTranslation("common");
+  return (
+    <div className="rounded-2xl border border-border/70 bg-muted/10 p-4 space-y-3">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="font-mono text-sm font-medium">{status.lane_key}</p>
+          <p className="text-xs text-muted-foreground">
+            {status.schema_name} / {status.source_schema}
+          </p>
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          {status.lane_locked ? (
+            <Badge variant="warning" className="normal-case tracking-normal">
+              {t("adminPage.legacyRefresh.status.locked")}
+            </Badge>
+          ) : (
+            <Badge variant="success" className="normal-case tracking-normal">
+              {t("adminPage.legacyRefresh.status.idle")}
+            </Badge>
+          )}
+          {status.promotion_eligible && (
+            <Badge variant="success" className="normal-case tracking-normal">
+              {t("adminPage.legacyRefresh.status.eligible")}
+            </Badge>
+          )}
+          {status.promotion_classification && !status.promotion_eligible && (
+            <Badge variant="outline" className="normal-case tracking-normal">
+              {String(status.promotion_classification)}
+            </Badge>
+          )}
+        </div>
+      </div>
+
+      {status.blocked_reason && (
+        <SurfaceMessage tone="danger" className="text-xs">
+          {t("adminPage.legacyRefresh.status.blocked")}: {status.blocked_reason}
+        </SurfaceMessage>
+      )}
+
+      {status.root_failure && (
+        <SurfaceMessage tone="warning" className="text-xs">
+          {status.root_failure}
+        </SurfaceMessage>
+      )}
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <BatchPointerDisplay
+          ptr={status.latest_run}
+          label={t("adminPage.legacyRefresh.columns.latestRun")}
+        />
+        <BatchPointerDisplay
+          ptr={status.latest_success}
+          label={t("adminPage.legacyRefresh.columns.latestSuccess")}
+        />
+        <BatchPointerDisplay
+          ptr={status.latest_promoted}
+          label={t("adminPage.legacyRefresh.columns.latestPromoted")}
+        />
+      </div>
+    </div>
+  );
+}
+
+function RecentRunsTable({ runs }: { runs: RefreshJobRecord[] }) {
+  const { t } = useTranslation("common");
+  if (runs.length === 0) {
+    return (
+      <p className="py-6 text-center text-sm text-muted-foreground">
+        {t("adminPage.legacyRefresh.recentRuns.empty")}
+      </p>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      {runs.slice(0, 10).map((run) => (
+        <div
+          key={run.job_id}
+          className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/10 px-4 py-2 text-xs"
+        >
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-mono font-medium">{run.batch_id}</p>
+            <p className="text-muted-foreground">
+              {new Date(run.started_at).toLocaleString()}
+              {run.completed_at && (
+                <> → {new Date(run.completed_at).toLocaleString()}</>
+              )}
+            </p>
+          </div>
+          <div className="flex flex-col items-end gap-1">
+            <Badge variant={dispositionVariant(run.final_disposition)} className="normal-case tracking-normal">
+              {formatDisposition(run.final_disposition)}
+            </Badge>
+            {run.blocked && (
+              <Badge variant="warning" className="normal-case tracking-normal">
+                {run.blocked_reason ?? "blocked"}
+              </Badge>
+            )}
+            {run.promotion_eligible && (
+              <Badge variant="success" className="normal-case tracking-normal">
+                {t("adminPage.legacyRefresh.status.eligible")}
+              </Badge>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function LegacyRefreshSection() {
+  const { t } = useTranslation("common");
+  const [lanes, setLanes] = useState<LegacyRefreshLaneStatus[]>([]);
+  const [recentRuns, setRecentRuns] = useState<RefreshJobRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [triggerLoading, setTriggerLoading] = useState(false);
+  const [triggerResult, setTriggerResult] = useState<LegacyRefreshJobLaunched | LegacyRefreshConflict | null>(null);
+  const [triggerError, setTriggerError] = useState<string | null>(null);
+  const [form, setForm] = useState<LegacyRefreshTriggerFormState>(DEFAULT_REFRESH_FORM);
+
+  const loadLanes = useCallback(async () => {
+    try {
+      const result = await fetchLegacyRefreshLanes();
+      setLanes(result.lanes);
+    } catch (err) {
+      console.error("Failed to load lanes:", err);
+    }
+  }, []);
+
+  const loadRecentRuns = useCallback(async () => {
+    try {
+      const runs = await fetchLegacyRefreshRecentRuns(10);
+      setRecentRuns(runs);
+    } catch (err) {
+      console.error("Failed to load recent runs:", err);
+    }
+  }, []);
+
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await Promise.all([loadLanes(), loadRecentRuns()]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("adminPage.errors.loadFailed"));
+    } finally {
+      setLoading(false);
+    }
+  }, [loadLanes, loadRecentRuns, t]);
+
+  // Initial load + polling (AC4)
+  useEffect(() => {
+    void loadAll();
+    const pollInterval = setInterval(() => {
+      void loadLanes();
+      void loadRecentRuns();
+    }, LEGACY_REFRESH_POLL_INTERVAL_MS);
+    return () => clearInterval(pollInterval);
+  }, [loadAll, loadLanes, loadRecentRuns]);
+
+  async function handleTrigger(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setTriggerLoading(true);
+    setTriggerError(null);
+    setTriggerResult(null);
+
+    try {
+      const result = await triggerLegacyRefresh({
+        tenant_id: form.tenantId,
+        schema_name: form.schemaName,
+        source_schema: form.sourceSchema,
+        mode: form.mode,
+        dry_run: form.dryRun,
+        lookback_days: form.lookbackDays,
+        reconciliation_threshold: form.reconciliationThreshold,
+      });
+      setTriggerResult(result);
+      if ("conflict" in result) {
+        setTriggerError(result.detail);
+      } else {
+        void loadAll();
+      }
+    } catch (err) {
+      setTriggerError(err instanceof Error ? err.message : t("adminPage.errors.saveFailed"));
+    } finally {
+      setTriggerLoading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow={t("adminPage.legacyRefresh.eyebrow")}
+        title={t("adminPage.legacyRefresh.title")}
+        description={t("adminPage.legacyRefresh.description")}
+      />
+
+      {error ? <SurfaceMessage tone="danger">{error}</SurfaceMessage> : null}
+      {triggerError && <SurfaceMessage tone="warning">{triggerError}</SurfaceMessage>}
+      {triggerResult && !("conflict" in triggerResult) && (
+        <SurfaceMessage tone="success">
+          {t("adminPage.legacyRefresh.trigger.launched")}: {triggerResult.batch_id}
+        </SurfaceMessage>
+      )}
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Trigger Control */}
+        <SectionCard
+          title={t("adminPage.legacyRefresh.trigger.title")}
+          description={t("adminPage.legacyRefresh.trigger.description")}
+        >
+          <form className="space-y-4" onSubmit={handleTrigger}>
+            <div className="space-y-2">
+              <Label htmlFor="lr-tenant-id">{t("adminPage.legacyRefresh.fields.tenantId")}</Label>
+              <Input
+                id="lr-tenant-id"
+                value={form.tenantId}
+                onChange={(e) => setForm((f) => ({ ...f, tenantId: e.target.value }))}
+                placeholder={t("adminPage.legacyRefresh.fields.tenantIdPlaceholder")}
+                required
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="lr-schema-name">{t("adminPage.legacyRefresh.fields.schemaName")}</Label>
+                <Input
+                  id="lr-schema-name"
+                  value={form.schemaName}
+                  onChange={(e) => setForm((f) => ({ ...f, schemaName: e.target.value }))}
+                  placeholder={t("adminPage.legacyRefresh.fields.schemaNamePlaceholder")}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lr-source-schema">{t("adminPage.legacyRefresh.fields.sourceSchema")}</Label>
+                <Input
+                  id="lr-source-schema"
+                  value={form.sourceSchema}
+                  onChange={(e) => setForm((f) => ({ ...f, sourceSchema: e.target.value }))}
+                  placeholder="public"
+                />
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="lr-mode">{t("adminPage.legacyRefresh.fields.mode")}</Label>
+                <select
+                  id="lr-mode"
+                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  value={form.mode}
+                  onChange={(e) => setForm((f) => ({ ...f, mode: e.target.value as RefreshMode }))}
+                >
+                  <option value="incremental">{t("adminPage.legacyRefresh.modes.incremental")}</option>
+                  <option value="full-rebaseline">{t("adminPage.legacyRefresh.modes.fullRebaseline")}</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lr-lookback">{t("adminPage.legacyRefresh.fields.lookbackDays")}</Label>
+                <Input
+                  id="lr-lookback"
+                  type="number"
+                  min={0}
+                  value={form.lookbackDays}
+                  onChange={(e) => setForm((f) => ({ ...f, lookbackDays: parseInt(e.target.value) || 0 }))}
+                />
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="lr-threshold">{t("adminPage.legacyRefresh.fields.reconciliationThreshold")}</Label>
+                <Input
+                  id="lr-threshold"
+                  type="number"
+                  min={0}
+                  value={form.reconciliationThreshold}
+                  onChange={(e) => setForm((f) => ({ ...f, reconciliationThreshold: parseInt(e.target.value) || 0 }))}
+                />
+              </div>
+              <div className="flex items-end pb-1">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.dryRun}
+                    onChange={(e) => setForm((f) => ({ ...f, dryRun: e.target.checked }))}
+                    className="h-4 w-4 rounded border-input"
+                  />
+                  {t("adminPage.legacyRefresh.fields.dryRun")}
+                </label>
+              </div>
+            </div>
+            <Button type="submit" disabled={triggerLoading || !form.tenantId || !form.schemaName}>
+              {triggerLoading ? t("adminPage.legacyRefresh.trigger.launching") : t("adminPage.legacyRefresh.trigger.launch")}
+            </Button>
+          </form>
+        </SectionCard>
+
+        {/* Recent Runs */}
+        <SectionCard
+          title={t("adminPage.legacyRefresh.recentRuns.title")}
+          description={t("adminPage.legacyRefresh.recentRuns.description")}
+          actions={
+            <Button variant="outline" size="sm" onClick={() => void loadRecentRuns()}>
+              {t("adminPage.legacyRefresh.recentRuns.refresh")}
+            </Button>
+          }
+        >
+          {loading && recentRuns.length === 0 ? (
+            <div className="py-6 text-center text-sm text-muted-foreground">
+              {t("adminPage.legacyRefresh.loading")}
+            </div>
+          ) : (
+            <RecentRunsTable runs={recentRuns} />
+          )}
+        </SectionCard>
+      </div>
+
+      {/* Lane Status Cards */}
+      {lanes.length > 0 && (
+        <SectionCard
+          title={t("adminPage.legacyRefresh.lanes.title")}
+          description={t("adminPage.legacyRefresh.lanes.description")}
+          actions={
+            <Button variant="outline" size="sm" onClick={() => void loadLanes()}>
+              {t("adminPage.legacyRefresh.lanes.refresh")}
+            </Button>
+          }
+        >
+          <div className="space-y-3">
+            {lanes.map((lane) => (
+              <LaneStatusCard key={lane.lane_key} status={lane} />
+            ))}
+          </div>
+        </SectionCard>
+      )}
+    </div>
   );
 }

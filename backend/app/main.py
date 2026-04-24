@@ -24,6 +24,7 @@ from domains.health.routes import router as health_router
 from domains.intelligence.routes import router as intelligence_router
 from domains.inventory.routes import router as inventory_router
 from domains.invoices.routes import router as invoices_router
+from domains.legacy_import.routes import router as legacy_refresh_router
 from domains.legacy_import.staging import close_raw_connection_pool
 from domains.line.webhook import router as line_router
 from domains.orders.routes import router as orders_router
@@ -81,6 +82,7 @@ def create_app() -> FastAPI:
 	api_v1.include_router(approval_router, prefix="/admin/approvals", tags=["approvals"])
 	api_v1.include_router(audit_router, prefix="/admin/audit-logs", tags=["audit"])
 	api_v1.include_router(users_router, prefix="/admin/users", tags=["users"])
+	api_v1.include_router(legacy_refresh_router, tags=["legacy-refresh"])
 	api_v1.include_router(crm_router, prefix="/crm/leads", tags=["crm"])
 	api_v1.include_router(crm_opportunity_router, prefix="/crm/opportunities", tags=["crm"])
 	api_v1.include_router(crm_quotation_router, prefix="/crm/quotations", tags=["crm"])

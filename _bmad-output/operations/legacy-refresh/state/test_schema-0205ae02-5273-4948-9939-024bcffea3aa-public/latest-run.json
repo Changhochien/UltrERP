@@ -1,0 +1,67 @@
+{
+  "analyst_review_required": false,
+  "batch_id": "legacy-shadow-20260423T000000Z",
+  "blocking_issue_count": null,
+  "completed_at": "2026-04-23T00:00:00+00:00",
+  "exit_code": 2,
+  "final_disposition": "overlap-blocked",
+  "lane_key": "test_schema-0205ae02-5273-4948-9939-024bcffea3aa-public",
+  "overlap_lock": {
+    "details": {
+      "batch_id": "legacy-shadow-20260423T000000Z",
+      "scheduler_run_id": "b73559d5-7bfb-4912-bd6b-b74f39bd7551",
+      "schema_name": "test_schema",
+      "source_schema": "public",
+      "started_at": "2026-04-24T09:00:40.735208+00:00",
+      "tenant_id": "0205ae02-5273-4948-9939-024bcffea3aa"
+    },
+    "path": "/Users/changtom/Downloads/UltrERP/_bmad-output/operations/legacy-refresh/state/test_schema-0205ae02-5273-4948-9939-024bcffea3aa-public/scheduler.lock"
+  },
+  "promotion_policy": {
+    "analyst_review_required": false,
+    "batch_id": "legacy-shadow-20260423T000000Z",
+    "blocking_issue_count": 0,
+    "candidate_final_disposition": null,
+    "classification": "blocked",
+    "gate_details": {
+      "analyst_review": {
+        "required": false,
+        "status": "not-run"
+      },
+      "lane": {
+        "lock_active": true
+      },
+      "promotion_readiness": false,
+      "reconciliation": {
+        "gap_count": null,
+        "status": "not-run",
+        "threshold": 0
+      },
+      "validation": {
+        "blocking_issue_count": 0,
+        "status": "not-run"
+      }
+    },
+    "message": "Batch legacy-shadow-20260423T000000Z cannot be promoted while the lane still has an active scheduler lock.",
+    "override_allowed": false,
+    "promotion_readiness": false,
+    "reason_codes": [
+      "lane-unstable"
+    ],
+    "reconciliation_gap_count": null,
+    "reconciliation_threshold": 0,
+    "summary_path": null,
+    "validation_status": "not-run"
+  },
+  "promotion_readiness": false,
+  "reconciliation_gap_count": null,
+  "reconciliation_threshold": 0,
+  "scheduler_run_id": "7b3f80ee-30d2-4231-be71-01bd55c96371",
+  "schema_name": "test_schema",
+  "source_schema": "public",
+  "started_at": "2026-04-23T00:00:00+00:00",
+  "state_version": 1,
+  "summary_path": null,
+  "tenant_id": "0205ae02-5273-4948-9939-024bcffea3aa",
+  "validation_status": "not-run"
+}
