@@ -21,13 +21,16 @@ interface AnalyticsTabProps {
   warehouses: WarehouseStockInfo[];
 }
 
-const MONTHLY_DEMAND_WINDOWS = [3, 6, 12, 24] as const;
+const MONTHLY_DEMAND_WINDOWS = [3, 6, 12, 24, 36, 48] as const;
+const MONTHLY_DEMAND_CHART_MODES = ["bar", "line"] as const;
 
 type MonthlyDemandWindow = (typeof MONTHLY_DEMAND_WINDOWS)[number];
+type MonthlyDemandChartMode = (typeof MONTHLY_DEMAND_CHART_MODES)[number];
 
 export function AnalyticsTab({ productId, warehouses }: AnalyticsTabProps) {
   const { t } = useTranslation("common", { keyPrefix: "inventory.productDetail.analyticsTab" });
   const [demandMonths, setDemandMonths] = useState<MonthlyDemandWindow>(12);
+  const [demandChartMode, setDemandChartMode] = useState<MonthlyDemandChartMode>("bar");
   const { items: demandItems, loading: demandLoading, error: demandError } = useProductMonthlyDemand(
     productId,
     {
@@ -78,27 +81,47 @@ export function AnalyticsTab({ productId, warehouses }: AnalyticsTabProps) {
       <SectionCard
         title={t("monthlyDemand.title")}
         actions={(
-          <div
-            className="flex flex-wrap gap-2"
-            role="group"
-            aria-label={t("monthlyDemand.timeFrameLabel")}
-          >
-            {MONTHLY_DEMAND_WINDOWS.map((months) => (
-              <Button
-                key={months}
-                type="button"
-                size="sm"
-                variant={demandMonths === months ? "default" : "outline"}
-                onClick={() => setDemandMonths(months)}
-                aria-pressed={demandMonths === months}
-              >
-                {t(`monthlyDemand.period${months}m`)}
-              </Button>
-            ))}
+          <div className="flex flex-wrap items-center gap-2">
+            <div
+              className="flex flex-wrap gap-2"
+              role="group"
+              aria-label={t("monthlyDemand.timeFrameLabel")}
+            >
+              {MONTHLY_DEMAND_WINDOWS.map((months) => (
+                <Button
+                  key={months}
+                  type="button"
+                  size="sm"
+                  variant={demandMonths === months ? "default" : "outline"}
+                  onClick={() => setDemandMonths(months)}
+                  aria-pressed={demandMonths === months}
+                >
+                  {t(`monthlyDemand.period${months}m`)}
+                </Button>
+              ))}
+            </div>
+            <div
+              className="flex flex-wrap gap-2"
+              role="group"
+              aria-label={t("monthlyDemand.chartModeLabel")}
+            >
+              {MONTHLY_DEMAND_CHART_MODES.map((mode) => (
+                <Button
+                  key={mode}
+                  type="button"
+                  size="sm"
+                  variant={demandChartMode === mode ? "secondary" : "outline"}
+                  onClick={() => setDemandChartMode(mode)}
+                  aria-pressed={demandChartMode === mode}
+                >
+                  {t(`monthlyDemand.chartMode${mode === "bar" ? "Bar" : "Line"}`)}
+                </Button>
+              ))}
+            </div>
           </div>
         )}
       >
-        <MonthlyDemandChart data={demandItems} />
+        <MonthlyDemandChart data={demandItems} variant={demandChartMode} />
       </SectionCard>
 
       {/* Sales history + Top customer side by side on larger screens */}

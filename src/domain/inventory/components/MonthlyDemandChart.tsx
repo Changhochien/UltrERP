@@ -1,22 +1,32 @@
 import { ParentSize } from "@visx/responsive";
 import { scaleBand, scaleLinear } from "@visx/scale";
-import { Bar } from "@visx/shape";
+import { Bar, LinePath } from "@visx/shape";
 import { AxisBottom, AxisLeft } from "@visx/axis";
 import { GridRows } from "@visx/grid";
 import { Group } from "@visx/group";
+import { curveMonotoneX } from "@visx/curve";
 import { TooltipWithBounds, useTooltip } from "@visx/tooltip";
 import { useTranslation } from "react-i18next";
 
 interface MonthlyDemandChartProps {
   data: { month: string; total_qty: number }[];
+  variant?: "bar" | "line";
+}
+
+function getVisibleTickMonths(months: string[], innerWidth: number) {
+  const maxTickCount = Math.max(2, Math.floor(innerWidth / 72));
+  const step = Math.max(1, Math.ceil(months.length / maxTickCount));
+  return months.filter((month, index) => index % step === 0 || index === months.length - 1);
 }
 
 function ChartInner({
   data,
+  variant,
   width,
   height,
 }: {
   data: { month: string; total_qty: number }[];
+  variant: "bar" | "line";
   width: number;
   height: number;
 }) {
@@ -39,6 +49,7 @@ function ChartInner({
     range: [0, innerWidth],
     padding: 0.3,
   });
+  const tickMonths = getVisibleTickMonths(data.map((d) => d.month), innerWidth);
 
   const yMax = Math.max(...data.map((d) => d.total_qty), 1);
   const yScale = scaleLinear({
@@ -59,6 +70,7 @@ function ChartInner({
           <AxisBottom
             top={innerHeight}
             scale={xScale}
+            tickValues={tickMonths}
             tickLabelProps={() => ({
               fill: "var(--muted-foreground)",
               fontSize: 11,
@@ -75,32 +87,68 @@ function ChartInner({
             })}
             stroke="var(--border)"
           />
-          {data.map((d, i) => {
-            const rawBarHeight = innerHeight - (yScale(d.total_qty) ?? 0);
-            const barHeight = Math.max(0, rawBarHeight);
-            const barX = xScale(d.month) ?? 0;
-            const barY = yScale(d.total_qty) ?? 0;
-            const barWidth = Math.max(0, xScale.bandwidth());
-            return (
-              <Bar
-                key={i}
-                x={barX}
-                y={barY}
-                width={barWidth}
-                height={barHeight}
-                fill="#3b82f6"
-                rx={4}
-                onMouseEnter={(e) => {
-                  showTooltip({
-                    tooltipData: d,
-                    tooltipLeft: e.pageX,
-                    tooltipTop: e.pageY,
-                  });
-                }}
-                onMouseLeave={hideTooltip}
+          {variant === "line" ? (
+            <>
+              <LinePath
+                data={data}
+                x={(d) => (xScale(d.month) ?? 0) + xScale.bandwidth() / 2}
+                y={(d) => yScale(d.total_qty) ?? 0}
+                stroke="#3b82f6"
+                strokeWidth={2.5}
+                curve={curveMonotoneX}
               />
-            );
-          })}
+              {data.map((d, i) => {
+                const cx = (xScale(d.month) ?? 0) + xScale.bandwidth() / 2;
+                const cy = yScale(d.total_qty) ?? 0;
+                return (
+                  <circle
+                    key={i}
+                    cx={cx}
+                    cy={cy}
+                    r={4}
+                    fill="#3b82f6"
+                    stroke="white"
+                    strokeWidth={1.5}
+                    onMouseEnter={(e) => {
+                      showTooltip({
+                        tooltipData: d,
+                        tooltipLeft: e.pageX,
+                        tooltipTop: e.pageY,
+                      });
+                    }}
+                    onMouseLeave={hideTooltip}
+                  />
+                );
+              })}
+            </>
+          ) : (
+            data.map((d, i) => {
+              const rawBarHeight = innerHeight - (yScale(d.total_qty) ?? 0);
+              const barHeight = Math.max(0, rawBarHeight);
+              const barX = xScale(d.month) ?? 0;
+              const barY = yScale(d.total_qty) ?? 0;
+              const barWidth = Math.max(0, xScale.bandwidth());
+              return (
+                <Bar
+                  key={i}
+                  x={barX}
+                  y={barY}
+                  width={barWidth}
+                  height={barHeight}
+                  fill="#3b82f6"
+                  rx={4}
+                  onMouseEnter={(e) => {
+                    showTooltip({
+                      tooltipData: d,
+                      tooltipLeft: e.pageX,
+                      tooltipTop: e.pageY,
+                    });
+                  }}
+                  onMouseLeave={hideTooltip}
+                />
+              );
+            })
+          )}
         </Group>
       </svg>
       {tooltipOpen && tooltipData && (
@@ -126,7 +174,7 @@ function ChartInner({
   );
 }
 
-export function MonthlyDemandChart({ data }: MonthlyDemandChartProps) {
+export function MonthlyDemandChart({ data, variant = "bar" }: MonthlyDemandChartProps) {
   const { t } = useTranslation("common", {
     keyPrefix: "inventory.productDetail.analyticsTab.monthlyDemand",
   });
@@ -141,7 +189,7 @@ export function MonthlyDemandChart({ data }: MonthlyDemandChartProps) {
 
   return (
     <ParentSize>
-      {({ width }) => <ChartInner data={data} width={width} height={260} />}
+      {({ width }) => <ChartInner data={data} variant={variant} width={width} height={260} />}
     </ParentSize>
   );
 }

@@ -1884,7 +1884,7 @@ async def get_monthly_demand_endpoint(
     session: DbSession,
     _user: ReadUser,
     tenant_id: CurrentTenant,
-    months: int = Query(12, ge=1, le=24),
+    months: int = Query(12, ge=1, le=48),
     include_current_month: bool = Query(True),
 ) -> MonthlyDemandResponse:
     result = await get_monthly_demand(

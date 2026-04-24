@@ -274,9 +274,9 @@ async def test_monthly_demand_endpoint_returns_positive_quantities_and_respects_
     session = FakeAsyncSession()
     session.queue_rows(
         [
+            SimpleNamespace(month=datetime(2023, 1, 1, tzinfo=UTC), total_qty=-6),
             SimpleNamespace(month=datetime(2026, 3, 1, tzinfo=UTC), total_qty=-7),
             SimpleNamespace(month=datetime(2026, 4, 1, tzinfo=UTC), total_qty=-5),
-            SimpleNamespace(month=datetime(2025, 11, 1, tzinfo=UTC), total_qty=-9),
         ]
     )
     monkeypatch.setattr(inventory_services, "utc_now", lambda: tenant_now)
@@ -285,13 +285,16 @@ async def test_monthly_demand_endpoint_returns_positive_quantities_and_respects_
     try:
         resp = await _get(
             f"/api/v1/inventory/products/{product_id}/monthly-demand",
-            months=2,
+            months=48,
             include_current_month="false",
         )
         assert resp.status_code == 200
         assert resp.json() == {
-            "items": [{"month": "2026-03", "total_qty": 7}],
-            "total": 7,
+            "items": [
+                {"month": "2023-01", "total_qty": 6},
+                {"month": "2026-03", "total_qty": 7},
+            ],
+            "total": 13,
         }
     finally:
         _teardown(prev)

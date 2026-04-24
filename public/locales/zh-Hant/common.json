@@ -2997,10 +2997,15 @@
         "monthlyDemand": {
           "title": "每月需求",
           "timeFrameLabel": "每月需求期間篩選",
+          "chartModeLabel": "每月需求圖表類型",
+          "chartModeBar": "柱狀圖",
+          "chartModeLine": "折線圖",
           "period3m": "3 個月",
           "period6m": "6 個月",
           "period12m": "12 個月",
           "period24m": "24 個月",
+          "period36m": "36 個月",
+          "period48m": "48 個月",
           "empty": "沒有需求資料",
           "tooltipUnits": "{count} 單位"
         },

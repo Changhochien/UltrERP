@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 import { AnalyticsTab } from "./AnalyticsTab";
+import { MonthlyDemandChart } from "../components/MonthlyDemandChart";
 import { useProductMonthlyDemand } from "../hooks/useProductMonthlyDemand";
 import { useProductPlanningSupport } from "../hooks/useProductPlanningSupport";
 
@@ -92,7 +93,9 @@ vi.mock("../hooks/useProductPlanningSupport", () => ({
 }));
 
 vi.mock("../components/MonthlyDemandChart", () => ({
-  MonthlyDemandChart: () => <div>monthly-demand-chart</div>,
+  MonthlyDemandChart: vi.fn(({ variant }: { variant?: "bar" | "line" }) => (
+    <div>monthly-demand-chart-{variant ?? "bar"}</div>
+  )),
 }));
 
 vi.mock("../components/SalesHistoryTable", () => ({
@@ -151,13 +154,17 @@ describe("AnalyticsTab", () => {
     expect(screen.getByText("inventory.productDetail.analyticsTab.planningSupport.metrics.avgMonthly")).toBeTruthy();
     expect(screen.getByText("inventory.productDetail.analyticsTab.planningSupport.sourceLabels.live")).toBeTruthy();
     expect(screen.getAllByText("2026-03")).toHaveLength(2);
-    expect(screen.getByText("monthly-demand-chart")).toBeTruthy();
+    expect(screen.getByText("monthly-demand-chart-bar")).toBeTruthy();
     expect(screen.getByText("sales-history-table")).toBeTruthy();
     expect(screen.getByText("top-customer-card")).toBeTruthy();
     expect(vi.mocked(useProductMonthlyDemand)).toHaveBeenLastCalledWith("product-1", {
       months: 12,
       includeCurrentMonth: true,
     });
+    expect(vi.mocked(MonthlyDemandChart)).toHaveBeenLastCalledWith(
+      expect.objectContaining({ variant: "bar" }),
+      undefined,
+    );
   });
 
   it("lets the user change the monthly demand time frame", () => {
@@ -189,14 +196,54 @@ describe("AnalyticsTab", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "inventory.productDetail.analyticsTab.monthlyDemand.period24m",
+        name: "inventory.productDetail.analyticsTab.monthlyDemand.period48m",
       }),
     );
 
     expect(vi.mocked(useProductMonthlyDemand)).toHaveBeenLastCalledWith("product-1", {
-      months: 24,
+      months: 48,
       includeCurrentMonth: true,
     });
+  });
+
+  it("lets the user switch the monthly demand chart to line mode", () => {
+    render(
+      <AnalyticsTab
+        productId="product-1"
+        warehouses={[
+          {
+            stock_id: "stock-1",
+            warehouse_id: "warehouse-1",
+            warehouse_name: "Main Warehouse",
+            current_stock: 12,
+            reorder_point: 5,
+            safety_factor: 0.5,
+            lead_time_days: 7,
+            policy_type: "periodic",
+            target_stock_qty: 0,
+            on_order_qty: 0,
+            in_transit_qty: 0,
+            reserved_qty: 0,
+            planning_horizon_days: 30,
+            review_cycle_days: 85,
+            is_below_reorder: false,
+            last_adjusted: null,
+          },
+        ]}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "inventory.productDetail.analyticsTab.monthlyDemand.chartModeLine",
+      }),
+    );
+
+    expect(screen.getByText("monthly-demand-chart-line")).toBeTruthy();
+    expect(vi.mocked(MonthlyDemandChart)).toHaveBeenLastCalledWith(
+      expect.objectContaining({ variant: "line" }),
+      undefined,
+    );
   });
 
   it("suppresses planning support when the feature is disabled", () => {
@@ -235,7 +282,7 @@ describe("AnalyticsTab", () => {
 
     expect(screen.queryByText("inventory.productDetail.analyticsTab.planningSupport.title")).toBeNull();
     expect(screen.getByText("analytics-summary-card")).toBeTruthy();
-    expect(screen.getByText("monthly-demand-chart")).toBeTruthy();
+    expect(screen.getByText("monthly-demand-chart-bar")).toBeTruthy();
     expect(screen.getByText("sales-history-table")).toBeTruthy();
     expect(screen.getByText("top-customer-card")).toBeTruthy();
   });

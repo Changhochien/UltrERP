@@ -25,7 +25,7 @@ describe("useProductMonthlyDemand", () => {
 
     const { result } = renderHook(() =>
       useProductMonthlyDemand("product-1", {
-        months: 24,
+        months: 48,
         includeCurrentMonth: false,
       }),
     );
@@ -35,7 +35,7 @@ describe("useProductMonthlyDemand", () => {
     });
 
     expect(apiFetchMock).toHaveBeenCalledWith(
-      "/api/v1/inventory/products/product-1/monthly-demand?months=24&include_current_month=false",
+      "/api/v1/inventory/products/product-1/monthly-demand?months=48&include_current_month=false",
     );
     expect(result.current.items).toEqual([{ month: "2026-04", total_qty: 5 }]);
     expect(result.current.total).toBe(5);
