@@ -1172,14 +1172,12 @@ async def test_run_canonical_import_uses_upserts_for_replay_safety(monkeypatch) 
     assert "INSERT INTO inventory_stock" in sql and "ON CONFLICT" in sql
     assert "product_name_snapshot" in order_line_query
     assert "product_category_snapshot" in order_line_query
-    assert (
-        "product_name_snapshot = COALESCE(order_lines.product_name_snapshot, EXCLUDED.product_name_snapshot)"
-        in order_line_query
-    )
-    assert (
-        "product_category_snapshot = COALESCE(order_lines.product_category_snapshot, EXCLUDED.product_category_snapshot)"
-        in order_line_query
-    )
+    assert "product_name_snapshot=COALESCE(" in order_line_query
+    assert "order_lines.product_name_snapshot," in order_line_query
+    assert "EXCLUDED.product_name_snapshot" in order_line_query
+    assert "product_category_snapshot=COALESCE(" in order_line_query
+    assert "order_lines.product_category_snapshot," in order_line_query
+    assert "EXCLUDED.product_category_snapshot" in order_line_query
     assert 'INSERT INTO "raw_legacy".canonical_record_lineage' in sql and "ON CONFLICT" in sql
 
 

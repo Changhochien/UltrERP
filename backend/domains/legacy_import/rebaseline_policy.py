@@ -39,10 +39,7 @@ class RebaselinePolicyConfig:
     replay_trust_ok: bool = True
 
     def __post_init__(self) -> None:
-        default_mode = coerce_refresh_batch_mode(
-            self.default_schedule_mode,
-            caller_name="RebaselinePolicyConfig.default_schedule_mode",
-        )
+        default_mode = coerce_refresh_batch_mode(self.default_schedule_mode)
         if default_mode is not RefreshBatchMode.INCREMENTAL:
             raise ValueError(
                 "Scheduled refresh configuration cannot set full refresh as the default daily mode."

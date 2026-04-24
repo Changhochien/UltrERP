@@ -340,6 +340,7 @@ async def test_adapter_narrows_discovered_tables_to_selected_domain_scope(
         entity_scope={
             "parties": {"closure_keys": [{"party-code": "P-001"}]},
         },
+        connection_settings=_fake_connection_settings(),
     )
     monkeypatch.setattr(adapter, "_inner", inner)
     monkeypatch.setattr(adapter, "source_descriptor", inner.source_descriptor)
@@ -367,6 +368,7 @@ async def test_adapter_rejects_caller_selection_outside_scope(monkeypatch) -> No
     adapter = IncrementalLegacyStageSourceAdapter(
         selected_domains=("parties",),
         entity_scope={"parties": {"closure_keys": [{"party-code": "P-001"}]}},
+        connection_settings=_fake_connection_settings(),
     )
     monkeypatch.setattr(adapter, "_inner", inner)
 
@@ -397,6 +399,7 @@ async def test_adapter_pushes_down_single_column_scope_to_live_query(
                 ]
             }
         },
+        connection_settings=_fake_connection_settings(),
     )
     monkeypatch.setattr(adapter, "_inner", inner)
 
@@ -430,6 +433,7 @@ async def test_adapter_skips_pushdown_for_non_ascii_single_column_scope(
                 ]
             }
         },
+        connection_settings=_fake_connection_settings(),
     )
     monkeypatch.setattr(adapter, "_inner", inner)
 
@@ -463,6 +467,7 @@ async def test_adapter_batches_large_single_column_pushdown_scope(
                 "closure_keys": closure_keys,
             }
         },
+        connection_settings=_fake_connection_settings(),
     )
     monkeypatch.setattr(adapter, "_inner", inner)
 
