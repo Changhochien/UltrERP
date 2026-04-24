@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
@@ -9,6 +10,8 @@ from typing import TYPE_CHECKING, Any, cast
 
 from sqlalchemy import and_, asc, case, desc, distinct, func, literal, or_, select, text, update
 from sqlalchemy.exc import IntegrityError, ProgrammingError
+
+_logger = logging.getLogger(__name__)
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, selectinload
 
@@ -3881,6 +3884,10 @@ async def get_monthly_demand(
     Uses Asia/Taipei timezone for date truncation to match the business timezone.
     """
     twelve_months_ago = utc_now().replace(day=1) - __import__("datetime").timedelta(days=365)
+    _logger.warning(
+        f"[DEBUG get_monthly_demand] product_id={product_id}, "
+        f"twelve_months_ago={twelve_months_ago}, tenant_id={tenant_id}"
+    )
 
     # Convert to Taiwan timezone before truncating month, so month boundaries align with
     # Taiwan calendar months (UTC+8). Without this conversion, data stored with end-of-
@@ -3916,6 +3923,7 @@ async def get_monthly_demand(
         for row in rows
     ]
     total = sum(item["total_qty"] for item in items)
+    _logger.warning(f"[DEBUG get_monthly_demand] result: {items}")
     return {"items": items, "total": total}
 
 
