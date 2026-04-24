@@ -1,6 +1,6 @@
 # Story 15.27: Incremental Validation And Derived Refresh Scope
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 

@@ -275,9 +275,15 @@ def _invoice_unit_cost_backfill_decisions_cte(
     *,
     scoped_to_tenant: bool,
     seek_after_invoice_line_id: bool,
+    # Story 15.27: Target-aware incremental scope parameters (AC2).
+    scoped_product_ids: frozenset[uuid.UUID] | None = None,
 ) -> str:
     tenant_filter = "AND il.tenant_id = :tenant_id" if scoped_to_tenant else ""
     seek_filter = "AND il.id > :after_invoice_line_id" if seek_after_invoice_line_id else ""
+    # Story 15.27: Scope filter to specific products for incremental mode (AC2).
+    scope_filter = ""
+    if scoped_product_ids:
+        scope_filter = "AND il.product_id = ANY(:scoped_product_ids)"
     return f"""
         WITH candidates AS (
             SELECT
@@ -292,6 +298,7 @@ def _invoice_unit_cost_backfill_decisions_cte(
             WHERE il.unit_cost IS NULL
               AND il.product_id IS NOT NULL
               {tenant_filter}
+              {scope_filter}
                             {seek_filter}
                         ORDER BY il.id ASC
                         LIMIT :candidate_limit
@@ -370,10 +377,32 @@ async def backfill_missing_invoice_line_unit_costs(
     batch_size: int = 1000,
     max_candidates: int | None = None,
     commit_per_batch: bool = False,
+    # Story 15.27: Target-aware incremental scope parameters (AC2).
+    entity_scope: dict[str, dict[str, object]] | None = None,
+    affected_domains: Sequence[str] | None = None,
 ) -> InvoiceUnitCostBackfillSummary:
     params_base: dict[str, object] = {}
     if tenant_id is not None:
         params_base["tenant_id"] = tenant_id
+
+    # Story 15.27: Extract products closure keys for scope filtering (AC2).
+    scoped_product_ids: frozenset[uuid.UUID] | None = None
+    is_incremental = entity_scope is not None or affected_domains is not None
+
+    if entity_scope:
+        products_scope = entity_scope.get("products")
+        if products_scope and isinstance(products_scope, dict):
+            closure_keys = products_scope.get("closure_keys")
+            if closure_keys and isinstance(closure_keys, (list, tuple)):
+                scoped_product_ids = frozenset(
+                    uuid.UUID(str(k)) if not isinstance(k, uuid.UUID) else k
+                    for k in closure_keys
+                )
+
+    # Story 15.27: Convert to tuple for SQL parameter binding.
+    scoped_product_ids_param: tuple[uuid.UUID, ...] | None = None
+    if scoped_product_ids:
+        scoped_product_ids_param = tuple(scoped_product_ids)
 
     candidate_count = 0
     updated_count = 0
@@ -397,10 +426,15 @@ async def backfill_missing_invoice_line_unit_costs(
         }
         if after_invoice_line_id is not None:
             params["after_invoice_line_id"] = after_invoice_line_id
+        # Story 15.27: Add scoped product IDs for incremental filtering (AC2).
+        if scoped_product_ids_param is not None:
+            params["scoped_product_ids"] = scoped_product_ids_param
 
         decisions_cte = _invoice_unit_cost_backfill_decisions_cte(
             scoped_to_tenant=tenant_id is not None,
             seek_after_invoice_line_id=after_invoice_line_id is not None,
+            # Story 15.27: Pass scope for incremental filtering (AC2).
+            scoped_product_ids=scoped_product_ids,
         )
         summary_result = await session.execute(
             text(

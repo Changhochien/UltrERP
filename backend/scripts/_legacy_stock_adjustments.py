@@ -472,10 +472,39 @@ async def fetch_purchase_receipt_rows(
     *,
     cutoff: date,
     today: date,
+    # Story 15.27: Target-aware incremental scope parameters (AC2).
+    entity_scope: dict[str, dict[str, object]] | None = None,
+    affected_domains: Sequence[str] | None = None,
 ) -> list[dict[str, object]]:
+    """Fetch purchase receipt rows with optional scope filtering.
+
+    For incremental mode (when entity_scope is provided with purchase-invoices keys),
+    filters to only include rows for documents in the scope.
+    For full mode, returns all rows within the date window.
+    """
+    params: dict[str, object] = {"cutoff": str(cutoff), "today": str(today)}
+
+    # Story 15.27: Extract purchase-invoices closure keys for scope filtering (AC2).
+    scoped_doc_numbers: frozenset[str] | None = None
+    is_incremental = entity_scope is not None or affected_domains is not None
+
+    if entity_scope:
+        purchase_scope = entity_scope.get("purchase-invoices")
+        if purchase_scope and isinstance(purchase_scope, dict):
+            closure_keys = purchase_scope.get("closure_keys")
+            if closure_keys and isinstance(closure_keys, (list, tuple)):
+                scoped_doc_numbers = frozenset(str(k) for k in closure_keys)
+
+    # Build the query with optional scope filter
+    scope_filter = ""
+    if is_incremental and scoped_doc_numbers:
+        # Convert frozenset to a tuple for SQL IN clause parameter
+        scope_filter = "AND dtj.col_2 = ANY(:scope_doc_numbers)"
+        params["scope_doc_numbers"] = tuple(scoped_doc_numbers)
+
     result = await session.execute(
         text(
-            """
+            f"""
             SELECT
                 dtj.col_2 AS doc_number,
                 dtj.col_3 AS line_number,
@@ -492,10 +521,11 @@ async def fetch_purchase_receipt_rows(
               AND COALESCE(NULLIF(dtj.col_4, ''), NULLIF(j.col_3, '')) IS NOT NULL
               AND COALESCE(NULLIF(dtj.col_4, ''), NULLIF(j.col_3, '')) >= :cutoff
               AND COALESCE(NULLIF(dtj.col_4, ''), NULLIF(j.col_3, '')) <= :today
+            {scope_filter}
             ORDER BY COALESCE(NULLIF(dtj.col_4, ''), NULLIF(j.col_3, '')), dtj.col_2, dtj.col_3
             """
         ),
-        {"cutoff": str(cutoff), "today": str(today)},
+        params,
     )
     return [dict(row._mapping) for row in result.fetchall()]
 

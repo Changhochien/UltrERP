@@ -1,4 +1,11 @@
-"""Validation and replay-safety reporting for legacy import batches."""
+"""Validation and replay-safety reporting for legacy import batches.
+
+Story 15.27: Incremental validation supports scoped batches that verify only the
+affected domains and entities. It emits artifacts that distinguish freshness
+success from promotion eligibility, records `summary_valid`, `batch_mode`,
+and `affected_domains` for operator observability, and advances watermarks
+only after durable scoped success (AC1, AC3, AC4, AC5).
+"""
 
 from __future__ import annotations
 
@@ -6,10 +13,11 @@ import hashlib
 import json
 import re
 import uuid
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from datetime import date, datetime
 from pathlib import Path
-from typing import Mapping
+from typing import Mapping, TypedDict
 
 from common.config import PROJECT_ROOT, settings
 from common.tenant import DEFAULT_TENANT_ID
@@ -127,6 +135,61 @@ class LegacyHeaderSnapshotCoverage:
         }
 
 
+# Story 15.27: Incremental validation scope dataclasses.
+class IncrementalValidationScope(TypedDict, total=False):
+    """Scope parameters for incremental validation (AC1)."""
+
+    affected_domains: Sequence[str]
+    """Domains that were touched by the incremental canonical import."""
+
+    entity_scope: dict[str, dict[str, object]]
+    """Per-domain closure keys identifying affected entities."""
+
+    scoped_document_count: int | None
+    """Count of documents processed in the scoped import."""
+
+    last_successful_batch_ids: dict[str, str]
+    """Prior successful batch IDs per domain for carryforward validation."""
+
+
+@dataclass(slots=True, frozen=True)
+class ValidationArtifactMetadata:
+    """AC5: Observability metadata emitted with every validation report."""
+
+    batch_mode: str
+    """'full', 'incremental', or 'rebaseline'."""
+
+    affected_domains: tuple[str, ...]
+    """Domains validated by this report."""
+
+    summary_valid: bool
+    """True when validation produced a clean or warning status."""
+
+    watermark_advanced: bool
+    """True when watermarks were advanced after this batch."""
+
+    root_failed_step: str | None
+    """Step name that caused validation failure, if any."""
+
+    root_error_message: str | None
+    """Error message from the root failure, if any."""
+
+    requires_rebaseline: bool
+    """True when a full rebaseline is required instead of incremental."""
+
+    rebaseline_reason: str | None
+    """Human-readable reason when requires_rebaseline is True."""
+
+    freshness_success: bool
+    """True when scoped import + validation succeeded (AC5)."""
+
+    promotion_eligible: bool
+    """True when batch passes the shared promotion policy (AC5)."""
+
+    incremental_scope: IncrementalValidationScope | None
+    """Full scope metadata for incremental batches; None for full batches."""
+
+
 @dataclass(slots=True, frozen=True)
 class MigrationValidationReport:
     batch_id: str
@@ -144,9 +207,11 @@ class MigrationValidationReport:
     counts: dict[str, int] | None = None
     snapshot_coverage: LegacyHeaderSnapshotCoverage | None = None
     category_review_summary: ProductCategoryReviewSummary | None = None
+    # Story 15.27: Incremental validation observability fields (AC3-5).
+    artifact_metadata: ValidationArtifactMetadata | None = None
 
     def to_dict(self) -> dict[str, object]:
-        return {
+        result = {
             "batch_id": self.batch_id,
             "tenant_id": self.tenant_id,
             "schema_name": self.schema_name,
@@ -177,6 +242,10 @@ class MigrationValidationReport:
             "replay": asdict(self.replay),
             "epic13_handoff": self.epic13_handoff,
         }
+        # Story 15.27: Include artifact metadata for operator observability (AC5).
+        if self.artifact_metadata is not None:
+            result["artifact_metadata"] = asdict(self.artifact_metadata)
+        return result
 
 
 @dataclass(slots=True, frozen=True)
@@ -288,6 +357,58 @@ def _derive_scope_key(
     return digest[:16]
 
 
+def _build_artifact_metadata(
+    *,
+    batch_mode: str,
+    affected_domains: tuple[str, ...],
+    status: str,
+    blocking_issue_count: int,
+    failed_stages: tuple[ValidationStageFailure, ...],
+    incremental_scope: IncrementalValidationScope | None,
+    promotion_eligible: bool = False,
+) -> ValidationArtifactMetadata:
+    """Build incremental validation artifact metadata (AC3-5).
+
+    Distinguishes freshness success (scoped import + validation passed)
+    from promotion eligibility (passes shared promotion policy).
+    """
+    summary_valid = status in ("clean", "warning")
+    freshness_success = summary_valid and blocking_issue_count == 0
+
+    # Determine root failure for operator observability (AC4).
+    root_failed_step: str | None = None
+    root_error_message: str | None = None
+    if failed_stages:
+        root_failed_step = failed_stages[0].stage_name
+        root_error_message = failed_stages[0].error_message
+
+    # Determine rebaseline requirement (AC4).
+    requires_rebaseline = status == "blocked" or blocking_issue_count > 0
+    if requires_rebaseline:
+        if root_failed_step:
+            rebaseline_reason = f"Validation blocked by failed stage: {root_failed_step}"
+        elif blocking_issue_count > 0:
+            rebaseline_reason = f"{blocking_issue_count} blocking issue(s) must be resolved"
+        else:
+            rebaseline_reason = "Unknown blocking condition requires rebaseline"
+    else:
+        rebaseline_reason = None
+
+    return ValidationArtifactMetadata(
+        batch_mode=batch_mode,
+        affected_domains=affected_domains,
+        summary_valid=summary_valid,
+        watermark_advanced=False,  # Set by caller after durable success (AC3).
+        root_failed_step=root_failed_step,
+        root_error_message=root_error_message,
+        requires_rebaseline=requires_rebaseline,
+        rebaseline_reason=rebaseline_reason,
+        freshness_success=freshness_success,
+        promotion_eligible=promotion_eligible and freshness_success,
+        incremental_scope=incremental_scope,
+    )
+
+
 def build_validation_report(
     *,
     batch_id: str,
@@ -302,6 +423,12 @@ def build_validation_report(
     previous_scope_run: Mapping[str, object] | None,
     snapshot_coverage: LegacyHeaderSnapshotCoverage | None = None,
     category_review_summary: ProductCategoryReviewSummary | None = None,
+    # Story 15.27: Incremental scope parameters (AC1, AC5).
+    batch_mode: str | None = None,
+    affected_domains: Sequence[str] | None = None,
+    entity_scope: dict[str, dict[str, object]] | None = None,
+    scoped_document_count: int | None = None,
+    last_successful_batch_ids: dict[str, str] | None = None,
 ) -> MigrationValidationReport:
     issues: list[MigrationValidationIssue] = []
     for row in stage_rows:
@@ -475,6 +602,29 @@ def build_validation_report(
         ),
     }
 
+    # Story 15.27: Build incremental validation artifact metadata (AC1, AC5).
+    resolved_batch_mode = batch_mode or "full"
+    resolved_affected_domains = tuple(affected_domains) if affected_domains else ()
+    incremental_scope: IncrementalValidationScope | None = None
+    if resolved_batch_mode == "incremental" and resolved_affected_domains:
+        incremental_scope = IncrementalValidationScope(
+            affected_domains=list(resolved_affected_domains),
+            entity_scope=dict(entity_scope) if entity_scope else {},
+            scoped_document_count=scoped_document_count,
+            last_successful_batch_ids=(
+                dict(last_successful_batch_ids) if last_successful_batch_ids else {}
+            ),
+        )
+
+    artifact_metadata = _build_artifact_metadata(
+        batch_mode=resolved_batch_mode,
+        affected_domains=resolved_affected_domains,
+        status=status,
+        blocking_issue_count=blocking_issue_count,
+        failed_stages=failed_stages,
+        incremental_scope=incremental_scope,
+    )
+
     return MigrationValidationReport(
         batch_id=batch_id,
         tenant_id=str(tenant_id),
@@ -491,6 +641,7 @@ def build_validation_report(
         counts=dict(counts),
         snapshot_coverage=snapshot_coverage,
         category_review_summary=category_review_summary,
+        artifact_metadata=artifact_metadata,
     )
 
 
@@ -505,9 +656,29 @@ def render_validation_markdown(report: MigrationValidationReport) -> str:
         f"Scope cutoff date: {report.replay.scope_cutoff_date or 'n/a'}",
         f"Previous scope status: {report.replay.previous_status or 'n/a'}",
         "",
-        "## Row Count Reconciliation",
-        "",
     ]
+    # Story 15.27: Include incremental validation metadata section (AC3-5).
+    if report.artifact_metadata is not None:
+        meta = report.artifact_metadata
+        lines.append("## Incremental Validation Metadata")
+        lines.append("")
+        lines.append(f"- Batch mode: {meta.batch_mode}")
+        if meta.affected_domains:
+            lines.append(f"- Affected domains: {', '.join(meta.affected_domains)}")
+        lines.append(f"- Summary valid: {meta.summary_valid}")
+        lines.append(f"- Freshness success: {meta.freshness_success}")
+        lines.append(f"- Promotion eligible: {meta.promotion_eligible}")
+        lines.append(f"- Watermark advanced: {meta.watermark_advanced}")
+        lines.append(f"- Requires rebaseline: {meta.requires_rebaseline}")
+        if meta.root_failed_step:
+            lines.append(f"- Root failed step: {meta.root_failed_step}")
+        if meta.root_error_message:
+            lines.append(f"- Root error message: {meta.root_error_message}")
+        if meta.rebaseline_reason:
+            lines.append(f"- Rebaseline reason: {meta.rebaseline_reason}")
+        lines.append("")
+    lines.append("## Row Count Reconciliation")
+    lines.append("")
     for row in report.stage_reconciliation:
         lines.append(
             "- "
@@ -538,7 +709,7 @@ def render_validation_markdown(report: MigrationValidationReport) -> str:
             f"missing={report.snapshot_coverage.missing_snapshot_count}"
         )
     lines.extend(["", "## Category Review", ""])
-    if report.category_review_summary is None or report.category_review_summary.candidate_count == 0:
+    if report.category_review_summary is None or not report.category_review_summary.candidate_count:
         lines.append("- No provisional category assignments detected.")
     else:
         lines.append(
@@ -811,11 +982,14 @@ async def _fetch_product_category_review_summary(
         )
         for payload in (_coerce_row(row) for row in rows)
     )
+    def _count_by_reason(reason: str) -> int:
+        return sum(1 for c in candidates if c.review_reason == reason)
+
     return ProductCategoryReviewSummary(
         candidate_count=len(candidates),
-        fallback_count=sum(1 for candidate in candidates if candidate.review_reason == "fallback_assignment"),
-        low_confidence_count=sum(1 for candidate in candidates if candidate.review_reason == "low_confidence"),
-        excluded_count=sum(1 for candidate in candidates if candidate.review_reason == "excluded_path"),
+        fallback_count=_count_by_reason("fallback_assignment"),
+        low_confidence_count=_count_by_reason("low_confidence"),
+        excluded_count=_count_by_reason("excluded_path"),
         candidates=candidates,
     )
 
@@ -915,6 +1089,9 @@ def _merge_summary_payload(
         merged["legacy_header_snapshot_coverage"] = asdict(report.snapshot_coverage)
     if report.category_review_summary is not None:
         merged["category_review_summary"] = asdict(report.category_review_summary)
+    # Story 15.27: Include incremental validation metadata in summary (AC3-5).
+    if report.artifact_metadata is not None:
+        merged["artifact_metadata"] = asdict(report.artifact_metadata)
     return merged
 
 
@@ -1014,6 +1191,12 @@ async def validate_import_batch(
     schema_name: str | None = None,
     attempt_number: int | None = None,
     output_dir: Path | None = None,
+    # Story 15.27: Incremental scope parameters for scoped validation (AC1).
+    batch_mode: str | None = None,
+    affected_domains: Sequence[str] | None = None,
+    entity_scope: dict[str, dict[str, object]] | None = None,
+    scoped_document_count: int | None = None,
+    last_successful_batch_ids: dict[str, str] | None = None,
 ) -> MigrationBatchValidationResult:
     resolved_schema = schema_name or settings.legacy_import_schema
     connection = await _open_raw_connection()
@@ -1124,6 +1307,12 @@ async def validate_import_batch(
             previous_scope_run=previous_scope_run,
             snapshot_coverage=snapshot_coverage,
             category_review_summary=category_review_summary,
+            # Story 15.27: Pass incremental scope parameters (AC1, AC5).
+            batch_mode=batch_mode,
+            affected_domains=affected_domains,
+            entity_scope=entity_scope,
+            scoped_document_count=scoped_document_count,
+            last_successful_batch_ids=last_successful_batch_ids,
         )
         json_path, markdown_path = _artifact_paths_for_report(report, output_dir=output_dir)
         temp_json_path = json_path.with_suffix(f"{json_path.suffix}.tmp")

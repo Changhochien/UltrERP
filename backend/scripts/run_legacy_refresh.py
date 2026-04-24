@@ -226,9 +226,14 @@ def _abort_refresh(
 ) -> None:
     _fail_step(steps_by_name[step_name], error=error)
     summary["failed_step"] = step_name
+    summary["root_failed_step"] = step_name
+    summary["root_error_message"] = error
+    summary["requires_rebaseline"] = True
+    summary["rebaseline_reason"] = f"Step {step_name} failed: {error}"
     summary["final_disposition"] = RefreshDisposition.FAILED.value
     summary["exit_code"] = 1
     summary["partial_state_preserved"] = partial_state_preserved
+    summary["watermark_advanced"] = False  # AC4: No advance on failed batches.
     _mark_pending_steps_skipped(
         step_records,
         after_step=step_name,
@@ -376,6 +381,14 @@ def _initial_summary(
         "exit_code": None,
         "failed_step": None,
         "last_completed_step": None,
+        # Story 15.27: Incremental validation and watermark advancement fields (AC3-5).
+        "root_failed_step": None,  # Step that caused validation failure.
+        "root_error_message": None,  # Error message from root failure.
+        "requires_rebaseline": False,  # True when full rebaseline is needed.
+        "rebaseline_reason": None,  # Human-readable rebaseline reason.
+        "watermark_advanced": False,  # True when watermarks were advanced.
+        "advanced_domains": [],  # Domains whose watermarks advanced.
+        "freshness_success": False,  # AC5: Scoped import + validation passed.
     }
 
 
@@ -641,6 +654,7 @@ async def run_legacy_refresh(
             if canonical_result.skipped_domains:
                 summary["canonical_skipped_domains"] = list(canonical_result.skipped_domains)
 
+            # Story 15.27: Pass incremental scope parameters to validation (AC1).
             validation_result = await _execute_step(
                 summary,
                 step_records,
@@ -651,6 +665,16 @@ async def run_legacy_refresh(
                     tenant_id=tenant_id,
                     schema_name=schema_name,
                     attempt_number=canonical_result.attempt_number,
+                    # Story 15.27: Incremental scope for scoped validation (AC1).
+                    batch_mode=(
+                        normalized_batch_mode.value
+                        if isinstance(normalized_batch_mode, RefreshBatchMode)
+                        else str(normalized_batch_mode or "full")
+                    ),
+                    affected_domains=list(affected_domains) if affected_domains else None,
+                    entity_scope=entity_scope,
+                    scoped_document_count=canonical_result.scoped_document_count,
+                    last_successful_batch_ids=last_successful_batch_ids,
                 ),
                 partial_state_preserved=True,
                 complete_on_success=False,
@@ -673,6 +697,17 @@ async def run_legacy_refresh(
                 json_path=str(validation_result.json_path),
                 markdown_path=str(validation_result.markdown_path),
             )
+            # Story 15.27: Extract root failure info for operator observability (AC4).
+            root_failed_step: str | None = None
+            root_error_message: str | None = None
+            requires_rebaseline = False
+            rebaseline_reason: str | None = None
+            if validation_result.report.artifact_metadata:
+                root_failed_step = validation_result.report.artifact_metadata.root_failed_step
+                root_error_message = validation_result.report.artifact_metadata.root_error_message
+                requires_rebaseline = validation_result.report.artifact_metadata.requires_rebaseline
+                rebaseline_reason = validation_result.report.artifact_metadata.rebaseline_reason
+
             if validation_result.report.status == RefreshGateStatus.BLOCKED.value:
                 _complete_named_step(
                     summary,
@@ -681,9 +716,15 @@ async def run_legacy_refresh(
                     details=validation_details,
                     status=RefreshStepStatus.BLOCKED.value,
                 )
+                # Story 15.27: Record validation failure metadata (AC4).
+                summary["root_failed_step"] = root_failed_step
+                summary["root_error_message"] = root_error_message
+                summary["requires_rebaseline"] = requires_rebaseline
+                summary["rebaseline_reason"] = rebaseline_reason
                 summary["final_disposition"] = RefreshDisposition.VALIDATION_BLOCKED.value
                 summary["exit_code"] = 1
                 summary["promotion_readiness"] = False
+                summary["watermark_advanced"] = False  # AC4: No advance on blocked
                 _set_gate_status(
                     summary,
                     "reconciliation",
@@ -703,28 +744,51 @@ async def run_legacy_refresh(
                 details=validation_details,
             )
 
+            # Story 15.27: Target-aware derived refresh calls (AC2).
+            # For incremental runs, pass entity_scope and affected_domains.
+            # For full runs, these are None and scripts use broad lookback.
             backfill_purchase_step = steps_by_name["backfill_purchase_receipts"]
             backfill_sales_step = steps_by_name["backfill_sales_reservations"]
             _start_step(backfill_purchase_step)
             _start_step(backfill_sales_step)
-            backfill_details = {"lookback_days": lookback_days, "dry_run": False}
+
+            # Determine backfill parameters based on batch mode (AC2).
+            is_incremental = normalized_batch_mode == RefreshBatchMode.INCREMENTAL
+            backfill_entity_scope = entity_scope if is_incremental else None
+            backfill_affected_domains = list(affected_domains) if affected_domains else None
+
+            backfill_details = {
+                "lookback_days": lookback_days,
+                "dry_run": False,
+                "batch_mode": (
+                    normalized_batch_mode.value
+                    if isinstance(normalized_batch_mode, RefreshBatchMode)
+                    else str(normalized_batch_mode)
+                ),
+                "affected_domains": backfill_affected_domains,
+            }
+
+            async def run_targeted_purchase_backfill():
+                return await backfill_purchase_receipts(
+                    lookback_days=lookback_days,
+                    dry_run=False,
+                    tenant_id=tenant_id,
+                    entity_scope=backfill_entity_scope,
+                    affected_domains=backfill_affected_domains,
+                )
+
+            async def run_targeted_sales_backfill():
+                return await backfill_sales_reservations(
+                    lookback_days=lookback_days,
+                    dry_run=False,
+                    tenant_id=tenant_id,
+                    entity_scope=backfill_entity_scope,
+                    affected_domains=backfill_affected_domains,
+                )
+
             backfill_results = await asyncio.gather(
-                _run_named_operation(
-                    "backfill_purchase_receipts",
-                    lambda: backfill_purchase_receipts(
-                        lookback_days=lookback_days,
-                        dry_run=False,
-                        tenant_id=tenant_id,
-                    ),
-                ),
-                _run_named_operation(
-                    "backfill_sales_reservations",
-                    lambda: backfill_sales_reservations(
-                        lookback_days=lookback_days,
-                        dry_run=False,
-                        tenant_id=tenant_id,
-                    ),
-                ),
+                _run_named_operation("backfill_purchase_receipts", run_targeted_purchase_backfill),
+                _run_named_operation("backfill_sales_reservations", run_targeted_sales_backfill),
             )
 
             failures = [result for result in backfill_results if result[1] is not None]
@@ -784,11 +848,22 @@ async def run_legacy_refresh(
                     details=reconciliation_details,
                     status=RefreshStepStatus.BLOCKED.value,
                 )
+                # Story 15.27: Record failure metadata (AC4).
+                summary["root_failed_step"] = "verify_reconciliation"
+                summary["root_error_message"] = (
+                    f"Reconciliation gap count {reconciliation_gap_count} "
+                    f"exceeds threshold {reconciliation_threshold}"
+                )
+                summary["requires_rebaseline"] = True
+                summary["rebaseline_reason"] = (
+                    "Reconciliation gaps exceed threshold; full rebaseline required"
+                )
                 summary["final_disposition"] = (
                     RefreshDisposition.RECONCILIATION_BLOCKED.value
                 )
                 summary["exit_code"] = 1
                 summary["promotion_readiness"] = False
+                summary["watermark_advanced"] = False  # AC4: No advance on blocked
                 return LegacyRefreshExecution(1, summary_path, summary)
 
             _complete_named_step(
@@ -797,7 +872,24 @@ async def run_legacy_refresh(
                 "verify_reconciliation",
                 details=reconciliation_details,
             )
+
+            # Story 15.27: Advance watermarks only after durable scoped success (AC3).
+            # Watermarks advance for the affected domains only.
+            watermark_advanced = True
+            advanced_domains: list[str] = []
+            if is_incremental and affected_domains:
+                advanced_domains = list(affected_domains)
+            elif not is_incremental:
+                # Full rebaseline advances all domains.
+                advanced_domains = list(SUPPORTED_FULL_REFRESH_DOMAINS)
+
+            summary["watermark_advanced"] = watermark_advanced
+            summary["advanced_domains"] = advanced_domains
             summary["promotion_readiness"] = not summary["analyst_review_required"]
+
+            # Story 15.27: Distinguish freshness success from promotion eligibility (AC5).
+            summary["freshness_success"] = True  # Scoped import + validation passed.
+            # Promotion eligibility depends on analyst review and promotion policy.
             summary["final_disposition"] = (
                 RefreshDisposition.COMPLETED_REVIEW_REQUIRED.value
                 if summary["analyst_review_required"]
