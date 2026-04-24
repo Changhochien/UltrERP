@@ -19,9 +19,9 @@ from domains.legacy_import.canonical import (
     _coerce_row,
     _currency_code,
     _ensure_canonical_support_tables,
+    _lineage_record_query_for_holding,
     _table_exists,
     _tenant_scoped_uuid,
-    _upsert_lineage_record,
 )
 from domains.legacy_import.shared import resolve_row_identity as _resolve_row_identity
 from domains.legacy_import.staging import _open_raw_connection, _quoted_identifier
@@ -454,10 +454,11 @@ async def _upsert_supplier_payment(
             _special_payment_reference(raw_row),
             _special_payment_notes(raw_row),
         )
-        await _upsert_lineage_record(
-            connection,
-            schema_name,
-            run_id,
+        # AC2: Update the holding lineage entry (if exists) to point to the
+        # canonical supplier_payment record. Uses source-identifier-only conflict
+        # matching so this UPDATE replaces the __holding__ entry created at hold time.
+        await connection.execute(
+            _lineage_record_query_for_holding(schema_name),
             tenant_id,
             batch_id,
             "supplier_payments",
@@ -465,6 +466,7 @@ async def _upsert_supplier_payment(
             "tbsspay",
             source_identifier,
             source_row_number,
+            run_id,
         )
 
     await source_resolution.resolve_source_row(

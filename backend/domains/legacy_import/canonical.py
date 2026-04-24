@@ -495,6 +495,25 @@ async def _ensure_canonical_support_tables(connection, schema_name: str) -> None
 		)
 		"""
     )
+    # Unique index for source-identifier-only matching.
+    # This allows holding-path lineage entries (__holding__) and drain-path entries
+    # (supplier_payments, etc.) to share the same source identity. The ON CONFLICT
+    # clause in the holding/drain queries uses this index to UPDATE existing entries
+    # instead of creating duplicates when the same source row is processed through
+    # both holding and drain paths.
+    await connection.execute(
+        f"""
+		CREATE UNIQUE INDEX IF NOT EXISTS {quoted_schema}.
+			canonical_record_lineage_source_identity
+			ON {quoted_schema}.canonical_record_lineage (
+				batch_id,
+				tenant_id,
+				source_table,
+				source_identifier,
+				source_row_number
+			);
+		"""
+    )
     await connection.execute(
         f"""
 		CREATE TABLE IF NOT EXISTS {quoted_schema}.unsupported_history_holding (
@@ -684,6 +703,79 @@ def _lineage_record_args(
         row.source_table,
         row.source_identifier,
         row.source_row_number,
+        run_id,
+    )
+
+
+# Sentinel canonical_table value for holding-path rows.
+# When the drain path later upserts a lineage record for the same source
+# identifiers, the ON CONFLICT clause matches on source identifiers only
+# (not canonical_table) so the holding entry is updated to the real table.
+HOLDING_LINEAGE_TABLE = "__holding__"
+
+
+def _lineage_record_query_for_holding(schema_name: str) -> str:
+    """Lineage upsert query that matches on source identifiers only.
+
+    The ON CONFLICT target is (batch_id, tenant_id, source_table,
+    source_identifier, source_row_number) WITHOUT canonical_table, so that
+    a drain-path upsert for the same source identifiers will UPDATE the
+    existing holding entry rather than creating a duplicate.
+    """
+    quoted_schema = _quoted_identifier(schema_name)
+    return f"""
+		INSERT INTO {quoted_schema}.canonical_record_lineage (
+			tenant_id,
+			batch_id,
+			canonical_table,
+			canonical_id,
+			source_table,
+			source_identifier,
+			source_row_number,
+			import_run_id
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        ON CONFLICT (
+            batch_id,
+            tenant_id,
+            source_table,
+            source_identifier,
+            source_row_number
+        )
+		DO UPDATE SET
+			canonical_table = EXCLUDED.canonical_table,
+			canonical_id = EXCLUDED.canonical_id,
+			import_run_id = EXCLUDED.import_run_id
+		"""
+
+
+async def _upsert_lineage_record_for_holding(
+    connection,
+    *,
+    schema_name: str,
+    run_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    batch_id: str,
+    canonical_id: uuid.UUID,
+    source_table: str,
+    source_identifier: str,
+    source_row_number: int,
+) -> None:
+    """Insert or update a lineage record for a holding-path row.
+
+    Uses source-identifier-only conflict matching so that drain-path upserts
+    (which use the same source identifiers but different canonical_table)
+    will UPDATE this entry rather than creating a duplicate.
+    """
+    await connection.execute(
+        _lineage_record_query_for_holding(schema_name),
+        tenant_id,
+        batch_id,
+        HOLDING_LINEAGE_TABLE,
+        canonical_id,
+        source_table,
+        source_identifier,
+        source_row_number,
         run_id,
     )
 
@@ -2576,11 +2668,14 @@ async def _try_upsert_holding_and_lineage(
     payload: dict[str, object],
     notes: str,
 ) -> bool:
-    """Insert holding payload and current-state transition in one savepoint.
+    """Insert holding payload and lineage entry in one savepoint.
 
     The nested transaction becomes a savepoint inside the outer import transaction,
     so a holding-state failure rolls back both writes for this source row without
     aborting the rest of the batch.
+
+    Also creates a lineage entry with canonical_table='__holding__' so that every
+    held row is visible in the lineage audit trail (AC2 guarantee).
     """
     try:
         holding_id = source_resolution.build_holding_id(
@@ -2606,6 +2701,20 @@ async def _try_upsert_holding_and_lineage(
                 holding_id=holding_id,
                 payload=payload,
                 notes=notes,
+            )
+            # AC2: Every held row gets a lineage entry with __holding__ sentinel.
+            # This entry will be updated (not duplicated) when the drain path
+            # later upserts a lineage record for the same source identifiers.
+            await _upsert_lineage_record_for_holding(
+                connection,
+                schema_name=schema_name,
+                run_id=run_id,
+                tenant_id=tenant_id,
+                batch_id=batch_id,
+                canonical_id=holding_id,
+                source_table=source_table,
+                source_identifier=source_identifier,
+                source_row_number=source_row_number,
             )
         return True
     except asyncio.CancelledError:

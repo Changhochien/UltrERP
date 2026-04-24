@@ -705,6 +705,22 @@ development_status:
       - "15.10 Live Legacy Source Compatibility Contract"
       - "15.11 Dual-Source Staging Architecture Refactor"
       - "15.12 Live Legacy DB Stage CLI"
+      - "15.13 AC4 Batch Rerun Idempotency"
+      - "15.14 AC2 Holding Path Lineage"
+      - "15.15 Legacy Refresh Orchestrator"
+      - "15.16 Scheduled Shadow Refresh And Batch State Tracking"
+      - "15.17 Gated Automatic Promotion To The Working Lane"
+      - "15.18 Automated Promotion Gate Policy And Approved Corrections"
+      - "15.19 Incremental Refresh And Auto-Promotion Watermark Contract"
+      - "15.20 Legacy Dump And Manual-Promotion Surface Retirement"
+      - "15.21 Canonical Source Resolution State Model Refactor"
+      - "15.22 Legacy Category Review Backlog Resolution"
+      - "15.23 Incremental Legacy Refresh Runner Surface"
+      - "15.24 Delta Discovery And Manifest Contract"
+      - "15.25 Scoped Incremental Staging And Normalization"
+      - "15.26 Scoped Incremental Canonical Import"
+      - "15.27 Incremental Validation And Derived Refresh Scope"
+      - "15.28 Admin Legacy Refresh Control Plane"
     stories:
       15-0-unified-extract-and-import-cli:
         status: "done"
@@ -859,6 +875,55 @@ development_status:
         story_file: "15-21-canonical-source-resolution-state-model-refactor.md"
         validation: "Validated on 2026-04-18: explicit source-row state and event tables are implemented, canonical/AP writers no longer emit new __holding__ sentinel lineage rows, reset/validation/docs were updated to the new surface, and `uv run pytest tests/domains/legacy_import/test_source_resolution.py tests/domains/legacy_import/test_ap_payment_import.py tests/domains/legacy_import/test_canonical.py tests/domains/legacy_import/test_validation.py tests/test_reset_legacy_import_batch.py tests/test_source_row_resolution_migration.py` passed (55 passed)."
         prerequisites: ["15.4", "15.5", "15.13", "15.14", "16.12"]
+      15-22-legacy-category-review-backlog-resolution:
+        status: "done"
+        story_id: "15.22"
+        title: "Legacy Category Review Backlog Resolution"
+        story_file: "15-22-legacy-category-review-backlog-resolution.md"
+        validation: "Validated on 2026-04-19: the live category-review backlog closed through grounded rule additions plus audited review imports, and validation attempt 22 finished clean with blockers=0 and 0 remaining category-review candidates."
+        prerequisites: ["15.4", "15.5", "15.9"]
+      15-23-incremental-legacy-refresh-runner-surface:
+        status: "ready-for-dev"
+        story_id: "15.23"
+        title: "Incremental Legacy Refresh Runner Surface"
+        story_file: "15-23-incremental-legacy-refresh-runner-surface.md"
+        validation: "none"
+        prerequisites: ["15.12", "15.15", "15.16", "15.19"]
+      15-24-delta-discovery-and-manifest-contract:
+        status: "ready-for-dev"
+        story_id: "15.24"
+        title: "Delta Discovery And Manifest Contract"
+        story_file: "15-24-delta-discovery-and-manifest-contract.md"
+        validation: "none"
+        prerequisites: ["15.19", "15.23"]
+      15-25-scoped-incremental-staging-and-normalization:
+        status: "ready-for-dev"
+        story_id: "15.25"
+        title: "Scoped Incremental Staging And Normalization"
+        story_file: "15-25-scoped-incremental-staging-and-normalization.md"
+        validation: "none"
+        prerequisites: ["15.23", "15.24"]
+      15-26-scoped-incremental-canonical-import:
+        status: "ready-for-dev"
+        story_id: "15.26"
+        title: "Scoped Incremental Canonical Import"
+        story_file: "15-26-scoped-incremental-canonical-import.md"
+        validation: "none"
+        prerequisites: ["15.21", "15.24", "15.25"]
+      15-27-incremental-validation-and-derived-refresh-scope:
+        status: "ready-for-dev"
+        story_id: "15.27"
+        title: "Incremental Validation And Derived Refresh Scope"
+        story_file: "15-27-incremental-validation-and-derived-refresh-scope.md"
+        validation: "none"
+        prerequisites: ["15.18", "15.24", "15.25", "15.26"]
+      15-28-admin-legacy-refresh-control-plane:
+        status: "ready-for-dev"
+        story_id: "15.28"
+        title: "Admin Legacy Refresh Control Plane"
+        story_file: "15-28-admin-legacy-refresh-control-plane.md"
+        validation: "none"
+        prerequisites: ["15.16", "15.17", "15.18", "15.23", "15.27"]
 
   # Epic 16 - Extended Legacy Import: Purchase Transactions and Payments
   epic-16:

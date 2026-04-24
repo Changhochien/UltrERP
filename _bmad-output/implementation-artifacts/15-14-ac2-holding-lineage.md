@@ -1,6 +1,6 @@
 # Story 15.14: AC2 Holding Path Lineage — Record Lineage at Hold Time
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -24,19 +24,20 @@ Full analysis: `_bmad-output/implementation-artifacts/15-1-ac2-lineage-gap.md`
 
 ## Tasks / Subtasks
 
-- [ ] Task 1 (AC: 1)
-  - [ ] Read `_upsert_holding_row` (canonical.py:593) — it does NOT call `_upsert_lineage`
-  - [ ] Read both callers of `_upsert_holding_row`:
-    - `_import_legacy_receiving_audit` (line 1501, blank doc_number path)
-    - `_hold_payment_adjacent_history` (line 2381, payment-adjacent rows)
-  - [ ] Add `_upsert_lineage` calls at both call sites, using `canonical_table = '__holding__'` and the same identifiers as the holding row
-  - [ ] The holding row's `row_identity` (source_row_number or line_number) should be passed as `source_row_number`
-- [ ] Task 2 (AC: 2)
-  - [ ] In `ap_payment_import.py:_upsert_supplier_payment`, after deleting from holding and before/after upserting the canonical record, change the existing `_upsert_lineage` call to use `ON CONFLICT DO UPDATE` targeting `(tenant_id, batch_id, canonical_table, source_table, source_identifier)` where `canonical_table = '__holding__'` — this updates the holding lineage entry to point to the canonical record
-  - [ ] Or: add a new `_upsert_lineage` call with `canonical_table = 'supplier_payment'` using the same source identifiers so the conflict fires on the existing holding-row entry and updates it
-- [ ] Task 3 (AC: 1, 2, 3)
-  - [ ] Add focused tests: one for blank doc_number holding creates a `__holding__` lineage entry, one for payment-adjacent holding, one for drain path updating the holding lineage entry
-  - [ ] Run the existing legacy-import test suite to confirm no regressions
+- [x] Task 1 (AC: 1)
+  - [x] Added `_upsert_lineage_record_for_holding` function with `canonical_table = '__holding__'` sentinel value
+  - [x] Modified `_try_upsert_holding_and_lineage` to call `_upsert_lineage_record_for_holding` after `hold_source_row` within the same savepoint
+  - [x] Added unique index `canonical_record_lineage_source_identity` on `(batch_id, tenant_id, source_table, source_identifier, source_row_number)` for ON CONFLICT matching
+- [x] Task 2 (AC: 2)
+  - [x] Added `_lineage_record_query_for_holding` function with source-identifier-only conflict matching
+  - [x] Updated `ap_payment_import.py` drain path to use `_lineage_record_query_for_holding` which UPDATE the holding lineage entry instead of creating duplicates
+- [x] Task 3 (AC: 1, 2, 3)
+  - [x] Updated `test_holding_state_created_on_blank_doc_number_hold` to expect `__holding__` lineage entry
+  - [x] Updated `test_holding_state_created_on_payment_adjacent_hold` to expect `__holding__` lineage entry
+  - [x] Updated `test_holding_state_payment_adjacent_no_col2` to expect `__holding__` lineage entry
+  - [x] Updated `test_holding_and_drained_rows_are_distinguishable_holding` to expect `__holding__` lineage entry
+  - [x] Added `test_drain_updates_holding_lineage_entry` for AC2 verification
+  - [x] All 34 tests pass in `test_canonical.py` and `test_ap_payment_import.py`
 
 ## Dev Notes
 
@@ -71,4 +72,21 @@ sonnet
 
 ### Completion Notes List
 
+**2026-04-24**: Story 15-14 implemented successfully.
+
+Key changes:
+1. **canonical.py**: Added `HOLDING_LINEAGE_TABLE = "__holding__"` sentinel constant, `_lineage_record_query_for_holding()` function with source-identifier-only conflict matching, `_upsert_lineage_record_for_holding()` async function, and unique index creation in `_ensure_canonical_support_tables()`.
+
+2. **canonical.py**: Modified `_try_upsert_holding_and_lineage()` to call `_upsert_lineage_record_for_holding()` after `hold_source_row()` within the same savepoint, ensuring AC1 is satisfied.
+
+3. **ap_payment_import.py**: Updated drain path to use `_lineage_record_query_for_holding()` instead of `_upsert_lineage_record()`, ensuring AC2 is satisfied (holding entry is UPDATEd not duplicated).
+
+4. **Test updates**: Updated 4 existing tests to expect `__holding__` lineage entries and added 1 new test `test_drain_updates_holding_lineage_entry` verifying AC2.
+
 ### File List
+
+**Modified:**
+- `backend/domains/legacy_import/canonical.py`
+- `backend/domains/legacy_import/ap_payment_import.py`
+- `backend/tests/domains/legacy_import/test_canonical.py`
+- `backend/tests/domains/legacy_import/test_ap_payment_import.py`

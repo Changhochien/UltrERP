@@ -89,8 +89,26 @@ class FakePaymentConnection:
             self.committed_execute_calls.append(call)
 
         if 'INSERT INTO "raw_legacy".canonical_record_lineage' in query:
-            key = (args[0], args[1], args[2], args[4], args[5], args[6])
-            self._fake_lineage_rows[key] = {
+            # Source-identifier-only key (used for ON CONFLICT DO UPDATE)
+            # The full key is (tenant_id, batch_id, canonical_table, source_table,
+            # source_identifier, source_row_number), but ON CONFLICT matches on
+            # (batch_id, tenant_id, source_table, source_identifier, source_row_number)
+            source_key = (args[1], args[0], args[4], args[5], args[6])
+            full_key = (args[0], args[1], args[2], args[4], args[5], args[6])
+            # Check if any entry with the same source identity exists
+            # existing_key: (tenant_id, batch_id, canonical_table, source_table, source_identifier, source_row_number)
+            for existing_key in list(self._fake_lineage_rows.keys()):
+                if (
+                    existing_key[0] == args[0]  # tenant_id
+                    and existing_key[1] == args[1]  # batch_id
+                    and existing_key[3] == args[4]  # source_table
+                    and existing_key[4] == args[5]  # source_identifier
+                    and existing_key[5] == args[6]  # source_row_number
+                ):
+                    # ON CONFLICT DO UPDATE - remove old entry
+                    del self._fake_lineage_rows[existing_key]
+                    break
+            self._fake_lineage_rows[full_key] = {
                 "canonical_id": args[3],
                 "import_run_id": args[7],
             }

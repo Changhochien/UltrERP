@@ -2591,7 +2591,22 @@ async def test_holding_state_created_on_blank_doc_number_hold(monkeypatch) -> No
     assert holding_state["status"] == source_resolution.STATUS_HOLDING
     assert holding_state["domain_name"] == "receiving_audit"
     assert holding_state["holding_id"] is not None
-    assert not any(key[2] == "__holding__" for key in connection._fake_lineage_rows)
+
+    # AC1: A holding entry should also create a lineage record with __holding__ sentinel
+    holding_lineage_keys = [
+        key
+        for key in connection._fake_lineage_rows
+        if key[2] == "__holding__"
+        and key[3] == "tbsslipdtj"
+        and key[4] == ":3"
+    ]
+    assert len(holding_lineage_keys) == 1, (
+        "Expected exactly one holding lineage entry for blank doc_number row"
+    )
+    holding_lineage = connection._fake_lineage_rows[holding_lineage_keys[0]]
+    assert holding_lineage["canonical_id"] is not None
+
+    # Verify holding event was appended
     assert any(
         event["source_table"] == "tbsslipdtj"
         and event["source_identifier"] == ":3"
@@ -2602,7 +2617,7 @@ async def test_holding_state_created_on_blank_doc_number_hold(monkeypatch) -> No
 
 @pytest.mark.asyncio
 async def test_holding_state_created_on_payment_adjacent_hold(monkeypatch) -> None:
-    """A payment-adjacent row should record holding state outside lineage."""
+    """A payment-adjacent row should create holding state AND lineage entry."""
     tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000441")
     # No tbscust = no verified payment → all tbsprepay rows are payment-adjacent
     connection = FakeCanonicalConnection(
@@ -2647,13 +2662,24 @@ async def test_holding_state_created_on_payment_adjacent_hold(monkeypatch) -> No
     holding_state = connection._fake_resolution_rows[holding_keys[0]]
     assert holding_state["status"] == source_resolution.STATUS_HOLDING
     assert holding_state["domain_name"] == "payment_history"
-    assert not any(key[2] == "__holding__" for key in connection._fake_lineage_rows)
+
+    # AC1: A holding entry should also create a lineage record with __holding__ sentinel
+    holding_lineage_keys = [
+        key
+        for key in connection._fake_lineage_rows
+        if key[2] == "__holding__"
+        and key[3] == "tbsprepay"
+        and key[4] == "PAY-ADJ-001"
+    ]
+    assert len(holding_lineage_keys) == 1, (
+        "Expected exactly one holding lineage entry for payment-adjacent row"
+    )
 
 
 @pytest.mark.asyncio
 async def test_holding_state_payment_adjacent_no_col2(monkeypatch) -> None:
     """When col_2 is absent, holding state should fall back to the row-number-based
-    source identifier without creating sentinel lineage."""
+    source identifier and still create a holding lineage entry."""
     tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000443")
     connection = FakeCanonicalConnection(
         {
@@ -2697,7 +2723,18 @@ async def test_holding_state_payment_adjacent_no_col2(monkeypatch) -> None:
     holding_state = connection._fake_resolution_rows[holding_keys[0]]
     assert holding_state["status"] == source_resolution.STATUS_HOLDING
     assert holding_state["holding_id"] is not None
-    assert not any(key[2] == "__holding__" for key in connection._fake_lineage_rows)
+
+    # AC1: A holding entry should also create a lineage record with __holding__ sentinel
+    holding_lineage_keys = [
+        key
+        for key in connection._fake_lineage_rows
+        if key[2] == "__holding__"
+        and key[3] == "tbsprepay"
+        and key[4] == "tbsprepay:5"
+    ]
+    assert len(holding_lineage_keys) == 1, (
+        "Expected exactly one holding lineage entry for row with absent col_2"
+    )
 
 
 @pytest.mark.asyncio
@@ -2953,13 +2990,26 @@ async def test_holding_and_drained_rows_are_distinguishable_holding(monkeypatch)
         f"Expected exactly one holding state entry, got {len(holding_entries)}"
     )
     assert connection._fake_resolution_rows[holding_entries[0]]["status"] == source_resolution.STATUS_HOLDING
+
+    # AC1: Held rows should have a lineage entry with canonical_table='__holding__'
+    holding_lineage_entries = [
+        key
+        for key in connection._fake_lineage_rows
+        if key[2] == "__holding__"
+        and key[3] == "tbsslipdtj"
+        and key[4] == ":1"
+    ]
+    assert len(holding_lineage_entries) == 1, (
+        f"Expected exactly one holding lineage entry for blank doc_number row, got {len(holding_lineage_entries)}"
+    )
+
+    # Drained rows should have lineage entries
     drained_entries = [
         key
         for key in connection._fake_lineage_rows
         if key[2] != "__holding__"
     ]
     assert drained_entries, "Expected canonical lineage entries for drained records"
-    assert not any(key[2] == "__holding__" for key in connection._fake_lineage_rows)
 
 
 @pytest.mark.asyncio
@@ -3028,3 +3078,80 @@ async def test_holding_and_drained_rows_are_distinguishable_drain(monkeypatch) -
     ]
     assert resolution_row["status"] == source_resolution.STATUS_RESOLVED
     assert resolution_row["canonical_table"] == "supplier_payments"
+
+
+@pytest.mark.asyncio
+async def test_drain_updates_holding_lineage_entry(monkeypatch) -> None:
+    """AC2: When a held row is drained, its lineage entry should be UPDATED
+    (not duplicated) to point to the canonical table. The drain path uses
+    source-identifier-only conflict matching, so holding + drain = 1 entry."""
+    import domains.legacy_import.ap_payment_import as ap_payment_import
+
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000442")
+    supplier_id = ap_payment_import._tenant_scoped_uuid(
+        tenant_id, "party", "supplier", "T008"
+    )
+
+    # Pre-populate a holding lineage entry as if _try_upsert_holding_and_lineage ran first
+    connection = FakePaymentConnection(
+        {
+            "tbscust": [
+                {"legacy_code": "T008", "legacy_type": "1"},
+            ],
+            "supplier": [{"id": supplier_id}],
+            "tbsspay": [
+                {
+                    "col_2": "DRAIN-002",
+                    "col_4": "2016-05-05",
+                    "col_6": "T008",
+                    "col_8": "0001",
+                    "col_10": "570.00000000",
+                    "col_12": "CHK-001",
+                    "col_18": "drained payment",
+                    "_source_row_number": 2,
+                },
+            ],
+            "tbsprepay": [],
+        }
+    )
+    # Simulate the holding lineage entry that would have been created earlier.
+    # The key structure is (tenant_id, batch_id, canonical_table, source_table,
+    # source_identifier, source_row_number) matching the lineage table PK.
+    holding_key = (tenant_id, "batch-ac2-test", "__holding__", "tbsspay", "DRAIN-002", 2)
+    connection._fake_lineage_rows = {
+        holding_key: {
+            "canonical_id": uuid.uuid4(),  # the holding_id
+            "import_run_id": uuid.uuid4(),
+        }
+    }
+
+    async def fake_open_raw_connection() -> FakePaymentConnection:
+        return connection
+
+    monkeypatch.setattr(ap_payment_import, "_open_raw_connection", fake_open_raw_connection)
+
+    result = await ap_payment_import.run_ap_payment_import(
+        batch_id="batch-ac2-test",
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+    )
+
+    assert result.payment_count == 1
+    assert result.holding_count == 0
+
+    # AC2: Even though a holding lineage entry existed, the drain should UPDATE it
+    # (not create a duplicate), so we should still have exactly 1 lineage entry
+    all_lineage_keys = list(connection._fake_lineage_rows)
+    assert len(all_lineage_keys) == 1, (
+        f"Expected exactly one lineage entry after drain (AC2: UPDATE not duplicate), "
+        f"got {len(all_lineage_keys)}"
+    )
+
+    # The updated entry should point to supplier_payments, not __holding__
+    _t, _b, canonical_table, source_table, source_identifier, source_row_number = all_lineage_keys[0]
+    assert canonical_table == "supplier_payments", (
+        f"Expected canonical_table='supplier_payments' after drain, got '{canonical_table}'"
+    )
+    assert source_table == "tbsspay"
+    assert source_identifier == "DRAIN-002"
+    assert source_row_number == 2

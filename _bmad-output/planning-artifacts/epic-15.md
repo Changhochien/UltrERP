@@ -396,3 +396,189 @@ So that source-row transitions remain lossless, replay-safe, and crash-consisten
 **And** no new sentinel `__holding__` lineage rows are written after cutover
 
 ---
+
+### Story 15.22: Legacy Category Review Backlog Resolution
+
+As a migration operator,
+I want the live legacy category-review backlog closed with grounded rules and auditable review decisions,
+So that the refreshed batch reaches a clean validation state without hiding unresolved category debt behind unsafe heuristics.
+
+**Acceptance Criteria:**
+
+**Given** the live refresh batch still contains category-review candidates after Story 15.9
+**When** the final closure pass runs
+**Then** any safe evidence-backed family rules are added first and validated with focused normalization tests before they are applied to staging
+
+**Given** high-confidence non-merchandise exclusions or unresolved fallback rows remain after heuristic cleanup
+**When** no stronger category evidence exists
+**Then** they are resolved through the existing category-review export and import workflow with auditable `keep_current` decisions instead of ad hoc SQL mutation
+
+**Given** the backlog is fully resolved
+**When** canonical import and validation rerun
+**Then** the latest attempt reports `status=clean`, `blockers=0`, and `0` remaining category-review candidates for the batch
+
+---
+
+### Story 15.23: Incremental Legacy Refresh Runner Surface
+
+As a platform engineer,
+I want a dedicated incremental refresh runner that executes from reviewed lane state and emits auditable summaries,
+So that routine freshness updates stop depending on the nightly full-refresh wrapper.
+
+**Acceptance Criteria:**
+
+**Given** a lane has incremental state and a nightly rebaseline anchor
+**When** the operator runs the incremental refresh command
+**Then** the system loads the reviewed plan from lane state, creates an `incremental` batch id and summary artifact, and never routes the request through the full scheduler wrapper
+
+**Given** every planned domain is `no-op`
+**When** the runner completes
+**Then** it writes a `completed-no-op` summary listing the planned and no-op domains
+**And** it does not invoke `run_legacy_refresh`
+
+**Given** the operator runs `--dry-run`
+**When** plan and discovery complete
+**Then** the command emits the plan and manifest contract without staging, normalization, canonical writes, or watermark advancement
+
+**Given** a planner or lane-state error occurs
+**When** the runner fails
+**Then** it records a remediation-oriented root failure
+**And** leaves the last successful watermark and promoted lane state unchanged
+
+---
+
+### Story 15.24: Delta Discovery And Manifest Contract
+
+As a platform engineer,
+I want a pure delta-discovery layer that records an append-only manifest before any canonical writes happen,
+So that incremental runs are auditable, replayable, and safe to scope downstream execution from.
+
+**Acceptance Criteria:**
+
+**Given** an incremental plan exists
+**When** discovery runs
+**Then** each supported domain projects changed source rows using the reviewed cursor and replay-window contract without advancing any watermark
+
+**Given** an inventory or document domain changes
+**When** discovery expands the workset
+**Then** the manifest carries full closure keys for `(warehouse_code, product_code)` tuples or whole document families rather than raw row fragments
+
+**Given** discovery finishes
+**When** the manifest is recorded
+**Then** the append-only JSON includes `batch_mode`, planned, active, and no-op domains, per-domain changed-key and closure counts, and watermark input and proposal values
+
+**Given** a domain has zero changed rows after replay expansion
+**When** the manifest is built
+**Then** that domain is marked `no-op`
+**And** downstream stories skip it rather than falling back to a full-schema batch
+
+---
+
+### Story 15.25: Scoped Incremental Staging And Normalization
+
+As a platform engineer,
+I want incremental runs to stage and normalize only the entities named in the delta manifest,
+So that routine freshness updates stop restaging and renormalizing the entire legacy lane.
+
+**Acceptance Criteria:**
+
+**Given** a delta manifest selects domains and closure keys
+**When** incremental live staging runs
+**Then** only rows from the scoped source tables and matching closure keys are staged
+**And** the adapter fails rather than falling back to a full-schema projection
+
+**Given** incremental normalization receives `selected_domains`, `entity_scope`, and `batch_mode=incremental`
+**When** it runs
+**Then** it regenerates only the impacted domains while preserving internal dependency ordering
+
+**Given** unchanged trusted master data is required by the scoped batch
+**When** normalization needs that context
+**Then** it carries forward the required rows from the last successful eligible batch ids instead of forcing a full restage
+
+**Given** the current scope is empty or malformed for a requested domain
+**When** incremental staging or normalization is invoked
+**Then** the run fails loudly with actionable diagnostics instead of silently widening scope
+
+---
+
+### Story 15.26: Scoped Incremental Canonical Import
+
+As a platform engineer,
+I want canonical import to consume the incremental entity scope instead of rescanning an implicit full batch,
+So that delta runs update only the impacted canonical records while preserving deterministic lineage.
+
+**Acceptance Criteria:**
+
+**Given** canonical import receives `selected_domains`, `entity_scope`, and `batch_mode=incremental`
+**When** it runs
+**Then** it upserts only the impacted masters, inventory tuples, and full sales or purchase document families rather than rescanning unrelated domains
+
+**Given** a sales or purchase document is in scope
+**When** canonical import replays it
+**Then** the full header and line family plus lineage records are rebuilt deterministically for that document without touching unrelated documents
+
+**Given** unresolved mapping or source-resolution issues exist only outside the current delta scope
+**When** the current batch runs
+**Then** they do not make the new batch review-required
+**And** only newly observed in-scope unresolved issues surface for operator action
+
+**Given** the same manifest scope is replayed
+**When** canonical import reruns
+**Then** canonical ids, lineage, and source-resolution transitions remain idempotent
+
+---
+
+### Story 15.27: Incremental Validation And Derived Refresh Scope
+
+As a platform engineer,
+I want incremental validation, derived refreshes, and watermark advancement to honor the scoped batch contract,
+So that routine delta runs remain trustworthy without paying full-batch repair costs on every update.
+
+**Acceptance Criteria:**
+
+**Given** an incremental batch completes scoped import
+**When** validation runs
+**Then** it verifies stage-to-normalized and canonical evidence only for the affected domains and entities
+**And** emits incremental validation artifacts without treating untouched domains as failures
+
+**Given** derived refreshes are required after an incremental run
+**When** post-import hooks execute
+**Then** they refresh only the affected purchase receipts, invoice unit costs, sales reservations, and inventory tuples rather than broad rebaseline windows
+
+**Given** the scoped batch validates cleanly and the shared promotion policy remains satisfied
+**When** finalization runs
+**Then** only the impacted domain watermarks advance
+**And** lane-state artifacts record `batch_mode`, `affected_domains`, `summary_valid`, and `watermark_advanced`
+
+**Given** validation blocks, a root step fails, or a summary artifact is invalid
+**When** finalization runs
+**Then** no watermark advances
+**And** operator-visible state records `root_failed_step`, `root_error_message`, and `rebaseline_reason` clearly
+
+---
+
+### Story 15.28: Admin Legacy Refresh Control Plane
+
+As an admin operator,
+I want a reviewed API and admin UI for launching and observing legacy refresh jobs,
+So that we can keep data fresh during the coexistence period without driving heavy refresh commands manually from the backend shell.
+
+**Acceptance Criteria:**
+
+**Given** an authenticated admin wants to keep legacy data fresh
+**When** they use the control plane
+**Then** they can trigger either an incremental refresh or a full rebaseline for a selected lane with explicit mode, dry-run, and source-schema options
+
+**Given** a refresh job is queued, running, completed, blocked, or failed
+**When** the admin status API is queried
+**Then** it returns lane state, current and previous batch pointers, `batch_mode`, affected domains, promotion-policy outcome, root failure details, and artifact paths needed for diagnosis
+
+**Given** another refresh is already in progress for the same lane
+**When** a new trigger request arrives
+**Then** the system reuses the reviewed lane-lock semantics and returns a deterministic blocked or conflict response rather than launching overlapping work
+
+**Given** the admin UI needs progress visibility
+**When** it polls the status surface
+**Then** it shows the latest run, latest successful shadow batch, latest promoted batch, and blocked-run reasons without requiring a full page reload
+
+---
