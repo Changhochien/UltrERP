@@ -6,7 +6,8 @@ import uuid
 from datetime import date
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+from typing import Literal
 
 
 class RevenueSummaryResponse(BaseModel):
@@ -117,3 +118,36 @@ class RevenueTrendResponse(BaseModel):
     end_date: date
     has_more: bool = False
     total: int | None = None  # total months with data (monthly granularity only)
+
+
+# =============================================================================
+# Dense Time-Series Response Schemas (Story 39-2)
+# =============================================================================
+
+
+class RevenueTrendDensePoint(BaseModel):
+    """Single point in dense revenue trend series."""
+    bucket_start: str  # YYYY-MM-DD or YYYY-MM
+    bucket_label: str  # Human-readable label
+    value: float  # Revenue amount in TWD
+    is_zero_filled: bool
+    period_status: Literal["closed", "partial"]
+    source: Literal["aggregate", "live", "zero-filled"]
+
+
+class RevenueTrendDenseRange(BaseModel):
+    """Range metadata for dense revenue trend."""
+    requested_start: str
+    requested_end: str
+    available_start: str | None = None
+    available_end: str | None = None
+    default_visible_start: str
+    default_visible_end: str
+    bucket: Literal["day", "week", "month"]
+    timezone: str = "Asia/Taipei"
+
+
+class RevenueTrendDenseResponse(BaseModel):
+    """Dense revenue trend series with range metadata for explorer charts."""
+    points: list[RevenueTrendDensePoint]
+    range: RevenueTrendDenseRange

@@ -49,6 +49,7 @@ from domains.inventory.schemas import (
     InventoryValuationItem,
     InventoryValuationResponse,
     InventoryValuationWarehouseTotal,
+    MonthlyDemandDenseResponse,
     PhysicalCountLineUpdateRequest,
     PhysicalCountSessionCreate,
     PhysicalCountSessionListResponse,
@@ -95,6 +96,7 @@ from domains.inventory.schemas import (
     SnoozeAlertResponse,
     StockAdjustmentRequest,
     StockAdjustmentResponse,
+    StockHistoryDenseResponse,
     StockHistoryResponse,
     StockSettingsUpdateRequest,
     SupplierListResponse,
@@ -145,6 +147,9 @@ from domains.inventory.services import (
     get_category,
     get_inventory_stocks,
     get_monthly_demand,
+    get_monthly_demand_series,
+    get_stock_history,
+    get_stock_history_series,
     get_unit,
     get_transfer,
     get_planning_support,
@@ -152,7 +157,6 @@ from domains.inventory.services import (
     get_product_detail,
     get_product_supplier,
     get_sales_history,
-    get_stock_history,
     get_supplier,
     get_supplier_order,
     get_top_customer,
@@ -211,13 +215,6 @@ ReadUser = Annotated[dict, Depends(require_role("admin", "warehouse", "sales"))]
 WriteUser = Annotated[dict, Depends(require_role("admin", "warehouse"))]
 
 ACTOR_ID = "system"
-
-
-def _requested_category_locale(
-    locale: str | None,
-    accept_language: str | None,
-) -> str:
-    return resolve_category_locale(locale, accept_language)
 
 
 def _current_actor_id(user: dict) -> str:
@@ -843,7 +840,7 @@ async def search_products_endpoint(
         warehouse_id=warehouse_id,
         category_id=category_id,
         category=category,
-        locale=_requested_category_locale(locale, accept_language),
+        locale=resolve_category_locale(locale, accept_language),
         include_inactive=include_inactive,
         limit=limit,
         offset=offset,
@@ -874,7 +871,7 @@ async def list_categories_endpoint(
     locale: str | None = Query(None, max_length=10),
     accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> CategoryListResponse:
-    requested_locale = _requested_category_locale(locale, accept_language)
+    requested_locale = resolve_category_locale(locale, accept_language)
     items, total = await list_categories(
         session,
         tenant_id,
@@ -903,7 +900,7 @@ async def create_category_endpoint(
     locale: str | None = Query(None, max_length=10),
     accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> CategoryResponse:
-    requested_locale = _requested_category_locale(locale, accept_language)
+    requested_locale = resolve_category_locale(locale, accept_language)
     try:
         category = await create_category(session, tenant_id, data, locale=requested_locale)
         await session.commit()
@@ -927,7 +924,7 @@ async def get_category_endpoint(
     locale: str | None = Query(None, max_length=10),
     accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> CategoryResponse:
-    requested_locale = _requested_category_locale(locale, accept_language)
+    requested_locale = resolve_category_locale(locale, accept_language)
     category = await get_category(session, tenant_id, category_id)
     if category is None:
         raise HTTPException(
@@ -950,7 +947,7 @@ async def update_category_endpoint(
     locale: str | None = Query(None, max_length=10),
     accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> CategoryResponse:
-    requested_locale = _requested_category_locale(locale, accept_language)
+    requested_locale = resolve_category_locale(locale, accept_language)
     try:
         category = await update_category(
             session,
@@ -986,7 +983,7 @@ async def update_category_status_endpoint(
     locale: str | None = Query(None, max_length=10),
     accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> CategoryResponse:
-    requested_locale = _requested_category_locale(locale, accept_language)
+    requested_locale = resolve_category_locale(locale, accept_language)
     category = await set_category_status(
         session,
         tenant_id,
@@ -1217,7 +1214,7 @@ async def get_product_detail_endpoint(
         session,
         tenant_id,
         product_id,
-        locale=_requested_category_locale(locale, accept_language),
+        locale=resolve_category_locale(locale, accept_language),
         history_limit=history_limit,
         history_offset=history_offset,
     )
@@ -1340,6 +1337,42 @@ async def get_stock_history_by_stock_id(
         granularity=granularity,
     )
     return StockHistoryResponse(**result)
+
+
+# ── Dense stock history series endpoint (Story 39-2) ──────────────────────
+
+
+@router.get(
+    "/stock-history/{stock_id}/series",
+    response_model=StockHistoryDenseResponse,
+)
+async def get_stock_history_series_endpoint(
+    stock_id: uuid.UUID,
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+    start_date: str = Query(..., description="Start date YYYY-MM-DD"),
+    end_date: str = Query(..., description="End date YYYY-MM-DD"),
+) -> StockHistoryDenseResponse:
+    """Dense stock history series with zero-filling and range metadata.
+
+    Returns dense daily time-series data suitable for explorer charts.
+    Zero-fills any days without stock movements.
+    """
+    try:
+        result = await get_stock_history_series(
+            session,
+            tenant_id,
+            stock_id,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        return StockHistoryDenseResponse(**result)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
 
 
 @router.get(
@@ -1895,6 +1928,42 @@ async def get_monthly_demand_endpoint(
         include_current_month=include_current_month,
     )
     return MonthlyDemandResponse(**result)
+
+
+# ── Dense time-series endpoints (Story 39-2) ─────────────────────────────
+
+
+@router.get(
+    "/products/{product_id}/monthly-demand-series",
+    response_model=MonthlyDemandDenseResponse,
+)
+async def get_monthly_demand_series_endpoint(
+    product_id: uuid.UUID,
+    session: DbSession,
+    _user: ReadUser,
+    tenant_id: CurrentTenant,
+    start_month: str = Query(..., description="Start month YYYY-MM"),
+    end_month: str = Query(..., description="End month YYYY-MM"),
+) -> MonthlyDemandDenseResponse:
+    """Dense monthly demand series with zero-filling and range metadata.
+
+    Returns dense monthly time-series data suitable for explorer charts.
+    Zero-fills any gaps in the requested range.
+    """
+    try:
+        result = await get_monthly_demand_series(
+            session,
+            tenant_id,
+            product_id,
+            start_month=start_month,
+            end_month=end_month,
+        )
+        return MonthlyDemandDenseResponse(**result)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
 
 
 @router.get(

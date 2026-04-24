@@ -101,11 +101,7 @@ DEFAULT_CATEGORY_LOCALE = "en"
 ZH_HANT_LOCALE = "zh-Hant"
 
 
-def _shift_months(value: date, months: int) -> date:
-    month_index = (value.year * 12 + value.month - 1) + months
-    year = month_index // 12
-    month = month_index % 12 + 1
-    return date(year, month, 1)
+from common.time_series import shift_months as _shift_months
 
 
 def _iter_month_starts(start_month: date, end_month: date) -> list[date]:
@@ -3813,6 +3809,115 @@ async def get_stock_history(
     }
 
 
+async def get_stock_history_series(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    stock_id: uuid.UUID,
+    *,
+    start_date: str,  # YYYY-MM-DD
+    end_date: str,    # YYYY-MM-DD
+) -> dict:
+    """Dense stock history series with zero-filling and range metadata.
+
+    Returns dense daily time-series data suitable for explorer charts.
+    Zero-fills any days without stock movements.
+    """
+    from datetime import date as date_type, timedelta
+    from common.time_series import (
+        densify_daily_series,
+        check_range_limits,
+    )
+
+    # Parse dates
+    start = date_type.fromisoformat(start_date)
+    end = date_type.fromisoformat(end_date)
+
+    # Check v1 limits
+    within_limits, error_msg = check_range_limits(start, end, "day")
+    if not within_limits:
+        raise ValueError(error_msg)
+
+    # Get stock record for warehouse_id
+    stock_stmt = select(InventoryStock).where(
+        InventoryStock.id == stock_id,
+        InventoryStock.tenant_id == tenant_id,
+    )
+    stock_result = await session.execute(stock_stmt)
+    stock = stock_result.scalar_one_or_none()
+    if not stock:
+        return {"points": [], "range": {
+            "requested_start": start_date,
+            "requested_end": end_date,
+            "available_start": None,
+            "available_end": None,
+            "default_visible_start": start_date,
+            "default_visible_end": end_date,
+            "bucket": "day",
+            "timezone": "Asia/Taipei",
+        }}
+
+    # Get daily aggregated adjustments
+    start_dt = datetime(start.year, start.month, start.day, tzinfo=__import__("datetime").timezone.utc)
+    end_dt = datetime(end.year, end.month, end.day, 23, 59, 59, tzinfo=__import__("datetime").timezone.utc)
+
+    daily_expr = func.date_trunc(
+        "day",
+        func.timezone("Asia/Taipei", StockAdjustment.created_at),
+    ).label("day")
+
+    stmt = (
+        select(
+            daily_expr,
+            func.sum(StockAdjustment.quantity_change).label("total_change"),
+        )
+        .where(
+            StockAdjustment.tenant_id == tenant_id,
+            StockAdjustment.product_id == stock.product_id,
+            StockAdjustment.warehouse_id == stock.warehouse_id,
+            StockAdjustment.created_at >= start_dt,
+            StockAdjustment.created_at <= end_dt,
+        )
+        .group_by(daily_expr)
+        .order_by(daily_expr)
+    )
+    result = await session.execute(stmt)
+    rows = result.all()
+
+    # Build source data dict (running stock at end of each day)
+    source_data: dict[str, float] = {}
+    running_stock = 0
+    
+    for row in rows:
+        day_date = row.day.date() if hasattr(row.day, "date") else row.day
+        if isinstance(day_date, datetime):
+            day_date = day_date.date()
+        key = day_date.strftime("%Y-%m-%d")
+        running_stock += float(row.total_change or 0)
+        source_data[key] = running_stock
+
+    # Densify with zero-filling (propagate last known value)
+    # For stock, we want to show the running stock value, zero-filling means keeping last value
+    current = start
+    last_value = 0.0
+    while current <= end:
+        key = current.strftime("%Y-%m-%d")
+        if key in source_data:
+            last_value = source_data[key]
+        else:
+            # Propagate last known value (or 0 if no data yet)
+            source_data[key] = last_value
+        current += timedelta(days=1)
+
+    # Use simple densify with propagated values
+    points, range_meta = densify_daily_series(
+        source_data=source_data,
+        requested_start=start,
+        requested_end=end,
+    )
+
+    return {"points": points, "range": range_meta}
+
+
 # ── Stock settings update ───────────────────────────────────────
 
 
@@ -3926,6 +4031,75 @@ async def get_monthly_demand(
     ]
     total = sum(item["total_qty"] for item in items)
     return {"items": items, "total": total}
+
+
+async def get_monthly_demand_series(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    product_id: uuid.UUID,
+    *,
+    start_month: str,  # YYYY-MM
+    end_month: str,    # YYYY-MM
+) -> dict:
+    """Dense monthly demand series with zero-filling and range metadata.
+
+    Returns dense monthly time-series data suitable for explorer charts.
+    Zero-fills any gaps in the requested range.
+    """
+    from datetime import date as date_type
+    from common.time_series import (
+        densify_monthly_series,
+        check_range_limits,
+    )
+
+    # Parse dates
+    start = date_type(int(start_month[:4]), int(start_month[5:7]), 1)
+    end = date_type(int(end_month[:4]), int(end_month[5:7]), 1)
+
+    # Check v1 limits
+    within_limits, error_msg = check_range_limits(start, end, "month")
+    if not within_limits:
+        raise ValueError(error_msg)
+
+    # Get monthly data from source
+    taiwan_month_expr = func.date_trunc(
+        "month",
+        func.timezone("Asia/Taipei", StockAdjustment.created_at),
+    ).label("month")
+
+    stmt = (
+        select(
+            taiwan_month_expr,
+            func.sum(StockAdjustment.quantity_change).label("total_qty"),
+        )
+        .where(
+            StockAdjustment.tenant_id == tenant_id,
+            StockAdjustment.product_id == product_id,
+            StockAdjustment.reason_code == ReasonCode.SALES_RESERVATION,
+        )
+        .group_by(taiwan_month_expr)
+        .order_by(taiwan_month_expr)
+    )
+    result = await session.execute(stmt)
+    rows = result.all()
+
+    # Build source data dict
+    source_data: dict[str, float] = {}
+    for row in rows:
+        month_date = row.month.date() if hasattr(row.month, "date") else row.month
+        if isinstance(month_date, datetime):
+            month_date = month_date.date()
+        key = month_date.strftime("%Y-%m")
+        source_data[key] = float(abs(int(_quantize_quantity(row.total_qty or 0))))
+
+    # Densify with zero-filling
+    points, range_meta = densify_monthly_series(
+        source_data=source_data,
+        requested_start=start,
+        requested_end=end,
+    )
+
+    return {"points": points, "range": range_meta}
 
 
 async def get_planning_support(

@@ -136,6 +136,51 @@ class MonthlyDemandResponse(BaseModel):
     total: int
 
 
+# =============================================================================
+# Dense Time-Series Response Schemas (Story 39-2)
+# =============================================================================
+
+
+class DenseSeriesPoint(BaseModel):
+    """Single point in a dense time-series response."""
+    bucket_start: str  # YYYY-MM-DD or YYYY-MM depending on bucket
+    bucket_label: str  # Human-readable label
+    value: float
+    is_zero_filled: bool
+    period_status: Literal["closed", "partial"]
+    source: Literal["aggregate", "live", "zero-filled"]
+
+
+class DenseSeriesRange(BaseModel):
+    """Range metadata for dense time-series responses."""
+    requested_start: str
+    requested_end: str
+    available_start: str | None = None
+    available_end: str | None = None
+    default_visible_start: str
+    default_visible_end: str
+    bucket: Literal["day", "week", "month"]
+    timezone: str = "Asia/Taipei"
+
+
+class DenseSeriesResponse(BaseModel):
+    """Dense time-series response envelope."""
+    points: list[DenseSeriesPoint]
+    range: DenseSeriesRange
+
+
+class MonthlyDemandDenseResponse(BaseModel):
+    """Dense monthly demand series with range metadata."""
+    points: list[DenseSeriesPoint]
+    range: DenseSeriesRange
+
+
+class StockHistoryDenseResponse(BaseModel):
+    """Dense stock history series with range metadata."""
+    points: list[DenseSeriesPoint]
+    range: DenseSeriesRange
+
+
 PlanningSupportDataBasis = Literal[
     "aggregated_only",
     "aggregated_plus_live_current_month",
@@ -785,11 +830,6 @@ class SupplierResponse(BaseModel):
     prevent_rfqs: bool = False
     warn_pos: bool = False
     prevent_pos: bool = False
-
-
-class SupplierListResponse(BaseModel):
-    items: list[SupplierResponse]
-    total: int
 
 
 class SupplierListResponse(BaseModel):

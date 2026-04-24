@@ -8,18 +8,19 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.auth import get_current_user
 from common.config import settings
 from common.database import get_db
-from common.tenant import DEFAULT_TENANT_ID
+
 from domains.dashboard.schemas import (
     CashFlowResponse,
     GrossMarginResponse,
     KpiSummaryResponse,
     RevenueSummaryResponse,
+    RevenueTrendDenseResponse,
     RevenueTrendResponse,
     TopCustomersResponse,
     TopProductsResponse,
@@ -31,6 +32,7 @@ from domains.dashboard.services import (
     get_kpi_summary,
     get_revenue_summary,
     get_revenue_trend,
+    get_revenue_trend_series,
     get_top_customers,
     get_top_products,
 )
@@ -181,3 +183,44 @@ async def get_revenue_trend_endpoint(
         session, uuid.UUID(current_user["tenant_id"]),
         granularity=granularity, months=months, days=days, before=before,
     )
+
+
+# ── Dense time-series endpoint (Story 39-2) ──────────────────────────────
+
+
+@router.get("/revenue-trend-series", response_model=RevenueTrendDenseResponse)
+async def get_revenue_trend_series_endpoint(
+    session: DbSession,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    start_date: Annotated[
+        str,
+        Query(description="Start date YYYY-MM-DD (daily) or YYYY-MM (monthly)"),
+    ],
+    end_date: Annotated[
+        str,
+        Query(description="End date YYYY-MM-DD (daily) or YYYY-MM (monthly)"),
+    ],
+    granularity: Annotated[
+        Literal["day", "month"],
+        Query(description="Granularity: day (daily) or month (monthly)"),
+    ] = "month",
+) -> RevenueTrendDenseResponse:
+    """Dense revenue trend series with zero-filling and range metadata.
+
+    Returns dense time-series data suitable for explorer charts.
+    Zero-fills any gaps in the requested range.
+    """
+    try:
+        return await get_revenue_trend_series(
+            session,
+            uuid.UUID(current_user["tenant_id"]),
+            granularity=granularity,
+            start_date=start_date,
+            end_date=end_date,
+        )
+    except ValueError as exc:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc

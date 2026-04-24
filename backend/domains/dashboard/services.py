@@ -19,7 +19,7 @@ from common.models.inventory_stock import InventoryStock
 from common.models.order import Order
 from common.models.order_line import OrderLine
 from common.models.product import Product
-from common.models.supplier_payment import SupplierPayment, SupplierPaymentStatus
+from common.models.supplier_payment import SupplierPayment
 from common.tenant import set_tenant
 from domains.dashboard.schemas import (
     CashFlowItem,
@@ -663,6 +663,117 @@ async def get_revenue_trend(
             end_date=resp_end,
             has_more=has_more,
         )
+
+
+async def get_revenue_trend_series(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    granularity: Literal["day", "week", "month"] = "month",
+    *,
+    start_date: str,  # YYYY-MM-DD or YYYY-MM depending on granularity
+    end_date: str,
+) -> dict:
+    """Dense revenue trend series with zero-filling and range metadata.
+
+    Returns dense time-series data suitable for explorer charts.
+    Zero-fills any gaps in the requested range.
+    """
+    from common.time_series import (
+        densify_monthly_series,
+        densify_daily_series,
+        check_range_limits,
+    )
+    from common.time import today as get_today
+
+    today = get_today()
+
+    if granularity == "month":
+        # Parse as first of month
+        start = date(int(start_date[:4]), int(start_date[5:7]), 1)
+        end = date(int(end_date[:4]), int(end_date[5:7]), 1)
+
+        # Check v1 limits
+        within_limits, error_msg = check_range_limits(start, end, "month")
+        if not within_limits:
+            raise ValueError(error_msg)
+
+        # Get monthly revenue
+        month_expr = func.date_trunc("month", Invoice.invoice_date).label("month")
+        stmt = (
+            select(
+                month_expr,
+                func.coalesce(func.sum(Invoice.total_amount), 0).label("revenue"),
+            )
+            .where(
+                Invoice.tenant_id == tenant_id,
+                Invoice.invoice_date >= start,
+                Invoice.invoice_date < date(end.year, end.month, 1) + timedelta(days=32),
+                Invoice.status != InvoiceStatus.VOIDED,
+            )
+            .group_by(month_expr)
+            .order_by(month_expr)
+        )
+        result = await session.execute(stmt)
+        rows = result.all()
+
+        source_data: dict[str, float] = {}
+        for row in rows:
+            month_date = row.month.date() if hasattr(row.month, "date") else row.month
+            if isinstance(month_date, datetime):
+                month_date = month_date.date()
+            key = month_date.strftime("%Y-%m")
+            source_data[key] = float(row.revenue or 0)
+
+        points, range_meta = densify_monthly_series(
+            source_data=source_data,
+            requested_start=start,
+            requested_end=end,
+            current_date=today,
+        )
+
+    else:  # daily
+        start = date.fromisoformat(start_date)
+        end = date.fromisoformat(end_date)
+
+        # Check v1 limits
+        within_limits, error_msg = check_range_limits(start, end, "day")
+        if not within_limits:
+            raise ValueError(error_msg)
+
+        # Get daily revenue
+        stmt = (
+            select(
+                Invoice.invoice_date.label("day"),
+                func.coalesce(func.sum(Invoice.total_amount), 0).label("revenue"),
+            )
+            .where(
+                Invoice.tenant_id == tenant_id,
+                Invoice.invoice_date >= start,
+                Invoice.invoice_date <= end,
+                Invoice.status != InvoiceStatus.VOIDED,
+            )
+            .group_by(Invoice.invoice_date)
+            .order_by(Invoice.invoice_date)
+        )
+        result = await session.execute(stmt)
+        rows = result.all()
+
+        source_data: dict[str, float] = {}
+        for row in rows:
+            day_date = row.day.date() if hasattr(row.day, "date") else row.day
+            if isinstance(day_date, datetime):
+                day_date = day_date.date()
+            key = day_date.strftime("%Y-%m-%d")
+            source_data[key] = float(row.revenue or 0)
+
+        points, range_meta = densify_daily_series(
+            source_data=source_data,
+            requested_start=start,
+            requested_end=end,
+            current_date=today,
+        )
+
+    return {"points": points, "range": range_meta}
 
 
 async def get_top_customers(
