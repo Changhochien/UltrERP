@@ -17,6 +17,9 @@ export const PURCHASES_ROUTE = "/purchases";
 export const PROCUREMENT_ROUTE = "/procurement";
 export const PROCUREMENT_RFQ_CREATE_ROUTE = "/procurement/rfq/new";
 export const PROCUREMENT_RFQ_DETAIL_ROUTE = "/procurement/rfq/:rfqId";
+export const PROCUREMENT_PURCHASE_ORDERS_ROUTE = "/procurement/purchase-orders";
+export const PROCUREMENT_PURCHASE_ORDER_CREATE_ROUTE = "/procurement/purchase-orders/new";
+export const PROCUREMENT_PURCHASE_ORDER_DETAIL_ROUTE = "/procurement/purchase-orders/:poId";
 export const CRM_LEADS_ROUTE = "/crm/leads";
 export const CRM_LEAD_DETAIL_ROUTE = "/crm/leads/:leadId";
 export const CRM_LEAD_CREATE_ROUTE = "/crm/leads/new";
@@ -61,6 +64,9 @@ export type AppRoute =
   | typeof PROCUREMENT_ROUTE
   | typeof PROCUREMENT_RFQ_CREATE_ROUTE
   | typeof PROCUREMENT_RFQ_DETAIL_ROUTE
+  | typeof PROCUREMENT_PURCHASE_ORDERS_ROUTE
+  | typeof PROCUREMENT_PURCHASE_ORDER_CREATE_ROUTE
+  | typeof PROCUREMENT_PURCHASE_ORDER_DETAIL_ROUTE
   | typeof CRM_LEADS_ROUTE
   | typeof CRM_LEAD_DETAIL_ROUTE
   | typeof CRM_LEAD_CREATE_ROUTE
@@ -135,10 +141,27 @@ export function buildRFQDetailPath(rfqId: string): string {
   return PROCUREMENT_RFQ_DETAIL_ROUTE.replace(":rfqId", encodeURIComponent(rfqId));
 }
 
+export function buildPurchaseOrderDetailPath(poId: string): string {
+  return PROCUREMENT_PURCHASE_ORDER_DETAIL_ROUTE.replace(":poId", encodeURIComponent(poId));
+}
+
+export function buildCreatePurchaseOrderPath(awardId?: string | null): string {
+  if (!awardId) {
+    return PROCUREMENT_PURCHASE_ORDER_CREATE_ROUTE;
+  }
+  const params = new URLSearchParams({ awardId });
+  return `${PROCUREMENT_PURCHASE_ORDER_CREATE_ROUTE}?${params.toString()}`;
+}
+
 // Procurement RFQ routes (story 24.1)
 export const RFQ_LIST_ROUTE = PROCUREMENT_ROUTE;
 export const RFQ_CREATE_ROUTE = PROCUREMENT_RFQ_CREATE_ROUTE;
 export const RFQ_DETAIL_ROUTE = PROCUREMENT_RFQ_DETAIL_ROUTE;
+
+// Procurement Purchase Order routes (story 24.2)
+export const PURCHASE_ORDER_LIST_ROUTE = PROCUREMENT_PURCHASE_ORDERS_ROUTE;
+export const PURCHASE_ORDER_CREATE_ROUTE = PROCUREMENT_PURCHASE_ORDER_CREATE_ROUTE;
+export const PURCHASE_ORDER_DETAIL_ROUTE = PROCUREMENT_PURCHASE_ORDER_DETAIL_ROUTE;
 
 // Procurement Goods Receipt routes (story 24.3)
 export const PROCUREMENT_GOODS_RECEIPT_LIST_ROUTE = "/procurement/goods-receipts";

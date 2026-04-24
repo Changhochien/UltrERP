@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { PageHeader, SectionCard } from "../components/layout/PageLayout";
 import { Button } from "../components/ui/button";
@@ -8,7 +9,23 @@ import { SupplierInvoiceList } from "../domain/purchases/components/SupplierInvo
 
 export function PurchasesPage() {
   const { t } = useTranslation("common");
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const requestedInvoiceId =
+    ((location.state as { selectedInvoiceId?: string | null } | null)?.selectedInvoiceId ?? null);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(requestedInvoiceId);
+
+  useEffect(() => {
+    setSelectedInvoiceId(requestedInvoiceId);
+  }, [requestedInvoiceId]);
+
+  const handleSelectInvoice = (invoiceId: string | null) => {
+    setSelectedInvoiceId(invoiceId);
+    navigate(location.pathname, {
+      replace: true,
+      state: invoiceId ? { selectedInvoiceId: invoiceId } : {},
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -23,7 +40,7 @@ export function PurchasesPage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setSelectedInvoiceId(null)}
+                onClick={() => handleSelectInvoice(null)}
               >
                 {t("purchase.detail.backToList")}
               </Button>
@@ -47,10 +64,10 @@ export function PurchasesPage() {
         {selectedInvoiceId ? (
           <SupplierInvoiceDetail
             invoiceId={selectedInvoiceId}
-            onBack={() => setSelectedInvoiceId(null)}
+            onBack={() => handleSelectInvoice(null)}
           />
         ) : (
-          <SupplierInvoiceList onSelect={setSelectedInvoiceId} />
+          <SupplierInvoiceList onSelect={handleSelectInvoice} />
         )}
       </SectionCard>
     </div>

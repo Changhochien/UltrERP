@@ -41,6 +41,8 @@ export function CreateGoodsReceipt({ purchaseOrderId }: CreateGoodsReceiptProps)
     remainingQty: string;
     acceptedQty: string;
     rejectedQty: string;
+    rejectedWarehouse: string;
+    exceptionNotes: string;
     uom: string;
     warehouse: string;
     unitRate: string;
@@ -61,6 +63,8 @@ export function CreateGoodsReceipt({ purchaseOrderId }: CreateGoodsReceiptProps)
           remainingQty: String(remaining),
           acceptedQty: remaining > 0 ? String(remaining) : "0",
           rejectedQty: "0",
+          rejectedWarehouse: "",
+          exceptionNotes: "",
           uom: item.uom,
           warehouse: item.warehouse || poData.set_warehouse || "",
           unitRate: item.unit_rate,
@@ -98,6 +102,8 @@ export function CreateGoodsReceipt({ purchaseOrderId }: CreateGoodsReceiptProps)
     // Auto-clear rejected if accepting full remaining
     if (numValue >= remaining) {
       handleLineChange(index, "rejectedQty", "0");
+      handleLineChange(index, "rejectedWarehouse", "");
+      handleLineChange(index, "exceptionNotes", "");
     }
   }, [lineItems, handleLineChange]);
 
@@ -114,6 +120,10 @@ export function CreateGoodsReceipt({ purchaseOrderId }: CreateGoodsReceiptProps)
       value = String(maxRejected);
     }
     handleLineChange(index, "rejectedQty", value);
+    if ((parseFloat(value) || 0) <= 0) {
+      handleLineChange(index, "rejectedWarehouse", "");
+      handleLineChange(index, "exceptionNotes", "");
+    }
   }, [lineItems, handleLineChange]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
@@ -149,10 +159,10 @@ export function CreateGoodsReceipt({ purchaseOrderId }: CreateGoodsReceiptProps)
           rejected_qty: item.rejectedQty,
           uom: item.uom,
           warehouse: item.warehouse || setWarehouse,
-          rejected_warehouse: Number(item.rejectedQty) > 0 ? item.warehouse || setWarehouse : "",
+          rejected_warehouse: Number(item.rejectedQty) > 0 ? item.rejectedWarehouse : "",
           batch_no: "",
           serial_no: "",
-          exception_notes: "",
+          exception_notes: item.exceptionNotes,
           unit_rate: item.unitRate,
         })),
     };
@@ -283,6 +293,9 @@ export function CreateGoodsReceipt({ purchaseOrderId }: CreateGoodsReceiptProps)
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                     Warehouse
                   </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    Exceptions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -311,6 +324,7 @@ export function CreateGoodsReceipt({ purchaseOrderId }: CreateGoodsReceiptProps)
                             min="0"
                             max={remaining}
                             step="0.001"
+                            aria-label={`Accepted quantity for line ${idx + 1}`}
                             value={item.acceptedQty}
                             onChange={(e) => handleAcceptedQtyChange(idx, e.target.value)}
                             className="w-24 rounded-md border border-gray-300 px-2 py-1 text-right text-sm text-green-700 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
@@ -326,6 +340,7 @@ export function CreateGoodsReceipt({ purchaseOrderId }: CreateGoodsReceiptProps)
                             min="0"
                             max={Math.max(0, remaining - Number(item.acceptedQty))}
                             step="0.001"
+                            aria-label={`Rejected quantity for line ${idx + 1}`}
                             value={item.rejectedQty}
                             onChange={(e) => handleRejectedQtyChange(idx, e.target.value)}
                             className="w-24 rounded-md border border-gray-300 px-2 py-1 text-right text-sm text-red-700 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
@@ -338,6 +353,7 @@ export function CreateGoodsReceipt({ purchaseOrderId }: CreateGoodsReceiptProps)
                         {hasRemaining ? (
                           <input
                             type="text"
+                            aria-label={`Receiving warehouse for line ${idx + 1}`}
                             value={item.warehouse || setWarehouse}
                             onChange={(e) => handleLineChange(idx, "warehouse", e.target.value)}
                             placeholder="Warehouse"
@@ -345,6 +361,30 @@ export function CreateGoodsReceipt({ purchaseOrderId }: CreateGoodsReceiptProps)
                           />
                         ) : (
                           <span className="text-sm text-gray-400">{item.warehouse || "-"}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        {hasRemaining && Number(item.rejectedQty) > 0 ? (
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              aria-label={`Rejected warehouse for line ${idx + 1}`}
+                              value={item.rejectedWarehouse}
+                              onChange={(e) => handleLineChange(idx, "rejectedWarehouse", e.target.value)}
+                              placeholder="Rejected warehouse"
+                              className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+                            />
+                            <input
+                              type="text"
+                              aria-label={`Exception notes for line ${idx + 1}`}
+                              value={item.exceptionNotes}
+                              onChange={(e) => handleLineChange(idx, "exceptionNotes", e.target.value)}
+                              placeholder="Reason for rejection or exception"
+                              className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                            />
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-400">-</span>
                         )}
                       </td>
                     </tr>

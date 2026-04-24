@@ -175,6 +175,17 @@ async def create_rfq(
     if isinstance(transaction_date, str):
         transaction_date = date.fromisoformat(transaction_date)
 
+    for supp_data in data.get("suppliers", []):
+        if not supp_data.get("supplier_id"):
+            continue
+        control_result = await check_supplier_rfq_controls(
+            db,
+            tenant_id,
+            supp_data.get("supplier_id"),
+            supp_data.get("supplier_name", ""),
+        )
+        enforce_supplier_controls(control_result, "RFQ creation")
+
     name = data.get("name") or ""
     if not name:
         count_q = select(func.count()).select_from(RFQ).where(RFQ.tenant_id == tenant_id)
@@ -423,6 +434,7 @@ async def create_supplier_quotation(
         await _link_quotation_to_rfq_supplier(
             db, tenant_id, rfq_id, supplier_name, quotation.id
         )
+        await recompute_rfq_quote_status(db, tenant_id, rfq_id, commit=False)
 
     await db.commit()
     await db.refresh(quotation)
@@ -710,7 +722,11 @@ async def get_rfq_comparison(
 
 
 async def recompute_rfq_quote_status(
-    db: AsyncSession, tenant_id: uuid.UUID, rfq_id: uuid.UUID
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    rfq_id: uuid.UUID,
+    *,
+    commit: bool = True,
 ) -> None:
     """Recompute quotes_received count on the RFQ from linked supplier quotations."""
     rfq = await get_rfq(db, tenant_id, rfq_id)
@@ -725,7 +741,10 @@ async def recompute_rfq_quote_status(
     )
     rfq.quotes_received = result.scalar() or 0
 
-    await db.commit()
+    if commit:
+        await db.commit()
+    else:
+        await db.flush()
 
 
 # --------------------------------------------------------------------------
@@ -870,6 +889,14 @@ async def create_purchase_order(
         count = result.scalar() or 0
         name = f"PO-{count + 1:04d}"
 
+    if data.get("is_subcontracted"):
+        await _validate_subcontractor(
+            db,
+            tenant_id,
+            data.get("supplier_id"),
+            data.get("supplier_name", ""),
+        )
+
     po = PurchaseOrder(
         tenant_id=tenant_id,
         name=name,
@@ -1011,6 +1038,9 @@ async def update_purchase_order(
         msg = f"Cannot update purchase order in status '{po.status}'."
         raise ValidationError([{"field": "status", "message": msg}])
 
+    if data.get("is_subcontracted", po.is_subcontracted):
+        await _validate_subcontractor(db, tenant_id, po.supplier_id, po.supplier_name)
+
     for field in (
         "name", "supplier_name", "company", "currency", "transaction_date",
         "schedule_date", "subtotal", "total_taxes", "grand_total", "base_grand_total",
@@ -1059,6 +1089,9 @@ async def submit_purchase_order(
 
     if not po.items:
         raise ValidationError([{"field": "items", "message": "Purchase order must have at least one item."}])
+
+    if po.is_subcontracted:
+        await _validate_subcontractor(db, tenant_id, po.supplier_id, po.supplier_name)
 
     # Supplier control check - block if supplier is on hold or prevented from POs (Story 24-5)
     if po.supplier_id:
@@ -1250,6 +1283,14 @@ async def _recompute_po_from_gr(
     submitted goods receipts. The actual implementation delegates to the
     existing recompute_po_progress function.
     """
+    po = await get_purchase_order(db, tenant_id, po_id)
+    for item in po.items:
+        item.received_qty = await _compute_received_qty_for_po_item(
+            db,
+            tenant_id,
+            item.id,
+        )
+    await db.flush()
     await recompute_po_progress(db, tenant_id, po_id)
 
 
@@ -1474,6 +1515,7 @@ async def submit_goods_receipt(
     gr.inventory_mutated_at = datetime.now(tz=UTC)
 
     # Recompute PO received quantities from all submitted GRs
+    await db.flush()
     await _recompute_po_from_gr(db, tenant_id, gr.purchase_order_id)
 
     await db.commit()
@@ -1505,6 +1547,7 @@ async def cancel_goods_receipt(
     # If was submitted, recompute PO progress from remaining receipts
     if previous_status == "submitted":
         gr.inventory_mutated = False
+        await db.flush()
         await _recompute_po_from_gr(db, tenant_id, po_id)
 
     await db.commit()
@@ -1853,6 +1896,7 @@ async def get_supplier_controls(
         "supplier_id": str(supplier.id),
         "supplier_name": supplier.name,
         "is_active": supplier.is_active,
+        "is_subcontractor": supplier.is_subcontractor,
         # Hold status
         "on_hold": supplier.on_hold,
         "hold_type": supplier.hold_type,
@@ -1920,17 +1964,15 @@ async def _validate_subcontractor(
     return supplier
 
 
-def _generate_doc_name(
+async def _generate_doc_name(
     db: AsyncSession,
     model: type,
     tenant_id: uuid.UUID,
     prefix: str,
 ) -> str:
     """Generate sequential document name: PREFIX-NNNN."""
-    count = (
-        db.execute(select(func.count()).select_from(model).where(model.tenant_id == tenant_id))
-        .scalar() or 0
-    )
+    result = await db.execute(select(func.count()).select_from(model).where(model.tenant_id == tenant_id))
+    count = result.scalar() or 0
     return f"{prefix}-{count + 1:04d}"
 
 
@@ -1956,7 +1998,7 @@ async def create_subcontracting_material_transfer(
 
     mt = SubcontractingMaterialTransfer(
         tenant_id=tenant_id,
-        name=_generate_doc_name(db, SubcontractingMaterialTransfer, tenant_id, "SMT"),
+        name=await _generate_doc_name(db, SubcontractingMaterialTransfer, tenant_id, "SMT"),
         status="draft",
         purchase_order_id=po.id,
         supplier_id=po.supplier_id,
@@ -2147,9 +2189,17 @@ async def create_subcontracting_receipt(
     _validate_subcontracting_po(po, "subcontracting receipt")
     await _validate_subcontractor(db, tenant_id, po.supplier_id, po.supplier_name)
 
+    if not data.get("material_transfer_ids"):
+        raise ValidationError([
+            {
+                "field": "material_transfer_ids",
+                "message": "At least one material transfer is required for subcontracting receipt audit linkage.",
+            }
+        ])
+
     scr = SubcontractingReceipt(
         tenant_id=tenant_id,
-        name=_generate_doc_name(db, SubcontractingReceipt, tenant_id, "SCR"),
+        name=await _generate_doc_name(db, SubcontractingReceipt, tenant_id, "SCR"),
         status="draft",
         purchase_order_id=po.id,
         supplier_id=po.supplier_id,

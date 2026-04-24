@@ -56,6 +56,9 @@ import {
   OWNER_DASHBOARD_ROUTE,
   PAYMENTS_ROUTE,
   PROCUREMENT_ROUTE,
+  PROCUREMENT_PURCHASE_ORDERS_ROUTE,
+  PROCUREMENT_PURCHASE_ORDER_CREATE_ROUTE,
+  PROCUREMENT_PURCHASE_ORDER_DETAIL_ROUTE,
   PROCUREMENT_RFQ_CREATE_ROUTE,
   PROCUREMENT_RFQ_DETAIL_ROUTE,
   PROCUREMENT_GOODS_RECEIPT_LIST_ROUTE,
@@ -99,6 +102,9 @@ import { PurchasesPage } from "./pages/PurchasesPage";
 import { RFQListPage } from "./pages/procurement/RFQListPage";
 import CreateRFQPage from "./pages/procurement/CreateRFQPage";
 import { RFQDetailPage } from "./pages/procurement/RFQDetailPage";
+import { PurchaseOrderListPage } from "./pages/procurement/PurchaseOrderListPage";
+import { PurchaseOrderDetailPage } from "./pages/procurement/PurchaseOrderDetailPage";
+import { CreatePurchaseOrderPage } from "./pages/procurement/CreatePurchaseOrderPage";
 import { GoodsReceiptListPage } from "./pages/procurement/GoodsReceiptListPage";
 import { GoodsReceiptDetailPage } from "./pages/procurement/GoodsReceiptDetailPage";
 import { CreateGoodsReceiptPage } from "./pages/procurement/CreateGoodsReceiptPage";
@@ -630,6 +636,36 @@ export default function App() {
               <ProtectedAppRoute requiredFeature="procurement">
                 <RoutedPage>
                   <RFQDetailPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={PROCUREMENT_PURCHASE_ORDERS_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="procurement">
+                <RoutedPage>
+                  <PurchaseOrderListPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={PROCUREMENT_PURCHASE_ORDER_CREATE_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="procurement" requiredWrite>
+                <RoutedPage>
+                  <CreatePurchaseOrderPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={PROCUREMENT_PURCHASE_ORDER_DETAIL_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="procurement">
+                <RoutedPage>
+                  <PurchaseOrderDetailPage />
                 </RoutedPage>
               </ProtectedAppRoute>
             }

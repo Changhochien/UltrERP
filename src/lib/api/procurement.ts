@@ -291,7 +291,7 @@ export async function closePurchaseOrder(poId: string): Promise<PurchaseOrderRes
 
 export async function createPOFromAward(awardId: string): Promise<PurchaseOrderResponse> {
   const resp = await apiFetch(`/api/v1/procurement/awards/${awardId}/create-po`, {
-    method: "GET",
+    method: "POST",
   });
   if (!resp.ok) throw new Error(await parseErrorMessage(resp, "Failed to create PO from award"));
   return resp.json();

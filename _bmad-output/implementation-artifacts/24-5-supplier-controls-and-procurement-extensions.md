@@ -1,6 +1,6 @@
 # Story 24.5: Supplier Controls and Procurement Extensions
 
-Status: review
+Status: reviewed
 
 ## Story
 
@@ -116,7 +116,10 @@ GPT-5.4
 
 ### Debug Log References
 
-- Story draft only; implementation and validation commands not run yet.
+- Backend validation: `uv run pytest tests/domains/procurement/test_supplier_controls.py -q -k subcontractor_flag` → passed
+- Frontend validations:
+  - `pnpm exec vitest run src/domain/procurement/components/PurchaseOrderDetail.test.tsx src/pages/procurement/CreateRFQPage.test.tsx src/pages/procurement/RFQListPage.test.tsx --reporter=dot` → passed
+  - `pnpm exec tsc --noEmit` → passed
 
 ### Completion Notes List
 
@@ -130,7 +133,22 @@ GPT-5.4
   - Created migrations for new columns
   - Added backend and frontend tests
   - No blanket-order execution or landed-cost automation implemented
+- 2026-04-24: Review pass closed the missing live surfaces by wiring supplier-master RFQ authoring to RFQ control checks and backend RFQ creation enforcement, plus mounting procurement reporting on the procurement landing page.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/24-5-supplier-controls-and-procurement-extensions.md`
+- `backend/domains/procurement/service.py`
+- `backend/tests/domains/procurement/test_supplier_controls.py`
+- `src/domain/procurement/components/PurchaseOrderDetail.tsx`
+- `src/domain/procurement/components/PurchaseOrderDetail.test.tsx`
+- `src/domain/procurement/hooks/usePurchaseOrder.ts`
+- `src/domain/procurement/hooks/useSupplierControls.ts`
+- `src/domain/procurement/types.ts`
+- `src/domain/procurement/__tests__/procurement.test.ts`
+- `src/pages/procurement/CreateRFQPage.tsx`
+- `src/pages/procurement/CreateRFQPage.test.tsx`
+- `src/pages/procurement/RFQListPage.tsx`
+- `src/pages/procurement/RFQListPage.test.tsx`
+- `public/locales/en/common.json`
+- `public/locales/zh-Hant/common.json`

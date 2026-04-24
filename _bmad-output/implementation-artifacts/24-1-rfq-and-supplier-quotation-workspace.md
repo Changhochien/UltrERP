@@ -1,6 +1,6 @@
 # Story 24.1: RFQ and Supplier Quotation Workspace
 
-Status: review
+Status: reviewed
 
 ## Story
 
@@ -128,12 +128,16 @@ GPT-5.4
   - Fixed multi-tenant security bypass: `get_tenant_and_user()` now extracts tenant from `X-Tenant-Id` header
   - Added unique constraint on `ProcurementAward` for `(tenant_id, rfq_id)` to prevent race conditions
   - All 25 backend tests + 10 frontend tests pass after fixes
+- Review pass follow-up:
+  - RFQ quote snapshots now recompute immediately after supplier quotation creation so list/detail views do not lag behind submitted quotations.
+  - RFQ comparison award actions now refetch award state so the create-PO handoff stays current after winner selection.
 
 ### Completion Notes List
 
 - 2026-04-21: Drafted Story 24.1 from Epic 24 and the validated buying research, keeping RFQ and supplier quotation as the sourcing workspace that precedes purchase-order creation.
 - 2026-04-23: Fully implemented Story 24.1. Backend: procurement domain (models, schemas, service, routes), Alembic migration (abc123def456), FastAPI app registration. Frontend: TypeScript types, API client, hooks, RFQ list/detail/create pages, procurement navigation, i18n (en/zh-Hant). Tests: 25 backend + 10 frontend focused tests all passing. Broader backend suite 911/911 passing. TypeScript clean. Ruff clean. Epic 24 added to sprint-status.yaml.
 - 2026-04-23: Code review fixes applied - multi-tenant header extraction, award unique constraint, tests revalidated.
+- 2026-04-24: Review pass corrected RFQ `quotes_received` recomputation after supplier quotation creation and refreshed RFQ award state in the comparison UI, with focused backend/frontend regressions revalidated.
 
 ### File List
 

@@ -124,6 +124,9 @@ GPT-5.4
 - API updates: `src/lib/api/purchases.ts`, `src/lib/api/procurement.ts`
 - Migration: `migrations/versions/abc123def459_add_procurement_lineage_to_supplier_invoice.py`
 - Tests: `backend/tests/domains/purchases/test_procurement_lineage.py`
+- Review pass validations:
+  - `pnpm exec vitest run src/domain/procurement/components/PurchaseOrderDetail.test.tsx src/domain/procurement/components/GoodsReceiptDetail.test.tsx src/domain/purchases/__tests__/PurchasesPage.test.tsx src/domain/purchases/__tests__/PurchasesPageRouting.test.tsx --reporter=dot` → passed
+  - `pnpm exec tsc --noEmit` → passed
 
 ### Completion Notes List
 
@@ -134,6 +137,7 @@ GPT-5.4
 - 2026-04-23: Created frontend components for lineage trace, mismatch indicator, and downstream invoice lineage.
 - 2026-04-23: Added backend API endpoints for lineage retrieval.
 - 2026-04-23: Added backend tests for variance calculation and schema validation.
+- 2026-04-24: Review pass mounted downstream invoice lineage on the live procurement PO and goods-receipt surfaces and wired invoice clicks into the purchases workspace so the lineage chain is no longer passive.
 
 ### File List
 

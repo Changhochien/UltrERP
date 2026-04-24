@@ -39,7 +39,8 @@
     "invoices": "Invoices",
     "suppliers": "Suppliers",
     "procurement": "Sourcing",
-    "createRFQ": "Create RFQ"
+    "createRFQ": "Create RFQ",
+    "purchaseOrders": "Purchase Orders"
   },
   "common": {
     "cancel": "Cancel",
@@ -194,6 +195,18 @@
     "procurement": {
       "description": "Issue RFQs and compare supplier quotations before creating purchase orders.",
       "label": "Sourcing"
+    },
+    "procurementPurchaseOrders": {
+      "description": "Review purchase-order status, sourcing lineage, and downstream receiving progress.",
+      "label": "Purchase Orders"
+    },
+    "procurementPurchaseOrderCreate": {
+      "description": "Create a purchase order from an awarded supplier quotation.",
+      "label": "Create Purchase Order"
+    },
+    "procurementPurchaseOrderDetail": {
+      "description": "Review one purchase order, lifecycle controls, and sourcing lineage.",
+      "label": "Purchase Order Detail"
     },
     "procurementRFQCreate": {
       "description": "Create a new Request for Quotation to distribute to suppliers.",
@@ -3467,6 +3480,11 @@
       "terms": "Terms & Notes",
       "addItem": "Add Item",
       "addSupplier": "Add Supplier",
+      "supplierMasterHint": "Select suppliers from the supplier master so RFQ warnings and blocks are applied before save.",
+      "supplierControlChecking": "Checking supplier controls...",
+      "supplierControlWarning": "RFQ warning",
+      "supplierControlBlocked": "RFQ blocked",
+      "supplierControlCheckError": "Unable to verify supplier controls.",
       "save": "Save RFQ",
       "submit": "Submit RFQ",
       "submitted": "RFQ submitted successfully.",
@@ -3500,7 +3518,33 @@
       "error": "Failed to award quotation.",
       "selectAsWinner": "Select as Winner",
       "winner": "Winner",
-      "selected": "Winning source: {supplier}"
+      "selected": "Winning source: {supplier}",
+      "createPurchaseOrder": "Create Purchase Order"
+    },
+    "reporting": {
+      "title": "Procurement Insights",
+      "description": "Review sourcing throughput, supplier response timing, and award performance from the procurement workspace.",
+      "loadError": "Failed to load procurement insights.",
+      "rfqsSubmitted": "RFQs Submitted",
+      "quotationsSubmitted": "Supplier Quotations Submitted",
+      "activePurchaseOrders": "Active Purchase Orders",
+      "blockedWarnedSuppliers": "Blocked / Warned Suppliers",
+      "quoteTurnaround": "Quote Turnaround",
+      "averageResponseTime": "Average Response",
+      "fastestResponse": "Fastest Response",
+      "slowestResponse": "Slowest Response",
+      "quotesAnalysed": "Quotes Analysed",
+      "noQuoteData": "No submitted supplier quotations are available yet.",
+      "supplierPerformance": "Supplier Performance",
+      "overallAwardRate": "Overall Award Rate",
+      "awardedQuotes": "Awarded Quotes",
+      "monitoredSuppliers": "Monitored Suppliers",
+      "blockedSuppliers": "Blocked Suppliers",
+      "topSuppliers": "Top suppliers by quotation activity.",
+      "noSupplierData": "No supplier performance data is available yet.",
+      "supplier": "Supplier",
+      "totalQuotes": "Total Quotes",
+      "awardRate": "Award Rate"
     }
   }
 }

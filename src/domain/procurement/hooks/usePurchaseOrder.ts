@@ -7,6 +7,7 @@ import {
   createPOFromAward,
   listPurchaseOrders,
   getPurchaseOrder,
+  updatePurchaseOrder,
   submitPurchaseOrder,
   holdPurchaseOrder,
   releasePurchaseOrder,
@@ -16,6 +17,7 @@ import {
 } from "@/lib/api/procurement";
 import type {
   PurchaseOrderListResponse,
+  PurchaseOrderUpdatePayload,
   PurchaseOrderResponse,
 } from "../types";
 
@@ -138,6 +140,7 @@ export function usePurchaseOrder(poId: string | null): UsePurchaseOrderResult {
 
 export interface PurchaseOrderActions {
   createFromAward: (awardId: string) => Promise<PurchaseOrderResponse>;
+  update: (poId: string, payload: PurchaseOrderUpdatePayload) => Promise<PurchaseOrderResponse>;
   submit: (poId: string) => Promise<PurchaseOrderResponse>;
   hold: (poId: string) => Promise<PurchaseOrderResponse>;
   release: (poId: string) => Promise<PurchaseOrderResponse>;
@@ -148,6 +151,10 @@ export interface PurchaseOrderActions {
 
 export function usePurchaseOrderActions(): PurchaseOrderActions {
   const createFromAward = useCallback((awardId: string) => createPOFromAward(awardId), []);
+  const update = useCallback(
+    (poId: string, payload: PurchaseOrderUpdatePayload) => updatePurchaseOrder(poId, payload),
+    [],
+  );
   const submit = useCallback((poId: string) => submitPurchaseOrder(poId), []);
   const hold = useCallback((poId: string) => holdPurchaseOrder(poId), []);
   const release = useCallback((poId: string) => releasePurchaseOrder(poId), []);
@@ -155,5 +162,5 @@ export function usePurchaseOrderActions(): PurchaseOrderActions {
   const cancel = useCallback((poId: string) => cancelPurchaseOrder(poId), []);
   const close = useCallback((poId: string) => closePurchaseOrder(poId), []);
 
-  return { createFromAward, submit, hold, release, complete, cancel, close };
+  return { createFromAward, update, submit, hold, release, complete, cancel, close };
 }

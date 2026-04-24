@@ -295,6 +295,8 @@ describe("Purchase Order Types (Story 24.2)", () => {
       is_approved: false,
       approved_by: "",
       approved_at: null,
+      blanket_order_reference_id: null,
+      landed_cost_reference_id: null,
       // Subcontracting metadata (Story 24-6)
       is_subcontracted: false,
       finished_goods_item_code: null,
@@ -548,6 +550,8 @@ describe("Purchase Order No Goods Receipt Logic (Story 24.2)", () => {
       is_approved: false,
       approved_by: "",
       approved_at: null,
+      blanket_order_reference_id: null,
+      landed_cost_reference_id: null,
       // Subcontracting metadata (Story 24-6)
       is_subcontracted: false,
       finished_goods_item_code: null,
@@ -614,6 +618,7 @@ describe("Supplier Control Types (Story 24.5)", () => {
       supplier_id: "00000000-0000-0000-0000-000000000020",
       supplier_name: "Test Supplier",
       is_active: true,
+      is_subcontractor: false,
       on_hold: false,
       hold_type: null,
       release_date: null,
@@ -898,6 +903,8 @@ describe("Subcontracting PO Types (Story 24.6)", () => {
       is_approved: false,
       approved_by: "",
       approved_at: null,
+      blanket_order_reference_id: null,
+      landed_cost_reference_id: null,
       // Subcontracting metadata (Story 24-6)
       is_subcontracted: true,
       finished_goods_item_code: "FIN-001",
@@ -1027,6 +1034,7 @@ describe("Subcontracting Receipt Types (Story 24.6)", () => {
       created_at: "2026-05-05T00:00:00Z",
       updated_at: "2026-05-05T00:00:00Z",
       items: [],
+      material_transfer_refs: [],
     };
 
     expect(scr.id).toBe("00000000-0000-0000-0000-000000000060");

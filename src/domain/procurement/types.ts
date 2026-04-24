@@ -384,6 +384,9 @@ export interface PurchaseOrderCreatePayload {
   set_warehouse: string;
   terms_and_conditions: string;
   notes: string;
+  // Extension hooks (Story 24-5)
+  blanket_order_reference_id?: string | null;
+  landed_cost_reference_id?: string | null;
   // Subcontracting metadata (Story 24-6)
   is_subcontracted?: boolean;
   finished_goods_item_code?: string | null;
@@ -410,6 +413,9 @@ export interface PurchaseOrderUpdatePayload {
   set_warehouse?: string;
   terms_and_conditions?: string;
   notes?: string;
+  // Extension hooks (Story 24-5)
+  blanket_order_reference_id?: string | null;
+  landed_cost_reference_id?: string | null;
   // Subcontracting metadata (Story 24-6)
   is_subcontracted?: boolean;
   finished_goods_item_code?: string | null;
@@ -446,6 +452,9 @@ export interface PurchaseOrderResponse {
   is_approved: boolean;
   approved_by: string;
   approved_at: string | null;
+  // Extension hooks (Story 24-5)
+  blanket_order_reference_id: string | null;
+  landed_cost_reference_id: string | null;
   // Subcontracting metadata (Story 24-6)
   is_subcontracted: boolean;
   finished_goods_item_code: string | null;
@@ -602,6 +611,7 @@ export interface SupplierControlsStatus {
   supplier_id: string;
   supplier_name: string;
   is_active: boolean;
+  is_subcontractor: boolean;
   // Hold status
   on_hold: boolean;
   hold_type: string | null;
@@ -804,6 +814,13 @@ export interface SCRItemResponse {
   created_at: string;
 }
 
+export interface SubcontractingReceiptMaterialRefResponse {
+  id: string;
+  subcontracting_receipt_id: string;
+  material_transfer_id: string;
+  created_at: string;
+}
+
 export interface SubcontractingReceiptCreatePayload {
   purchase_order_id: string;
   receipt_date: string;
@@ -834,6 +851,7 @@ export interface SubcontractingReceiptResponse {
   created_at: string;
   updated_at: string;
   items: SCRItemResponse[];
+  material_transfer_refs: SubcontractingReceiptMaterialRefResponse[];
 }
 
 export interface SubcontractingReceiptSummary {

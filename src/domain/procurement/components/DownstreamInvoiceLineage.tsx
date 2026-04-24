@@ -118,12 +118,16 @@ function LinkedInvoiceRow({ invoice, onClick }: LinkedInvoiceRowProps) {
       className="flex items-center justify-between p-2 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
     >
       <div className="flex items-center gap-3">
-        <button
-          onClick={onClick}
-          className="text-blue-600 hover:text-blue-800 hover:underline text-sm font-medium"
-        >
-          {invoice.invoice_number}
-        </button>
+        {onClick ? (
+          <button
+            onClick={onClick}
+            className="text-blue-600 hover:text-blue-800 hover:underline text-sm font-medium"
+          >
+            {invoice.invoice_number}
+          </button>
+        ) : (
+          <span className="text-sm font-medium text-gray-900">{invoice.invoice_number}</span>
+        )}
         <span className="text-xs text-gray-500">
           {invoice.invoice_date}
         </span>

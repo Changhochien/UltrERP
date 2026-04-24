@@ -6,6 +6,10 @@ import { useState, useCallback, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { format } from "date-fns";
 import { usePurchaseOrder, usePurchaseOrderActions } from "../hooks/usePurchaseOrder";
+import { DownstreamInvoiceLineage } from "./DownstreamInvoiceLineage";
+import { SubcontractingWorkflowPanel } from "./SubcontractingWorkflowPanel";
+import { useReceiptsForPO } from "../hooks/useGoodsReceipt";
+import { useSupplierControls } from "../hooks/useSupplierControls";
 import { PO_STATUS_COLORS, PO_STATUS_LABELS } from "../constants";
 import type { PurchaseOrderResponse, POStatus } from "../types";
 
@@ -18,12 +22,28 @@ interface PurchaseOrderDetailProps {
 export function PurchaseOrderDetail({ isNew = false, awardId, initialData }: PurchaseOrderDetailProps) {
   const { poId } = useParams<{ poId: string }>();
   const navigate = useNavigate();
+  const currentPoId = isNew ? null : poId ?? initialData?.id ?? null;
   const { data: poData, loading, error, refetch } = usePurchaseOrder(isNew ? null : poId ?? null);
-  const { createFromAward, submit, hold, release, complete, cancel, close } = usePurchaseOrderActions();
+  const supplierId = poData?.supplier_id ?? initialData?.supplier_id ?? null;
+  const { createFromAward, update, submit, hold, release, complete, cancel, close } = usePurchaseOrderActions();
+  const { data: receiptsData, loading: receiptsLoading, error: receiptsError } = useReceiptsForPO(currentPoId);
+  const {
+    data: supplierControls,
+    loading: supplierControlsLoading,
+    error: supplierControlsError,
+  } = useSupplierControls(supplierId);
 
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [procurementOptions, setProcurementOptions] = useState({
+    isSubcontracted: false,
+    finishedGoodsItemCode: "",
+    finishedGoodsItemName: "",
+    expectedSubcontractedQty: "",
+    blanketOrderReferenceId: "",
+    landedCostReferenceId: "",
+  });
 
   // Load PO from award if provided
   useEffect(() => {
@@ -43,6 +63,50 @@ export function PurchaseOrderDetail({ isNew = false, awardId, initialData }: Pur
   }, [isNew, awardId, initialData, createFromAward, navigate]);
 
   const poDataOrInitial = poData ?? initialData ?? null;
+
+  useEffect(() => {
+    if (!poDataOrInitial) {
+      return;
+    }
+
+    setProcurementOptions({
+      isSubcontracted: poDataOrInitial.is_subcontracted ?? false,
+      finishedGoodsItemCode: poDataOrInitial.finished_goods_item_code ?? "",
+      finishedGoodsItemName: poDataOrInitial.finished_goods_item_name ?? "",
+      expectedSubcontractedQty: poDataOrInitial.expected_subcontracted_qty ?? "",
+      blanketOrderReferenceId: poDataOrInitial.blanket_order_reference_id ?? "",
+      landedCostReferenceId: poDataOrInitial.landed_cost_reference_id ?? "",
+    });
+  }, [poDataOrInitial]);
+
+  const handleSaveProcurementOptions = useCallback(async () => {
+    if (!poId) return;
+    setSubmitting(true);
+    setActionError(null);
+    setSuccessMessage(null);
+    try {
+      await update(poId, {
+        is_subcontracted: procurementOptions.isSubcontracted,
+        finished_goods_item_code: procurementOptions.isSubcontracted
+          ? procurementOptions.finishedGoodsItemCode || null
+          : null,
+        finished_goods_item_name: procurementOptions.isSubcontracted
+          ? procurementOptions.finishedGoodsItemName || null
+          : null,
+        expected_subcontracted_qty: procurementOptions.isSubcontracted
+          ? procurementOptions.expectedSubcontractedQty || null
+          : null,
+        blanket_order_reference_id: procurementOptions.blanketOrderReferenceId || null,
+        landed_cost_reference_id: procurementOptions.landedCostReferenceId || null,
+      });
+      setSuccessMessage("Procurement options saved.");
+      refetch();
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : "Failed to save procurement options");
+    } finally {
+      setSubmitting(false);
+    }
+  }, [poId, procurementOptions, refetch, update]);
 
   const handleSubmit = useCallback(async () => {
     if (!poId) return;
@@ -142,6 +206,10 @@ export function PurchaseOrderDetail({ isNew = false, awardId, initialData }: Pur
     }
   }, [poId, close, refetch]);
 
+  const handleOpenInvoice = useCallback((invoiceId: string) => {
+    navigate("/purchases", { state: { selectedInvoiceId: invoiceId } });
+  }, [navigate]);
+
   if (loading || submitting) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -174,6 +242,17 @@ export function PurchaseOrderDetail({ isNew = false, awardId, initialData }: Pur
   const canComplete = ["submitted", "to_receive", "to_bill", "to_receive_and_bill"].includes(po.status);
   const canCancel = !["completed", "cancelled", "closed"].includes(po.status);
   const canClose = ["completed", "cancelled"].includes(po.status);
+  const supplierStatusPending = Boolean(po.supplier_id) && supplierControlsLoading;
+  const submitBlocked = canSubmit && Boolean(supplierControls?.po_blocked);
+  const supplierControlMessage = supplierControls?.po_control_reason || supplierControlsError || "";
+  const showSupplierControlAlert = Boolean(supplierControls && (supplierControls.po_blocked || supplierControls.po_warned));
+  const showProcurementOptions =
+    po.status === "draft" ||
+    po.is_subcontracted ||
+    Boolean(po.blanket_order_reference_id) ||
+    Boolean(po.landed_cost_reference_id);
+  const showSubcontractingFields =
+    procurementOptions.isSubcontracted || Boolean(supplierControls?.is_subcontractor) || po.is_subcontracted;
 
   return (
     <div className="space-y-6">
@@ -194,6 +273,17 @@ export function PurchaseOrderDetail({ isNew = false, awardId, initialData }: Pur
       {actionError && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
           {actionError}
+        </div>
+      )}
+      {showSupplierControlAlert && (
+        <div
+          role="alert"
+          className={`rounded-lg border p-4 ${supplierControls?.po_blocked ? "border-red-200 bg-red-50 text-red-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}
+        >
+          <div className="font-medium">
+            {supplierControls?.po_blocked ? "Supplier controls block PO submission" : "Supplier controls require buyer attention"}
+          </div>
+          <p className="mt-1 text-sm">{supplierControlMessage}</p>
         </div>
       )}
 
@@ -328,6 +418,184 @@ export function PurchaseOrderDetail({ isNew = false, awardId, initialData }: Pur
         )}
       </div>
 
+      {po.supplier_id && (
+        <div className="rounded-lg border border-gray-200 bg-white">
+          <div className="border-b border-gray-200 px-6 py-4">
+            <h2 className="text-lg font-medium text-gray-900">Supplier Controls</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Draft submission stays aligned with supplier hold, scorecard, and subcontractor status.
+            </p>
+          </div>
+          <div className="grid gap-4 px-6 py-4 md:grid-cols-2">
+            <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+              <div className="text-xs font-medium uppercase tracking-wide text-gray-500">PO authoring status</div>
+              <div className="mt-2 text-sm font-medium text-gray-900">
+                {supplierStatusPending
+                  ? "Checking supplier controls..."
+                  : submitBlocked
+                    ? "Blocked"
+                    : supplierControls?.po_warned
+                      ? "Warning"
+                      : "Ready"}
+              </div>
+              <p className="mt-2 text-sm text-gray-600">
+                {supplierStatusPending
+                  ? "Control status is loading before draft submission can proceed."
+                  : supplierControlMessage || "No supplier control issues detected for this PO."}
+              </p>
+            </div>
+            <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+              <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Supplier workflow profile</div>
+              <div className="mt-2 text-sm font-medium text-gray-900">
+                {supplierControls?.is_subcontractor ? "Eligible for subcontracting workflows" : "Standard supplier workflow"}
+              </div>
+              <p className="mt-2 text-sm text-gray-600">
+                {supplierControls?.is_subcontractor
+                  ? "Subcontracting metadata can be attached to this draft PO before material transfer work begins."
+                  : "This supplier does not currently expose subcontracting-specific PO fields."}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showProcurementOptions && (
+        <div className="rounded-lg border border-gray-200 bg-white">
+          <div className="border-b border-gray-200 px-6 py-4">
+            <h2 className="text-lg font-medium text-gray-900">Procurement Options</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Draft-only extension hooks and subcontracting metadata stay on the PO so later workflows do not need schema retrofits.
+            </p>
+          </div>
+          <div className="space-y-6 px-6 py-4">
+            {showSubcontractingFields && (
+              <div className="space-y-4 rounded-lg border border-gray-100 bg-gray-50 p-4">
+                <label className="flex items-center gap-3 text-sm font-medium text-gray-900">
+                  <input
+                    type="checkbox"
+                    aria-label="Subcontracting purchase order"
+                    checked={procurementOptions.isSubcontracted}
+                    disabled={po.status !== "draft"}
+                    onChange={(event) => {
+                      const checked = event.target.checked;
+                      setProcurementOptions((current) => ({
+                        ...current,
+                        isSubcontracted: checked,
+                        finishedGoodsItemCode: checked ? current.finishedGoodsItemCode : "",
+                        finishedGoodsItemName: checked ? current.finishedGoodsItemName : "",
+                        expectedSubcontractedQty: checked ? current.expectedSubcontractedQty : "",
+                      }));
+                    }}
+                  />
+                  Subcontracting purchase order
+                </label>
+
+                {procurementOptions.isSubcontracted && (
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <label className="space-y-2 text-sm text-gray-700">
+                      <span className="font-medium text-gray-900">Finished Goods Item Code</span>
+                      <input
+                        type="text"
+                        aria-label="Finished Goods Item Code"
+                        value={procurementOptions.finishedGoodsItemCode}
+                        disabled={po.status !== "draft"}
+                        onChange={(event) => setProcurementOptions((current) => ({
+                          ...current,
+                          finishedGoodsItemCode: event.target.value,
+                        }))}
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
+                      />
+                    </label>
+                    <label className="space-y-2 text-sm text-gray-700">
+                      <span className="font-medium text-gray-900">Finished Goods Item Name</span>
+                      <input
+                        type="text"
+                        aria-label="Finished Goods Item Name"
+                        value={procurementOptions.finishedGoodsItemName}
+                        disabled={po.status !== "draft"}
+                        onChange={(event) => setProcurementOptions((current) => ({
+                          ...current,
+                          finishedGoodsItemName: event.target.value,
+                        }))}
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
+                      />
+                    </label>
+                    <label className="space-y-2 text-sm text-gray-700">
+                      <span className="font-medium text-gray-900">Expected Subcontracted Quantity</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.001"
+                        aria-label="Expected Subcontracted Quantity"
+                        value={procurementOptions.expectedSubcontractedQty}
+                        disabled={po.status !== "draft"}
+                        onChange={(event) => setProcurementOptions((current) => ({
+                          ...current,
+                          expectedSubcontractedQty: event.target.value,
+                        }))}
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="space-y-2 text-sm text-gray-700">
+                <span className="font-medium text-gray-900">Blanket Order Reference</span>
+                <input
+                  type="text"
+                  aria-label="Blanket Order Reference"
+                  value={procurementOptions.blanketOrderReferenceId}
+                  disabled={po.status !== "draft"}
+                  onChange={(event) => setProcurementOptions((current) => ({
+                    ...current,
+                    blanketOrderReferenceId: event.target.value,
+                  }))}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
+                />
+              </label>
+              <label className="space-y-2 text-sm text-gray-700">
+                <span className="font-medium text-gray-900">Landed Cost Reference</span>
+                <input
+                  type="text"
+                  aria-label="Landed Cost Reference"
+                  value={procurementOptions.landedCostReferenceId}
+                  disabled={po.status !== "draft"}
+                  onChange={(event) => setProcurementOptions((current) => ({
+                    ...current,
+                    landedCostReferenceId: event.target.value,
+                  }))}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
+                />
+              </label>
+            </div>
+
+            {po.status === "draft" && (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleSaveProcurementOptions}
+                  disabled={submitting}
+                  className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Save Procurement Options
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {procurementOptions.isSubcontracted && !po.is_subcontracted ? (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-700">
+          Save the subcontracting procurement options before creating material transfers or subcontracting receipts.
+        </div>
+      ) : null}
+
+      {po.is_subcontracted ? <SubcontractingWorkflowPanel po={po} /> : null}
+
       {/* Items Table */}
       <div className="rounded-lg border border-gray-200 bg-white">
         <div className="border-b border-gray-200 px-6 py-4">
@@ -355,34 +623,44 @@ export function PurchaseOrderDetail({ isNew = false, awardId, initialData }: Pur
                 <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
                   Received
                 </th>
+                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Open Qty
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {po.items?.map((item, idx) => (
-                <tr key={item.id}>
-                  <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">{idx + 1}</td>
-                  <td className="px-4 py-3">
-                    <div className="text-sm font-medium text-gray-900">{item.item_name}</div>
-                    <div className="text-xs text-gray-500">{item.item_code}</div>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-gray-900">
-                    {item.qty} {item.uom}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-gray-900">
-                    {po.currency} {Number(item.unit_rate).toFixed(4)}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-gray-900">
-                    {po.currency} {Number(item.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-center text-sm text-gray-500">
-                    {item.received_qty} {item.uom}
-                  </td>
-                </tr>
-              ))}
+              {po.items?.map((item, idx) => {
+                const openQty = Math.max(0, Number(item.qty) - Number(item.received_qty));
+
+                return (
+                  <tr key={item.id}>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">{idx + 1}</td>
+                    <td className="px-4 py-3">
+                      <div className="text-sm font-medium text-gray-900">{item.item_name}</div>
+                      <div className="text-xs text-gray-500">{item.item_code}</div>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-gray-900">
+                      {item.qty} {item.uom}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-gray-900">
+                      {po.currency} {Number(item.unit_rate).toFixed(4)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-gray-900">
+                      {po.currency} {Number(item.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-center text-sm text-gray-500">
+                      {item.received_qty} {item.uom}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-center text-sm font-medium text-gray-900">
+                      {openQty.toLocaleString(undefined, { maximumFractionDigits: 3 })} {item.uom}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
             <tfoot className="bg-gray-50">
               <tr>
-                <td colSpan={4} className="px-4 py-3 text-right text-sm font-medium text-gray-900">
+                <td colSpan={5} className="px-4 py-3 text-right text-sm font-medium text-gray-900">
                   Subtotal
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-gray-900">
@@ -391,7 +669,7 @@ export function PurchaseOrderDetail({ isNew = false, awardId, initialData }: Pur
                 <td></td>
               </tr>
               <tr>
-                <td colSpan={4} className="px-4 py-3 text-right text-sm text-gray-700">
+                <td colSpan={5} className="px-4 py-3 text-right text-sm text-gray-700">
                   Taxes
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-gray-700">
@@ -400,7 +678,7 @@ export function PurchaseOrderDetail({ isNew = false, awardId, initialData }: Pur
                 <td></td>
               </tr>
               <tr>
-                <td colSpan={4} className="px-4 py-3 text-right text-base font-bold text-gray-900">
+                <td colSpan={5} className="px-4 py-3 text-right text-base font-bold text-gray-900">
                   Grand Total
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-right text-base font-bold text-gray-900">
@@ -412,6 +690,77 @@ export function PurchaseOrderDetail({ isNew = false, awardId, initialData }: Pur
           </table>
         </div>
       </div>
+
+      {currentPoId && (
+        <div className="rounded-lg border border-gray-200 bg-white">
+          <div className="border-b border-gray-200 px-6 py-4">
+            <h2 className="text-lg font-medium text-gray-900">Receipt History</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              {receiptsLoading
+                ? "Loading receipt events..."
+                : receiptsData
+                  ? `${receiptsData.total} receipt${receiptsData.total === 1 ? "" : "s"} recorded against this PO.`
+                  : "No receipt events recorded yet."}
+            </p>
+          </div>
+          <div className="space-y-3 px-6 py-4">
+            {receiptsError ? (
+              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {receiptsError}
+              </div>
+            ) : receiptsLoading ? (
+              <p className="text-sm text-gray-500">Loading receipt history...</p>
+            ) : receiptsData && receiptsData.items.length > 0 ? (
+              receiptsData.items.map((receipt) => (
+                <div key={receipt.id} className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50 p-3">
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <Link
+                        to={`/procurement/goods-receipts/${receipt.id}`}
+                        className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                      >
+                        {receipt.name}
+                      </Link>
+                      <span className="text-xs uppercase tracking-wide text-gray-500">
+                        {receipt.status}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-sm text-gray-500">
+                      {format(new Date(receipt.transaction_date), "yyyy-MM-dd")} • {receipt.supplier_name}
+                    </div>
+                  </div>
+                  <div className="text-right text-xs text-gray-500">
+                    <div>{receipt.inventory_mutated ? "Inventory updated" : "Pending inventory update"}</div>
+                    <div>PO open quantities shown above remain receipt-driven.</div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-gray-500">
+                No receipts recorded yet. Remaining open quantities stay visible on each PO line above.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {currentPoId && (
+        <div className="rounded-lg border border-gray-200 bg-white">
+          <div className="border-b border-gray-200 px-6 py-4">
+            <h2 className="text-lg font-medium text-gray-900">Downstream Invoices</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Supplier invoices that reference this purchase order stay visible here for procurement and finance review.
+            </p>
+          </div>
+          <div className="px-6 py-4">
+            <DownstreamInvoiceLineage
+              type="purchase_order"
+              documentId={currentPoId}
+              onInvoiceClick={handleOpenInvoice}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex justify-between">
@@ -437,7 +786,7 @@ export function PurchaseOrderDetail({ isNew = false, awardId, initialData }: Pur
           {canSubmit && (
             <button
               onClick={handleSubmit}
-              disabled={submitting}
+              disabled={submitting || supplierStatusPending || submitBlocked}
               className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             >
               Submit for Approval

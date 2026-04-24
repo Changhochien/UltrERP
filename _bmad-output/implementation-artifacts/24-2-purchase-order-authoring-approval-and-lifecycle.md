@@ -1,6 +1,6 @@
 # Story 24.2: Purchase Order Authoring, Approval, and Lifecycle
 
-Status: review
+Status: reviewed
 
 ## Story
 
@@ -140,11 +140,15 @@ GPT-5.4
 - Frontend tests: 29 passed (src/domain/procurement/__tests__/procurement.test.ts)
 - TypeScript check: No errors
 - All PO imports and routes verified successfully
+- Review pass validations:
+  - `pnpm exec vitest run src/pages/procurement/CreatePurchaseOrderPage.test.tsx src/pages/procurement/RFQDetailPage.test.tsx --reporter=dot` → passed
+  - `pnpm exec tsc --noEmit` → passed after navigation cleanup
 
 ### Completion Notes List
 
 - 2026-04-21: Drafted Story 24.2 from Epic 24 and the validated procurement research, keeping PO authoring formal, approval-aware, and sourced from RFQ and supplier-quotation lineage while leaving receiving and AP posting to later stories.
 - 2026-04-23: Completed implementation. Schema verification spike documented PO contract from ERPnext research. Added PurchaseOrder and PurchaseOrderItem models with sourcing lineage. Implemented full PO lifecycle service with status derivation from per_received/per_billed. Built PO list and detail UI components. Added comprehensive tests for schemas, lineage, lifecycle, progress, and no-goods-receipt validation.
+- 2026-04-24: Review pass restored the missing PO route and navigation wiring, plus the award-to-create-PO handoff, so Story 24.2 is reachable from the sourcing workflow rather than only present in backend contracts.
 
 ### File List
 

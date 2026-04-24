@@ -342,6 +342,49 @@ async def test_enforce_supplier_controls_allows_when_not_blocked() -> None:
     enforce_supplier_controls(result, "RFQ submission")
 
 
+@pytest.mark.asyncio
+async def test_create_rfq_blocks_suppliers_with_rfq_controls() -> None:
+    """create_rfq rejects blocked suppliers before creating the draft."""
+    from common.errors import ValidationError
+    from domains.procurement.service import create_rfq
+
+    supplier_id = uuid.uuid4()
+    session = FakeAsyncSession()
+    session.queue_scalar(
+        Supplier(
+            id=supplier_id,
+            tenant_id=TENANT_ID,
+            name="Blocked Supplier",
+            on_hold=True,
+            hold_type="quality",
+        )
+    )
+
+    with pytest.raises(ValidationError) as exc_info:
+        await create_rfq(
+            session,
+            TENANT_ID,
+            {
+                "company": "UltrERP Taiwan",
+                "currency": "TWD",
+                "transaction_date": date(2026, 4, 24),
+                "items": [],
+                "suppliers": [
+                    {
+                        "supplier_id": supplier_id,
+                        "supplier_name": "Blocked Supplier",
+                        "contact_email": "blocked@example.com",
+                        "notes": "",
+                    }
+                ],
+            },
+        )
+
+    assert any(error.get("field") == "supplier_id" for error in exc_info.value.errors)
+    assert session.commit_calls == 0
+    assert session.added == []
+
+
 # --------------------------------------------------------------------------
 # Procurement Reporting Tests
 # --------------------------------------------------------------------------
@@ -419,3 +462,31 @@ async def test_get_supplier_controls_not_found() -> None:
         await get_supplier_controls(session, TENANT_ID, uuid.uuid4())
     errors = exc_info.value.errors
     assert any(e.get("field") == "supplier_id" for e in errors)
+
+
+@pytest.mark.asyncio
+async def test_get_supplier_controls_includes_subcontractor_flag() -> None:
+    """get_supplier_controls exposes subcontractor eligibility for PO workflows."""
+    from domains.procurement.service import get_supplier_controls
+
+    supplier_id = uuid.uuid4()
+    session = FakeAsyncSession()
+    session.queue_scalar(
+        Supplier(
+            id=supplier_id,
+            tenant_id=TENANT_ID,
+            name="Subcon Supplier",
+            is_active=True,
+            is_subcontractor=True,
+            on_hold=False,
+            warn_rfqs=False,
+            prevent_rfqs=False,
+            warn_pos=False,
+            prevent_pos=False,
+        )
+    )
+
+    result = await get_supplier_controls(session, TENANT_ID, supplier_id)
+
+    assert result["supplier_id"] == str(supplier_id)
+    assert result["is_subcontractor"] is True

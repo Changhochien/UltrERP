@@ -5,6 +5,7 @@
 import { useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { format } from "date-fns";
+import { DownstreamInvoiceLineage } from "./DownstreamInvoiceLineage";
 import { useGoodsReceipt, useGoodsReceiptActions, useReceiptsForPO } from "../hooks/useGoodsReceipt";
 import { GR_STATUS_COLORS, GR_STATUS_LABELS } from "../constants";
 import type { GoodsReceiptResponse, GoodsReceiptStatus } from "../types";
@@ -72,6 +73,10 @@ export function GoodsReceiptDetail({ isNew = false, purchaseOrderId, initialData
       navigate(`/procurement/purchase-orders/${purchaseOrderId}`);
     }
   }, [navigate, grData?.purchase_order_id, purchaseOrderId]);
+
+  const handleOpenInvoice = useCallback((invoiceId: string) => {
+    navigate("/purchases", { state: { selectedInvoiceId: invoiceId } });
+  }, [navigate]);
 
   if (loading || submitting) {
     return (
@@ -252,6 +257,36 @@ export function GoodsReceiptDetail({ isNew = false, purchaseOrderId, initialData
           </table>
         </div>
       </div>
+
+      {gr.items?.length > 0 && (
+        <div className="rounded-lg border border-gray-200 bg-white">
+          <div className="border-b border-gray-200 px-6 py-4">
+            <h2 className="text-lg font-medium text-gray-900">Downstream Invoice Lineage</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Each receipt line shows which supplier invoices already reference that received quantity.
+            </p>
+          </div>
+          <div className="space-y-4 px-6 py-4">
+            {gr.items.map((item, idx) => (
+              <div key={`${item.id}-lineage`} className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+                <div className="mb-3 flex items-center justify-between gap-4">
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">{item.item_name}</div>
+                    <div className="text-xs text-gray-500">{item.item_code}</div>
+                  </div>
+                  <div className="text-xs uppercase tracking-wide text-gray-500">GR line {idx + 1}</div>
+                </div>
+                <DownstreamInvoiceLineage
+                  type="goods_receipt_line"
+                  documentId={gr.id}
+                  lineId={item.id}
+                  onInvoiceClick={handleOpenInvoice}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex justify-between">

@@ -936,6 +936,17 @@ class SCRItemResponse(BaseModel):
     created_at: datetime
 
 
+class SubcontractingReceiptMaterialRefResponse(BaseModel):
+    """Audit reference linking a subcontracting receipt to material transfers."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    subcontracting_receipt_id: uuid.UUID
+    material_transfer_id: uuid.UUID
+    created_at: datetime
+
+
 class SubcontractingReceiptCreate(BaseModel):
     """Create a subcontracting receipt."""
 
@@ -983,6 +994,7 @@ class SubcontractingReceiptResponse(BaseModel):
     updated_at: datetime
 
     items: list[SCRItemResponse] = Field(default_factory=list)
+    material_transfer_refs: list[SubcontractingReceiptMaterialRefResponse] = Field(default_factory=list)
 
 
 class SubcontractingReceiptListParams(BaseModel):

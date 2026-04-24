@@ -553,7 +553,7 @@ async def recompute_po_progress(
     return s.PurchaseOrderResponse.model_validate(po)
 
 
-@router.get("/awards/{award_id}/create-po", response_model=s.PurchaseOrderResponse)
+@router.post("/awards/{award_id}/create-po", response_model=s.PurchaseOrderResponse)
 async def create_po_from_award(
     award_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),

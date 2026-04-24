@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 
 import { PurchasesPage } from "../../../pages/PurchasesPage";
 
@@ -52,7 +53,11 @@ describe("PurchasesPage", () => {
     
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<PurchasesPage />);
+    render(
+      <MemoryRouter>
+        <PurchasesPage />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(screen.getByText("PI-2025001")).toBeTruthy();
@@ -72,7 +77,11 @@ describe("PurchasesPage", () => {
   it("shows an error when the supplier invoice list fails to load", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Network error")));
 
-    render(<PurchasesPage />);
+    render(
+      <MemoryRouter>
+        <PurchasesPage />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(screen.getByRole("alert")).toBeTruthy();

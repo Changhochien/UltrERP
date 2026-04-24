@@ -42,7 +42,8 @@
     "invoices": "發票",
     "suppliers": "供應商",
     "procurement": "採購尋源",
-    "createRFQ": "建立詢價"
+    "createRFQ": "建立詢價",
+    "purchaseOrders": "採購單"
   },
   "common": {
     "cancel": "取消",
@@ -201,6 +202,18 @@
     "procurement": {
       "description": "發出詢價單並比較供應商報價，再據以建立採購訂單。",
       "label": "採購尋源"
+    },
+    "procurementPurchaseOrders": {
+      "description": "檢視採購單狀態、尋源脈絡與後續收貨進度。",
+      "label": "採購單"
+    },
+    "procurementPurchaseOrderCreate": {
+      "description": "從已決標的供應商報價建立採購單。",
+      "label": "建立採購單"
+    },
+    "procurementPurchaseOrderDetail": {
+      "description": "檢視單一採購單、生命週期控制與尋源脈絡。",
+      "label": "採購單詳情"
     },
     "procurementRFQCreate": {
       "description": "建立新詢價單並分發給供應商。",
@@ -3336,6 +3349,11 @@
       "terms": "條款與備註",
       "addItem": "新增項目",
       "addSupplier": "新增供應商",
+      "supplierMasterHint": "請從供應商主檔選取供應商，以便在儲存前套用詢價警示與阻擋規則。",
+      "supplierControlChecking": "正在檢查供應商控管...",
+      "supplierControlWarning": "詢價警示",
+      "supplierControlBlocked": "詢價已阻擋",
+      "supplierControlCheckError": "無法驗證供應商控管狀態。",
       "save": "儲存詢價",
       "submit": "送出詢價",
       "submitted": "詢價單已成功送出。",
@@ -3369,7 +3387,33 @@
       "error": "無法決標。",
       "selectAsWinner": "設為得標",
       "winner": "得標",
-      "selected": "得標來源：{supplier}"
+      "selected": "得標來源：{supplier}",
+      "createPurchaseOrder": "建立採購單"
+    },
+    "reporting": {
+      "title": "採購洞察",
+      "description": "在採購工作區檢視詢價進度、供應商回覆時效與得標績效。",
+      "loadError": "無法載入採購洞察。",
+      "rfqsSubmitted": "已送出詢價",
+      "quotationsSubmitted": "已送出供應商報價",
+      "activePurchaseOrders": "有效採購單",
+      "blockedWarnedSuppliers": "阻擋 / 警示供應商",
+      "quoteTurnaround": "報價回覆時效",
+      "averageResponseTime": "平均回覆時間",
+      "fastestResponse": "最快回覆",
+      "slowestResponse": "最慢回覆",
+      "quotesAnalysed": "分析報價數",
+      "noQuoteData": "目前尚無已送出的供應商報價可供分析。",
+      "supplierPerformance": "供應商績效",
+      "overallAwardRate": "整體得標率",
+      "awardedQuotes": "得標報價",
+      "monitoredSuppliers": "納管供應商",
+      "blockedSuppliers": "阻擋供應商",
+      "topSuppliers": "依報價活躍度排序的主要供應商。",
+      "noSupplierData": "目前尚無供應商績效資料。",
+      "supplier": "供應商",
+      "totalQuotes": "報價總數",
+      "awardRate": "得標率"
     }
   }
 }

@@ -7,10 +7,17 @@ import { useTranslation } from "react-i18next";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { PageHeader } from "../../components/layout/PageLayout";
+import { SupplierCombobox } from "../../domain/inventory/components/SupplierCombobox";
 import { useToast } from "../../hooks/useToast";
 import { useCreateRFQ } from "../../domain/procurement/hooks/useRFQ";
+import { fetchSupplier } from "../../lib/api/inventory";
+import { checkSupplierRFQControls } from "../../lib/api/procurement";
 import { RFQ_DETAIL_ROUTE, RFQ_LIST_ROUTE } from "../../lib/routes";
-import type { RFQItemPayload, RFQSupplierPayload } from "../../domain/procurement/types";
+import type {
+  RFQItemPayload,
+  RFQSupplierPayload,
+  SupplierControlResult,
+} from "../../domain/procurement/types";
 
 function today(): string {
   return new Date().toISOString().split("T")[0];
@@ -34,6 +41,9 @@ export default function CreateRFQPage() {
   const [suppliers, setSuppliers] = useState<RFQSupplierPayload[]>([
     { supplier_id: null, supplier_name: "", contact_email: "", notes: "" },
   ]);
+  const [supplierControlResults, setSupplierControlResults] = useState<Array<SupplierControlResult | null>>([null]);
+  const [supplierControlLoading, setSupplierControlLoading] = useState<boolean[]>([false]);
+  const [supplierControlErrors, setSupplierControlErrors] = useState<Array<string | null>>([null]);
 
   function addItem() {
     setItems((prev) => [
@@ -57,16 +67,105 @@ export default function CreateRFQPage() {
       ...prev,
       { supplier_id: null, supplier_name: "", contact_email: "", notes: "" },
     ]);
+    setSupplierControlResults((prev) => [...prev, null]);
+    setSupplierControlLoading((prev) => [...prev, false]);
+    setSupplierControlErrors((prev) => [...prev, null]);
   }
 
   function removeSupplier(idx: number) {
     setSuppliers((prev) => prev.filter((_, i) => i !== idx));
+    setSupplierControlResults((prev) => prev.filter((_, i) => i !== idx));
+    setSupplierControlLoading((prev) => prev.filter((_, i) => i !== idx));
+    setSupplierControlErrors((prev) => prev.filter((_, i) => i !== idx));
   }
 
   function updateSupplier(idx: number, field: keyof RFQSupplierPayload, value: string) {
     setSuppliers((prev) =>
       prev.map((s, i) => (i === idx ? { ...s, [field]: value } : s)),
     );
+  }
+
+  function setSupplierControlResult(idx: number, result: SupplierControlResult | null) {
+    setSupplierControlResults((prev) => prev.map((entry, i) => (i === idx ? result : entry)));
+  }
+
+  function setSupplierControlCheckLoading(idx: number, isLoading: boolean) {
+    setSupplierControlLoading((prev) => prev.map((entry, i) => (i === idx ? isLoading : entry)));
+  }
+
+  function setSupplierControlError(idx: number, message: string | null) {
+    setSupplierControlErrors((prev) => prev.map((entry, i) => (i === idx ? message : entry)));
+  }
+
+  function clearSupplierSelection(idx: number) {
+    setSuppliers((prev) =>
+      prev.map((supplier, i) => (
+        i === idx
+          ? {
+              ...supplier,
+              supplier_id: null,
+              supplier_name: "",
+              contact_email: "",
+            }
+          : supplier
+      )),
+    );
+    setSupplierControlResult(idx, null);
+    setSupplierControlCheckLoading(idx, false);
+    setSupplierControlError(idx, null);
+  }
+
+  async function evaluateSupplierControl(idx: number, supplierId: string) {
+    setSupplierControlCheckLoading(idx, true);
+    setSupplierControlError(idx, null);
+    try {
+      const result = await checkSupplierRFQControls(supplierId);
+      setSupplierControlResult(idx, result);
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t("procurement.rfq.supplierControlCheckError");
+      setSupplierControlResult(idx, null);
+      setSupplierControlError(idx, message);
+      throw err;
+    } finally {
+      setSupplierControlCheckLoading(idx, false);
+    }
+  }
+
+  async function handleSupplierSelected(idx: number, supplierId: string) {
+    try {
+      const [supplierResponse, controlResult] = await Promise.all([
+        fetchSupplier(supplierId),
+        evaluateSupplierControl(idx, supplierId),
+      ]);
+
+      if (!supplierResponse.ok) {
+        throw new Error(supplierResponse.error);
+      }
+
+      const supplier = supplierResponse.data;
+      setSuppliers((prev) =>
+        prev.map((entry, i) => (
+          i === idx
+            ? {
+                ...entry,
+                supplier_id: supplier.id,
+                supplier_name: supplier.name,
+                contact_email: supplier.contact_email ?? "",
+              }
+            : entry
+        )),
+      );
+
+      if (controlResult.is_blocked) {
+        toast({ title: controlResult.reason, variant: "destructive" });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t("procurement.rfq.supplierControlCheckError");
+      clearSupplierSelection(idx);
+      setSupplierControlError(idx, message);
+      toast({ title: message, variant: "destructive" });
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -79,7 +178,32 @@ export default function CreateRFQPage() {
       toast({ title: t("common.validation.requiredItems"), variant: "destructive" });
       return;
     }
+
+    const supplierEntries = suppliers
+      .map((supplier, idx) => ({ supplier, idx }))
+      .filter(({ supplier }) => supplier.supplier_name || supplier.supplier_id);
+
+    if (supplierControlLoading.some(Boolean)) {
+      toast({ title: t("procurement.rfq.supplierControlChecking"), variant: "destructive" });
+      return;
+    }
+
     try {
+      const latestControlResults = await Promise.all(
+        supplierEntries.map(async ({ supplier, idx }) => {
+          if (!supplier.supplier_id) {
+            return supplierControlResults[idx];
+          }
+          return evaluateSupplierControl(idx, supplier.supplier_id);
+        }),
+      );
+
+      const blockedResult = latestControlResults.find((result) => result?.is_blocked);
+      if (blockedResult) {
+        toast({ title: blockedResult.reason, variant: "destructive" });
+        return;
+      }
+
       const rfq = await create({
         company,
         currency,
@@ -88,14 +212,22 @@ export default function CreateRFQPage() {
         notes,
         terms_and_conditions: terms,
         items: items.filter((i) => i.item_name || i.item_code),
-        suppliers: suppliers.filter((s) => s.supplier_name),
+        suppliers: supplierEntries.map(({ supplier }) => supplier),
       });
       toast({ title: t("procurement.rfq.created"), variant: "success" });
       navigate(`${RFQ_DETAIL_ROUTE.replace(":rfqId", rfq.id)}`);
-    } catch {
-      toast({ title: t("procurement.rfq.createError"), variant: "destructive" });
+    } catch (err) {
+      toast({
+        title: err instanceof Error ? err.message : t("procurement.rfq.createError"),
+        variant: "destructive",
+      });
     }
   }
+
+  const hasBlockedSupplier = suppliers.some(
+    (supplier, idx) => Boolean(supplier.supplier_id && supplierControlResults[idx]?.is_blocked),
+  );
+  const supplierChecksPending = supplierControlLoading.some(Boolean);
 
   return (
     <div className="space-y-6">
@@ -208,38 +340,69 @@ export default function CreateRFQPage() {
               {t("procurement.rfq.addSupplier")}
             </Button>
           </div>
+          <p className="text-sm text-muted-foreground">{t("procurement.rfq.supplierMasterHint")}</p>
           {suppliers.map((supp, idx) => (
-            <div key={idx} className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-3 border rounded-md">
-              <div>
-                <label className="text-xs text-muted-foreground">{t("procurement.rfq.fields.supplierName")}</label>
-                <Input
-                  value={supp.supplier_name}
-                  onChange={(e) => updateSupplier(idx, "supplier_name", e.target.value)}
-                  placeholder={t("procurement.rfq.fields.supplierNamePlaceholder")}
-                />
+            <div key={idx} className="space-y-3 p-3 border rounded-md">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div>
+                  <label className="text-xs text-muted-foreground">{t("procurement.rfq.fields.supplierName")}</label>
+                  <SupplierCombobox
+                    value={supp.supplier_id ?? ""}
+                    onChange={(supplierId) => void handleSupplierSelected(idx, supplierId)}
+                    onClear={() => clearSupplierSelection(idx)}
+                    placeholder={t("procurement.rfq.fields.supplierNamePlaceholder")}
+                    ariaLabel={t("procurement.rfq.fields.supplierName")}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">{t("procurement.rfq.fields.contactEmail")}</label>
+                  <Input
+                    type="email"
+                    value={supp.contact_email}
+                    onChange={(e) => updateSupplier(idx, "contact_email", e.target.value)}
+                    placeholder="supplier@example.com"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Input
+                    value={supp.notes}
+                    onChange={(e) => updateSupplier(idx, "notes", e.target.value)}
+                    placeholder={t("procurement.rfq.fields.notes")}
+                    className="flex-1"
+                  />
+                  {suppliers.length > 1 && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => removeSupplier(idx)}>
+                      ×
+                    </Button>
+                  )}
+                </div>
               </div>
-              <div>
-                <label className="text-xs text-muted-foreground">{t("procurement.rfq.fields.contactEmail")}</label>
-                <Input
-                  type="email"
-                  value={supp.contact_email}
-                  onChange={(e) => updateSupplier(idx, "contact_email", e.target.value)}
-                  placeholder="supplier@example.com"
-                />
-              </div>
-              <div className="flex items-end">
-                <Input
-                  value={supp.notes}
-                  onChange={(e) => updateSupplier(idx, "notes", e.target.value)}
-                  placeholder={t("procurement.rfq.fields.notes")}
-                  className="flex-1"
-                />
-                {suppliers.length > 1 && (
-                  <Button type="button" variant="ghost" size="sm" onClick={() => removeSupplier(idx)}>
-                    ×
-                  </Button>
-                )}
-              </div>
+
+              {supplierControlLoading[idx] ? (
+                <p className="text-sm text-muted-foreground">{t("procurement.rfq.supplierControlChecking")}</p>
+              ) : null}
+
+              {supplierControlErrors[idx] ? (
+                <p className="text-sm text-destructive">{supplierControlErrors[idx]}</p>
+              ) : null}
+
+              {supplierControlResults[idx]?.reason ? (
+                <div
+                  role="alert"
+                  className={
+                    supplierControlResults[idx]?.is_blocked
+                      ? "rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+                      : "rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+                  }
+                >
+                  <p className="font-medium">
+                    {supplierControlResults[idx]?.is_blocked
+                      ? t("procurement.rfq.supplierControlBlocked")
+                      : t("procurement.rfq.supplierControlWarning")}
+                  </p>
+                  <p>{supplierControlResults[idx]?.reason}</p>
+                </div>
+              ) : null}
             </div>
           ))}
         </div>
@@ -254,7 +417,7 @@ export default function CreateRFQPage() {
               rows={4}
               value={terms}
               onChange={(e) => setTerms(e.target.value)}
-              placeholder={t("procurement.rfq.fields.termsPlaceholder")}
+              placeholder={t("procurement.rfq.termsPlaceholder")}
             />
           </div>
           <div>
@@ -264,7 +427,7 @@ export default function CreateRFQPage() {
               rows={3}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder={t("procurement.rfq.fields.notesPlaceholder")}
+              placeholder={t("procurement.rfq.notesPlaceholder")}
             />
           </div>
         </div>
@@ -272,7 +435,7 @@ export default function CreateRFQPage() {
         {error && <p className="text-destructive text-sm">{error}</p>}
 
         <div className="flex gap-3">
-          <Button type="submit" disabled={loading}>
+          <Button type="submit" disabled={loading || supplierChecksPending || hasBlockedSupplier}>
             {loading ? t("common.status.saving") : t("procurement.rfq.save")}
           </Button>
           <Button type="button" variant="outline" onClick={() => navigate(RFQ_LIST_ROUTE)}>

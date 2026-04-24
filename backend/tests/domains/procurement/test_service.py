@@ -12,6 +12,7 @@ Tests cover:
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from datetime import date, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
@@ -416,6 +417,82 @@ class TestQuoteStatusRecomputation:
         rfq.quotes_received = len(rfq.quotations)
         assert rfq.quotes_received == 2
 
+    @pytest.mark.asyncio
+    async def test_create_supplier_quotation_recomputes_rfq_quote_snapshot(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Creating a quotation refreshes RFQ.quotes_received for list/detail snapshots."""
+        from domains.procurement import service as procurement_service
+
+        class FakeDB:
+            def __init__(self) -> None:
+                self.flush_calls = 0
+                self.commit_calls = 0
+                self.refresh_calls = 0
+
+            def add(self, _obj: object) -> None:
+                return None
+
+            async def flush(self) -> None:
+                self.flush_calls += 1
+
+            async def commit(self) -> None:
+                self.commit_calls += 1
+
+            async def refresh(self, _obj: object) -> None:
+                self.refresh_calls += 1
+
+        class FakeQuotationRecord:
+            def __init__(self, **kwargs: object) -> None:
+                self.id = uuid.uuid4()
+                self.items: list[object] = []
+                for key, value in kwargs.items():
+                    setattr(self, key, value)
+
+        class FakeQuotationItemRecord:
+            def __init__(self, **kwargs: object) -> None:
+                for key, value in kwargs.items():
+                    setattr(self, key, value)
+
+        async def fake_link(
+            db: FakeDB,
+            tenant_id: uuid.UUID,
+            rfq_id: uuid.UUID,
+            supplier_name: str,
+            quotation_id: uuid.UUID,
+        ) -> None:
+            _ = (db, tenant_id, rfq_id, supplier_name, quotation_id)
+
+        recompute_calls: list[tuple[uuid.UUID, bool]] = []
+
+        async def fake_recompute(
+            db: FakeDB,
+            tenant_id: uuid.UUID,
+            rfq_id: uuid.UUID,
+            *,
+            commit: bool = True,
+        ) -> None:
+            _ = (db, tenant_id)
+            recompute_calls.append((rfq_id, commit))
+
+        monkeypatch.setattr(procurement_service, "SupplierQuotation", FakeQuotationRecord)
+        monkeypatch.setattr(procurement_service, "SupplierQuotationItem", FakeQuotationItemRecord)
+        monkeypatch.setattr(procurement_service, "_link_quotation_to_rfq_supplier", fake_link)
+        monkeypatch.setattr(procurement_service, "recompute_rfq_quote_status", fake_recompute)
+
+        rfq_id = uuid.uuid4()
+        db = FakeDB()
+
+        await procurement_service.create_supplier_quotation(
+            db,
+            uuid.UUID("00000000-0000-0000-0000-000000000001"),
+            _sq_payload(rfq_id=rfq_id, name="SQ-TEST-0001"),
+        )
+
+        assert recompute_calls == [(str(rfq_id), False)]
+        assert db.commit_calls == 1
+
 
 # ---------------------------------------------------------------------------
 # Tests: Comparison metadata
@@ -688,6 +765,148 @@ class TestPurchaseOrderLifecycle:
         assert can_release is True
 
 
+class TestSubcontractingFoundation:
+    @pytest.mark.asyncio
+    async def test_generate_doc_name_supports_async_sessions(
+        self,
+    ) -> None:
+        """Subcontracting doc names must work with AsyncSession.execute."""
+        from domains.procurement import service as procurement_service
+
+        class FakeDB:
+            async def execute(self, _statement: object) -> SimpleNamespace:
+                return SimpleNamespace(scalar=lambda: 0)
+
+        name = await procurement_service._generate_doc_name(
+            FakeDB(),
+            procurement_service.SubcontractingMaterialTransfer,
+            uuid.UUID("00000000-0000-0000-0000-000000000001"),
+            "SMT",
+        )
+
+        assert name == "SMT-0001"
+
+    @pytest.mark.asyncio
+    async def test_update_purchase_order_rejects_non_subcontractor_supplier(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Marking a PO as subcontracted requires a subcontractor-qualified supplier."""
+        from domains.procurement import service as procurement_service
+
+        po = SimpleNamespace(
+            id=uuid.uuid4(),
+            name="PO-0001",
+            status="draft",
+            supplier_id=uuid.uuid4(),
+            supplier_name="Standard Supplier",
+            is_subcontracted=False,
+            expected_subcontracted_qty=None,
+        )
+
+        class FakeDB:
+            def __init__(self) -> None:
+                self.commit_calls = 0
+
+            async def commit(self) -> None:
+                self.commit_calls += 1
+
+            async def refresh(self, _po: object) -> None:
+                return None
+
+        async def fake_get_purchase_order(
+            db: object,
+            tenant_id: uuid.UUID,
+            po_id: uuid.UUID,
+        ) -> SimpleNamespace:
+            _ = (db, tenant_id, po_id)
+            return po
+
+        async def fake_validate_subcontractor(
+            db: object,
+            tenant_id: uuid.UUID,
+            supplier_id: uuid.UUID | None,
+            supplier_name: str,
+        ) -> None:
+            _ = (db, tenant_id, supplier_id, supplier_name)
+            raise ValidationError([
+                {
+                    "field": "supplier_id",
+                    "message": "Supplier 'Standard Supplier' is not a subcontractor.",
+                }
+            ])
+
+        monkeypatch.setattr(procurement_service, "get_purchase_order", fake_get_purchase_order)
+        monkeypatch.setattr(procurement_service, "_validate_subcontractor", fake_validate_subcontractor)
+
+        db = FakeDB()
+
+        with pytest.raises(ValidationError):
+            await procurement_service.update_purchase_order(
+                db,
+                uuid.UUID("00000000-0000-0000-0000-000000000001"),
+                po.id,
+                {"is_subcontracted": True},
+            )
+
+        assert db.commit_calls == 0
+        assert po.is_subcontracted is False
+
+    @pytest.mark.asyncio
+    async def test_create_subcontracting_receipt_requires_material_transfer_links(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Subcontracting receipts must link at least one material transfer for audit lineage."""
+        from domains.procurement import service as procurement_service
+
+        po = SimpleNamespace(
+            id=uuid.uuid4(),
+            name="PO-0002",
+            is_subcontracted=True,
+            supplier_id=uuid.uuid4(),
+            supplier_name="Subcontractor Ltd.",
+            company="UltrERP Taiwan",
+        )
+
+        class FakeDB:
+            pass
+
+        async def fake_get_purchase_order(
+            db: object,
+            tenant_id: uuid.UUID,
+            po_id: uuid.UUID,
+        ) -> SimpleNamespace:
+            _ = (db, tenant_id, po_id)
+            return po
+
+        async def fake_validate_subcontractor(
+            db: object,
+            tenant_id: uuid.UUID,
+            supplier_id: uuid.UUID | None,
+            supplier_name: str,
+        ) -> SimpleNamespace:
+            _ = (db, tenant_id, supplier_id, supplier_name)
+            return SimpleNamespace(id=supplier_id, name=supplier_name, is_subcontractor=True)
+
+        monkeypatch.setattr(procurement_service, "get_purchase_order", fake_get_purchase_order)
+        monkeypatch.setattr(procurement_service, "_validate_subcontractor", fake_validate_subcontractor)
+
+        with pytest.raises(ValidationError) as exc_info:
+            await procurement_service.create_subcontracting_receipt(
+                FakeDB(),
+                uuid.UUID("00000000-0000-0000-0000-000000000001"),
+                {
+                    "purchase_order_id": str(po.id),
+                    "receipt_date": "2026-05-05",
+                    "material_transfer_ids": [],
+                    "items": [],
+                },
+            )
+
+        assert any(error.get("field") == "material_transfer_ids" for error in exc_info.value.errors)
+
+
 class TestPurchaseOrderProgress:
     """PO progress tracking tests."""
 
@@ -810,3 +1029,74 @@ class TestPurchaseOrderNoGoodsReceipt:
         assert "backflush_from_receipt" not in po_dict
         # Story 24-6 adds subcontracting fields - those are allowed
         assert "is_subcontracted" in po_dict or "is_subcontracted" not in po_dict
+
+
+class TestGoodsReceiptProgress:
+    @pytest.mark.asyncio
+    async def test_recompute_po_from_gr_refreshes_po_line_received_qty(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Submitted receipts rebuild PO line received_qty before header progress recomputes."""
+        from domains.procurement import service as procurement_service
+
+        class FakeDB:
+            async def flush(self) -> None:
+                return None
+
+        class FakePOItem:
+            def __init__(self, item_id: uuid.UUID) -> None:
+                self.id = item_id
+                self.received_qty = Decimal("0")
+
+        class FakePORecord:
+            def __init__(self, items: list[FakePOItem]) -> None:
+                self.items = items
+
+        po_item_ids = [uuid.uuid4(), uuid.uuid4()]
+        po_items = [FakePOItem(po_item_ids[0]), FakePOItem(po_item_ids[1])]
+        fake_po = FakePORecord(po_items)
+        qty_by_item = {
+            po_item_ids[0]: Decimal("4.500"),
+            po_item_ids[1]: Decimal("1.250"),
+        }
+        recompute_calls: list[uuid.UUID] = []
+
+        async def fake_get_purchase_order(
+            db: FakeDB,
+            tenant_id: uuid.UUID,
+            po_id: uuid.UUID,
+        ) -> FakePORecord:
+            _ = (db, tenant_id, po_id)
+            return fake_po
+
+        async def fake_compute_received_qty(
+            db: FakeDB,
+            tenant_id: uuid.UUID,
+            po_item_id: uuid.UUID,
+        ) -> Decimal:
+            _ = (db, tenant_id)
+            return qty_by_item[po_item_id]
+
+        async def fake_recompute_po_progress(
+            db: FakeDB,
+            tenant_id: uuid.UUID,
+            po_id: uuid.UUID,
+        ) -> FakePORecord:
+            _ = (db, tenant_id)
+            recompute_calls.append(po_id)
+            return fake_po
+
+        monkeypatch.setattr(procurement_service, "get_purchase_order", fake_get_purchase_order)
+        monkeypatch.setattr(procurement_service, "_compute_received_qty_for_po_item", fake_compute_received_qty)
+        monkeypatch.setattr(procurement_service, "recompute_po_progress", fake_recompute_po_progress)
+
+        po_id = uuid.uuid4()
+        await procurement_service._recompute_po_from_gr(
+            FakeDB(),
+            uuid.UUID("00000000-0000-0000-0000-000000000001"),
+            po_id,
+        )
+
+        assert [item.received_qty for item in po_items] == [Decimal("4.500"), Decimal("1.250")]
+        assert recompute_calls == [po_id]

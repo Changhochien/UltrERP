@@ -1,6 +1,6 @@
 # Story 24.3: Goods Receipt and Receiving Exceptions
 
-Status: review
+Status: reviewed
 
 ## Story
 
@@ -117,11 +117,16 @@ GPT-5.4
 - Frontend tests: ✓ (356 tests passed)
 - Backend service functions: implemented and route-wired
 - Migration file created: abc123def458
+- Review pass validations:
+  - `uv run pytest tests/domains/procurement/test_service.py -q -k recompute_po_from_gr_refreshes_po_line_received_qty` → passed
+  - `pnpm exec vitest run src/domain/procurement/components/CreateGoodsReceipt.test.tsx src/domain/procurement/components/PurchaseOrderDetail.test.tsx --reporter=dot` → passed
+  - `pnpm exec tsc --noEmit` → passed
 
 ### Completion Notes List
 
 - 2026-04-21: Drafted Story 24.3 from Epic 24 and the validated buying research, keeping goods receipt as the inbound execution document that updates PO receipt progress and inventory without absorbing AP or traceability scope.
 - 2026-04-23: Implemented goods receipt model, schemas, service, routes, frontend components, and migration. All acceptance criteria addressed. Status updated to "review".
+- 2026-04-24: Review pass corrected PO line `received_qty` recomputation, preserved rejected-warehouse and exception-note payload fields in GR creation, and surfaced PO open quantity plus receipt history on the owning PO detail view.
 
 ### File List
 

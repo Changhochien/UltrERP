@@ -1,6 +1,6 @@
 # Story 24.6: Subcontracting Workflow Foundation
 
-Status: review
+Status: reviewed
 
 ## Story
 
@@ -136,9 +136,10 @@ GPT-5.4
 
 ### Debug Log References
 
-- Frontend tests: 60 passed (src/domain/procurement/__tests__/procurement.test.ts)
-- TypeScript check: No errors
-- Backend Python syntax check: Passed
+- Frontend validations:
+  - `pnpm exec vitest run src/domain/procurement/components/SubcontractingWorkflowPanel.test.tsx src/domain/procurement/components/PurchaseOrderDetail.test.tsx --reporter=dot` → passed
+  - `pnpm exec tsc --noEmit` → passed
+- Backend validation: `uv run pytest tests/domains/procurement/test_service.py -q -k SubcontractingFoundation` → passed
 
 ### Completion Notes List
 
@@ -156,6 +157,7 @@ GPT-5.4
   - Created database migration for all new tables and columns
   - Added 23 new frontend tests for subcontracting
   - Validated no BOM, cost-sheet, backflush, or subcontract-return logic implemented (Epic 32 scope)
+- 2026-04-24: Review pass fixed the async subcontracting document-name path, enforced subcontractor-only subcontracted PO validation, required linked material transfers for subcontracting receipt auditability, exposed receipt-to-transfer refs in the contract, and added a reachable subcontracting operations panel on subcontracted PO detail.
 
 ### File List
 
@@ -169,3 +171,7 @@ GPT-5.4
 - `src/domain/procurement/types.ts` - Added subcontracting types
 - `src/lib/api/procurement.ts` - Added subcontracting API functions
 - `src/domain/procurement/__tests__/procurement.test.ts` - Added 23 subcontracting tests
+- `backend/tests/domains/procurement/test_service.py` - Added subcontracting review regressions for async naming, supplier eligibility, and receipt linkage
+- `src/domain/procurement/components/SubcontractingWorkflowPanel.tsx` - Added subcontracting transfer and receipt workflow panel on subcontracted POs
+- `src/domain/procurement/components/SubcontractingWorkflowPanel.test.tsx` - Added focused UI coverage for transfer initiation and receipt audit linkage
+- `src/domain/procurement/components/PurchaseOrderDetail.tsx` - Mounted subcontracting workflow panel on subcontracted POs

@@ -1,7 +1,7 @@
 /** RFQ detail page with supplier quotation comparison. */
 
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { Badge } from "../../components/ui/badge";
@@ -16,6 +16,7 @@ import {
   useRFQAward,
 } from "../../domain/procurement/hooks/useSupplierQuotation";
 import { createSupplierQuotation } from "../../lib/api/procurement";
+import { buildCreatePurchaseOrderPath } from "../../lib/routes";
 
 export function RFQDetailPage() {
   const { t } = useTranslation("common");
@@ -25,7 +26,7 @@ export function RFQDetailPage() {
   const { rfq, loading, error, refetch } = useRFQ(rfqId);
   const { data: comparison, refetch: refetchComparison } = useRFQComparison(rfqId);
   const { award: awardQuotation, loading: awarding } = useAward();
-  const { award: existingAward } = useRFQAward(rfqId);
+  const { award: existingAward, refetch: refetchAward } = useRFQAward(rfqId);
   const { submit, loading: submitting } = useSubmitRFQ();
 
   const [activeTab, setActiveTab] = useState<"items" | "suppliers" | "compare">("items");
@@ -111,6 +112,7 @@ export function RFQDetailPage() {
       await awardQuotation({ rfq_id: rfqId!, quotation_id: quotationId, awarded_by: "buyer" });
       toast({ title: t("procurement.award.success"), variant: "success" });
       refetchComparison();
+      refetchAward();
     } catch {
       toast({ title: t("procurement.award.error"), variant: "destructive" });
     }
@@ -234,9 +236,17 @@ export function RFQDetailPage() {
         <div className="space-y-4">
           {existingAward && (
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-              <p className="text-sm font-medium text-emerald-800">
-                {t("procurement.award.selected", { supplier: existingAward.awarded_supplier_name })}
-              </p>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm font-medium text-emerald-800">
+                  {t("procurement.award.selected", { supplier: existingAward.awarded_supplier_name })}
+                </p>
+                <Link
+                  to={buildCreatePurchaseOrderPath(existingAward.id)}
+                  className="inline-flex items-center rounded-md border border-emerald-300 bg-white px-3 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
+                >
+                  {t("procurement.award.createPurchaseOrder")}
+                </Link>
+              </div>
             </div>
           )}
 
