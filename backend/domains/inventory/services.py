@@ -3876,13 +3876,24 @@ async def get_monthly_demand(
     tenant_id: uuid.UUID,
     product_id: uuid.UUID,
 ) -> dict:
-    """Return 12-month rolling monthly totals for sales_reservation reason code."""
+    """Return 12-month rolling monthly totals for sales_reservation reason code.
+
+    Uses Asia/Taipei timezone for date truncation to match the business timezone.
+    """
     twelve_months_ago = utc_now().replace(day=1) - __import__("datetime").timedelta(days=365)
 
-    month_expr = func.date_trunc("month", StockAdjustment.created_at).label("month")
+    # Convert to Taiwan timezone before truncating month, so month boundaries align with
+    # Taiwan calendar months (UTC+8). Without this conversion, data stored with end-of-
+    # month UTC timestamps (e.g., 2026-03-31 16:00 UTC = 2026-04-01 00:00 Taiwan) gets
+    # grouped into the wrong month.
+    taiwan_month_expr = func.date_trunc(
+        "month",
+        func.timezone("Asia/Taipei", StockAdjustment.created_at),
+    ).label("month")
+
     stmt = (
         select(
-            month_expr,
+            taiwan_month_expr,
             func.sum(StockAdjustment.quantity_change).label("total_qty"),
         )
         .where(
@@ -3891,8 +3902,8 @@ async def get_monthly_demand(
             StockAdjustment.reason_code == ReasonCode.SALES_RESERVATION,
             StockAdjustment.created_at >= twelve_months_ago,
         )
-        .group_by(month_expr)
-        .order_by(month_expr)
+        .group_by(taiwan_month_expr)
+        .order_by(taiwan_month_expr)
     )
     result = await session.execute(stmt)
     rows = result.all()
