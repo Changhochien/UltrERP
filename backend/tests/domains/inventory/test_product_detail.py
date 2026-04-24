@@ -6,12 +6,14 @@ import uuid
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from decimal import Decimal
+from types import SimpleNamespace
 from typing import Any
 
 from httpx import ASGITransport, AsyncClient
 
 from app.main import app
 from common.database import get_db
+from domains.inventory import services as inventory_services
 from tests.domains.orders._helpers import auth_header
 
 # ── Fake objects ──────────────────────────────────────────────
@@ -260,6 +262,69 @@ async def test_product_detail_multi_warehouse() -> None:
         assert body["total_stock"] == 60
         assert len(body["warehouses"]) == 2
         assert len(body["adjustment_history"]) == 2
+    finally:
+        _teardown(prev)
+
+
+async def test_monthly_demand_endpoint_returns_positive_quantities_and_respects_range(
+    monkeypatch,
+) -> None:
+    product_id = uuid.uuid4()
+    tenant_now = datetime(2026, 4, 24, 9, 0, tzinfo=UTC)
+    session = FakeAsyncSession()
+    session.queue_rows(
+        [
+            SimpleNamespace(month=datetime(2026, 3, 1, tzinfo=UTC), total_qty=-7),
+            SimpleNamespace(month=datetime(2026, 4, 1, tzinfo=UTC), total_qty=-5),
+            SimpleNamespace(month=datetime(2025, 11, 1, tzinfo=UTC), total_qty=-9),
+        ]
+    )
+    monkeypatch.setattr(inventory_services, "utc_now", lambda: tenant_now)
+
+    prev = _setup(session)
+    try:
+        resp = await _get(
+            f"/api/v1/inventory/products/{product_id}/monthly-demand",
+            months=2,
+            include_current_month="false",
+        )
+        assert resp.status_code == 200
+        assert resp.json() == {
+            "items": [{"month": "2026-03", "total_qty": 7}],
+            "total": 7,
+        }
+    finally:
+        _teardown(prev)
+
+
+async def test_monthly_demand_endpoint_includes_current_month_by_default(
+    monkeypatch,
+) -> None:
+    product_id = uuid.uuid4()
+    tenant_now = datetime(2026, 4, 24, 9, 0, tzinfo=UTC)
+    session = FakeAsyncSession()
+    session.queue_rows(
+        [
+            SimpleNamespace(month=datetime(2026, 3, 1, tzinfo=UTC), total_qty=-7),
+            SimpleNamespace(month=datetime(2026, 4, 1, tzinfo=UTC), total_qty=-5),
+        ]
+    )
+    monkeypatch.setattr(inventory_services, "utc_now", lambda: tenant_now)
+
+    prev = _setup(session)
+    try:
+        resp = await _get(
+            f"/api/v1/inventory/products/{product_id}/monthly-demand",
+            months=2,
+        )
+        assert resp.status_code == 200
+        assert resp.json() == {
+            "items": [
+                {"month": "2026-03", "total_qty": 7},
+                {"month": "2026-04", "total_qty": 5},
+            ],
+            "total": 12,
+        }
     finally:
         _teardown(prev)
 

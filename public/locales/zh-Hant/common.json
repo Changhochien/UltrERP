@@ -2996,6 +2996,11 @@
         },
         "monthlyDemand": {
           "title": "每月需求",
+          "timeFrameLabel": "每月需求期間篩選",
+          "period3m": "3 個月",
+          "period6m": "6 個月",
+          "period12m": "12 個月",
+          "period24m": "24 個月",
           "empty": "沒有需求資料",
           "tooltipUnits": "{count} 單位"
         },

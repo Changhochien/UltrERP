@@ -3874,12 +3874,22 @@ async def get_monthly_demand(
     session: AsyncSession,
     tenant_id: uuid.UUID,
     product_id: uuid.UUID,
+    *,
+    months: int = 12,
+    include_current_month: bool = True,
 ) -> dict:
-    """Return 12-month rolling monthly totals for sales_reservation reason code.
+    """Return rolling monthly demand totals for SALES_RESERVATION.
 
     Uses Asia/Taipei timezone for date truncation to match the business timezone.
     """
-    twelve_months_ago = utc_now().replace(day=1) - __import__("datetime").timedelta(days=365)
+    current_month_start = utc_now().date().replace(day=1)
+    end_month = (
+        current_month_start
+        if include_current_month
+        else _shift_months(current_month_start, -1)
+    )
+    requested_months = _iter_month_starts(_shift_months(end_month, -(months - 1)), end_month)
+    requested_month_set = set(requested_months)
 
     # Convert to Taiwan timezone before truncating month, so month boundaries align with
     # Taiwan calendar months (UTC+8). Without this conversion, data stored with end-of-
@@ -3899,7 +3909,6 @@ async def get_monthly_demand(
             StockAdjustment.tenant_id == tenant_id,
             StockAdjustment.product_id == product_id,
             StockAdjustment.reason_code == ReasonCode.SALES_RESERVATION,
-            StockAdjustment.created_at >= twelve_months_ago,
         )
         .group_by(taiwan_month_expr)
         .order_by(taiwan_month_expr)
@@ -3910,9 +3919,10 @@ async def get_monthly_demand(
     items = [
         {
             "month": row.month.strftime("%Y-%m"),
-            "total_qty": int(row.total_qty or 0),
+            "total_qty": int(abs(_quantize_quantity(row.total_qty or 0))),
         }
         for row in rows
+        if (row.month.date() if hasattr(row.month, "date") else row.month) in requested_month_set
     ]
     total = sum(item["total_qty"] for item in items)
     return {"items": items, "total": total}

@@ -3121,6 +3121,11 @@
         },
         "monthlyDemand": {
           "title": "Monthly Demand",
+          "timeFrameLabel": "Monthly demand period filters",
+          "period3m": "3m",
+          "period6m": "6m",
+          "period12m": "12m",
+          "period24m": "24m",
           "empty": "No demand data available",
           "tooltipUnits": "{count} units"
         },
