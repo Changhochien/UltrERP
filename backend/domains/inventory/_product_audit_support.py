@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import func, select
+from sqlalchemy import cast, func, select, String
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.models.audit_log import AuditLog
@@ -45,7 +45,7 @@ async def get_product_audit_log(
         .where(
             AuditLog.tenant_id == tenant_id,
             AuditLog.entity_type == "inventory_stock",
-            AuditLog.entity_id.in_(select(stock_ids_sq)),
+            AuditLog.entity_id.in_(select(cast(stock_ids_sq, String(100)))),
         )
     )
 
@@ -83,7 +83,7 @@ async def get_product_audit_log(
             AuditLog.tenant_id == tenant_id,
             (
                 (AuditLog.entity_type == "inventory_stock")
-                & AuditLog.entity_id.in_(select(stock_ids_sq))
+                & AuditLog.entity_id.in_(select(cast(stock_ids_sq, String(100))))
             )
             | (
                 (AuditLog.entity_type == "product")
