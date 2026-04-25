@@ -18,6 +18,7 @@ from common.models.order_line import OrderLine
 from common.models.product import Product
 from common.tenant import DEFAULT_TENANT_ID
 from domains.customers.models import Customer
+import domains.intelligence.service as intelligence_service
 from domains.intelligence.schemas import CategoryTrend, CategoryTrends
 from domains.intelligence.service import (
     get_category_trends,
@@ -31,6 +32,40 @@ from tests.db import isolated_async_session
 
 TENANT = DEFAULT_TENANT_ID
 _BUSINESS_NUMBER_COUNTER = count(10_000_000)
+
+
+def test_service_facade_reexports_extracted_entrypoints() -> None:
+    from domains.intelligence.services.affinity import get_product_affinity_map as affinity_entrypoint
+    from domains.intelligence.services.buying_behavior import get_customer_buying_behavior as buying_behavior_entrypoint
+    from domains.intelligence.services.category_trends import get_category_trends as category_trends_entrypoint
+    from domains.intelligence.services.customer_profile import (
+        build_empty_customer_product_profile as empty_profile_entrypoint,
+    )
+    from domains.intelligence.services.customer_profile import (
+        get_customer_product_profile as customer_profile_entrypoint,
+    )
+    from domains.intelligence.services.market_opportunities import (
+        get_market_opportunities as market_opportunities_entrypoint,
+    )
+    from domains.intelligence.services.product_performance import (
+        get_product_performance as product_performance_entrypoint,
+    )
+    from domains.intelligence.services.prospect_gaps import get_prospect_gaps as prospect_gaps_entrypoint
+    from domains.intelligence.services.revenue_diagnosis import (
+        get_revenue_diagnosis as revenue_diagnosis_entrypoint,
+    )
+    from domains.intelligence.services.risk_signals import get_customer_risk_signals as risk_signals_entrypoint
+
+    assert intelligence_service.build_empty_customer_product_profile is empty_profile_entrypoint
+    assert intelligence_service.get_category_trends is category_trends_entrypoint
+    assert intelligence_service.get_customer_buying_behavior is buying_behavior_entrypoint
+    assert intelligence_service.get_customer_product_profile is customer_profile_entrypoint
+    assert intelligence_service.get_customer_risk_signals is risk_signals_entrypoint
+    assert intelligence_service.get_market_opportunities is market_opportunities_entrypoint
+    assert intelligence_service.get_product_affinity_map is affinity_entrypoint
+    assert intelligence_service.get_product_performance is product_performance_entrypoint
+    assert intelligence_service.get_prospect_gaps is prospect_gaps_entrypoint
+    assert intelligence_service.get_revenue_diagnosis is revenue_diagnosis_entrypoint
 
 
 async def _next_business_number(session: AsyncSession, tenant_id: uuid.UUID) -> str:
@@ -1761,82 +1796,78 @@ async def test_get_market_opportunities_filters_growth_signals_after_support_flo
     await db_session.commit()
 
     with patch(
-        "domains.intelligence.services.market_opportunities._get_category_trends",
+        "domains.intelligence.services.market_opportunities.load_category_trends",
         new_callable=AsyncMock,
-        return_value=CategoryTrends(
-            period="last_90d",
-            generated_at=now,
-            trends=[
-                CategoryTrend(
-                    category="A",
-                    current_period_revenue=Decimal("300.00"),
-                    prior_period_revenue=Decimal("100.00"),
-                    revenue_delta_pct=200.0,
-                    current_period_orders=1,
-                    prior_period_orders=1,
-                    order_delta_pct=0.0,
-                    customer_count=1,
-                    prior_customer_count=1,
-                    new_customer_count=0,
-                    churned_customer_count=0,
-                    top_products=[],
-                    trend="growing",
-                    trend_context=None,
-                    activity_basis="confirmed_or_later_orders",
-                ),
-                CategoryTrend(
-                    category="B",
-                    current_period_revenue=Decimal("250.00"),
-                    prior_period_revenue=Decimal("100.00"),
-                    revenue_delta_pct=150.0,
-                    current_period_orders=1,
-                    prior_period_orders=1,
-                    order_delta_pct=0.0,
-                    customer_count=1,
-                    prior_customer_count=1,
-                    new_customer_count=0,
-                    churned_customer_count=0,
-                    top_products=[],
-                    trend="growing",
-                    trend_context=None,
-                    activity_basis="confirmed_or_later_orders",
-                ),
-                CategoryTrend(
-                    category="C",
-                    current_period_revenue=Decimal("200.00"),
-                    prior_period_revenue=Decimal("220.00"),
-                    revenue_delta_pct=-9.1,
-                    current_period_orders=2,
-                    prior_period_orders=2,
-                    order_delta_pct=0.0,
-                    customer_count=2,
-                    prior_customer_count=2,
-                    new_customer_count=0,
-                    churned_customer_count=0,
-                    top_products=[],
-                    trend="declining",
-                    trend_context=None,
-                    activity_basis="confirmed_or_later_orders",
-                ),
-                CategoryTrend(
-                    category="D",
-                    current_period_revenue=Decimal("180.00"),
-                    prior_period_revenue=Decimal("100.00"),
-                    revenue_delta_pct=80.0,
-                    current_period_orders=2,
-                    prior_period_orders=1,
-                    order_delta_pct=100.0,
-                    customer_count=2,
-                    prior_customer_count=1,
-                    new_customer_count=0,
-                    churned_customer_count=0,
-                    top_products=[],
-                    trend="growing",
-                    trend_context=None,
-                    activity_basis="confirmed_or_later_orders",
-                ),
-            ],
-        ),
+        return_value=[
+            CategoryTrend(
+                category="A",
+                current_period_revenue=Decimal("300.00"),
+                prior_period_revenue=Decimal("100.00"),
+                revenue_delta_pct=200.0,
+                current_period_orders=1,
+                prior_period_orders=1,
+                order_delta_pct=0.0,
+                customer_count=1,
+                prior_customer_count=1,
+                new_customer_count=0,
+                churned_customer_count=0,
+                top_products=[],
+                trend="growing",
+                trend_context=None,
+                activity_basis="confirmed_or_later_orders",
+            ),
+            CategoryTrend(
+                category="B",
+                current_period_revenue=Decimal("250.00"),
+                prior_period_revenue=Decimal("100.00"),
+                revenue_delta_pct=150.0,
+                current_period_orders=1,
+                prior_period_orders=1,
+                order_delta_pct=0.0,
+                customer_count=1,
+                prior_customer_count=1,
+                new_customer_count=0,
+                churned_customer_count=0,
+                top_products=[],
+                trend="growing",
+                trend_context=None,
+                activity_basis="confirmed_or_later_orders",
+            ),
+            CategoryTrend(
+                category="C",
+                current_period_revenue=Decimal("200.00"),
+                prior_period_revenue=Decimal("220.00"),
+                revenue_delta_pct=-9.1,
+                current_period_orders=2,
+                prior_period_orders=2,
+                order_delta_pct=0.0,
+                customer_count=2,
+                prior_customer_count=2,
+                new_customer_count=0,
+                churned_customer_count=0,
+                top_products=[],
+                trend="declining",
+                trend_context=None,
+                activity_basis="confirmed_or_later_orders",
+            ),
+            CategoryTrend(
+                category="D",
+                current_period_revenue=Decimal("180.00"),
+                prior_period_revenue=Decimal("100.00"),
+                revenue_delta_pct=80.0,
+                current_period_orders=2,
+                prior_period_orders=1,
+                order_delta_pct=100.0,
+                customer_count=2,
+                prior_customer_count=1,
+                new_customer_count=0,
+                churned_customer_count=0,
+                top_products=[],
+                trend="growing",
+                trend_context=None,
+                activity_basis="confirmed_or_later_orders",
+            ),
+        ],
     ):
         opportunities = await get_market_opportunities(db_session, tenant_id, period="last_90d")
 
