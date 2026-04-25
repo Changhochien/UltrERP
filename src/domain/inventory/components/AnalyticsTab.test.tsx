@@ -1,9 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 
 import { AnalyticsTab } from "./AnalyticsTab";
-import { MonthlyDemandChart } from "../components/MonthlyDemandChart";
-import { useProductMonthlyDemand } from "../hooks/useProductMonthlyDemand";
 import { useProductPlanningSupport } from "../hooks/useProductPlanningSupport";
 
 vi.mock("react-i18next", () => ({
@@ -12,13 +10,11 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
-vi.mock("../hooks/useProductMonthlyDemand", () => ({
-  useProductMonthlyDemand: vi.fn(() => ({
-    items: [{ month: "2026-03", total_qty: 12 }],
-    total: 1,
-    loading: false,
-    error: null,
-  })),
+// Mock the new explorer chart
+vi.mock("../components/MonthlyDemandExplorerChart", () => ({
+  MonthlyDemandExplorerChart: vi.fn(({ title }: { title?: string }) => (
+    <div>monthly-demand-explorer-chart{title ? `-${title}` : ""}</div>
+  )),
 }));
 
 vi.mock("../hooks/useProductSalesHistory", () => ({
@@ -92,12 +88,6 @@ vi.mock("../hooks/useProductPlanningSupport", () => ({
   })),
 }));
 
-vi.mock("../components/MonthlyDemandChart", () => ({
-  MonthlyDemandChart: vi.fn(({ variant }: { variant?: "bar" | "line" }) => (
-    <div>monthly-demand-chart-{variant ?? "bar"}</div>
-  )),
-}));
-
 vi.mock("../components/SalesHistoryTable", () => ({
   SalesHistoryTable: () => <div>sales-history-table</div>,
 }));
@@ -115,33 +105,29 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+// Shared warehouse mock data
+const mockWarehouse = {
+  stock_id: "stock-1",
+  warehouse_id: "warehouse-1",
+  warehouse_name: "Main Warehouse",
+  current_stock: 12,
+  reorder_point: 5,
+  safety_factor: 0.5,
+  lead_time_days: 7,
+  policy_type: "periodic" as const,
+  target_stock_qty: 0,
+  on_order_qty: 0,
+  in_transit_qty: 0,
+  reserved_qty: 0,
+  planning_horizon_days: 30,
+  review_cycle_days: 85,
+  is_below_reorder: false,
+  last_adjusted: null,
+};
+
 describe("AnalyticsTab", () => {
-  it("renders planning support inside the existing analytics layout", () => {
-    render(
-      <AnalyticsTab
-        productId="product-1"
-        warehouses={[
-          {
-            stock_id: "stock-1",
-            warehouse_id: "warehouse-1",
-            warehouse_name: "Main Warehouse",
-            current_stock: 12,
-            reorder_point: 5,
-            safety_factor: 0.5,
-            lead_time_days: 7,
-            policy_type: "periodic",
-            target_stock_qty: 0,
-            on_order_qty: 0,
-            in_transit_qty: 0,
-            reserved_qty: 0,
-            planning_horizon_days: 30,
-            review_cycle_days: 85,
-            is_below_reorder: false,
-            last_adjusted: null,
-          },
-        ]}
-      />,
-    );
+  it("renders planning support and explorer chart", () => {
+    render(<AnalyticsTab productId="product-1" warehouses={[mockWarehouse]} />);
 
     expect(screen.getByText("analytics-summary-card")).toBeTruthy();
     expect(screen.getByText("inventory.productDetail.analyticsTab.planningSupport.title")).toBeTruthy();
@@ -153,97 +139,9 @@ describe("AnalyticsTab", () => {
     ).toBeTruthy();
     expect(screen.getByText("inventory.productDetail.analyticsTab.planningSupport.metrics.avgMonthly")).toBeTruthy();
     expect(screen.getByText("inventory.productDetail.analyticsTab.planningSupport.sourceLabels.live")).toBeTruthy();
-    expect(screen.getAllByText("2026-03")).toHaveLength(2);
-    expect(screen.getByText("monthly-demand-chart-bar")).toBeTruthy();
+    expect(screen.getByText(/monthly-demand-explorer/i)).toBeTruthy();
     expect(screen.getByText("sales-history-table")).toBeTruthy();
     expect(screen.getByText("top-customer-card")).toBeTruthy();
-    expect(vi.mocked(useProductMonthlyDemand)).toHaveBeenLastCalledWith("product-1", {
-      months: 12,
-      includeCurrentMonth: true,
-    });
-    expect(vi.mocked(MonthlyDemandChart)).toHaveBeenLastCalledWith(
-      expect.objectContaining({ variant: "bar" }),
-      undefined,
-    );
-  });
-
-  it("lets the user change the monthly demand time frame", () => {
-    render(
-      <AnalyticsTab
-        productId="product-1"
-        warehouses={[
-          {
-            stock_id: "stock-1",
-            warehouse_id: "warehouse-1",
-            warehouse_name: "Main Warehouse",
-            current_stock: 12,
-            reorder_point: 5,
-            safety_factor: 0.5,
-            lead_time_days: 7,
-            policy_type: "periodic",
-            target_stock_qty: 0,
-            on_order_qty: 0,
-            in_transit_qty: 0,
-            reserved_qty: 0,
-            planning_horizon_days: 30,
-            review_cycle_days: 85,
-            is_below_reorder: false,
-            last_adjusted: null,
-          },
-        ]}
-      />,
-    );
-
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: "inventory.productDetail.analyticsTab.monthlyDemand.period48m",
-      }),
-    );
-
-    expect(vi.mocked(useProductMonthlyDemand)).toHaveBeenLastCalledWith("product-1", {
-      months: 48,
-      includeCurrentMonth: true,
-    });
-  });
-
-  it("lets the user switch the monthly demand chart to line mode", () => {
-    render(
-      <AnalyticsTab
-        productId="product-1"
-        warehouses={[
-          {
-            stock_id: "stock-1",
-            warehouse_id: "warehouse-1",
-            warehouse_name: "Main Warehouse",
-            current_stock: 12,
-            reorder_point: 5,
-            safety_factor: 0.5,
-            lead_time_days: 7,
-            policy_type: "periodic",
-            target_stock_qty: 0,
-            on_order_qty: 0,
-            in_transit_qty: 0,
-            reserved_qty: 0,
-            planning_horizon_days: 30,
-            review_cycle_days: 85,
-            is_below_reorder: false,
-            last_adjusted: null,
-          },
-        ]}
-      />,
-    );
-
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: "inventory.productDetail.analyticsTab.monthlyDemand.chartModeLine",
-      }),
-    );
-
-    expect(screen.getByText("monthly-demand-chart-line")).toBeTruthy();
-    expect(vi.mocked(MonthlyDemandChart)).toHaveBeenLastCalledWith(
-      expect.objectContaining({ variant: "line" }),
-      undefined,
-    );
   });
 
   it("suppresses planning support when the feature is disabled", () => {
@@ -254,35 +152,11 @@ describe("AnalyticsTab", () => {
       refetch: vi.fn(),
     });
 
-    render(
-      <AnalyticsTab
-        productId="product-1"
-        warehouses={[
-          {
-            stock_id: "stock-1",
-            warehouse_id: "warehouse-1",
-            warehouse_name: "Main Warehouse",
-            current_stock: 12,
-            reorder_point: 5,
-            safety_factor: 0.5,
-            lead_time_days: 7,
-            policy_type: "periodic",
-            target_stock_qty: 0,
-            on_order_qty: 0,
-            in_transit_qty: 0,
-            reserved_qty: 0,
-            planning_horizon_days: 30,
-            review_cycle_days: 85,
-            is_below_reorder: false,
-            last_adjusted: null,
-          },
-        ]}
-      />,
-    );
+    render(<AnalyticsTab productId="product-1" warehouses={[mockWarehouse]} />);
 
     expect(screen.queryByText("inventory.productDetail.analyticsTab.planningSupport.title")).toBeNull();
     expect(screen.getByText("analytics-summary-card")).toBeTruthy();
-    expect(screen.getByText("monthly-demand-chart-bar")).toBeTruthy();
+    expect(screen.getByText(/monthly-demand-explorer/i)).toBeTruthy();
     expect(screen.getByText("sales-history-table")).toBeTruthy();
     expect(screen.getByText("top-customer-card")).toBeTruthy();
   });

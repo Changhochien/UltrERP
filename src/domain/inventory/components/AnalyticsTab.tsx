@@ -1,16 +1,13 @@
 /** Analytics tab — monthly demand chart, sales history table, top customer card. */
 
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { SectionCard } from "@/components/layout/PageLayout";
-import { Button } from "@/components/ui/button";
 import { PlanningSupportCard } from "../components/PlanningSupportCard";
-import { useProductMonthlyDemand } from "../hooks/useProductMonthlyDemand";
 import { useProductSalesHistory } from "../hooks/useProductSalesHistory";
 import { useProductTopCustomer } from "../hooks/useProductTopCustomer";
 import { useStockHistory } from "../hooks/useStockHistory";
-import { MonthlyDemandChart } from "../components/MonthlyDemandChart";
+import { MonthlyDemandExplorerChart } from "../components/MonthlyDemandExplorerChart";
 import { SalesHistoryTable } from "../components/SalesHistoryTable";
 import { TopCustomerCard } from "../components/TopCustomerCard";
 import { AnalyticsSummaryCard } from "../components/AnalyticsSummaryCard";
@@ -21,33 +18,19 @@ interface AnalyticsTabProps {
   warehouses: WarehouseStockInfo[];
 }
 
-const MONTHLY_DEMAND_WINDOWS = [3, 6, 12, 24, 36, 48] as const;
-const MONTHLY_DEMAND_CHART_MODES = ["bar", "line"] as const;
-
-type MonthlyDemandWindow = (typeof MONTHLY_DEMAND_WINDOWS)[number];
-type MonthlyDemandChartMode = (typeof MONTHLY_DEMAND_CHART_MODES)[number];
-
 export function AnalyticsTab({ productId, warehouses }: AnalyticsTabProps) {
   const { t } = useTranslation("common", { keyPrefix: "inventory.productDetail.analyticsTab" });
-  const [demandMonths, setDemandMonths] = useState<MonthlyDemandWindow>(12);
-  const [demandChartMode, setDemandChartMode] = useState<MonthlyDemandChartMode>("bar");
-  const { items: demandItems, loading: demandLoading, error: demandError } = useProductMonthlyDemand(
-    productId,
-    {
-      months: demandMonths,
-      includeCurrentMonth: true,
-    },
-  );
+
   const { items: salesItems, loading: salesLoading, error: salesError } = useProductSalesHistory(productId);
   const { customer: topCustomer, loading: customerLoading, error: customerError } = useProductTopCustomer(productId);
 
   const stockId = warehouses[0]?.stock_id;
   const { avgDailyUsage, leadTimeDays, safetyStock } = useStockHistory(stockId ?? "");
 
-  const loading = demandLoading || salesLoading || customerLoading;
-  const error = demandError || salesError || customerError;
+  const loading = salesLoading || customerLoading;
+  const error = salesError || customerError;
 
-  if (loading && !demandItems.length) {
+  if (loading && !salesItems.length) {
     return (
       <div className="space-y-4">
         <div className="h-48 animate-pulse rounded-xl bg-muted" />
@@ -77,52 +60,11 @@ export function AnalyticsTab({ productId, warehouses }: AnalyticsTabProps) {
 
       <PlanningSupportCard productId={productId} />
 
-      {/* Monthly demand chart */}
-      <SectionCard
+      {/* Monthly demand chart - Explorer version with dense series */}
+      <MonthlyDemandExplorerChart
+        productId={productId}
         title={t("monthlyDemand.title")}
-        actions={(
-          <div className="flex flex-wrap items-center gap-2">
-            <div
-              className="flex flex-wrap gap-2"
-              role="group"
-              aria-label={t("monthlyDemand.timeFrameLabel")}
-            >
-              {MONTHLY_DEMAND_WINDOWS.map((months) => (
-                <Button
-                  key={months}
-                  type="button"
-                  size="sm"
-                  variant={demandMonths === months ? "default" : "outline"}
-                  onClick={() => setDemandMonths(months)}
-                  aria-pressed={demandMonths === months}
-                >
-                  {t(`monthlyDemand.period${months}m`)}
-                </Button>
-              ))}
-            </div>
-            <div
-              className="flex flex-wrap gap-2"
-              role="group"
-              aria-label={t("monthlyDemand.chartModeLabel")}
-            >
-              {MONTHLY_DEMAND_CHART_MODES.map((mode) => (
-                <Button
-                  key={mode}
-                  type="button"
-                  size="sm"
-                  variant={demandChartMode === mode ? "secondary" : "outline"}
-                  onClick={() => setDemandChartMode(mode)}
-                  aria-pressed={demandChartMode === mode}
-                >
-                  {t(`monthlyDemand.chartMode${mode === "bar" ? "Bar" : "Line"}`)}
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
-      >
-        <MonthlyDemandChart data={demandItems} variant={demandChartMode} />
-      </SectionCard>
+      />
 
       {/* Sales history + Top customer side by side on larger screens */}
       <div className="grid gap-6 lg:grid-cols-3">
