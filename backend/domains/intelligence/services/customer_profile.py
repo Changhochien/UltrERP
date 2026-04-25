@@ -30,6 +30,11 @@ from domains.intelligence.schemas import (
 from .shared import RATIO_QUANT, ZERO, aov_trend, frequency_trend, safe_average, subtract_months, to_decimal
 
 
+def _conditional_sum(condition, value, default=0):
+    """Generate a CASE expression for conditional SUM aggregation."""
+    return func.sum(case((condition, value), else_=default))
+
+
 def _confidence(order_count_12m: int) -> Literal["high", "medium", "low"]:
     """Determine confidence level based on 12-month order count."""
     if order_count_12m >= 6:
@@ -101,73 +106,26 @@ async def get_customer_product_profile(
         if customer is None:
             raise ValueError("Customer not found.")
 
+        prior_12m_condition = and_(
+            analytics_timestamp >= window_prior_12m_start,
+            analytics_timestamp < window_12m_start,
+        )
+        prior_3m_condition = and_(
+            analytics_timestamp >= window_prior_3m_start,
+            analytics_timestamp < window_3m_start,
+        )
         order_metrics_stmt = select(
-            func.coalesce(
-                func.sum(
-                    case(
-                        (analytics_timestamp >= window_12m_start, func.coalesce(Order.total_amount, 0)),
-                        else_=0,
-                    )
-                ),
-                0,
+            _conditional_sum(
+                analytics_timestamp >= window_12m_start, func.coalesce(Order.total_amount, 0)
             ).label("total_revenue_12m"),
-            func.coalesce(
-                func.sum(case((analytics_timestamp >= window_12m_start, 1), else_=0)),
-                0,
-            ).label("order_count_12m"),
-            func.coalesce(
-                func.sum(case((analytics_timestamp >= window_6m_start, 1), else_=0)),
-                0,
-            ).label("order_count_6m"),
-            func.coalesce(
-                func.sum(case((analytics_timestamp >= window_3m_start, 1), else_=0)),
-                0,
-            ).label("order_count_3m"),
-            func.coalesce(
-                func.sum(
-                    case(
-                        (
-                            and_(
-                                analytics_timestamp >= window_prior_12m_start,
-                                analytics_timestamp < window_12m_start,
-                            ),
-                            1,
-                        ),
-                        else_=0,
-                    )
-                ),
-                0,
-            ).label("order_count_prior_12m"),
-            func.coalesce(
-                func.sum(
-                    case(
-                        (
-                            and_(
-                                analytics_timestamp >= window_prior_12m_start,
-                                analytics_timestamp < window_12m_start,
-                            ),
-                            func.coalesce(Order.total_amount, 0),
-                        ),
-                        else_=0,
-                    )
-                ),
-                0,
+            _conditional_sum(analytics_timestamp >= window_12m_start, 1).label("order_count_12m"),
+            _conditional_sum(analytics_timestamp >= window_6m_start, 1).label("order_count_6m"),
+            _conditional_sum(analytics_timestamp >= window_3m_start, 1).label("order_count_3m"),
+            _conditional_sum(prior_12m_condition, 1).label("order_count_prior_12m"),
+            _conditional_sum(
+                prior_12m_condition, func.coalesce(Order.total_amount, 0)
             ).label("total_revenue_prior_12m"),
-            func.coalesce(
-                func.sum(
-                    case(
-                        (
-                            and_(
-                                analytics_timestamp >= window_prior_3m_start,
-                                analytics_timestamp < window_3m_start,
-                            ),
-                            1,
-                        ),
-                        else_=0,
-                    )
-                ),
-                0,
-            ).label("order_count_prior_3m"),
+            _conditional_sum(prior_3m_condition, 1).label("order_count_prior_3m"),
             func.max(analytics_timestamp).label("last_order_at"),
         ).where(
             Order.tenant_id == tenant_id,
@@ -177,11 +135,11 @@ async def get_customer_product_profile(
         order_metrics = (await session.execute(order_metrics_stmt)).first()
 
         total_revenue_12m = to_decimal(getattr(order_metrics, "total_revenue_12m", None))
-        order_count_12m = int(getattr(order_metrics, "order_count_12m", 0) or 0)
-        order_count_6m = int(getattr(order_metrics, "order_count_6m", 0) or 0)
-        order_count_3m = int(getattr(order_metrics, "order_count_3m", 0) or 0)
-        order_count_prior_12m = int(getattr(order_metrics, "order_count_prior_12m", 0) or 0)
-        order_count_prior_3m = int(getattr(order_metrics, "order_count_prior_3m", 0) or 0)
+        order_count_12m = getattr(order_metrics, "order_count_12m", 0) or 0
+        order_count_6m = getattr(order_metrics, "order_count_6m", 0) or 0
+        order_count_3m = getattr(order_metrics, "order_count_3m", 0) or 0
+        order_count_prior_12m = getattr(order_metrics, "order_count_prior_12m", 0) or 0
+        order_count_prior_3m = getattr(order_metrics, "order_count_prior_3m", 0) or 0
         total_revenue_prior_12m = to_decimal(getattr(order_metrics, "total_revenue_prior_12m", None))
         last_order_at = getattr(order_metrics, "last_order_at", None)
 

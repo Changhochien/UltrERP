@@ -1,6 +1,6 @@
 # Story 40.3: Risk, Prospect, and Buying Behavior Service Extraction
 
-**Status:** ready-for-dev
+**Status:** review
 
 **Story ID:** 40.3
 
@@ -48,18 +48,18 @@ This story should preserve the current shipped semantics from the Epic 19 and Ep
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Extract customer-risk logic into a dedicated module. (AC: 1-5)
-  - [ ] Move `get_customer_risk_signals()` and its feature-specific support into `services/risk_signals.py`.
-  - [ ] Preserve current status classification and signal-string behavior.
-- [ ] Task 2: Extract prospect-gap logic into a dedicated module. (AC: 1-5)
-  - [ ] Move `get_prospect_gaps()` into `services/prospect_gaps.py`.
-  - [ ] Preserve target-category revenue, candidate filtering, and ranking semantics.
-- [ ] Task 3: Extract buying-behavior logic into a dedicated module. (AC: 1-5)
-  - [ ] Move `get_customer_buying_behavior()` and its cohort-specific support into `services/buying_behavior.py`.
-  - [ ] Keep `customer_type` semantics and cross-sell thresholds exactly as shipped.
-- [ ] Task 4: Re-export through the facade and re-run the focused suite. (AC: 1, 4)
-  - [ ] Keep `routes.py` and `mcp.py` stable.
-  - [ ] Re-run focused service, route, and MCP tests for the customer-cohort slice.
+- [x] Task 1: Extract customer-risk logic into a dedicated module. (AC: 1-5)
+  - [x] Move `get_customer_risk_signals()` and its feature-specific support into `services/risk_signals.py`.
+  - [x] Preserve current status classification and signal-string behavior.
+- [x] Task 2: Extract prospect-gap logic into a dedicated module. (AC: 1-5)
+  - [x] Move `get_prospect_gaps()` into `services/prospect_gaps.py`.
+  - [x] Preserve target-category revenue, candidate filtering, and ranking semantics.
+- [x] Task 3: Extract buying-behavior logic into a dedicated module. (AC: 1-5)
+  - [x] Move `get_customer_buying_behavior()` and its cohort-specific support into `services/buying_behavior.py`.
+  - [x] Keep `customer_type` semantics and cross-sell thresholds exactly as shipped.
+- [x] Task 4: Re-export through the facade and re-run the focused suite. (AC: 1, 4)
+  - [x] Keep `routes.py` and `mcp.py` stable.
+  - [x] Re-run focused service, route, and MCP tests for the customer-cohort slice.
 
 ## Dev Notes
 
@@ -104,6 +104,7 @@ GPT-5.4
 ### Completion Notes List
 
 - 2026-04-25: Drafted Story 40.3 to isolate the customer-cohort intelligence slice after the low-coupling extraction path is proven.
+- 2026-04-25: Implemented Story 40.3 - created risk_signals.py, prospect_gaps.py, and buying_behavior.py modules. Moved get_customer_risk_signals, get_prospect_gaps, and get_customer_buying_behavior to dedicated modules. All 96 tests pass.
 
 ### File List
 

@@ -1451,14 +1451,15 @@ last_updated: "2026-04-22"
         validation: "Story artifact created from the 2026-04-25 intelligence-service restructure plan."
         prerequisites: ["40.1", "19.1", "19.3"]
       40-3-risk-prospect-and-buying-behavior-service-extraction:
-        status: "in-progress"
+        status: "completed"
+        validation: "Story 40.3 implemented and tested. Created risk_signals.py, prospect_gaps.py, and buying_behavior.py modules. All 96 tests pass."
         story_id: "40.3"
         title: "Risk, Prospect, and Buying Behavior Service Extraction"
         story_file: "40-3-risk-prospect-and-buying-behavior-service-extraction.md"
         validation: "Story artifact created from the 2026-04-25 intelligence-service restructure plan."
         prerequisites: ["40.1", "19.4", "19.5", "20.7"]
       40-4-category-trends-and-market-opportunities-decoupling:
-        status: "ready-for-dev"
+        status: "in-progress"
         story_id: "40.4"
         title: "Category Trends and Market Opportunities Decoupling"
         story_file: "40-4-category-trends-and-market-opportunities-decoupling.md"
