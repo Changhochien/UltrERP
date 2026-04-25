@@ -13,6 +13,7 @@ import {
 } from "recharts";
 
 import { MetricCard, SectionCard, SurfaceMessage } from "@/components/layout/PageLayout";
+import { formatChartCurrency } from "@/components/charts/formatters";
 import { Badge } from "@/components/ui/badge";
 import { CustomerProductProfile } from "@/domain/intelligence/components/CustomerProductProfile";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -29,14 +30,7 @@ interface CustomerAnalyticsTabProps {
 
 const ANALYTICS_MONTH_WINDOW = 12;
 
-function formatTWD(value: string): string {
-  const num = Number(value);
-  if (isNaN(num)) return value;
-  return `NT$ ${num.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
+
 
 const SCORE_BADGE_VARIANT: Record<CustomerAnalyticsSummary["payment_score"], "success" | "warning" | "destructive" | "secondary"> = {
   excellent: "success",
@@ -111,7 +105,7 @@ export function CustomerAnalyticsTab({ customerId }: CustomerAnalyticsTabProps) 
       <div className="grid gap-4 sm:grid-cols-2">
         <MetricCard
           title={t("totalRevenue", { defaultValue: "Total Revenue (12 months)" })}
-          value={loading ? "—" : (summary ? formatTWD(summary.total_revenue_12m) : "—")}
+          value={loading ? "—" : (summary ? formatChartCurrency(Number(summary.total_revenue_12m), "en-US", "NT$") : "—")}
           description={t("revenueDescription", { defaultValue: "Rolling 12-month revenue" })}
         />
         <MetricCard
@@ -121,12 +115,12 @@ export function CustomerAnalyticsTab({ customerId }: CustomerAnalyticsTabProps) 
         />
         <MetricCard
           title={t("avgInvoiceValue", { defaultValue: "Average Invoice Value" })}
-          value={loading ? "—" : (summary ? formatTWD(summary.avg_invoice_value) : "—")}
+          value={loading ? "—" : (summary ? formatChartCurrency(Number(summary.avg_invoice_value), "en-US", "NT$") : "—")}
           description={t("avgInvoiceDesc", { defaultValue: "Average value per invoice" })}
         />
         <MetricCard
           title={t("outstandingBalance", { defaultValue: "Outstanding Balance" })}
-          value={loading ? "—" : (summary ? formatTWD(summary.outstanding_balance) : "—")}
+          value={loading ? "—" : (summary ? formatChartCurrency(Number(summary.outstanding_balance), "en-US", "NT$") : "—")}
           description={
             summary && !loading
               ? `${t("creditUtilization", { defaultValue: "Credit utilization" })}: ${summary.credit_utilization_pct}%`
@@ -188,7 +182,7 @@ export function CustomerAnalyticsTab({ customerId }: CustomerAnalyticsTabProps) 
               <Tooltip
                 cursor={{ stroke: "#6366f1", strokeWidth: 1 }}
                 contentStyle={{ color: "#000" }}
-                formatter={(val) => [formatTWD(String(val)), t("tooltipRevenue", { defaultValue: "Revenue" })]}
+                formatter={(val) => [formatChartCurrency(Number(val), "en-US", "NT$"), t("tooltipRevenue", { defaultValue: "Revenue" })]}
               />
               <Line
                 type="monotone"
@@ -227,7 +221,7 @@ export function CustomerAnalyticsTab({ customerId }: CustomerAnalyticsTabProps) 
           />
           <MetricCard
             title={t("creditLimit", { defaultValue: "Credit Limit" })}
-            value={formatTWD(summary.credit_limit)}
+            value={formatChartCurrency(Number(summary.credit_limit), "en-US", "NT$")}
             description={t("creditLimitDesc", { defaultValue: "Configured customer credit line" })}
           />
         </div>

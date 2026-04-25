@@ -11,6 +11,7 @@ import {
 } from "recharts";
 
 import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayout";
+import { formatChartCurrency } from "../../../components/charts/formatters";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import {
@@ -25,18 +26,19 @@ import { useCategoryTrends, useMarketOpportunities } from "../hooks/useIntellige
 import { OpportunitySignalBanner } from "./OpportunitySignalBanner";
 import type { CategoryTrend } from "../types";
 
-const CURRENT_BAR_COLORS = {
+const TREND_BAR_COLORS = {
   growing: "#22c55e",
   declining: "#ef4444",
   stable: "#6b7280",
 } as const;
 
-function formatTWD(value: string): string {
-  return `NT$ ${Number(value).toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
+const TREND_BADGE_VARIANTS = {
+  growing: "success" as const,
+  declining: "destructive" as const,
+  stable: "secondary" as const,
+};
+
+
 
 function formatDelta(value: number | null): string {
   if (value == null) return "—";
@@ -172,13 +174,13 @@ export function CategoryTrendRadar() {
                       <XAxis dataKey="category" tickLine={false} axisLine={false} fontSize={12} />
                       <YAxis tickFormatter={(value) => `NT$ ${(Number(value) / 1000).toFixed(0)}k`} width={72} />
                       <Tooltip
-                        formatter={(value: number, name: string) => [formatTWD(String(value)), name]}
+                        formatter={(value: number, name: string) => [formatChartCurrency(value, "en-US", "TWD"), name]}
                         labelStyle={{ color: "#0f172a" }}
                       />
                       <Bar dataKey="prior_period_revenue" name={t("priorPeriod", { defaultValue: "Prior" })} fill="#d1d5db" radius={[6, 6, 0, 0]} />
                       <Bar dataKey="current_period_revenue" name={t("currentPeriod", { defaultValue: "Current" })} radius={[6, 6, 0, 0]}>
                         {chartData.map((entry) => (
-                          <Cell key={entry.category} fill={CURRENT_BAR_COLORS[entry.trend]} />
+                          <Cell key={entry.category} fill={TREND_BAR_COLORS[entry.trend]} />
                         ))}
                       </Bar>
                     </BarChart>
@@ -204,7 +206,7 @@ export function CategoryTrendRadar() {
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
                               <span className="font-medium">{trend.category}</span>
-                              <Badge variant={trend.trend === "growing" ? "success" : trend.trend === "declining" ? "destructive" : "secondary"}>
+                              <Badge variant={TREND_BADGE_VARIANTS[trend.trend]}>
                                 {t(`trend.${trend.trend}`, { defaultValue: trend.trend })}
                               </Badge>
                               {trend.trend_context ? (
@@ -222,8 +224,8 @@ export function CategoryTrendRadar() {
                             </p>
                           </div>
                         </TableCell>
-                        <TableCell>{formatTWD(trend.current_period_revenue)}</TableCell>
-                        <TableCell>{formatTWD(trend.prior_period_revenue)}</TableCell>
+                        <TableCell>{formatChartCurrency(Number(trend.current_period_revenue), "en-US", "TWD")}</TableCell>
+                        <TableCell>{formatChartCurrency(Number(trend.prior_period_revenue), "en-US", "TWD")}</TableCell>
                         <TableCell className="font-medium">{formatDelta(trend.revenue_delta_pct)}</TableCell>
                         <TableCell className="text-right">{trend.new_customer_count}</TableCell>
                         <TableCell className="text-right">{trend.churned_customer_count}</TableCell>
