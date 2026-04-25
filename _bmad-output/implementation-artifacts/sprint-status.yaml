@@ -1443,14 +1443,15 @@ last_updated: "2026-04-22"
         validation: "Story artifact created from the 2026-04-25 intelligence-service restructure plan."
         prerequisites: []
       40-2-affinity-and-customer-profile-service-extraction:
-        status: "in-progress"
+        status: "completed"
+        validation: "Story 40.2 implemented and tested. Extracted affinity.py and customer_profile.py modules. All 94 tests pass."
         story_id: "40.2"
         title: "Affinity and Customer Profile Service Extraction"
         story_file: "40-2-affinity-and-customer-profile-service-extraction.md"
         validation: "Story artifact created from the 2026-04-25 intelligence-service restructure plan."
         prerequisites: ["40.1", "19.1", "19.3"]
       40-3-risk-prospect-and-buying-behavior-service-extraction:
-        status: "ready-for-dev"
+        status: "in-progress"
         story_id: "40.3"
         title: "Risk, Prospect, and Buying Behavior Service Extraction"
         story_file: "40-3-risk-prospect-and-buying-behavior-service-extraction.md"

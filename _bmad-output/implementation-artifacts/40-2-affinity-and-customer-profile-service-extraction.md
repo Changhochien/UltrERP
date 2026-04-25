@@ -1,6 +1,6 @@
 # Story 40.2: Affinity and Customer Profile Service Extraction
 
-**Status:** ready-for-dev
+**Status:** review
 
 **Story ID:** 40.2
 
@@ -43,18 +43,18 @@ The extraction should preserve all current behavior:
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Extract product-affinity logic into its own feature module. (AC: 1-3)
-  - [ ] Move `get_product_affinity_map()` and its feature-specific helper logic into a dedicated module.
-  - [ ] Keep any shared helper logic in the Story 40.1 support layer instead of copying it.
-  - [ ] Preserve current ordering and score rounding behavior.
-- [ ] Task 2: Extract customer-profile logic into its own feature module. (AC: 1-3)
-  - [ ] Move `build_empty_customer_product_profile()` and `get_customer_product_profile()` into a dedicated module.
-  - [ ] Keep empty-profile construction explicit and reusable by the feature module.
-  - [ ] Preserve dormant and trend semantics exactly.
-- [ ] Task 3: Keep the compatibility facade and app surface stable. (AC: 1, 4, 5)
-  - [ ] Re-export the extracted functions from `backend/domains/intelligence/service.py`.
-  - [ ] Avoid route or MCP caller changes in this story.
-  - [ ] Re-run the focused intelligence route and MCP tests.
+- [x] Task 1: Extract product-affinity logic into its own feature module. (AC: 1-3)
+  - [x] Move `get_product_affinity_map()` and its feature-specific helper logic into a dedicated module.
+  - [x] Keep any shared helper logic in the Story 40.1 support layer instead of copying it.
+  - [x] Preserve current ordering and score rounding behavior.
+- [x] Task 2: Extract customer-profile logic into its own feature module. (AC: 1-3)
+  - [x] Move `build_empty_customer_product_profile()` and `get_customer_product_profile()` into a dedicated module.
+  - [x] Keep empty-profile construction explicit and reusable by the feature module.
+  - [x] Preserve dormant and trend semantics exactly.
+- [x] Task 3: Keep the compatibility facade and app surface stable. (AC: 1, 4, 5)
+  - [x] Re-export the extracted functions from `backend/domains/intelligence/service.py`.
+  - [x] Avoid route or MCP caller changes in this story.
+  - [x] Re-run the focused intelligence route and MCP tests.
 
 ## Dev Notes
 
@@ -98,6 +98,7 @@ GPT-5.4
 ### Completion Notes List
 
 - 2026-04-25: Drafted Story 40.2 as the first feature-extraction slice after the facade is in place.
+- 2026-04-25: Implemented Story 40.2 - created affinity.py and customer_profile.py modules. Moved get_product_affinity_map, build_empty_customer_product_profile, and get_customer_product_profile to dedicated modules. Updated service.py to re-export functions from extracted modules. All 94 tests pass.
 
 ### File List
 
