@@ -8,10 +8,10 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, date
+from datetime import UTC, date, datetime, time
 from decimal import Decimal
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.order_reporting import commercially_committed_order_filter, commercially_committed_timestamp_expr
@@ -30,15 +30,14 @@ from domains.intelligence.schemas import (
 
 from .shared import (
     RATIO_QUANT,
-    ZERO,
     CUSTOMER_BUYING_BEHAVIOR_PERIOD_MONTHS,
     average_count,
     is_excluded_category,
     iter_month_starts,
+    normalize_month_start,
     ratio,
     safe_average,
     shift_month_start,
-    subtract_months,
     to_decimal,
 )
 
@@ -70,11 +69,13 @@ async def get_customer_buying_behavior(
     - Monthly buying patterns over the analysis window
     """
     normalized_limit = max(1, min(limit, 100))
-    anchor_month = date.today().replace(day=1)  # Use date directly
+    anchor_month = datetime.now(tz=UTC).date().replace(day=1)
     months = CUSTOMER_BUYING_BEHAVIOR_PERIOD_MONTHS[period]
     window_end = anchor_month if include_current_month else shift_month_start(anchor_month, -1)
     window_start = shift_month_start(window_end, -(months - 1))
     window_end_exclusive = shift_month_start(window_end, 1)
+    analytics_start = datetime.combine(window_start, time.min, tzinfo=UTC)
+    analytics_end = datetime.combine(window_end_exclusive, time.min, tzinfo=UTC)
     analytics_timestamp = commercially_committed_timestamp_expr()
 
     async with session.begin():
@@ -97,8 +98,8 @@ async def get_customer_buying_behavior(
                     Order.tenant_id == tenant_id,
                     OrderLine.tenant_id == tenant_id,
                     commercially_committed_order_filter(),
-                    analytics_timestamp >= window_start,
-                    analytics_timestamp < window_end_exclusive,
+                    analytics_timestamp >= analytics_start,
+                    analytics_timestamp < analytics_end,
                 )
             )
         ).all()
@@ -117,12 +118,15 @@ async def get_customer_buying_behavior(
         category = (row.category or "").strip()
         if not category or is_excluded_category(category):
             continue
+        analytics_at = row.analytics_at
+        if analytics_at is None:
+            continue
 
         line = _CustomerBehaviorLine(
             customer_id=row.customer_id,
             customer_type=row.customer_type,
             order_id=row.order_id,
-            month_start=row.analytics_at.date().replace(day=1) if row.analytics_at else window_start,
+            month_start=normalize_month_start(analytics_at.date()),
             category=category,
             revenue=to_decimal(row.line_revenue),
         )
@@ -271,7 +275,7 @@ async def get_customer_buying_behavior(
         customer_type=customer_type,  # type: ignore[arg-type]
         period=period,
         window=CustomerBuyingBehaviorWindow(start_month=window_start, end_month=window_end),
-        computed_at=date.today(),
+        computed_at=datetime.now(tz=UTC),
         customer_count=customer_count,
         avg_revenue_per_customer=avg_revenue_per_customer,
         avg_order_count_per_customer=avg_order_count_per_customer,

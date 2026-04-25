@@ -16,22 +16,43 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.order_reporting import commercially_committed_timestamp_expr
 from common.models.order import Order
-from common.models.product import Product
 from common.tenant import set_tenant
 from domains.customers.models import Customer
 
-from domains.intelligence.schemas import MarketOpportunities, OpportunitySignal
+from domains.intelligence.schemas import CategoryTrend, MarketOpportunities, OpportunitySignal
 
 from .shared import (
     PCT_QUANT,
     ZERO,
     OPPORTUNITY_SEVERITY_PRIORITY,
+    load_category_trends,
     period_windows,
     to_decimal,
 )
 
-from .category_trends import _build_category_growth_signals
-from .category_trends import get_category_trends as _get_category_trends
+
+def _build_category_growth_signals(
+    trends: list[CategoryTrend],
+    max_signals: int = 3,
+) -> list[tuple[CategoryTrend, Decimal, Literal["info", "warning"]]]:
+    """Build category growth signals from precomputed category trends."""
+    growth_trends = [
+        trend
+        for trend in trends
+        if trend.revenue_delta_pct is not None
+        and trend.revenue_delta_pct > 0
+        and trend.trend == "growing"
+        and trend.customer_count >= 2
+        and trend.current_period_orders >= 2
+    ]
+
+    signals: list[tuple[CategoryTrend, Decimal, Literal["info", "warning"]]] = []
+    for trend in growth_trends[:max_signals]:
+        delta_absolute = trend.current_period_revenue - trend.prior_period_revenue
+        severity: Literal["info", "warning"] = "warning" if trend.revenue_delta_pct >= 30 else "info"
+        signals.append((trend, delta_absolute, severity))
+
+    return signals
 
 
 async def get_market_opportunities(
@@ -159,15 +180,10 @@ async def get_market_opportunities(
                 )
             )
 
-    # Use shared lower-level seam instead of public entrypoint
-    category_trends_result = await _get_category_trends(session, tenant_id, period=period)
-    growth_signals = _build_category_growth_signals(category_trends_result.trends)
+    category_trends = await load_category_trends(session, tenant_id, period=period)
+    growth_signals = _build_category_growth_signals(category_trends)
     
-    for signal_data in growth_signals:
-        trend = signal_data["trend"]
-        delta_absolute = signal_data["delta_absolute"]
-        severity = signal_data["severity"]
-        
+    for trend, delta_absolute, severity in growth_signals:
         signals.append(
             OpportunitySignal(
                 signal_type="category_growth",
