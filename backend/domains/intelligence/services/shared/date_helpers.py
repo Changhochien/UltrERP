@@ -8,6 +8,9 @@ from domains.product_analytics.service import normalize_month_start
 
 from .constants import MONEY_QUANT, ZERO
 
+# Re-export normalize_month_start from product_analytics
+from domains.product_analytics.service import normalize_month_start
+
 
 def subtract_months(anchor: datetime, months: int) -> datetime:
     """Subtract months from a datetime, adjusting day to valid range."""

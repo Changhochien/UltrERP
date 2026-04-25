@@ -1467,7 +1467,8 @@ last_updated: "2026-04-22"
         validation: "Story artifact created from the 2026-04-25 intelligence-service restructure plan."
         prerequisites: ["40.1", "19.2", "19.6"]
       40-5-revenue-diagnosis-and-product-performance-service-extraction:
-        status: "in-progress"
+        status: "completed"
+        validation: "Story 40.5 implemented and tested. Created revenue_diagnosis.py and product_performance.py modules. Completed facade-only conversion of service.py. All 103 tests pass. Epic 40 complete!"
         story_id: "40.5"
         title: "Revenue Diagnosis and Product Performance Service Extraction"
         story_file: "40-5-revenue-diagnosis-and-product-performance-service-extraction.md"

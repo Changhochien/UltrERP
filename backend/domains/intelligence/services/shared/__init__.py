@@ -23,6 +23,7 @@ from .date_helpers import (
     iter_month_starts,
     months_between_inclusive,
     month_start_from_timestamp,
+    normalize_month_start,
     period_windows,
     shift_month_start,
     subtract_months,
@@ -40,6 +41,8 @@ from .decimal_helpers import (
 )
 
 __all__ = [
+    # Date helpers
+    "normalize_month_start",
     # Constants
     "MONEY_QUANT",
     "QUANTITY_QUANT",

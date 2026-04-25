@@ -1,6 +1,6 @@
 # Story 40.5: Revenue Diagnosis and Product Performance Service Extraction
 
-**Status:** ready-for-dev
+**Status:** review
 
 **Story ID:** 40.5
 
@@ -52,18 +52,18 @@ It should also consolidate any remaining duplicate month or window helpers into 
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Extract revenue-diagnosis logic into a dedicated module. (AC: 1-5)
-  - [ ] Move `get_revenue_diagnosis()` and its feature-specific helper logic into `services/revenue_diagnosis.py`.
-  - [ ] Preserve Story 20.4 arithmetic, data-basis, and deterministic ordering behavior.
-- [ ] Task 2: Extract product-performance logic into a dedicated module. (AC: 1-5)
-  - [ ] Move `get_product_performance()` and its feature-specific helper logic into `services/product_performance.py`.
-  - [ ] Preserve lifecycle precedence, evidence loading, and current-window behavior.
-- [ ] Task 3: Finish the facade-only conversion. (AC: 2, 4, 5)
-  - [ ] Consolidate the remaining shared month/window helpers into the shared support layer.
-  - [ ] Remove remaining implementation bodies from `backend/domains/intelligence/service.py`.
-  - [ ] Re-export the extracted public functions through the facade.
-- [ ] Task 4: Re-run the focused aggregate-backed intelligence suite. (AC: 3, 5)
-  - [ ] Validate revenue diagnosis, product performance, routes, and MCP behavior with focused tests.
+- [x] Task 1: Extract revenue-diagnosis logic into a dedicated module. (AC: 1-5)
+  - [x] Move `get_revenue_diagnosis()` and its feature-specific helper logic into `services/revenue_diagnosis.py`.
+  - [x] Preserve Story 20.4 arithmetic, data-basis, and deterministic ordering behavior.
+- [x] Task 2: Extract product-performance logic into a dedicated module. (AC: 1-5)
+  - [x] Move `get_product_performance()` and its feature-specific helper logic into `services/product_performance.py`.
+  - [x] Preserve lifecycle precedence, evidence loading, and current-window behavior.
+- [x] Task 3: Finish the facade-only conversion. (AC: 2, 4, 5)
+  - [x] Consolidate the remaining shared month/window helpers into the shared support layer.
+  - [x] Remove remaining implementation bodies from `backend/domains/intelligence/service.py`.
+  - [x] Re-export the extracted public functions through the facade.
+- [x] Task 4: Re-run the focused aggregate-backed intelligence suite. (AC: 3, 5)
+  - [x] Validate revenue diagnosis, product performance, routes, and MCP behavior with focused tests.
 
 ## Dev Notes
 
@@ -108,6 +108,7 @@ GPT-5.4
 ### Completion Notes List
 
 - 2026-04-25: Drafted Story 40.5 as the final extraction slice that retires the remaining intelligence-service monolith implementation behind the new facade.
+- 2026-04-25: Implemented Story 40.5 - created revenue_diagnosis.py and product_performance.py modules. Finished facade-only conversion of service.py. All 103 tests pass. Epic 40 complete!
 
 ### File List
 

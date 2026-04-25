@@ -81,12 +81,14 @@ async def get_product_audit_log(
         )
         .where(
             AuditLog.tenant_id == tenant_id,
-            AuditLog.entity_type.in_(["inventory_stock", "product"]),
             (
-                AuditLog.entity_type == "inventory_stock"
+                (AuditLog.entity_type == "inventory_stock")
                 & AuditLog.entity_id.in_(select(stock_ids_sq))
             )
-            | (AuditLog.entity_type == "product" & AuditLog.entity_id == str(product_id)),
+            | (
+                (AuditLog.entity_type == "product")
+                & (AuditLog.entity_id == str(product_id))
+            ),
         )
         .order_by(AuditLog.created_at.desc())
         .offset(offset)
