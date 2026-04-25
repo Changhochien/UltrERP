@@ -151,7 +151,7 @@ async def get_customer_buying_behavior(
             pattern_entry["revenue"] = to_decimal(pattern_entry["revenue"] + line.revenue)
             pattern_entry["orders"].add(line.order_id)
             pattern_entry["customers"].add(line.customer_id)
-        elif customer_type != "all":
+        else:
             outside_lines.append(line)
 
     customer_count = len(customer_metrics)

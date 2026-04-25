@@ -25,22 +25,15 @@ from domains.intelligence.schemas import CustomerRiskSignal, CustomerRiskSignals
 
 from .shared import (
     ZERO,
+    RISK_STATUS_PRIORITY,
     bounded_similarity,
+    confidence,
     is_excluded_category,
     safe_average,
     subtract_months,
     to_decimal,
     to_ratio,
 )
-
-
-def _confidence(order_count_12m: int) -> Literal["high", "medium", "low"]:
-    """Determine confidence level based on 12-month order count."""
-    if order_count_12m >= 6:
-        return "high"
-    if order_count_12m >= 2:
-        return "medium"
-    return "low"
 
 
 def _classify_risk_status(
@@ -309,7 +302,7 @@ async def get_customer_risk_signals(
             avg_order_value_prior=avg_order_value_prior,
             days_since_last_order=days_since_last_order,
             reason_codes=reason_codes,
-            confidence=_confidence(order_count_current + order_count_prior),
+            confidence=confidence(order_count_current + order_count_prior),
             signals=_build_risk_signal_strings(
                 revenue_delta_pct=revenue_delta_pct,
                 days_since_last_order=days_since_last_order,
@@ -332,7 +325,7 @@ async def get_customer_risk_signals(
 
     customers_out.sort(
         key=lambda customer: (
-            _RISK_STATUS_PRIORITY[customer.status],
+            RISK_STATUS_PRIORITY[customer.status],
             -(customer.days_since_last_order or 0),
             customer.company_name,
         )
@@ -348,10 +341,4 @@ async def get_customer_risk_signals(
 
 
 # Priority ordering for risk status sorting
-_RISK_STATUS_PRIORITY: dict[str, int] = {
-    "dormant": 0,
-    "at_risk": 1,
-    "growing": 2,
-    "stable": 3,
-    "new": 4,
-}
+

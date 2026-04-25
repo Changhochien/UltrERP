@@ -71,3 +71,12 @@ def bounded_similarity(value: float, baseline: float) -> float:
     if baseline <= 0:
         return 0.0
     return max(0.0, 1.0 - min(abs(value - baseline) / baseline, 1.0))
+
+
+def confidence(order_count_12m: int) -> Literal["high", "medium", "low"]:
+    """Determine confidence level based on 12-month order count."""
+    if order_count_12m >= 6:
+        return "high"
+    if order_count_12m >= 2:
+        return "medium"
+    return "low"

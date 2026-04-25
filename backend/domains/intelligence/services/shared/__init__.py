@@ -32,6 +32,7 @@ from .decimal_helpers import (
     aov_trend,
     average_count,
     bounded_similarity,
+    confidence,
     frequency_trend,
     percent_change,
     ratio,
@@ -43,6 +44,8 @@ from .decimal_helpers import (
 __all__ = [
     # Date helpers
     "normalize_month_start",
+    # Decimal helpers
+    "confidence",
     # Constants
     "MONEY_QUANT",
     "QUANTITY_QUANT",

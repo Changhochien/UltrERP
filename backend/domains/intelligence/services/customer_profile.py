@@ -27,21 +27,12 @@ from domains.intelligence.schemas import (
     ProductPurchase,
 )
 
-from .shared import RATIO_QUANT, ZERO, aov_trend, frequency_trend, safe_average, subtract_months, to_decimal
+from .shared import RATIO_QUANT, ZERO, aov_trend, confidence, frequency_trend, safe_average, subtract_months, to_decimal
 
 
 def _conditional_sum(condition, value, default=0):
     """Generate a CASE expression for conditional SUM aggregation."""
     return func.sum(case((condition, value), else_=default))
-
-
-def _confidence(order_count_12m: int) -> Literal["high", "medium", "low"]:
-    """Determine confidence level based on 12-month order count."""
-    if order_count_12m >= 6:
-        return "high"
-    if order_count_12m >= 2:
-        return "medium"
-    return "low"
 
 
 def build_empty_customer_product_profile(
@@ -269,6 +260,6 @@ async def get_customer_product_profile(
         days_since_last_order=days_since_last_order,
         is_dormant=days_since_last_order is None or days_since_last_order > 60,
         new_categories=new_categories,
-        confidence=_confidence(order_count_12m),
+        confidence=confidence(order_count_12m),
         activity_basis="confirmed_or_later_orders",
     )
