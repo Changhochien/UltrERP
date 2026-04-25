@@ -1,6 +1,6 @@
 # Story 40.4: Category Trends and Market Opportunities Decoupling
 
-**Status:** ready-for-dev
+**Status:** review
 
 **Story ID:** 40.4
 
@@ -42,16 +42,16 @@ The refactor should preserve current business behavior:
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Extract category-trend logic into a dedicated module. (AC: 1, 3, 4)
-  - [ ] Move `get_category_trends()` into `services/category_trends.py`.
-  - [ ] Keep current period-window semantics and support floors stable.
-- [ ] Task 2: Extract market-opportunity logic into a dedicated module. (AC: 1-4)
-  - [ ] Move `get_market_opportunities()` into `services/market_opportunities.py`.
-  - [ ] Replace the current dependency on the public `get_category_trends()` entrypoint with a shared lower-level seam.
-  - [ ] Preserve deterministic signal sorting and deferred signal type behavior.
-- [ ] Task 3: Re-export through the facade and validate the mounted app surface. (AC: 1, 4)
-  - [ ] Keep `routes.py` and `mcp.py` importing through `service.py`.
-  - [ ] Re-run focused service, route, MCP, and reporting-semantics tests.
+- [x] Task 1: Extract category-trend logic into a dedicated module. (AC: 1, 3, 4)
+  - [x] Move `get_category_trends()` into `services/category_trends.py`.
+  - [x] Keep current period-window semantics and support floors stable.
+- [x] Task 2: Extract market-opportunity logic into a dedicated module. (AC: 1-4)
+  - [x] Move `get_market_opportunities()` into `services/market_opportunities.py`.
+  - [x] Replace the current dependency on the public `get_category_trends()` entrypoint with a shared lower-level seam.
+  - [x] Preserve deterministic signal sorting and deferred signal type behavior.
+- [x] Task 3: Re-export through the facade and validate the mounted app surface. (AC: 1, 4)
+  - [x] Keep `routes.py` and `mcp.py` importing through `service.py`.
+  - [x] Re-run focused service, route, MCP, and reporting-semantics tests.
 
 ## Dev Notes
 
@@ -95,6 +95,7 @@ GPT-5.4
 ### Completion Notes List
 
 - 2026-04-25: Drafted Story 40.4 to remove the current public-service dependency between category trends and market opportunities while extracting both modules.
+- 2026-04-25: Implemented Story 40.4 - created category_trends.py and market_opportunities.py modules. Refactored to use shared lower-level seam instead of calling public entrypoint. All 94 tests pass.
 
 ### File List
 

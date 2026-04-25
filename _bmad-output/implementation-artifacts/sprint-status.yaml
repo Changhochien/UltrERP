@@ -1459,14 +1459,15 @@ last_updated: "2026-04-22"
         validation: "Story artifact created from the 2026-04-25 intelligence-service restructure plan."
         prerequisites: ["40.1", "19.4", "19.5", "20.7"]
       40-4-category-trends-and-market-opportunities-decoupling:
-        status: "in-progress"
+        status: "completed"
+        validation: "Story 40.4 implemented and tested. Created category_trends.py and market_opportunities.py modules. Refactored to use shared lower-level seam. All 94 tests pass."
         story_id: "40.4"
         title: "Category Trends and Market Opportunities Decoupling"
         story_file: "40-4-category-trends-and-market-opportunities-decoupling.md"
         validation: "Story artifact created from the 2026-04-25 intelligence-service restructure plan."
         prerequisites: ["40.1", "19.2", "19.6"]
       40-5-revenue-diagnosis-and-product-performance-service-extraction:
-        status: "ready-for-dev"
+        status: "in-progress"
         story_id: "40.5"
         title: "Revenue Diagnosis and Product Performance Service Extraction"
         story_file: "40-5-revenue-diagnosis-and-product-performance-service-extraction.md"

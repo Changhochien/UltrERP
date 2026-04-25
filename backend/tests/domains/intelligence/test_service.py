@@ -1761,7 +1761,7 @@ async def test_get_market_opportunities_filters_growth_signals_after_support_flo
     await db_session.commit()
 
     with patch(
-        "domains.intelligence.service.get_category_trends",
+        "domains.intelligence.services.market_opportunities._get_category_trends",
         new_callable=AsyncMock,
         return_value=CategoryTrends(
             period="last_90d",
