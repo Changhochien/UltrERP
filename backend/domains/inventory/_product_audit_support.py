@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import cast, func, select, String
+from sqlalchemy import and_, cast, func, or_, select, String
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.models.audit_log import AuditLog
@@ -24,49 +24,29 @@ async def get_product_audit_log(
     (reorder_point, safety_factor, lead_time_days) and product status changes.
     Each field that changed becomes a separate entry.
     """
-    stock_ids_sq = (
-        select(InventoryStock.id)
+    stock_ids_stmt = (
+        select(cast(InventoryStock.id, String(100)))
         .where(
             InventoryStock.tenant_id == tenant_id,
             InventoryStock.product_id == product_id,
         )
-        .subquery()
     )
 
-    stock_logs = (
-        select(
-            AuditLog.id,
-            AuditLog.created_at,
-            AuditLog.actor_id,
-            AuditLog.before_state,
-            AuditLog.after_state,
-            AuditLog.entity_type,
-        )
-        .where(
-            AuditLog.tenant_id == tenant_id,
+    audit_scope = or_(
+        and_(
             AuditLog.entity_type == "inventory_stock",
-            AuditLog.entity_id.in_(select(cast(stock_ids_sq, String(100)))),
-        )
-    )
-
-    product_logs = (
-        select(
-            AuditLog.id,
-            AuditLog.created_at,
-            AuditLog.actor_id,
-            AuditLog.before_state,
-            AuditLog.after_state,
-            AuditLog.entity_type,
-        )
-        .where(
-            AuditLog.tenant_id == tenant_id,
+            AuditLog.entity_id.in_(stock_ids_stmt),
+        ),
+        and_(
             AuditLog.entity_type == "product",
             AuditLog.entity_id == str(product_id),
         )
     )
 
-    all_union = stock_logs.union(product_logs).subquery()
-    count_stmt = select(func.count()).select_from(all_union)
+    count_stmt = select(func.count()).select_from(AuditLog).where(
+        AuditLog.tenant_id == tenant_id,
+        audit_scope,
+    )
     count_result = await session.execute(count_stmt)
     total = count_result.scalar() or 0
 
@@ -81,14 +61,7 @@ async def get_product_audit_log(
         )
         .where(
             AuditLog.tenant_id == tenant_id,
-            (
-                (AuditLog.entity_type == "inventory_stock")
-                & AuditLog.entity_id.in_(select(cast(stock_ids_sq, String(100))))
-            )
-            | (
-                (AuditLog.entity_type == "product")
-                & (AuditLog.entity_id == str(product_id))
-            ),
+            audit_scope,
         )
         .order_by(AuditLog.created_at.desc())
         .offset(offset)
