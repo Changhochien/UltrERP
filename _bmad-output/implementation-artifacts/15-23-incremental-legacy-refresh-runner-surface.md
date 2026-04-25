@@ -23,6 +23,7 @@ Promote the incremental runner into an explicit operator surface that:
 - supports dry-run and `completed-no-op` outcomes
 - emits incremental summaries with `batch_mode=incremental`, planned and affected domains, and remediation-friendly failure details
 - delegates active execution into `run_legacy_refresh(...)` through incremental metadata instead of inventing a second pipeline
+- keeps a rolling recent closed-month `sales_monthly` upkeep path inside the shared refresh pipeline so downstream analytics stay warm between full backfills
 
 Watermark advancement, scoped staging, scoped canonical import, and admin control-plane launching remain downstream stories.
 
@@ -32,7 +33,8 @@ Watermark advancement, scoped staging, scoped canonical import, and admin contro
 2. Given every planned domain is `no-op`, when the runner completes, then it writes a `completed-no-op` summary listing the planned and no-op domains and does not invoke `run_legacy_refresh`.
 3. Given the operator runs `--dry-run`, when plan and discovery complete, then the command emits the plan and manifest contract without staging, normalization, canonical writes, or watermark advancement.
 4. Given active domains exist, when the runner delegates to the shared refresh pipeline, then it passes incremental execution metadata such as `batch_mode`, affected domains, summary root, and downstream scope hooks without inventing a separate canonical-write path.
-5. Given a planner or lane-state error occurs, when the runner fails, then it records a remediation-oriented root failure and leaves the last successful watermark and promoted lane state unchanged.
+5. Given the incremental run reaches downstream derived-data upkeep, when closed-month analytics depend on `sales_monthly`, then the shared refresh path refreshes a rolling recent closed-month window without requiring `sales` to be in the affected-domain set.
+6. Given a planner or lane-state error occurs, when the runner fails, then it records a remediation-oriented root failure and leaves the last successful watermark and promoted lane state unchanged.
 
 ## Tasks / Subtasks
 
@@ -47,6 +49,7 @@ Watermark advancement, scoped staging, scoped canonical import, and admin contro
 - [x] Task 3: Delegate active runs into the shared refresh pipeline with incremental metadata. (AC: 1, 4)
   - [x] Pass `batch_mode=incremental` into `run_legacy_refresh(...)` rather than creating a second orchestration stack.
   - [x] Thread the summary root, state root, manifest path, and downstream scope placeholders so later stories can narrow staging, normalization, canonical import, and validation without changing the entry point.
+  - [x] Keep rolling recent closed-month `sales_monthly` upkeep inside the shared refresh path so inventory and intelligence analytics stay warm between full backfills.
   - [x] Keep promotion evaluation, working-lane mutation, and watermark advancement outside this runner boundary.
 - [x] Task 4: Harden error reporting and operator diagnostics. (AC: 5)
   - [x] Surface root planner and lane-state failures with actionable remediation text in the summary and CLI output.
@@ -68,6 +71,7 @@ Watermark advancement, scoped staging, scoped canonical import, and admin contro
 
 - Keep the incremental runner separate from `run_scheduled_legacy_shadow_refresh.py`; the latter remains the full rebaseline wrapper.
 - Reuse `run_legacy_refresh(...)` for downstream execution so validation, reconciliation, and promotion-policy semantics stay shared.
+- Keep rolling recent closed-month `sales_monthly` upkeep in that shared downstream path instead of teaching the runner a separate analytics refresh surface.
 - Treat the runner as an execution boundary only. It must not silently advance watermarks or mutate the promoted working lane on its own.
 
 ### Implementation Guidance

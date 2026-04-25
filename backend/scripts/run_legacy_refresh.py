@@ -32,9 +32,9 @@ from domains.legacy_import.shared import (
 )
 from domains.legacy_import.staging import run_live_stage_import
 from domains.legacy_import.validation import validate_import_batch
+from domains.product_analytics.service import check_sales_monthly_health
 from scripts.backfill_purchase_receipts import backfill as backfill_purchase_receipts
 from scripts.backfill_sales_reservations import backfill as backfill_sales_reservations
-from scripts.refresh_sales_monthly import refresh_closed_sales_monthly_history
 from scripts.legacy_refresh_common import (
     RefreshBatchMode,
     RefreshDisposition,
@@ -44,11 +44,18 @@ from scripts.legacy_refresh_common import (
     parse_non_negative_int,
     parse_tenant_uuid,
 )
+from scripts.refresh_sales_monthly import (
+    DEFAULT_INCREMENTAL_ROLLING_CLOSED_MONTHS,
+    refresh_closed_sales_monthly_history,
+)
 from scripts.verify_reconciliation import verify as verify_reconciliation
 
 register_all_models()
 
 DEFAULT_SUMMARY_ROOT = PROJECT_ROOT / "_bmad-output" / "operations" / "legacy-refresh"
+INCREMENTAL_SALES_MONTHLY_ROLLING_CLOSED_MONTHS = (
+    DEFAULT_INCREMENTAL_ROLLING_CLOSED_MONTHS
+)
 
 SUPPORTED_FULL_REFRESH_DOMAINS = frozenset(
     {
@@ -70,6 +77,7 @@ STEP_ORDER = (
     "canonical-import",
     "validate-import",
     "refresh_sales_monthly",
+    "sales_monthly_health_check",
     "backfill_purchase_receipts",
     "backfill_sales_reservations",
     "verify_reconciliation",
@@ -755,6 +763,11 @@ async def run_legacy_refresh(
                     tenant_id=tenant_id,
                     batch_mode=normalized_batch_mode,
                     affected_domains=affected_domains,
+                    rolling_closed_months=(
+                        INCREMENTAL_SALES_MONTHLY_ROLLING_CLOSED_MONTHS
+                        if normalized_batch_mode == RefreshBatchMode.INCREMENTAL
+                        else None
+                    ),
                 ),
                 partial_state_preserved=True,
                 complete_on_success=False,
@@ -778,6 +791,11 @@ async def run_legacy_refresh(
                 "skipped_line_count": sales_monthly_result.skipped_line_count,
                 "cleared_row_count": sales_monthly_result.cleared_row_count,
                 "skipped_reason": sales_monthly_result.skipped_reason,
+                "rolling_closed_months": (
+                    INCREMENTAL_SALES_MONTHLY_ROLLING_CLOSED_MONTHS
+                    if normalized_batch_mode == RefreshBatchMode.INCREMENTAL
+                    else None
+                ),
             }
             if sales_monthly_result.skipped_reason is not None:
                 _skip_step(
@@ -793,6 +811,71 @@ async def run_legacy_refresh(
                     steps_by_name,
                     "refresh_sales_monthly",
                     details=sales_monthly_details,
+                )
+
+            # Story 20.10: Run health check after refresh to surface degraded freshness.
+            health_start_month = sales_monthly_result.start_month
+            health_end_month = sales_monthly_result.end_month
+
+            async def run_sales_monthly_health_check():
+                from common.database import AsyncSessionLocal
+                async with AsyncSessionLocal() as session:
+                    return await check_sales_monthly_health(
+                        session,
+                        tenant_id,
+                        start_month=health_start_month,
+                        end_month=health_end_month,
+                    )
+
+            health_result = await _execute_step(
+                summary,
+                step_records,
+                steps_by_name,
+                "sales_monthly_health_check",
+                run_sales_monthly_health_check,
+                partial_state_preserved=True,
+                details_factory=lambda result: {
+                    "is_healthy": result.is_healthy,
+                    "missing_month_count": len(result.missing_months),
+                    "missing_months": [
+                        {
+                            "month_start": m.month_start.isoformat(),
+                            "transactional_order_count": m.transactional_order_count,
+                            "transactional_revenue": str(m.transactional_revenue),
+                        }
+                        for m in result.missing_months
+                    ],
+                    "checked_month_count": result.checked_month_count,
+                    "current_open_month": result.current_open_month.isoformat(),
+                    "data_gap_acknowledged": result.data_gap_acknowledged,
+                },
+            )
+
+            # Story 20.10: Add degraded state to summary for operator visibility.
+            summary["sales_monthly_freshness"] = {
+                "is_healthy": health_result.is_healthy,
+                "missing_month_count": len(health_result.missing_months),
+                "missing_months": [
+                    {
+                        "month_start": m.month_start.isoformat(),
+                        "transactional_order_count": m.transactional_order_count,
+                        "transactional_revenue": str(m.transactional_revenue),
+                    }
+                    for m in health_result.missing_months
+                ],
+                "checked_month_count": health_result.checked_month_count,
+                "current_open_month": health_result.current_open_month.isoformat(),
+            }
+
+            if not health_result.is_healthy:
+                summary["sales_monthly_freshness"]["degraded_message"] = (
+                    f"Tenant {tenant_id} has {len(health_result.missing_months)} closed "
+                    "months with transactional sales but missing snapshot coverage. "
+                    "Run 'refresh-sales-monthly repair --missing-month <date> ...' to repair."
+                )
+                summary["sales_monthly_freshness"]["remediation_guidance"] = (
+                    "Use 'refresh-sales-monthly health' to see full details, "
+                    "then 'refresh-sales-monthly repair --missing-month <date> ...' to fix."
                 )
 
             # Story 15.27: Target-aware derived refresh calls (AC2).

@@ -36,6 +36,8 @@ This section supersedes conflicting details below.
 - The shared Epic 20 fact is tenant-by-product-by-month, not warehouse-by-product-by-month. Use it for advisory context and seasonality, not as an unqualified replacement for warehouse-specific usage math.
 - Do not silently redefine existing inventory endpoints such as `get_monthly_demand()`, `get_sales_history()`, or `get_top_customer()`.
 - Closed months come from Story 20.3. If the planner asks for the open month, current-month quantity must come from live confirmed-or-later orders and be labeled accordingly.
+- If a closed month has sales activity but its Story 20.3 snapshot rows are temporarily missing, planning support must use the shared read helper's transactional fallback instead of returning a misleading zero-filled month.
+- Steady-state freshness comes from a rolling recent closed-month refresh path after the initial backfill; the transactional fallback is a resilience guard, not the primary source of truth.
 
 ## Acceptance Criteria
 
@@ -45,6 +47,7 @@ This section supersedes conflicting details below.
 4. Given only closed months are queried, when planning support loads, then the monthly series is sourced from the Epic 20 aggregate.
 5. Given the current month is included, when planning support loads, then the current-month slice is computed live from confirmed, shipped, or fulfilled orders and the payload marks the window as partial.
 6. Given no shared sales history exists, when planning support is requested, then the endpoint returns an empty history plus a data-gap flag rather than guessing a demand pattern.
+7. Given a closed month has sales activity but missing Story 20.3 snapshot rows, when planning support is requested, then the shared sales-history reader falls back to transactional aggregation for that month rather than returning a misleading zero-filled history.
 
 ## Technical Notes
 

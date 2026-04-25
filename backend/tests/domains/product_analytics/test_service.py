@@ -16,9 +16,12 @@ from common.models.product import Product
 from domains.customers.models import Customer
 from domains.product_analytics.models import SalesMonthly
 from domains.product_analytics.service import (
+    backfill_sales_monthly_history,
+    check_sales_monthly_health,
     read_sales_monthly_range,
     refresh_sales_monthly,
     refresh_sales_monthly_range,
+    repair_missing_sales_monthly_months,
 )
 from tests.db import isolated_async_session
 
@@ -652,6 +655,52 @@ async def test_read_sales_monthly_range_includes_last_closed_month_when_no_live_
 
 
 @pytest.mark.asyncio
+async def test_read_sales_monthly_range_falls_back_when_closed_month_snapshots_are_missing(
+    db_session: AsyncSession,
+    tenant_id: uuid.UUID,
+) -> None:
+    customer = await _create_customer(db_session, tenant_id, "Fallback Window Customer")
+    product = await _create_product(db_session, tenant_id, "Fallback Belt", "Belts")
+    current_month = _month_start(datetime.now(tz=UTC).date())
+    two_months_ago = _shift_months(current_month, -2)
+    previous_month = _shift_months(current_month, -1)
+
+    for month_start, quantity, unit_price in (
+        (two_months_ago, "4.000", "11.00"),
+        (previous_month, "6.000", "12.00"),
+    ):
+        await _create_order(
+            db_session,
+            customer=customer,
+            created_at=datetime.combine(month_start, datetime.min.time(), tzinfo=UTC),
+            confirmed_at=datetime.combine(month_start, datetime.min.time(), tzinfo=UTC),
+            status="confirmed",
+            line_specs=[
+                {
+                    "product": product,
+                    "quantity": quantity,
+                    "unit_price": unit_price,
+                    "product_name_snapshot": "Fallback Belt",
+                    "product_category_snapshot": "Belts",
+                }
+            ],
+        )
+    await db_session.commit()
+
+    result = await read_sales_monthly_range(
+        db_session,
+        tenant_id,
+        start_month=two_months_ago,
+        end_month=previous_month,
+    )
+
+    assert [item.month_start for item in result.items] == [two_months_ago, previous_month]
+    assert [item.quantity_sold for item in result.items] == [Decimal("4.000"), Decimal("6.000")]
+    assert [item.revenue for item in result.items] == [Decimal("44.00"), Decimal("72.00")]
+    assert all(item.source == "aggregated" for item in result.items)
+
+
+@pytest.mark.asyncio
 async def test_read_sales_monthly_range_reuses_existing_transaction(
     db_session: AsyncSession,
     tenant_id: uuid.UUID,
@@ -788,3 +837,318 @@ async def test_refresh_sales_monthly_range_skips_current_month_and_refreshes_clo
     assert by_month[previous_month].upserted_row_count == 1
     assert by_month[current_month].skipped_reason == "current_month_live_only"
     assert current_count == 0
+
+
+# --- Story 20.10: Health Check, Repair, and Backfill Tests ---
+
+
+@pytest.mark.asyncio
+async def test_health_check_reports_healthy_when_no_gaps(
+    db_session: AsyncSession,
+    tenant_id: uuid.UUID,
+) -> None:
+    """AC1/AC2: Healthy tenant with no missing months reports is_healthy=True."""
+    customer = await _create_customer(db_session, tenant_id, "Healthy Customer")
+    product = await _create_product(db_session, tenant_id, "Healthy Belt", "Belts")
+    previous_month = _shift_months(_month_start(datetime.now(tz=UTC).date()), -1)
+
+    await _create_order(
+        db_session,
+        customer=customer,
+        created_at=datetime.combine(previous_month, datetime.min.time(), tzinfo=UTC),
+        confirmed_at=datetime.combine(previous_month, datetime.min.time(), tzinfo=UTC),
+        status="confirmed",
+        line_specs=[
+            {
+                "product": product,
+                "quantity": "1.000",
+                "unit_price": "10.00",
+                "product_name_snapshot": "Healthy Belt",
+                "product_category_snapshot": "Belts",
+            }
+        ],
+    )
+    await db_session.commit()
+
+    # Refresh to populate sales_monthly
+    await refresh_sales_monthly(db_session, tenant_id, previous_month)
+
+    health = await check_sales_monthly_health(
+        db_session,
+        tenant_id,
+        start_month=previous_month,
+        end_month=previous_month,
+    )
+
+    assert health.is_healthy is True
+    assert len(health.missing_months) == 0
+    assert health.checked_month_count == 1
+
+
+@pytest.mark.asyncio
+async def test_health_check_detects_missing_closed_month_with_sales(
+    db_session: AsyncSession,
+    tenant_id: uuid.UUID,
+) -> None:
+    """AC1: Missing month with transactional sales is detected."""
+    customer = await _create_customer(db_session, tenant_id, "Gap Customer")
+    product = await _create_product(db_session, tenant_id, "Gap Belt", "Belts")
+    previous_month = _shift_months(_month_start(datetime.now(tz=UTC).date()), -1)
+
+    await _create_order(
+        db_session,
+        customer=customer,
+        created_at=datetime.combine(previous_month, datetime.min.time(), tzinfo=UTC),
+        confirmed_at=datetime.combine(previous_month, datetime.min.time(), tzinfo=UTC),
+        status="confirmed",
+        line_specs=[
+            {
+                "product": product,
+                "quantity": "5.000",
+                "unit_price": "20.00",
+                "product_name_snapshot": "Gap Belt",
+                "product_category_snapshot": "Belts",
+            }
+        ],
+    )
+    await db_session.commit()
+    # Note: NOT refreshing sales_monthly, so gap should exist
+
+    health = await check_sales_monthly_health(
+        db_session,
+        tenant_id,
+        start_month=previous_month,
+        end_month=previous_month,
+    )
+
+    assert health.is_healthy is False
+    assert len(health.missing_months) == 1
+    missing = health.missing_months[0]
+    assert missing.month_start == previous_month
+    assert missing.transactional_order_count == 1
+    assert missing.transactional_revenue == Decimal("100.00")
+
+
+@pytest.mark.asyncio
+async def test_repair_missing_months_is_idempotent(
+    db_session: AsyncSession,
+    tenant_id: uuid.UUID,
+) -> None:
+    """AC3: Repairing missing months is idempotent."""
+    customer = await _create_customer(db_session, tenant_id, "Repair Customer")
+    product = await _create_product(db_session, tenant_id, "Repair Belt", "Belts")
+    previous_month = _shift_months(_month_start(datetime.now(tz=UTC).date()), -1)
+
+    await _create_order(
+        db_session,
+        customer=customer,
+        created_at=datetime.combine(previous_month, datetime.min.time(), tzinfo=UTC),
+        confirmed_at=datetime.combine(previous_month, datetime.min.time(), tzinfo=UTC),
+        status="confirmed",
+        line_specs=[
+            {
+                "product": product,
+                "quantity": "2.000",
+                "unit_price": "30.00",
+                "product_name_snapshot": "Repair Belt",
+                "product_category_snapshot": "Belts",
+            }
+        ],
+    )
+    await db_session.commit()
+
+    # First repair
+    result1 = await repair_missing_sales_monthly_months(
+        db_session,
+        tenant_id,
+        [previous_month],
+    )
+    assert result1.refreshed_month_count == 1
+
+    # Verify row was created
+    row_count1 = await db_session.scalar(
+        select(func.count(SalesMonthly.id)).where(
+            SalesMonthly.tenant_id == tenant_id,
+            SalesMonthly.month_start == previous_month,
+        )
+    )
+    assert row_count1 == 1
+
+    # Second repair should be idempotent
+    result2 = await repair_missing_sales_monthly_months(
+        db_session,
+        tenant_id,
+        [previous_month],
+    )
+    assert result2.refreshed_month_count == 1
+
+    row_count2 = await db_session.scalar(
+        select(func.count(SalesMonthly.id)).where(
+            SalesMonthly.tenant_id == tenant_id,
+            SalesMonthly.month_start == previous_month,
+        )
+    )
+    assert row_count2 == 1  # Still only one row, no duplicates
+
+
+@pytest.mark.asyncio
+async def test_backfill_bounded_history_excludes_current_month(
+    db_session: AsyncSession,
+    tenant_id: uuid.UUID,
+) -> None:
+    """AC4: Backfill never aggregates the current open month."""
+    customer = await _create_customer(db_session, tenant_id, "Backfill Customer")
+    product = await _create_product(db_session, tenant_id, "Backfill Belt", "Belts")
+    current_month = _month_start(datetime.now(tz=UTC).date())
+    two_months_ago = _shift_months(current_month, -2)
+    previous_month = _shift_months(current_month, -1)
+
+    for month_start in (two_months_ago, previous_month, current_month):
+        await _create_order(
+            db_session,
+            customer=customer,
+            created_at=datetime.combine(month_start, datetime.min.time(), tzinfo=UTC),
+            confirmed_at=datetime.combine(month_start, datetime.min.time(), tzinfo=UTC),
+            status="confirmed",
+            line_specs=[
+                {
+                    "product": product,
+                    "quantity": "1.000",
+                    "unit_price": "10.00",
+                    "product_name_snapshot": "Backfill Belt",
+                    "product_category_snapshot": "Belts",
+                }
+            ],
+        )
+    await db_session.commit()
+
+    # Backfill including current month should only process closed months
+    result = await backfill_sales_monthly_history(
+        db_session,
+        tenant_id,
+        start_month=two_months_ago,
+        end_month=current_month,  # Include current month
+    )
+
+    assert result.refreshed_month_count == 2  # Only two closed months
+
+    # Verify current month is NOT in sales_monthly
+    current_count = await db_session.scalar(
+        select(func.count(SalesMonthly.id)).where(
+            SalesMonthly.tenant_id == tenant_id,
+            SalesMonthly.month_start == current_month,
+        )
+    )
+    assert current_count == 0
+
+
+@pytest.mark.asyncio
+async def test_health_check_returns_healthy_after_repair(
+    db_session: AsyncSession,
+    tenant_id: uuid.UUID,
+) -> None:
+    """AC6: Health check returns healthy after missing months are repaired."""
+    customer = await _create_customer(db_session, tenant_id, "Healed Customer")
+    product = await _create_product(db_session, tenant_id, "Healed Belt", "Belts")
+    previous_month = _shift_months(_month_start(datetime.now(tz=UTC).date()), -1)
+
+    await _create_order(
+        db_session,
+        customer=customer,
+        created_at=datetime.combine(previous_month, datetime.min.time(), tzinfo=UTC),
+        confirmed_at=datetime.combine(previous_month, datetime.min.time(), tzinfo=UTC),
+        status="confirmed",
+        line_specs=[
+            {
+                "product": product,
+                "quantity": "3.000",
+                "unit_price": "15.00",
+                "product_name_snapshot": "Healed Belt",
+                "product_category_snapshot": "Belts",
+            }
+        ],
+    )
+    await db_session.commit()
+
+    # Before repair: unhealthy
+    health_before = await check_sales_monthly_health(
+        db_session,
+        tenant_id,
+        start_month=previous_month,
+        end_month=previous_month,
+    )
+    assert health_before.is_healthy is False
+
+    # Repair
+    await repair_missing_sales_monthly_months(db_session, tenant_id, [previous_month])
+
+    # After repair: healthy
+    health_after = await check_sales_monthly_health(
+        db_session,
+        tenant_id,
+        start_month=previous_month,
+        end_month=previous_month,
+    )
+    assert health_after.is_healthy is True
+
+
+@pytest.mark.asyncio
+async def test_health_check_excludes_current_open_month_from_gap_detection(
+    db_session: AsyncSession,
+    tenant_id: uuid.UUID,
+) -> None:
+    """AC2: Current open month is never flagged as a health failure."""
+    customer = await _create_customer(db_session, tenant_id, "Open Month Customer")
+    product = await _create_product(db_session, tenant_id, "Open Belt", "Belts")
+    current_month = _month_start(datetime.now(tz=UTC).date())
+
+    await _create_order(
+        db_session,
+        customer=customer,
+        created_at=datetime.combine(current_month, datetime.min.time(), tzinfo=UTC),
+        confirmed_at=datetime.combine(current_month, datetime.min.time(), tzinfo=UTC),
+        status="confirmed",
+        line_specs=[
+            {
+                "product": product,
+                "quantity": "10.000",
+                "unit_price": "5.00",
+                "product_name_snapshot": "Open Belt",
+                "product_category_snapshot": "Belts",
+            }
+        ],
+    )
+    await db_session.commit()
+    # No refresh - current month should use live reads
+
+    health = await check_sales_monthly_health(
+        db_session,
+        tenant_id,
+        start_month=current_month,
+        end_month=current_month,
+    )
+
+    # Current month should NOT be flagged as missing even without sales_monthly
+    assert len(health.missing_months) == 0
+    assert health.current_open_month == current_month
+
+
+@pytest.mark.asyncio
+async def test_health_check_returns_empty_for_future_window(
+    db_session: AsyncSession,
+    tenant_id: uuid.UUID,
+) -> None:
+    """Window with no closed months returns healthy with zero checked months."""
+    future_start = date(2099, 1, 1)
+    future_end = date(2099, 12, 1)
+
+    health = await check_sales_monthly_health(
+        db_session,
+        tenant_id,
+        start_month=future_start,
+        end_month=future_end,
+    )
+
+    assert health.is_healthy is True
+    assert health.checked_month_count == 0
+    assert len(health.missing_months) == 0

@@ -116,6 +116,8 @@ Shadow-mode exists to prove correctness before cutover, not to approximate succe
   stock backfills, and reconciliation report in one controlled order, then writes
   a machine-readable summary under
   `_bmad-output/operations/legacy-refresh/`.
+- Incremental upkeep should use a rolling recent closed-month `sales_monthly`
+  refresh, while full and rebaseline runs remain responsible for historical backfill.
 - Each summary now carries one shared `promotion_policy` record with explicit
   `classification` (`eligible`, `blocked`, or `exception-required`),
   `reason_codes`, machine-readable gate details, and operator-facing text.

@@ -29,6 +29,8 @@ This section supersedes conflicting details below.
 - `sales_monthly` has one grain only: tenant, month, product snapshot. No mixed grains and no category-only rows in the same fact.
 - Historical truth comes from Story 20.1 snapshot columns. Do not fall back to live `Product.category` or `Product.name` for closed-month history.
 - Current month must use a live fallback, not stale aggregate rows.
+- After the initial backfill, routine freshness may use a rolling recent closed-month refresh window through the reviewed CLI surfaces rather than reloading the entire historical range every time.
+- If a closed month has transactional sales but missing `sales_monthly` rows, the shared read helper may temporarily fall back to transactional aggregation instead of returning a misleading zero-filled result.
 - Story 20.2 must not block this story. If no conformed dimension is needed, ship inline snapshot fields only.
 - Keep this story backend-only. Do not create a speculative standalone frontend page here.
 
@@ -40,6 +42,7 @@ This section supersedes conflicting details below.
 4. Given a query window that includes the current month, when the shared read helper runs, then prior closed months are read from `sales_monthly` and the current month is computed live from `orders` and `order_lines` using the same countable-status and timestamp rules.
 5. Given an order line with null snapshot fields, when aggregation runs, then the row is skipped or reported as unsupported in structured refresh metadata and live `Product.category` is not used as a historical fallback.
 6. Given Story 20.2 remains deferred, when `sales_monthly` is implemented, then the table still ships with inline snapshot text fields and does not require `product_snapshot_id`.
+7. Given a closed month has transactional sales but missing `sales_monthly` rows, when the shared read helper serves downstream consumers, then it falls back to transactional aggregation for that closed month rather than zero-filling the series while upkeep catches up.
 
 ## Technical Notes
 

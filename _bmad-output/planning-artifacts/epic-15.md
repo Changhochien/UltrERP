@@ -440,6 +440,11 @@ So that routine freshness updates stop depending on the nightly full-refresh wra
 **When** plan and discovery complete
 **Then** the command emits the plan and manifest contract without staging, normalization, canonical writes, or watermark advancement
 
+**Given** an incremental run delegates into the shared refresh pipeline
+**When** downstream analytics depend on closed-month `sales_monthly` data
+**Then** the runner keeps a rolling recent closed-month `sales_monthly` window warm through the shared refresh path
+**And** it does not require the delta domain set to include `sales` before that upkeep can run
+
 **Given** a planner or lane-state error occurs
 **When** the runner fails
 **Then** it records a remediation-oriented root failure

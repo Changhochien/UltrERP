@@ -459,6 +459,86 @@ async def test_get_planning_support_sums_snapshot_grain_rows_within_each_month(
 
 @pytest.mark.asyncio
 @freeze_time("2026-04-15T09:00:00Z")
+async def test_get_planning_support_falls_back_when_closed_month_snapshots_are_missing(
+    db_session: AsyncSession,
+    tenant_id: uuid.UUID,
+) -> None:
+    customer = await _create_customer(db_session, tenant_id, "Fallback Planner Customer")
+    product = await _create_product(
+        db_session,
+        tenant_id,
+        code="PLAN-FALLBACK",
+        name="Fallback Belt",
+        category="Belts",
+    )
+    warehouse = await _create_warehouse(
+        db_session,
+        tenant_id,
+        code="MAIN",
+        name="Main Warehouse",
+    )
+    await _create_inventory_stock(
+        db_session,
+        tenant_id,
+        product.id,
+        warehouse.id,
+        quantity=14,
+        reorder_point=9,
+        on_order_qty=2,
+        in_transit_qty=1,
+        reserved_qty=3,
+    )
+
+    await _create_order(
+        db_session,
+        customer=customer,
+        product=product,
+        confirmed_at=datetime(2026, 2, 7, 10, 0, tzinfo=UTC),
+        status="confirmed",
+        quantity="4.000",
+        unit_price="11.00",
+    )
+    await _create_order(
+        db_session,
+        customer=customer,
+        product=product,
+        confirmed_at=datetime(2026, 3, 8, 14, 0, tzinfo=UTC),
+        status="shipped",
+        quantity="6.000",
+        unit_price="12.00",
+    )
+    await db_session.commit()
+
+    result = await get_planning_support(
+        db_session,
+        tenant_id,
+        product.id,
+        months=2,
+        include_current_month=False,
+    )
+
+    assert result is not None
+    assert [item["month"] for item in result["items"]] == ["2026-02", "2026-03"]
+    assert [item["quantity"] for item in result["items"]] == [Decimal("4.000"), Decimal("6.000")]
+    assert [item["source"] for item in result["items"]] == ["aggregated", "aggregated"]
+    assert result["avg_monthly_quantity"] == Decimal("5.000")
+    assert result["peak_monthly_quantity"] == Decimal("6.000")
+    assert result["low_monthly_quantity"] == Decimal("4.000")
+    assert result["seasonality_index"] == Decimal("1.200")
+    assert result["above_average_months"] == ["2026-03"]
+    assert result["history_months_used"] == 2
+    assert result["current_month_live_quantity"] is None
+    assert result["reorder_point"] == 9
+    assert result["on_order_qty"] == 2
+    assert result["in_transit_qty"] == 1
+    assert result["reserved_qty"] == 3
+    assert result["data_basis"] == "aggregated_only"
+    assert result["advisory_only"] is True
+    assert result["data_gap"] is False
+
+
+@pytest.mark.asyncio
+@freeze_time("2026-04-15T09:00:00Z")
 async def test_reorder_preview_surfaces_shared_history_as_advisory_context(
     db_session: AsyncSession,
     tenant_id: uuid.UUID,

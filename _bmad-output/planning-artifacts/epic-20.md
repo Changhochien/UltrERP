@@ -185,6 +185,7 @@ Provide a shared historical product-sales analytics foundation that answers: how
 - `refresh_sales_monthly(tenant_id, month_start)` — computes and upserts `sales_monthly` from countable orders for a given month using the canonical analytics timestamp
 - Uses `INSERT ... ON CONFLICT ... DO UPDATE` for idempotent upserts
 - For v1: refresh is triggered manually, via admin action, or from a dedicated CLI task; add a scheduler only after scheduler infrastructure exists in the app
+- Initial historical population remains a full backfill concern, while routine freshness may use a rolling recent closed-month refresh window through the reviewed legacy-refresh CLI surfaces
 - Current month always computed live from transactional tables
 - A future `refresh_customer_monthly()` belongs to later scope and must not block `sales_monthly` shipment
 
@@ -192,6 +193,7 @@ Provide a shared historical product-sales analytics foundation that answers: how
 - File: `backend/domains/product_analytics/service.py`
 - All query functions check: if querying current month, compute from live transactional tables instead of `sales_monthly`
 - For prior months: always read from `sales_monthly`
+- If a closed month has transactional sales but missing snapshot rows, shared reads may temporarily fall back to transactional aggregation rather than zero-filling, while refresh upkeep remains the steady-state fix
 
 **Acceptance Criteria:**
 
@@ -260,6 +262,7 @@ Provide a shared historical product-sales analytics foundation that answers: how
 4. Given only closed months are queried, when planning support loads, then the monthly series is sourced from the Epic 20 aggregate.
 5. Given the current month is included, when planning support loads, then the current-month slice is computed live from confirmed, shipped, or fulfilled orders and the payload marks the window as partial.
 6. Given no shared sales history exists, when planning support is requested, then the endpoint returns an empty history plus a data-gap flag rather than guessing a demand pattern.
+7. Given a closed month has sales activity but its `sales_monthly` rows are temporarily missing, when planning support loads, then the shared read path falls back to transactional aggregation for that closed month instead of returning a misleading zero-filled series.
 
 ---
 
@@ -372,3 +375,28 @@ Provide a shared historical product-sales analytics foundation that answers: how
 9. Given an Epic 20 MCP tool is enabled and receives valid tenant context, when the tool is called, then it returns a stable machine-facing payload; and given the tool is disabled, missing tenant context, or missing required scope, when the tool is called, then it raises structured errors consistent with current MCP conventions.
 10. Given new Epic 20 tools are registered in the auth layer, when the MCP auth test suite runs, then exact `TOOL_SCOPES` entries and insufficient-scope behavior are asserted in the centralized auth tests.
 **And** cross-sell lift, minimum-support thresholds, and null-baseline handling match the validated Epic 20 contract
+
+---
+
+## Story 20.10: Sales Monthly Freshness Health Check and Backfill Automation
+
+**Context:** `sales_monthly` is now a shared foundation for revenue diagnosis, product performance, customer behavior, and inventory planning support. The repo now has a transactional fallback for closed months with missing snapshot rows and a rolling recent-month upkeep path, but operators still lack a proactive way to detect gaps and a stronger repair flow for historical backfill or targeted missing-month recovery.
+
+**Backend deliverables:**
+- Add a tenant-scoped closed-month `sales_monthly` health check that identifies months with countable transactional sales but missing snapshot coverage.
+- Extend the reviewed refresh/backfill surfaces with explicit missing-month repair and historical backfill modes rather than relying on manual ad hoc refresh windows.
+- Surface machine-readable freshness results through existing admin or operator seams, such as the reviewed CLI, summary artifacts, or admin refresh control plane.
+- Keep the existing transactional fallback for downstream reads, but treat it as a degraded-state resilience guard rather than the primary steady-state path.
+
+**Frontend deliverables:**
+- If UI exposure is needed, reuse the existing admin or operations surface for health visibility and repair controls.
+- Do not add a new end-user `product_analytics` page or duplicate planning-support UI just for freshness management.
+
+**Acceptance Criteria:**
+
+1. Given a tenant has a closed month with countable commercial sales but no `sales_monthly` rows, when the health check runs, then the result marks the month as missing and includes enough evidence for remediation such as tenant, month, and transactional support counts.
+2. Given a tenant has no missing closed-month snapshot coverage in the requested window, when the health check runs, then the result reports a healthy state with zero missing months.
+3. Given one or more missing months are detected, when the operator runs a missing-month repair mode, then only those closed months are refreshed and rerunning the repair remains idempotent.
+4. Given a tenant needs initial historical seeding or large-gap recovery, when the operator runs a historical backfill mode, then the system refreshes the requested closed-month range up to the last closed month and never aggregates the current open month.
+5. Given rolling upkeep or a reviewed refresh run completes while missing closed months still remain, when the operator inspects the resulting summary or control-plane status, then the degraded freshness state is visible with remediation guidance instead of appearing silently healthy.
+6. Given downstream shared reads still need to serve analytics while closed-month snapshot gaps exist, when a query runs, then the existing transactional fallback remains available but the health output continues to mark the tenant as degraded until the missing months are repaired.

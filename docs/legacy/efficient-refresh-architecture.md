@@ -8,6 +8,8 @@ Today the control flow is:
 
 1. `scripts.run_scheduled_legacy_shadow_refresh` calls `scripts.run_legacy_refresh`
 2. `run_legacy_refresh` performs `live-stage`, `normalize`, `map-products`, `canonical-import`, validation, closed-month `sales_monthly` refresh, stock backfills, and reconciliation
+  - full and rebaseline runs refresh the full closed-month history
+  - incremental runs now refresh a rolling recent closed-month window so snapshots stay warm without a full backfill
 3. `--lookback-days` only scopes the stock backfill scripts after validation; it does not reduce how much source data is staged, normalized, or canonically imported
 
 This means a run that is operationally described as an update still behaves like a full refresh for the main import pipeline.
@@ -218,6 +220,7 @@ Instead of running broad backfill windows after every update, the incremental pa
 - affected purchase documents
 - affected sales documents
 - affected `(product_id, warehouse_id)` inventory tuples
+- a rolling recent closed-month `sales_monthly` window for operational analytics upkeep
 
 Keep the existing full-window backfills for the rebaseline path.
 

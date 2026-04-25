@@ -306,6 +306,7 @@ def test_run_legacy_refresh_orders_steps_and_marks_review_required(
         "canonical-import",
         "validate-import",
         "refresh_sales_monthly",
+        "sales_monthly_health_check",
         "backfill_purchase_receipts",
         "backfill_sales_reservations",
         "verify_reconciliation",
@@ -683,12 +684,12 @@ def test_run_legacy_refresh_marks_the_actual_failed_backfill_step(
 
     assert execution.exit_code == 1
     assert summary["failed_step"] == "backfill_sales_reservations"
-    assert summary["steps"][8]["status"] == "completed"
-    assert summary["steps"][9]["status"] == "failed"
-    assert summary["steps"][9]["error"] == "sales backfill exploded"
+    assert summary["steps"][8]["status"] == "completed"  # sales_monthly_health_check
+    assert summary["steps"][10]["status"] == "failed"  # backfill_sales_reservations
+    assert summary["steps"][10]["error"] == "sales backfill exploded"
 
 
-def test_run_legacy_refresh_skips_sales_monthly_when_incremental_scope_excludes_sales(
+def test_run_legacy_refresh_uses_rolling_sales_monthly_upkeep_for_incremental_scope(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
@@ -714,10 +715,12 @@ def test_run_legacy_refresh_skips_sales_monthly_when_incremental_scope_excludes_
     async def fake_refresh_closed_sales_monthly_history(**kwargs):
         assert kwargs["batch_mode"] == RefreshBatchMode.INCREMENTAL
         assert kwargs["affected_domains"] == ("products",)
+        assert kwargs["rolling_closed_months"] == (
+            refresh.INCREMENTAL_SALES_MONTHLY_ROLLING_CLOSED_MONTHS
+        )
         return _sales_monthly_result(
             batch_mode="incremental",
             affected_domains=("products",),
-            skipped_reason="sales_domain_not_affected",
         )
 
     async def fake_backfill_purchase_receipts(**kwargs):
@@ -763,6 +766,6 @@ def test_run_legacy_refresh_skips_sales_monthly_when_incremental_scope_excludes_
     )
 
     assert execution.exit_code == 0
-    assert sales_step["status"] == "skipped"
-    assert sales_step["details"]["reason"] == "sales_domain_not_affected"
+    assert sales_step["status"] == "completed"
     assert sales_step["details"]["affected_domains"] == ["products"]
+    assert sales_step["details"]["rolling_closed_months"] == 3

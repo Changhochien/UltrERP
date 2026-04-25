@@ -3019,7 +3019,7 @@
           "historySeries": "共享銷售歷史",
           "aboveAverage": "高於平均月份",
           "none": "無",
-          "window": "期間：{{start}} 至 {{end}}",
+          "window": "期間：{start} 至 {end}",
           "metrics": {
             "avgMonthly": "月均銷量",
             "peakMonthly": "最高月份",

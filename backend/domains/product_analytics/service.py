@@ -3,20 +3,21 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, time
-from decimal import Decimal, ROUND_HALF_UP
+from datetime import UTC, date, datetime, time, timedelta
+from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy import delete, func, or_, select, tuple_
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from common.models.order import Order
+from common.models.order_line import OrderLine
 from common.order_reporting import (
     commercially_committed_order_filter,
     commercially_committed_timestamp_expr,
 )
-from common.models.order import Order
-from common.models.order_line import OrderLine
 from common.tenant import set_tenant
 from domains.product_analytics.models import SalesMonthly
 
@@ -68,6 +69,210 @@ class SalesMonthlyReadResult:
     items: tuple[SalesMonthlyPoint, ...]
 
 
+# --- Health Check --- #
+
+
+@dataclass(slots=True, frozen=True)
+class SalesMonthlyMissingMonth:
+    month_start: date
+    transactional_order_count: int
+    transactional_revenue: Decimal
+
+
+@dataclass(slots=True, frozen=True)
+class SalesMonthlyHealthResult:
+    tenant_id: uuid.UUID
+    window_start: date
+    window_end: date
+    is_healthy: bool
+    missing_months: tuple[SalesMonthlyMissingMonth, ...]
+    checked_month_count: int
+    current_open_month: date
+    data_gap_acknowledged: bool
+
+
+async def check_sales_monthly_health(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    *,
+    start_month: date | None = None,
+    end_month: date | None = None,
+) -> SalesMonthlyHealthResult:
+    """Check closed-month coverage for sales_monthly.
+
+    Compares closed-month transactional activity against month-level sales_monthly
+    coverage. Returns a health report identifying any months with countable commercial
+    sales but missing snapshot rows.
+
+    The current open month is never flagged as a health failure since it uses live reads.
+    """
+    current_month_start = _current_month_start()
+
+    if end_month is None:
+        end_month = _previous_month_start(current_month_start)
+    if start_month is None:
+        start_month = end_month
+
+    normalized_start = normalize_month_start(start_month)
+    normalized_end = normalize_month_start(end_month)
+
+    if normalized_end >= current_month_start:
+        normalized_end = _previous_month_start(current_month_start)
+
+    if normalized_end < normalized_start:
+        return SalesMonthlyHealthResult(
+            tenant_id=tenant_id,
+            window_start=normalized_start,
+            window_end=normalized_end,
+            is_healthy=True,
+            missing_months=(),
+            checked_month_count=0,
+            current_open_month=current_month_start,
+            data_gap_acknowledged=False,
+        )
+
+    async with session.begin():
+        await set_tenant(session, tenant_id)
+
+        closed_months: list[date] = []
+        cursor = normalized_start
+        while cursor <= normalized_end:
+            closed_months.append(cursor)
+            cursor = _next_month_start(cursor)
+
+        month_bounds = {
+            m: _month_bounds(m) for m in closed_months
+        }
+
+        aggregate_months_with_data = {
+            row.month_start for row in (
+                await session.execute(
+                    select(SalesMonthly.month_start)
+                    .where(
+                        SalesMonthly.tenant_id == tenant_id,
+                        SalesMonthly.month_start >= normalized_start,
+                        SalesMonthly.month_start <= normalized_end,
+                    )
+                    .group_by(SalesMonthly.month_start)
+                )
+            ).all()
+        }
+
+        transactional_counts: dict[date, tuple[int, Decimal]] = {}
+        for month_start, (window_start, window_end) in month_bounds.items():
+            rows = (
+                await session.execute(
+                    select(
+                        func.count(func.distinct(Order.id)).label("order_count"),
+                        func.coalesce(func.sum(OrderLine.total_amount), 0).label("revenue"),
+                    )
+                    .select_from(OrderLine)
+                    .join(Order, OrderLine.order_id == Order.id)
+                    .where(
+                        Order.tenant_id == tenant_id,
+                        OrderLine.tenant_id == tenant_id,
+                        commercially_committed_order_filter(),
+                        commercially_committed_timestamp_expr() >= window_start,
+                        commercially_committed_timestamp_expr() < window_end,
+                    )
+                )
+            ).one()
+            transactional_counts[month_start] = (
+                int(rows.order_count or 0),
+                _to_money(rows.revenue),
+            )
+
+        missing_months: list[SalesMonthlyMissingMonth] = []
+        for month_start in closed_months:
+            order_count, revenue = transactional_counts.get(month_start, (0, Decimal("0.00")))
+            if order_count > 0 and month_start not in aggregate_months_with_data:
+                missing_months.append(
+                    SalesMonthlyMissingMonth(
+                        month_start=month_start,
+                        transactional_order_count=order_count,
+                        transactional_revenue=revenue,
+                    )
+                )
+
+        return SalesMonthlyHealthResult(
+            tenant_id=tenant_id,
+            window_start=normalized_start,
+            window_end=normalized_end,
+            is_healthy=len(missing_months) == 0,
+            missing_months=tuple(missing_months),
+            checked_month_count=len(closed_months),
+            current_open_month=current_month_start,
+            data_gap_acknowledged=False,
+        )
+
+
+async def repair_missing_sales_monthly_months(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    missing_months: Sequence[date],
+) -> SalesMonthlyRangeRefreshResult:
+    """Repair only the specified missing closed months.
+
+    This is idempotent - running repair multiple times produces the same result.
+    Only processes closed months; never touches the current open month.
+    """
+    current_month_start = _current_month_start()
+    closed_missing: list[date] = [
+        m for m in missing_months
+        if normalize_month_start(m) < current_month_start
+    ]
+
+    if not closed_missing:
+        return SalesMonthlyRangeRefreshResult(
+            results=(),
+            refreshed_month_count=0,
+        )
+
+    sorted_months = sorted(closed_missing)
+    return await refresh_sales_monthly_range(
+        session,
+        tenant_id,
+        start_month=sorted_months[0],
+        end_month=sorted_months[-1],
+    )
+
+
+async def backfill_sales_monthly_history(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    *,
+    start_month: date,
+    end_month: date | None = None,
+) -> SalesMonthlyRangeRefreshResult:
+    """Backfill sales_monthly for a bounded historical range.
+
+    This never aggregates the current open month.
+    Used for initial historical seeding or large-gap recovery.
+    """
+    current_month_start = _current_month_start()
+    normalized_start = normalize_month_start(start_month)
+
+    if end_month is None:
+        end_month = _previous_month_start(current_month_start)
+    normalized_end = normalize_month_start(end_month)
+
+    if normalized_end >= current_month_start:
+        normalized_end = _previous_month_start(current_month_start)
+
+    if normalized_start > normalized_end:
+        return SalesMonthlyRangeRefreshResult(
+            results=(),
+            refreshed_month_count=0,
+        )
+
+    return await refresh_sales_monthly_range(
+        session,
+        tenant_id,
+        start_month=normalized_start,
+        end_month=normalized_end,
+    )
+
+
 def normalize_month_start(value: date) -> date:
     return value.replace(day=1)
 
@@ -99,6 +304,10 @@ def _month_bounds(month_start: date) -> tuple[datetime, datetime]:
 
 def _current_month_start() -> date:
     return datetime.now(tz=UTC).date().replace(day=1)
+
+
+def _previous_month_start(current_month_start: date) -> date:
+    return (current_month_start - timedelta(days=1)).replace(day=1)
 
 
 def _to_money(value: object | None) -> Decimal:
@@ -169,7 +378,9 @@ async def _load_aggregate_points(
             quantity_sold=_to_quantity(row.quantity_sold),
             order_count=int(row.order_count or 0),
             revenue=_to_money(row.revenue),
-            avg_unit_price=_average_unit_price(_to_quantity(row.quantity_sold), _to_money(row.revenue)),
+            avg_unit_price=_average_unit_price(
+                _to_quantity(row.quantity_sold), _to_money(row.revenue)
+            ),
             source=source,
         )
         for row in rows
@@ -231,7 +442,7 @@ async def refresh_sales_monthly(
             skipped_reason="current_month_live_only",
         )
 
-    async with session.begin():
+    async def _do_refresh() -> SalesMonthlyRefreshResult:
         await set_tenant(session, tenant_id)
 
         aggregate_points = await _load_aggregate_points(
@@ -316,6 +527,11 @@ async def refresh_sales_monthly(
             skipped_lines=skipped_lines,
         )
 
+    if session.in_transaction():
+        return await _do_refresh()
+    async with session.begin():
+        return await _do_refresh()
+
 
 async def refresh_sales_monthly_range(
     session: AsyncSession,
@@ -377,6 +593,13 @@ async def read_sales_monthly_range(
                     )
                 )
             ).scalars().all()
+            closed_months: list[date] = []
+            cursor = normalized_start_month
+            while cursor < closed_month_end:
+                closed_months.append(cursor)
+                cursor = _next_month_start(cursor)
+
+            months_with_snapshots = {row.month_start for row in table_rows}
             items.extend(
                 SalesMonthlyPoint(
                     month_start=row.month_start,
@@ -391,6 +614,18 @@ async def read_sales_monthly_range(
                 )
                 for row in table_rows
             )
+
+            for month_start in closed_months:
+                if month_start in months_with_snapshots:
+                    continue
+                items.extend(
+                    await _load_aggregate_points(
+                        session,
+                        tenant_id,
+                        month_start,
+                        source="aggregated",
+                    )
+                )
 
         if normalized_start_month <= current_month_start <= normalized_end_month:
             items.extend(

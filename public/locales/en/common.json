@@ -3144,7 +3144,7 @@
           "historySeries": "Shared sales history",
           "aboveAverage": "Above-average months",
           "none": "None",
-          "window": "Window: {{start}} to {{end}}",
+          "window": "Window: {start} to {end}",
           "metrics": {
             "avgMonthly": "Avg monthly qty",
             "peakMonthly": "Peak month",
