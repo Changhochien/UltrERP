@@ -19,7 +19,7 @@ from pydantic import Field
 from app.mcp_server import mcp
 from common.database import AsyncSessionLocal
 from common.tenant import DEFAULT_TENANT_ID, set_tenant
-from domains.inventory.services import (
+from domains.inventory.queries import (
     get_product_detail,
     list_reorder_alerts,
     search_products,

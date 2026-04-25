@@ -12,9 +12,8 @@ from __future__ import annotations
 import uuid
 
 from common.events import StockChangedEvent, on
-from common.models.reorder_alert import AlertStatus, ReorderAlert
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from domains.inventory._alert_support import _check_reorder_alert
 
 
 @on(StockChangedEvent)
@@ -26,9 +25,6 @@ async def handle_reorder_alert(event: StockChangedEvent, session: AsyncSession) 
     whenever a StockChangedEvent is emitted from any stock mutation.
     No need to call _check_reorder_alert directly from service code.
     """
-    # Import here to avoid circular imports at module load time
-    from domains.inventory.services import _check_reorder_alert
-
     if event.reorder_point <= 0:
         return
 
