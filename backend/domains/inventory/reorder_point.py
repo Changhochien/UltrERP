@@ -37,7 +37,7 @@ async def _build_shared_history_context(
     tenant_id: uuid.UUID,
     product_id: uuid.UUID,
 ) -> dict[str, Any] | None:
-    from domains.inventory.services import get_planning_support
+    from domains.inventory.queries import get_planning_support
 
     planning_support = await get_planning_support(
         session,

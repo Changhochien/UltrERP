@@ -108,7 +108,7 @@ async def _handle_text_message(event: MessageEvent, session: AsyncSession) -> No
         return
 
     # 3. Look up products
-    from domains.inventory.services import search_products
+    from domains.inventory.queries import search_products
 
     order_lines: list[OrderCreateLine] = []
     not_found: list[str] = []

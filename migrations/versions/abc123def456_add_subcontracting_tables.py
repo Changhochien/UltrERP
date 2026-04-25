@@ -1,7 +1,7 @@
 """Add subcontracting tables (Story 24-6).
 
-Revision ID: abc123def456
-Revises: 2b3c4d5e6f7a_add_procurement_extension_hooks
+Revision ID: abc123def460
+Revises: 2b3c4d5e6f7
 Create Date: 2026-04-24
 """
 
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "abc123def456"
-down_revision: Union[str, None] = "2b3c4d5e6f7a_add_procurement_extension_hooks"
+revision: str = "abc123def460"
+down_revision: Union[str, None] = "2b3c4d5e6f7"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

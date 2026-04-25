@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.models.approval_request import ApprovalRequest
 from common.models.stock_adjustment import ReasonCode
-from domains.inventory.services import create_stock_adjustment
+from domains.inventory.commands import create_stock_adjustment
 
 
 async def execute_approval_action(

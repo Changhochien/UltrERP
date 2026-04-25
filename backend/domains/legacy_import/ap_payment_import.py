@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from common.config import settings
 from common.tenant import DEFAULT_TENANT_ID
 from domains.legacy_import import source_resolution
-from domains.legacy_import.canonical import (
+from domains.legacy_import.canonical_common import (
     _as_decimal,
     _as_int,
     _as_legacy_date,
@@ -498,7 +498,7 @@ async def run_ap_payment_import(
     run_id = uuid.uuid4()
     attempt_number = 1
     available_tables: list[str] = []
-    table_rows_by_name: dict[str, list[dict[str, object]]] = {}
+    table_stats_by_name: dict[str, tuple[int, int]] = {}
 
     try:
         if not await _table_exists(connection, resolved_schema, "tbscust"):
@@ -530,14 +530,6 @@ async def run_ap_payment_import(
 
             party_roles = await _fetch_party_roles(connection, resolved_schema, batch_id)
 
-            for table_name in available_tables:
-                table_rows_by_name[table_name] = await _fetch_staged_rows(
-                    connection,
-                    schema_name=resolved_schema,
-                    table_name=table_name,
-                    batch_id=batch_id,
-                )
-
             supplier_candidate_ids = {
                 _tenant_scoped_uuid(tenant_id, "party", "supplier", code)
                 for code, role in party_roles.items()
@@ -555,13 +547,18 @@ async def run_ap_payment_import(
             lineage_count = 0
 
             for table_name in available_tables:
-                rows = table_rows_by_name[table_name]
+                rows = await _fetch_staged_rows(
+                    connection,
+                    schema_name=resolved_schema,
+                    table_name=table_name,
+                    batch_id=batch_id,
+                )
                 processed_count = 0
-                column_count = 0
+                column_count = max((_stage_column_count(row) for row in rows), default=0)
+                table_stats_by_name[table_name] = (len(rows), column_count)
 
                 for raw_row in rows:
                     processed_count += 1
-                    column_count = max(column_count, _stage_column_count(raw_row))
                     source_identifier = _source_identifier(table_name, raw_row)
                     source_row_number = _as_int(raw_row.get("_source_row_number"))
                     row_identity = _resolve_row_identity(source_row_number, processed_count)
@@ -692,14 +689,13 @@ async def run_ap_payment_import(
                 status="failed",
                 error_message=str(exc),
             )
-            for table_name, rows in table_rows_by_name.items():
-                column_count = max((_stage_column_count(row) for row in rows), default=0)
+            for table_name, (expected_row_count, column_count) in table_stats_by_name.items():
                 await _upsert_table_run_row(
                     connection,
                     run_id=run_id,
                     table_name=table_name,
                     source_file=f"{resolved_schema}.{table_name}",
-                    expected_row_count=len(rows),
+                    expected_row_count=expected_row_count,
                     loaded_row_count=0,
                     column_count=column_count,
                     status="failed",

@@ -1,8 +1,12 @@
-"""Service functions for intelligence domain analytics."""
+"""Service functions for intelligence domain analytics.
+
+This module maintains backward compatibility as a facade. Feature implementations
+are progressively being extracted into backend/domains/intelligence/services/.
+The shared pure helpers have been consolidated into the services/shared module.
+"""
 
 from __future__ import annotations
 
-import calendar
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
@@ -57,26 +61,53 @@ from domains.intelligence.schemas import (
     TopProductByRevenue,
 )
 
-_MONEY_QUANT = Decimal("0.01")
-_QUANTITY_QUANT = Decimal("0.001")
-_RATIO_QUANT = Decimal("0.0001")
-_PCT_QUANT = Decimal("0.01")
-_ZERO = Decimal("0.00")
-_EXCLUDED_CATEGORIES = {
-    "discount",
-    "discounts",
-    "freight",
-    "misc",
-    "miscellaneous",
-    "non-merchandise",
-    "service",
-    "services",
-    "shipping",
-}
-_RISK_STATUS_PRIORITY = {"dormant": 0, "at_risk": 1, "growing": 2, "stable": 3, "new": 4}
-_OPPORTUNITY_SEVERITY_PRIORITY = {"alert": 0, "warning": 1, "info": 2}
-_REVENUE_DIAGNOSIS_PERIOD_MONTHS = {"1m": 1, "3m": 3, "6m": 6, "12m": 12}
-_CUSTOMER_BUYING_BEHAVIOR_PERIOD_MONTHS = {"3m": 3, "6m": 6, "12m": 12}
+# Import shared constants and helpers from the consolidated support layer
+from .services.shared import (
+    MONEY_QUANT as _MONEY_QUANT,
+    QUANTITY_QUANT as _QUANTITY_QUANT,
+    RATIO_QUANT as _RATIO_QUANT,
+    PCT_QUANT as _PCT_QUANT,
+    ZERO as _ZERO,
+    EXCLUDED_CATEGORIES as _EXCLUDED_CATEGORIES,
+    RISK_STATUS_PRIORITY as _RISK_STATUS_PRIORITY,
+    OPPORTUNITY_SEVERITY_PRIORITY as _OPPORTUNITY_SEVERITY_PRIORITY,
+    REVENUE_DIAGNOSIS_PERIOD_MONTHS as _REVENUE_DIAGNOSIS_PERIOD_MONTHS,
+    CUSTOMER_BUYING_BEHAVIOR_PERIOD_MONTHS as _CUSTOMER_BUYING_BEHAVIOR_PERIOD_MONTHS,
+    subtract_months,
+    shift_month_start,
+    months_between_inclusive,
+    month_start_from_timestamp,
+    iter_month_starts,
+    period_windows,
+    to_decimal,
+    safe_average,
+    average_count,
+    ratio,
+    to_ratio,
+    percent_change,
+    frequency_trend,
+    aov_trend,
+    bounded_similarity,
+    is_excluded_category,
+)
+
+# Aliases for backward compatibility with internal usage
+_subtract_months = subtract_months
+_shift_month_start = shift_month_start
+_months_between_inclusive = months_between_inclusive
+_month_start_from_timestamp = month_start_from_timestamp
+_iter_month_starts = iter_month_starts
+_period_windows = period_windows
+_to_decimal = to_decimal
+_safe_average = safe_average
+_average_count = average_count
+_ratio = ratio
+_to_ratio = to_ratio
+_percent_change = percent_change
+_frequency_trend = frequency_trend
+_aov_trend = aov_trend
+_bounded_similarity = bounded_similarity
+_is_excluded_category = is_excluded_category
 
 
 @dataclass(slots=True)
@@ -123,90 +154,13 @@ class _CustomerBehaviorLine:
     revenue: Decimal
 
 
-def _subtract_months(anchor: datetime, months: int) -> datetime:
-    year = anchor.year
-    month = anchor.month - months
-    while month <= 0:
-        year -= 1
-        month += 12
-    day = min(anchor.day, calendar.monthrange(year, month)[1])
-    return anchor.replace(year=year, month=month, day=day)
-
-
-def _to_decimal(value: object | None, *, quant: Decimal = _MONEY_QUANT) -> Decimal:
-    return Decimal(str(value or "0")).quantize(quant)
-
-
-def _safe_average(total: Decimal, count: int) -> Decimal:
-    if count <= 0:
-        return _ZERO
-    return (total / Decimal(count)).quantize(_MONEY_QUANT)
-
-
-def _shift_month_start(value: date, months: int) -> date:
-    year = value.year
-    month = value.month + months
-    while month <= 0:
-        year -= 1
-        month += 12
-    while month > 12:
-        year += 1
-        month -= 12
-    return date(year, month, 1)
-
-
-def _months_between_inclusive(start_month: date, end_month: date) -> int:
-    return ((end_month.year - start_month.year) * 12) + (end_month.month - start_month.month) + 1
-
-
-def _month_start_from_timestamp(value: datetime | date) -> date:
-    if isinstance(value, datetime):
-        return normalize_month_start(value.date())
-    return normalize_month_start(value)
-
-
-def _iter_month_starts(start_month: date, end_month: date) -> tuple[date, ...]:
-    months: list[date] = []
-    cursor = start_month
-    while cursor <= end_month:
-        months.append(cursor)
-        cursor = _shift_month_start(cursor, 1)
-    return tuple(months)
-
-
-def _average_count(total: int, count: int) -> Decimal:
-    if count <= 0:
-        return _ZERO
-    return (Decimal(total) / Decimal(count)).quantize(_MONEY_QUANT)
-
-
-def _ratio(numerator: int, denominator: int) -> Decimal:
-    if denominator <= 0:
-        return Decimal("0.0000")
-    return (Decimal(numerator) / Decimal(denominator)).quantize(_RATIO_QUANT)
-
-
-def _frequency_trend(current_count: int, prior_count: int) -> Literal["increasing", "declining", "stable"]:
-    if prior_count <= 0:
-        return "increasing" if current_count > 0 else "stable"
-    if current_count > prior_count * 1.20:
-        return "increasing"
-    if current_count < prior_count * 0.80:
-        return "declining"
-    return "stable"
-
-
-def _aov_trend(current_value: Decimal, prior_value: Decimal) -> Literal["increasing", "declining", "stable"]:
-    if prior_value <= 0:
-        return "increasing" if current_value > 0 else "stable"
-    if current_value > prior_value * Decimal("1.10"):
-        return "increasing"
-    if current_value < prior_value * Decimal("0.90"):
-        return "declining"
-    return "stable"
+# ============================================================================
+# Affinity and Customer Profile Helpers
+# ============================================================================
 
 
 def _confidence(order_count_12m: int) -> Literal["high", "medium", "low"]:
+    """Determine confidence level based on order count."""
     if order_count_12m >= 6:
         return "high"
     if order_count_12m >= 2:
@@ -215,14 +169,12 @@ def _confidence(order_count_12m: int) -> Literal["high", "medium", "low"]:
 
 
 def _pair_key(product_a_id: uuid.UUID, product_b_id: uuid.UUID) -> tuple[uuid.UUID, uuid.UUID]:
+    """Generate canonical pair key for two product IDs."""
     return (product_a_id, product_b_id) if str(product_a_id) < str(product_b_id) else (product_b_id, product_a_id)
 
 
-def _to_ratio(value: Decimal, *, quant: Decimal = _RATIO_QUANT) -> float:
-    return float(value.quantize(quant))
-
-
 def _make_pitch_hint(product_a_name: str, product_b_name: str, score: Decimal) -> str:
+    """Generate a pitch hint based on affinity score."""
     if score >= Decimal("0.5000"):
         return (
             f"Strong affinity — '{product_a_name}' and '{product_b_name}' are frequently bought together. "
@@ -233,6 +185,11 @@ def _make_pitch_hint(product_a_name: str, product_b_name: str, score: Decimal) -
     return f"'{product_a_name}' customers occasionally also buy '{product_b_name}'."
 
 
+# ============================================================================
+# Risk and Prospect Helpers
+# ============================================================================
+
+
 def _classify_risk_status(
     *,
     first_order_date: date | None,
@@ -241,6 +198,7 @@ def _classify_risk_status(
     revenue_prior: Decimal,
     today: date,
 ) -> Literal["growing", "at_risk", "dormant", "new", "stable"]:
+    """Classify customer risk status based on order history and revenue trends."""
     if last_order_date is None:
         return "dormant"
     if last_order_date is not None and (today - last_order_date).days > 60:
@@ -248,10 +206,10 @@ def _classify_risk_status(
     if first_order_date is not None and (today - first_order_date).days <= 90:
         return "new"
     if revenue_prior > 0:
-        ratio = revenue_current / revenue_prior
-        if ratio >= Decimal("1.20"):
+        ratio_val = revenue_current / revenue_prior
+        if ratio_val >= Decimal("1.20"):
             return "growing"
-        if ratio <= Decimal("0.80"):
+        if ratio_val <= Decimal("0.80"):
             return "at_risk"
     return "stable"
 
@@ -267,6 +225,7 @@ def _build_risk_signal_strings(
     products_expanded_into: list[str],
     products_contracted_from: list[str],
 ) -> list[str]:
+    """Build human-readable risk signal strings."""
     signals: list[str] = []
     if revenue_delta_pct is not None:
         direction = "up" if revenue_delta_pct > 0 else "down"
@@ -293,13 +252,8 @@ def _build_risk_signal_strings(
     return signals
 
 
-def _bounded_similarity(value: float, baseline: float) -> float:
-    if baseline <= 0:
-        return 0.0
-    return max(0.0, 1.0 - min(abs(value - baseline) / baseline, 1.0))
-
-
 def _prospect_confidence(order_count_recent: int, category_count_recent: int, recency_factor: float) -> Literal["high", "medium", "low"]:
+    """Determine prospect confidence level."""
     if order_count_recent >= 4 and category_count_recent >= 2 and recency_factor >= 0.6:
         return "high"
     if order_count_recent >= 2 and recency_factor >= 0.3:
@@ -308,12 +262,18 @@ def _prospect_confidence(order_count_recent: int, category_count_recent: int, re
 
 
 def _prospect_reason(company_name: str, category_count: int, adjacent_support: float, recency_factor: float) -> str:
+    """Generate prospect reason string."""
     parts = [f"{company_name} is a fit candidate"]
     if adjacent_support > 0:
         parts.append(f"buys {category_count} adjacent categories")
     if recency_factor >= 0.6:
         parts.append("has strong recent activity")
     return " and ".join(parts) + "."
+
+
+# ============================================================================
+# Public Intelligence Functions
+# ============================================================================
 
 
 async def get_market_opportunities(
@@ -482,29 +442,6 @@ async def get_market_opportunities(
         signals=signals,
         deferred_signal_types=["new_product_adoption", "churn_risk"],
     )
-
-
-def _is_excluded_category(category: str | None) -> bool:
-    if category is None:
-        return True
-    return category.strip().casefold() in _EXCLUDED_CATEGORIES
-
-
-def _period_windows(
-    period: Literal["last_30d", "last_90d", "last_12m"],
-    *,
-    anchor: datetime | None = None,
-) -> tuple[date, date, date]:
-    end = (anchor or datetime.now(tz=UTC)).date()
-    days = 90
-    if period == "last_30d":
-        days = 30
-    elif period == "last_12m":
-        days = 365
-
-    current_start = end - timedelta(days=days)
-    prior_start = current_start - timedelta(days=days)
-    return current_start, prior_start, end
 
 
 async def get_category_trends(
@@ -1426,13 +1363,13 @@ async def get_product_affinity_map(
                 computed_at=computed_at,
             )
 
-        union_count = (
-            customer_count_a.c.customer_count
-            + customer_count_b.c.customer_count
-            - pair_customer_counts.c.shared_customer_count
-        )
         affinity_rank = cast(pair_customer_counts.c.shared_customer_count, Float) / func.nullif(
-            cast(union_count, Float),
+            cast(
+                customer_count_a.c.customer_count
+                + customer_count_b.c.customer_count
+                - pair_customer_counts.c.shared_customer_count,
+                Float,
+            ),
             0.0,
         )
         rounded_affinity_rank = func.round(cast(affinity_rank, Numeric(18, 8)), 4)
@@ -1524,6 +1461,7 @@ def build_empty_customer_product_profile(
     *,
     company_name: str = "",
 ) -> CustomerProductProfile:
+    """Build an empty customer product profile for new/dormant customers."""
     return CustomerProductProfile(
         customer_id=customer_id,
         company_name=company_name,
@@ -1791,11 +1729,9 @@ async def get_customer_product_profile(
     )
 
 
-def _shift_month_start(month_start: date, months: int) -> date:
-    month_index = (month_start.year * 12 + month_start.month - 1) + months
-    year = month_index // 12
-    month = month_index % 12 + 1
-    return date(year, month, 1)
+# ============================================================================
+# Revenue Diagnosis and Product Performance Helpers
+# ============================================================================
 
 
 def _revenue_diagnosis_windows(
@@ -1803,6 +1739,7 @@ def _revenue_diagnosis_windows(
     *,
     anchor_month: date,
 ) -> tuple[date, date, date, date]:
+    """Calculate revenue diagnosis window dates."""
     month_count = _REVENUE_DIAGNOSIS_PERIOD_MONTHS[period]
     current_end = normalize_month_start(anchor_month)
     current_start = _shift_month_start(current_end, -(month_count - 1))
@@ -1812,15 +1749,10 @@ def _revenue_diagnosis_windows(
 
 
 def _safe_unit_price(revenue: Decimal, quantity: Decimal) -> Decimal:
+    """Calculate safe unit price, avoiding division by zero."""
     if quantity <= 0:
         return _ZERO
     return (revenue / quantity).quantize(_MONEY_QUANT)
-
-
-def _percent_change(current_value: Decimal, prior_value: Decimal) -> float | None:
-    if prior_value == 0:
-        return None
-    return float(((current_value - prior_value) / prior_value * Decimal("100")).quantize(_PCT_QUANT))
 
 
 def _aggregate_revenue_window(
@@ -1828,6 +1760,7 @@ def _aggregate_revenue_window(
     *,
     category: str | None,
 ) -> dict[uuid.UUID, _RevenueDiagnosisWindowMetrics]:
+    """Aggregate revenue metrics by product for a time window."""
     category_filter = category.strip() if category else None
     metrics: dict[uuid.UUID, _RevenueDiagnosisWindowMetrics] = {}
 
@@ -1869,6 +1802,7 @@ def _build_revenue_diagnosis_driver(
     data_basis: Literal["aggregate_only", "aggregate_plus_live_current_month"],
     window_is_partial: bool,
 ) -> RevenueDiagnosisDriver:
+    """Build a revenue diagnosis driver with volume/price/mix decomposition."""
     product_name = (
         current_metrics.product_name
         if current_metrics is not None
@@ -1933,6 +1867,7 @@ async def get_revenue_diagnosis(
     category: str | None = None,
     limit: int = 20,
 ) -> RevenueDiagnosis:
+    """Diagnose revenue changes with volume, price, and mix decomposition."""
     normalized_anchor_month = normalize_month_start(anchor_month or datetime.now(tz=UTC).date())
     current_month_start = normalize_month_start(datetime.now(tz=UTC).date())
     if normalized_anchor_month > current_month_start:
@@ -2032,6 +1967,7 @@ def _product_performance_windows(
     include_current_month: bool,
     anchor_month: date,
 ) -> tuple[date, date, date, date]:
+    """Calculate product performance window dates."""
     if include_current_month:
         current_end = anchor_month
     else:
@@ -2047,6 +1983,7 @@ def _aggregate_product_performance_window(
     *,
     category: str | None = None,
 ) -> dict[uuid.UUID, _ProductPerformanceWindowMetrics]:
+    """Aggregate product performance metrics for a time window."""
     aggregates: dict[uuid.UUID, dict[str, object]] = {}
 
     for point in points:
@@ -2106,6 +2043,7 @@ def _aggregate_product_performance_window(
 
 
 def _empty_product_performance_period_metrics() -> ProductPerformancePeriodMetrics:
+    """Return empty period metrics."""
     return ProductPerformancePeriodMetrics(
         revenue=_ZERO,
         quantity=Decimal("0.000"),
@@ -2124,6 +2062,7 @@ def _build_product_performance_stage(
     current_window_start: date,
     anchor_month: date,
 ) -> tuple[ProductLifecycleStage, list[str]]:
+    """Determine product lifecycle stage based on revenue patterns."""
     six_complete_month_cutoff = _shift_month_start(anchor_month, -6)
     if current_revenue > _ZERO and prior_revenue == _ZERO and first_sale_month >= current_window_start:
         return "new", ["rule:new", "prior_revenue_zero", "first_sale_in_current_window"]
@@ -2160,6 +2099,7 @@ async def _load_product_performance_evidence(
     included_window_end: date,
     category: str | None = None,
 ) -> dict[uuid.UUID, _ProductPerformanceEvidence]:
+    """Load product name/category evidence from order lines."""
     if not product_ids:
         return {}
 
@@ -2269,6 +2209,7 @@ async def get_product_performance(
     limit: int = 50,
     include_current_month: bool = False,
 ) -> ProductPerformance:
+    """Analyze product performance with lifecycle staging."""
     anchor_month = normalize_month_start(datetime.now(tz=UTC).date())
     current_start, current_end, prior_start, prior_end = _product_performance_windows(
         include_current_month=include_current_month,
@@ -2413,6 +2354,7 @@ async def get_customer_buying_behavior(
     limit: int = 20,
     include_current_month: bool = False,
 ) -> CustomerBuyingBehavior:
+    """Analyze customer segment buying behavior and cross-sell patterns."""
     normalized_limit = max(1, min(limit, 100))
     anchor_month = datetime.now(tz=UTC).date().replace(day=1)
     months = _CUSTOMER_BUYING_BEHAVIOR_PERIOD_MONTHS[period]

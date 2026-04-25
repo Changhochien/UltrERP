@@ -7,7 +7,7 @@ This migration adds:
 - Index for tenant/active filtering
 
 Revision ID: 1a2b3c4d5e6f
-Revises: <previous revision>
+Revises: abc123def459
 Create Date: 2026-04-24
 """
 
@@ -21,7 +21,7 @@ from alembic import op
 
 # revision identifiers
 revision = "1a2b3c4d5e6f"
-down_revision = None  # Set to previous migration revision
+down_revision = "abc123def459"
 branch_labels = None
 depends_on = None
 

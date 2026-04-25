@@ -1423,4 +1423,52 @@ last_updated: "2026-04-22"
         validation: "TypeScript clean, ESLint clean, 327/327 tests pass. Code review passed - no changes needed. Simplify skill confirmed code is clean."
         prerequisites: ["38.1", "38.2"]
 
-last_updated: "2026-04-22"
+  # Epic 40 - Intelligence Service Modularization and Architecture Hardening
+  epic-40:
+    status: "ready-for-dev"
+    validation_note: "Backlog drafted on 2026-04-25 from the current intelligence app surface: intelligence is mounted in backend/app/main.py, exposed through backend/domains/intelligence/routes.py and backend/domains/intelligence/mcp.py, and composed in src/pages/IntelligencePage.tsx. No implementation has started yet; Stories 40.1 through 40.5 sequence a behavior-preserving backend restructure behind a stable compatibility facade."
+    recommended_execution_order:
+      - "40.1 Intelligence Service Facade and Shared Support Layer"
+      - "40.2 Affinity and Customer Profile Service Extraction"
+      - "40.3 Risk, Prospect, and Buying Behavior Service Extraction"
+      - "40.4 Category Trends and Market Opportunities Decoupling"
+      - "40.5 Revenue Diagnosis and Product Performance Service Extraction"
+    stories:
+      40-1-intelligence-service-facade-and-shared-support-layer:
+        status: "completed"
+        validation: "Story 40.1 implemented and tested. Created services/shared/ package with consolidated helpers and constants. Consolidated duplicate _shift_month_start function. Updated service.py as facade importing from shared layer. All 94 intelligence tests pass."
+        story_id: "40.1"
+        title: "Intelligence Service Facade and Shared Support Layer"
+        story_file: "40-1-intelligence-service-facade-and-shared-support-layer.md"
+        validation: "Story artifact created from the 2026-04-25 intelligence-service restructure plan."
+        prerequisites: []
+      40-2-affinity-and-customer-profile-service-extraction:
+        status: "in-progress"
+        story_id: "40.2"
+        title: "Affinity and Customer Profile Service Extraction"
+        story_file: "40-2-affinity-and-customer-profile-service-extraction.md"
+        validation: "Story artifact created from the 2026-04-25 intelligence-service restructure plan."
+        prerequisites: ["40.1", "19.1", "19.3"]
+      40-3-risk-prospect-and-buying-behavior-service-extraction:
+        status: "ready-for-dev"
+        story_id: "40.3"
+        title: "Risk, Prospect, and Buying Behavior Service Extraction"
+        story_file: "40-3-risk-prospect-and-buying-behavior-service-extraction.md"
+        validation: "Story artifact created from the 2026-04-25 intelligence-service restructure plan."
+        prerequisites: ["40.1", "19.4", "19.5", "20.7"]
+      40-4-category-trends-and-market-opportunities-decoupling:
+        status: "ready-for-dev"
+        story_id: "40.4"
+        title: "Category Trends and Market Opportunities Decoupling"
+        story_file: "40-4-category-trends-and-market-opportunities-decoupling.md"
+        validation: "Story artifact created from the 2026-04-25 intelligence-service restructure plan."
+        prerequisites: ["40.1", "19.2", "19.6"]
+      40-5-revenue-diagnosis-and-product-performance-service-extraction:
+        status: "ready-for-dev"
+        story_id: "40.5"
+        title: "Revenue Diagnosis and Product Performance Service Extraction"
+        story_file: "40-5-revenue-diagnosis-and-product-performance-service-extraction.md"
+        validation: "Story artifact created from the 2026-04-25 intelligence-service restructure plan."
+        prerequisites: ["40.1", "40.2", "40.3", "40.4", "20.4", "20.6"]
+
+last_updated: "2026-04-25"

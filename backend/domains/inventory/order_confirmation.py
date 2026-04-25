@@ -12,7 +12,7 @@ from common.models.inventory_stock import InventoryStock
 from common.models.order_line import OrderLine
 from common.models.stock_adjustment import ReasonCode
 from common.models.warehouse import Warehouse
-from domains.inventory.services import create_stock_adjustment
+from domains.inventory.commands import create_stock_adjustment
 
 
 async def _get_default_warehouse_id_for_order_confirmation(
