@@ -8,6 +8,7 @@
  */
 
 import { useCallback, useMemo, useState } from "react";
+import { ParentSize } from "@visx/responsive";
 import { scaleBand, scaleLinear } from "@visx/scale";
 import { Bar, LinePath } from "@visx/shape";
 import { AxisBottom, AxisLeft } from "@visx/axis";
@@ -101,11 +102,17 @@ export function MonthlyDemandExplorerChart({
         <div className="space-y-2">
           {controls}
           {chartData.length > 0 && (
-            <MonthlyDemandChartInner
-              data={chartData}
-              variant={chartMode}
-              locale={i18n.resolvedLanguage ?? i18n.language ?? "en"}
-            />
+            <ParentSize>
+              {({ width }) => (
+                <MonthlyDemandChartInner
+                  data={chartData}
+                  variant={chartMode}
+                  locale={i18n.resolvedLanguage ?? i18n.language ?? "en"}
+                  width={width}
+                  height={260}
+                />
+              )}
+            </ParentSize>
           )}
         </div>
       </ChartStateView>
@@ -118,17 +125,19 @@ function MonthlyDemandChartInner({
   data,
   variant,
   locale,
+  width,
+  height,
 }: {
   data: { month: string; total_qty: number }[];
   variant: "bar" | "line";
   locale: string;
+  width: number;
+  height: number;
 }) {
   const { showTooltip, hideTooltip, tooltipOpen, tooltipData, tooltipLeft, tooltipTop } =
     useTooltip<{ month: string; total_qty: number }>();
 
   const margin = { top: 10, right: 10, left: 50, bottom: 40 };
-  const width = 600;
-  const height = 260;
   const innerWidth = Math.max(0, width - margin.left - margin.right);
   const innerHeight = Math.max(0, height - margin.top - margin.bottom);
 
