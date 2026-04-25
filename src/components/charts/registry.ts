@@ -11,15 +11,15 @@ import type { ChartSurfaceRegistration } from "./types";
  * Complete registry of all chart surfaces.
  * 
  * EXPLORER TIER:
- * - RevenueTrendChart: Long history with Brush navigator. Migrating to explorer kit in Story 39.5.
- * - StockTrendChart: Stock movements with projections. Uses 30d/90d/180d/1yr/all presets.
+ * - RevenueTrendChart: Long history with Brush navigator and shared formatter contract.
+ * - StockTrendChart: Stock movements with projections, shared explorer controls, and overview navigator.
  * 
  * COMPARISON TIER:
  * - CashFlowCard: Weekly inflows/outflows. Fixed 8-12 week window.
  * - CategoryTrendRadar: Prior vs current period. Fixed 30d/90d/12m windows.
  * 
  * SUMMARY TIER:
- * - MonthlyDemandChart: Single product monthly demand. 12-24 month window.
+ * - MonthlyDemandExplorerChart: Single product monthly demand with dense monthly explorer data.
  * - CustomerAnalyticsTab: Single customer revenue over fixed 12-month window.
  */
 
@@ -31,8 +31,8 @@ export const CHART_REGISTRY: ChartSurfaceRegistration[] = [
     tier: "explorer",
     renderer: "recharts",
     owner: "dashboard",
-    notes: "Long history revenue visualization with Brush navigator. Uses month/quarter/year presets. Migrating to explorer kit in Story 39.5.",
-    migrationStatus: "planned",
+    notes: "Long history revenue visualization with Brush navigator and shared currency formatting. Uses month/quarter/year presets with recharts bridge semantics for v1.",
+    migrationStatus: "completed",
   },
   {
     id: "dashboard-cash-flow",
@@ -40,8 +40,8 @@ export const CHART_REGISTRY: ChartSurfaceRegistration[] = [
     tier: "comparison",
     renderer: "visx",
     owner: "dashboard",
-    notes: "Weekly inflows/outflows comparison. Fixed 8-12 week window. Simple @visx bar chart with custom tooltip. Standardizing shell in Story 39.6.",
-    migrationStatus: "planned",
+    notes: "Weekly inflows/outflows comparison. Fixed 8-12 week window. Simple @visx bar chart with shared currency formatting and existing Card shell.",
+    migrationStatus: "completed",
   },
 
   // INVENTORY CHARTS
@@ -51,17 +51,17 @@ export const CHART_REGISTRY: ChartSurfaceRegistration[] = [
     tier: "explorer",
     renderer: "visx",
     owner: "inventory",
-    notes: "Stock movements with reorder point, safety stock zone, and stockout projection. Uses 30d/90d/180d/1yr/all presets. Migrating to explorer kit in Story 39.5.",
-    migrationStatus: "planned",
+    notes: "Stock movements with reorder point, safety stock zone, stockout projection, shared explorer presets, and overview navigator.",
+    migrationStatus: "completed",
   },
   {
     id: "inventory-monthly-demand",
-    componentPath: "src/domain/inventory/components/MonthlyDemandChart.tsx",
-    tier: "summary",
+    componentPath: "src/domain/inventory/components/MonthlyDemandExplorerChart.tsx",
+    tier: "explorer",
     renderer: "visx",
     owner: "inventory",
-    notes: "Single product monthly demand. 12-24 month window. Bar/line variant toggle. Migrating to explorer tier in Story 39.5 with dense backend.",
-    migrationStatus: "planned",
+    notes: "Single product monthly demand with dense backend data, bar/line variant toggle, shared explorer presets, and overview navigator.",
+    migrationStatus: "completed",
   },
 
   // INTELLIGENCE CHARTS
@@ -71,8 +71,8 @@ export const CHART_REGISTRY: ChartSurfaceRegistration[] = [
     tier: "comparison",
     renderer: "recharts",
     owner: "intelligence",
-    notes: "Category performance prior vs current period. Fixed 30d/90d/12m windows. Standardizing shell in Story 39.6.",
-    migrationStatus: "planned",
+    notes: "Category performance prior vs current period. Fixed 30d/90d/12m windows with shared currency formatting and no explorer controls.",
+    migrationStatus: "completed",
   },
 
   // CUSTOMER CHARTS
@@ -82,8 +82,8 @@ export const CHART_REGISTRY: ChartSurfaceRegistration[] = [
     tier: "summary",
     renderer: "recharts",
     owner: "customers",
-    notes: "Single customer revenue over fixed 12-month window. Fixed comparison, not exploratory. Standardizing shell in Story 39.6.",
-    migrationStatus: "planned",
+    notes: "Single customer revenue over fixed 12-month window with shared currency formatting. Fixed comparison, not exploratory.",
+    migrationStatus: "completed",
   },
 ];
 

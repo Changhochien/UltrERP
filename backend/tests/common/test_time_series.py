@@ -158,6 +158,45 @@ class TestDensifyDailySeries:
         # Day 2 should be zero-filled
         assert points[1]["is_zero_filled"] is True
 
+    def test_carry_forward_preserves_value_and_zero_fill_provenance(self):
+        """Stock-level series carry the last value through quiet days."""
+        start = date(2025, 1, 1)
+        end = date(2025, 1, 4)
+        source_data = {
+            "2025-01-01": 10.0,
+            "2025-01-03": 8.0,
+        }
+
+        points, meta = densify_daily_series(
+            source_data=source_data,
+            requested_start=start,
+            requested_end=end,
+            current_date=date(2025, 1, 10),
+            carry_forward=True,
+            initial_value=0,
+        )
+
+        assert [point["value"] for point in points] == [10.0, 10.0, 8.0, 8.0]
+        assert [point["is_zero_filled"] for point in points] == [False, True, False, True]
+        assert points[1]["source"] == "zero-filled"
+        assert meta["available_start"] == "2025-01-01"
+        assert meta["available_end"] == "2025-01-03"
+
+    def test_historical_range_default_visible_window_stays_inside_request(self):
+        """Historical daily ranges should not default to a future visible window."""
+        start = date(2025, 1, 1)
+        end = date(2025, 1, 5)
+
+        _, meta = densify_daily_series(
+            source_data={},
+            requested_start=start,
+            requested_end=end,
+            current_date=date(2026, 4, 25),
+        )
+
+        assert meta["default_visible_start"] == "2025-01-01"
+        assert meta["default_visible_end"] == "2025-01-05"
+
 
 class TestRangeLimits:
     """Tests for v1 range limit checking."""

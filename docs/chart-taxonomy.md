@@ -1,7 +1,7 @@
 # Chart Taxonomy and Migration Matrix
 
 **Status:** Active  
-**Last Updated:** 2026-04-24  
+**Last Updated:** 2026-04-25  
 **Epic:** 39 - Chart Platform Foundation
 
 ## Chart Surface Inventory
@@ -12,9 +12,9 @@ This document catalogs all chart surfaces in UltrERP and classifies them into ti
 
 | Tier | Count | Charts |
 |------|-------|--------|
-| **explorer** | 2 | RevenueTrendChart, StockTrendChart |
+| **explorer** | 3 | RevenueTrendChart, StockTrendChart, MonthlyDemandExplorerChart |
 | **comparison** | 2 | CashFlowCard, CategoryTrendRadar |
-| **summary** | 2 | MonthlyDemandChart, CustomerAnalyticsTab |
+| **summary** | 1 | CustomerAnalyticsTab |
 | **non-chart** | 8+ | KPI cards, sparklines, data tables |
 
 ## Detailed Inventory
@@ -56,19 +56,43 @@ Will adopt explorer kit in Story 39.5, possibly bridging to visx renderer if jus
 Stock movements over time with reorder point reference line, safety stock zone, and stockout projection. Uses 30d/90d/180d/1yr/all presets for time navigation. Users explore inventory levels and stockout risk over extended periods.
 
 **Current interaction model:**
-- Time range presets: 30d, 90d, 180d, 1yr, all
+- Shared explorer presets: 3M, 6M, 1Y, 2Y, 4Y, All
+- Overview navigator for visible-range selection
 - Reference line for reorder point
 - Projected future line (dashed) for stockout forecast
 - Color-coded dots by reason code
 
 **Migration notes:**  
-Already uses @visx, will adopt explorer kit in Story 39.5 for consistent range controls.
+Uses @visx with the shared explorer frame while preserving reorder point, safety-stock, and projection overlays.
+
+---
+
+#### 3. MonthlyDemandExplorerChart
+| Attribute | Value |
+|-----------|-------|
+| **Path** | `src/domain/inventory/components/MonthlyDemandExplorerChart.tsx` |
+| **Renderer** | @visx |
+| **Data Density** | Up to 48 monthly buckets in v1 loaded range |
+| **Owner** | inventory |
+| **Migration Wave** | First (Story 39-5) |
+
+**Rationale for explorer tier:**  
+Product demand planning needs sparse and long monthly history to remain visible and inspectable. Dense backend data plus shared visible-range controls make zero-demand months explicit instead of hiding them.
+
+**Current interaction model:**
+- Shared explorer presets: 3M, 6M, 1Y, 2Y, 4Y, All
+- Overview navigator over the loaded dense monthly range
+- Bar/line mode toggle
+- Tooltip and axis formatting through shared chart helpers
+
+**Migration notes:**  
+Replaces the old summary-only monthly demand surface in product analytics while leaving the legacy sparse endpoint and chart component available for compatibility cleanup later.
 
 ---
 
 ### COMPARISON TIER
 
-#### 3. CashFlowCard
+#### 4. CashFlowCard
 | Attribute | Value |
 |-----------|-------|
 | **Path** | `src/domain/dashboard/components/CashFlowCard.tsx` |
@@ -90,7 +114,7 @@ Will standardize shell and formatting in Story 39.6. No renderer change needed.
 
 ---
 
-#### 4. CategoryTrendRadar
+#### 5. CategoryTrendRadar
 | Attribute | Value |
 |-----------|-------|
 | **Path** | `src/domain/intelligence/components/CategoryTrendRadar.tsx` |
@@ -113,28 +137,6 @@ Will standardize shell and formatting in Story 39.6. No renderer change needed.
 ---
 
 ### SUMMARY TIER
-
-#### 5. MonthlyDemandChart
-| Attribute | Value |
-|-----------|-------|
-| **Path** | `src/domain/inventory/components/MonthlyDemandChart.tsx` |
-| **Renderer** | @visx |
-| **Data Density** | 12-24 points (monthly) |
-| **Owner** | inventory |
-| **Migration Wave** | First (Story 39-5) |
-
-**Rationale for summary tier (candidate for explorer upgrade):**  
-Currently summary tier with 12-24 month window and bar/line toggle. However, users need to see longer demand history for operational planning. Story 39.5 will upgrade to explorer tier with dense backend.
-
-**Current interaction model:**
-- Bar/line variant toggle
-- Simple tooltip
-- No range navigation
-
-**Migration notes:**  
-Story 39.5 will upgrade to explorer tier with dense time-series backend. Will gain navigator and visible range controls.
-
----
 
 #### 6. CustomerAnalyticsTab (Revenue Trend)
 | Attribute | Value |
@@ -191,17 +193,25 @@ These are **data tables** with optional progress bars, not chart visualizations:
 
 | Chart | Current State | Target State | Dependencies |
 |-------|---------------|--------------|--------------|
-| MonthlyDemandChart | summary, visx | explorer, visx | 39-2 backend, 39-4 kit |
-| StockTrendChart | explorer, visx | explorer, visx (consolidated kit) | 39-2 backend, 39-4 kit |
-| RevenueTrendChart | explorer, recharts | explorer, visx (or bridged) | 39-2 backend, 39-4 kit |
+| MonthlyDemandExplorerChart | explorer, visx | completed shared explorer frame | 39-2 backend, 39-4 kit |
+| StockTrendChart | explorer, visx | completed shared explorer frame | 39-2 backend, 39-4 kit |
+| RevenueTrendChart | explorer, recharts | completed v1 bridge/Brush path | 39-2 backend, 39-4 kit |
 
 ### Second Wave (Story 39-6)
 
 | Chart | Current State | Target State | Dependencies |
 |-------|---------------|--------------|--------------|
-| CashFlowCard | comparison, visx | comparison, visx (shared shell) | 39-3 shell |
-| CategoryTrendRadar | comparison, recharts | comparison, recharts (shared shell) | 39-3 shell |
-| CustomerAnalyticsTab | summary, recharts | summary, recharts (shared shell) | 39-3 shell |
+| CashFlowCard | comparison, visx | completed shared formatter path | 39-3 shell |
+| CategoryTrendRadar | comparison, recharts | completed shared formatter path | 39-3 shell |
+| CustomerAnalyticsTab | summary, recharts | completed shared formatter path | 39-3 shell |
+
+## New Chart Review Rules
+
+- Update this taxonomy and `src/components/charts/registry.ts` for every new chart or tier change.
+- Start with table, KPI, summary, or comparison before choosing explorer.
+- Add navigator and visible-range controls only when users need to inspect a long loaded range.
+- Use shared chart formatters and state primitives unless a documented domain exception is reviewed.
+- Keep legacy sparse endpoints and hooks until a dedicated cleanup story removes them.
 
 ### Non-Chart Holdouts
 

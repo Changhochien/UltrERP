@@ -1,6 +1,6 @@
 # Story 39.6: Summary and Comparison Chart Standardization plus Governance
 
-Status: review
+Status: done
 
 ## Story
 
@@ -38,13 +38,13 @@ This story is where the architecture answers the scope question clearly: **all c
 - [x] Task 2: Standardize formatting and legend behavior. (AC: 1-3)
   - [x] Replaced local `formatTWD` functions with shared `formatChartCurrency`.
   - [x] Kept domain-specific copy and labels owned locally.
-- [ ] Task 3: Publish governance rules for future chart work. (AC: 2-4)
-  - [ ] Update `docs/chart-platform-architecture.md` and `docs/chart-taxonomy.md` with the post-wave registry state.
-  - [ ] Document that all charts adopt platform conventions.
-  - [ ] Document that only explorer-tier charts adopt navigator and visible-range controls.
-  - [ ] Add review guidance for choosing between table, KPI, summary chart, comparison chart, and explorer chart.
-- [ ] Task 4: Add focused validation. (AC: 1-4)
-  - [ ] Run tests for migrated charts.
+- [x] Task 3: Publish governance rules for future chart work. (AC: 2-4)
+  - [x] Update `docs/chart-platform-architecture.md` and `docs/chart-taxonomy.md` with the post-wave registry state.
+  - [x] Document that all charts adopt platform conventions.
+  - [x] Document that only explorer-tier charts adopt navigator and visible-range controls.
+  - [x] Add review guidance for choosing between table, KPI, summary chart, comparison chart, and explorer chart.
+- [x] Task 4: Add focused validation. (AC: 1-4)
+  - [x] Run tests for migrated charts.
 
 ## Dev Notes
 
@@ -92,7 +92,15 @@ GPT-5.4
 ### Completion Notes List
 
 - 2026-04-24: Drafted Story 39.6 to standardize the remaining simple chart surfaces while explicitly rejecting a one-size-fits-all explorer migration.
+- 2026-04-25: Review pass completed governance docs, updated registry/taxonomy status, fixed locale-aware shared currency formatting, and validated comparison chart coverage.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/39-6-summary-and-comparison-chart-standardization-and-governance.md`
+- `docs/chart-platform-architecture.md`
+- `docs/chart-taxonomy.md`
+- `src/components/charts/registry.ts`
+- `src/domain/dashboard/components/CashFlowCard.tsx`
+- `src/domain/dashboard/components/RevenueTrendChart.tsx`
+- `src/domain/intelligence/components/CategoryTrendRadar.tsx`
+- `src/components/customers/CustomerAnalyticsTab.tsx`

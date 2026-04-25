@@ -16,7 +16,7 @@ interface MonthlyDemandChartProps {
 function getVisibleTickMonths(months: string[], innerWidth: number) {
   const maxTickCount = Math.max(2, Math.floor(innerWidth / 72));
   const step = Math.max(1, Math.ceil(months.length / maxTickCount));
-  return months.filter((month, index) => index % step === 0 || index === months.length - 1);
+  return months.filter((_month, index) => index % step === 0 || index === months.length - 1);
 }
 
 function ChartInner({

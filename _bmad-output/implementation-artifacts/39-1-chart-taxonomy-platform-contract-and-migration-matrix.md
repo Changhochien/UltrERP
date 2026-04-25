@@ -1,6 +1,6 @@
 # Story 39.1: Chart Taxonomy, Platform Contract, and Migration Matrix
 
-Status: review
+Status: done
 
 ## Story
 
@@ -144,6 +144,7 @@ GPT-5.4
 ### Completion Notes List
 
 - 2026-04-24: Drafted Story 39.1 to establish the chart taxonomy, shared platform vocabulary, and migration matrix before broader chart refactoring.
+- 2026-04-25: Reviewed Epic 39 chart taxonomy after implementation, updated migration statuses, and confirmed registry/docs now reflect completed first-wave and standardization work.
 
 ### File List
 

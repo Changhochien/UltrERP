@@ -9,16 +9,17 @@ import { GridRows } from "@visx/grid";
 import { Group } from "@visx/group";
 import { TooltipWithBounds, useTooltip } from "@visx/tooltip";
 
+import { formatChartCurrency, formatCurrencyAxis } from "../../../components/charts/formatters";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
 import { Skeleton } from "../../../components/ui/skeleton";
 import { Button } from "../../../components/ui/button";
 import { useCashFlow } from "../hooks/useDashboard";
 
-function formatTWD(value: string | number): string {
-  return `NT$ ${Number(value).toLocaleString("en-US", {
+function formatTWD(value: string | number, locale: string): string {
+  return formatChartCurrency(Number(value), locale, "TWD", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  })}`;
+  });
 }
 
 interface CashFlowCardProps {
@@ -40,11 +41,13 @@ function ChartInner({
   width,
   height,
   t,
+  locale,
 }: {
   chartData: ChartData[];
   width: number;
   height: number;
   t: (key: string) => string;
+  locale: string;
 }) {
   const { showTooltip, hideTooltip, tooltipOpen, tooltipData, tooltipLeft, tooltipTop } =
     useTooltip<ChartData>();
@@ -94,7 +97,7 @@ function ChartInner({
           />
           <AxisLeft
             scale={yScale}
-            tickFormat={(d) => `NT$ ${((d as number) / 1000).toFixed(0)}k`}
+            tickFormat={(d) => formatCurrencyAxis(Number(d), locale, "NT$")}
             tickLabelProps={() => ({
               fill: "var(--muted-foreground)",
               fontSize: 11,
@@ -183,9 +186,9 @@ function ChartInner({
           <div style={{ color: "var(--muted-foreground)", marginBottom: 4 }}>
             {tooltipData.date}
           </div>
-          <div style={{ color: "#22c55e" }}>Inflows: {formatTWD(tooltipData.inflows)}</div>
-          <div style={{ color: "#ef4444" }}>Outflows: {formatTWD(tooltipData.outflows)}</div>
-          <div style={{ color: "#3b82f6" }}>Net: {formatTWD(tooltipData.net)}</div>
+          <div style={{ color: "#22c55e" }}>Inflows: {formatTWD(tooltipData.inflows, locale)}</div>
+          <div style={{ color: "#ef4444" }}>Outflows: {formatTWD(tooltipData.outflows, locale)}</div>
+          <div style={{ color: "#3b82f6" }}>Net: {formatTWD(tooltipData.net, locale)}</div>
         </TooltipWithBounds>
       )}
     </div>
@@ -193,7 +196,8 @@ function ChartInner({
 }
 
 export function CashFlowCard({ data, isLoading, error, onRetry }: CashFlowCardProps) {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
+  const locale = i18n.resolvedLanguage ?? i18n.language ?? "en";
 
   if (isLoading) {
     return (
@@ -268,7 +272,7 @@ export function CashFlowCard({ data, isLoading, error, onRetry }: CashFlowCardPr
         <div data-testid="cash-flow-chart" className="h-48 w-full">
           <ParentSize>
             {({ width }) => (
-              <ChartInner chartData={chartData} width={width} height={192} t={(key) => t(key)} />
+              <ChartInner chartData={chartData} width={width} height={192} t={(key) => t(key)} locale={locale} />
             )}
           </ParentSize>
         </div>
@@ -278,20 +282,20 @@ export function CashFlowCard({ data, isLoading, error, onRetry }: CashFlowCardPr
             <p className="text-xs text-muted-foreground">
               {t("dashboard.cashFlow.totalInflows")}
             </p>
-            <p className="text-sm font-semibold text-[#22c55e]">{formatTWD(totalInflows)}</p>
+            <p className="text-sm font-semibold text-[#22c55e]">{formatTWD(totalInflows, locale)}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">
               {t("dashboard.cashFlow.totalOutflows")}
             </p>
-            <p className="text-sm font-semibold text-[#ef4444]">{formatTWD(totalOutflows)}</p>
+            <p className="text-sm font-semibold text-[#ef4444]">{formatTWD(totalOutflows, locale)}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">{t("dashboard.cashFlow.netCashFlow")}</p>
             <p
               className={`text-sm font-semibold ${totalNet >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}
             >
-              {formatTWD(Math.abs(totalNet))}
+              {formatTWD(Math.abs(totalNet), locale)}
               {totalNet < 0 ? " ↓" : " ↑"}
             </p>
           </div>

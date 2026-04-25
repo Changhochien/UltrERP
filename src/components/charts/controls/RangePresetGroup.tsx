@@ -22,7 +22,7 @@ export interface RangePresetGroupProps {
   /** Available presets to show */
   presets?: RangePreset[];
   /** Currently selected preset */
-  value: PresetId;
+  value?: PresetId | null;
   /** Selection change handler */
   onChange: (preset: PresetId) => void;
   /** ARIA label for the group */

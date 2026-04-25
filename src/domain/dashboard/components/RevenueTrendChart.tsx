@@ -13,6 +13,7 @@ import {
 import { formatBackendCalendarDate } from "../../../lib/time";
 
 import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayout";
+import { formatChartCurrency, formatCurrencyAxis } from "../../../components/charts/formatters";
 import { Button } from "../../../components/ui/button";
 import { Skeleton } from "../../../components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "../../../components/ui/tabs";
@@ -29,15 +30,8 @@ interface RevenueTrendChartProps {
   onLoadMore?: () => void;
 }
 
-function formatTWD(value: number): string {
-  return `NT$ ${value.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
-
 export function RevenueTrendChart(props: RevenueTrendChartProps) {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
   const {
     data,
     isLoading,
@@ -60,6 +54,7 @@ export function RevenueTrendChart(props: RevenueTrendChartProps) {
   const xInterval: number | "preserveStartEnd" = period === "month" ? 6 : "preserveStartEnd";
 
   const chartData = data.map((d) => ({ ...d, revenue: Number(d.revenue) }));
+  const locale = i18n.resolvedLanguage ?? i18n.language ?? "en";
   const showZoomNavigator = chartData.length > 10 || Boolean(hasMore);
 
   const loadMoreContent = (): React.ReactNode => {
@@ -118,7 +113,7 @@ export function RevenueTrendChart(props: RevenueTrendChartProps) {
                 style={{ fontSize: "12px" }}
               />
               <YAxis
-                tickFormatter={(v) => `NT$ ${(v / 1000).toFixed(0)}k`}
+                tickFormatter={(v) => formatCurrencyAxis(Number(v), locale, "NT$")}
                 fontSize={12}
                 width={60}
                 domain={[0, "auto"]}
@@ -131,7 +126,7 @@ export function RevenueTrendChart(props: RevenueTrendChartProps) {
                 cursor={{ stroke: "#6366f1", strokeWidth: 1 }}
                 contentStyle={{ color: "#000" }}
                 labelFormatter={(d) => formatBackendCalendarDate(d as string, "yyyy-MM-dd")}
-                formatter={(val) => [formatTWD(Number(val)), "Revenue"]}
+                formatter={(val) => [formatChartCurrency(Number(val), locale, "TWD"), "Revenue"]}
               />
               <Line
                 type="monotone"

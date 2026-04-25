@@ -1,6 +1,6 @@
 # Story 39.3: Shared Frontend Chart Shell and Control Primitives
 
-Status: review
+Status: done
 
 ## Story
 
@@ -139,7 +139,15 @@ GPT-5.4
 ### Completion Notes List
 
 - 2026-04-24: Drafted Story 39.3 to standardize chart shells and controls across domains without collapsing all charts into one renderer-specific abstraction.
+- 2026-04-25: Review pass hardened shared currency formatting options, fixed ISO currency usage in migrated charts, and validated chart platform formatter tests.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/39-3-shared-frontend-chart-shell-and-control-primitives.md`
+- `src/components/charts/formatters.ts`
+- `src/components/charts/ChartShell.tsx`
+- `src/components/charts/ChartStateView.tsx`
+- `src/components/charts/ChartLegend.tsx`
+- `src/components/charts/controls/RangePresetGroup.tsx`
+- `src/components/charts/controls/ChartModeToggle.tsx`
+- `src/components/charts/__tests__/formatters.test.ts`

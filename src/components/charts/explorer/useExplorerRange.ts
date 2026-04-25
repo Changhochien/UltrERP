@@ -5,7 +5,7 @@
  * Provides preset navigation and visible range updates.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { PresetId } from "../controls/RangePresetGroup";
 import { presetToMonths } from "../controls/RangePresetGroup";
@@ -41,6 +41,35 @@ export interface UseExplorerRangeReturn {
   getPresetMonths: (preset: PresetId) => number | null;
 }
 
+function isMonthRange(range: ExplorerRange): boolean {
+  return range.start.length === 7 && range.end.length === 7;
+}
+
+function parseRangeDate(value: string): Date {
+  return new Date(value.length === 7 ? `${value}-01T00:00:00Z` : `${value}T00:00:00Z`);
+}
+
+function formatRangeDate(date: Date, monthPrecision: boolean): string {
+  const isoDate = date.toISOString().slice(0, 10);
+  return monthPrecision ? isoDate.slice(0, 7) : isoDate;
+}
+
+function clampRange(range: ExplorerRange, bounds: ExplorerRange): ExplorerRange {
+  const rangeStart = parseRangeDate(range.start).getTime();
+  const rangeEnd = parseRangeDate(range.end).getTime();
+  const boundsStart = parseRangeDate(bounds.start).getTime();
+  const boundsEnd = parseRangeDate(bounds.end).getTime();
+  const monthPrecision = isMonthRange(bounds);
+
+  const start = new Date(Math.max(boundsStart, Math.min(rangeStart, boundsEnd)));
+  const end = new Date(Math.max(start.getTime(), Math.min(rangeEnd, boundsEnd)));
+
+  return {
+    start: formatRangeDate(start, monthPrecision),
+    end: formatRangeDate(end, monthPrecision),
+  };
+}
+
 /**
  * Hook for managing explorer chart range state.
  */
@@ -58,6 +87,16 @@ export function useExplorerRange({
 
   // Currently selected preset (null if user customized)
   const [selectedPreset, setSelectedPreset] = useState<PresetId | null>("1Y");
+
+  useEffect(() => {
+    setVisibleRange(clampRange(defaultVisibleRange, availableRange));
+    setSelectedPreset("1Y");
+  }, [
+    availableRange.start,
+    availableRange.end,
+    defaultVisibleRange.start,
+    defaultVisibleRange.end,
+  ]);
 
   /**
    * Apply a preset, updating the visible range.
@@ -77,22 +116,29 @@ export function useExplorerRange({
       return;
     }
 
-    // Calculate end date (current month or available end)
-    const availableEnd = new Date(availableRange.end + "-01");
-    const endDate = availableEnd < currentDate ? availableEnd : currentDate;
+    const monthPrecision = isMonthRange(availableRange);
+    const availableEnd = parseRangeDate(availableRange.end);
+    const availableStart = parseRangeDate(availableRange.start);
+    const currentRangeDate = monthPrecision
+      ? new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), 1))
+      : new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), currentDate.getUTCDate()));
+    const endDate = availableEnd < currentRangeDate ? availableEnd : currentRangeDate;
 
     // Calculate start date
     const startDate = new Date(endDate);
-    startDate.setMonth(startDate.getMonth() - months);
-    startDate.setDate(1); // First of month
+    if (monthPrecision) {
+      startDate.setUTCMonth(startDate.getUTCMonth() - (months - 1));
+      startDate.setUTCDate(1);
+    } else {
+      startDate.setUTCMonth(startDate.getUTCMonth() - months);
+    }
 
     // Ensure we don't go before available start
-    const availableStart = new Date(availableRange.start + "-01");
     const finalStart = startDate < availableStart ? availableStart : startDate;
 
     setVisibleRange({
-      start: finalStart.toISOString().slice(0, 10),
-      end: endDate.toISOString().slice(0, 10),
+      start: formatRangeDate(finalStart, monthPrecision),
+      end: formatRangeDate(endDate, monthPrecision),
     });
   }, [availableRange, currentDate]);
 
@@ -101,9 +147,9 @@ export function useExplorerRange({
    * Clears preset selection.
    */
   const updateVisibleRange = useCallback((range: ExplorerRange) => {
-    setVisibleRange(range);
+    setVisibleRange(clampRange(range, availableRange));
     setSelectedPreset(null); // Custom range
-  }, []);
+  }, [availableRange]);
 
   /**
    * Reset to default visible range.

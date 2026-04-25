@@ -82,6 +82,7 @@ export function CategoryTrendRadar() {
   const [period, setPeriod] = useState<"last_30d" | "last_90d" | "last_12m">("last_90d");
   const { data, isLoading, error } = useCategoryTrends(period);
   const { data: marketSignals } = useMarketOpportunities(period);
+  const locale = i18n.resolvedLanguage ?? i18n.language ?? "en";
   const sortedTrends = data ? sortTrends(data.trends) : [];
   const chartData = sortedTrends.map((trend) => ({
     ...trend,
@@ -174,7 +175,7 @@ export function CategoryTrendRadar() {
                       <XAxis dataKey="category" tickLine={false} axisLine={false} fontSize={12} />
                       <YAxis tickFormatter={(value) => `NT$ ${(Number(value) / 1000).toFixed(0)}k`} width={72} />
                       <Tooltip
-                        formatter={(value: number, name: string) => [formatChartCurrency(value, "en-US", "TWD"), name]}
+                        formatter={(value: number, name: string) => [formatChartCurrency(value, locale, "TWD"), name]}
                         labelStyle={{ color: "#0f172a" }}
                       />
                       <Bar dataKey="prior_period_revenue" name={t("priorPeriod", { defaultValue: "Prior" })} fill="#d1d5db" radius={[6, 6, 0, 0]} />
@@ -224,8 +225,8 @@ export function CategoryTrendRadar() {
                             </p>
                           </div>
                         </TableCell>
-                        <TableCell>{formatChartCurrency(Number(trend.current_period_revenue), "en-US", "TWD")}</TableCell>
-                        <TableCell>{formatChartCurrency(Number(trend.prior_period_revenue), "en-US", "TWD")}</TableCell>
+                        <TableCell>{formatChartCurrency(Number(trend.current_period_revenue), locale, "TWD")}</TableCell>
+                        <TableCell>{formatChartCurrency(Number(trend.prior_period_revenue), locale, "TWD")}</TableCell>
                         <TableCell className="font-medium">{formatDelta(trend.revenue_delta_pct)}</TableCell>
                         <TableCell className="text-right">{trend.new_customer_count}</TableCell>
                         <TableCell className="text-right">{trend.churned_customer_count}</TableCell>

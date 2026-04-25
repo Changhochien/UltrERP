@@ -1,7 +1,7 @@
 # Chart Platform Architecture
 
 **Status:** Active  
-**Last Updated:** 2026-04-24  
+**Last Updated:** 2026-04-25  
 **Epic:** 39 - Chart Platform Foundation
 
 ## Overview
@@ -207,18 +207,30 @@ src/components/charts/
 ## Migration Waves
 
 ### First Wave (Stories 39-2, 39-4, 39-5)
-- Backend dense time-series contracts
-- Frontend explorer kit
-- RevenueTrendChart, StockTrendChart, MonthlyDemandChart
+- Backend dense time-series contracts for monthly demand, stock history, and revenue trend
+- Frontend explorer kit with shared preset state and draggable overview navigator
+- MonthlyDemandExplorerChart and StockTrendChart use the shared explorer frame
+- RevenueTrendChart remains on recharts in v1 with shared formatting and existing Brush behavior
 
 ### Second Wave (Story 39-6)
-- CashFlowCard shell standardization
-- CategoryTrendRadar shell standardization
-- CustomerAnalyticsTab shell standardization
+- CashFlowCard shared formatter standardization while retaining its existing compact Card shell
+- CategoryTrendRadar shared formatter standardization without explorer controls
+- CustomerAnalyticsTab shared formatter standardization without explorer controls
 
 ### Non-Migration Holdouts
 - KPI cards and sparklines (not charts)
 - Intelligence tables (data tables, not charts)
+
+## Governance Rules
+
+New chart work must choose the lightest tier that fits the user need:
+
+1. Use a table or KPI card when the user needs exact values, status, or a small metric snapshot.
+2. Use `summary` for one metric over a short fixed window.
+3. Use `comparison` for category, period-over-period, or multi-series comparison without long-history navigation.
+4. Use `explorer` only when users need to inspect a loaded range through visible-range controls or a navigator.
+
+Every chart PR must update `docs/chart-taxonomy.md` and `src/components/charts/registry.ts`, use shared formatters and state primitives, and document any exception to shared controls or shell behavior.
 
 ## PR Review Checklist
 

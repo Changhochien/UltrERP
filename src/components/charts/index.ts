@@ -65,3 +65,24 @@ export { presetToMonths } from "./controls/RangePresetGroup";
 
 export { ChartModeToggle } from "./controls/ChartModeToggle";
 export type { ChartMode, ChartModeOption, ChartModeToggleProps } from "./controls/ChartModeToggle";
+
+// Explorer components
+export { useExplorerRange } from "./explorer/useExplorerRange";
+export type {
+  ExplorerRange,
+  UseExplorerRangeOptions,
+  UseExplorerRangeReturn,
+} from "./explorer/useExplorerRange";
+
+export { OverviewNavigator } from "./explorer/OverviewNavigator";
+export type { OverviewNavigatorProps } from "./explorer/OverviewNavigator";
+
+export { ExplorerChartFrame } from "./explorer/ExplorerChartFrame";
+export type { ExplorerChartFrameProps } from "./explorer/ExplorerChartFrame";
+
+export {
+  filterDataByRange,
+  calculateBrushIndices,
+  parseChartDate,
+  formatChartDateForAxis,
+} from "./explorer/rechartsRangeBridge";

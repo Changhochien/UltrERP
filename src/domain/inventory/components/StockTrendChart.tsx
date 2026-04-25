@@ -1,6 +1,6 @@
 /** Stock trend line chart with reorder point reference line and stockout projection. */
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { ParentSize } from "@visx/responsive";
 import { scaleTime, scaleLinear } from "@visx/scale";
 import { LinePath } from "@visx/shape";
@@ -10,6 +10,7 @@ import { Group } from "@visx/group";
 import { curveMonotoneX } from "@visx/curve";
 import { TooltipWithBounds, useTooltip } from "@visx/tooltip";
 import { parseBackendDate } from "../../../lib/time";
+import { ExplorerChartFrame, useExplorerRange } from "../../../components/charts/explorer";
 import type { StockHistoryPoint } from "../types";
 
 interface StockTrendChartProps {
@@ -19,17 +20,23 @@ interface StockTrendChartProps {
   avgDailyUsage?: number;
 }
 
-const TIME_RANGES = [
-  { label: "30d", days: 30 },
-  { label: "90d", days: 90 },
-  { label: "180d", days: 180 },
-  { label: "1yr", days: 365 },
-  { label: "all", days: -1 },
-] as const;
-
 function formatDate(dateStr: string): string {
   const d = parseBackendDate(dateStr);
   return d.toLocaleDateString("zh-TW", { timeZone: "Asia/Taipei", month: "short", day: "numeric" });
+}
+
+function dateKey(value: string): string {
+  return parseBackendDate(value).toISOString().slice(0, 10);
+}
+
+function shiftDate(value: string, days: number): string {
+  const date = parseBackendDate(value);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function maxDateKey(left: string, right: string): string {
+  return left > right ? left : right;
 }
 
 function dotColor(reasonCode: string): string {
@@ -266,21 +273,48 @@ export function StockTrendChart({
   safetyStock,
   avgDailyUsage,
 }: StockTrendChartProps) {
-  const [range, setRange] = useState<30 | 90 | 180 | 365 | -1>(90);
+  const sortedPoints = useMemo(
+    () => [...points].sort((left, right) => parseBackendDate(left.date).getTime() - parseBackendDate(right.date).getTime()),
+    [points],
+  );
+
+  const loadedRange = useMemo(() => {
+    if (sortedPoints.length === 0) {
+      const today = new Date().toISOString().slice(0, 10);
+      return { start: today, end: today };
+    }
+
+    return {
+      start: dateKey(sortedPoints[0].date),
+      end: dateKey(sortedPoints[sortedPoints.length - 1].date),
+    };
+  }, [sortedPoints]);
+
+  const defaultVisibleRange = useMemo(
+    () => ({
+      start: maxDateKey(loadedRange.start, shiftDate(loadedRange.end, -89)),
+      end: loadedRange.end,
+    }),
+    [loadedRange.end, loadedRange.start],
+  );
+
+  const { visibleRange, selectedPreset, applyPreset, updateVisibleRange } = useExplorerRange({
+    availableRange: loadedRange,
+    defaultVisibleRange,
+  });
 
   const { filtered, currentStock, daysUntilStockout, projectedLine } = useMemo(() => {
-    if (points.length === 0) {
+    if (sortedPoints.length === 0) {
       return { filtered: [], currentStock: 0, daysUntilStockout: null, projectedLine: [] };
     }
 
     const now = Date.now();
-    const cutoff = range === -1 ? 0 : now - range * 24 * 60 * 60 * 1000;
-    const filtered =
-      cutoff > 0
-        ? points.filter((p) => parseBackendDate(p.date).getTime() >= cutoff)
-        : points;
+    const filtered = sortedPoints.filter((point) => {
+      const key = dateKey(point.date);
+      return key >= visibleRange.start && key <= visibleRange.end;
+    });
 
-    const last = points[points.length - 1];
+    const last = sortedPoints[sortedPoints.length - 1];
     const currentStock = last?.running_stock ?? 0;
 
     let daysUntilStockout: number | null = null;
@@ -301,52 +335,27 @@ export function StockTrendChart({
     }
 
     return { filtered, currentStock, daysUntilStockout, projectedLine };
-  }, [points, range, avgDailyUsage]);
+  }, [avgDailyUsage, sortedPoints, visibleRange.end, visibleRange.start]);
 
   const displayPoints = filtered;
 
-  // Debug logging
-  if (points.length > 0) {
-    const now = Date.now();
-    const cutoff = range === -1 ? 0 : now - range * 24 * 60 * 60 * 1000;
-    const cutoffDate = new Date(cutoff).toISOString();
-    console.log("[StockTrendChart]", {
-      range,
-      cutoffDate,
-      now: new Date(now).toISOString(),
-      pointsCount: points.length,
-      filteredCount: filtered.length,
-      firstPoint: points[0]?.date,
-      lastPoint: points[points.length - 1]?.date,
-    });
-  }
-
   return (
-    <div className="space-y-3">
-      {/* Time range buttons - always visible */}
-      <div className="flex items-center gap-1">
-        {TIME_RANGES.map((r) => (
-          <button
-            key={r.label}
-            type="button"
-            onClick={() => setRange(r.days as typeof range)}
-            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-              range === r.days
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {r.label}
-          </button>
-        ))}
-        {daysUntilStockout != null && daysUntilStockout > 0 && (
-          <span className="ml-3 text-xs text-muted-foreground">
-            Stockout ~{Math.round(daysUntilStockout)}d
-          </span>
-        )}
-      </div>
-
-      {/* Chart or empty state */}
+    <ExplorerChartFrame
+      empty={sortedPoints.length === 0}
+      emptyMessage="No movements in selected period"
+      availableRange={loadedRange}
+      defaultVisibleRange={defaultVisibleRange}
+      visibleRange={visibleRange}
+      onVisibleRangeChange={updateVisibleRange}
+      selectedPreset={selectedPreset}
+      onPresetChange={applyPreset}
+      controls={daysUntilStockout != null && daysUntilStockout > 0 ? (
+        <span className="text-xs text-muted-foreground">
+          Stockout ~{Math.round(daysUntilStockout)}d
+        </span>
+      ) : null}
+      navigator={<StockTrendOverview data={sortedPoints} />}
+    >
       {displayPoints.length === 0 ? (
         <div className="flex h-64 flex-col items-center justify-center text-muted-foreground">
           <p className="text-sm">No movements in selected period</p>
@@ -389,6 +398,23 @@ export function StockTrendChart({
           </div>
         </>
       )}
+    </ExplorerChartFrame>
+  );
+}
+
+function StockTrendOverview({ data }: { data: StockHistoryPoint[] }) {
+  const maxValue = Math.max(...data.map((point) => point.running_stock), 1);
+
+  return (
+    <div className="flex h-full items-end gap-px px-2 py-1">
+      {data.map((point) => (
+        <div
+          key={`${point.date}-${point.running_stock}`}
+          className="min-w-1 flex-1 rounded-sm bg-primary/60"
+          style={{ height: `${Math.max(8, (point.running_stock / maxValue) * 100)}%` }}
+          aria-hidden="true"
+        />
+      ))}
     </div>
   );
 }

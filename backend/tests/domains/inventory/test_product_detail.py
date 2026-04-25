@@ -332,6 +332,40 @@ async def test_monthly_demand_endpoint_includes_current_month_by_default(
         _teardown(prev)
 
 
+async def test_monthly_demand_series_endpoint_returns_dense_zero_filled_points() -> None:
+    product_id = uuid.uuid4()
+    session = FakeAsyncSession()
+    session.queue_rows(
+        [
+            SimpleNamespace(month=datetime(2026, 1, 1, tzinfo=UTC), total_qty=-5),
+            SimpleNamespace(month=datetime(2026, 3, 1, tzinfo=UTC), total_qty=-2),
+        ]
+    )
+
+    prev = _setup(session)
+    try:
+        resp = await _get(
+            f"/api/v1/inventory/products/{product_id}/monthly-demand-series",
+            start_month="2026-01",
+            end_month="2026-03",
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert [point["bucket_start"] for point in body["points"]] == [
+            "2026-01",
+            "2026-02",
+            "2026-03",
+        ]
+        assert [point["value"] for point in body["points"]] == [5.0, 0.0, 2.0]
+        assert [point["is_zero_filled"] for point in body["points"]] == [False, True, False]
+        assert body["range"]["requested_start"] == "2026-01"
+        assert body["range"]["requested_end"] == "2026-03"
+        assert body["range"]["bucket"] == "month"
+        assert body["range"]["timezone"] == "Asia/Taipei"
+    finally:
+        _teardown(prev)
+
+
 async def test_product_detail_uses_localized_category_when_available() -> None:
     category_ref = type(
         "FakeCategoryRef",

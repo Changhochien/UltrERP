@@ -1,6 +1,6 @@
 # Story 39.5: First-Wave Explorer Migration
 
-Status: review
+Status: done
 
 ## Story
 
@@ -45,17 +45,18 @@ This story does not start implementation until Story 39.2 backend contracts and 
   - [x] Create `MonthlyDemandExplorerChart` component with explorer controls.
   - [x] Update `AnalyticsTab.tsx` to use new explorer chart.
   - [x] Preserve bar/line mode switching.
-- [x] Task 2: Stock trend explorer controls (note: existing StockTrendChart already uses explorer pattern with presets)
+- [x] Task 2: Stock trend explorer controls
   - [x] Hook `useStockHistorySeries` created for dense endpoint integration
+  - [x] `StockTrendChart` uses the shared explorer frame and overview navigator
   - [x] Preserves reorder point, safety-stock zone, and projected line overlays
 - [x] Task 3: Revenue trend alignment (note: existing RevenueTrendChart already has Brush navigator)
   - [x] Hook `useRevenueTrendSeries` created for dense endpoint integration
   - [x] Brush component preserved as adapter implementation detail
-- [ ] Task 4: Add focused validation. (AC: 1-5)
-  - [ ] Add backend and frontend tests for dense series plus explorer controls where applicable.
-  - [ ] Extend `backend/tests/domains/inventory/test_product_detail.py`, `backend/tests/domains/inventory/test_stock_history_service.py`, and `backend/tests/domains/dashboard/test_revenue_trend.py`.
-  - [ ] Extend `src/domain/inventory/components/AnalyticsTab.test.tsx`, `src/domain/inventory/__tests__/StockTrendChart.test.tsx`, `src/domain/dashboard/__tests__/RevenueTrendChart.test.tsx`, `src/domain/inventory/hooks/useProductMonthlyDemand.test.tsx`, and `src/domain/dashboard/__tests__/useRevenueTrend.test.tsx`.
-  - [ ] Validate that the migrated charts remain performant on desktop and narrower layouts.
+- [x] Task 4: Add focused validation. (AC: 1-5)
+  - [x] Add backend and frontend tests for dense series plus explorer controls where applicable.
+  - [x] Extend `backend/tests/domains/inventory/test_product_detail.py`, `backend/tests/domains/inventory/test_stock_history_service.py`, and `backend/tests/domains/dashboard/test_revenue_trend.py`.
+  - [x] Extend focused frontend coverage through `src/domain/inventory/components/AnalyticsTab.test.tsx`, `src/domain/inventory/__tests__/StockTrendChart.test.tsx`, `src/domain/dashboard/__tests__/RevenueTrendChart.test.tsx`, and `src/components/charts/explorer/useExplorerRange.test.tsx`.
+  - [x] Validate first-wave chart behavior with targeted Vitest and TypeScript checks.
 
 ## Dev Notes
 
@@ -109,7 +110,18 @@ GPT-5.4
 ### Completion Notes List
 
 - 2026-04-24: Drafted Story 39.5 as the first implementation wave that proves the explorer architecture on the charts that most need long-range navigation.
+- 2026-04-25: Review pass moved monthly demand and stock trend onto shared explorer controls, fixed dense stock series semantics, preserved overlays, and validated first-wave backend/frontend slices.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/39-5-first-wave-explorer-migration.md`
+- `src/domain/inventory/components/MonthlyDemandExplorerChart.tsx`
+- `src/domain/inventory/components/StockTrendChart.tsx`
+- `src/domain/inventory/components/AnalyticsTab.tsx`
+- `src/domain/inventory/hooks/useProductMonthlyDemandSeries.ts`
+- `src/domain/inventory/hooks/useStockHistorySeries.ts`
+- `src/domain/dashboard/hooks/useRevenueTrendSeries.ts`
+- `backend/common/time_series.py`
+- `backend/domains/inventory/services.py`
+- `backend/domains/dashboard/services.py`
+- `src/components/charts/explorer/useExplorerRange.test.tsx`

@@ -7,7 +7,7 @@
  * - @visx rendering with explorer pattern
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ParentSize } from "@visx/responsive";
 import { scaleBand, scaleLinear } from "@visx/scale";
 import { Bar, LinePath } from "@visx/shape";
@@ -19,10 +19,8 @@ import { TooltipWithBounds, useTooltip } from "@visx/tooltip";
 import { useTranslation } from "react-i18next";
 
 import { ChartShell } from "../../../components/charts/ChartShell";
-import { ChartStateView } from "../../../components/charts/ChartStateView";
-import { RangePresetGroup } from "../../../components/charts/controls/RangePresetGroup";
 import { ChartModeToggle } from "../../../components/charts/controls/ChartModeToggle";
-import type { PresetId } from "../../../components/charts/controls/RangePresetGroup";
+import { ExplorerChartFrame, useExplorerRange } from "../../../components/charts/explorer";
 import { formatChartQuantityCompact } from "../../../components/charts/formatters";
 import { useProductMonthlyDemandSeries, getMonthlyRangeFromPreset } from "../hooks/useProductMonthlyDemandSeries";
 
@@ -41,20 +39,37 @@ export function MonthlyDemandExplorerChart({
   });
 
   // State
-  const [selectedPreset, setSelectedPreset] = useState<PresetId>("1Y");
   const [chartMode, setChartMode] = useState<"bar" | "line">("bar");
 
-  // Calculate range from preset
-  const { startMonth, endMonth } = useMemo(
-    () => getMonthlyRangeFromPreset(selectedPreset),
-    [selectedPreset]
-  );
+  const loadedMonthRange = useMemo(() => getMonthlyRangeFromPreset("All"), []);
+  const fallbackVisibleRange = useMemo(() => getMonthlyRangeFromPreset("1Y"), []);
 
   // Fetch dense series data
-  const { points, loading, error, refetch } = useProductMonthlyDemandSeries(
+  const { points, range, loading, error, refetch } = useProductMonthlyDemandSeries(
     productId,
-    { startMonth, endMonth }
+    loadedMonthRange
   );
+
+  const loadedRange = useMemo(
+    () => ({
+      start: range?.requested_start ?? loadedMonthRange.startMonth,
+      end: range?.requested_end ?? loadedMonthRange.endMonth,
+    }),
+    [range?.requested_start, range?.requested_end, loadedMonthRange.startMonth, loadedMonthRange.endMonth],
+  );
+
+  const defaultVisibleRange = useMemo(
+    () => ({
+      start: range?.default_visible_start ?? fallbackVisibleRange.startMonth,
+      end: range?.default_visible_end ?? fallbackVisibleRange.endMonth,
+    }),
+    [range?.default_visible_start, range?.default_visible_end, fallbackVisibleRange.startMonth, fallbackVisibleRange.endMonth],
+  );
+
+  const { visibleRange, selectedPreset, applyPreset, updateVisibleRange } = useExplorerRange({
+    availableRange: loadedRange,
+    defaultVisibleRange,
+  });
 
   // Convert to chart format
   const chartData = useMemo(
@@ -66,46 +81,44 @@ export function MonthlyDemandExplorerChart({
     [points]
   );
 
-  // Handle preset change
-  const handlePresetChange = useCallback((preset: PresetId) => {
-    setSelectedPreset(preset);
-  }, []);
+  const visibleChartData = useMemo(
+    () => chartData.filter((point) => point.month >= visibleRange.start && point.month <= visibleRange.end),
+    [chartData, visibleRange.end, visibleRange.start],
+  );
 
   // Controls
   const controls = (
-    <div className="flex items-center gap-2">
-      <RangePresetGroup
-        value={selectedPreset}
-        onChange={handlePresetChange}
-        aria-label="Monthly demand time range"
-        size="sm"
-      />
-      <ChartModeToggle
-        value={chartMode}
-        onChange={setChartMode}
-        aria-label="Chart display mode"
-        size="sm"
-      />
-    </div>
+    <ChartModeToggle
+      value={chartMode}
+      onChange={setChartMode}
+      aria-label="Chart display mode"
+      size="sm"
+    />
   );
 
   return (
     <ChartShell title={title} useSectionCard>
-      <ChartStateView
+      <ExplorerChartFrame
         loading={loading}
         error={error}
         empty={chartData.length === 0}
-        emptyMessage={t("empty")}
+        emptyMessage={String(t("empty"))}
         onRetry={refetch}
-        skeletonHeight={260}
+        availableRange={loadedRange}
+        defaultVisibleRange={defaultVisibleRange}
+        visibleRange={visibleRange}
+        onVisibleRangeChange={updateVisibleRange}
+        selectedPreset={selectedPreset}
+        onPresetChange={applyPreset}
+        controls={controls}
+        navigator={<MonthlyDemandOverview data={chartData} />}
       >
         <div className="space-y-2">
-          {controls}
-          {chartData.length > 0 && (
+          {visibleChartData.length > 0 && (
             <ParentSize>
               {({ width }) => (
                 <MonthlyDemandChartInner
-                  data={chartData}
+                  data={visibleChartData}
                   variant={chartMode}
                   locale={i18n.resolvedLanguage ?? i18n.language ?? "en"}
                   width={width}
@@ -115,8 +128,25 @@ export function MonthlyDemandExplorerChart({
             </ParentSize>
           )}
         </div>
-      </ChartStateView>
+      </ExplorerChartFrame>
     </ChartShell>
+  );
+}
+
+function MonthlyDemandOverview({ data }: { data: { month: string; total_qty: number }[] }) {
+  const maxValue = Math.max(...data.map((point) => point.total_qty), 1);
+
+  return (
+    <div className="flex h-full items-end gap-px px-2 py-1">
+      {data.map((point) => (
+        <div
+          key={point.month}
+          className="min-w-1 flex-1 rounded-sm bg-primary/60"
+          style={{ height: `${Math.max(8, (point.total_qty / maxValue) * 100)}%` }}
+          aria-hidden="true"
+        />
+      ))}
+    </div>
   );
 }
 

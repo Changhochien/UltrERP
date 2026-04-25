@@ -11,13 +11,15 @@
 export function formatChartCurrency(
   value: number,
   locale: string,
-  currency: string = "TWD"
+  currency: string = "TWD",
+  options: Partial<Intl.NumberFormatOptions> = {},
 ): string {
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: options.minimumFractionDigits ?? 2,
+    maximumFractionDigits: options.maximumFractionDigits ?? 2,
+    ...options,
   }).format(value);
 }
 

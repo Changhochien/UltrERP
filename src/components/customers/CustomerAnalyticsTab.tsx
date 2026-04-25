@@ -56,8 +56,9 @@ function buildTrendChartData(trend: CustomerRevenueTrend | null, months: number)
 }
 
 export function CustomerAnalyticsTab({ customerId }: CustomerAnalyticsTabProps) {
-  const { t } = useTranslation("common", { keyPrefix: "customer.detail.analytics" });
+  const { t, i18n } = useTranslation("common", { keyPrefix: "customer.detail.analytics" });
   const { canAccess } = usePermissions();
+  const locale = i18n.resolvedLanguage ?? i18n.language ?? "en";
 
   const [summary, setSummary] = useState<CustomerAnalyticsSummary | null>(null);
   const [trend, setTrend] = useState<CustomerRevenueTrend | null>(null);
@@ -105,7 +106,7 @@ export function CustomerAnalyticsTab({ customerId }: CustomerAnalyticsTabProps) 
       <div className="grid gap-4 sm:grid-cols-2">
         <MetricCard
           title={t("totalRevenue", { defaultValue: "Total Revenue (12 months)" })}
-          value={loading ? "—" : (summary ? formatChartCurrency(Number(summary.total_revenue_12m), "en-US", "NT$") : "—")}
+          value={loading ? "—" : (summary ? formatChartCurrency(Number(summary.total_revenue_12m), locale, "TWD") : "—")}
           description={t("revenueDescription", { defaultValue: "Rolling 12-month revenue" })}
         />
         <MetricCard
@@ -115,12 +116,12 @@ export function CustomerAnalyticsTab({ customerId }: CustomerAnalyticsTabProps) 
         />
         <MetricCard
           title={t("avgInvoiceValue", { defaultValue: "Average Invoice Value" })}
-          value={loading ? "—" : (summary ? formatChartCurrency(Number(summary.avg_invoice_value), "en-US", "NT$") : "—")}
+          value={loading ? "—" : (summary ? formatChartCurrency(Number(summary.avg_invoice_value), locale, "TWD") : "—")}
           description={t("avgInvoiceDesc", { defaultValue: "Average value per invoice" })}
         />
         <MetricCard
           title={t("outstandingBalance", { defaultValue: "Outstanding Balance" })}
-          value={loading ? "—" : (summary ? formatChartCurrency(Number(summary.outstanding_balance), "en-US", "NT$") : "—")}
+          value={loading ? "—" : (summary ? formatChartCurrency(Number(summary.outstanding_balance), locale, "TWD") : "—")}
           description={
             summary && !loading
               ? `${t("creditUtilization", { defaultValue: "Credit utilization" })}: ${summary.credit_utilization_pct}%`
@@ -182,7 +183,7 @@ export function CustomerAnalyticsTab({ customerId }: CustomerAnalyticsTabProps) 
               <Tooltip
                 cursor={{ stroke: "#6366f1", strokeWidth: 1 }}
                 contentStyle={{ color: "#000" }}
-                formatter={(val) => [formatChartCurrency(Number(val), "en-US", "NT$"), t("tooltipRevenue", { defaultValue: "Revenue" })]}
+                formatter={(val) => [formatChartCurrency(Number(val), locale, "TWD"), t("tooltipRevenue", { defaultValue: "Revenue" })]}
               />
               <Line
                 type="monotone"
@@ -221,7 +222,7 @@ export function CustomerAnalyticsTab({ customerId }: CustomerAnalyticsTabProps) 
           />
           <MetricCard
             title={t("creditLimit", { defaultValue: "Credit Limit" })}
-            value={formatChartCurrency(Number(summary.credit_limit), "en-US", "NT$")}
+            value={formatChartCurrency(Number(summary.credit_limit), locale, "TWD")}
             description={t("creditLimitDesc", { defaultValue: "Configured customer credit line" })}
           />
         </div>

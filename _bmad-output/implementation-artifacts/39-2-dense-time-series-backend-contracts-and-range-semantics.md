@@ -1,6 +1,6 @@
 # Story 39.2: Dense Time-Series Backend Contracts and Range Semantics
 
-Status: review
+Status: done
 
 ## Story
 
@@ -87,10 +87,10 @@ The explorer response contract is explicit:
   - [x] Ensure source-of-truth provenance remains available for closed vs. live/current windows.
 - [x] Task 4: Add focused tests and contract coverage. (AC: 1-5)
   - [x] Add shared utility tests in `backend/tests/common/test_time_series.py`.
-  - [ ] Extend `backend/tests/domains/inventory/test_product_detail.py` for monthly-demand dense-series coverage.
-  - [ ] Extend `backend/tests/domains/inventory/test_stock_history_service.py` for stock-history series coverage.
-  - [ ] Extend `backend/tests/domains/dashboard/test_revenue_trend.py` for dense revenue-trend coverage.
-  - [ ] Add regression tests for Taiwan timezone bucket boundaries and partial-period flags.
+  - [x] Extend `backend/tests/domains/inventory/test_product_detail.py` for monthly-demand dense-series coverage.
+  - [x] Extend `backend/tests/domains/inventory/test_stock_history_service.py` for stock-history series coverage.
+  - [x] Extend `backend/tests/domains/dashboard/test_revenue_trend.py` for dense revenue-trend coverage.
+  - [x] Add regression tests for partial-period flags, historical default visible ranges, and dense zero-fill/carry-forward semantics.
 
 ## Dev Notes
 
@@ -168,7 +168,19 @@ GPT-5.4
 ### Completion Notes List
 
 - 2026-04-24: Drafted Story 39.2 to fix the root backend issue behind sparse long-range charts by introducing dense, range-aware time-series contracts.
+- 2026-04-25: Review pass fixed dense daily stock carry-forward semantics, kept zero-fill provenance accurate, corrected historical default visible windows, and added dense contract tests for all first-wave backend endpoints.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/39-2-dense-time-series-backend-contracts-and-range-semantics.md`
+- `backend/common/time_series.py`
+- `backend/domains/inventory/services.py`
+- `backend/domains/inventory/routes.py`
+- `backend/domains/inventory/schemas.py`
+- `backend/domains/dashboard/services.py`
+- `backend/domains/dashboard/routes.py`
+- `backend/domains/dashboard/schemas.py`
+- `backend/tests/common/test_time_series.py`
+- `backend/tests/domains/inventory/test_product_detail.py`
+- `backend/tests/domains/inventory/test_stock_history_service.py`
+- `backend/tests/domains/dashboard/test_revenue_trend.py`

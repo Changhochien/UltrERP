@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
 from freezegun import freeze_time
 
-from domains.dashboard.services import get_revenue_trend
+from domains.dashboard.services import get_revenue_trend, get_revenue_trend_series
 from tests.domains.orders._helpers import FakeAsyncSession
 
 TENANT = uuid.UUID("00000000-0000-0000-0000-000000000001")
@@ -70,3 +70,30 @@ async def test_revenue_trend_week_before_pages_backward() -> None:
     assert [item.date for item in result.items] == [date(2025, 12, 15), date(2025, 12, 22)]
     assert [item.order_count for item in result.items] == [3, 4]
     assert result.has_more is True
+
+
+@pytest.mark.asyncio
+async def test_revenue_trend_series_returns_dense_monthly_points() -> None:
+    session = FakeAsyncSession()
+    session.queue_rows([
+        SimpleNamespace(month=datetime(2026, 1, 1, tzinfo=UTC), revenue=Decimal("100.00")),
+        SimpleNamespace(month=datetime(2026, 3, 1, tzinfo=UTC), revenue=Decimal("250.00")),
+    ])
+
+    result = await get_revenue_trend_series(
+        session,
+        TENANT,
+        granularity="month",
+        start_date="2026-01",
+        end_date="2026-03",
+    )
+
+    assert [point["bucket_start"] for point in result["points"]] == [
+        "2026-01",
+        "2026-02",
+        "2026-03",
+    ]
+    assert [point["value"] for point in result["points"]] == [100.0, 0.0, 250.0]
+    assert [point["is_zero_filled"] for point in result["points"]] == [False, True, False]
+    assert result["range"]["bucket"] == "month"
+    assert result["range"]["timezone"] == "Asia/Taipei"

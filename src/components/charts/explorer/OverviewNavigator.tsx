@@ -5,7 +5,7 @@
  * selection window for visible range control.
  */
 
-import type { ReactElement } from "react";
+import type { ReactNode } from "react";
 
 import { useMemo, useRef, useState } from "react";
 
@@ -16,14 +16,23 @@ export interface OverviewNavigatorProps {
   loadedRange: ExplorerRange;
   /** Current visible range */
   visibleRange: ExplorerRange;
-  /** Miniature chart to render (receives width) */
-  children: ReactElement;
+  /** Miniature chart to render */
+  children: ReactNode;
   /** Called when visible range changes */
   onRangeChange: (range: ExplorerRange) => void;
   /** Height of the overview strip */
   height?: number;
   /** Additional className */
   className?: string;
+}
+
+function parseNavigatorDate(value: string): Date {
+  return new Date(value.length === 7 ? `${value}-01T00:00:00Z` : `${value}T00:00:00Z`);
+}
+
+function formatNavigatorDate(date: Date, monthPrecision: boolean): string {
+  const isoDate = date.toISOString().slice(0, 10);
+  return monthPrecision ? isoDate.slice(0, 7) : isoDate;
 }
 
 /**
@@ -45,18 +54,25 @@ export function OverviewNavigator({
 
   // Calculate pixel positions from dates
   const { left, width } = useMemo(() => {
-    const loadedStart = new Date(loadedRange.start).getTime();
-    const loadedEnd = new Date(loadedRange.end).getTime();
+    const loadedStart = parseNavigatorDate(loadedRange.start).getTime();
+    const loadedEnd = parseNavigatorDate(loadedRange.end).getTime();
     const loadedDuration = loadedEnd - loadedStart;
 
+    if (loadedDuration <= 0) {
+      return { left: 0, width: 100 };
+    }
+
     const toPercent = (date: string) => {
-      const t = new Date(date).getTime();
-      return ((t - loadedStart) / loadedDuration) * 100;
+      const t = parseNavigatorDate(date).getTime();
+      return Math.max(0, Math.min(100, ((t - loadedStart) / loadedDuration) * 100));
     };
 
+    const leftPercent = toPercent(visibleRange.start);
+    const rightPercent = toPercent(visibleRange.end);
+
     return {
-      left: toPercent(visibleRange.start),
-      width: toPercent(visibleRange.end) - toPercent(visibleRange.start),
+      left: leftPercent,
+      width: Math.max(0, rightPercent - leftPercent),
     };
   }, [loadedRange, visibleRange]);
 
@@ -75,8 +91,9 @@ export function OverviewNavigator({
     const dx = e.clientX - dragStartX;
     const dxPercent = (dx / rect.width) * 100;
 
-    const loadedStart = new Date(loadedRange.start);
-    const loadedEnd = new Date(loadedRange.end);
+    const monthPrecision = loadedRange.start.length === 7 && loadedRange.end.length === 7;
+    const loadedStart = parseNavigatorDate(loadedRange.start);
+    const loadedEnd = parseNavigatorDate(loadedRange.end);
     const loadedDuration = loadedEnd.getTime() - loadedStart.getTime();
 
     // Convert pixel delta to date delta
@@ -91,8 +108,8 @@ export function OverviewNavigator({
 
       // Clamp to loaded range
       if (startTime >= loadedStart.getTime() && endTime <= loadedEnd.getTime()) {
-        newStart = new Date(startTime).toISOString().slice(0, 10);
-        newEnd = new Date(endTime).toISOString().slice(0, 10);
+        newStart = formatNavigatorDate(new Date(startTime), monthPrecision);
+        newEnd = formatNavigatorDate(new Date(endTime), monthPrecision);
       }
     } else if (dragType === "left") {
       const startTime = Math.max(
@@ -102,7 +119,7 @@ export function OverviewNavigator({
       // Don't let left go past right
       const endTime = new Date(dragStartRange.end).getTime();
       if (startTime < endTime) {
-        newStart = new Date(startTime).toISOString().slice(0, 10);
+        newStart = formatNavigatorDate(new Date(startTime), monthPrecision);
       }
     } else if (dragType === "right") {
       const endTime = Math.min(
@@ -112,7 +129,7 @@ export function OverviewNavigator({
       // Don't let right go past left
       const startTime = new Date(dragStartRange.start).getTime();
       if (endTime > startTime) {
-        newEnd = new Date(endTime).toISOString().slice(0, 10);
+        newEnd = formatNavigatorDate(new Date(endTime), monthPrecision);
       }
     }
 
@@ -141,17 +158,14 @@ export function OverviewNavigator({
       </div>
 
       {/* Selection overlay */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{ cursor: isDragging ? "grabbing" : "default" }}
-      >
+      <div className="absolute inset-0" style={{ cursor: isDragging ? "grabbing" : "default" }}>
         {/* Dimmed regions */}
         <div
-          className="absolute top-0 h-full bg-black/20"
+          className="pointer-events-none absolute top-0 h-full bg-black/20"
           style={{ left: 0, width: `${left}%` }}
         />
         <div
-          className="absolute top-0 h-full bg-black/20"
+          className="pointer-events-none absolute top-0 h-full bg-black/20"
           style={{ left: `${left + width}%`, right: 0 }}
         />
 

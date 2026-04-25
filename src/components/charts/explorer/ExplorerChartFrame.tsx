@@ -12,6 +12,7 @@ import type { ReactNode } from "react";
 
 import { ChartStateView } from "../ChartStateView";
 import { RangePresetGroup } from "../controls/RangePresetGroup";
+import type { PresetId } from "../controls/RangePresetGroup";
 import { useExplorerRange } from "./useExplorerRange";
 import { OverviewNavigator } from "./OverviewNavigator";
 
@@ -39,13 +40,15 @@ export interface ExplorerChartFrameProps {
   /** Visible range change handler (controlled) */
   onVisibleRangeChange?: (range: { start: string; end: string }) => void;
   /** Selected preset */
-  selectedPreset?: string | null;
+  selectedPreset?: PresetId | null;
   /** Preset change handler */
-  onPresetChange?: (preset: string) => void;
+  onPresetChange?: (preset: PresetId) => void;
   /** Show overview navigator */
   showNavigator?: boolean;
   /** Chart content to render */
   children: ReactNode;
+  /** Miniature overview content rendered inside the navigator */
+  navigator?: ReactNode;
   /** Chart controls (mode toggle, etc.) */
   controls?: ReactNode;
   /** Additional className */
@@ -74,6 +77,7 @@ export function ExplorerChartFrame({
   onPresetChange,
   showNavigator = true,
   children,
+  navigator,
   controls,
   className = "",
 }: ExplorerChartFrameProps) {
@@ -89,9 +93,9 @@ export function ExplorerChartFrame({
   });
 
   const visibleRange = controlledVisibleRange ?? internalVisibleRange;
-  const selectedPreset = controlledPreset ?? internalPreset;
+  const selectedPreset = controlledPreset !== undefined ? controlledPreset : internalPreset;
 
-  const handlePresetChange = (preset: "3M" | "6M" | "1Y" | "2Y" | "4Y" | "All") => {
+  const handlePresetChange = (preset: PresetId) => {
     applyPreset(preset);
     onPresetChange?.(preset);
   };
@@ -104,16 +108,13 @@ export function ExplorerChartFrame({
   return (
     <div className={`space-y-3 ${className}`}>
       {/* Header with title and controls */}
-      {(title || controls) && (
+      {title && (
         <div className="flex items-center justify-between gap-4">
           <div>
-            {title && <h3 className="text-sm font-medium">{title}</h3>}
+            <h3 className="text-sm font-medium">{title}</h3>
             {description && (
               <p className="text-xs text-muted-foreground">{description}</p>
             )}
-          </div>
-          <div className="flex items-center gap-2">
-            {controls}
           </div>
         </div>
       )}
@@ -121,7 +122,7 @@ export function ExplorerChartFrame({
       {/* Preset controls */}
       <div className="flex items-center justify-between">
         <RangePresetGroup
-          value={selectedPreset as "3M" | "6M" | "1Y" | "2Y" | "4Y" | "All"}
+          value={selectedPreset}
           onChange={handlePresetChange}
           aria-label="Chart time range"
         />
@@ -149,8 +150,7 @@ export function ExplorerChartFrame({
             height={48}
             className="rounded-lg border bg-muted/30"
           >
-            {/* Miniature chart - placeholder for now */}
-            <div className="h-full" />
+            {navigator ?? <div className="h-full" />}
           </OverviewNavigator>
         </div>
       )}

@@ -151,6 +151,9 @@ def densify_daily_series(
     requested_start: date,
     requested_end: date,
     current_date: date | None = None,
+    *,
+    carry_forward: bool = False,
+    initial_value: float = 0.0,
 ) -> tuple[list[DenseSeriesPoint], DenseSeriesRange]:
     """
     Zero-fill a daily time-series for the requested range.
@@ -160,6 +163,8 @@ def densify_daily_series(
         requested_start: First day to include (inclusive)
         requested_end: Last day to include (inclusive)
         current_date: Current date for determining partial periods
+        carry_forward: When true, missing days use the previous value instead of 0
+        initial_value: Starting value used before the first source point when carrying forward
 
     Returns:
         Tuple of (points list, range metadata)
@@ -170,12 +175,16 @@ def densify_daily_series(
     points: list[DenseSeriesPoint] = []
     available_start: str | None = None
     available_end: str | None = None
+    carried_value = float(initial_value)
 
     current = requested_start
     while current <= requested_end:
         key = current.strftime("%Y-%m-%d")
-        value = source_data.get(key, 0.0)
-        is_zero_filled = key not in source_data
+        has_source_value = key in source_data
+        if has_source_value:
+            carried_value = float(source_data[key])
+        value = carried_value if carry_forward else source_data.get(key, 0.0)
+        is_zero_filled = not has_source_value
 
         # Today's data is partial, yesterday and before are closed
         if current == current_date:
@@ -191,7 +200,7 @@ def densify_daily_series(
             source = "aggregate"
 
         # Track available range
-        if value != 0 or not is_zero_filled:
+        if has_source_value:
             if available_start is None:
                 available_start = key
             available_end = key
@@ -208,8 +217,9 @@ def densify_daily_series(
         current = date(current.year, current.month, current.day + 1) if current.day < 28 else _next_day(current)
 
     # Build range metadata
-    default_visible_end = min(requested_end, current_date).strftime("%Y-%m-%d")
-    default_visible_start = (current_date - timedelta(days=29)).strftime("%Y-%m-%d")
+    default_visible_end_date = min(requested_end, current_date)
+    default_visible_end = default_visible_end_date.strftime("%Y-%m-%d")
+    default_visible_start = (default_visible_end_date - timedelta(days=29)).strftime("%Y-%m-%d")
     if default_visible_start < requested_start.strftime("%Y-%m-%d"):
         default_visible_start = requested_start.strftime("%Y-%m-%d")
 

@@ -1,6 +1,6 @@
 # Story 39.4: Explorer Time-Series Kit
 
-Status: review
+Status: done
 
 ## Story
 
@@ -55,7 +55,8 @@ Use `@visx` as the v1 explorer renderer because the repo already uses it for bes
   - [x] Add `rechartsRangeBridge.ts` so `RevenueTrendChart` can adopt explorer state before any renderer swap.
   - [x] Keep the wrapper renderer-agnostic enough to survive future adapter changes.
 - [x] Task 4: Add focused tests. (AC: 1-5)
-  - [x] Add tests for formatters (11 passing).
+  - [x] Add tests for formatter behavior.
+  - [x] Add tests for `useExplorerRange` month precision, `All` preset behavior, and loaded-range clamping.
 
 ## Dev Notes
 
@@ -118,7 +119,13 @@ GPT-5.4
 ### Completion Notes List
 
 - 2026-04-24: Drafted Story 39.4 to establish the reusable explorer-tier time-series interaction model instead of continuing to add larger preset windows to bespoke charts.
+- 2026-04-25: Review pass fixed month/day range precision, reset-on-metadata-change behavior, draggable navigator pointer events, overview rendering hooks, and focused range-state tests.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/39-4-explorer-time-series-kit.md`
+- `src/components/charts/explorer/useExplorerRange.ts`
+- `src/components/charts/explorer/OverviewNavigator.tsx`
+- `src/components/charts/explorer/ExplorerChartFrame.tsx`
+- `src/components/charts/explorer/rechartsRangeBridge.ts`
+- `src/components/charts/explorer/useExplorerRange.test.tsx`
