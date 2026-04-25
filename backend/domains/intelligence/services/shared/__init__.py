@@ -6,6 +6,7 @@ any feature modules to maintain clean architectural boundaries.
 """
 
 # Re-export all shared components for convenient imports
+from .category_trend_loader import load_category_trends
 from .category_helpers import is_excluded_category
 from .constants import (
     CUSTOMER_BUYING_BEHAVIOR_PERIOD_MONTHS,
@@ -74,6 +75,7 @@ __all__ = [
     "frequency_trend",
     "aov_trend",
     "bounded_similarity",
+    "load_category_trends",
     # Category helpers
     "is_excluded_category",
 ]
