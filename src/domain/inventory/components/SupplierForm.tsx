@@ -9,6 +9,7 @@ import {
   toSupplierCreatePayload,
   type SupplierFormValues,
 } from "../../../lib/schemas/supplier.schema";
+import { useCommercialDefaultsOptions } from "../../../hooks/useCommercialDefaultsOptions";
 import type { Supplier, SupplierCreate } from "../types";
 
 export interface SupplierFormFieldError {
@@ -62,6 +63,7 @@ export function SupplierForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const commercialOptions = useCommercialDefaultsOptions();
 
   useEffect(() => {
     setFormData({
@@ -71,6 +73,9 @@ export function SupplierForm({
       address: initialValues?.address ?? defaultSupplierFormValues.address,
       default_lead_time_days:
         initialValues?.default_lead_time_days ?? defaultSupplierFormValues.default_lead_time_days,
+      default_currency_code: initialValues?.default_currency_code ?? defaultSupplierFormValues.default_currency_code,
+      payment_terms_template_id:
+        initialValues?.payment_terms_template_id ?? defaultSupplierFormValues.payment_terms_template_id,
     });
     setErrors({});
     setServerError(null);
@@ -78,7 +83,9 @@ export function SupplierForm({
     initialValues?.address,
     initialValues?.contact_email,
     initialValues?.default_lead_time_days,
+    initialValues?.default_currency_code,
     initialValues?.name,
+    initialValues?.payment_terms_template_id,
     initialValues?.phone,
   ]);
 
@@ -199,6 +206,57 @@ export function SupplierForm({
           <p className="mt-1 text-sm text-destructive">{errors.default_lead_time_days}</p>
         ) : null}
       </div>
+
+      <fieldset className="space-y-3 rounded-lg border border-border/70 p-4">
+        <legend className="px-1 text-sm font-semibold">Commercial Defaults</legend>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="supplier-default-currency" className="block text-sm font-medium">
+              Default Currency
+            </label>
+            <select
+              id="supplier-default-currency"
+              className="h-8 w-full rounded-lg border border-input bg-background px-2.5 py-1 text-sm"
+              value={formData.default_currency_code}
+              onChange={(event) => setFormData((current) => ({ ...current, default_currency_code: event.target.value }))}
+              disabled={isSubmitting || commercialOptions.loading}
+            >
+              <option value="">Tenant default</option>
+              {initialValues?.default_currency_code && !commercialOptions.currencies.some((currency) => currency.code === initialValues.default_currency_code) ? (
+                <option value={initialValues.default_currency_code}>{initialValues.default_currency_code}</option>
+              ) : null}
+              {commercialOptions.currencies.map((currency) => (
+                <option key={currency.id} value={currency.code}>
+                  {currency.code}{currency.is_base_currency ? " (base)" : ""}
+                </option>
+              ))}
+            </select>
+            {errors.default_currency_code ? <p className="mt-1 text-sm text-destructive">{errors.default_currency_code}</p> : null}
+          </div>
+
+          <div>
+            <label htmlFor="supplier-payment-terms" className="block text-sm font-medium">
+              Payment Terms
+            </label>
+            <select
+              id="supplier-payment-terms"
+              className="h-8 w-full rounded-lg border border-input bg-background px-2.5 py-1 text-sm"
+              value={formData.payment_terms_template_id}
+              onChange={(event) => setFormData((current) => ({ ...current, payment_terms_template_id: event.target.value }))}
+              disabled={isSubmitting || commercialOptions.loading}
+            >
+              <option value="">Tenant default</option>
+              {initialValues?.payment_terms_template_id && !commercialOptions.paymentTerms.some((template) => template.id === initialValues.payment_terms_template_id) ? (
+                <option value={initialValues.payment_terms_template_id}>{initialValues.payment_terms_template_id}</option>
+              ) : null}
+              {commercialOptions.paymentTerms.map((template) => (
+                <option key={template.id} value={template.id}>{template.template_name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        {commercialOptions.error ? <p className="text-sm text-destructive">{commercialOptions.error}</p> : null}
+      </fieldset>
 
       <div className="flex gap-2">
         <Button type="submit" disabled={isSubmitting}>

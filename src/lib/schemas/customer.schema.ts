@@ -71,12 +71,16 @@ export const customerFormSchema = z.object({
     const parsed = Number(normalized);
     return !Number.isNaN(parsed) && parsed >= 0;
   }, "customer.form.creditLimitNonNegative"),
+  default_currency_code: z.string().trim().max(3, "customer.form.defaultCurrencyTooLong").default(""),
+  payment_terms_template_id: z.string().trim().default(""),
 });
 
 export type CustomerFormValues = z.infer<typeof customerFormSchema>;
 
 export function toCustomerCreatePayload(values: CustomerFormValues): CustomerCreatePayload {
   const creditLimit = Number(values.credit_limit.trim() || "0");
+  const defaultCurrencyCode = values.default_currency_code.trim();
+  const paymentTermsTemplateId = values.payment_terms_template_id.trim();
 
   return {
     company_name: values.company_name.trim(),
@@ -86,5 +90,7 @@ export function toCustomerCreatePayload(values: CustomerFormValues): CustomerCre
     contact_phone: values.contact_phone.trim(),
     contact_email: values.contact_email.trim().toLowerCase(),
     credit_limit: creditLimit.toFixed(2),
+    default_currency_code: defaultCurrencyCode || null,
+    payment_terms_template_id: paymentTermsTemplateId || null,
   };
 }

@@ -15,6 +15,11 @@
   "lastUpdated": "上次更新",
   "by": "由",
   "configureMessage": "在此配置您的工作區設定。",
+  "paymentTerms": {
+    "tab": "付款條件",
+    "title": "付款條件範本",
+    "description": "建立可供客戶、供應商、訂單與發票重複使用的付款排程。"
+  },
   "sensitive": "敏感",
   "nullable": "可空",
   "showPassword": "顯示密碼",

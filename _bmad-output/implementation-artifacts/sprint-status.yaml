@@ -1562,14 +1562,14 @@ last_updated: "2026-04-26"
         status: "completed"
         story_id: "25.3"
         story_file: "25-3-payment-terms-template-builder-and-schedule-handling.md"
-        validation: "Implemented PaymentTermsTemplate, PaymentTermsTemplateDetail, PaymentSchedule models, exposed template CRUD routes, added frontend API helpers, wired order/invoice schedule generation with legacy term compatibility, and added a Settings payment-terms builder UI. Focused tests and frontend build verification pass."
+        validation: "Implemented PaymentTermsTemplate, PaymentTermsTemplateDetail, PaymentSchedule models, exposed template CRUD routes, added frontend API helpers, wired order/invoice schedule generation with legacy term compatibility, and added a Settings payment-terms builder UI. Focused frontend tests and locale parity pass; current full frontend build is blocked by unrelated accounting/Epic 26 TypeScript errors."
         prerequisites: ["25-2-currency-aware-commercial-documents"]
       25-4-customer-supplier-commercial-profiles:
         title: "Customer and Supplier Commercial Profiles"
         status: "completed"
         story_id: "25.4"
         story_file: "25-4-customer-and-supplier-commercial-profiles.md"
-        validation: "Implemented default currency and payment terms template references on Customer and Supplier, exposed/persisted defaults through APIs, applied customer defaults in core sales document flows, removed silent non-base FX identity fallback, and added customer/supplier commercial profile UI selectors and detail visibility. Focused tests and frontend build verification pass."
+        validation: "Implemented default currency and payment terms template references on Customer and Supplier, exposed/persisted defaults through APIs, applied customer defaults in core sales document flows, removed silent non-base FX identity fallback, and added customer/supplier commercial profile UI selectors and detail visibility. Focused frontend tests and locale parity pass; current full frontend build is blocked by unrelated accounting/Epic 26 TypeScript errors."
         prerequisites: ["25-3-payment-terms-template-builder"]
       25-5-fx-rounding-display-audit:
         title: "FX Rounding, Display, and Audit Safeguards"

@@ -15,6 +15,11 @@
   "lastUpdated": "Last updated",
   "by": "by",
   "configureMessage": "Configure your workspace settings to see them here.",
+  "paymentTerms": {
+    "tab": "Payment Terms",
+    "title": "Payment Terms Templates",
+    "description": "Build reusable payment schedules for customers, suppliers, orders, and invoices."
+  },
   "sensitive": "Sensitive",
   "nullable": "Nullable",
   "showPassword": "Show password",

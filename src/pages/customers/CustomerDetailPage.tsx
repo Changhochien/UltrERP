@@ -19,6 +19,7 @@ import { CustomerStatementTab } from "../../components/customers/CustomerStateme
 import { CUSTOMERS_ROUTE } from "../../lib/routes";
 import { CustomerAnalyticsTab } from "@/components/customers/CustomerAnalyticsTab";
 import { usePermissions } from "../../hooks/usePermissions";
+import { useCommercialDefaultsOptions } from "../../hooks/useCommercialDefaultsOptions";
 
 interface CustomerDetailPageProps {
   onBack: () => void;
@@ -31,16 +32,18 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "outline"> = {
 };
 
 const STATUS_LABEL_KEYS: Record<string, string> = {
-  active: "customer.detail.statusValues.active",
-  suspended: "customer.detail.statusValues.suspended",
-  inactive: "customer.detail.statusValues.inactive",
-  deleted: "customer.detail.statusValues.deleted",
+  active: "detail.statusValues.active",
+  suspended: "detail.statusValues.suspended",
+  inactive: "detail.statusValues.inactive",
+  deleted: "detail.statusValues.deleted",
 };
 
 export function CustomerDetailPage({ onBack }: CustomerDetailPageProps) {
   const { customerId } = useParams<{ customerId: string }>();
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("customer");
+  const { t: tRoutes } = useTranslation("routes");
   const { canWrite } = usePermissions();
+  const commercialOptions = useCommercialDefaultsOptions();
   const [customer, setCustomer] = useState<CustomerResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +58,7 @@ export function CustomerDetailPage({ onBack }: CustomerDetailPageProps) {
     getCustomer(customerId).then((data) => {
       if (cancelled) return;
       if (!data) {
-        setError(t("customer.detail.notFound"));
+        setError(t("detail.notFound"));
         setLoading(false);
         return;
       }
@@ -67,7 +70,7 @@ export function CustomerDetailPage({ onBack }: CustomerDetailPageProps) {
 
   const handleSuspend = useCallback(async () => {
     if (!customer) return;
-    if (!window.confirm(t("customer.detail.suspendConfirm.message"))) return;
+    if (!window.confirm(t("detail.suspendConfirm.message"))) return;
 
     const result = await updateCustomer(customer.id, {
       status: "suspended",
@@ -76,13 +79,13 @@ export function CustomerDetailPage({ onBack }: CustomerDetailPageProps) {
     if (result.ok) {
       setRefreshKey((k) => k + 1);
     } else {
-      alert(result.errors?.[0]?.message ?? t("customer.detail.suspendConfirm.error"));
+      alert(result.errors?.[0]?.message ?? t("detail.suspendConfirm.error"));
     }
   }, [customer, t]);
 
   const handleDelete = useCallback(async () => {
     if (!customer) return;
-    if (!window.confirm(t("customer.detail.deleteConfirm.message"))) return;
+    if (!window.confirm(t("detail.deleteConfirm.message"))) return;
 
     // Check outstanding balance before delete
     // Use the outstanding tab's hook via direct API call if available
@@ -94,10 +97,10 @@ export function CustomerDetailPage({ onBack }: CustomerDetailPageProps) {
     if (result.ok) {
       onBack();
     } else {
-      const msg = result.errors?.[0]?.message ?? t("customer.detail.deleteConfirm.error");
+      const msg = result.errors?.[0]?.message ?? t("detail.deleteConfirm.error");
       // Check for outstanding balance error
       if (msg.toLowerCase().includes("outstanding") || msg.toLowerCase().includes("balance")) {
-        alert(t("customer.detail.cannotDelete.message"));
+        alert(t("detail.cannotDelete.message"));
       } else {
         alert(msg);
       }
@@ -123,10 +126,10 @@ export function CustomerDetailPage({ onBack }: CustomerDetailPageProps) {
     return (
       <div className="space-y-6">
         <Button type="button" variant="outline" onClick={onBack}>
-          {t("customer.detail.backToList")}
+          {t("detail.backToList")}
         </Button>
         <div role="alert" className="rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error ?? t("customer.detail.notFound")}
+          {error ?? t("detail.notFound")}
         </div>
       </div>
     );
@@ -135,15 +138,19 @@ export function CustomerDetailPage({ onBack }: CustomerDetailPageProps) {
   const statusLabel = STATUS_LABEL_KEYS[customer.status]
     ? t(STATUS_LABEL_KEYS[customer.status], { defaultValue: customer.status })
     : customer.status;
+  const paymentTermsName = customer.payment_terms_template_id
+    ? commercialOptions.paymentTerms.find((template) => template.id === customer.payment_terms_template_id)?.template_name
+      ?? customer.payment_terms_template_id
+    : t("detail.notSet");
 
   return (
     <div className="space-y-6">
       <PageHeader
         breadcrumb={[
-          { label: t("routes.customers.label"), href: CUSTOMERS_ROUTE },
+          { label: tRoutes("customers.label"), href: CUSTOMERS_ROUTE },
           { label: customer.company_name },
         ]}
-        eyebrow={t("customer.detail.eyebrow")}
+        eyebrow={t("detail.eyebrow")}
         title={customer.company_name}
         description={`${customer.normalized_business_number} · ${statusLabel}`}
         actions={canWrite("customers") ? (
@@ -154,7 +161,7 @@ export function CustomerDetailPage({ onBack }: CustomerDetailPageProps) {
               size="sm"
               onClick={() => setEditingId(customer.id)}
             >
-              {t("customer.detail.edit")}
+              {t("detail.edit")}
             </Button>
             <Button
               type="button"
@@ -163,7 +170,7 @@ export function CustomerDetailPage({ onBack }: CustomerDetailPageProps) {
               onClick={handleSuspend}
               disabled={customer.status === "suspended"}
             >
-              {t("customer.detail.suspend")}
+              {t("detail.suspend")}
             </Button>
             <Button
               type="button"
@@ -171,7 +178,7 @@ export function CustomerDetailPage({ onBack }: CustomerDetailPageProps) {
               size="sm"
               onClick={handleDelete}
             >
-              {t("customer.detail.delete")}
+              {t("detail.delete")}
             </Button>
           </div>
         ) : undefined}
@@ -179,50 +186,50 @@ export function CustomerDetailPage({ onBack }: CustomerDetailPageProps) {
 
       <Tabs defaultValue="overview">
         <TabsList>
-          <TabsTrigger value="overview">{t("customer.detail.tabs.overview")}</TabsTrigger>
-          <TabsTrigger value="invoices">{t("customer.detail.tabs.invoices")}</TabsTrigger>
-          <TabsTrigger value="orders">{t("customer.detail.tabs.orders")}</TabsTrigger>
-          <TabsTrigger value="outstanding">{t("customer.detail.tabs.outstanding")}</TabsTrigger>
-          <TabsTrigger value="statement">{t("customer.detail.tabs.statement")}</TabsTrigger>
-          <TabsTrigger value="analytics">{t("customer.detail.tabs.analytics")}</TabsTrigger>
+          <TabsTrigger value="overview">{t("detail.tabs.overview")}</TabsTrigger>
+          <TabsTrigger value="invoices">{t("detail.tabs.invoices")}</TabsTrigger>
+          <TabsTrigger value="orders">{t("detail.tabs.orders")}</TabsTrigger>
+          <TabsTrigger value="outstanding">{t("detail.tabs.outstanding")}</TabsTrigger>
+          <TabsTrigger value="statement">{t("detail.tabs.statement")}</TabsTrigger>
+          <TabsTrigger value="analytics">{t("detail.tabs.analytics")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
           <SectionCard
-            title={t("customer.detail.overviewTitle")}
-            description={t("customer.detail.overviewDescription")}
+            title={t("detail.overviewTitle")}
+            description={t("detail.overviewDescription")}
           >
             <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{t("customer.detail.companyName")}</dt>
+                <dt className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{t("detail.companyName")}</dt>
                 <dd className="mt-1 text-sm font-medium">{customer.company_name}</dd>
               </div>
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{t("customer.detail.ban")}</dt>
+                <dt className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{t("detail.ban")}</dt>
                 <dd className="mt-1 text-sm font-medium">{customer.normalized_business_number}</dd>
               </div>
               <div className="sm:col-span-2">
-                <dt className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{t("customer.detail.billingAddress")}</dt>
+                <dt className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{t("detail.billingAddress")}</dt>
                 <dd className="mt-1 text-sm">{customer.billing_address}</dd>
               </div>
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{t("customer.detail.contactName")}</dt>
+                <dt className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{t("detail.contactName")}</dt>
                 <dd className="mt-1 text-sm">{customer.contact_name}</dd>
               </div>
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{t("customer.detail.phone")}</dt>
+                <dt className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{t("detail.phone")}</dt>
                 <dd className="mt-1 text-sm">{customer.contact_phone}</dd>
               </div>
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{t("customer.detail.email")}</dt>
+                <dt className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{t("detail.email")}</dt>
                 <dd className="mt-1 text-sm">{customer.contact_email}</dd>
               </div>
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{t("customer.detail.creditLimit")}</dt>
+                <dt className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{t("detail.creditLimit")}</dt>
                 <dd className="mt-1 text-sm">${customer.credit_limit}</dd>
               </div>
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{t("customer.detail.status")}</dt>
+                <dt className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{t("detail.status")}</dt>
                 <dd className="mt-1">
                   <Badge variant={STATUS_VARIANT[customer.status] ?? "outline"} className="normal-case tracking-normal">
                     {statusLabel}
@@ -230,11 +237,19 @@ export function CustomerDetailPage({ onBack }: CustomerDetailPageProps) {
                 </dd>
               </div>
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{t("customer.detail.createdAt")}</dt>
+                <dt className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{t("detail.defaultCurrency")}</dt>
+                <dd className="mt-1 text-sm">{customer.default_currency_code ?? t("detail.notSet")}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{t("detail.paymentTerms")}</dt>
+                <dd className="mt-1 text-sm">{paymentTermsName}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{t("detail.createdAt")}</dt>
                 <dd className="mt-1 text-sm">{new Date(customer.created_at).toLocaleString()}</dd>
               </div>
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{t("customer.detail.updatedAt")}</dt>
+                <dt className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{t("detail.updatedAt")}</dt>
                 <dd className="mt-1 text-sm">{new Date(customer.updated_at).toLocaleString()}</dd>
               </div>
             </dl>

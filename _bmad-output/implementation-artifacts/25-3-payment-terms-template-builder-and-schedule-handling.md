@@ -132,6 +132,7 @@ Claude Sonnet 4
 - Migration: `cd migrations && uv run alembic upgrade head` (successful)
 - Copilot quality review: `cd backend && uv run pytest tests/domains/settings/test_currency_service.py tests/domains/settings/test_currency_aware_documents.py tests/domains/settings/test_payment_terms_service.py tests/domains/settings/test_commercial_profile_service.py` (105 tests passed)
 - Copilot frontend verification: `pnpm build` (passed; Vite reported a large chunk size warning)
+- Copilot frontend builder follow-up: `pnpm exec vitest run src/pages/settings/SettingsPage.test.tsx src/tests/customers/CustomerForm.test.tsx src/tests/inventory/SupplierForm.test.tsx src/pages/inventory/SuppliersPage.test.tsx src/pages/inventory/SupplierDetailPage.test.tsx` (10 tests passed); `pnpm check:locale-parity` (passed); `pnpm build` blocked by unrelated accounting/Epic 26 TypeScript errors in the current HEAD
 
 ### Completion Notes List
 
@@ -151,6 +152,7 @@ Claude Sonnet 4
   - Added template update support and eager detail loading in the service.
   - Wired order and invoice creation to generate explicit `PaymentSchedule` rows using legacy compatibility terms or customer template defaults.
   - Added frontend API helpers for payment terms template list/create/update calls.
+- 2026-04-26: Copilot frontend builder follow-up added a Settings payment-terms tab with create/edit/activate/deactivate controls, schedule-row editing, and 100% invoice-portion validation.
 
 ### Implementation Notes
 
@@ -172,8 +174,11 @@ Claude Sonnet 4
 - `backend/app/main.py` - Registered payment terms template routes
 - `backend/domains/orders/services.py` - Generates order payment schedules
 - `backend/domains/invoices/service.py` - Generates invoice payment schedules
+- `src/pages/settings/PaymentTermsPanel.tsx` - Settings payment terms template builder UI
+- `src/pages/settings/SettingsPage.tsx` - Settings tab registration for payment terms
 
 ## Change Log
 
 - 2026-04-26: Implemented Story 25-3 payment terms template builder and schedule handling. Added PaymentTermsTemplate, PaymentTermsTemplateDetail, and PaymentSchedule models with full CRUD and schedule generation support. Legacy terms NET_30, NET_60, NET_90, COD, PREPAID are supported. All 21 tests pass.
 - 2026-04-26: Code-review hardening completed. Payment terms templates are now exposed through HTTP APIs, document creation writes explicit schedule rows, and focused backend tests plus frontend build verification pass.
+- 2026-04-26: Frontend builder follow-up completed. Settings now exposes payment terms template CRUD and schedule-row editing; focused frontend tests and locale parity pass, while full frontend build is currently blocked by unrelated accounting/Epic 26 TypeScript errors.

@@ -19,9 +19,21 @@ const SUPPLIER = {
   phone: "555-0100",
   address: "123 Supply St",
   default_lead_time_days: 7,
+  default_currency_code: "TWD",
+  payment_terms_template_id: "terms-net-30",
   is_active: true,
   created_at: "2026-04-01T00:00:00Z",
 };
+
+vi.mock("../../hooks/useCommercialDefaultsOptions", () => ({
+  useCommercialDefaultsOptions: () => ({
+    currencies: [{ id: "currency-twd", code: "TWD", is_base_currency: true }],
+    paymentTerms: [{ id: "terms-net-30", template_name: "Net 30" }],
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
+  }),
+}));
 
 vi.mock("react-i18next", () => ({
   useTranslation: (_ns?: string, options?: { keyPrefix?: string }) => ({
@@ -82,7 +94,7 @@ describe("SupplierDetailPage", () => {
     fireEvent.change(screen.getByLabelText(/supplier name/i), {
       target: { value: "Beta Supply" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "inventory.supplierDetail.save" }));
+    fireEvent.click(screen.getByRole("button", { name: "save" }));
 
     await waitFor(() => {
       expect(mocks.updateSupplier).toHaveBeenCalledWith("supplier-1", {
@@ -91,6 +103,8 @@ describe("SupplierDetailPage", () => {
         phone: "555-0100",
         address: "123 Supply St",
         default_lead_time_days: 7,
+        default_currency_code: "TWD",
+        payment_terms_template_id: "terms-net-30",
       });
     });
   });

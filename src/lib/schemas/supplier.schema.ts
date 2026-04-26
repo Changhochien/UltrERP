@@ -53,6 +53,8 @@ export const supplierFormSchema = z.object({
         });
       }
     }),
+  default_currency_code: z.string().trim().max(3, "Default currency must be 3 characters or fewer").default(""),
+  payment_terms_template_id: z.string().trim().default(""),
 });
 
 export type SupplierFormValues = z.infer<typeof supplierFormSchema>;
@@ -63,10 +65,14 @@ export const defaultSupplierFormValues: SupplierFormValues = {
   phone: "",
   address: "",
   default_lead_time_days: "",
+  default_currency_code: "",
+  payment_terms_template_id: "",
 };
 
 export function toSupplierCreatePayload(values: SupplierFormValues): SupplierCreate {
   const normalizedLeadTime = values.default_lead_time_days.trim();
+  const defaultCurrencyCode = values.default_currency_code.trim();
+  const paymentTermsTemplateId = values.payment_terms_template_id.trim();
 
   return {
     name: values.name.trim(),
@@ -74,5 +80,7 @@ export function toSupplierCreatePayload(values: SupplierFormValues): SupplierCre
     phone: values.phone.trim() || undefined,
     address: values.address.trim() || undefined,
     default_lead_time_days: normalizedLeadTime === "" ? undefined : Number(normalizedLeadTime),
+    default_currency_code: defaultCurrencyCode || null,
+    payment_terms_template_id: paymentTermsTemplateId || null,
   };
 }

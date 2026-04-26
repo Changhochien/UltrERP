@@ -50,6 +50,8 @@ const EMPTY_CREATE_FORM: CustomerFormValues = {
   contact_name: "",
   contact_email: "",
   credit_limit: "",
+  default_currency_code: "",
+  payment_terms_template_id: "",
 };
 
 export function CustomerCombobox({

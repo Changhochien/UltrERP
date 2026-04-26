@@ -176,6 +176,7 @@
     "commercialDefaults": "商務預設",
     "commercialDefaultsDescription": "報價、訂單與發票需要客戶層級預設時使用。",
     "defaultCurrency": "預設幣別",
+    "defaultCurrencyTooLong": "預設幣別不可超過 3 個字元。",
     "paymentTerms": "付款條件",
     "useTenantDefault": "租戶預設",
     "baseCurrency": "基準幣別",

@@ -177,6 +177,7 @@
     "commercialDefaults": "Commercial Defaults",
     "commercialDefaultsDescription": "Used when quotations, orders, and invoices need customer-level defaults.",
     "defaultCurrency": "Default Currency",
+    "defaultCurrencyTooLong": "Default currency must be 3 characters or fewer.",
     "paymentTerms": "Payment Terms",
     "useTenantDefault": "Tenant default",
     "baseCurrency": "base",

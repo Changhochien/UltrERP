@@ -71,6 +71,7 @@ Claude Sonnet 4
 - Migration: `cd migrations && uv run alembic upgrade head` (successful)
 - Copilot quality review: `cd backend && uv run pytest tests/domains/settings/test_currency_service.py tests/domains/settings/test_currency_aware_documents.py tests/domains/settings/test_payment_terms_service.py tests/domains/settings/test_commercial_profile_service.py tests/domains/crm/test_quotation_service.py tests/domains/crm/test_quotation_service_helpers.py` (140 tests passed)
 - Copilot frontend verification: `pnpm build` (passed; Vite reported a large chunk size warning)
+- Copilot frontend builder follow-up: `pnpm exec vitest run src/pages/settings/SettingsPage.test.tsx src/tests/customers/CustomerForm.test.tsx src/tests/inventory/SupplierForm.test.tsx src/pages/inventory/SuppliersPage.test.tsx src/pages/inventory/SupplierDetailPage.test.tsx` (10 tests passed); `pnpm check:locale-parity` (passed); `pnpm build` blocked by unrelated accounting/Epic 26 TypeScript errors in the current HEAD
 
 ### Completion Notes List
 
@@ -89,6 +90,7 @@ Claude Sonnet 4
   - Exposed supplier commercial defaults through inventory supplier create/update/response schemas and persisted them in supplier mutations.
   - Applied customer profile currency defaults to quotations, orders, and invoices with source metadata for profile, source-document, manual override, and legacy compatibility cases.
   - Added a regression test proving missing non-base rates are not silently treated as identity.
+- 2026-04-26: Copilot frontend builder follow-up added customer and supplier commercial-default selectors, preserved those defaults through edit forms, and surfaced selected currency/payment terms on customer and supplier detail pages.
 
 ### Implementation Notes
 
@@ -119,8 +121,14 @@ Claude Sonnet 4
 - `backend/domains/crm/_quotation.py` - Applies customer commercial defaults and source metadata to quotations
 - `src/domain/customers/types.ts` - Frontend customer commercial default types
 - `src/domain/inventory/types.ts` - Frontend supplier commercial default types
+- `src/hooks/useCommercialDefaultsOptions.ts` - Shared active currency/payment terms option loader
+- `src/components/customers/CustomerForm.tsx` - Customer commercial defaults selectors
+- `src/pages/customers/CustomerDetailPage.tsx` - Customer commercial defaults visibility
+- `src/domain/inventory/components/SupplierForm.tsx` - Supplier commercial defaults selectors
+- `src/pages/inventory/SupplierDetailPage.tsx` - Supplier commercial defaults visibility
 
 ## Change Log
 
 - 2026-04-26: Implemented Story 25-4 customer and supplier commercial profiles. Added default currency and payment terms template references to party masters, source metadata tracking on documents, and deterministic fallback service. All 120 tests pass.
 - 2026-04-26: Code-review hardening completed. Party commercial defaults are exposed through APIs and applied in core sales document flows, non-base FX lookup fails deterministically when no rate exists, and affected backend tests plus frontend build verification pass.
+- 2026-04-26: Frontend builder follow-up completed. Customer and supplier profile UIs now maintain default currency and payment terms; focused frontend tests and locale parity pass, while full frontend build is currently blocked by unrelated accounting/Epic 26 TypeScript errors.

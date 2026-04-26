@@ -5,6 +5,19 @@ import { describe, expect, it, vi } from "vitest";
 
 import CustomerForm from "../../components/customers/CustomerForm";
 
+vi.mock("../../hooks/useCommercialDefaultsOptions", () => ({
+  useCommercialDefaultsOptions: () => ({
+    currencies: [
+      { id: "currency-twd", code: "TWD", is_base_currency: true },
+      { id: "currency-usd", code: "USD", is_base_currency: false },
+    ],
+    paymentTerms: [{ id: "terms-net-30", template_name: "Net 30" }],
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
+  }),
+}));
+
 describe("CustomerForm", () => {
   function fillRequiredFields(overrides?: Partial<Record<string, string>>) {
     fireEvent.change(screen.getByLabelText(/Company Name/i), {
@@ -36,6 +49,8 @@ describe("CustomerForm", () => {
     render(<CustomerForm onSubmit={onSubmit} />);
 
     fillRequiredFields();
+  fireEvent.change(screen.getByLabelText(/Default Currency/i), { target: { value: "TWD" } });
+  fireEvent.change(screen.getByLabelText(/Payment Terms/i), { target: { value: "terms-net-30" } });
     fireEvent.click(screen.getByRole("button", { name: "Create Customer" }));
 
     await waitFor(() => {
@@ -47,6 +62,8 @@ describe("CustomerForm", () => {
         contact_phone: "02-1234-5678",
         contact_email: "sales@acme.com",
         credit_limit: "120.50",
+        default_currency_code: "TWD",
+        payment_terms_template_id: "terms-net-30",
       });
     });
   });

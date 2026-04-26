@@ -13,6 +13,7 @@ import {
   type CustomerFormValues,
   toCustomerCreatePayload,
 } from "../../lib/schemas/customer.schema";
+import { useCommercialDefaultsOptions } from "../../hooks/useCommercialDefaultsOptions";
 
 export interface CustomerFormProps {
   onSubmit: (payload: ReturnType<typeof toCustomerCreatePayload>) => void;
@@ -31,9 +32,10 @@ export default function CustomerForm({
   submitLabel,
   submittingLabel,
 }: CustomerFormProps) {
-  const { t } = useTranslation("common");
-  const _submitLabel = submitLabel ?? t("customer.form.createTitle");
-  const _submittingLabel = submittingLabel ?? t("customer.form.creating");
+  const { t } = useTranslation("customer");
+  const commercialOptions = useCommercialDefaultsOptions();
+  const _submitLabel = submitLabel ?? t("form.createTitle");
+  const _submittingLabel = submittingLabel ?? t("form.creating");
 
   const {
     register,
@@ -50,9 +52,15 @@ export default function CustomerForm({
       contact_phone: initialValues?.contact_phone ?? "",
       contact_email: initialValues?.contact_email ?? "",
       credit_limit: initialValues?.credit_limit ?? "0.00",
+      default_currency_code: initialValues?.default_currency_code ?? "",
+      payment_terms_template_id: initialValues?.payment_terms_template_id ?? "",
     },
     mode: "onSubmit",
   });
+
+  function translateFormMessage(message: string): string {
+    return t(message.startsWith("customer.") ? message.slice("customer.".length) : message);
+  }
 
   // Map server errors onto the correct form fields
   useEffect(() => {
@@ -87,7 +95,7 @@ export default function CustomerForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field>
-          <FieldLabel htmlFor="company_name">{t("customer.form.companyName")} *</FieldLabel>
+          <FieldLabel htmlFor="company_name">{t("form.companyName")} *</FieldLabel>
           <Input
             id="company_name"
             {...register("company_name")}
@@ -95,12 +103,12 @@ export default function CustomerForm({
             aria-invalid={!!errors.company_name}
           />
           <FieldError
-            errors={errors.company_name ? [{ message: t(errors.company_name.message!) }] : []}
+            errors={errors.company_name ? [{ message: translateFormMessage(errors.company_name.message!) }] : []}
           />
         </Field>
 
         <Field>
-          <FieldLabel htmlFor="business_number">{t("customer.form.businessNumber")} *</FieldLabel>
+          <FieldLabel htmlFor="business_number">{t("form.businessNumber")} *</FieldLabel>
           <Input
             id="business_number"
             {...register("business_number")}
@@ -108,13 +116,13 @@ export default function CustomerForm({
             aria-invalid={!!errors.business_number}
           />
           <FieldError
-            errors={errors.business_number ? [{ message: t(errors.business_number.message!) }] : []}
+            errors={errors.business_number ? [{ message: translateFormMessage(errors.business_number.message!) }] : []}
           />
         </Field>
       </div>
 
       <Field>
-        <FieldLabel htmlFor="billing_address">{t("customer.form.billingAddress")}</FieldLabel>
+        <FieldLabel htmlFor="billing_address">{t("form.billingAddress")}</FieldLabel>
         <Input
           id="billing_address"
           {...register("billing_address")}
@@ -124,7 +132,7 @@ export default function CustomerForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field>
-          <FieldLabel htmlFor="contact_name">{t("customer.form.contactName")} *</FieldLabel>
+          <FieldLabel htmlFor="contact_name">{t("form.contactName")} *</FieldLabel>
           <Input
             id="contact_name"
             {...register("contact_name")}
@@ -132,12 +140,12 @@ export default function CustomerForm({
             aria-invalid={!!errors.contact_name}
           />
           <FieldError
-            errors={errors.contact_name ? [{ message: t(errors.contact_name.message!) }] : []}
+            errors={errors.contact_name ? [{ message: translateFormMessage(errors.contact_name.message!) }] : []}
           />
         </Field>
 
         <Field>
-          <FieldLabel htmlFor="contact_phone">{t("customer.form.contactPhone")} *</FieldLabel>
+          <FieldLabel htmlFor="contact_phone">{t("form.contactPhone")} *</FieldLabel>
           <Input
             id="contact_phone"
             {...register("contact_phone")}
@@ -145,14 +153,14 @@ export default function CustomerForm({
             aria-invalid={!!errors.contact_phone}
           />
           <FieldError
-            errors={errors.contact_phone ? [{ message: t(errors.contact_phone.message!) }] : []}
+            errors={errors.contact_phone ? [{ message: translateFormMessage(errors.contact_phone.message!) }] : []}
           />
         </Field>
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field>
-          <FieldLabel htmlFor="contact_email">{t("customer.form.contactEmail")} *</FieldLabel>
+          <FieldLabel htmlFor="contact_email">{t("form.contactEmail")} *</FieldLabel>
           <Input
             id="contact_email"
             type="email"
@@ -161,12 +169,12 @@ export default function CustomerForm({
             aria-invalid={!!errors.contact_email}
           />
           <FieldError
-            errors={errors.contact_email ? [{ message: t(errors.contact_email.message!) }] : []}
+            errors={errors.contact_email ? [{ message: translateFormMessage(errors.contact_email.message!) }] : []}
           />
         </Field>
 
         <Field>
-          <FieldLabel htmlFor="credit_limit">{t("customer.form.creditLimit")}</FieldLabel>
+          <FieldLabel htmlFor="credit_limit">{t("form.creditLimit")}</FieldLabel>
           <Input
             id="credit_limit"
             type="number"
@@ -176,10 +184,54 @@ export default function CustomerForm({
             aria-invalid={!!errors.credit_limit}
           />
           <FieldError
-            errors={errors.credit_limit ? [{ message: t(errors.credit_limit.message!) }] : []}
+            errors={errors.credit_limit ? [{ message: translateFormMessage(errors.credit_limit.message!) }] : []}
           />
         </Field>
       </div>
+
+      <fieldset className="space-y-3 rounded-lg border border-border/70 p-4">
+        <legend className="px-1 text-sm font-semibold">{t("form.commercialDefaults")}</legend>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor="default_currency_code">{t("form.defaultCurrency")}</FieldLabel>
+            <select
+              id="default_currency_code"
+              className="h-8 w-full rounded-lg border border-input bg-background px-2.5 py-1 text-sm"
+              disabled={submitting || commercialOptions.loading}
+              {...register("default_currency_code")}
+            >
+              <option value="">{t("form.useTenantDefault")}</option>
+              {initialValues?.default_currency_code && !commercialOptions.currencies.some((currency) => currency.code === initialValues.default_currency_code) ? (
+                <option value={initialValues.default_currency_code}>{initialValues.default_currency_code}</option>
+              ) : null}
+              {commercialOptions.currencies.map((currency) => (
+                <option key={currency.id} value={currency.code}>
+                  {currency.code}{currency.is_base_currency ? ` (${t("form.baseCurrency")})` : ""}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor="payment_terms_template_id">{t("form.paymentTerms")}</FieldLabel>
+            <select
+              id="payment_terms_template_id"
+              className="h-8 w-full rounded-lg border border-input bg-background px-2.5 py-1 text-sm"
+              disabled={submitting || commercialOptions.loading}
+              {...register("payment_terms_template_id")}
+            >
+              <option value="">{t("form.useTenantDefault")}</option>
+              {initialValues?.payment_terms_template_id && !commercialOptions.paymentTerms.some((template) => template.id === initialValues.payment_terms_template_id) ? (
+                <option value={initialValues.payment_terms_template_id}>{initialValues.payment_terms_template_id}</option>
+              ) : null}
+              {commercialOptions.paymentTerms.map((template) => (
+                <option key={template.id} value={template.id}>{template.template_name}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
+        {commercialOptions.error ? <p className="text-sm text-destructive">{commercialOptions.error}</p> : null}
+      </fieldset>
 
       <Button type="submit" disabled={submitting}>
         {submitting ? _submittingLabel : _submitLabel}
