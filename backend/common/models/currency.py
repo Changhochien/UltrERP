@@ -8,6 +8,7 @@ from decimal import Decimal
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     Date,
     DateTime,
     Index,
@@ -15,6 +16,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Uuid,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -32,6 +34,12 @@ class Currency(Base):
     __table_args__ = (
         Index("ix_currencies_tenant_active", "tenant_id", "is_active"),
         Index("uq_currencies_tenant_code", "tenant_id", "code", unique=True),
+        Index(
+            "uq_currencies_one_base_per_tenant",
+            "tenant_id",
+            unique=True,
+            postgresql_where=text("is_base_currency"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
@@ -73,6 +81,8 @@ class ExchangeRate(Base):
 
     __tablename__ = "exchange_rates"
     __table_args__ = (
+        CheckConstraint("source_currency_code <> target_currency_code", name="ck_exchange_rates_distinct_currency_pair"),
+        CheckConstraint("rate > 0", name="ck_exchange_rates_positive_rate"),
         Index(
             "ix_exchange_rates_tenant_source_target_date",
             "tenant_id",

@@ -70,3 +70,10 @@ class Payment(Base):
     invoice: Mapped[Invoice | None] = relationship(foreign_keys=[invoice_id])
     customer: Mapped[Customer] = relationship()
     suggested_invoice: Mapped[Invoice | None] = relationship(foreign_keys=[suggested_invoice_id])
+
+    # Currency snapshot fields (Story 25-2)
+    currency_code: Mapped[str | None] = mapped_column(String(3), nullable=True, default="TWD")
+    conversion_rate: Mapped[Decimal | None] = mapped_column(Numeric(20, 10), nullable=True, default=Decimal("1.0"))
+    conversion_effective_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    applied_rate_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    base_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)

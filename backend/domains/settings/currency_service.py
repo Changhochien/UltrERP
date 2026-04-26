@@ -16,6 +16,7 @@ from common.models.currency import Currency, ExchangeRate
 from domains.settings.exchange_rate_service import (
     CurrencyNotFoundError,
     ExchangeRateNotFoundError,
+    ensure_tenant_currencies_seeded,
     resolve_exchange_rate,
 )
 from domains.settings.schemas_currency import (
@@ -56,6 +57,8 @@ async def list_currencies(
     Returns:
         CurrencyListResponse with paginated items
     """
+    await ensure_tenant_currencies_seeded(session, tenant_id)
+
     query = select(Currency).where(Currency.tenant_id == tenant_id)
 
     if active_only:
@@ -128,6 +131,8 @@ async def get_currency_by_code(
     Raises:
         CurrencyNotFoundError: If currency not found
     """
+    await ensure_tenant_currencies_seeded(session, tenant_id)
+
     result = await session.execute(
         select(Currency).where(
             Currency.tenant_id == tenant_id,
@@ -349,32 +354,43 @@ async def create_exchange_rate(
     Raises:
         ValueError: If rate already exists for this date or currencies invalid
     """
+    normalized_source = data.source_currency_code.upper().strip()
+    normalized_target = data.target_currency_code.upper().strip()
+
+    if normalized_source == normalized_target:
+        raise ValueError("Cannot create an exchange rate for the same currency pair")
+
     # Validate currencies exist
     try:
-        await get_currency_by_code(session, tenant_id, data.source_currency_code)
-        await get_currency_by_code(session, tenant_id, data.target_currency_code)
+        source_currency = await get_currency_by_code(session, tenant_id, normalized_source)
+        target_currency = await get_currency_by_code(session, tenant_id, normalized_target)
     except CurrencyNotFoundError as e:
         raise ValueError(f"Invalid currency: {e.currency_code}") from e
+
+    if not source_currency.is_active:
+        raise ValueError(f"Currency '{normalized_source}' is inactive")
+    if not target_currency.is_active:
+        raise ValueError(f"Currency '{normalized_target}' is inactive")
 
     # Check for duplicate effective date
     existing = await session.execute(
         select(ExchangeRate).where(
             ExchangeRate.tenant_id == tenant_id,
-            ExchangeRate.source_currency_code == data.source_currency_code,
-            ExchangeRate.target_currency_code == data.target_currency_code,
+            ExchangeRate.source_currency_code == normalized_source,
+            ExchangeRate.target_currency_code == normalized_target,
             ExchangeRate.effective_date == data.effective_date,
         )
     )
     if existing.scalar_one_or_none() is not None:
         raise ValueError(
-            f"Exchange rate for {data.source_currency_code} -> {data.target_currency_code} "
+            f"Exchange rate for {normalized_source} -> {normalized_target} "
             f"already exists for {data.effective_date}"
         )
 
     rate = ExchangeRate(
         tenant_id=tenant_id,
-        source_currency_code=data.source_currency_code,
-        target_currency_code=data.target_currency_code,
+        source_currency_code=normalized_source,
+        target_currency_code=normalized_target,
         effective_date=data.effective_date,
         rate=data.rate,
         is_inverse=data.is_inverse,

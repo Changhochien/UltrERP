@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, func
+from sqlalchemy import JSON, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -77,3 +77,19 @@ class Order(Base):
 		order_by="OrderLine.line_number",
 	)
 	customer: Mapped[Customer] = relationship()
+
+	# Currency snapshot fields (Story 25-2)
+	currency_code: Mapped[str | None] = mapped_column(String(3), nullable=True, default="TWD")
+	conversion_rate: Mapped[Decimal | None] = mapped_column(Numeric(20, 10), nullable=True, default=Decimal("1.0"))
+	conversion_effective_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+	applied_rate_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+	# Commercial value source tracking (Story 25-4)
+	currency_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
+	payment_terms_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+	# Base currency amounts
+	base_subtotal_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
+	base_discount_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
+	base_tax_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
+	base_total_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)

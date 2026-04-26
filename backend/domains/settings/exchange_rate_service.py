@@ -15,11 +15,28 @@ import uuid
 from dataclasses import dataclass
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
+import re
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.models.currency import Currency, ExchangeRate
+from domains.settings.models import AppSetting
+
+
+DEFAULT_CURRENCY_DEFINITIONS: dict[str, dict[str, int | str]] = {
+    "TWD": {"symbol": "NT$", "decimal_places": 0},
+    "USD": {"symbol": "$", "decimal_places": 2},
+    "EUR": {"symbol": "€", "decimal_places": 2},
+    "JPY": {"symbol": "¥", "decimal_places": 0},
+    "HKD": {"symbol": "HK$", "decimal_places": 2},
+    "CNY": {"symbol": "¥", "decimal_places": 2},
+    "GBP": {"symbol": "£", "decimal_places": 2},
+    "AUD": {"symbol": "A$", "decimal_places": 2},
+    "CAD": {"symbol": "C$", "decimal_places": 2},
+    "SGD": {"symbol": "S$", "decimal_places": 2},
+}
+_CURRENCY_SETTING_PATTERN = re.compile(r"^currency\.([^.]+)\.(symbol|decimal_places)$")
 
 
 @dataclass(frozen=True)
@@ -104,6 +121,8 @@ async def get_tenant_base_currency(
     Raises:
         CurrencyNotFoundError: If no base currency is defined
     """
+    await ensure_tenant_currencies_seeded(session, tenant_id)
+
     result = await session.execute(
         select(Currency).where(
             Currency.tenant_id == tenant_id,
@@ -150,6 +169,8 @@ async def resolve_exchange_rate(
         CurrencyNotFoundError: If either currency is not found or inactive
         ExchangeRateNotFoundError: If no rate exists and allow_identity=False
     """
+    await ensure_tenant_currencies_seeded(session, tenant_id)
+
     # Normalize currency codes to uppercase
     source_code = source_currency_code.upper().strip()
     target_code = target_currency_code.upper().strip()
@@ -249,10 +270,85 @@ def convert_amount(
     return converted.quantize(Decimal(quantize_str), rounding=ROUND_HALF_UP)
 
 
+def _build_currency_seed_entries(
+    settings_rows: list[AppSetting],
+    *,
+    fallback_base_currency_code: str = "TWD",
+) -> tuple[str, list[dict[str, int | str]]]:
+    definitions = {
+        code: values.copy() for code, values in DEFAULT_CURRENCY_DEFINITIONS.items()
+    }
+    base_currency_code = fallback_base_currency_code.upper().strip()
+
+    for row in settings_rows:
+        if row.key == "currency.default":
+            candidate = str(row.value).upper().strip()
+            if candidate:
+                base_currency_code = candidate
+                definitions.setdefault(candidate, {"symbol": candidate, "decimal_places": 2})
+            continue
+
+        match = _CURRENCY_SETTING_PATTERN.match(row.key)
+        if match is None:
+            continue
+
+        code, field_name = match.groups()
+        normalized_code = code.upper().strip()
+        entry = definitions.setdefault(
+            normalized_code,
+            {"symbol": normalized_code, "decimal_places": 2},
+        )
+        if field_name == "symbol":
+            symbol = str(row.value).strip()
+            entry["symbol"] = symbol or normalized_code
+            continue
+
+        try:
+            decimal_places = int(str(row.value).strip())
+        except ValueError:
+            continue
+        entry["decimal_places"] = min(max(decimal_places, 0), 6)
+
+    ordered_codes = sorted(definitions)
+    return base_currency_code, [
+        {
+            "code": code,
+            "symbol": str(definitions[code]["symbol"]),
+            "decimal_places": int(definitions[code]["decimal_places"]),
+        }
+        for code in ordered_codes
+    ]
+
+
+async def ensure_tenant_currencies_seeded(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+) -> list[Currency]:
+    existing = await session.execute(
+        select(Currency.id).where(Currency.tenant_id == tenant_id).limit(1)
+    )
+    if existing.scalar_one_or_none() is not None:
+        return []
+
+    settings_result = await session.execute(
+        select(AppSetting).where(AppSetting.key.like("currency.%"))
+    )
+    settings_rows = list(settings_result.scalars().all())
+    base_currency_code, seed_definitions = _build_currency_seed_entries(settings_rows)
+    return await seed_default_currencies(
+        session,
+        tenant_id,
+        base_currency_code=base_currency_code,
+        seed_definitions=seed_definitions,
+    )
+
+
 async def seed_default_currencies(
     session: AsyncSession,
     tenant_id: uuid.UUID,
     base_currency_code: str = "TWD",
+    *,
+    seed_definitions: list[dict[str, int | str]] | None = None,
 ) -> list[Currency]:
     """Seed default currencies for a new tenant from legacy app_settings compatibility.
 
@@ -267,28 +363,25 @@ async def seed_default_currencies(
     Returns:
         List of created Currency records
     """
-    default_currencies = [
-        {"code": "TWD", "symbol": "NT$", "decimal_places": 0},
-        {"code": "USD", "symbol": "$", "decimal_places": 2},
-        {"code": "EUR", "symbol": "€", "decimal_places": 2},
-        {"code": "JPY", "symbol": "¥", "decimal_places": 0},
-        {"code": "HKD", "symbol": "HK$", "decimal_places": 2},
-        {"code": "CNY", "symbol": "¥", "decimal_places": 2},
-        {"code": "GBP", "symbol": "£", "decimal_places": 2},
-        {"code": "AUD", "symbol": "A$", "decimal_places": 2},
-        {"code": "CAD", "symbol": "C$", "decimal_places": 2},
-        {"code": "SGD", "symbol": "S$", "decimal_places": 2},
+    default_currencies = seed_definitions or [
+        {
+            "code": code,
+            "symbol": str(values["symbol"]),
+            "decimal_places": int(values["decimal_places"]),
+        }
+        for code, values in sorted(DEFAULT_CURRENCY_DEFINITIONS.items())
     ]
 
     created = []
     for curr_data in default_currencies:
+        currency_code = str(curr_data["code"]).upper().strip()
         currency = Currency(
             tenant_id=tenant_id,
-            code=curr_data["code"],
-            symbol=curr_data["symbol"],
-            decimal_places=curr_data["decimal_places"],
+            code=currency_code,
+            symbol=str(curr_data["symbol"]),
+            decimal_places=int(curr_data["decimal_places"]),
             is_active=True,
-            is_base_currency=(curr_data["code"] == base_currency_code),
+            is_base_currency=(currency_code == base_currency_code.upper().strip()),
         )
         session.add(currency)
         created.append(currency)

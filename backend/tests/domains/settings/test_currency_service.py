@@ -124,15 +124,27 @@ class TestCurrencySchemas:
         assert data.symbol == "$"
         assert data.decimal_places == 2
 
+    def test_currency_create_normalizes_code_and_symbol(self) -> None:
+        """Test that currency create normalizes code and trims symbol."""
+        from domains.settings.schemas_currency import CurrencyCreate
+
+        data = CurrencyCreate(
+            code=" usd ",
+            symbol=" $ ",
+            decimal_places=2,
+            is_active=True,
+            is_base_currency=False,
+        )
+        assert data.code == "USD"
+        assert data.symbol == "$"
+
     def test_currency_code_normalization(self) -> None:
         """Test that currency codes are normalized."""
         from domains.settings.schemas_currency import ExchangeRateCreate
 
-        # The validator normalizes to uppercase but doesn't trim before length check
-        # So we test with valid-length codes
         data = ExchangeRateCreate(
-            source_currency_code="usd",
-            target_currency_code="twd",
+            source_currency_code=" usd ",
+            target_currency_code=" twd ",
             effective_date=date.today(),
             rate=Decimal("32.5"),
         )
@@ -374,6 +386,28 @@ class TestCurrencyPrecision:
 class TestSeedDefaults:
     """Tests for seeding default currencies."""
 
+    def test_build_currency_seed_entries_applies_app_settings_overrides(self) -> None:
+        """Test that app_settings metadata overrides default currency seed values."""
+        from domains.settings.exchange_rate_service import _build_currency_seed_entries
+        from domains.settings.models import AppSetting
+
+        settings_rows = [
+            AppSetting(key="currency.default", value="usd"),
+            AppSetting(key="currency.USD.symbol", value="US$"),
+            AppSetting(key="currency.USD.decimal_places", value="3"),
+            AppSetting(key="currency.KRW.symbol", value="₩"),
+            AppSetting(key="currency.KRW.decimal_places", value="0"),
+        ]
+
+        base_currency_code, definitions = _build_currency_seed_entries(settings_rows)
+
+        assert base_currency_code == "USD"
+        by_code = {item["code"]: item for item in definitions}
+        assert by_code["USD"]["symbol"] == "US$"
+        assert by_code["USD"]["decimal_places"] == 3
+        assert by_code["KRW"]["symbol"] == "₩"
+        assert by_code["KRW"]["decimal_places"] == 0
+
     async def test_seed_produces_base_currency(self) -> None:
         """Test that seed_default_currencies marks one as base."""
         from tests.domains.orders._helpers import FakeAsyncSession
@@ -407,3 +441,55 @@ class TestSeedDefaults:
         assert "TWD" in codes
         assert "USD" in codes
         assert "EUR" in codes
+
+
+class TestExchangeRateGuards:
+    """Tests for exchange-rate creation guardrails."""
+
+    @pytest.mark.asyncio
+    async def test_create_exchange_rate_rejects_same_currency_pair(self) -> None:
+        from tests.domains.orders._helpers import FakeAsyncSession
+
+        from domains.settings.currency_service import create_exchange_rate
+        from domains.settings.schemas_currency import ExchangeRateCreate
+
+        session = FakeAsyncSession()
+
+        with pytest.raises(ValueError, match="same currency pair"):
+            await create_exchange_rate(
+                session,
+                uuid.uuid4(),
+                ExchangeRateCreate(
+                    source_currency_code="USD",
+                    target_currency_code="USD",
+                    effective_date=date.today(),
+                    rate=Decimal("1.0"),
+                ),
+            )
+
+    @pytest.mark.asyncio
+    async def test_create_exchange_rate_rejects_inactive_currency(self) -> None:
+        from tests.domains.orders._helpers import FakeAsyncSession
+
+        from common.models.currency import Currency
+        from domains.settings.currency_service import create_exchange_rate
+        from domains.settings.schemas_currency import ExchangeRateCreate
+
+        tenant_id = uuid.uuid4()
+        session = FakeAsyncSession()
+        session.queue_scalar(object())
+        session.queue_scalar(Currency(tenant_id=tenant_id, code="USD", symbol="$", decimal_places=2, is_active=False))
+        session.queue_scalar(object())
+        session.queue_scalar(Currency(tenant_id=tenant_id, code="TWD", symbol="NT$", decimal_places=0, is_active=True, is_base_currency=True))
+
+        with pytest.raises(ValueError, match="inactive"):
+            await create_exchange_rate(
+                session,
+                tenant_id,
+                ExchangeRateCreate(
+                    source_currency_code="USD",
+                    target_currency_code="TWD",
+                    effective_date=date.today(),
+                    rate=Decimal("32.5"),
+                ),
+            )

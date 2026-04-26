@@ -106,6 +106,7 @@ describe("SettingsPage", () => {
 		});
 		expect(screen.getByRole("tab", { name: /egui/i })).toBeTruthy();
 		expect(screen.getByRole("tab", { name: /auth/i })).toBeTruthy();
+			expect(screen.getByRole("tab", { name: /currencies/i })).toBeTruthy();
 	});
 
 	it("shows error state when fetch fails", async () => {

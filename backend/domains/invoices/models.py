@@ -128,6 +128,20 @@ class Invoice(Base):
         uselist=False,
     )
 
+    # Currency snapshot fields (Story 25-2)
+    conversion_rate: Mapped[Decimal | None] = mapped_column(Numeric(20, 10), nullable=True, default=Decimal("1.0"))
+    conversion_effective_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    applied_rate_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    # Commercial value source tracking (Story 25-4)
+    currency_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    payment_terms_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    # Base currency amounts
+    base_subtotal_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
+    base_tax_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
+    base_total_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
+
 
 class EguiSubmission(Base):
     __tablename__ = "egui_submissions"
@@ -193,3 +207,9 @@ class InvoiceLine(Base):
     )
 
     invoice: Mapped[Invoice] = relationship(back_populates="lines")
+
+    # Base currency amounts (Story 25-2)
+    base_unit_price: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
+    base_subtotal_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
+    base_tax_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
+    base_total_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)

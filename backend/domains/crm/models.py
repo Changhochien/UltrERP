@@ -250,6 +250,17 @@ class Quotation(Base):
     total_taxes: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0.00"))
     grand_total: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0.00"))
     base_grand_total: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0.00"))
+
+    # Currency snapshot fields (Story 25-2)
+    conversion_rate: Mapped[Decimal | None] = mapped_column(Numeric(20, 10), nullable=True, default=Decimal("1.0"))
+    conversion_effective_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    applied_rate_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    base_subtotal: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    base_total_taxes: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+
+    # Commercial value source tracking (Story 25-4)
+    currency_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    payment_terms_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
     ordered_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0.00"))
     order_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 

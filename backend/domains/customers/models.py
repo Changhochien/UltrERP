@@ -5,11 +5,15 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, DateTime, Index, Numeric, String, Text, Uuid
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, Numeric, String, Text, Uuid
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from common.database import Base
+
+if TYPE_CHECKING:
+    from common.models.payment_terms import PaymentTermsTemplate
 
 
 class Customer(Base):
@@ -55,4 +59,20 @@ class Customer(Base):
             "normalized_business_number",
             unique=True,
         ),
+        Index("ix_customers_default_currency", "tenant_id", "default_currency_code"),
     )
+
+    # Commercial profile defaults (Story 25-4)
+    default_currency_code: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    payment_terms_template_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey(
+            "payment_terms_templates.id",
+            name="fk_customers_payment_terms_template",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+    )
+
+    # Relationships
+    payment_terms_template: Mapped[PaymentTermsTemplate | None] = relationship()

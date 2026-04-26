@@ -61,3 +61,9 @@ class OrderLine(Base):
 	)
 
 	order: Mapped[Order] = relationship(back_populates="lines")
+
+	# Base currency amounts (Story 25-2)
+	base_unit_price: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
+	base_subtotal_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
+	base_tax_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
+	base_total_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)

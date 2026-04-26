@@ -22,6 +22,19 @@ class CurrencyBase(BaseModel):
     decimal_places: Annotated[int, Field(ge=0, le=6, description="Decimal precision for amounts")]
     is_active: Annotated[bool, Field(default=True, description="Whether currency is available")]
 
+    @field_validator("code", mode="before")
+    @classmethod
+    def normalize_currency_code(cls, v: str) -> str:
+        return v.upper().strip()
+
+    @field_validator("symbol")
+    @classmethod
+    def validate_symbol(cls, v: str) -> str:
+        symbol = v.strip()
+        if not symbol:
+            raise ValueError("Symbol cannot be empty")
+        return symbol
+
 
 class CurrencyCreate(CurrencyBase):
     """Schema for creating a new currency."""
@@ -43,7 +56,7 @@ class CurrencyUpdate(BaseModel):
     def validate_symbol(cls, v: str | None) -> str | None:
         if v is not None and not v.strip():
             raise ValueError("Symbol cannot be empty")
-        return v
+        return v.strip() if v is not None else None
 
 
 class CurrencyResponse(CurrencyBase):
@@ -93,7 +106,7 @@ class ExchangeRateCreate(ExchangeRateBase):
         bool, Field(default=False, description="Is this an inverse/computed rate")
     ]
 
-    @field_validator("source_currency_code", "target_currency_code")
+    @field_validator("source_currency_code", "target_currency_code", mode="before")
     @classmethod
     def normalize_currency_code(cls, v: str) -> str:
         return v.upper().strip()
@@ -153,7 +166,7 @@ class ExchangeRateLookupRequest(BaseModel):
         Field(default=True, description="Allow identity rate for same currency"),
     ]
 
-    @field_validator("source_currency_code", "target_currency_code")
+    @field_validator("source_currency_code", "target_currency_code", mode="before")
     @classmethod
     def normalize_currency_code(cls, v: str) -> str:
         return v.upper().strip()
@@ -178,7 +191,7 @@ class ConversionRequest(BaseModel):
     effective_date: Annotated[date, Field(description="Date to use for rate lookup")]
     target_precision: Annotated[int | None, Field(ge=0, le=6)] = None
 
-    @field_validator("source_currency_code", "target_currency_code")
+    @field_validator("source_currency_code", "target_currency_code", mode="before")
     @classmethod
     def normalize_currency_code(cls, v: str) -> str:
         return v.upper().strip()

@@ -102,6 +102,17 @@ class SupplierInvoice(Base):
 		back_populates="supplier_invoice", order_by="SupplierPaymentAllocation.allocation_date"
 	)
 
+	# Currency snapshot fields (Story 25-2)
+	conversion_rate: Mapped[Decimal | None] = mapped_column(Numeric(20, 10), nullable=True, default=Decimal("1.0"))
+	conversion_effective_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+	applied_rate_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+	# Base currency amounts
+	base_subtotal_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
+	base_tax_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
+	base_total_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
+	remaining_base_payable_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
+
 
 class SupplierInvoiceLine(Base):
 	__tablename__ = "supplier_invoice_lines"
@@ -178,3 +189,9 @@ class SupplierInvoiceLine(Base):
 	)
 
 	supplier_invoice: Mapped[SupplierInvoice] = relationship(back_populates="lines")
+
+	# Base currency amounts (Story 25-2)
+	base_unit_price: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
+	base_subtotal_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
+	base_tax_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
+	base_total_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)

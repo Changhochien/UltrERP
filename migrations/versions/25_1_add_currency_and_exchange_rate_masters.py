@@ -1,6 +1,6 @@
 """Add currency and exchange rate master tables.
 
-Revision ID: 25_1_currency_and_exchange_rate_masters
+Revision ID: 25_1_add_currency_and_exchange_rate_masters
 Revises: latest
 Create Date: 2026-04-26
 
@@ -20,8 +20,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "25_1_currency_and_exchange_rate_masters"
-down_revision: Union[str, None] = None
+revision: str = "25_1_currency_masters"
+down_revision: Union[str, None] = "abc123def460"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -55,6 +55,13 @@ def upgrade() -> None:
         ["tenant_id", "code"],
         unique=True,
     )
+    op.create_index(
+        "uq_currencies_one_base_per_tenant",
+        "currencies",
+        ["tenant_id"],
+        unique=True,
+        postgresql_where=sa.text("is_base_currency"),
+    )
 
     # Create exchange_rates table
     op.create_table(
@@ -66,7 +73,7 @@ def upgrade() -> None:
         sa.Column("effective_date", sa.Date(), nullable=False),
         sa.Column(
             "rate",
-            postgresql.Numeric(precision=20, scale=10),
+            sa.Numeric(precision=20, scale=10),
             nullable=False,
         ),
         sa.Column("is_inverse", sa.Boolean(), nullable=False, server_default=sa.text("false")),
@@ -74,6 +81,11 @@ def upgrade() -> None:
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.CheckConstraint(
+            "source_currency_code <> target_currency_code",
+            name="ck_exchange_rates_distinct_currency_pair",
+        ),
+        sa.CheckConstraint("rate > 0", name="ck_exchange_rates_positive_rate"),
         sa.PrimaryKeyConstraint("id"),
     )
 

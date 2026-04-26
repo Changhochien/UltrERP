@@ -11,6 +11,9 @@ import {
   useResetSetting,
 } from "../../hooks/useSettings";
 import type { SettingsCategory } from "../../lib/api/settings";
+import CurrencyMastersPanel from "./CurrencyMastersPanel";
+
+const CURRENCY_MASTERS_TAB = "__currency_masters";
 
 interface CategoryInfo {
   label: string;
@@ -130,6 +133,9 @@ export function SettingsPage() {
       value: cat.category,
       label: info.label,
     };
+  }).concat({
+    value: CURRENCY_MASTERS_TAB,
+    label: t("settingsPage.currencyMasters.tab", { defaultValue: "Currencies" }),
   });
 
   // Find current category data
@@ -297,6 +303,8 @@ export function SettingsPage() {
           saveError={saveError}
         />
       )}
+
+      {currentCategory === CURRENCY_MASTERS_TAB ? <CurrencyMastersPanel /> : null}
     </div>
   );
 }

@@ -103,6 +103,12 @@ class SupplierPayment(Base):
 		order_by="SupplierPaymentAllocation.allocation_date",
 	)
 
+	# Currency snapshot fields (Story 25-2)
+	conversion_rate: Mapped[Decimal | None] = mapped_column(Numeric(20, 10), nullable=True, default=Decimal("1.0"))
+	conversion_effective_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+	applied_rate_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
+	base_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
+
 
 class SupplierPaymentAllocation(Base):
 	__tablename__ = "supplier_payment_allocations"
@@ -163,3 +169,6 @@ class SupplierPaymentAllocation(Base):
 
 	supplier_payment: Mapped[SupplierPayment] = relationship(back_populates="allocations")
 	supplier_invoice: Mapped[SupplierInvoice] = relationship(back_populates="payment_allocations")
+
+	# Base currency amount (Story 25-2)
+	base_applied_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2), nullable=True)
