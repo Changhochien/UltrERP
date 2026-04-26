@@ -43,6 +43,11 @@ from domains.procurement.models import (
     SubcontractingReceiptItem,
     SubcontractingReceiptMaterialRef,
 )
+from domains.settings.commercial_profile_service import CommercialValueSource
+from domains.settings.document_currency import (
+    apply_document_currency_snapshot,
+    apply_line_currency_snapshot,
+)
 
 # --------------------------------------------------------------------------
 # Supplier Control Result Types (Story 24-5)
@@ -355,6 +360,26 @@ async def submit_rfq(
 # --------------------------------------------------------------------------
 
 
+def _currency_source_for_procurement(data: dict, *, from_source_document: bool = False) -> str:
+    if from_source_document:
+        return CommercialValueSource.SOURCE_DOCUMENT.value
+    if data.get("currency"):
+        return CommercialValueSource.MANUAL_OVERRIDE.value
+    return CommercialValueSource.LEGACY_COMPATIBILITY.value
+
+
+def _line_total_from_amount_and_tax(amount: Decimal, tax_amount: Decimal) -> Decimal:
+    return amount + tax_amount
+
+
+def _decimal_value(value: object, default: str = "0.00") -> Decimal:
+    if value is None:
+        return Decimal(default)
+    if isinstance(value, Decimal):
+        return value
+    return Decimal(str(value))
+
+
 async def create_supplier_quotation(
     db: AsyncSession,
     tenant_id: uuid.UUID,
@@ -388,6 +413,7 @@ async def create_supplier_quotation(
         supplier_name=supplier_name,
         company=data.get("company", ""),
         currency=data.get("currency", "TWD"),
+        currency_source=_currency_source_for_procurement(data),
         transaction_date=transaction_date,
         valid_till=data.get("valid_till"),
         lead_time_days=data.get("lead_time_days"),
@@ -409,6 +435,7 @@ async def create_supplier_quotation(
     db.add(quotation)
     await db.flush()
 
+    quotation_items: list[SupplierQuotationItem] = []
     for idx, item_data in enumerate(data.get("items", [])):
         item = SupplierQuotationItem(
             tenant_id=tenant_id,
@@ -429,6 +456,32 @@ async def create_supplier_quotation(
             normalized_amount=Decimal(str(item_data.get("normalized_amount", "0"))),
         )
         db.add(item)
+        quotation_items.append(item)
+
+    await db.flush()
+
+    snapshot = await apply_document_currency_snapshot(
+        db,
+        tenant_id,
+        quotation,
+        currency_code=quotation.currency,
+        transaction_date=transaction_date,
+        subtotal=_decimal_value(quotation.subtotal),
+        tax_amount=_decimal_value(quotation.total_taxes),
+        total=_decimal_value(quotation.grand_total),
+        currency_source=quotation.currency_source,
+    )
+    for item in quotation_items:
+        amount = _decimal_value(item.amount)
+        tax_amount = _decimal_value(item.tax_amount)
+        apply_line_currency_snapshot(
+            snapshot,
+            item,
+            unit_price=_decimal_value(item.unit_rate),
+            subtotal=amount,
+            tax_amount=tax_amount,
+            total=_line_total_from_amount_and_tax(amount, tax_amount),
+        )
 
     if rfq_id and supplier_name:
         await _link_quotation_to_rfq_supplier(
@@ -537,6 +590,18 @@ async def update_supplier_quotation(
     ):
         if field in data and data[field] is not None:
             setattr(sq, field, data[field])
+
+    await apply_document_currency_snapshot(
+        db,
+        tenant_id,
+        sq,
+        currency_code=sq.currency,
+        transaction_date=sq.transaction_date,
+        subtotal=_decimal_value(sq.subtotal),
+        tax_amount=_decimal_value(sq.total_taxes),
+        total=_decimal_value(sq.grand_total),
+        currency_source=sq.currency_source,
+    )
 
     await db.commit()
     await db.refresh(sq)
@@ -908,6 +973,7 @@ async def create_purchase_order(
         award_id=award_id,
         company=data.get("company", ""),
         currency=data.get("currency", "TWD"),
+        currency_source=_currency_source_for_procurement(data, from_source_document=bool(award_id)),
         transaction_date=transaction_date,
         schedule_date=data.get("schedule_date"),
         subtotal=data.get("subtotal", Decimal("0.00")),
@@ -936,6 +1002,7 @@ async def create_purchase_order(
     await db.flush()
 
     # Create PO items
+    po_items: list[PurchaseOrderItem] = []
     for idx, item_data in enumerate(data.get("items", [])):
         warehouse = item_data.get("warehouse") or po.set_warehouse
         item = PurchaseOrderItem(
@@ -959,6 +1026,32 @@ async def create_purchase_order(
             billed_amount=Decimal("0.00"),
         )
         db.add(item)
+        po_items.append(item)
+
+    await db.flush()
+
+    snapshot = await apply_document_currency_snapshot(
+        db,
+        tenant_id,
+        po,
+        currency_code=po.currency,
+        transaction_date=transaction_date,
+        subtotal=_decimal_value(po.subtotal),
+        tax_amount=_decimal_value(po.total_taxes),
+        total=_decimal_value(po.grand_total),
+        currency_source=po.currency_source,
+    )
+    for item in po_items:
+        amount = _decimal_value(item.amount)
+        tax_amount = _decimal_value(item.tax_amount)
+        apply_line_currency_snapshot(
+            snapshot,
+            item,
+            unit_price=_decimal_value(item.unit_rate),
+            subtotal=amount,
+            tax_amount=tax_amount,
+            total=_line_total_from_amount_and_tax(amount, tax_amount),
+        )
 
     # Mark award as PO created
     if award_id:
@@ -1060,6 +1153,18 @@ async def update_purchase_order(
                 po.expected_subcontracted_qty = Decimal(str(data[field]))
             else:
                 setattr(po, field, data[field])
+
+    await apply_document_currency_snapshot(
+        db,
+        tenant_id,
+        po,
+        currency_code=po.currency,
+        transaction_date=po.transaction_date,
+        subtotal=_decimal_value(po.subtotal),
+        tax_amount=_decimal_value(po.total_taxes),
+        total=_decimal_value(po.grand_total),
+        currency_source=po.currency_source,
+    )
 
     await db.commit()
     await db.refresh(po)

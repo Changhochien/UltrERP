@@ -1508,7 +1508,7 @@ last_updated: "2026-04-26"
         status: "completed"
         story_id: "25.2"
         story_file: "25-2-currency-aware-commercial-documents.md"
-        validation: "Implemented currency snapshot fields and hardened core quotation/order/invoice/payment write paths so applied-rate snapshots and base amounts are populated at creation time. Affected settings and quotation tests plus frontend build verification pass."
+        validation: "Implemented currency snapshot fields and hardened core quotation/order/invoice/payment write paths so applied-rate snapshots and base amounts are populated at creation time. Follow-up procurement/AP parity added supplier quotation and purchase order snapshot columns/write-path wiring, exposed supplier invoice FX/base snapshots, and made legacy AP imports populate identity base snapshots. Focused backend tests (102 passed) and frontend build verification pass."
         prerequisites: ["25-1-currency-and-exchange-rate-masters"]
       25-3-payment-terms-template-builder:
         title: "Payment Terms Template Builder and Schedule Handling"

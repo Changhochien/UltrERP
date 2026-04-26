@@ -265,8 +265,9 @@ async def test_run_ap_payment_import_imports_verified_special_payments_and_holds
     assert payment_args[4] == "special_payment"
     assert payment_args[5] == "unapplied"
     assert str(payment_args[8]) == "570.00"
-    assert payment_args[10] == "CHK-001"
-    assert payment_args[11] == "legacy ap payment"
+    assert str(payment_args[12]) == "570.00"
+    assert payment_args[14] == "CHK-001"
+    assert payment_args[15] == "legacy ap payment"
 
     holding_args = [
         args

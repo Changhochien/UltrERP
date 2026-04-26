@@ -59,6 +59,10 @@ export interface SupplierInvoiceLine {
   tax_rate: string;
   tax_amount: string;
   total_amount: string;
+  base_unit_price: string | null;
+  base_subtotal_amount: string | null;
+  base_tax_amount: string | null;
+  base_total_amount: string | null;
   created_at: string;
   // Procurement lineage references (Story 24-4)
   rfq_item_id: string | null;
@@ -102,6 +106,16 @@ export interface SupplierInvoice {
   subtotal_amount: string;
   tax_amount: string;
   total_amount: string;
+  remaining_payable_amount: string | null;
+  conversion_rate: string | null;
+  conversion_effective_date: string | null;
+  applied_rate_source: string | null;
+  currency_source: string | null;
+  payment_terms_source: string | null;
+  base_subtotal_amount: string | null;
+  base_tax_amount: string | null;
+  base_total_amount: string | null;
+  remaining_base_payable_amount: string | null;
   status: SupplierInvoiceStatus;
   notes: string | null;
   created_at: string;
@@ -125,6 +139,14 @@ export interface SupplierInvoiceListItem {
   invoice_date: string;
   currency_code: string;
   total_amount: string;
+  remaining_payable_amount: string | null;
+  conversion_rate: string | null;
+  conversion_effective_date: string | null;
+  applied_rate_source: string | null;
+  currency_source: string | null;
+  payment_terms_source: string | null;
+  base_total_amount: string | null;
+  remaining_base_payable_amount: string | null;
   status: SupplierInvoiceStatus;
   created_at: string;
   updated_at: string;

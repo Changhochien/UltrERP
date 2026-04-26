@@ -232,6 +232,12 @@ class SupplierQuotation(Base):
     subtotal: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     total_taxes: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     grand_total: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    conversion_rate: Mapped[Decimal | None] = mapped_column(Numeric(20, 10), nullable=True, default=Decimal("1.0"))
+    conversion_effective_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    applied_rate_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    currency_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    base_subtotal_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    base_tax_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
     base_grand_total: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
 
     # Tax metadata (templates / row-level)
@@ -311,6 +317,10 @@ class SupplierQuotationItem(Base):
     # Pricing
     unit_rate: Mapped[Decimal] = mapped_column(Numeric(14, 4), nullable=False, default=Decimal("0"))
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0.00"))
+    base_unit_price: Mapped[Decimal | None] = mapped_column(Numeric(14, 4), nullable=True)
+    base_subtotal_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    base_tax_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    base_total_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
 
     # Tax metadata
     tax_rate: Mapped[Decimal] = mapped_column(Numeric(6, 3), nullable=False)
@@ -381,6 +391,12 @@ class PurchaseOrder(Base):
     subtotal: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0.00"))
     total_taxes: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0.00"))
     grand_total: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0.00"))
+    conversion_rate: Mapped[Decimal | None] = mapped_column(Numeric(20, 10), nullable=True, default=Decimal("1.0"))
+    conversion_effective_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    applied_rate_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    currency_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    base_subtotal_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    base_tax_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
     base_grand_total: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0.00"))
 
     # Tax metadata (templates / row-level)
@@ -503,6 +519,10 @@ class PurchaseOrderItem(Base):
     # Pricing
     unit_rate: Mapped[Decimal] = mapped_column(Numeric(14, 4), nullable=False, default=Decimal("0"))
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0.00"))
+    base_unit_price: Mapped[Decimal | None] = mapped_column(Numeric(14, 4), nullable=True)
+    base_subtotal_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    base_tax_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    base_total_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
 
     # Tax metadata
     tax_rate: Mapped[Decimal] = mapped_column(Numeric(6, 3), nullable=False, default=Decimal("0"))

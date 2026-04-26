@@ -157,6 +157,7 @@ async def _import_purchase_history(
             lines_by_doc.get(doc_number, []), key=lambda item: _as_int(item.get("line_number"), 0)
         )
         tax_amount = _as_money(_as_decimal(header.get("tax_amount"), "0.00"))
+        subtotal_amount = _as_money(_as_decimal(header.get("subtotal"), "0.00"))
         remaining_payable_amount = _as_money(_as_decimal(header.get("must_pay_amount"), "0.00"))
         line_total_amount = _as_money(
             sum(
@@ -186,13 +187,26 @@ async def _import_purchase_history(
 				tax_amount,
 				total_amount,
                 remaining_payable_amount,
+                conversion_rate,
+                conversion_effective_date,
+                applied_rate_source,
+                currency_source,
+                payment_terms_source,
+                base_subtotal_amount,
+                base_tax_amount,
+                base_total_amount,
+                remaining_base_payable_amount,
 				status,
 				notes,
                 legacy_header_snapshot,
 				created_at,
 				updated_at
 			)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::json, $14, $14)
+            VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+                $11, $12, $13, $14, $15, $16, $17, $18, $19,
+                $20, $21, $22::json, $23, $23
+            )
 			ON CONFLICT (id) DO UPDATE SET
 				supplier_id = EXCLUDED.supplier_id,
 				invoice_number = EXCLUDED.invoice_number,
@@ -202,6 +216,15 @@ async def _import_purchase_history(
 				tax_amount = EXCLUDED.tax_amount,
 				total_amount = EXCLUDED.total_amount,
                 remaining_payable_amount = EXCLUDED.remaining_payable_amount,
+                conversion_rate = EXCLUDED.conversion_rate,
+                conversion_effective_date = EXCLUDED.conversion_effective_date,
+                applied_rate_source = EXCLUDED.applied_rate_source,
+                currency_source = EXCLUDED.currency_source,
+                payment_terms_source = EXCLUDED.payment_terms_source,
+                base_subtotal_amount = EXCLUDED.base_subtotal_amount,
+                base_tax_amount = EXCLUDED.base_tax_amount,
+                base_total_amount = EXCLUDED.base_total_amount,
+                remaining_base_payable_amount = EXCLUDED.remaining_base_payable_amount,
 				status = EXCLUDED.status,
 				notes = EXCLUDED.notes,
                 legacy_header_snapshot = EXCLUDED.legacy_header_snapshot,
@@ -213,7 +236,16 @@ async def _import_purchase_history(
             invoice_number,
             invoice_date,
             _currency_code(header.get("currency_code")),
-            _as_money(_as_decimal(header.get("subtotal"), "0.00")),
+            subtotal_amount,
+            tax_amount,
+            total_amount,
+            remaining_payable_amount,
+            Decimal("1.0000000000"),
+            invoice_date,
+            "identity",
+            "legacy_compatibility",
+            "legacy_compatibility",
+            subtotal_amount,
             tax_amount,
             total_amount,
             remaining_payable_amount,
@@ -283,9 +315,16 @@ async def _import_purchase_history(
 					tax_rate,
 					tax_amount,
 					total_amount,
+                    base_unit_price,
+                    base_subtotal_amount,
+                    base_tax_amount,
+                    base_total_amount,
 					created_at
 				)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
+                VALUES (
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+                    $11, $12, $13, $14, $15, $16, $17, $18, NOW()
+                )
 				ON CONFLICT (id) DO UPDATE SET
 					supplier_invoice_id = EXCLUDED.supplier_invoice_id,
 					line_number = EXCLUDED.line_number,
@@ -298,7 +337,11 @@ async def _import_purchase_history(
 					tax_type = EXCLUDED.tax_type,
 					tax_rate = EXCLUDED.tax_rate,
 					tax_amount = EXCLUDED.tax_amount,
-					total_amount = EXCLUDED.total_amount
+                    total_amount = EXCLUDED.total_amount,
+                    base_unit_price = EXCLUDED.base_unit_price,
+                    base_subtotal_amount = EXCLUDED.base_subtotal_amount,
+                    base_tax_amount = EXCLUDED.base_tax_amount,
+                    base_total_amount = EXCLUDED.base_total_amount
 				""",
                 supplier_invoice_line_id,
                 supplier_invoice_id,
@@ -312,6 +355,10 @@ async def _import_purchase_history(
                 subtotal,
                 tax_type,
                 tax_rate,
+                line_tax_amount,
+                line_total,
+                unit_price,
+                subtotal,
                 line_tax_amount,
                 line_total,
             )

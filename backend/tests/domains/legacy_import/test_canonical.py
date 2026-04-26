@@ -745,9 +745,10 @@ async def test_run_canonical_import_imports_purchase_history_into_supplier_invoi
     assert supplier_invoice_args[3] == "GG46104158"
     assert str(supplier_invoice_args[8]) == "95.00"
     assert str(supplier_invoice_args[9]) == "95.00"
-    assert supplier_invoice_args[10] == "open"
-    assert supplier_invoice_args[11] == "SQ04"
-    supplier_snapshot = json.loads(cast(str, supplier_invoice_args[12]))
+    assert str(supplier_invoice_args[18]) == "95.00"
+    assert supplier_invoice_args[19] == "open"
+    assert supplier_invoice_args[20] == "SQ04"
+    supplier_snapshot = json.loads(cast(str, supplier_invoice_args[21]))
     assert supplier_snapshot["source_table"] == "tbsslipj"
     assert supplier_snapshot["must_pay_amount"] == "95.00"
     assert supplier_snapshot["invoice_number_source"] == "legacy_invoice_number"
@@ -864,7 +865,8 @@ async def test_run_canonical_import_uses_purchase_line_total_when_header_total_i
     assert supplier_invoice_args[3] == "89052201"
     assert str(supplier_invoice_args[8]) == "12.04"
     assert str(supplier_invoice_args[9]) == "0.00"
-    assert supplier_invoice_args[10] == "paid"
+    assert str(supplier_invoice_args[17]) == "12.04"
+    assert supplier_invoice_args[19] == "paid"
 
 
 @pytest.mark.asyncio

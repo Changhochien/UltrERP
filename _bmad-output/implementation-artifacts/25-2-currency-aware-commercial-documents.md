@@ -176,6 +176,12 @@ Claude Sonnet 4
   - Made matched payments inherit invoice currency, conversion-rate, effective-date, applied-rate source, and proportional base amount.
   - Exposed FX snapshot fields in order, invoice, and payment response schemas and frontend domain types.
   - Verified affected settings and quotation service tests plus the frontend build.
+- 2026-04-26: Procurement/AP parity follow-up:
+  - Added the missing supplier quotation and purchase order FX snapshot columns, line base amount columns, and currency indexes in `25_6_add_procurement_fx_snapshots`.
+  - Wired supplier quotation and purchase order create/update paths through the shared document currency snapshot helper so procurement documents populate applied-rate snapshots and base amounts at write time.
+  - Exposed supplier invoice FX/base snapshot fields in purchase APIs and frontend types.
+  - Updated legacy purchase-history and AP-payment imports to populate identity conversion snapshots and base amounts for imported supplier invoices, supplier invoice lines, and supplier payments.
+  - Verified focused procurement/AP/settings/legacy backend tests and the frontend build.
 
 ### Implementation Notes
 
@@ -207,6 +213,14 @@ Claude Sonnet 4
 - `backend/domains/payments/services.py` - Applies payment FX/base snapshots from matched invoices
 - `backend/domains/crm/_quotation.py` - Applies quotation FX snapshots on create/update
 - `backend/domains/settings/document_currency.py` - Shared snapshot helper now supports order/invoice and quotation field names
+- `backend/domains/procurement/models.py` - Added procurement FX snapshot fields to supplier quotations, purchase orders, and line rows
+- `backend/domains/procurement/service.py` - Applies supplier quotation and purchase order FX snapshots on create/update
+- `backend/domains/procurement/schemas.py` - Exposes procurement FX snapshot fields
+- `backend/domains/purchases/service.py` - Exposes supplier invoice FX/base snapshots in purchase reads
+- `backend/domains/purchases/schemas.py` - Adds supplier invoice FX/base response fields
+- `backend/domains/legacy_import/canonical_purchase_history.py` - Imports supplier invoices and lines with identity base snapshots
+- `backend/domains/legacy_import/ap_payment_import.py` - Imports supplier payments with identity base snapshots
+- `migrations/versions/25_6_add_procurement_fx_snapshots.py` - Adds procurement-side FX snapshot columns
 - `backend/domains/orders/schemas.py` - Exposes order FX snapshot fields
 - `backend/domains/invoices/schemas.py` - Exposes invoice FX snapshot fields
 - `backend/domains/payments/schemas.py` - Exposes payment FX snapshot fields
@@ -219,3 +233,4 @@ Claude Sonnet 4
 
 - 2026-04-26: Implemented Story 25-2 with full currency-aware commercial document support. Added currency snapshot fields to all commercial document models, created shared FX conversion utilities, implemented same-currency validation for payments, and added comprehensive test coverage. All 59 tests pass.
 - 2026-04-26: Code-review hardening completed. Core sales document and payment write paths now populate the Epic 25 snapshot fields, and affected backend tests plus frontend build verification pass.
+- 2026-04-26: Procurement/AP parity completed. Supplier quotations, purchase orders, supplier invoice reads, and legacy AP import writers now carry Epic 25 snapshot/base amount behavior; focused backend tests report 102 passed and frontend build verification passes.

@@ -153,6 +153,10 @@ class SupplierInvoiceLineResponse(BaseModel):
     tax_rate: Decimal
     tax_amount: Decimal
     total_amount: Decimal
+    base_unit_price: Decimal | None = None
+    base_subtotal_amount: Decimal | None = None
+    base_tax_amount: Decimal | None = None
+    base_total_amount: Decimal | None = None
     created_at: datetime
 
     # Procurement lineage references (Story 24-4)
@@ -235,6 +239,15 @@ class SupplierInvoiceResponse(BaseModel):
     tax_amount: Decimal
     total_amount: Decimal
     remaining_payable_amount: Decimal | None = None
+    conversion_rate: Decimal | None = None
+    conversion_effective_date: date | None = None
+    applied_rate_source: str | None = None
+    currency_source: str | None = None
+    payment_terms_source: str | None = None
+    base_subtotal_amount: Decimal | None = None
+    base_tax_amount: Decimal | None = None
+    base_total_amount: Decimal | None = None
+    remaining_base_payable_amount: Decimal | None = None
     status: str
     notes: str | None = None
     legacy_header_snapshot: dict[str, Any] | None = None
@@ -283,6 +296,13 @@ class SupplierInvoiceListItem(BaseModel):
     currency_code: str
     total_amount: Decimal
     remaining_payable_amount: Decimal | None = None
+    conversion_rate: Decimal | None = None
+    conversion_effective_date: date | None = None
+    applied_rate_source: str | None = None
+    currency_source: str | None = None
+    payment_terms_source: str | None = None
+    base_total_amount: Decimal | None = None
+    remaining_base_payable_amount: Decimal | None = None
     status: str
     legacy_header_snapshot: dict[str, Any] | None = None
 

@@ -259,6 +259,8 @@ class TestModelFieldsExist:
         assert hasattr(SupplierInvoice, "conversion_rate")
         assert hasattr(SupplierInvoice, "conversion_effective_date")
         assert hasattr(SupplierInvoice, "applied_rate_source")
+        assert hasattr(SupplierInvoice, "currency_source")
+        assert hasattr(SupplierInvoice, "payment_terms_source")
         assert hasattr(SupplierInvoice, "base_subtotal_amount")
         assert hasattr(SupplierInvoice, "base_tax_amount")
         assert hasattr(SupplierInvoice, "base_total_amount")
@@ -282,6 +284,48 @@ class TestModelFieldsExist:
         assert hasattr(Quotation, "applied_rate_source")
         assert hasattr(Quotation, "base_subtotal")
         assert hasattr(Quotation, "base_total_taxes")
+
+    def test_supplier_quotation_has_currency_fields(self):
+        """Test that SupplierQuotation model has procurement FX fields."""
+        from domains.procurement.models import SupplierQuotation
+
+        assert hasattr(SupplierQuotation, "conversion_rate")
+        assert hasattr(SupplierQuotation, "conversion_effective_date")
+        assert hasattr(SupplierQuotation, "applied_rate_source")
+        assert hasattr(SupplierQuotation, "currency_source")
+        assert hasattr(SupplierQuotation, "base_subtotal_amount")
+        assert hasattr(SupplierQuotation, "base_tax_amount")
+        assert hasattr(SupplierQuotation, "base_grand_total")
+
+    def test_supplier_quotation_item_has_base_fields(self):
+        """Test that SupplierQuotationItem model has line base amount fields."""
+        from domains.procurement.models import SupplierQuotationItem
+
+        assert hasattr(SupplierQuotationItem, "base_unit_price")
+        assert hasattr(SupplierQuotationItem, "base_subtotal_amount")
+        assert hasattr(SupplierQuotationItem, "base_tax_amount")
+        assert hasattr(SupplierQuotationItem, "base_total_amount")
+
+    def test_purchase_order_has_currency_fields(self):
+        """Test that PurchaseOrder model has procurement FX fields."""
+        from domains.procurement.models import PurchaseOrder
+
+        assert hasattr(PurchaseOrder, "conversion_rate")
+        assert hasattr(PurchaseOrder, "conversion_effective_date")
+        assert hasattr(PurchaseOrder, "applied_rate_source")
+        assert hasattr(PurchaseOrder, "currency_source")
+        assert hasattr(PurchaseOrder, "base_subtotal_amount")
+        assert hasattr(PurchaseOrder, "base_tax_amount")
+        assert hasattr(PurchaseOrder, "base_grand_total")
+
+    def test_purchase_order_item_has_base_fields(self):
+        """Test that PurchaseOrderItem model has line base amount fields."""
+        from domains.procurement.models import PurchaseOrderItem
+
+        assert hasattr(PurchaseOrderItem, "base_unit_price")
+        assert hasattr(PurchaseOrderItem, "base_subtotal_amount")
+        assert hasattr(PurchaseOrderItem, "base_tax_amount")
+        assert hasattr(PurchaseOrderItem, "base_total_amount")
 
 
 # === Test ConversionResult ===

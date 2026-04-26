@@ -229,6 +229,10 @@ class SQItemResponse(BaseModel):
     uom: str
     unit_rate: Decimal
     amount: Decimal
+    base_unit_price: Decimal | None = None
+    base_subtotal_amount: Decimal | None = None
+    base_tax_amount: Decimal | None = None
+    base_total_amount: Decimal | None = None
     tax_rate: Decimal
     tax_amount: Decimal
     tax_code: str
@@ -303,6 +307,12 @@ class SupplierQuotationResponse(BaseModel):
     subtotal: Decimal
     total_taxes: Decimal
     grand_total: Decimal
+    conversion_rate: Decimal | None = None
+    conversion_effective_date: date | None = None
+    applied_rate_source: str | None = None
+    currency_source: str | None = None
+    base_subtotal_amount: Decimal | None = None
+    base_tax_amount: Decimal | None = None
     base_grand_total: Decimal
     taxes: list[dict[str, object]]
     contact_person: str
@@ -340,6 +350,12 @@ class SupplierQuotationSummary(BaseModel):
     valid_till: date | None
     lead_time_days: int | None
     grand_total: Decimal
+    conversion_rate: Decimal | None = None
+    conversion_effective_date: date | None = None
+    applied_rate_source: str | None = None
+    currency_source: str | None = None
+    base_subtotal_amount: Decimal | None = None
+    base_tax_amount: Decimal | None = None
     base_grand_total: Decimal
     comparison_base_total: Decimal
     is_awarded: bool
@@ -413,6 +429,10 @@ class POItemResponse(BaseModel):
     warehouse: str
     unit_rate: Decimal
     amount: Decimal
+    base_unit_price: Decimal | None = None
+    base_subtotal_amount: Decimal | None = None
+    base_tax_amount: Decimal | None = None
+    base_total_amount: Decimal | None = None
     tax_rate: Decimal
     tax_amount: Decimal
     tax_code: str
@@ -509,6 +529,12 @@ class PurchaseOrderResponse(BaseModel):
     subtotal: Decimal
     total_taxes: Decimal
     grand_total: Decimal
+    conversion_rate: Decimal | None = None
+    conversion_effective_date: date | None = None
+    applied_rate_source: str | None = None
+    currency_source: str | None = None
+    base_subtotal_amount: Decimal | None = None
+    base_tax_amount: Decimal | None = None
     base_grand_total: Decimal
     taxes: list[dict[str, object]]
     contact_person: str

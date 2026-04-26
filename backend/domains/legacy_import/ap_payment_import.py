@@ -6,6 +6,7 @@ import json
 import uuid
 import zlib
 from dataclasses import dataclass
+from decimal import Decimal
 
 from common.config import settings
 from common.tenant import DEFAULT_TENANT_ID
@@ -392,6 +393,8 @@ async def _upsert_supplier_payment(
         "tbsspay",
         source_identifier,
     )
+    payment_date = _as_legacy_date(raw_row.get("col_4"))
+    gross_amount = _as_money(_as_decimal(raw_row.get("col_10"), "0.00"))
 
     async def write_supplier_payment() -> None:
         await connection.execute(
@@ -406,6 +409,10 @@ async def _upsert_supplier_payment(
                 currency_code,
                 payment_date,
                 gross_amount,
+                conversion_rate,
+                conversion_effective_date,
+                applied_rate_source,
+                base_amount,
                 payment_method,
                 reference_number,
                 notes,
@@ -425,6 +432,10 @@ async def _upsert_supplier_payment(
                 $10,
                 $11,
                 $12,
+                $13,
+                $14,
+                $15,
+                $16,
                 NOW(),
                 NOW()
             )
@@ -436,6 +447,10 @@ async def _upsert_supplier_payment(
                 currency_code = EXCLUDED.currency_code,
                 payment_date = EXCLUDED.payment_date,
                 gross_amount = EXCLUDED.gross_amount,
+                conversion_rate = EXCLUDED.conversion_rate,
+                conversion_effective_date = EXCLUDED.conversion_effective_date,
+                applied_rate_source = EXCLUDED.applied_rate_source,
+                base_amount = EXCLUDED.base_amount,
                 payment_method = EXCLUDED.payment_method,
                 reference_number = EXCLUDED.reference_number,
                 notes = EXCLUDED.notes,
@@ -448,8 +463,12 @@ async def _upsert_supplier_payment(
             "special_payment",
             "unapplied",
             _currency_code(raw_row.get("col_8")),
-            _as_legacy_date(raw_row.get("col_4")),
-            _as_money(_as_decimal(raw_row.get("col_10"), "0.00")),
+            payment_date,
+            gross_amount,
+            Decimal("1.0000000000"),
+            payment_date,
+            "identity",
+            gross_amount,
             _special_payment_method(raw_row),
             _special_payment_reference(raw_row),
             _special_payment_notes(raw_row),
