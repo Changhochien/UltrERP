@@ -1484,6 +1484,53 @@ last_updated: "2026-04-22"
         validation: "Story artifact created from the 2026-04-25 intelligence-service restructure plan."
         prerequisites: ["40.1", "40.2", "40.3", "40.4", "20.4", "20.6"]
 
+  # Epic 41 - Translation Namespace Architecture Hardening
+  epic-41:
+    status: "ready-for-dev"
+    validation_note: "Backlog drafted on 2026-04-26 from the translation architecture investigation. The frontend currently loads only the common namespace even though the locale resources exceed 3,500 lines per language. Stories 41.1 through 41.5 sequence a behavior-preserving namespace migration with shell and route extraction, feature-scoped locale files, and namespace hygiene guardrails."
+    recommended_execution_order:
+      - "41.1 Multi-Namespace i18n Scaffolding"
+      - "41.2 Shell and Route Translation Extraction"
+      - "41.3 Operations Translation Namespace Migration"
+      - "41.4 Sales and Finance Translation Namespace Migration"
+      - "41.5 Common Namespace Reduction and Locale Hygiene"
+    stories:
+      41-1-i18n-multi-namespace-scaffolding:
+        title: "Multi-Namespace i18n Scaffolding"
+        status: "ready-for-dev"
+        story_id: "41.1"
+        story_file: "41-1-i18n-multi-namespace-scaffolding.md"
+        validation: "Story artifact created from the 2026-04-26 translation namespace architecture investigation."
+        prerequisites: []
+      41-2-shell-and-route-translation-extraction:
+        title: "Shell and Route Translation Extraction"
+        status: "ready-for-dev"
+        story_id: "41.2"
+        story_file: "41-2-shell-and-route-translation-extraction.md"
+        validation: "Story artifact created from the 2026-04-26 translation namespace architecture investigation."
+        prerequisites: ["41.1"]
+      41-3-operations-translation-namespace-migration:
+        title: "Operations Translation Namespace Migration"
+        status: "ready-for-dev"
+        story_id: "41.3"
+        story_file: "41-3-operations-translation-namespace-migration.md"
+        validation: "Story artifact created from the 2026-04-26 translation namespace architecture investigation."
+        prerequisites: ["41.1", "41.2"]
+      41-4-sales-and-finance-translation-namespace-migration:
+        title: "Sales and Finance Translation Namespace Migration"
+        status: "ready-for-dev"
+        story_id: "41.4"
+        story_file: "41-4-sales-and-finance-translation-namespace-migration.md"
+        validation: "Story artifact created from the 2026-04-26 translation namespace architecture investigation."
+        prerequisites: ["41.1", "41.2"]
+      41-5-common-namespace-reduction-and-locale-hygiene:
+        title: "Common Namespace Reduction and Locale Hygiene"
+        status: "ready-for-dev"
+        story_id: "41.5"
+        story_file: "41-5-common-namespace-reduction-and-locale-hygiene.md"
+        validation: "Story artifact created from the 2026-04-26 translation namespace architecture investigation."
+        prerequisites: ["41.1", "41.2", "41.3", "41.4"]
+
 last_updated: "2026-04-26"
 
   # Epic 25 - Multi-Currency, Payment Terms, and Commercial Defaults
@@ -1515,14 +1562,14 @@ last_updated: "2026-04-26"
         status: "completed"
         story_id: "25.3"
         story_file: "25-3-payment-terms-template-builder-and-schedule-handling.md"
-        validation: "Implemented PaymentTermsTemplate, PaymentTermsTemplateDetail, PaymentSchedule models, exposed template CRUD routes, added frontend API helpers, and wired order/invoice schedule generation with legacy term compatibility. Focused tests and frontend build verification pass."
+        validation: "Implemented PaymentTermsTemplate, PaymentTermsTemplateDetail, PaymentSchedule models, exposed template CRUD routes, added frontend API helpers, wired order/invoice schedule generation with legacy term compatibility, and added a Settings payment-terms builder UI. Focused tests and frontend build verification pass."
         prerequisites: ["25-2-currency-aware-commercial-documents"]
       25-4-customer-supplier-commercial-profiles:
         title: "Customer and Supplier Commercial Profiles"
         status: "completed"
         story_id: "25.4"
         story_file: "25-4-customer-and-supplier-commercial-profiles.md"
-        validation: "Implemented default currency and payment terms template references on Customer and Supplier, exposed/persisted defaults through APIs, applied customer defaults in core sales document flows, and removed silent non-base FX identity fallback. Focused tests and frontend build verification pass."
+        validation: "Implemented default currency and payment terms template references on Customer and Supplier, exposed/persisted defaults through APIs, applied customer defaults in core sales document flows, removed silent non-base FX identity fallback, and added customer/supplier commercial profile UI selectors and detail visibility. Focused tests and frontend build verification pass."
         prerequisites: ["25-3-payment-terms-template-builder"]
       25-5-fx-rounding-display-audit:
         title: "FX Rounding, Display, and Audit Safeguards"
@@ -1531,3 +1578,105 @@ last_updated: "2026-04-26"
         story_file: "25-5-fx-rounding-display-and-audit-safeguards.md"
         validation: "Implemented frontend money formatting utilities and backend FX validation guards; document write paths consume the shared snapshot validator, and frontend parsing is type-safe. Focused backend tests and frontend build verification pass."
         prerequisites: ["25-1-currency-and-exchange-rate-masters", "25-2-currency-aware-commercial-documents"]
+  epic-26:
+    status: "in-progress"
+    validation_note: "Story artifacts created on 2026-04-26 from Epic 26, ERPNext accounting gap analysis, official ERPNext docs, and current UltrERP finance surfaces. No implementation has landed yet."
+    recommended_execution_order:
+      - "26.1 Chart of Accounts and Fiscal Structure"
+      - "26.2 Journal Entry and General Ledger Posting"
+      - "26.3 Core Financial Statements and Exports"
+      - "26.4 Document Auto-Posting for Sales, Purchasing, and Payments"
+      - "26.5 Bank Reconciliation and Manual Collections Tracking"
+      - "26.6 Budget Controls and Variance Reporting"
+    stories:
+      26-1-chart-of-accounts-and-fiscal-structure:
+        title: "Chart of Accounts and Fiscal Structure"
+        status: "ready-for-dev"
+        story_id: "26.1"
+        story_file: "26-1-chart-of-accounts-and-fiscal-structure.md"
+        validation: "Story artifact created from Epic 26 accounting research, ERPNext reference code, and current UltrERP finance surfaces."
+        prerequisites: []
+      26-2-journal-entry-and-general-ledger-posting:
+        title: "Journal Entry and General Ledger Posting"
+        status: "ready-for-dev"
+        story_id: "26.2"
+        story_file: "26-2-journal-entry-and-general-ledger-posting.md"
+        validation: "Story artifact created from Epic 26 accounting research, ERPNext journal-entry and GL references, and current UltrERP finance surfaces."
+        prerequisites: ["26-1-chart-of-accounts-and-fiscal-structure"]
+      26-3-core-financial-statements-and-exports:
+        title: "Core Financial Statements and Exports"
+        status: "ready-for-dev"
+        story_id: "26.3"
+        story_file: "26-3-core-financial-statements-and-exports.md"
+        validation: "Story artifact created from Epic 26 accounting research, ERPNext financial-report references, and the existing UltrERP reports domain."
+        prerequisites: ["26-1-chart-of-accounts-and-fiscal-structure", "26-2-journal-entry-and-general-ledger-posting"]
+      26-4-document-auto-posting-for-sales-purchasing-and-payments:
+        title: "Document Auto-Posting for Sales, Purchasing, and Payments"
+        status: "ready-for-dev"
+        story_id: "26.4"
+        story_file: "26-4-document-auto-posting-for-sales-purchasing-and-payments.md"
+        validation: "Story artifact created from Epic 26 accounting research, Epic 24 and 25 dependencies, and the current UltrERP invoice, payment, and purchases flows."
+        prerequisites: ["26-1-chart-of-accounts-and-fiscal-structure", "26-2-journal-entry-and-general-ledger-posting", "25-2-currency-aware-commercial-documents"]
+        cross_epic: "Builds on Epic 24 procurement flows and Epic 25 stored base-currency document values."
+      26-5-banking-reconciliation-and-collections-controls:
+        title: "Bank Reconciliation and Manual Collections Tracking"
+        status: "ready-for-dev"
+        story_id: "26.5"
+        story_file: "26-5-banking-reconciliation-and-collections-controls.md"
+        validation: "Story artifact created from Epic 26 banking and dunning research plus the current UltrERP payment reconciliation and invoice outstanding surfaces, then narrowed to bank reconciliation plus bounded manual collections tracking."
+        prerequisites: ["26-2-journal-entry-and-general-ledger-posting", "26-4-document-auto-posting-for-sales-purchasing-and-payments", "6-1-record-payment-against-invoice", "6-2-auto-match-payments-to-invoices", "6-3-display-outstanding-payment-status"]
+      26-6-budget-controls-and-variance-reporting:
+        title: "Budget Controls and Variance Reporting"
+        status: "ready-for-dev"
+        story_id: "26.6"
+        story_file: "26-6-budget-controls-and-variance-reporting.md"
+        validation: "Story artifact created from Epic 26 and Epic 32 budget research, ERPNext budget references, and the current UltrERP procurement/reporting boundaries."
+        prerequisites: ["26-1-chart-of-accounts-and-fiscal-structure", "26-2-journal-entry-and-general-ledger-posting", "26-3-core-financial-statements-and-exports"]
+        cross_epic: "Budget foundation here must remain compatible with the richer budget extensions planned under Epic 32."
+
+  # Epic 41 - Translation Namespace Architecture Hardening
+  epic-41:
+    status: "in-progress"
+    validation_note: "Story artifacts created from Epic 41 translation architecture planning document and current i18n state."
+    recommended_execution_order:
+      - "41.1 Multi-Namespace i18n Scaffolding"
+      - "41.2 Shell and Route Translation Extraction"
+      - "41.3 Operations Namespace Migration"
+      - "41.4 Sales and Finance Namespace Migration"
+      - "41.5 Common Namespace Reduction and Locale Hygiene"
+    stories:
+      41-1-multi-namespace-i18n-scaffolding:
+        title: "Multi-Namespace i18n Scaffolding"
+        status: "completed"
+        story_id: "41.1"
+        story_file: "41-1-multi-namespace-i18n-scaffolding.md"
+        validation: "Implemented multi-namespace i18n scaffolding with 16 namespaces, parity/hygiene guardrails, shared namespace constants. Build passes, 514 tests pass. Story file at ./stories/41-1-multi-namespace-i18n-scaffolding.md"
+        prerequisites: []
+      41-2-shell-and-route-translation-extraction:
+        title: "Shell and Route Translation Extraction"
+        status: "ready-for-dev"
+        story_id: "41.2"
+        story_file: "41-2-shell-and-route-translation-extraction.md"
+        validation: "Story artifact created from Epic 41 i18n architecture planning."
+        prerequisites: ["41-1-multi-namespace-i18n-scaffolding"]
+      41-3-operations-namespace-migration:
+        title: "Operations Namespace Migration"
+        status: "ready-for-dev"
+        story_id: "41.3"
+        story_file: "41-3-operations-namespace-migration.md"
+        validation: "Story artifact created from Epic 41 i18n architecture planning."
+        prerequisites: ["41-2-shell-and-route-translation-extraction"]
+      41-4-sales-and-finance-namespace-migration:
+        title: "Sales and Finance Namespace Migration"
+        status: "ready-for-dev"
+        story_id: "41.4"
+        story_file: "41-4-sales-and-finance-namespace-migration.md"
+        validation: "Story artifact created from Epic 41 i18n architecture planning."
+        prerequisites: ["41-3-operations-namespace-migration"]
+      41-5-common-namespace-reduction:
+        title: "Common Namespace Reduction and Locale Hygiene"
+        status: "ready-for-dev"
+        story_id: "41.5"
+        story_file: "41-5-common-namespace-reduction.md"
+        validation: "Story artifact created from Epic 41 i18n architecture planning."
+        prerequisites: ["41-4-sales-and-finance-namespace-migration"]

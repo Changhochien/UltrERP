@@ -2,35 +2,21 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import HttpBackend from 'i18next-http-backend';
 import LanguageDetector from 'i18next-browser-languagedetector';
+import { I18N_NAMESPACES, SUPPORTED_LOCALES, DEFAULT_NAMESPACE } from './lib/i18n-namespaces';
 
-const TRADITIONAL_CHINESE_LOCALES = new Set(['zh-TW', 'zh-Hant', 'zh-HK']);
-const SIMPLIFIED_CHINESE_LOCALES = new Set(['zh-CN', 'zh-SG', 'zh-MO']);
+const TRADITIONAL_CHINESE = ['zh-TW', 'zh-Hant', 'zh-HK'];
+const SIMPLIFIED_CHINESE = ['zh-CN', 'zh-SG', 'zh-MO'];
 
-export function mapDetectedLanguage(language?: string) {
-  if (!language) {
-    return 'en';
-  }
-
-  if (TRADITIONAL_CHINESE_LOCALES.has(language)) {
-    return 'zh-Hant';
-  }
-
-  if (SIMPLIFIED_CHINESE_LOCALES.has(language)) {
-    return 'en';
-  }
-
-  if (language.startsWith('en')) {
-    return 'en';
-  }
-
-  return language === 'zh-Hant' ? 'zh-Hant' : 'en';
+function mapDetectedLanguage(language: string | undefined): 'en' | 'zh-Hant' {
+  if (!language) return 'en';
+  if (TRADITIONAL_CHINESE.includes(language)) return 'zh-Hant';
+  if (SIMPLIFIED_CHINESE.includes(language)) return 'en';
+  if (language.startsWith('en') || language === 'zh-Hant') return 'en';
+  return 'en';
 }
 
-function syncDocumentLanguage(language?: string) {
-  if (typeof document === 'undefined') {
-    return;
-  }
-
+function syncDocumentLanguage(language: string | undefined) {
+  if (typeof document === 'undefined') return;
   document.documentElement.lang = language === 'zh-Hant' ? 'zh-Hant' : 'en';
 }
 
@@ -41,10 +27,10 @@ void i18n
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
-    supportedLngs: ['en', 'zh-Hant'],
+    supportedLngs: SUPPORTED_LOCALES,
     fallbackLng: 'en',
-    defaultNS: 'common',
-    ns: ['common'],
+    defaultNS: DEFAULT_NAMESPACE,
+    ns: I18N_NAMESPACES,
     backend: {
       loadPath: '/locales/{lng}/{ns}.json',
     },

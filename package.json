@@ -12,6 +12,7 @@
     "build": "tsc --noEmit && vite build",
     "lint": "eslint src vite.config.ts eslint.config.js",
     "test": "vitest run",
+    "check:locale-parity": "npx ts-node scripts/check-locale-parity.ts",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build"
   },
