@@ -77,6 +77,23 @@ from .service import (
     update_fiscal_year,
     update_journal_entry,
 )
+from .posting import (
+    DocumentType,
+    get_document_posting_status,
+    get_posting_rule,
+    post_customer_invoice,
+    post_customer_payment,
+    post_supplier_invoice,
+    post_supplier_payment,
+    reverse_document_posting,
+)
+from .schemas import (
+    PostingRuleCreate,
+    PostingRuleResponse,
+    PostingRuleUpdate,
+    PostingStateResponse,
+    DocumentPostingResponse,
+)
 
 router = APIRouter(
     prefix="/accounting",
@@ -946,3 +963,333 @@ async def get_account_ledger_endpoint(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"errors": e.errors},
         )
+
+
+# ============================================================
+# Posting Rule Endpoints (Story 26-4)
+# ============================================================
+
+
+@router.post("/posting-rules", response_model=PostingRuleResponse)
+async def create_posting_rule_endpoint(
+    data: PostingRuleCreate,
+    db: DbSession,
+    current_user: CurrentUser,
+) -> PostingRuleResponse:
+    """Create a new posting rule for a document type."""
+    from backend.domains.accounting.posting import PostingRule
+    
+    tenant_id = _get_tenant_id(current_user)
+    user_id = str(_get_user_id(current_user))
+    
+    rule = PostingRule(
+        tenant_id=tenant_id,
+        document_type=data.document_type,
+        description=data.description,
+        account_mappings=data.account_mappings,
+        tax_account_id=data.tax_account_id,
+        write_off_account_id=data.write_off_account_id,
+        is_active=data.is_active,
+        created_by=user_id,
+    )
+    db.add(rule)
+    await db.flush()
+    await db.refresh(rule)
+    
+    return PostingRuleResponse.model_validate(rule)
+
+
+@router.get("/posting-rules", response_model=list[PostingRuleResponse])
+async def list_posting_rules_endpoint(
+    db: DbSession,
+    current_user: CurrentUser,
+    document_type: str | None = Query(None, description="Filter by document type"),
+    is_active: bool | None = Query(None, description="Filter by active status"),
+) -> list[PostingRuleResponse]:
+    """List all posting rules for the tenant."""
+    from backend.domains.accounting.posting import PostingRule
+    from sqlalchemy import select
+    
+    tenant_id = _get_tenant_id(current_user)
+    
+    query = select(PostingRule).where(PostingRule.tenant_id == tenant_id)
+    
+    if document_type:
+        query = query.where(PostingRule.document_type == document_type)
+    if is_active is not None:
+        query = query.where(PostingRule.is_active == is_active)
+    
+    result = await db.execute(query)
+    rules = result.scalars().all()
+    
+    return [PostingRuleResponse.model_validate(r) for r in rules]
+
+
+@router.get("/posting-rules/{rule_id}", response_model=PostingRuleResponse)
+async def get_posting_rule_endpoint(
+    rule_id: uuid.UUID,
+    db: DbSession,
+    current_user: CurrentUser,
+) -> PostingRuleResponse:
+    """Get a specific posting rule."""
+    from backend.domains.accounting.posting import PostingRule
+    from sqlalchemy import select
+    
+    tenant_id = _get_tenant_id(current_user)
+    
+    result = await db.execute(
+        select(PostingRule).where(
+            PostingRule.id == rule_id,
+            PostingRule.tenant_id == tenant_id
+        )
+    )
+    rule = result.scalar_one_or_none()
+    
+    if not rule:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Posting rule not found"
+        )
+    
+    return PostingRuleResponse.model_validate(rule)
+
+
+@router.patch("/posting-rules/{rule_id}", response_model=PostingRuleResponse)
+async def update_posting_rule_endpoint(
+    rule_id: uuid.UUID,
+    data: PostingRuleUpdate,
+    db: DbSession,
+    current_user: CurrentUser,
+) -> PostingRuleResponse:
+    """Update a posting rule."""
+    from backend.domains.accounting.posting import PostingRule
+    from sqlalchemy import select
+    
+    tenant_id = _get_tenant_id(current_user)
+    
+    result = await db.execute(
+        select(PostingRule).where(
+            PostingRule.id == rule_id,
+            PostingRule.tenant_id == tenant_id
+        )
+    )
+    rule = result.scalar_one_or_none()
+    
+    if not rule:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Posting rule not found"
+        )
+    
+    # Update fields
+    if data.description is not None:
+        rule.description = data.description
+    if data.account_mappings is not None:
+        rule.account_mappings = data.account_mappings
+    if data.tax_account_id is not None:
+        rule.tax_account_id = data.tax_account_id
+    if data.write_off_account_id is not None:
+        rule.write_off_account_id = data.write_off_account_id
+    if data.is_active is not None:
+        rule.is_active = data.is_active
+    
+    # Increment version
+    rule.version += 1
+    
+    await db.flush()
+    await db.refresh(rule)
+    
+    return PostingRuleResponse.model_validate(rule)
+
+
+# ============================================================
+# Document Posting State Endpoints
+# ============================================================
+
+
+@router.get("/posting-states/{document_type}/{document_id}", response_model=PostingStateResponse)
+async def get_posting_state_endpoint(
+    document_type: str,
+    document_id: uuid.UUID,
+    db: DbSession,
+    current_user: CurrentUser,
+) -> PostingStateResponse:
+    """Get the posting state for a document."""
+    from backend.domains.accounting.posting import DocumentPostingState
+    from sqlalchemy import select
+    
+    tenant_id = _get_tenant_id(current_user)
+    
+    result = await db.execute(
+        select(DocumentPostingState).where(
+            DocumentPostingState.document_type == document_type,
+            DocumentPostingState.document_id == document_id,
+            DocumentPostingState.tenant_id == tenant_id
+        )
+    )
+    state = result.scalar_one_or_none()
+    
+    if not state:
+        # Return default not_configured state
+        return PostingStateResponse(
+            id=uuid.uuid4(),
+            tenant_id=tenant_id,
+            document_type=document_type,
+            document_id=document_id,
+            status="not_configured",
+            posting_rule_id=None,
+            rule_version_at_posting=None,
+            gl_entry_ids=[],
+            error_message=None,
+            posted_at=None,
+            created_at=datetime.now(),
+        )
+    
+    return PostingStateResponse.model_validate(state)
+
+
+@router.post("/posting-states/{document_type}/{document_id}/post", response_model=DocumentPostingResponse)
+async def post_document_endpoint(
+    document_type: str,
+    document_id: uuid.UUID,
+    db: DbSession,
+    current_user: CurrentUser,
+) -> DocumentPostingResponse:
+    """Post a document to the ledger.
+    
+    This endpoint is for manual posting of documents that support auto-posting.
+    For automatic posting, the invoice/payment services call the posting functions directly.
+    """
+    from backend.domains.accounting.posting import PostingState
+    from sqlalchemy import select
+    from common.models import Invoice, Payment, SupplierInvoice, SupplierPayment
+    
+    tenant_id = _get_tenant_id(current_user)
+    
+    # Map document type string to DocumentType enum
+    doc_type_map = {
+        "customer_invoice": DocumentType.CUSTOMER_INVOICE,
+        "customer_payment": DocumentType.CUSTOMER_PAYMENT,
+        "supplier_invoice": DocumentType.SUPPLIER_INVOICE,
+        "supplier_payment": DocumentType.SUPPLIER_PAYMENT,
+    }
+    
+    if document_type not in doc_type_map:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported document type: {document_type}"
+        )
+    
+    doc_type_enum = doc_type_map[document_type]
+    
+    # Get the document
+    doc_model_map = {
+        DocumentType.CUSTOMER_INVOICE: Invoice,
+        DocumentType.CUSTOMER_PAYMENT: Payment,
+        DocumentType.SUPPLIER_INVOICE: SupplierInvoice,
+        DocumentType.SUPPLIER_PAYMENT: SupplierPayment,
+    }
+    
+    DocModel = doc_model_map[doc_type_enum]
+    result = await db.execute(
+        select(DocModel).where(
+            DocModel.id == document_id,
+            DocModel.tenant_id == tenant_id
+        )
+    )
+    doc = result.scalar_one_or_none()
+    
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found"
+        )
+    
+    # Post based on document type
+    posting_func_map = {
+        DocumentType.CUSTOMER_INVOICE: post_customer_invoice,
+        DocumentType.CUSTOMER_PAYMENT: post_customer_payment,
+        DocumentType.SUPPLIER_INVOICE: post_supplier_invoice,
+        DocumentType.SUPPLIER_PAYMENT: post_supplier_payment,
+    }
+    
+    posting_func = posting_func_map[doc_type_enum]
+    success, error_message = await posting_func(db, doc, tenant_id)
+    
+    # Get updated state
+    from backend.domains.accounting.posting import DocumentPostingState as DPSModel
+    result = await db.execute(
+        select(DPSModel).where(
+            DPSModel.document_type == document_type,
+            DPSModel.document_id == document_id,
+            DPSModel.tenant_id == tenant_id
+        )
+    )
+    state = result.scalar_one_or_none()
+    
+    posting_state_response = None
+    if state:
+        posting_state_response = PostingStateResponse.model_validate(state)
+    
+    return DocumentPostingResponse(
+        success=success,
+        message=error_message,
+        posting_state=posting_state_response,
+        posting_status=posting_state_response.status if posting_state_response else "unknown",
+    )
+
+
+@router.post("/posting-states/{document_type}/{document_id}/reverse", response_model=DocumentPostingResponse)
+async def reverse_document_endpoint(
+    document_type: str,
+    document_id: uuid.UUID,
+    db: DbSession,
+    current_user: CurrentUser,
+) -> DocumentPostingResponse:
+    """Reverse the posting for a document."""
+    from datetime import datetime, UTC
+    
+    tenant_id = _get_tenant_id(current_user)
+    
+    doc_type_map = {
+        "customer_invoice": DocumentType.CUSTOMER_INVOICE,
+        "customer_payment": DocumentType.CUSTOMER_PAYMENT,
+        "supplier_invoice": DocumentType.SUPPLIER_INVOICE,
+        "supplier_payment": DocumentType.SUPPLIER_PAYMENT,
+    }
+    
+    if document_type not in doc_type_map:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported document type: {document_type}"
+        )
+    
+    doc_type_enum = doc_type_map[document_type]
+    
+    success, error_message = await reverse_document_posting(
+        db, tenant_id, doc_type_enum, document_id,
+        reversal_date=datetime.now(UTC),
+        reversal_narration=f"Reversal by {current_user.get('user_id', 'system')}"
+    )
+    
+    # Get updated state
+    from backend.domains.accounting.posting import DocumentPostingState as DPSModel
+    result = await db.execute(
+        select(DPSModel).where(
+            DPSModel.document_type == document_type,
+            DPSModel.document_id == document_id,
+            DPSModel.tenant_id == tenant_id
+        )
+    )
+    state = result.scalar_one_or_none()
+    
+    posting_state_response = None
+    if state:
+        posting_state_response = PostingStateResponse.model_validate(state)
+    
+    return DocumentPostingResponse(
+        success=success,
+        message=error_message,
+        posting_state=posting_state_response,
+        posting_status=posting_state_response.status if posting_state_response else "unknown",
+    )

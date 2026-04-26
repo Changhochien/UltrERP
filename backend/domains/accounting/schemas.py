@@ -471,3 +471,85 @@ class LedgerSummaryResponse(BaseModel):
 
     account: AccountResponse
     summary: LedgerAccountSummary
+
+
+# ============================================================
+# Posting Rule Schemas (Epic 26 Story 26-4)
+# ============================================================
+
+
+class PostingRuleBase(BaseModel):
+    """Base schema for posting rule."""
+
+    document_type: str
+    description: str | None = None
+    account_mappings: dict = Field(default_factory=dict)
+    tax_account_id: uuid.UUID | None = None
+    write_off_account_id: uuid.UUID | None = None
+    is_active: bool = True
+
+
+class PostingRuleCreate(PostingRuleBase):
+    """Schema for creating a posting rule."""
+
+    pass
+
+
+class PostingRuleUpdate(BaseModel):
+    """Schema for updating a posting rule."""
+
+    description: str | None = None
+    account_mappings: dict | None = None
+    tax_account_id: uuid.UUID | None = None
+    write_off_account_id: uuid.UUID | None = None
+    is_active: bool | None = None
+
+
+class PostingRuleResponse(BaseModel):
+    """Schema for posting rule response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    document_type: str
+    version: int
+    description: str | None
+    account_mappings: dict
+    tax_account_id: uuid.UUID | None
+    write_off_account_id: uuid.UUID | None
+    is_active: bool
+    created_at: datetime
+    created_by: str | None
+
+
+# ============================================================
+# Document Posting State Schemas
+# ============================================================
+
+
+class PostingStateResponse(BaseModel):
+    """Schema for document posting state response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    document_type: str
+    document_id: uuid.UUID
+    status: str
+    posting_rule_id: uuid.UUID | None
+    rule_version_at_posting: int | None
+    gl_entry_ids: list[uuid.UUID]
+    error_message: str | None
+    posted_at: datetime | None
+    created_at: datetime
+
+
+class DocumentPostingResponse(BaseModel):
+    """Response for document posting operation."""
+
+    success: bool
+    message: str | None
+    posting_state: PostingStateResponse | None = None
+    posting_status: str
