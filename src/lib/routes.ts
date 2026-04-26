@@ -45,6 +45,20 @@ export const PAYMENTS_ROUTE = "/payments";
 export const ADMIN_ROUTE = "/admin";
 export const SETTINGS_ROUTE = "/settings";
 
+// Accounting routes (Epic 26)
+export const ACCOUNTING_ROUTE = "/accounting";
+export const CHART_OF_ACCOUNTS_ROUTE = "/accounting/chart-of-accounts";
+export const FISCAL_YEARS_ROUTE = "/accounting/fiscal-years";
+export const JOURNAL_ENTRIES_ROUTE = "/accounting/journal-entries";
+export const JOURNAL_ENTRY_DETAIL_ROUTE = "/accounting/journal-entries/:journalEntryId";
+export const PROFIT_AND_LOSS_ROUTE = "/accounting/reports/profit-and-loss";
+export const BALANCE_SHEET_ROUTE = "/accounting/reports/balance-sheet";
+export const TRIAL_BALANCE_ROUTE = "/accounting/reports/trial-balance";
+export const BANK_RECONCILIATION_ROUTE = "/accounting/bank-reconciliation";
+export const COLLECTIONS_ROUTE = "/accounting/collections";
+export const BUDGETS_ROUTE = "/accounting/budgets";
+export const BUDGET_VARIANCE_ROUTE = "/accounting/budgets/variance";
+
 export type AppRoute =
   | typeof HOME_ROUTE
   | typeof LOGIN_ROUTE

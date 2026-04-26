@@ -18,7 +18,13 @@ import { formatWorkspaceDate } from "./lib/utils";
 import { ToastProvider } from "./providers/ToastProvider";
 
 import {
+  ACCOUNTING_ROUTE,
   ADMIN_ROUTE,
+  BALANCE_SHEET_ROUTE,
+  BANK_RECONCILIATION_ROUTE,
+  BUDGET_VARIANCE_ROUTE,
+  BUDGETS_ROUTE,
+  CHART_OF_ACCOUNTS_ROUTE,
   CRM_LEAD_CREATE_ROUTE,
   CRM_LEAD_DETAIL_ROUTE,
   CRM_LEADS_ROUTE,
@@ -30,10 +36,12 @@ import {
   CRM_QUOTATIONS_ROUTE,
   CRM_REPORTING_ROUTE,
   CRM_SETUP_ROUTE,
+  COLLECTIONS_ROUTE,
   CUSTOMER_CREATE_ROUTE,
   CUSTOMER_DETAIL_ROUTE,
   CUSTOMERS_ROUTE,
   COUNT_SESSION_DETAIL_ROUTE,
+  FISCAL_YEARS_ROUTE,
   HOME_ROUTE,
   INVENTORY_BELOW_REORDER_REPORT_ROUTE,
   INVENTORY_CATEGORIES_ROUTE,
@@ -45,6 +53,8 @@ import {
   INVENTORY_SUPPLIERS_ROUTE,
   INVENTORY_ROUTE,
   INTELLIGENCE_ROUTE,
+  JOURNAL_ENTRIES_ROUTE,
+  JOURNAL_ENTRY_DETAIL_ROUTE,
   PRODUCT_DETAIL_ROUTE,
   INVOICES_ROUTE,
   INVOICE_CREATE_ROUTE,
@@ -64,9 +74,11 @@ import {
   PROCUREMENT_GOODS_RECEIPT_LIST_ROUTE,
   PROCUREMENT_GOODS_RECEIPT_DETAIL_ROUTE,
   PROCUREMENT_CREATE_GOODS_RECEIPT_ROUTE,
+  PROFIT_AND_LOSS_ROUTE,
   PURCHASES_ROUTE,
   SETTINGS_ROUTE,
   SUPPLIER_DETAIL_ROUTE,
+  TRIAL_BALANCE_ROUTE,
 } from "./lib/routes";
 import { AdminPage } from "./pages/AdminPage";
 import CreateLeadPage from "./pages/crm/CreateLeadPage";
@@ -110,6 +122,17 @@ import { GoodsReceiptDetailPage } from "./pages/procurement/GoodsReceiptDetailPa
 import { CreateGoodsReceiptPage } from "./pages/procurement/CreateGoodsReceiptPage";
 import LoginPage from "./pages/LoginPage";
 import SettingsPage from "./pages/settings/SettingsPage";
+import { ChartOfAccountsPage } from "./pages/accounting/ChartOfAccountsPage";
+import { FiscalYearsPage } from "./pages/accounting/FiscalYearsPage";
+import { JournalEntriesPage } from "./pages/accounting/JournalEntriesPage";
+import { JournalEntryDetailPage } from "./pages/accounting/JournalEntryDetailPage";
+import { ProfitAndLossPage } from "./pages/accounting/ProfitAndLossPage";
+import { BalanceSheetPage } from "./pages/accounting/BalanceSheetPage";
+import { TrialBalancePage } from "./pages/accounting/TrialBalancePage";
+import { BankReconciliationPage } from "./pages/accounting/BankReconciliationPage";
+import { CollectionsPage } from "./pages/accounting/CollectionsPage";
+import { BudgetsPage } from "./pages/accounting/BudgetsPage";
+import { BudgetVariancePage } from "./pages/accounting/BudgetVariancePage";
 
 export const APP_TITLE = "UltrERP";
 
@@ -739,6 +762,127 @@ export default function App() {
               <ProtectedAppRoute requiredFeature="settings">
                 <RoutedPage>
                   <SettingsPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          {/* Accounting Routes (Epic 26) */}
+          <Route
+            path={ACCOUNTING_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="accounting">
+                <RoutedPage>
+                  <ChartOfAccountsPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={CHART_OF_ACCOUNTS_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="accounting">
+                <RoutedPage>
+                  <ChartOfAccountsPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={FISCAL_YEARS_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="accounting">
+                <RoutedPage>
+                  <FiscalYearsPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={JOURNAL_ENTRIES_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="accounting">
+                <RoutedPage>
+                  <JournalEntriesPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={JOURNAL_ENTRY_DETAIL_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="accounting">
+                <RoutedPage>
+                  <JournalEntryDetailPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={PROFIT_AND_LOSS_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="accounting">
+                <RoutedPage>
+                  <ProfitAndLossPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={BALANCE_SHEET_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="accounting">
+                <RoutedPage>
+                  <BalanceSheetPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={TRIAL_BALANCE_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="accounting">
+                <RoutedPage>
+                  <TrialBalancePage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={BANK_RECONCILIATION_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="accounting">
+                <RoutedPage>
+                  <BankReconciliationPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={COLLECTIONS_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="accounting">
+                <RoutedPage>
+                  <CollectionsPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={BUDGETS_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="accounting">
+                <RoutedPage>
+                  <BudgetsPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={BUDGET_VARIANCE_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="accounting">
+                <RoutedPage>
+                  <BudgetVariancePage />
                 </RoutedPage>
               </ProtectedAppRoute>
             }
