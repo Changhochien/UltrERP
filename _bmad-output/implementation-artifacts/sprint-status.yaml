@@ -1654,10 +1654,10 @@ last_updated: "2026-04-26"
         prerequisites: []
       41-2-shell-and-route-translation-extraction:
         title: "Shell and Route Translation Extraction"
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "41.2"
         story_file: "41-2-shell-and-route-translation-extraction.md"
-        validation: "Story artifact created from Epic 41 i18n architecture planning."
+        validation: "Implemented routes.* and shell namespace extraction. Extracted 45+ route definitions to routes.json, nav/app/navMenu/languageSwitcher to shell.json. Updated App.tsx, AppNavigation.tsx, LanguageSwitcher.tsx to use new namespaces. Build passes, 514 tests pass."
         prerequisites: ["41-1-multi-namespace-i18n-scaffolding"]
       41-3-operations-namespace-migration:
         title: "Operations Namespace Migration"

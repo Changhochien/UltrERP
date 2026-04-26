@@ -114,16 +114,17 @@ import SettingsPage from "./pages/settings/SettingsPage";
 export const APP_TITLE = "UltrERP";
 
 function AuthGate({ children }: { children: ReactNode }) {
-  const { t } = useTranslation("common");
+  const { t: tShell } = useTranslation("shell");
+  const { t: tCommon } = useTranslation("common");
   const { isAuthLoading } = useAuth();
 
   if (isAuthLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center px-6 py-16">
         <div className="w-full max-w-md rounded-[2rem] border border-border/80 bg-card/95 p-8 text-center shadow-[0_24px_80px_-40px_rgba(15,23,42,0.5)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-primary/80">{t("navMenu.workspace")}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-primary/80">{tShell("navMenu.workspace")}</p>
           <div className="mt-4 text-3xl font-semibold tracking-tight">{APP_TITLE}</div>
-          <div className="mt-2 text-sm text-muted-foreground">{t("auth.signingIn")}</div>
+          <div className="mt-2 text-sm text-muted-foreground">{tCommon("auth.signingIn")}</div>
         </div>
       </div>
     );
@@ -135,7 +136,8 @@ function AuthGate({ children }: { children: ReactNode }) {
 function ShellHeader() {
   const location = useLocation();
   const context = getRouteContext(location.pathname);
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("routes");
+  const { t: tShell } = useTranslation("shell");
 
   return (
     <header className="sticky top-0 z-20 border-b border-border/55 bg-background/78 backdrop-blur-xl">
@@ -147,7 +149,7 @@ function ShellHeader() {
           <div className="min-w-0 space-y-1">
             <div className="flex min-w-0 items-center gap-2">
               <span className="inline-flex items-center rounded-full border border-border/70 bg-card/74 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                {t(context.sectionKey)}
+                {tShell(context.sectionKey)}
               </span>
               <p className="truncate text-sm font-medium text-foreground/88 sm:text-[0.95rem]">
                 {t(context.labelKey)}

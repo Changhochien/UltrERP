@@ -7,7 +7,7 @@ const LANGUAGE_OPTIONS = [
 ] as const;
 
 export function LanguageSwitcher() {
-  const { i18n, t } = useTranslation("common");
+  const { i18n, t } = useTranslation("shell");
   const currentLanguage = i18n.resolvedLanguage ?? i18n.language;
   const currentOption = LANGUAGE_OPTIONS.find((option) => option.value === currentLanguage);
 

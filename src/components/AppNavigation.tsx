@@ -34,7 +34,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 export function AppNavigation() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("shell");
   const { user, logout } = useAuth();
   const { canAccess } = usePermissions();
   const { open, openMobile, isMobile, setOpenMobile, isSectionCollapsed, toggleSection, isGroupCollapsed, toggleGroup } = useSidebar();

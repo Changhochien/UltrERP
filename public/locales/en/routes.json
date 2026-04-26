@@ -1,1 +1,188 @@
-{}
+{
+  "admin": {
+    "description": "Manage users, audit logs, and privileged controls.",
+    "label": "Admin"
+  },
+  "crmLeads": {
+    "description": "Capture, qualify, and review new commercial leads.",
+    "label": "Leads"
+  },
+  "createLead": {
+    "description": "Capture a new lead before customer creation.",
+    "label": "Create Lead"
+  },
+  "crmOpportunities": {
+    "description": "Track deal stages, forecast confidence, and quotation readiness.",
+    "label": "Opportunities"
+  },
+  "crmQuotations": {
+    "description": "Author formal quotations with validity, totals, and revision lineage.",
+    "label": "Quotations"
+  },
+  "crmReporting": {
+    "description": "Review pipeline totals, conversion drop-off, and segmentation across leads, opportunities, and quotations.",
+    "label": "Pipeline Reporting"
+  },
+  "crmSetup": {
+    "description": "Manage CRM defaults, sales stages, territories, and customer groups.",
+    "label": "CRM Setup"
+  },
+  "createOpportunity": {
+    "description": "Create a pipeline opportunity linked to a lead, customer, or prospect.",
+    "label": "Create Opportunity"
+  },
+  "createQuotation": {
+    "description": "Create a formal quotation linked to a lead, customer, prospect, or opportunity handoff.",
+    "label": "Create Quotation"
+  },
+  "createCustomer": {
+    "description": "Add a new customer to your workspace.",
+    "label": "Create Customer"
+  },
+  "createInvoice": {
+    "description": "Create a new sales invoice for your customer.",
+    "label": "Create Invoice"
+  },
+  "createOrder": {
+    "description": "Create a new sales order.",
+    "label": "Create Order"
+  },
+  "customers": {
+    "description": "Browse and search your customer accounts.",
+    "label": "Customers"
+  },
+  "dashboard": {
+    "description": "Monitor revenue, traffic, and operational signals.",
+    "label": "Dashboard"
+  },
+  "inventory": {
+    "description": "Manage stock levels and warehouse activity.",
+    "label": "Inventory"
+  },
+  "inventoryCategories": {
+    "description": "Standardize product category master data used in forms and search filters.",
+    "label": "Product Categories"
+  },
+  "inventoryUnits": {
+    "description": "Manage tenant-specific unit codes used by product forms and inventory master data.",
+    "label": "Units of Measure"
+  },
+  "inventoryTransfers": {
+    "description": "Create inter-warehouse transfers and audit transfer history.",
+    "label": "Stock Transfers"
+  },
+  "inventoryCountSessions": {
+    "description": "Start, review, and reconcile warehouse physical count sessions.",
+    "label": "Count Sessions"
+  },
+  "inventoryCountSessionDetail": {
+    "description": "Review counted quantities, variances, and approval status for one physical count session.",
+    "label": "Count Session Detail"
+  },
+  "belowReorderReport": {
+    "description": "Preview and export warehouse-scoped below-reorder inventory rows.",
+    "label": "Below-Reorder Report"
+  },
+  "inventoryValuation": {
+    "description": "Review warehouse-scoped inventory value using standard cost or latest purchase fallback.",
+    "label": "Inventory Valuation"
+  },
+  "reorderSuggestions": {
+    "description": "Review low-stock replenishment suggestions and create draft supplier orders.",
+    "label": "Reorder Suggestions"
+  },
+  "inventorySuppliers": {
+    "description": "Manage supplier master data and replenishment contacts used by inventory workflows.",
+    "label": "Suppliers"
+  },
+  "inventoryReports": {
+    "description": "View inventory analytics and stock reports.",
+    "label": "Inventory Reports"
+  },
+  "invoiceReports": {
+    "description": "View invoice analytics and financial reports.",
+    "label": "Invoice Reports"
+  },
+  "supplierDetail": {
+    "description": "Review one supplier profile, status, and planning defaults.",
+    "label": "Supplier Detail"
+  },
+  "intelligence": {
+    "description": "Review AI-ready customer and product intelligence signals.",
+    "label": "Intelligence"
+  },
+  "purchases": {
+    "description": "Inspect imported supplier invoices and AP history.",
+    "label": "Purchases"
+  },
+  "procurement": {
+    "description": "Issue RFQs and compare supplier quotations before creating purchase orders.",
+    "label": "Sourcing"
+  },
+  "procurementPurchaseOrders": {
+    "description": "Review purchase-order status, sourcing lineage, and downstream receiving progress.",
+    "label": "Purchase Orders"
+  },
+  "procurementPurchaseOrderCreate": {
+    "description": "Create a purchase order from an awarded supplier quotation.",
+    "label": "Create Purchase Order"
+  },
+  "procurementPurchaseOrderDetail": {
+    "description": "Review one purchase order, lifecycle controls, and sourcing lineage.",
+    "label": "Purchase Order Detail"
+  },
+  "procurementRFQCreate": {
+    "description": "Create a new Request for Quotation to distribute to suppliers.",
+    "label": "Create RFQ"
+  },
+  "procurementRFQDetail": {
+    "description": "Review RFQ items, track supplier responses, and compare quotations.",
+    "label": "RFQ Detail"
+  },
+  "invoices": {
+    "description": "Browse invoice status and payment progress.",
+    "label": "Invoices"
+  },
+  "login": {
+    "description": "Sign in to manage your ERP workspace.",
+    "label": "Login"
+  },
+  "leadDetail": {
+    "description": "Review lifecycle, attribution, and conversion actions for one lead.",
+    "label": "Lead Detail"
+  },
+  "opportunityDetail": {
+    "description": "Review pipeline context, loss reasons, and quotation handoff readiness for one opportunity.",
+    "label": "Opportunity Detail"
+  },
+  "quotationDetail": {
+    "description": "Review quotation lifecycle, totals, revision lineage, and order-conversion readiness.",
+    "label": "Quotation Detail"
+  },
+  "orderDetail": {
+    "description": "View and update the selected order.",
+    "label": "Order Detail",
+    "section": "Orders"
+  },
+  "orders": {
+    "description": "Track order flow and fulfillment status.",
+    "label": "Orders"
+  },
+  "payments": {
+    "description": "Review receipts, matches, and outstanding balances.",
+    "label": "Payments"
+  },
+  "settings": {
+    "description": "Manage workspace settings and preferences.",
+    "label": "Settings"
+  },
+  "workspace": {
+    "description": "Navigate your ERP workspace.",
+    "label": "Workspace",
+    "section": "Workspace"
+  },
+  "ownerDashboard": {
+    "label": "Owner Dashboard",
+    "description": "Business overview and KPIs for owners."
+  }
+}
