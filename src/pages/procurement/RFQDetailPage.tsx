@@ -22,7 +22,7 @@ export function RFQDetailPage() {
   const { t } = useTranslation("procurement");
   const { t: tCommon } = useTranslation("common");
   const { rfqId } = useParams<{ rfqId: string }>();
-  const { toast } = useToast();
+  const toast = useToast();
 
   const { rfq, loading, error, refetch } = useRFQ(rfqId);
   const { data: comparison, refetch: refetchComparison } = useRFQComparison(rfqId);

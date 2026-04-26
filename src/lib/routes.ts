@@ -211,3 +211,51 @@ export function buildGoodsReceiptDetailPath(grId: string): string {
 export function buildCreateGoodsReceiptPath(poId: string): string {
   return CREATE_GOODS_RECEIPT_ROUTE.replace(":poId", encodeURIComponent(poId));
 }
+
+// Accounting routes (Epic 26)
+export function buildJournalEntriesPath(filters?: { status?: string; voucherType?: string }): string {
+  const params = new URLSearchParams();
+  if (filters?.status) {
+    params.set("status", filters.status);
+  }
+  if (filters?.voucherType) {
+    params.set("voucherType", filters.voucherType);
+  }
+  const query = params.toString();
+  return `${JOURNAL_ENTRIES_ROUTE}${query ? `?${query}` : ""}`;
+}
+
+export function buildJournalEntryDetailPath(journalEntryId: string): string {
+  return JOURNAL_ENTRY_DETAIL_ROUTE.replace(":journalEntryId", encodeURIComponent(journalEntryId));
+}
+
+export function buildAccountDetailPath(accountId: string): string {
+  return CHART_OF_ACCOUNTS_ROUTE; // Account detail is shown in the chart of accounts page
+}
+
+export function buildProfitAndLossPath(asOfDate?: string): string {
+  const params = new URLSearchParams();
+  if (asOfDate) {
+    params.set("asOfDate", asOfDate);
+  }
+  const query = params.toString();
+  return `${PROFIT_AND_LOSS_ROUTE}${query ? `?${query}` : ""}`;
+}
+
+export function buildBalanceSheetPath(asOfDate?: string): string {
+  const params = new URLSearchParams();
+  if (asOfDate) {
+    params.set("asOfDate", asOfDate);
+  }
+  const query = params.toString();
+  return `${BALANCE_SHEET_ROUTE}${query ? `?${query}` : ""}`;
+}
+
+export function buildTrialBalancePath(asOfDate?: string): string {
+  const params = new URLSearchParams();
+  if (asOfDate) {
+    params.set("asOfDate", asOfDate);
+  }
+  const query = params.toString();
+  return `${TRIAL_BALANCE_ROUTE}${query ? `?${query}` : ""}`;
+}

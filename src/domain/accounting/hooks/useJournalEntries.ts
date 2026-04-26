@@ -110,7 +110,7 @@ export function useJournalEntries(options: UseJournalEntriesOptions = {}) {
 
 export function useJournalEntry(journalEntryId: string | undefined) {
   const { t } = useTranslation();
-  const { toast } = useToast();
+  const toast = useToast();
 
   const fetchFn = useCallback(
     () => (journalEntryId ? fetchJournalEntry(journalEntryId) : Promise.resolve(null)),
@@ -166,7 +166,7 @@ export function useCreateJournalEntry(
   onSuccess?: (entry: JournalEntry) => void
 ) {
   const { t } = useTranslation();
-  const { toast } = useToast();
+  const toast = useToast();
 
   const create = useCallback(
     async (data: Parameters<typeof createJournalEntry>[0]): Promise<JournalEntry> => {

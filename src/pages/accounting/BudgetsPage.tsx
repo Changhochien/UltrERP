@@ -32,7 +32,7 @@ interface BudgetPeriod {
 
 export function BudgetsPage() {
   const { t } = useTranslation();
-  const { toast } = useToast();
+  const toast = useToast();
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
   const [periods, setPeriods] = useState<BudgetPeriod[]>([]);

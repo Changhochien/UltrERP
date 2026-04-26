@@ -33,7 +33,7 @@ interface BankTransaction {
 
 export function BankReconciliationPage() {
   const { t } = useTranslation();
-  const { toast } = useToast();
+  const toast = useToast();
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
   const [transactions, setTransactions] = useState<BankTransaction[]>([]);

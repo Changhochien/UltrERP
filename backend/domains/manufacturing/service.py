@@ -11,7 +11,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from backend.domains.manufacturing.models import (
+from .models import (
 	BillOfMaterials,
 	BillOfMaterialsItem,
 	DowntimeEntry,
@@ -32,7 +32,7 @@ from backend.domains.manufacturing.models import (
 	WorkstationStatus,
 	WorkstationWorkingHour,
 )
-from backend.domains.manufacturing.schemas import (
+from .schemas import (
 	BomCreate,
 	BomItemCreate,
 	BomItemResponse,
@@ -78,7 +78,9 @@ from backend.domains.manufacturing.schemas import (
 	WorkstationUpdate,
 )
 from common.models.inventory_stock import InventoryStock
-from common.models.order import SalesOrder, SalesOrderLine
+from common.models.order import Order
+from common.models.order_line import OrderLine
+from domains.inventory.commands import transfer_stock, InsufficientStockError
 from common.models.product import Product
 
 if TYPE_CHECKING:
@@ -880,6 +882,36 @@ async def complete_work_order(
 			f"order quantity ({wo.quantity})"
 		)
 	
+	# Transfer produced goods from WIP to FG warehouse
+	if wo.fg_warehouse_id and payload.produced_quantity > 0:
+		# Get or create FG inventory stock
+		fg_stmt = (
+			select(InventoryStock)
+			.where(
+				and_(
+					InventoryStock.tenant_id == tenant_id,
+					InventoryStock.product_id == wo.product_id,
+					InventoryStock.warehouse_id == wo.fg_warehouse_id,
+				)
+			)
+		).with_for_update()
+		fg_result = await db.execute(fg_stmt)
+		fg_stock = fg_result.scalar_one_or_none()
+		
+		if fg_stock is None:
+			fg_stock = InventoryStock(
+				tenant_id=tenant_id,
+				product_id=wo.product_id,
+				warehouse_id=wo.fg_warehouse_id,
+				quantity=0,
+				reorder_point=0,
+			)
+			db.add(fg_stock)
+			await db.flush()
+		
+		# Update FG quantity
+		fg_stock.quantity += payload.produced_quantity
+	
 	wo.produced_quantity = payload.produced_quantity
 	wo.status = WorkOrderStatus.COMPLETED
 	wo.completed_at = datetime.utcnow()
@@ -998,6 +1030,24 @@ async def transfer_work_order_materials(
 			transfer_qty = line.required_quantity - line.transferred_quantity
 		
 		if transfer_qty > 0:
+			# Execute actual stock transfer from source warehouse to WIP
+			try:
+				await transfer_stock(
+					session=db,
+					tenant_id=tenant_id,
+					from_warehouse_id=line.source_warehouse_id,
+					to_warehouse_id=wo.wip_warehouse_id,
+					product_id=line.item_id,
+					quantity=int(transfer_qty),
+					actor_id=f"work_order:{wo.id}",
+					notes=f"Material transfer for WO {wo.code}",
+				)
+			except InsufficientStockError as e:
+				raise ValueError(
+					f"Insufficient stock for {line.item_code}: "
+					f"available={e.available}, requested={e.requested}"
+				)
+			
 			line.transferred_quantity += transfer_qty
 			line.consumed_quantity += transfer_qty
 	
@@ -1444,12 +1494,12 @@ async def generate_proposals(
 				SalesOrderLine.product_id,
 				func.sum(SalesOrderLine.quantity - SalesOrderLine.delivered_quantity).label("demand"),
 			)
-			.join(SalesOrder, SalesOrderLine.order_id == SalesOrder.id)
+			.join(Order, OrderLine.order_id == Order.id)
 			.where(
 				and_(
-					SalesOrder.tenant_id == tenant_id,
+					Order.tenant_id == tenant_id,
 					SalesOrderLine.product_id == product_id,
-					SalesOrder.status == "confirmed",
+					Order.status == "confirmed",
 					SalesOrderLine.quantity - SalesOrderLine.delivered_quantity > 0,
 				)
 			)

@@ -96,7 +96,7 @@ const ACCOUNT_TYPES_BY_ROOT: Record<string, AccountType[]> = {
 
 export function ChartOfAccountsPage() {
   const { t } = useTranslation();
-  const { toast } = useToast();
+  const toast = useToast();
 
   const [showDisabled, setShowDisabled] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);

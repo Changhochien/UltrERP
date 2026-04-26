@@ -43,7 +43,7 @@ interface VarianceReport {
 
 export function BudgetVariancePage() {
   const { t } = useTranslation();
-  const { toast } = useToast();
+  const toast = useToast();
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [selectedBudgetId, setSelectedBudgetId] = useState<string>("");
   const [fromDate, setFromDate] = useState("2026-01-01");

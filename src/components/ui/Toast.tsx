@@ -115,6 +115,46 @@ function ToastViewport({ className, ...props }: React.ComponentPropsWithoutRef<t
   );
 }
 
+/**
+ * ToastService - Static service for showing toast notifications.
+ * Use this for non-hook contexts or when you need a simple API.
+ */
+export const ToastService = {
+  success: (title: string, description?: string) => {
+    // Dispatch custom event that ToastProvider listens to
+    window.dispatchEvent(
+      new CustomEvent("toast", {
+        detail: { title, description, variant: "success" },
+      })
+    );
+    return title;
+  },
+  error: (title: string, description?: string) => {
+    window.dispatchEvent(
+      new CustomEvent("toast", {
+        detail: { title, description, variant: "destructive" },
+      })
+    );
+    return title;
+  },
+  warning: (title: string, description?: string) => {
+    window.dispatchEvent(
+      new CustomEvent("toast", {
+        detail: { title, description, variant: "warning" },
+      })
+    );
+    return title;
+  },
+  info: (title: string, description?: string) => {
+    window.dispatchEvent(
+      new CustomEvent("toast", {
+        detail: { title, description, variant: "info" },
+      })
+    );
+    return title;
+  },
+};
+
 export {
   Toast,
   ToastClose,

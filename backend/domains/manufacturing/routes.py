@@ -7,9 +7,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.domains.manufacturing import schemas as mschemas
-from backend.domains.manufacturing import service as mservice
-from common.auth import get_current_user_id
+from . import schemas as mschemas
+from . import service as mservice
+from common.auth import get_user_id_from_request
 from common.database import get_db
 
 router = APIRouter(prefix="/manufacturing", tags=["manufacturing"])
@@ -24,13 +24,13 @@ router = APIRouter(prefix="/manufacturing", tags=["manufacturing"])
 async def create_bom(
 	payload: mschemas.BomCreate,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Create a new BOM in draft status."""
 	try:
 		# Get tenant_id from user context
-		from common.auth import get_tenant_id
-		tenant_id = await get_tenant_id(user_id)
+		from common.auth import get_tenant_id_from_request
+		tenant_id = await get_tenant_id_from_request(user_id)
 		return await mservice.create_bom(db, tenant_id, user_id, payload)
 	except ValueError as e:
 		raise HTTPException(status_code=400, detail=str(e))
@@ -44,11 +44,11 @@ async def list_boms(
 	page: int = Query(1, ge=1),
 	page_size: int = Query(20, ge=1, le=100),
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""List BOMs with pagination and filters."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	boms, total = await mservice.list_boms(
 		db, tenant_id, product_id, status, is_active, page, page_size,
 	)
@@ -59,11 +59,11 @@ async def list_boms(
 async def get_bom(
 	bom_id: UUID,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Get BOM by ID with items."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	bom = await mservice.get_bom_by_id(db, tenant_id, bom_id)
 	if not bom:
 		raise HTTPException(status_code=404, detail="BOM not found")
@@ -75,11 +75,11 @@ async def update_bom(
 	bom_id: UUID,
 	payload: mschemas.BomUpdate,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Update a draft BOM."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	try:
 		return await mservice.update_bom(db, tenant_id, bom_id, payload)
 	except ValueError as e:
@@ -91,11 +91,11 @@ async def submit_bom(
 	bom_id: UUID,
 	payload: mschemas.BomSubmit,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Submit a BOM to make it active for production."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	try:
 		return await mservice.submit_bom(db, tenant_id, user_id, bom_id, payload)
 	except ValueError as e:
@@ -108,11 +108,11 @@ async def supersede_bom(
 	payload: mschemas.BomSupersede,
 	replacement_bom_id: UUID,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Supersede a BOM with a replacement BOM."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	try:
 		return await mservice.supersede_bom(db, tenant_id, bom_id, replacement_bom_id, payload)
 	except ValueError as e:
@@ -123,11 +123,11 @@ async def supersede_bom(
 async def get_product_bom_history(
 	product_id: UUID,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Get BOM history for a product."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	return await mservice.get_bom_history(db, tenant_id, product_id)
 
 
@@ -135,11 +135,11 @@ async def get_product_bom_history(
 async def get_active_bom(
 	product_id: UUID,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Get the active submitted BOM for a product."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	# This is a direct DB query pattern, using service function
 	bom = await mservice.get_active_bom_for_product(db, tenant_id, product_id)
 	if not bom:
@@ -192,11 +192,11 @@ async def get_active_bom(
 async def create_work_order(
 	payload: mschemas.WorkOrderCreate,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Create a new work order from a submitted BOM."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	try:
 		return await mservice.create_work_order(db, tenant_id, user_id, payload)
 	except ValueError as e:
@@ -210,11 +210,11 @@ async def list_work_orders(
 	page: int = Query(1, ge=1),
 	page_size: int = Query(20, ge=1, le=100),
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""List work orders with pagination and filters."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	orders, total = await mservice.list_work_orders(
 		db, tenant_id, status, product_id, page, page_size,
 	)
@@ -225,11 +225,11 @@ async def list_work_orders(
 async def get_work_order(
 	work_order_id: UUID,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Get work order by ID with material lines."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	wo = await mservice.get_work_order_by_id(db, tenant_id, work_order_id)
 	if not wo:
 		raise HTTPException(status_code=404, detail="Work order not found")
@@ -241,11 +241,11 @@ async def update_work_order(
 	work_order_id: UUID,
 	payload: mschemas.WorkOrderUpdate,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Update a work order."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	try:
 		return await mservice.update_work_order(db, tenant_id, work_order_id, payload)
 	except ValueError as e:
@@ -257,11 +257,11 @@ async def transition_work_order(
 	work_order_id: UUID,
 	payload: mschemas.WorkOrderStatusTransition,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Transition work order to a new status."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	try:
 		return await mservice.transition_work_order_status(
 			db, tenant_id, work_order_id, payload,
@@ -275,11 +275,11 @@ async def complete_work_order(
 	work_order_id: UUID,
 	payload: mschemas.WorkOrderComplete,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Complete a work order with produced quantity."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	try:
 		return await mservice.complete_work_order(
 			db, tenant_id, work_order_id, payload,
@@ -293,11 +293,11 @@ async def reserve_work_order_materials(
 	work_order_id: UUID,
 	payload: mschemas.WorkOrderMaterialReserve,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Reserve or release materials for a work order."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	try:
 		return await mservice.reserve_work_order_materials(
 			db, tenant_id, work_order_id, payload,
@@ -311,11 +311,11 @@ async def transfer_work_order_materials(
 	work_order_id: UUID,
 	payload: mschemas.WorkOrderTransfer,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Transfer materials for a work order (manufacture flow)."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	try:
 		return await mservice.transfer_work_order_materials(
 			db, tenant_id, work_order_id, payload,
@@ -333,11 +333,11 @@ async def transfer_work_order_materials(
 async def create_workstation(
 	payload: mschemas.WorkstationCreate,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Create a new workstation."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	return await mservice.create_workstation(db, tenant_id, payload)
 
 
@@ -347,11 +347,11 @@ async def list_workstations(
 	page: int = Query(1, ge=1),
 	page_size: int = Query(20, ge=1, le=100),
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""List workstations with pagination."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	workstations, total = await mservice.list_workstations(
 		db, tenant_id, status, page, page_size,
 	)
@@ -362,11 +362,11 @@ async def list_workstations(
 async def get_workstation(
 	workstation_id: UUID,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Get workstation by ID."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	ws = await mservice.get_workstation_by_id(db, tenant_id, workstation_id)
 	if not ws:
 		raise HTTPException(status_code=404, detail="Workstation not found")
@@ -378,11 +378,11 @@ async def update_workstation(
 	workstation_id: UUID,
 	payload: mschemas.WorkstationUpdate,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Update a workstation."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	try:
 		return await mservice.update_workstation(db, tenant_id, workstation_id, payload)
 	except ValueError as e:
@@ -398,11 +398,11 @@ async def update_workstation(
 async def create_routing(
 	payload: mschemas.RoutingCreate,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Create a new routing."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	return await mservice.create_routing(db, tenant_id, payload)
 
 
@@ -412,11 +412,11 @@ async def list_routings(
 	page: int = Query(1, ge=1),
 	page_size: int = Query(20, ge=1, le=100),
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""List routings with pagination."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	routings, total = await mservice.list_routings(
 		db, tenant_id, status, page, page_size,
 	)
@@ -427,11 +427,11 @@ async def list_routings(
 async def get_routing(
 	routing_id: UUID,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Get routing by ID with operations."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	routing = await mservice.get_routing_by_id(db, tenant_id, routing_id)
 	if not routing:
 		raise HTTPException(status_code=404, detail="Routing not found")
@@ -443,11 +443,11 @@ async def update_routing(
 	routing_id: UUID,
 	payload: mschemas.RoutingUpdate,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Update a routing."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	try:
 		return await mservice.update_routing(db, tenant_id, routing_id, payload)
 	except ValueError as e:
@@ -459,12 +459,12 @@ async def calculate_routing(
 	routing_id: UUID,
 	quantity: float = Query(..., gt=0),
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Calculate planned time and cost for a routing."""
-	from common.auth import get_tenant_id
+	from common.auth import get_tenant_id_from_request
 	from decimal import Decimal
-	tenant_id = await get_tenant_id(user_id)
+	tenant_id = await get_tenant_id_from_request(user_id)
 	routing = await mservice.get_routing_by_id(db, tenant_id, routing_id)
 	if not routing:
 		raise HTTPException(status_code=404, detail="Routing not found")
@@ -480,11 +480,11 @@ async def calculate_routing(
 async def generate_proposals(
 	payload: mschemas.ProposalGenerateRequest | None = None,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Generate manufacturing proposals from demand signals."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	return await mservice.generate_proposals(db, tenant_id, payload)
 
 
@@ -495,11 +495,11 @@ async def list_proposals(
 	page: int = Query(1, ge=1),
 	page_size: int = Query(20, ge=1, le=100),
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""List manufacturing proposals."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	proposals, total = await mservice.list_proposals(
 		db, tenant_id, status, product_id, page, page_size,
 	)
@@ -511,11 +511,11 @@ async def decide_proposal(
 	proposal_id: UUID,
 	payload: mschemas.ProposalDecision,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Accept or reject a manufacturing proposal."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	proposal = await mservice.decide_proposal(db, tenant_id, user_id, proposal_id, payload)
 	if not proposal:
 		raise HTTPException(status_code=404, detail="Proposal not found")
@@ -531,11 +531,11 @@ async def decide_proposal(
 async def create_production_plan(
 	payload: mschemas.ProductionPlanCreate,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Create a new production plan."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	return await mservice.create_production_plan(db, tenant_id, user_id, payload)
 
 
@@ -545,11 +545,11 @@ async def list_production_plans(
 	page: int = Query(1, ge=1),
 	page_size: int = Query(20, ge=1, le=100),
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""List production plans with pagination."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	plans, total = await mservice.list_production_plans(
 		db, tenant_id, status, page, page_size,
 	)
@@ -560,11 +560,11 @@ async def list_production_plans(
 async def get_production_plan(
 	plan_id: UUID,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Get production plan by ID with lines."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	plan = await mservice.get_production_plan_by_id(db, tenant_id, plan_id)
 	if not plan:
 		raise HTTPException(status_code=404, detail="Production plan not found")
@@ -576,11 +576,11 @@ async def firm_production_plan(
 	plan_id: UUID,
 	payload: mschemas.ProductionPlanFirm,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Firm up a production plan, creating work orders from proposals."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	try:
 		return await mservice.firm_production_plan(db, tenant_id, user_id, plan_id, payload)
 	except ValueError as e:
@@ -596,11 +596,11 @@ async def firm_production_plan(
 async def create_downtime(
 	payload: mschemas.DowntimeCreate,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Create a downtime entry."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	return await mservice.create_downtime(db, tenant_id, user_id, payload)
 
 
@@ -613,11 +613,11 @@ async def list_downtime(
 	page: int = Query(1, ge=1),
 	page_size: int = Query(50, ge=1, le=100),
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""List downtime entries with filters."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	entries, total = await mservice.list_downtime(
 		db, tenant_id, workstation_id, start_date, end_date, reason, page, page_size,
 	)
@@ -630,11 +630,11 @@ async def get_downtime_pareto(
 	start_date: datetime | None = None,
 	end_date: datetime | None = None,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Get downtime Pareto analysis by reason."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	return await mservice.get_downtime_pareto(
 		db, tenant_id, workstation_id, start_date, end_date,
 	)
@@ -644,11 +644,11 @@ async def get_downtime_pareto(
 async def create_oee_record(
 	payload: mschemas.OeeRecordCreate,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Create an OEE record with calculated factors."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	return await mservice.create_oee_record(db, tenant_id, payload)
 
 
@@ -658,11 +658,11 @@ async def get_oee_dashboard(
 	start_date: datetime | None = None,
 	end_date: datetime | None = None,
 	db: AsyncSession = Depends(get_db),
-	user_id: UUID = Depends(get_current_user_id),
+	user_id: UUID = Depends(get_user_id_from_request),
 ):
 	"""Get OEE dashboard data with trend and Pareto."""
-	from common.auth import get_tenant_id
-	tenant_id = await get_tenant_id(user_id)
+	from common.auth import get_tenant_id_from_request
+	tenant_id = await get_tenant_id_from_request(user_id)
 	return await mservice.get_oee_dashboard(
 		db, tenant_id, workstation_id, start_date, end_date,
 	)

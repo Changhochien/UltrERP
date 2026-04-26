@@ -52,7 +52,7 @@ import { buildJournalEntryDetailPath } from "@/lib/routes";
 
 export function JournalEntriesPage() {
   const { t } = useTranslation();
-  const { toast } = useToast();
+  const toast = useToast();
   const navigate = useNavigate();
 
   // Filters

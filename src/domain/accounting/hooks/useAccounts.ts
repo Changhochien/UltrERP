@@ -109,7 +109,7 @@ export function useAccount(accountId: string | null) {
 
 export function useCreateAccount(onSuccess?: (account: Account) => void) {
   const { t } = useTranslation();
-  const { toast } = useToast();
+  const toast = useToast();
 
   const create = useCallback(
     async (data: CreateAccountRequest): Promise<Account> => {
@@ -126,7 +126,7 @@ export function useCreateAccount(onSuccess?: (account: Account) => void) {
 
 export function useUpdateAccount(onSuccess?: (account: Account) => void) {
   const { t } = useTranslation();
-  const { toast } = useToast();
+  const toast = useToast();
 
   const update = useCallback(
     async (accountId: string, data: UpdateAccountRequest): Promise<Account> => {
@@ -143,7 +143,7 @@ export function useUpdateAccount(onSuccess?: (account: Account) => void) {
 
 export function useFreezeAccount(onSuccess?: (account: Account) => void) {
   const { t } = useTranslation();
-  const { toast } = useToast();
+  const toast = useToast();
 
   const freeze = useCallback(
     async (accountId: string, accountName: string): Promise<Account> => {
@@ -160,7 +160,7 @@ export function useFreezeAccount(onSuccess?: (account: Account) => void) {
 
 export function useUnfreezeAccount(onSuccess?: (account: Account) => void) {
   const { t } = useTranslation();
-  const { toast } = useToast();
+  const toast = useToast();
 
   const unfreeze = useCallback(
     async (accountId: string, accountName: string): Promise<Account> => {
@@ -177,7 +177,7 @@ export function useUnfreezeAccount(onSuccess?: (account: Account) => void) {
 
 export function useDisableAccount(onSuccess?: (account: Account) => void) {
   const { t } = useTranslation();
-  const { toast } = useToast();
+  const toast = useToast();
 
   const disable = useCallback(
     async (accountId: string, accountName: string): Promise<Account> => {
@@ -194,7 +194,7 @@ export function useDisableAccount(onSuccess?: (account: Account) => void) {
 
 export function useDeleteAccount(onSuccess?: () => void) {
   const { t } = useTranslation();
-  const { toast } = useToast();
+  const toast = useToast();
 
   const remove = useCallback(
     async (accountId: string, accountName: string): Promise<void> => {
@@ -210,7 +210,7 @@ export function useDeleteAccount(onSuccess?: () => void) {
 
 export function useSeedStarterChart(onSuccess?: (result: AccountTreeResponse) => void) {
   const { t } = useTranslation();
-  const { toast } = useToast();
+  const toast = useToast();
 
   const seed = useCallback(
     async (): Promise<AccountTreeResponse> => {

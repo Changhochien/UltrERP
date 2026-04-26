@@ -16,6 +16,7 @@ from sqlalchemy import (
 	ForeignKey,
 	Index,
 	Integer,
+	JSON,
 	Numeric,
 	String,
 	Text,
@@ -211,7 +212,7 @@ class WorkOrder(Base):
 		UUID(as_uuid=True), ForeignKey("bill_of_materials.id"), nullable=False,
 	)
 	bom: Mapped[BillOfMaterials] = relationship()
-	bom_snapshot: Mapped[dict | None] = mapped_column(nullable=True)
+	bom_snapshot: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 	quantity: Mapped[Decimal] = mapped_column(Numeric(19, 6), nullable=False)
 	produced_quantity: Mapped[Decimal] = mapped_column(Numeric(19, 6), default=Decimal("0"), nullable=False)
 	source_warehouse_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -243,7 +244,7 @@ class WorkOrder(Base):
 	stopped_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 	cancelled_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 	routing_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
-	routing_snapshot: Mapped[dict | None] = mapped_column(nullable=True)
+	routing_snapshot: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 	notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 	created_at: Mapped[datetime] = mapped_column(
 		DateTime(timezone=True), server_default=func.now(), nullable=False,
@@ -476,7 +477,7 @@ class ManufacturingProposal(Base):
 	work_order_id: Mapped[uuid.UUID | None] = mapped_column(
 		UUID(as_uuid=True), ForeignKey("work_order.id"), nullable=True,
 	)
-	shortages: Mapped[dict | None] = mapped_column(nullable=True)
+	shortages: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 	notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 	created_at: Mapped[datetime] = mapped_column(
 		DateTime(timezone=True), server_default=func.now(), nullable=False,
@@ -573,8 +574,8 @@ class ProductionPlanLine(Base):
 	proposed_qty: Mapped[Decimal] = mapped_column(Numeric(19, 6), nullable=False)
 	firmed_qty: Mapped[Decimal] = mapped_column(Numeric(19, 6), default=Decimal("0"), nullable=False)
 	completed_qty: Mapped[Decimal] = mapped_column(Numeric(19, 6), default=Decimal("0"), nullable=False)
-	shortage_summary: Mapped[dict | None] = mapped_column(nullable=True)
-	capacity_summary: Mapped[dict | None] = mapped_column(nullable=True)
+	shortage_summary: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+	capacity_summary: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 	idx: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 	notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 	created_at: Mapped[datetime] = mapped_column(

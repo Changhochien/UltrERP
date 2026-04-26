@@ -38,7 +38,7 @@ interface OverdueInvoice {
 
 export function CollectionsPage() {
   const { t } = useTranslation();
-  const { toast } = useToast();
+  const toast = useToast();
   const [notices, setNotices] = useState<DunningNotice[]>([]);
   const [overdueInvoices, setOverdueInvoices] = useState<OverdueInvoice[]>([]);
   const [isLoading, setIsLoading] = useState(false);

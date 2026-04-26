@@ -44,7 +44,7 @@ import {
 
 export function JournalEntryDetailPage() {
   const { t } = useTranslation();
-  const { toast } = useToast();
+  const toast = useToast();
   const navigate = useNavigate();
   const { journalEntryId } = useParams<{ journalEntryId: string }>();
 

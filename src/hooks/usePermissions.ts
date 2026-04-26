@@ -15,7 +15,9 @@ export type AppFeature =
   | "payments"
   | "admin"
   | "owner_dashboard"
-  | "settings";
+  | "settings"
+  | "accounting"
+  | "manufacturing";
 
 export type PermissionLevel = "read" | "write";
 
@@ -34,6 +36,8 @@ export const ROLE_PERMISSIONS: Record<string, Partial<Record<AppFeature, Permiss
     admin: "write",
     owner_dashboard: "write",
     settings: "write",
+    accounting: "write",
+    manufacturing: "write",
   },
   owner: {
     dashboard: "write",
@@ -49,6 +53,8 @@ export const ROLE_PERMISSIONS: Record<string, Partial<Record<AppFeature, Permiss
     admin: "write",
     owner_dashboard: "write",
     settings: "write",
+    accounting: "write",
+    manufacturing: "write",
   },
   finance: {
     dashboard: "read",
@@ -58,6 +64,7 @@ export const ROLE_PERMISSIONS: Record<string, Partial<Record<AppFeature, Permiss
     invoices: "write",
     payments: "write",
     settings: "write",
+    accounting: "write",
   },
   warehouse: {
     dashboard: "read",

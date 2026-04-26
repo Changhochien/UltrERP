@@ -89,3 +89,17 @@ def require_role(*allowed_roles: str):
 		return user
 
 	return _check
+
+
+async def get_tenant_id_from_request(request: Request) -> UUID:
+	"""Extract tenant_id from request state (set by get_current_user)."""
+	if not hasattr(request.state, "tenant_id"):
+		raise HTTPException(status_code=401, detail="Not authenticated")
+	return request.state.tenant_id
+
+
+async def get_user_id_from_request(request: Request) -> UUID:
+	"""Extract user_id from request state (set by get_current_user)."""
+	if not hasattr(request.state, "user_id"):
+		raise HTTPException(status_code=401, detail="Not authenticated")
+	return request.state.user_id

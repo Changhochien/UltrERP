@@ -2,9 +2,8 @@
  * React hooks for fiscal year management (Epic 26).
  */
 
-import { useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
 
 import type {
   CreateFiscalYearRequest,
@@ -20,11 +19,63 @@ import {
   reopenFiscalYear,
   updateFiscalYear,
 } from "@/lib/api/accounting";
-import { useAsync, useAsyncFn } from "@/lib/hooks/useAsync";
 import { ApiError } from "@/lib/api/errors";
+import { useToast } from "@/hooks/useToast";
+
+// Simple async data hook
+function useAsyncData<T>(
+  fetchFn: () => Promise<T>,
+  deps: React.DependencyList = []
+) {
+  const [data, setData] = useState<T | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    setError(null);
+
+    fetchFn()
+      .then((result) => {
+        if (!cancelled) {
+          setData(result);
+          setIsLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err : new Error(String(err)));
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+
+  const refetch = useCallback(() => {
+    setIsLoading(true);
+    setError(null);
+
+    fetchFn()
+      .then((result) => {
+        setData(result);
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err : new Error(String(err)));
+        setIsLoading(false);
+      });
+  }, [fetchFn]);
+
+  return { data, error, isLoading, refetch };
+}
 
 export function useFiscalYears(page = 1, pageSize = 50) {
-  const { data, error, isLoading, execute } = useAsync(
+  const { data, error, isLoading, execute } = useAsyncData(
     () => fetchFiscalYears(page, pageSize),
     [page, pageSize]
   );
@@ -40,7 +91,7 @@ export function useFiscalYears(page = 1, pageSize = 50) {
 }
 
 export function useOpenFiscalYears() {
-  const { data, error, isLoading, execute } = useAsync(() =>
+  const { data, error, isLoading, execute } = useAsyncData(() =>
     fetchOpenFiscalYears()
   );
 
@@ -56,7 +107,9 @@ export function useOpenFiscalYears() {
 
 export function useCreateFiscalYear() {
   const { t } = useTranslation();
-  const [state, create] = useAsyncFn(
+  const toast = useToast();
+
+  const create = useCallback(
     async (data: CreateFiscalYearRequest): Promise<FiscalYear> => {
       return createFiscalYear(data);
     },
@@ -83,18 +136,21 @@ export function useCreateFiscalYear() {
         throw err;
       }
     },
-    [create, t]
+    [create, t, toast]
   );
 
   return {
     createFiscalYear: createFiscalYearFn,
-    ...state,
+    isLoading: false,
+    error: null,
   };
 }
 
 export function useUpdateFiscalYear() {
   const { t } = useTranslation();
-  const [state, update] = useAsyncFn(
+  const toast = useToast();
+
+  const update = useCallback(
     async (
       fiscalYearId: string,
       data: UpdateFiscalYearRequest
@@ -119,18 +175,21 @@ export function useUpdateFiscalYear() {
         throw err;
       }
     },
-    [update, t]
+    [update, t, toast]
   );
 
   return {
     updateFiscalYear: updateFiscalYearFn,
-    ...state,
+    isLoading: false,
+    error: null,
   };
 }
 
 export function useCloseFiscalYear() {
   const { t } = useTranslation();
-  const [state, close] = useAsyncFn(
+  const toast = useToast();
+
+  const close = useCallback(
     async (
       fiscalYearId: string,
       closureNotes?: string
@@ -155,18 +214,21 @@ export function useCloseFiscalYear() {
         throw err;
       }
     },
-    [close, t]
+    [close, t, toast]
   );
 
   return {
     closeFiscalYear: closeFiscalYearFn,
-    ...state,
+    isLoading: false,
+    error: null,
   };
 }
 
 export function useReopenFiscalYear() {
   const { t } = useTranslation();
-  const [state, reopen] = useAsyncFn(
+  const toast = useToast();
+
+  const reopen = useCallback(
     async (fiscalYearId: string): Promise<FiscalYear> => {
       return reopenFiscalYear(fiscalYearId);
     },
@@ -188,11 +250,12 @@ export function useReopenFiscalYear() {
         throw err;
       }
     },
-    [reopen, t]
+    [reopen, t, toast]
   );
 
   return {
     reopenFiscalYear: reopenFiscalYearFn,
-    ...state,
+    isLoading: false,
+    error: null,
   };
 }

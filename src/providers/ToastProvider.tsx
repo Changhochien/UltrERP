@@ -46,6 +46,12 @@ function createToastId() {
   return `toast-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+interface ToastEventDetail {
+  title: string;
+  description?: string;
+  variant?: ToastVariant;
+}
+
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastRecord[]>([]);
   const dismissTimersRef = useRef<Record<string, number>>({});
@@ -113,6 +119,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts((current) => [nextToast, ...current].slice(0, MAX_TOASTS));
     return id;
   }, []);
+
+  // Listen for ToastService events
+  useEffect(() => {
+    function handleToastEvent(event: CustomEvent<ToastEventDetail>) {
+      const { title, description, variant } = event.detail;
+      toast({ title, description, variant });
+    }
+
+    window.addEventListener("toast", handleToastEvent as EventListener);
+    return () => {
+      window.removeEventListener("toast", handleToastEvent as EventListener);
+    };
+  }, [toast]);
 
   const contextValue = useMemo<ToastContextValue>(() => ({
     toast,

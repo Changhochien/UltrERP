@@ -55,7 +55,7 @@ const STATUS_COLORS: Record<FiscalYearStatus, { bg: string; text: string }> = {
 
 export function FiscalYearsPage() {
   const { t } = useTranslation();
-  const { toast } = useToast();
+  const toast = useToast();
 
   const [page, setPage] = useState(1);
   const [selectedFiscalYear, setSelectedFiscalYear] = useState<FiscalYear | null>(null);

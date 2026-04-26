@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DatePicker } from "@/components/ui/date-picker";
+import { DatePicker } from "@/components/ui/DatePicker";
 import {
   Table,
   TableBody,
@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ToastService } from "@/components/ui/toast";
+import { ToastService } from "@/components/ui/Toast";
 import { useApiErrorToast } from "@/hooks/useApiErrorToast";
 import { EMPTY_REASON_LABELS } from "@/domain/accounting/types";
 

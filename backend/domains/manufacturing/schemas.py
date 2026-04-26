@@ -9,7 +9,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
-from backend.domains.manufacturing.models import (
+from .models import (
 	BomStatus,
 	DowntimeReason,
 	ManufacturingProposalStatus,

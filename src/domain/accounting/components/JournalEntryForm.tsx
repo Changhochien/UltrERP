@@ -49,7 +49,7 @@ export function JournalEntryForm({
   onCancel,
 }: JournalEntryFormProps) {
   const { t } = useTranslation();
-  const { toast } = useToast();
+  const toast = useToast();
 
   // Fetch accounts and fiscal years
   const { tree } = useAccountTree();

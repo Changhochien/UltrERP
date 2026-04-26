@@ -27,7 +27,7 @@ export default function CreateRFQPage() {
   const { t } = useTranslation("procurement");
   const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const toast = useToast();
   const { create, loading, error } = useCreateRFQ();
 
   const [company, setCompany] = useState("");
