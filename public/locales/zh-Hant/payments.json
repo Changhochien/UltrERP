@@ -1,1 +1,24 @@
-{}
+{
+  "form": {
+    "amountExceeded": "金額超過未收餘額（{amount}）",
+    "errors": {
+      "amountExceedsOutstanding": "金額超過未收餘額。",
+      "amountPositive": "金額必須大於零。",
+      "amountRequired": "金額為必填。",
+      "customerRequired": "客戶為必填。",
+      "notesTooLong": "備註不得超過 500 個字元。",
+      "paymentDateRequired": "付款日期為必填。",
+      "referenceNumberTooLong": "參考編號不得超過 100 個字元。"
+    },
+    "fields": {
+      "paymentDate": "付款日期"
+    },
+    "toast": {
+      "errorTitle": "無法記錄付款",
+      "recordedDescription": "已為此發票記錄收款單 {paymentRef}。",
+      "recordedTitle": "付款已記錄",
+      "unmatchedRecordedDescription": "收款單 {paymentRef} 已可進入對帳流程。",
+      "unmatchedRecordedTitle": "未對帳付款已記錄"
+    }
+  }
+}

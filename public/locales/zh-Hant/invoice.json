@@ -1,1 +1,107 @@
-{}
+{
+  "createPage": {
+    "addLine": "新增明細",
+    "b2b": "B2B",
+    "b2bPlaceholder": "請輸入統一編號",
+    "b2c": "B2C",
+    "b2cPlaceholder": "請輸入電話號碼",
+    "b2cWarning": "B2C 發票需要有效的電話號碼作為買受人識別碼。",
+    "buyerIdentifier": "買受人識別碼",
+    "buyerType": "買受人型態",
+    "createAnotherInvoice": "再開立一張發票",
+    "createInvoice": "開立發票",
+    "createdRecord": "發票已開立",
+    "createdRecordDescription": "發票已成功開立，隨時可以執行。",
+    "creating": "開立中…",
+    "customer": "客戶",
+    "description": "為您的客戶開立新的銷售發票。",
+    "descriptionCreated": "您的發票已成功開立。",
+    "draftDescription": "儲存為草稿以便稍後繼續編輯。",
+    "draftTitle": "草稿",
+    "eyebrow": "發票",
+    "invoiceDate": "發票日期",
+    "invoiceLines": "發票明細",
+    "noActiveCustomers": "目前沒有可用的有效客戶。",
+    "toast": {
+      "errorDescription": "請檢查發票內容後再試一次。",
+      "errorTitle": "無法建立發票",
+      "successDescription": "發票 {invoiceNumber} 已可開立。",
+      "successTitle": "發票已建立"
+    },
+    "title": "開立發票",
+    "titleCreated": "發票已開立"
+  },
+  "lineEditor": {
+    "description": "品名規格",
+    "lineNumber": "第 {index} 筆",
+    "lineTotal": "小計",
+    "productCode": "產品編號",
+    "quantity": "數量",
+    "rate": "稅率：{rate}%",
+    "removeLine": "移除此筆",
+    "subtotal": "未稅金額：{currency} {amount}",
+    "tax": "稅額：{currency} {amount}",
+    "taxPolicy": "課稅別",
+    "taxType": "類型：{type}",
+    "unitPrice": "單價"
+  },
+  "taxPolicy": {
+    "exempt": "免稅",
+    "special": "特種稅率",
+    "standard": "應稅",
+    "zero": "零稅率"
+  },
+  "listPage": {
+    "backToList": "返回列表",
+    "createInvoice": "開立發票",
+    "description": "瀏覽發票狀態與付款進度。",
+    "eyebrow": "發票",
+    "invoiceDate": "發票日期",
+    "invoiceDetail": "發票詳情",
+    "invoiceDetailDescription": "檢視及管理發票詳情與付款狀態。",
+    "invoiceNumber": "發票號碼",
+    "invoiceWorkspace": "發票工作區",
+    "invoiceWorkspaceDescription": "瀏覽並管理所有發票。",
+    "status": "狀態",
+    "title": "發票"
+  },
+  "totals": {
+    "grandTotal": "總計",
+    "lines": "明細",
+    "subtotal": "未稅合計",
+    "tax": "稅額",
+    "title": "合計",
+    "total": "合計"
+  },
+  "print": {
+    "documentNumber": "單據號碼",
+    "customerName": "客戶名稱",
+    "taxId": "統一編號",
+    "invoiceAddress": "發票地址",
+    "shippingAddress": "送貨地址",
+    "contactPhone": "聯絡電話",
+    "faxNumber": "傳真號碼",
+    "contactPerson": "聯絡人員",
+    "col": {
+      "productCode": "產品編號",
+      "description": "品名規格",
+      "quantity": "數量",
+      "unit": "單位",
+      "unitPrice": "單價",
+      "netPrice": "實價",
+      "amount": "金額"
+    },
+    "discount": "折讓",
+    "unpaid": "未收款",
+    "subtotal": "未稅合計",
+    "tax": "營業稅",
+    "total": "總計",
+    "notes": "備註",
+    "customerSignature": "客戶簽收",
+    "unit": "個",
+    "print": "列印",
+    "close": "關閉",
+    "exporting": "匯出中…",
+    "exportPdf": "Export PDF"
+  }
+}

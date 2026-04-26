@@ -1,1 +1,210 @@
-{}
+{
+  "createPage": {
+    "createAnother": "Create another",
+    "createdRecord": "Customer Created",
+    "createdRecordDescription": "The customer record has been created successfully.",
+    "description": "Fill in the details to add a new customer to your workspace.",
+    "descriptionCreated": "The new customer has been added to your workspace.",
+    "eyebrow": "Customers",
+    "formDescription": "Enter the customer's business information and contact details.",
+    "formTitle": "Customer Information",
+    "toast": {
+      "errorDescription": "Please review the customer details and try again.",
+      "errorTitle": "Customer could not be created",
+      "successDescription": "{name} is ready for orders and invoices.",
+      "successTitle": "Customer created"
+    },
+    "title": "Create Customer",
+    "titleCreated": "Customer Created"
+  },
+  "detail": {
+    "backToList": "Back to customer list",
+    "ban": "Business Number",
+    "billingAddress": "Billing Address",
+    "companyName": "Company Name",
+    "contactName": "Contact Name",
+    "createdAt": "Created At",
+    "creditLimit": "Credit Limit",
+    "defaultCurrency": "Default Currency",
+    "delete": "Delete",
+    "description": "Customer details",
+    "edit": "Edit",
+    "email": "Email",
+    "eyebrow": "Customer",
+    "loading": "Loading…",
+    "notFound": "Customer not found.",
+    "notSet": "Not set",
+    "overviewDescription": "Core profile and contact information for this customer.",
+    "overviewTitle": "Customer Overview",
+    "paymentTerms": "Payment Terms",
+    "phone": "Phone",
+    "status": "Status",
+    "suspend": "Suspend",
+    "title": "Customer Detail",
+    "updatedAt": "Last Updated",
+    "statusValues": {
+      "active": "Active",
+      "suspended": "Suspended",
+      "inactive": "Inactive",
+      "deleted": "Deleted"
+    },
+    "suspendConfirm": {
+      "message": "Suspend this customer?",
+      "error": "Failed to suspend customer."
+    },
+    "deleteConfirm": {
+      "message": "Delete this customer?",
+      "error": "Failed to delete customer."
+    },
+    "cannotDelete": {
+      "message": "Customers with outstanding balances cannot be deleted."
+    },
+    "toast": {
+      "updateErrorDescription": "Please review the customer changes and try again.",
+      "updateErrorTitle": "Customer update failed",
+      "updatedDescription": "{name} has been saved.",
+      "updatedTitle": "Customer updated"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "invoices": "Invoices",
+      "orders": "Orders",
+      "outstanding": "Outstanding",
+      "statement": "Statement",
+      "analytics": "Analytics"
+    },
+    "analytics": {
+      "totalRevenue": "Total Revenue (12 months)",
+      "revenueDescription": "Rolling 12-month revenue",
+      "invoiceCount": "Invoice Count",
+      "invoiceCountDesc": "Invoices issued in the last 12 months",
+      "avgInvoiceValue": "Average Invoice Value",
+      "avgInvoiceDesc": "Average value per invoice",
+      "outstanding": "Outstanding",
+      "outstandingBalance": "Outstanding Balance",
+      "creditUtilization": "Credit Utilization",
+      "avgDaysToPay": "Average Days to Pay",
+      "avgDaysDesc": "Measured from invoice date to payment date",
+      "revenueTrend": "Revenue Trend",
+      "revenueTrendDesc": "Monthly revenue across the last 12 complete months",
+      "paymentScore": "Payment Score",
+      "daysOverdueAvg": "Average Days Overdue",
+      "daysOverdueDesc": "Average lateness beyond terms",
+      "creditLimit": "Credit Limit",
+      "creditLimitDesc": "Configured customer credit line",
+      "emptyTitle": "No revenue activity yet",
+      "emptyDescription": "This customer has no invoice revenue in the last 12 months.",
+      "loadError": "Failed to load analytics.",
+      "tooltipRevenue": "Revenue",
+      "paymentScoreLabels": {
+        "excellent": "Excellent",
+        "prompt": "Prompt",
+        "late": "Late",
+        "at_risk": "At Risk"
+      }
+    },
+    "invoices": {
+      "title": "Invoices",
+      "description": "Invoices issued to this customer.",
+      "emptyTitle": "No invoices found",
+      "emptyDescription": "This customer does not have any invoices yet."
+    },
+    "orders": {
+      "title": "Orders",
+      "description": "Orders placed by this customer.",
+      "emptyTitle": "No orders found",
+      "emptyDescription": "This customer does not have any orders yet.",
+      "createOrder": "Create Order"
+    },
+    "outstanding": {
+      "title": "Outstanding Balance",
+      "description": "Receivables posture for the selected customer.",
+      "loading": "Loading outstanding…",
+      "error": "Error: {message}",
+      "totalOutstanding": "Total Outstanding",
+      "invoiceCount": "Invoices",
+      "overdue": "Overdue",
+      "overdueSummary": "{count} invoices ({currency} {amount})"
+    },
+    "statement": {
+      "title": "Account Statement",
+      "summary": {
+        "totalOutstanding": "Total Outstanding",
+        "oldestUnpaid": "Oldest Unpaid",
+        "avgDaysToPay": "Avg. Days to Pay"
+      },
+      "table": {
+        "date": "Date",
+        "type": "Type",
+        "reference": "Reference",
+        "description": "Description",
+        "debit": "Debit",
+        "credit": "Credit",
+        "balance": "Balance"
+      },
+      "filter": {
+        "from": "From",
+        "to": "To"
+      },
+      "actions": {
+        "print": "Print",
+        "exportCSV": "Export CSV"
+      },
+      "empty": "No transactions found.",
+      "invoiceType": "Invoice",
+      "paymentType": "Payment"
+    }
+  },
+  "form": {
+    "billingAddress": "Billing Address",
+    "businessNumber": "Business Number",
+    "businessNumberRequired": "Business number is required.",
+    "businessNumberTooLong": "Business number must be 20 characters or fewer.",
+    "companyName": "Company Name",
+    "companyNameTooLong": "Company name must be 200 characters or fewer.",
+    "contactEmail": "Contact Email",
+    "contactEmailRequired": "Contact email is required.",
+    "contactEmailTooLong": "Contact email must be 254 characters or fewer.",
+    "contactName": "Contact Name",
+    "contactNameRequired": "Contact name is required.",
+    "contactNameTooLong": "Contact name must be 100 characters or fewer.",
+    "contactPhone": "Contact Phone",
+    "contactPhoneRequired": "Contact phone is required.",
+    "contactPhoneTooLong": "Contact phone must be 30 characters or fewer.",
+    "createTitle": "Create Customer",
+    "creating": "Creating…",
+    "creditLimit": "Credit Limit",
+    "commercialDefaults": "Commercial Defaults",
+    "commercialDefaultsDescription": "Used when quotations, orders, and invoices need customer-level defaults.",
+    "defaultCurrency": "Default Currency",
+    "paymentTerms": "Payment Terms",
+    "useTenantDefault": "Tenant default",
+    "baseCurrency": "base",
+    "billingAddressTooLong": "Billing address must be 500 characters or fewer.",
+    "businessNumberDigits": "Business number must be exactly 8 digits.",
+    "companyNameRequired": "Company name is required.",
+    "creditLimitNonNegative": "Credit limit must be non-negative.",
+    "invalidBusinessNumber": "Invalid business number.",
+    "invalidEmail": "Enter a valid email address.",
+    "title": "Create Customer"
+  },
+  "listPage": {
+    "activeFilters": "{count} active filters applied",
+    "active": "Active",
+    "allStatuses": "All statuses",
+    "clearFilters": "Clear filters",
+    "createCustomer": "Create Customer",
+    "customerRegistry": "Customer Registry",
+    "customerRegistryDescription": "Browse, search, and manage customer accounts.",
+    "description": "Browse and search your customer accounts.",
+    "eyebrow": "Customers",
+    "inactive": "Inactive",
+    "loading": "Loading…",
+    "search": "Search: {query}",
+    "status": "Status",
+    "statusFilter": "Status: {status}",
+    "suspended": "Suspended",
+    "title": "Customers",
+    "updating": "Updating…"
+  }
+}

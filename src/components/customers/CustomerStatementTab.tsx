@@ -81,7 +81,7 @@ function computeSummary(lines: StatementLine[]) {
 }
 
 export function CustomerStatementTab({ customerId, customerName }: CustomerStatementTabProps) {
-  const { t, i18n } = useTranslation("common");
+  const { t, i18n } = useTranslation("customer");
   const language = i18n?.language || i18n?.resolvedLanguage || "en";
   const [fromDate, setFromDate] = useState(twelveMonthsAgo);
   const [toDate, setToDate] = useState(today);
@@ -109,19 +109,19 @@ export function CustomerStatementTab({ customerId, customerName }: CustomerState
   const handleExportCSV = () => {
     if (!data) return;
     const headers = [
-      t("customer.detail.statement.table.date"),
-      t("customer.detail.statement.table.type"),
-      t("customer.detail.statement.table.reference"),
-      t("customer.detail.statement.table.description"),
-      t("customer.detail.statement.table.debit"),
-      t("customer.detail.statement.table.credit"),
-      t("customer.detail.statement.table.balance"),
+      t("detail.statement.table.date"),
+      t("detail.statement.table.type"),
+      t("detail.statement.table.reference"),
+      t("detail.statement.table.description"),
+      t("detail.statement.table.debit"),
+      t("detail.statement.table.credit"),
+      t("detail.statement.table.balance"),
     ];
     const rows = data.lines.map((line) => [
       line.date,
       line.type === "invoice"
-        ? t("customer.detail.statement.invoiceType")
-        : t("customer.detail.statement.paymentType"),
+        ? t("detail.statement.invoiceType")
+        : t("detail.statement.paymentType"),
       line.reference,
       line.description,
       line.debit,
@@ -149,7 +149,7 @@ export function CustomerStatementTab({ customerId, customerName }: CustomerState
         <div className="grid grid-cols-3 gap-4">
           <div className="rounded-xl border p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              {t("customer.detail.statement.summary.totalOutstanding")}
+              {t("detail.statement.summary.totalOutstanding")}
             </p>
             <p className="mt-1 text-xl font-semibold">
               {formatCurrency(data.current_balance, data.currency_code)}
@@ -157,7 +157,7 @@ export function CustomerStatementTab({ customerId, customerName }: CustomerState
           </div>
           <div className="rounded-xl border p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              {t("customer.detail.statement.summary.oldestUnpaid")}
+              {t("detail.statement.summary.oldestUnpaid")}
             </p>
             {oldestUnpaid ? (
               <p className="mt-1 text-xl font-semibold">
@@ -169,7 +169,7 @@ export function CustomerStatementTab({ customerId, customerName }: CustomerState
           </div>
           <div className="rounded-xl border p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              {t("customer.detail.statement.summary.avgDaysToPay")}
+              {t("detail.statement.summary.avgDaysToPay")}
             </p>
             {avgDays !== null ? (
               <p className="mt-1 text-xl font-semibold">{avgDays} days</p>
@@ -184,20 +184,20 @@ export function CustomerStatementTab({ customerId, customerName }: CustomerState
       <div className="flex items-center gap-3">
         <div className="flex items-end gap-2">
           <label className="flex flex-col gap-1 text-sm font-medium" htmlFor="customer-statement-from-date">
-            {t("customer.detail.statement.filter.from")}
+            {t("detail.statement.filter.from")}
             <DatePicker
               id="customer-statement-from-date"
-              placeholder={t("customer.detail.statement.filter.from")}
+              placeholder={t("detail.statement.filter.from")}
               value={parseDatePickerInputValue(fromDate)}
               onChange={(value) => setFromDate(serializeDatePickerValue(value))}
               className="w-[10rem]"
             />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium" htmlFor="customer-statement-to-date">
-            {t("customer.detail.statement.filter.to")}
+            {t("detail.statement.filter.to")}
             <DatePicker
               id="customer-statement-to-date"
-              placeholder={t("customer.detail.statement.filter.to")}
+              placeholder={t("detail.statement.filter.to")}
               value={parseDatePickerInputValue(toDate)}
               onChange={(value) => setToDate(serializeDatePickerValue(value))}
               className="w-[10rem]"
@@ -209,10 +209,10 @@ export function CustomerStatementTab({ customerId, customerName }: CustomerState
         </Button>
         <div className="ml-auto flex gap-2">
           <Button size="sm" variant="outline" onClick={() => window.print()}>
-            {t("customer.detail.statement.actions.print")}
+            {t("detail.statement.actions.print")}
           </Button>
           <Button size="sm" variant="outline" onClick={handleExportCSV}>
-            {t("customer.detail.statement.actions.exportCSV")}
+            {t("detail.statement.actions.exportCSV")}
           </Button>
         </div>
       </div>
@@ -223,23 +223,23 @@ export function CustomerStatementTab({ customerId, customerName }: CustomerState
       {!loading && !error && data && (
         <>
           {data.lines.length === 0 ? (
-            <SurfaceMessage tone="default">{t("customer.detail.statement.empty")}</SurfaceMessage>
+            <SurfaceMessage tone="default">{t("detail.statement.empty")}</SurfaceMessage>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t("customer.detail.statement.table.date")}</TableHead>
-                  <TableHead>{t("customer.detail.statement.table.type")}</TableHead>
-                  <TableHead>{t("customer.detail.statement.table.reference")}</TableHead>
-                  <TableHead>{t("customer.detail.statement.table.description")}</TableHead>
+                  <TableHead>{t("detail.statement.table.date")}</TableHead>
+                  <TableHead>{t("detail.statement.table.type")}</TableHead>
+                  <TableHead>{t("detail.statement.table.reference")}</TableHead>
+                  <TableHead>{t("detail.statement.table.description")}</TableHead>
                   <TableHead className="text-right">
-                    {t("customer.detail.statement.table.debit")}
+                    {t("detail.statement.table.debit")}
                   </TableHead>
                   <TableHead className="text-right">
-                    {t("customer.detail.statement.table.credit")}
+                    {t("detail.statement.table.credit")}
                   </TableHead>
                   <TableHead className="text-right">
-                    {t("customer.detail.statement.table.balance")}
+                    {t("detail.statement.table.balance")}
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -267,8 +267,8 @@ export function CustomerStatementTab({ customerId, customerName }: CustomerState
                         }`}
                       >
                         {line.type === "invoice"
-                          ? t("customer.detail.statement.invoiceType")
-                          : t("customer.detail.statement.paymentType")}
+                          ? t("detail.statement.invoiceType")
+                          : t("detail.statement.paymentType")}
                       </span>
                     </TableCell>
                     <TableCell className="font-mono text-xs">{line.reference}</TableCell>

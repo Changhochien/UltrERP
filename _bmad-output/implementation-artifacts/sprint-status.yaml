@@ -1668,10 +1668,10 @@ last_updated: "2026-04-26"
         prerequisites: ["41-2-shell-and-route-translation-extraction"]
       41-4-sales-and-finance-namespace-migration:
         title: "Sales and Finance Namespace Migration"
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "41.4"
         story_file: "41-4-sales-and-finance-namespace-migration.md"
-        validation: "Story artifact created from Epic 41 i18n architecture planning."
+        validation: "Implemented sales/finance namespace migration (crm, customer, orders, invoice, payments). Extracted 29 total keys to dedicated namespaces. Updated customer consumers. Build passes, locale parity check passes."
         prerequisites: ["41-3-operations-namespace-migration"]
       41-5-common-namespace-reduction:
         title: "Common Namespace Reduction and Locale Hygiene"

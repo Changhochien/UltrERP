@@ -1,1 +1,24 @@
-{}
+{
+  "form": {
+    "amountExceeded": "Amount exceeds outstanding balance ({amount})",
+    "errors": {
+      "amountExceedsOutstanding": "Amount exceeds the outstanding balance.",
+      "amountPositive": "Amount must be greater than zero.",
+      "amountRequired": "Amount is required.",
+      "customerRequired": "Customer is required.",
+      "notesTooLong": "Notes must be 500 characters or fewer.",
+      "paymentDateRequired": "Payment date is required.",
+      "referenceNumberTooLong": "Reference number must be 100 characters or fewer."
+    },
+    "fields": {
+      "paymentDate": "Payment Date"
+    },
+    "toast": {
+      "errorTitle": "Payment could not be recorded",
+      "recordedDescription": "Receipt {paymentRef} was recorded for this invoice.",
+      "recordedTitle": "Payment recorded",
+      "unmatchedRecordedDescription": "Receipt {paymentRef} is ready for reconciliation.",
+      "unmatchedRecordedTitle": "Unmatched payment recorded"
+    }
+  }
+}

@@ -1,1 +1,107 @@
-{}
+{
+  "createPage": {
+    "addLine": "Add line",
+    "b2b": "B2B",
+    "b2bPlaceholder": "Enter business identifier",
+    "b2c": "B2C",
+    "b2cPlaceholder": "Enter phone number",
+    "b2cWarning": "B2C invoices require a valid phone number as the buyer identifier.",
+    "buyerIdentifier": "Buyer Identifier",
+    "buyerType": "Buyer Type",
+    "createAnotherInvoice": "Create another invoice",
+    "createInvoice": "Create Invoice",
+    "createdRecord": "Invoice Created",
+    "createdRecordDescription": "The invoice has been created and is ready to be issued.",
+    "creating": "Creating…",
+    "customer": "Customer",
+    "description": "Create a new sales invoice for your customer.",
+    "descriptionCreated": "Your invoice has been successfully created.",
+    "draftDescription": "Save as a draft to continue editing later.",
+    "draftTitle": "Draft",
+    "eyebrow": "Invoices",
+    "invoiceDate": "Invoice Date",
+    "invoiceLines": "Invoice Lines",
+    "noActiveCustomers": "No active customers available.",
+    "toast": {
+      "errorDescription": "Please review the invoice details and try again.",
+      "errorTitle": "Invoice could not be created",
+      "successDescription": "Invoice {invoiceNumber} is ready to issue.",
+      "successTitle": "Invoice created"
+    },
+    "title": "Create Invoice",
+    "titleCreated": "Invoice Created"
+  },
+  "lineEditor": {
+    "description": "Description",
+    "lineNumber": "Line {index}",
+    "lineTotal": "Line Total",
+    "productCode": "Product Code",
+    "quantity": "Quantity",
+    "rate": "Rate: {rate}%",
+    "removeLine": "Remove line",
+    "subtotal": "Subtotal: {currency} {amount}",
+    "tax": "Tax: {currency} {amount}",
+    "taxPolicy": "Tax Policy",
+    "taxType": "Type: {type}",
+    "unitPrice": "Unit Price"
+  },
+  "taxPolicy": {
+    "exempt": "Exempt",
+    "special": "Special",
+    "standard": "Standard",
+    "zero": "Zero-rated"
+  },
+  "listPage": {
+    "backToList": "Back to list",
+    "createInvoice": "Create Invoice",
+    "description": "Browse invoice status and payment progress.",
+    "eyebrow": "Invoices",
+    "invoiceDate": "Invoice Date",
+    "invoiceDetail": "Invoice Detail",
+    "invoiceDetailDescription": "View and manage invoice details and payment status.",
+    "invoiceNumber": "Invoice #",
+    "invoiceWorkspace": "Invoice Workspace",
+    "invoiceWorkspaceDescription": "Browse and manage all invoices.",
+    "status": "Status",
+    "title": "Invoices"
+  },
+  "totals": {
+    "grandTotal": "Grand Total",
+    "lines": "Lines",
+    "subtotal": "Subtotal",
+    "tax": "Tax",
+    "title": "Totals",
+    "total": "Total"
+  },
+  "print": {
+    "documentNumber": "Document Number",
+    "customerName": "Customer Name",
+    "taxId": "Tax ID",
+    "invoiceAddress": "Invoice Address",
+    "shippingAddress": "Shipping Address",
+    "contactPhone": "Contact Phone",
+    "faxNumber": "Fax Number",
+    "contactPerson": "Contact Person",
+    "col": {
+      "productCode": "Product Code",
+      "description": "Description",
+      "quantity": "Quantity",
+      "unit": "Unit",
+      "unitPrice": "Unit Price",
+      "netPrice": "Net Price",
+      "amount": "Amount"
+    },
+    "discount": "Discount",
+    "unpaid": "Unpaid",
+    "subtotal": "Subtotal",
+    "tax": "Tax",
+    "total": "Total",
+    "notes": "Notes",
+    "customerSignature": "Customer Signature",
+    "unit": "units",
+    "print": "Print",
+    "close": "Close",
+    "exporting": "Exporting...",
+    "exportPdf": "Export PDF"
+  }
+}
