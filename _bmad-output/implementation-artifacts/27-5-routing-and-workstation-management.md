@@ -1,6 +1,6 @@
 # Story 27.5: Routing and Workstation Management
 
-**Status:** review
+**Status:** committed
 
 **Story ID:** 27.5
 
@@ -134,8 +134,8 @@ Keep the first slice focused on planning and costing. Land reusable routing temp
 
 ## Dev Agent Record
 
-**Status:** ready-for-dev
-**Last Updated:** 2026-04-26
+**Status:** committed
+**Last Updated:** 2026-04-27
 
 ### Completion Notes List
 

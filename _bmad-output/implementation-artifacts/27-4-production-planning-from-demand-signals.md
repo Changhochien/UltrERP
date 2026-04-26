@@ -1,6 +1,6 @@
 # Story 27.4: Production Planning From Demand Signals
 
-**Status:** review
+**Status:** committed
 
 **Story ID:** 27.4
 
@@ -138,8 +138,8 @@ Keep the first slice narrow. Land proposal generation, review, and work-order cr
 
 ## Dev Agent Record
 
-**Status:** ready-for-dev
-**Last Updated:** 2026-04-26
+**Status:** committed
+**Last Updated:** 2026-04-27
 
 ### Completion Notes List
 

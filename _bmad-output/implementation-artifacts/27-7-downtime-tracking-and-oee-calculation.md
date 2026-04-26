@@ -1,6 +1,6 @@
 # Story 27.7: Downtime Tracking and OEE Calculation
 
-**Status:** review
+**Status:** committed
 
 **Story ID:** 27.7
 
@@ -133,8 +133,8 @@ Keep the slice bounded. Land manual downtime capture and derived OEE reporting w
 
 ## Dev Agent Record
 
-**Status:** ready-for-dev
-**Last Updated:** 2026-04-26
+**Status:** committed
+**Last Updated:** 2026-04-27
 
 ### Completion Notes List
 

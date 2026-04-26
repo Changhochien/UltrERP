@@ -1,6 +1,6 @@
 # Story 27.6: Production Plan and Demand Aggregation
 
-**Status:** review
+**Status:** committed
 
 **Story ID:** 27.6
 
@@ -135,8 +135,8 @@ Keep the slice bounded. Land plan records, demand aggregation, capacity visibili
 
 ## Dev Agent Record
 
-**Status:** ready-for-dev
-**Last Updated:** 2026-04-26
+**Status:** committed
+**Last Updated:** 2026-04-27
 
 ### Completion Notes List
 
