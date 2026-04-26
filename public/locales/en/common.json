@@ -7,7 +7,8 @@
     "noTenant": "No tenant",
     "reset": "Reset",
     "save": "Save",
-    "yes": "Yes"
+    "yes": "Yes",
+    "retry": "Retry"
   },
   "datePicker": {
     "clear": "Clear",
@@ -28,5 +29,133 @@
   },
   "infoPopover": {
     "ariaLabel": "More information"
+  },
+  "routes": {
+    "dashboard": {
+      "label": "Dashboard"
+    },
+    "workspace": {
+      "label": "Workspace"
+    }
+  },
+  "app": {
+    "tagline": "Business Management"
+  },
+  "dashboard": {
+    "pageDescription": "Overview of your business performance",
+    "quickActions": {
+      "inventory": "Inventory",
+      "inventoryDescription": "Manage stock and warehouse",
+      "customers": "Customers",
+      "customersDescription": "View and manage customer accounts",
+      "newCustomer": "New Customer",
+      "newCustomerDescription": "Create a new customer record",
+      "invoices": "Invoices",
+      "invoicesDescription": "Manage sales invoices",
+      "newInvoice": "New Invoice",
+      "newInvoiceDescription": "Create a new invoice",
+      "orders": "Orders",
+      "ordersDescription": "View and manage orders",
+      "newOrder": "New Order",
+      "newOrderDescription": "Create a new sales order",
+      "payments": "Payments",
+      "paymentsDescription": "Record and track payments",
+      "admin": "Admin Settings",
+      "adminDescription": "System configuration and settings"
+    },
+    "actionCenter": {
+      "title": "Quick Actions",
+      "description": "Jump to common tasks"
+    },
+    "revenue": {
+      "title": "Revenue",
+      "description": "Daily revenue comparison",
+      "revenueComparison": "Revenue Comparison",
+      "yesterday": "Yesterday ({{date}}): {{amount}}",
+      "noChangeData": "No change",
+      "revenueChange": "{{change}}"
+    },
+    "visitorStats": {
+      "title": "Visitor Stats",
+      "analyticsNotConfigured": "Analytics not configured",
+      "analyticsUnavailable": "Analytics service unavailable",
+      "yesterday": "Yesterday ({{date}})",
+      "uniqueVisitors": "Unique Visitors"
+    },
+    "lowStock": {
+      "title": "Low Stock Alerts",
+      "description": "Items below reorder point",
+      "allOk": "All stock levels are healthy",
+      "stock": "{{current}} / {{point}}"
+    },
+    "topProducts": {
+      "title": "Top Products",
+      "description": "Best selling products by revenue",
+      "today": "Today",
+      "thisWeek": "This Week",
+      "noData": "No sales data available",
+      "rank": "#",
+      "product": "Product",
+      "qtySold": "Qty Sold",
+      "revenue": "Revenue"
+    },
+    "kpi": {
+      "title": "KPI Summary",
+      "description": "Key performance indicators",
+      "todayRevenue": "Today's Revenue",
+      "openInvoices": "Open Invoices",
+      "openInvoiceAmount": "Open Invoice Amount",
+      "pendingOrders": "Pending Orders",
+      "pendingOrderRevenue": "Pending Order Revenue",
+      "lowStock": "Low Stock Items"
+    },
+    "grossMargin": {
+      "title": "Gross Margin",
+      "description": "Revenue vs cost of goods sold",
+      "unavailable": "Margin data unavailable",
+      "vsPreviousPeriod": "vs previous period",
+      "revenue": "Revenue"
+    },
+    "cashFlow": {
+      "title": "Cash Flow",
+      "description": "Inflows and outflows",
+      "inflows": "Inflows",
+      "outflows": "Outflows",
+      "net": "Net",
+      "totalInflows": "Total Inflows",
+      "totalOutflows": "Total Outflows"
+    },
+    "arAging": {
+      "title": "AR Aging",
+      "asOf": "As of {{date}}",
+      "invoices": "{{count}} invoices",
+      "totalOutstanding": "Total Outstanding",
+      "totalOverdue": "Total Overdue"
+    },
+    "apAging": {
+      "title": "AP Aging",
+      "asOf": "As of {{date}}",
+      "invoices": "{{count}} invoices",
+      "totalOutstanding": "Total Outstanding",
+      "totalOverdue": "Total Overdue"
+    },
+    "topCustomers": {
+      "title": "Top Customers",
+      "description": "Customers by revenue",
+      "periodRange": "{{start}} - {{end}}",
+      "month": "Month",
+      "quarter": "Quarter",
+      "year": "Year"
+    },
+    "revenueTrend": {
+      "30d": "30 Days",
+      "90d": "90 Days",
+      "1y": "1 Year",
+      "loadMore": "Load More",
+      "title": "Revenue Trend",
+      "month": "Monthly",
+      "quarter": "Quarterly",
+      "year": "Yearly"
+    }
   }
 }

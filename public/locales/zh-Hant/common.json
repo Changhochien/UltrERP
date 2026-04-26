@@ -7,7 +7,8 @@
     "noTenant": "無組織",
     "reset": "重設",
     "save": "儲存",
-    "yes": "是"
+    "yes": "是",
+    "retry": "重試"
   },
   "datePicker": {
     "clear": "清除",
@@ -28,5 +29,133 @@
   },
   "infoPopover": {
     "ariaLabel": "更多資訊"
+  },
+  "routes": {
+    "dashboard": {
+      "label": "儀表板"
+    },
+    "workspace": {
+      "label": "工作區"
+    }
+  },
+  "app": {
+    "tagline": "企業管理系統"
+  },
+  "dashboard": {
+    "pageDescription": "業務績效總覽",
+    "quickActions": {
+      "inventory": "庫存管理",
+      "inventoryDescription": "管理庫存和倉庫",
+      "customers": "客戶",
+      "customersDescription": "檢視和管理客戶帳戶",
+      "newCustomer": "新客戶",
+      "newCustomerDescription": "建立新客戶記錄",
+      "invoices": "發票",
+      "invoicesDescription": "管理銷售發票",
+      "newInvoice": "新發票",
+      "newInvoiceDescription": "建立新發票",
+      "orders": "訂單",
+      "ordersDescription": "檢視和管理訂單",
+      "newOrder": "新訂單",
+      "newOrderDescription": "建立新銷售訂單",
+      "payments": "收款",
+      "paymentsDescription": "記錄和追蹤收款",
+      "admin": "系統設定",
+      "adminDescription": "系統配置和設定"
+    },
+    "actionCenter": {
+      "title": "快速操作",
+      "description": "快速前往常用功能"
+    },
+    "revenue": {
+      "title": "營收",
+      "description": "每日營收比較",
+      "revenueComparison": "營收比較",
+      "yesterday": "昨日 ({{date}})：{{amount}}",
+      "noChangeData": "無變動",
+      "revenueChange": "{{change}}"
+    },
+    "visitorStats": {
+      "title": "拜訪統計",
+      "analyticsNotConfigured": "分析功能未設定",
+      "analyticsUnavailable": "分析服務無法使用",
+      "yesterday": "昨日 ({{date}})",
+      "uniqueVisitors": "獨立訪客"
+    },
+    "lowStock": {
+      "title": "庫存警示",
+      "description": "低於補貨點的項目",
+      "allOk": "所有庫存狀態正常",
+      "stock": "{{current}} / {{point}}"
+    },
+    "topProducts": {
+      "title": "熱銷商品",
+      "description": "銷售額最佳商品",
+      "today": "今日",
+      "thisWeek": "本週",
+      "noData": "暫無銷售資料",
+      "rank": "排名",
+      "product": "商品",
+      "qtySold": "銷售數量",
+      "revenue": "營收"
+    },
+    "kpi": {
+      "title": "關鍵指標",
+      "description": "關鍵績效指標",
+      "todayRevenue": "今日營收",
+      "openInvoices": "待收款發票",
+      "openInvoiceAmount": "待收款金額",
+      "pendingOrders": "待處理訂單",
+      "pendingOrderRevenue": "待處理訂單金額",
+      "lowStock": "低庫存項目"
+    },
+    "grossMargin": {
+      "title": "毛利率",
+      "description": "營收與銷貨成本",
+      "unavailable": "毛利率資料無法使用",
+      "vsPreviousPeriod": "與上期比較",
+      "revenue": "營收"
+    },
+    "cashFlow": {
+      "title": "現金流量",
+      "description": "流入與流出",
+      "inflows": "流入",
+      "outflows": "流出",
+      "net": "淨額",
+      "totalInflows": "總流入",
+      "totalOutflows": "總流出"
+    },
+    "arAging": {
+      "title": "應收帳款帳齡",
+      "asOf": "截至 {{date}}",
+      "invoices": "{{count}} 張發票",
+      "totalOutstanding": "應收總額",
+      "totalOverdue": "逾期應收"
+    },
+    "apAging": {
+      "title": "應付帳款帳齡",
+      "asOf": "截至 {{date}}",
+      "invoices": "{{count}} 張發票",
+      "totalOutstanding": "應付總額",
+      "totalOverdue": "逾期應付"
+    },
+    "topCustomers": {
+      "title": "優質客戶",
+      "description": "客戶營收排行",
+      "periodRange": "{{start}} - {{end}}",
+      "month": "月",
+      "quarter": "季",
+      "year": "年"
+    },
+    "revenueTrend": {
+      "30d": "30天",
+      "90d": "90天",
+      "1y": "1年",
+      "loadMore": "載入更多",
+      "title": "營收趨勢",
+      "month": "每月",
+      "quarter": "每季",
+      "year": "每年"
+    }
   }
 }
