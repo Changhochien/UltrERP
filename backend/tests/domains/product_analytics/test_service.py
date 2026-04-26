@@ -22,7 +22,9 @@ from domains.product_analytics.service import (
     refresh_sales_monthly,
     refresh_sales_monthly_range,
     repair_missing_sales_monthly_months,
+    SalesMonthlyRefreshResult,
 )
+import domains.product_analytics.service as product_analytics_service
 from tests.db import isolated_async_session
 
 _BUSINESS_NUMBER_COUNTER = count(20_000_000)
@@ -1040,6 +1042,49 @@ async def test_backfill_bounded_history_excludes_current_month(
         )
     )
     assert current_count == 0
+
+
+@pytest.mark.asyncio
+async def test_repair_missing_sales_monthly_months_only_refreshes_requested_closed_months(
+    monkeypatch: pytest.MonkeyPatch,
+    db_session: AsyncSession,
+    tenant_id: uuid.UUID,
+) -> None:
+    current_month = _month_start(datetime.now(tz=UTC).date())
+    three_months_ago = _shift_months(current_month, -3)
+    previous_month = _shift_months(current_month, -1)
+    called_months: list[date] = []
+
+    async def fake_refresh_sales_monthly(
+        session: AsyncSession,
+        inner_tenant_id: uuid.UUID,
+        month_start: date,
+    ) -> SalesMonthlyRefreshResult:
+        assert session is db_session
+        assert inner_tenant_id == tenant_id
+        called_months.append(month_start)
+        return SalesMonthlyRefreshResult(
+            month_start=month_start,
+            upserted_row_count=1,
+            deleted_row_count=0,
+            skipped_lines=(),
+        )
+
+    monkeypatch.setattr(
+        product_analytics_service,
+        "refresh_sales_monthly",
+        fake_refresh_sales_monthly,
+    )
+
+    result = await repair_missing_sales_monthly_months(
+        db_session,
+        tenant_id,
+        [three_months_ago, previous_month, current_month],
+    )
+
+    assert called_months == [three_months_ago, previous_month]
+    assert result.refreshed_month_count == 2
+    assert [item.month_start for item in result.results] == [three_months_ago, previous_month]
 
 
 @pytest.mark.asyncio

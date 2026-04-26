@@ -92,3 +92,72 @@ def test_refresh_closed_sales_monthly_history_rejects_invalid_rolling_window() -
                 rolling_closed_months=0,
             )
         )
+
+
+def test_run_repair_missing_serializes_dates_and_reports_idempotent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requested_months = [date(2026, 1, 1), date(2026, 3, 1)]
+
+    async def fake_repair_missing_sales_monthly_months(
+        session,
+        tenant_id: uuid.UUID,
+        missing_months: list[date],
+    ) -> SalesMonthlyRangeRefreshResult:
+        assert tenant_id == TENANT_ID
+        assert missing_months == requested_months
+        return _range_result(*requested_months)
+
+    monkeypatch.setattr(
+        refresh,
+        "repair_missing_sales_monthly_months",
+        fake_repair_missing_sales_monthly_months,
+    )
+
+    result = asyncio.run(
+        refresh.run_repair_missing(
+            tenant_id=TENANT_ID,
+            missing_months=requested_months,
+        )
+    )
+
+    assert result.repaired_months == ("2026-01-01", "2026-03-01")
+    assert result.refreshed_month_count == 2
+    assert result.idempotent is True
+
+
+def test_main_refresh_defaults_affected_domains_to_none(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    async def fake_refresh_closed_sales_monthly_history(**kwargs):
+        assert kwargs["tenant_id"] == TENANT_ID
+        assert kwargs["affected_domains"] is None
+        return refresh.SalesMonthlyHistoryRefreshResult(
+            batch_mode="full",
+            affected_domains=(),
+            start_month=date(2026, 1, 1),
+            end_month=date(2026, 3, 1),
+            refreshed_month_count=3,
+            total_upserted_row_count=3,
+            total_deleted_row_count=0,
+            skipped_line_count=0,
+            cleared_row_count=0,
+        )
+
+    monkeypatch.setattr(
+        refresh,
+        "refresh_closed_sales_monthly_history",
+        fake_refresh_closed_sales_monthly_history,
+    )
+
+    exit_code = refresh.main([
+        "--tenant-id",
+        str(TENANT_ID),
+        "refresh",
+    ])
+
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert '"refreshed_month_count": 3' in output

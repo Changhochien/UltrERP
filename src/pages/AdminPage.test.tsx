@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 
@@ -10,6 +10,9 @@ const fetchUsersMock = vi.hoisted(() => vi.fn());
 const fetchAuditLogsMock = vi.hoisted(() => vi.fn());
 const fetchLegacyRefreshLanesMock = vi.hoisted(() => vi.fn());
 const fetchLegacyRefreshRecentRunsMock = vi.hoisted(() => vi.fn());
+const fetchSalesMonthlyHealthMock = vi.hoisted(() => vi.fn());
+const repairSalesMonthlyMissingMock = vi.hoisted(() => vi.fn());
+const backfillSalesMonthlyMock = vi.hoisted(() => vi.fn());
 const translationMock = vi.hoisted(() => ({
   t: (key: string) => key,
 }));
@@ -37,6 +40,12 @@ vi.mock("../lib/api/admin", async () => {
       fetchLegacyRefreshLanesMock(...args),
     fetchLegacyRefreshRecentRuns: (...args: Parameters<typeof fetchLegacyRefreshRecentRunsMock>) =>
       fetchLegacyRefreshRecentRunsMock(...args),
+    fetchSalesMonthlyHealth: (...args: Parameters<typeof fetchSalesMonthlyHealthMock>) =>
+      fetchSalesMonthlyHealthMock(...args),
+    repairSalesMonthlyMissing: (...args: Parameters<typeof repairSalesMonthlyMissingMock>) =>
+      repairSalesMonthlyMissingMock(...args),
+    backfillSalesMonthly: (...args: Parameters<typeof backfillSalesMonthlyMock>) =>
+      backfillSalesMonthlyMock(...args),
   };
 });
 
@@ -57,6 +66,28 @@ describe("AdminPage audit sorting", () => {
     });
     fetchLegacyRefreshLanesMock.mockResolvedValue({ lanes: [] });
     fetchLegacyRefreshRecentRunsMock.mockResolvedValue([]);
+    fetchSalesMonthlyHealthMock.mockResolvedValue({
+      window_start: "2026-03-01",
+      window_end: "2026-03-01",
+      is_healthy: false,
+      missing_month_count: 1,
+      missing_months: [
+        {
+          month_start: "2026-03-01",
+          transactional_order_count: 2,
+          transactional_revenue: "180.00",
+        },
+      ],
+      checked_month_count: 1,
+      current_open_month: "2026-04-01",
+      data_gap_acknowledged: true,
+    });
+    repairSalesMonthlyMissingMock.mockResolvedValue({
+      repaired_months: ["2026-03-01"],
+      refreshed_month_count: 1,
+      results: [],
+      idempotent: true,
+    });
 
     const { AdminPage } = await import("./AdminPage");
 
@@ -156,5 +187,158 @@ describe("AdminPage audit sorting", () => {
     expect(
       screen.getByText((text) => text.includes("Incremental reconciliation drift requires full rebaseline")),
     ).toBeTruthy();
+
+    fireEvent.change(
+      screen.getByLabelText("adminPage.legacyRefresh.salesMonthly.fields.tenantId"),
+      { target: { value: "tenant-1" } },
+    );
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "adminPage.legacyRefresh.salesMonthly.actions.checkHealth" }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(fetchSalesMonthlyHealthMock).toHaveBeenCalledWith(
+        "tenant-1",
+        expect.any(String),
+        expect.any(String),
+      );
+    });
+
+    expect(screen.getByText("2026-03-01")).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "adminPage.legacyRefresh.salesMonthly.actions.repairMissing" }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(repairSalesMonthlyMissingMock).toHaveBeenCalledWith("tenant-1", ["2026-03-01"]);
+    });
+  });
+
+  it("triggers bounded sales-monthly backfill from the admin controls", async () => {
+    fetchUsersMock.mockResolvedValue([]);
+    fetchAuditLogsMock.mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      page_size: 20,
+    });
+    fetchLegacyRefreshLanesMock.mockResolvedValue({ lanes: [] });
+    fetchLegacyRefreshRecentRunsMock.mockResolvedValue([]);
+    backfillSalesMonthlyMock.mockResolvedValue({
+      start_month: "2026-03-01",
+      end_month: "2026-03-01",
+      refreshed_month_count: 1,
+      results: [],
+      bounded: true,
+    });
+    fetchSalesMonthlyHealthMock.mockResolvedValue({
+      window_start: "2026-03-01",
+      window_end: "2026-03-01",
+      is_healthy: true,
+      missing_month_count: 0,
+      missing_months: [],
+      checked_month_count: 1,
+      current_open_month: "2026-04-01",
+      data_gap_acknowledged: false,
+    });
+
+    const { AdminPage } = await import("./AdminPage");
+
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(fetchLegacyRefreshLanesMock).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.change(
+      screen.getByLabelText("adminPage.legacyRefresh.salesMonthly.fields.tenantId"),
+      { target: { value: "tenant-1" } },
+    );
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "adminPage.legacyRefresh.salesMonthly.actions.backfill" }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(backfillSalesMonthlyMock).toHaveBeenCalledWith(
+        "tenant-1",
+        expect.any(String),
+        expect.any(String),
+      );
+    });
+  });
+
+  it("renders a healthy sales-monthly state and keeps repair disabled when no gaps exist", async () => {
+    fetchUsersMock.mockResolvedValue([]);
+    fetchAuditLogsMock.mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      page_size: 20,
+    });
+    fetchLegacyRefreshLanesMock.mockResolvedValue({ lanes: [] });
+    fetchLegacyRefreshRecentRunsMock.mockResolvedValue([]);
+    fetchSalesMonthlyHealthMock.mockResolvedValue({
+      window_start: "2026-03-01",
+      window_end: "2026-03-01",
+      is_healthy: true,
+      missing_month_count: 0,
+      missing_months: [],
+      checked_month_count: 1,
+      current_open_month: "2026-04-01",
+      data_gap_acknowledged: false,
+    });
+
+    const { AdminPage } = await import("./AdminPage");
+
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(fetchLegacyRefreshLanesMock).toHaveBeenCalledTimes(1);
+    });
+
+    const repairButton = screen.getByRole("button", {
+      name: "adminPage.legacyRefresh.salesMonthly.actions.repairMissing",
+    }) as HTMLButtonElement;
+    expect(repairButton.disabled).toBe(true);
+
+    fireEvent.change(
+      screen.getByLabelText("adminPage.legacyRefresh.salesMonthly.fields.tenantId"),
+      { target: { value: "tenant-1" } },
+    );
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "adminPage.legacyRefresh.salesMonthly.actions.checkHealth" }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(fetchSalesMonthlyHealthMock).toHaveBeenCalledWith(
+        "tenant-1",
+        expect.any(String),
+        expect.any(String),
+      );
+    });
+
+    expect(screen.getByText("adminPage.legacyRefresh.salesMonthly.status.healthy")).toBeTruthy();
+    expect(screen.getByText("adminPage.legacyRefresh.salesMonthly.empty")).toBeTruthy();
+    expect(repairButton.disabled).toBe(true);
   });
 });

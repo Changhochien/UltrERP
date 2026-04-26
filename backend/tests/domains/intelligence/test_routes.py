@@ -38,6 +38,12 @@ from domains.intelligence.schemas import (
     RevenueDiagnosisSummary,
     RevenueDiagnosisWindow,
 )
+from domains.product_analytics.service import (
+    SalesMonthlyHealthResult,
+    SalesMonthlyRangeRefreshResult,
+    SalesMonthlyRefreshResult,
+    SalesMonthlyMissingMonth,
+)
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tests.domains.orders._helpers import (  # noqa: E402
@@ -773,6 +779,239 @@ async def test_refresh_sales_monthly_requires_admin_role() -> None:
             headers=auth_header("sales"),
         )
         assert resp.status_code == 403
+    finally:
+        teardown_session(prev)
+
+
+async def test_sales_monthly_health_requires_admin_role() -> None:
+    session = FakeAsyncSession()
+    prev = setup_session(session)
+    try:
+        resp = await http_get(
+            "/api/v1/intelligence/sales-monthly-health?start_month=2026-03-01&end_month=2026-03-01",
+            headers=auth_header("sales"),
+        )
+        assert resp.status_code == 403
+    finally:
+        teardown_session(prev)
+
+
+async def test_sales_monthly_health_rejects_future_months() -> None:
+    session = FakeAsyncSession()
+    prev = setup_session(session)
+    try:
+        resp = await http_get(
+            "/api/v1/intelligence/sales-monthly-health?start_month=2026-03-01&end_month=2026-04-01",
+            headers=auth_header("admin"),
+        )
+        assert resp.status_code == 400
+        assert "Cannot inspect months at or after the current month" in resp.json()["detail"]
+    finally:
+        teardown_session(prev)
+
+
+async def test_sales_monthly_health_returns_machine_readable_gap_summary(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = FakeAsyncSession()
+    prev = setup_session(session)
+    try:
+        monkeypatch.setattr(
+            intelligence_routes,
+            "check_sales_monthly_health",
+            AsyncMock(
+                return_value=SalesMonthlyHealthResult(
+                    tenant_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
+                    window_start=date(2026, 3, 1),
+                    window_end=date(2026, 3, 1),
+                    is_healthy=False,
+                    missing_months=(
+                        SalesMonthlyMissingMonth(
+                            month_start=date(2026, 3, 1),
+                            transactional_order_count=2,
+                            transactional_revenue=Decimal("180.00"),
+                        ),
+                    ),
+                    checked_month_count=1,
+                    current_open_month=date(2026, 4, 1),
+                    data_gap_acknowledged=False,
+                )
+            ),
+        )
+
+        resp = await http_get(
+            "/api/v1/intelligence/sales-monthly-health?start_month=2026-03-01&end_month=2026-03-01",
+            headers=auth_header("admin"),
+        )
+
+        assert resp.status_code == 200
+        assert resp.json() == {
+            "window_start": "2026-03-01",
+            "window_end": "2026-03-01",
+            "is_healthy": False,
+            "missing_month_count": 1,
+            "missing_months": [
+                {
+                    "month_start": "2026-03-01",
+                    "transactional_order_count": 2,
+                    "transactional_revenue": "180.00",
+                }
+            ],
+            "checked_month_count": 1,
+            "current_open_month": "2026-04-01",
+            "data_gap_acknowledged": True,
+        }
+    finally:
+        teardown_session(prev)
+
+
+async def test_repair_sales_monthly_missing_requires_admin_role() -> None:
+    session = FakeAsyncSession()
+    prev = setup_session(session)
+    try:
+        resp = await _http_post_with_auth(
+            "/api/v1/intelligence/repair-sales-monthly-missing?missing_month=2026-03-01",
+            headers=auth_header("sales"),
+        )
+        assert resp.status_code == 403
+    finally:
+        teardown_session(prev)
+
+
+async def test_repair_sales_monthly_missing_rejects_current_month() -> None:
+    session = FakeAsyncSession()
+    prev = setup_session(session)
+    try:
+        resp = await _http_post_with_auth(
+            "/api/v1/intelligence/repair-sales-monthly-missing?missing_month=2026-04-01",
+            headers=auth_header("admin"),
+        )
+        assert resp.status_code == 400
+        assert "Cannot repair months at or after the current month" in resp.json()["detail"]
+    finally:
+        teardown_session(prev)
+
+
+async def test_repair_sales_monthly_missing_returns_machine_readable_summary(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = FakeAsyncSession()
+    prev = setup_session(session)
+    try:
+        monkeypatch.setattr(
+            intelligence_routes,
+            "repair_missing_sales_monthly_months",
+            AsyncMock(
+                return_value=SalesMonthlyRangeRefreshResult(
+                    results=(
+                        SalesMonthlyRefreshResult(
+                            month_start=date(2026, 3, 1),
+                            upserted_row_count=2,
+                            deleted_row_count=0,
+                            skipped_lines=(),
+                        ),
+                    ),
+                    refreshed_month_count=1,
+                )
+            ),
+        )
+
+        resp = await _http_post_with_auth(
+            "/api/v1/intelligence/repair-sales-monthly-missing?missing_month=2026-03-01",
+            headers=auth_header("admin"),
+        )
+
+        assert resp.status_code == 200
+        assert resp.json() == {
+            "repaired_months": ["2026-03-01"],
+            "refreshed_month_count": 1,
+            "results": [
+                {
+                    "month_start": "2026-03-01",
+                    "upserted_row_count": 2,
+                    "deleted_row_count": 0,
+                    "skipped_reason": None,
+                    "skipped_line_count": 0,
+                }
+            ],
+            "idempotent": True,
+        }
+    finally:
+        teardown_session(prev)
+
+
+async def test_backfill_sales_monthly_rejects_future_months() -> None:
+    session = FakeAsyncSession()
+    prev = setup_session(session)
+    try:
+        resp = await _http_post_with_auth(
+            "/api/v1/intelligence/backfill-sales-monthly?start_month=2026-03-01&end_month=2026-04-01",
+            headers=auth_header("admin"),
+        )
+        assert resp.status_code == 400
+        assert "Cannot backfill months at or after the current month" in resp.json()["detail"]
+    finally:
+        teardown_session(prev)
+
+
+async def test_backfill_sales_monthly_returns_machine_readable_summary(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = FakeAsyncSession()
+    prev = setup_session(session)
+    try:
+        monkeypatch.setattr(
+            intelligence_routes,
+            "backfill_sales_monthly_history",
+            AsyncMock(
+                return_value=SalesMonthlyRangeRefreshResult(
+                    results=(
+                        SalesMonthlyRefreshResult(
+                            month_start=date(2026, 1, 1),
+                            upserted_row_count=1,
+                            deleted_row_count=0,
+                            skipped_lines=(),
+                        ),
+                        SalesMonthlyRefreshResult(
+                            month_start=date(2026, 2, 1),
+                            upserted_row_count=1,
+                            deleted_row_count=0,
+                            skipped_lines=(),
+                        ),
+                    ),
+                    refreshed_month_count=2,
+                )
+            ),
+        )
+
+        resp = await _http_post_with_auth(
+            "/api/v1/intelligence/backfill-sales-monthly?start_month=2026-01-01&end_month=2026-02-01",
+            headers=auth_header("admin"),
+        )
+
+        assert resp.status_code == 200
+        assert resp.json() == {
+            "start_month": "2026-01-01",
+            "end_month": "2026-02-01",
+            "refreshed_month_count": 2,
+            "results": [
+                {
+                    "month_start": "2026-01-01",
+                    "upserted_row_count": 1,
+                    "deleted_row_count": 0,
+                    "skipped_reason": None,
+                    "skipped_line_count": 0,
+                },
+                {
+                    "month_start": "2026-02-01",
+                    "upserted_row_count": 1,
+                    "deleted_row_count": 0,
+                    "skipped_reason": None,
+                    "skipped_line_count": 0,
+                },
+            ],
+            "bounded": True,
+        }
     finally:
         teardown_session(prev)
 

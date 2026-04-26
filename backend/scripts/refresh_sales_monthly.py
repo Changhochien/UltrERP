@@ -304,7 +304,7 @@ class SalesMonthlyRepairResult:
     total_upserted_row_count: int
     total_deleted_row_count: int
     skipped_line_count: int
-    idemponent: bool
+    idempotent: bool
 
 
 async def run_repair_missing(
@@ -319,7 +319,7 @@ async def run_repair_missing(
         )
     return SalesMonthlyRepairResult(
         tenant_id=tenant_id,
-        repaired_months=tuple(m.month_start.isoformat() for m in missing_months),
+        repaired_months=tuple(normalize_month_start(month_start).isoformat() for month_start in missing_months),
         refreshed_month_count=range_result.refreshed_month_count,
         total_upserted_row_count=sum(
             r.upserted_row_count for r in range_result.results
@@ -328,7 +328,7 @@ async def run_repair_missing(
             r.deleted_row_count for r in range_result.results
         ),
         skipped_line_count=sum(len(r.skipped_lines) for r in range_result.results),
-        idemponent=True,
+        idempotent=True,
     )
 
 
@@ -366,7 +366,7 @@ async def run_bounded_backfill(
         last_month = range_result.results[-1].month_start
     else:
         first_month = start_month
-        last_month = end_month or _current_month_start()
+        last_month = end_month or _previous_month_start(_current_month_start())
 
     return SalesMonthlyBackfillResult(
         tenant_id=tenant_id,
@@ -571,7 +571,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             refresh_closed_sales_monthly_history(
                 tenant_id=args.tenant_id,
                 batch_mode=getattr(args, "batch_mode", None),
-                affected_domains=tuple(getattr(args, "affected_domains", []) or None),
+                affected_domains=(
+                    tuple(getattr(args, "affected_domains", []))
+                    if getattr(args, "affected_domains", [])
+                    else None
+                ),
                 rolling_closed_months=getattr(args, "rolling_closed_months", None),
             )
         )

@@ -229,6 +229,46 @@ export interface LegacyRefreshJobStatus {
   [key: string]: unknown;
 }
 
+export interface SalesMonthlyMissingMonth {
+  month_start: string;
+  transactional_order_count: number;
+  transactional_revenue: string;
+}
+
+export interface SalesMonthlyHealthStatus {
+  window_start: string;
+  window_end: string;
+  is_healthy: boolean;
+  missing_month_count: number;
+  missing_months: SalesMonthlyMissingMonth[];
+  checked_month_count: number;
+  current_open_month: string;
+  data_gap_acknowledged: boolean;
+}
+
+export interface SalesMonthlyOperationMonthResult {
+  month_start: string;
+  upserted_row_count: number;
+  deleted_row_count: number;
+  skipped_reason: string | null;
+  skipped_line_count: number;
+}
+
+export interface SalesMonthlyRepairResponse {
+  repaired_months: string[];
+  refreshed_month_count: number;
+  results: SalesMonthlyOperationMonthResult[];
+  idempotent: boolean;
+}
+
+export interface SalesMonthlyBackfillResponse {
+  start_month: string;
+  end_month: string;
+  refreshed_month_count: number;
+  results: SalesMonthlyOperationMonthResult[];
+  bounded: boolean;
+}
+
 export async function triggerLegacyRefresh(
   payload: LegacyRefreshTriggerRequest,
 ): Promise<LegacyRefreshJobLaunched | LegacyRefreshConflict> {
@@ -307,6 +347,67 @@ export async function fetchLegacyRefreshRecentRuns(
     throw new Error(
       await responseErrorMessage(resp, "Failed to load recent runs"),
     );
+  }
+  return resp.json();
+}
+
+export async function fetchSalesMonthlyHealth(
+  tenantId: string,
+  startMonth?: string,
+  endMonth?: string,
+): Promise<SalesMonthlyHealthStatus> {
+  const qs = new URLSearchParams();
+  if (startMonth) qs.set("start_month", startMonth);
+  if (endMonth) qs.set("end_month", endMonth);
+  const url = `/api/v1/intelligence/sales-monthly-health${qs.toString() ? `?${qs.toString()}` : ""}`;
+  const resp = await apiFetch(url, {
+    headers: {
+      "X-Tenant-Id": tenantId,
+    },
+  });
+  if (!resp.ok) {
+    throw new Error(await responseErrorMessage(resp, "Failed to load sales monthly health"));
+  }
+  return resp.json();
+}
+
+export async function repairSalesMonthlyMissing(
+  tenantId: string,
+  missingMonths: string[],
+): Promise<SalesMonthlyRepairResponse> {
+  const qs = new URLSearchParams();
+  for (const monthStart of missingMonths) {
+    qs.append("missing_month", monthStart);
+  }
+  const resp = await apiFetch(`/api/v1/intelligence/repair-sales-monthly-missing?${qs.toString()}`, {
+    method: "POST",
+    headers: {
+      "X-Tenant-Id": tenantId,
+    },
+  });
+  if (!resp.ok) {
+    throw new Error(await responseErrorMessage(resp, "Failed to repair missing sales monthly months"));
+  }
+  return resp.json();
+}
+
+export async function backfillSalesMonthly(
+  tenantId: string,
+  startMonth: string,
+  endMonth?: string,
+): Promise<SalesMonthlyBackfillResponse> {
+  const qs = new URLSearchParams({ start_month: startMonth });
+  if (endMonth) {
+    qs.set("end_month", endMonth);
+  }
+  const resp = await apiFetch(`/api/v1/intelligence/backfill-sales-monthly?${qs.toString()}`, {
+    method: "POST",
+    headers: {
+      "X-Tenant-Id": tenantId,
+    },
+  });
+  if (!resp.ok) {
+    throw new Error(await responseErrorMessage(resp, "Failed to backfill sales monthly history"));
   }
   return resp.json();
 }

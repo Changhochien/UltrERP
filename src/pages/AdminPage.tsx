@@ -40,11 +40,16 @@ import { SETTINGS_ROUTE } from "../lib/routes";
 import {
   ADMIN_USER_ROLES,
   ADMIN_USER_STATUSES,
+  backfillSalesMonthly,
   createUser,
   fetchAuditLogs,
   fetchLegacyRefreshLanes,
   fetchLegacyRefreshRecentRuns,
+  fetchSalesMonthlyHealth,
   fetchUsers,
+  repairSalesMonthlyMissing,
+  type SalesMonthlyBackfillResponse,
+  type SalesMonthlyHealthStatus,
   triggerLegacyRefresh,
   type AdminUser,
   type AdminUserCreateRequest,
@@ -1350,6 +1355,33 @@ const DEFAULT_REFRESH_FORM: LegacyRefreshTriggerFormState = {
   reconciliationThreshold: 0,
 };
 
+interface SalesMonthlyOpsFormState {
+  tenantId: string;
+  startMonth: string;
+  endMonth: string;
+}
+
+function startOfCalendarMonth(value: Date): Date {
+  return new Date(value.getFullYear(), value.getMonth(), 1);
+}
+
+function shiftCalendarMonths(value: Date, months: number): Date {
+  return new Date(value.getFullYear(), value.getMonth() + months, 1);
+}
+
+function buildDefaultSalesMonthlyOpsForm(): SalesMonthlyOpsFormState {
+  const today = parseDatePickerInputValue(appTodayISO()) ?? new Date();
+  const currentMonth = startOfCalendarMonth(today);
+  const previousClosedMonth = shiftCalendarMonths(currentMonth, -1);
+  return {
+    tenantId: "",
+    startMonth: serializeDatePickerValue(previousClosedMonth),
+    endMonth: serializeDatePickerValue(previousClosedMonth),
+  };
+}
+
+const DEFAULT_SALES_MONTHLY_FORM = buildDefaultSalesMonthlyOpsForm();
+
 function formatDisposition(disp: string | null | undefined): string {
   if (!disp) return "unknown";
   return disp
@@ -1555,6 +1587,12 @@ function LegacyRefreshSection() {
   const [triggerResult, setTriggerResult] = useState<LegacyRefreshJobLaunched | LegacyRefreshConflict | null>(null);
   const [triggerError, setTriggerError] = useState<string | null>(null);
   const [form, setForm] = useState<LegacyRefreshTriggerFormState>(DEFAULT_REFRESH_FORM);
+  const [salesMonthlyForm, setSalesMonthlyForm] = useState<SalesMonthlyOpsFormState>(DEFAULT_SALES_MONTHLY_FORM);
+  const [salesMonthlyHealth, setSalesMonthlyHealth] = useState<SalesMonthlyHealthStatus | null>(null);
+  const [salesMonthlyError, setSalesMonthlyError] = useState<string | null>(null);
+  const [salesMonthlyNotice, setSalesMonthlyNotice] = useState<string | null>(null);
+  const [salesMonthlyLoading, setSalesMonthlyLoading] = useState(false);
+  const [salesMonthlyAction, setSalesMonthlyAction] = useState<"repair" | "backfill" | null>(null);
 
   const loadLanes = useCallback(async () => {
     try {
@@ -1622,6 +1660,97 @@ function LegacyRefreshSection() {
       setTriggerError(err instanceof Error ? err.message : t("adminPage.errors.saveFailed"));
     } finally {
       setTriggerLoading(false);
+    }
+  }
+
+  async function handleSalesMonthlyHealthCheck() {
+    const tenantId = salesMonthlyForm.tenantId.trim();
+    if (!tenantId) {
+      return;
+    }
+    setSalesMonthlyLoading(true);
+    setSalesMonthlyError(null);
+    setSalesMonthlyNotice(null);
+    try {
+      const result = await fetchSalesMonthlyHealth(
+        tenantId,
+        salesMonthlyForm.startMonth || undefined,
+        salesMonthlyForm.endMonth || undefined,
+      );
+      setSalesMonthlyHealth(result);
+      setSalesMonthlyNotice(
+        result.is_healthy
+          ? t("adminPage.legacyRefresh.salesMonthly.notices.healthy")
+          : t("adminPage.legacyRefresh.salesMonthly.notices.degraded", { count: result.missing_month_count }),
+      );
+    } catch (err) {
+      setSalesMonthlyError(err instanceof Error ? err.message : t("adminPage.errors.loadFailed"));
+    } finally {
+      setSalesMonthlyLoading(false);
+    }
+  }
+
+  async function refreshSalesMonthlyHealthAfterMutation() {
+    const tenantId = salesMonthlyForm.tenantId.trim();
+    if (!tenantId) {
+      return;
+    }
+    const result = await fetchSalesMonthlyHealth(
+      tenantId,
+      salesMonthlyForm.startMonth || undefined,
+      salesMonthlyForm.endMonth || undefined,
+    );
+    setSalesMonthlyHealth(result);
+  }
+
+  async function handleRepairMissingMonths() {
+    const tenantId = salesMonthlyForm.tenantId.trim();
+    const missingMonths = salesMonthlyHealth?.missing_months.map((item) => item.month_start) ?? [];
+    if (!tenantId || missingMonths.length === 0) {
+      return;
+    }
+    setSalesMonthlyAction("repair");
+    setSalesMonthlyError(null);
+    setSalesMonthlyNotice(null);
+    try {
+      const result = await repairSalesMonthlyMissing(tenantId, missingMonths);
+      await refreshSalesMonthlyHealthAfterMutation();
+      setSalesMonthlyNotice(
+        t("adminPage.legacyRefresh.salesMonthly.notices.repaired", {
+          count: result.refreshed_month_count,
+        }),
+      );
+    } catch (err) {
+      setSalesMonthlyError(err instanceof Error ? err.message : t("adminPage.errors.saveFailed"));
+    } finally {
+      setSalesMonthlyAction(null);
+    }
+  }
+
+  async function handleBackfillRange() {
+    const tenantId = salesMonthlyForm.tenantId.trim();
+    if (!tenantId || !salesMonthlyForm.startMonth) {
+      return;
+    }
+    setSalesMonthlyAction("backfill");
+    setSalesMonthlyError(null);
+    setSalesMonthlyNotice(null);
+    try {
+      const result: SalesMonthlyBackfillResponse = await backfillSalesMonthly(
+        tenantId,
+        salesMonthlyForm.startMonth,
+        salesMonthlyForm.endMonth || undefined,
+      );
+      await refreshSalesMonthlyHealthAfterMutation();
+      setSalesMonthlyNotice(
+        t("adminPage.legacyRefresh.salesMonthly.notices.backfilled", {
+          count: result.refreshed_month_count,
+        }),
+      );
+    } catch (err) {
+      setSalesMonthlyError(err instanceof Error ? err.message : t("adminPage.errors.saveFailed"));
+    } finally {
+      setSalesMonthlyAction(null);
     }
   }
 
@@ -1751,6 +1880,140 @@ function LegacyRefreshSection() {
           )}
         </SectionCard>
       </div>
+
+      <SectionCard
+        title={t("adminPage.legacyRefresh.salesMonthly.title")}
+        description={t("adminPage.legacyRefresh.salesMonthly.description")}
+      >
+        <div className="space-y-4">
+          {salesMonthlyError ? <SurfaceMessage tone="danger">{salesMonthlyError}</SurfaceMessage> : null}
+          {salesMonthlyNotice ? <SurfaceMessage tone="default">{salesMonthlyNotice}</SurfaceMessage> : null}
+
+          <div className="grid gap-3 lg:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="lsm-tenant-id">{t("adminPage.legacyRefresh.salesMonthly.fields.tenantId")}</Label>
+              <Input
+                id="lsm-tenant-id"
+                value={salesMonthlyForm.tenantId}
+                onChange={(event) => setSalesMonthlyForm((current) => ({
+                  ...current,
+                  tenantId: event.target.value,
+                }))}
+                placeholder={t("adminPage.legacyRefresh.fields.tenantIdPlaceholder")}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lsm-start-month">{t("adminPage.legacyRefresh.salesMonthly.fields.startMonth")}</Label>
+              <DatePicker
+                id="lsm-start-month"
+                value={parseDatePickerInputValue(salesMonthlyForm.startMonth)}
+                onChange={(value) => setSalesMonthlyForm((current) => ({
+                  ...current,
+                  startMonth: serializeDatePickerValue(value),
+                }))}
+                placeholder={t("adminPage.legacyRefresh.salesMonthly.fields.startMonthPlaceholder")}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lsm-end-month">{t("adminPage.legacyRefresh.salesMonthly.fields.endMonth")}</Label>
+              <DatePicker
+                id="lsm-end-month"
+                value={parseDatePickerInputValue(salesMonthlyForm.endMonth)}
+                onChange={(value) => setSalesMonthlyForm((current) => ({
+                  ...current,
+                  endMonth: serializeDatePickerValue(value),
+                }))}
+                placeholder={t("adminPage.legacyRefresh.salesMonthly.fields.endMonthPlaceholder")}
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                void handleSalesMonthlyHealthCheck();
+              }}
+              disabled={salesMonthlyLoading || !salesMonthlyForm.tenantId.trim()}
+            >
+              {salesMonthlyLoading
+                ? t("adminPage.legacyRefresh.salesMonthly.actions.checkingHealth")
+                : t("adminPage.legacyRefresh.salesMonthly.actions.checkHealth")}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                void handleBackfillRange();
+              }}
+              disabled={salesMonthlyAction !== null || !salesMonthlyForm.tenantId.trim() || !salesMonthlyForm.startMonth}
+            >
+              {salesMonthlyAction === "backfill"
+                ? t("adminPage.legacyRefresh.salesMonthly.actions.backfilling")
+                : t("adminPage.legacyRefresh.salesMonthly.actions.backfill")}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                void handleRepairMissingMonths();
+              }}
+              disabled={salesMonthlyAction !== null || (salesMonthlyHealth?.missing_month_count ?? 0) === 0}
+            >
+              {salesMonthlyAction === "repair"
+                ? t("adminPage.legacyRefresh.salesMonthly.actions.repairingMissing")
+                : t("adminPage.legacyRefresh.salesMonthly.actions.repairMissing")}
+            </Button>
+          </div>
+
+          {salesMonthlyHealth ? (
+            <div className="space-y-3 rounded-xl border border-border/60 bg-muted/10 p-4 text-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={salesMonthlyHealth.is_healthy ? "success" : "warning"} className="normal-case tracking-normal">
+                  {salesMonthlyHealth.is_healthy
+                    ? t("adminPage.legacyRefresh.salesMonthly.status.healthy")
+                    : t("adminPage.legacyRefresh.salesMonthly.status.degraded")}
+                </Badge>
+                <span className="text-muted-foreground">
+                  {t("adminPage.legacyRefresh.salesMonthly.summary.checkedMonths", {
+                    count: salesMonthlyHealth.checked_month_count,
+                  })}
+                </span>
+                <span className="text-muted-foreground">
+                  {t("adminPage.legacyRefresh.salesMonthly.summary.missingMonths", {
+                    count: salesMonthlyHealth.missing_month_count,
+                  })}
+                </span>
+                <span className="text-muted-foreground">
+                  {t("adminPage.legacyRefresh.salesMonthly.summary.currentOpenMonth", {
+                    month: salesMonthlyHealth.current_open_month,
+                  })}
+                </span>
+              </div>
+
+              {salesMonthlyHealth.missing_month_count === 0 ? (
+                <p className="text-muted-foreground">
+                  {t("adminPage.legacyRefresh.salesMonthly.empty")}
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {salesMonthlyHealth.missing_months.map((item) => (
+                    <li
+                      key={item.month_start}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/50 bg-background/70 px-3 py-2"
+                    >
+                      <span className="font-mono text-xs">{item.month_start}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {item.transactional_order_count} orders · {item.transactional_revenue}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : null}
+        </div>
+      </SectionCard>
 
       {/* Lane Status Cards */}
       {lanes.length > 0 && (

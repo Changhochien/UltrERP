@@ -228,12 +228,16 @@ async def repair_missing_sales_monthly_months(
             refreshed_month_count=0,
         )
 
-    sorted_months = sorted(closed_missing)
-    return await refresh_sales_monthly_range(
-        session,
-        tenant_id,
-        start_month=sorted_months[0],
-        end_month=sorted_months[-1],
+    sorted_months = sorted({normalize_month_start(month_start) for month_start in closed_missing})
+    results = tuple(
+        [
+            await refresh_sales_monthly(session, tenant_id, month_start)
+            for month_start in sorted_months
+        ]
+    )
+    return SalesMonthlyRangeRefreshResult(
+        results=results,
+        refreshed_month_count=sum(1 for result in results if result.skipped_reason is None),
     )
 
 

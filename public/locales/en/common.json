@@ -2116,6 +2116,41 @@
         "summaryPath": "Latest Summary Path",
         "incrementalStatePath": "Incremental State Path",
         "noAffectedDomains": "No scoped domains reported"
+      },
+      "salesMonthly": {
+        "title": "Sales Monthly Operations",
+        "description": "Inspect snapshot coverage, repair missing closed months, and run bounded historical backfills.",
+        "fields": {
+          "tenantId": "Tenant ID",
+          "startMonth": "Start Month",
+          "startMonthPlaceholder": "Select start month",
+          "endMonth": "End Month",
+          "endMonthPlaceholder": "Select end month"
+        },
+        "actions": {
+          "checkHealth": "Check Health",
+          "checkingHealth": "Checking…",
+          "repairMissing": "Repair Missing Months",
+          "repairingMissing": "Repairing…",
+          "backfill": "Backfill Range",
+          "backfilling": "Backfilling…"
+        },
+        "status": {
+          "healthy": "Healthy",
+          "degraded": "Degraded"
+        },
+        "summary": {
+          "checkedMonths": "{count} closed months checked",
+          "missingMonths": "{count} missing months",
+          "currentOpenMonth": "Current open month: {month}"
+        },
+        "empty": "No missing closed-month snapshot gaps were found in the selected window.",
+        "notices": {
+          "healthy": "No missing sales-monthly gaps were found.",
+          "degraded": "Found {count} missing closed months.",
+          "repaired": "Repaired {count} missing months.",
+          "backfilled": "Backfilled {count} months."
+        }
       }
     }
   },

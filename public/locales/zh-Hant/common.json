@@ -1991,6 +1991,41 @@
         "summaryPath": "最新摘要路徑",
         "incrementalStatePath": "增量狀態路徑",
         "noAffectedDomains": "未回報範圍領域"
+      },
+      "salesMonthly": {
+        "title": "月銷售快照作業",
+        "description": "檢查快照覆蓋狀態、修補缺漏的封帳月份，並執行有界歷史回填。",
+        "fields": {
+          "tenantId": "租戶 ID",
+          "startMonth": "開始月份",
+          "startMonthPlaceholder": "選擇開始月份",
+          "endMonth": "結束月份",
+          "endMonthPlaceholder": "選擇結束月份"
+        },
+        "actions": {
+          "checkHealth": "檢查健康狀態",
+          "checkingHealth": "檢查中…",
+          "repairMissing": "修補缺漏月份",
+          "repairingMissing": "修補中…",
+          "backfill": "回填區間",
+          "backfilling": "回填中…"
+        },
+        "status": {
+          "healthy": "健康",
+          "degraded": "降級"
+        },
+        "summary": {
+          "checkedMonths": "已檢查 {count} 個封帳月份",
+          "missingMonths": "缺漏 {count} 個月份",
+          "currentOpenMonth": "目前開放月份：{month}"
+        },
+        "empty": "在所選區間內找不到缺漏的封帳月份快照。",
+        "notices": {
+          "healthy": "找不到缺漏的月銷售快照。",
+          "degraded": "找到 {count} 個缺漏的封帳月份。",
+          "repaired": "已修補 {count} 個缺漏月份。",
+          "backfilled": "已回填 {count} 個月份。"
+        }
       }
     }
   },

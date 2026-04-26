@@ -34,7 +34,12 @@ from domains.intelligence.service import (
 	get_product_performance,
 	get_revenue_diagnosis,
 )
-from domains.product_analytics.service import refresh_sales_monthly_range
+from domains.product_analytics.service import (
+	backfill_sales_monthly_history,
+	check_sales_monthly_health,
+	repair_missing_sales_monthly_months,
+	refresh_sales_monthly_range,
+)
 
 router = APIRouter()
 DbSession = Annotated[AsyncSession, Depends(get_db)]
@@ -233,6 +238,77 @@ async def customer_product_profile(
 AdminUser = Annotated[dict, Depends(require_role("admin"))]
 
 
+@router.get("/sales-monthly-health", response_model=dict)
+async def sales_monthly_health(
+	session: DbSession,
+	user: AdminUser,
+	start_month: date | None = Query(default=None, description="Optional start month (first day of month)."),
+	end_month: date | None = Query(default=None, description="Optional end month (first day of month)."),
+) -> dict:
+	"""Inspect closed-month sales_monthly coverage for the current tenant."""
+	_require_feature_enabled(
+		settings.intelligence_revenue_diagnosis_enabled,
+		"Revenue diagnosis is disabled",
+	)
+	tenant_id = uuid.UUID(user["tenant_id"])
+	current_month_start = datetime.now(tz=UTC).date().replace(day=1)
+
+	start_month_normalized = start_month.replace(day=1) if start_month is not None else None
+	end_month_normalized = end_month.replace(day=1) if end_month is not None else None
+
+	if (
+		start_month_normalized is not None
+		and end_month_normalized is not None
+		and end_month_normalized < start_month_normalized
+	):
+		raise HTTPException(status_code=400, detail="end_month must be on or after start_month")
+
+	if (
+		start_month_normalized is not None
+		and start_month_normalized >= current_month_start
+	):
+		raise HTTPException(
+			status_code=400,
+			detail=(
+				f"Cannot inspect months at or after the current month ({current_month_start}). "
+				"Only specify closed (past) months."
+			),
+		)
+
+	if end_month_normalized is not None and end_month_normalized >= current_month_start:
+		raise HTTPException(
+			status_code=400,
+			detail=(
+				f"Cannot inspect months at or after the current month ({current_month_start}). "
+				"Only specify closed (past) months."
+			),
+		)
+
+	result = await check_sales_monthly_health(
+		session,
+		tenant_id,
+		start_month=start_month_normalized,
+		end_month=end_month_normalized,
+	)
+	return {
+		"window_start": result.window_start.isoformat(),
+		"window_end": result.window_end.isoformat(),
+		"is_healthy": result.is_healthy,
+		"missing_month_count": len(result.missing_months),
+		"missing_months": [
+			{
+				"month_start": item.month_start.isoformat(),
+				"transactional_order_count": item.transactional_order_count,
+				"transactional_revenue": str(item.transactional_revenue),
+			}
+			for item in result.missing_months
+		],
+		"checked_month_count": result.checked_month_count,
+		"current_open_month": result.current_open_month.isoformat(),
+		"data_gap_acknowledged": not result.is_healthy,
+	}
+
+
 @router.post("/refresh-sales-monthly", response_model=dict)
 async def refresh_sales_monthly(
 	session: DbSession,
@@ -298,3 +374,115 @@ async def refresh_sales_monthly(
 		}
 	except ValueError as exc:
 		raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/repair-sales-monthly-missing", response_model=dict)
+async def repair_sales_monthly_missing(
+	session: DbSession,
+	user: AdminUser,
+	missing_month: list[date] = Query(description="Repeat for each closed month to repair."),
+) -> dict:
+	"""Repair only the specified missing closed months."""
+	_require_feature_enabled(
+		settings.intelligence_revenue_diagnosis_enabled,
+		"Revenue diagnosis is disabled",
+	)
+	tenant_id = uuid.UUID(user["tenant_id"])
+	current_month_start = datetime.now(tz=UTC).date().replace(day=1)
+	normalized_missing_months = [month.replace(day=1) for month in missing_month]
+
+	for month_start in normalized_missing_months:
+		if month_start >= current_month_start:
+			raise HTTPException(
+				status_code=400,
+				detail=(
+					f"Cannot repair months at or after the current month ({current_month_start}). "
+					"Only specify closed (past) months."
+				),
+			)
+
+	result = await repair_missing_sales_monthly_months(
+		session,
+		tenant_id,
+		normalized_missing_months,
+	)
+	return {
+		"repaired_months": [month.isoformat() for month in normalized_missing_months],
+		"refreshed_month_count": result.refreshed_month_count,
+		"results": [
+			{
+				"month_start": item.month_start.isoformat(),
+				"upserted_row_count": item.upserted_row_count,
+				"deleted_row_count": item.deleted_row_count,
+				"skipped_reason": item.skipped_reason,
+				"skipped_line_count": len(item.skipped_lines),
+			}
+			for item in result.results
+		],
+		"idempotent": True,
+	}
+
+
+@router.post("/backfill-sales-monthly", response_model=dict)
+async def backfill_sales_monthly(
+	session: DbSession,
+	user: AdminUser,
+	start_month: date = Query(description="Start month (first day of month, e.g. 2026-01-01)"),
+	end_month: date | None = Query(default=None, description="Optional end month (first day of month)."),
+) -> dict:
+	"""Backfill a bounded historical sales_monthly range."""
+	_require_feature_enabled(
+		settings.intelligence_revenue_diagnosis_enabled,
+		"Revenue diagnosis is disabled",
+	)
+	tenant_id = uuid.UUID(user["tenant_id"])
+	current_month_start = datetime.now(tz=UTC).date().replace(day=1)
+	start_month_normalized = start_month.replace(day=1)
+	end_month_normalized = end_month.replace(day=1) if end_month is not None else None
+
+	if start_month_normalized >= current_month_start:
+		raise HTTPException(
+			status_code=400,
+			detail=(
+				f"Cannot backfill months at or after the current month ({current_month_start}). "
+				"Only specify closed (past) months."
+			),
+		)
+
+	if end_month_normalized is not None and end_month_normalized < start_month_normalized:
+		raise HTTPException(status_code=400, detail="end_month must be on or after start_month")
+
+	if end_month_normalized is not None and end_month_normalized >= current_month_start:
+		raise HTTPException(
+			status_code=400,
+			detail=(
+				f"Cannot backfill months at or after the current month ({current_month_start}). "
+				"Only specify closed (past) months."
+			),
+		)
+
+	result = await backfill_sales_monthly_history(
+		session,
+		tenant_id,
+		start_month=start_month_normalized,
+		end_month=end_month_normalized,
+	)
+	resolved_end_month = (
+		result.results[-1].month_start if result.results else (end_month_normalized or start_month_normalized)
+	)
+	return {
+		"start_month": start_month_normalized.isoformat(),
+		"end_month": resolved_end_month.isoformat(),
+		"refreshed_month_count": result.refreshed_month_count,
+		"results": [
+			{
+				"month_start": item.month_start.isoformat(),
+				"upserted_row_count": item.upserted_row_count,
+				"deleted_row_count": item.deleted_row_count,
+				"skipped_reason": item.skipped_reason,
+				"skipped_line_count": len(item.skipped_lines),
+			}
+			for item in result.results
+		],
+		"bounded": end_month_normalized is not None,
+	}
