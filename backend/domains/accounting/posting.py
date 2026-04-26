@@ -7,31 +7,28 @@ using explicit, versioned posting rules.
 from __future__ import annotations
 
 import uuid
+from dataclasses import field
 from datetime import datetime, UTC
 from decimal import Decimal
-from typing import Any, TypedDict
+from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.common.events import DomainEvent, emit
-from backend.common.models.account import Account
-from backend.common.models.document import Document, DocumentStatus
-from backend.common.models.fiscal_year import FiscalYear
-from backend.common.models.gl_entry import GLEntry
-from backend.common.models.invoice import Invoice, InvoiceStatus
-from backend.common.models.journal_entry import JournalEntry, JournalEntryStatus
-from backend.common.models.payment import Payment, PaymentStatus
-from backend.common.models.posting_rule import (
+from common.events import DomainEvent, emit
+from common.models.fiscal_year import FiscalYear
+from common.models.fiscal_year import FiscalYearStatus
+from common.models.gl_entry import GLEntry, GLEntryType
+from common.models.posting_rule import (
     DocumentPostingState,
     DocumentType,
     PostingRule,
     PostingStatus,
 )
-from backend.common.models.supplier_invoice import SupplierInvoice, SupplierInvoiceStatus
-from backend.common.models.supplier_payment import SupplierPayment, SupplierPaymentStatus
-from backend.common.model_registry import model_registry
-from backend.domains.accounting.service import create_gl_entries_from_lines
+from common.models.supplier_invoice import SupplierInvoice, SupplierInvoiceStatus
+from common.models.supplier_payment import SupplierPayment, SupplierPaymentStatus
+from domains.invoices.models import Invoice
+from domains.payments.models import Payment
 
 
 class DocumentFinalizedEvent(DomainEvent):
@@ -54,6 +51,25 @@ class DocumentVoidedEvent(DomainEvent):
     document_id: uuid.UUID = field(default_factory=uuid.uuid4)
     tenant_id: uuid.UUID = field(default_factory=uuid.uuid4)
     actor_id: str = "system"
+
+
+def _account_mapping_id(value: str | uuid.UUID | None) -> uuid.UUID | None:
+    if value is None:
+        return None
+    return uuid.UUID(value) if isinstance(value, str) else value
+
+
+def _decimal_amount(value: Decimal | None) -> Decimal:
+    return value or Decimal("0")
+
+
+def _payment_reference(payment: Payment | SupplierPayment) -> str:
+    return (
+        getattr(payment, "payment_number", None)
+        or getattr(payment, "payment_ref", None)
+        or getattr(payment, "reference_number", None)
+        or str(payment.id)
+    )
 
 
 async def get_posting_rule(
@@ -148,66 +164,69 @@ async def post_customer_invoice(
         return False, "Posting rule missing required account mappings"
     
     # Create GL entries
-    base_subtotal = invoice.base_subtotal_amount or Decimal("0")
-    base_tax = invoice.base_tax_amount or Decimal("0")
-    base_total = invoice.base_total_amount or Decimal("0")
+    base_subtotal = _decimal_amount(invoice.base_subtotal_amount)
+    base_tax = _decimal_amount(invoice.base_tax_amount)
+    base_total = _decimal_amount(invoice.base_total_amount)
+    created_entries: list[GLEntry] = []
     
     # DR: Accounts Receivable
-    await create_gl_entry_from_posting(
+    created_entries.append(await create_gl_entry_from_posting(
         session=session,
         tenant_id=tenant_id,
-        account_id=uuid.UUID(receivable_account_id) if isinstance(receivable_account_id, str) else receivable_account_id,
+        account_id=_account_mapping_id(receivable_account_id),
         debit=base_total,
         credit=Decimal("0"),
         posting_date=invoice.invoice_date,
+        fiscal_year_label=fiscal_year.label,
+        entry_type=GLEntryType.CUSTOMER_INVOICE,
         voucher_type="Customer Invoice",
-        voucher_id=invoice.id,
-        narration=f"Invoice {invoice.invoice_number}",
-        fiscal_year_id=fiscal_year.id,
-        reference_type="Invoice",
-        reference_id=invoice.id,
-        reference_number=invoice.invoice_number
-    )
+        voucher_number=invoice.invoice_number,
+        source_type="Invoice",
+        source_id=invoice.id,
+        remark=f"Invoice {invoice.invoice_number}",
+    ))
     
     # CR: Revenue
-    await create_gl_entry_from_posting(
+    created_entries.append(await create_gl_entry_from_posting(
         session=session,
         tenant_id=tenant_id,
-        account_id=uuid.UUID(revenue_account_id) if isinstance(revenue_account_id, str) else revenue_account_id,
+        account_id=_account_mapping_id(revenue_account_id),
         debit=Decimal("0"),
         credit=base_subtotal,
         posting_date=invoice.invoice_date,
+        fiscal_year_label=fiscal_year.label,
+        entry_type=GLEntryType.CUSTOMER_INVOICE,
         voucher_type="Customer Invoice",
-        voucher_id=invoice.id,
-        narration=f"Invoice {invoice.invoice_number}",
-        fiscal_year_id=fiscal_year.id,
-        reference_type="Invoice",
-        reference_id=invoice.id,
-        reference_number=invoice.invoice_number
-    )
+        voucher_number=invoice.invoice_number,
+        source_type="Invoice",
+        source_id=invoice.id,
+        remark=f"Invoice {invoice.invoice_number}",
+    ))
     
     # CR: Tax (if tax amount exists)
     if base_tax > 0 and tax_account_id:
-        await create_gl_entry_from_posting(
+        created_entries.append(await create_gl_entry_from_posting(
             session=session,
             tenant_id=tenant_id,
-            account_id=uuid.UUID(tax_account_id) if isinstance(tax_account_id, str) else tax_account_id,
+            account_id=_account_mapping_id(tax_account_id),
             debit=Decimal("0"),
             credit=base_tax,
             posting_date=invoice.invoice_date,
+            fiscal_year_label=fiscal_year.label,
+            entry_type=GLEntryType.CUSTOMER_INVOICE,
             voucher_type="Customer Invoice",
-            voucher_id=invoice.id,
-            narration=f"Tax on Invoice {invoice.invoice_number}",
-            fiscal_year_id=fiscal_year.id,
-            reference_type="Invoice",
-            reference_id=invoice.id,
-            reference_number=invoice.invoice_number
-        )
+            voucher_number=invoice.invoice_number,
+            source_type="Invoice",
+            source_id=invoice.id,
+            remark=f"Tax on Invoice {invoice.invoice_number}",
+        ))
     
     # Update posting state
     state.status = PostingStatus.POSTED
     state.posting_rule_id = rule.id
     state.rule_version_at_posting = rule.version
+    state.gl_entry_ids = [str(entry.id) for entry in created_entries]
+    state.error_message = None
     state.posted_at = datetime.now(UTC)
     await session.flush()
     
@@ -254,46 +273,50 @@ async def post_customer_payment(
     if not bank_account_id or not receivable_account_id:
         return False, "Posting rule missing required account mappings"
     
-    base_amount = payment.base_amount or Decimal("0")
+    base_amount = _decimal_amount(payment.base_amount)
+    payment_reference = _payment_reference(payment)
+    created_entries: list[GLEntry] = []
     
     # DR: Cash/Bank
-    await create_gl_entry_from_posting(
+    created_entries.append(await create_gl_entry_from_posting(
         session=session,
         tenant_id=tenant_id,
-        account_id=uuid.UUID(bank_account_id) if isinstance(bank_account_id, str) else bank_account_id,
+        account_id=_account_mapping_id(bank_account_id),
         debit=base_amount,
         credit=Decimal("0"),
         posting_date=payment.payment_date,
+        fiscal_year_label=fiscal_year.label,
+        entry_type=GLEntryType.CUSTOMER_PAYMENT,
         voucher_type="Customer Payment",
-        voucher_id=payment.id,
-        narration=f"Payment {payment.payment_number or payment.id}",
-        fiscal_year_id=fiscal_year.id,
-        reference_type="Payment",
-        reference_id=payment.id,
-        reference_number=payment.payment_number
-    )
+        voucher_number=payment_reference,
+        source_type="Payment",
+        source_id=payment.id,
+        remark=f"Payment {payment_reference}",
+    ))
     
     # CR: Accounts Receivable
-    await create_gl_entry_from_posting(
+    created_entries.append(await create_gl_entry_from_posting(
         session=session,
         tenant_id=tenant_id,
-        account_id=uuid.UUID(receivable_account_id) if isinstance(receivable_account_id, str) else receivable_account_id,
+        account_id=_account_mapping_id(receivable_account_id),
         debit=Decimal("0"),
         credit=base_amount,
         posting_date=payment.payment_date,
+        fiscal_year_label=fiscal_year.label,
+        entry_type=GLEntryType.CUSTOMER_PAYMENT,
         voucher_type="Customer Payment",
-        voucher_id=payment.id,
-        narration=f"Payment {payment.payment_number or payment.id}",
-        fiscal_year_id=fiscal_year.id,
-        reference_type="Payment",
-        reference_id=payment.id,
-        reference_number=payment.payment_number
-    )
+        voucher_number=payment_reference,
+        source_type="Payment",
+        source_id=payment.id,
+        remark=f"Payment {payment_reference}",
+    ))
     
     # Update state
     state.status = PostingStatus.POSTED
     state.posting_rule_id = rule.id
     state.rule_version_at_posting = rule.version
+    state.gl_entry_ids = [str(entry.id) for entry in created_entries]
+    state.error_message = None
     state.posted_at = datetime.now(UTC)
     await session.flush()
     
@@ -329,65 +352,68 @@ async def post_supplier_invoice(
     if not payable_account_id or not expense_account_id:
         return False, "Posting rule missing required account mappings"
     
-    base_subtotal = supplier_invoice.base_subtotal_amount or Decimal("0")
-    base_tax = supplier_invoice.base_tax_amount or Decimal("0")
-    base_total = supplier_invoice.base_total_amount or Decimal("0")
+    base_subtotal = _decimal_amount(supplier_invoice.base_subtotal_amount)
+    base_tax = _decimal_amount(supplier_invoice.base_tax_amount)
+    base_total = _decimal_amount(supplier_invoice.base_total_amount)
+    created_entries: list[GLEntry] = []
     
     # DR: Expense
-    await create_gl_entry_from_posting(
+    created_entries.append(await create_gl_entry_from_posting(
         session=session,
         tenant_id=tenant_id,
-        account_id=uuid.UUID(expense_account_id) if isinstance(expense_account_id, str) else expense_account_id,
+        account_id=_account_mapping_id(expense_account_id),
         debit=base_subtotal,
         credit=Decimal("0"),
         posting_date=supplier_invoice.invoice_date,
+        fiscal_year_label=fiscal_year.label,
+        entry_type=GLEntryType.SUPPLIER_INVOICE,
         voucher_type="Supplier Invoice",
-        voucher_id=supplier_invoice.id,
-        narration=f"Supplier Invoice {supplier_invoice.invoice_number}",
-        fiscal_year_id=fiscal_year.id,
-        reference_type="SupplierInvoice",
-        reference_id=supplier_invoice.id,
-        reference_number=supplier_invoice.invoice_number
-    )
+        voucher_number=supplier_invoice.invoice_number,
+        source_type="SupplierInvoice",
+        source_id=supplier_invoice.id,
+        remark=f"Supplier Invoice {supplier_invoice.invoice_number}",
+    ))
     
     # DR: Tax (if applicable)
     if base_tax > 0 and tax_account_id:
-        await create_gl_entry_from_posting(
+        created_entries.append(await create_gl_entry_from_posting(
             session=session,
             tenant_id=tenant_id,
-            account_id=uuid.UUID(tax_account_id) if isinstance(tax_account_id, str) else tax_account_id,
+            account_id=_account_mapping_id(tax_account_id),
             debit=base_tax,
             credit=Decimal("0"),
             posting_date=supplier_invoice.invoice_date,
+            fiscal_year_label=fiscal_year.label,
+            entry_type=GLEntryType.SUPPLIER_INVOICE,
             voucher_type="Supplier Invoice",
-            voucher_id=supplier_invoice.id,
-            narration=f"Tax on Supplier Invoice {supplier_invoice.invoice_number}",
-            fiscal_year_id=fiscal_year.id,
-            reference_type="SupplierInvoice",
-            reference_id=supplier_invoice.id,
-            reference_number=supplier_invoice.invoice_number
-        )
+            voucher_number=supplier_invoice.invoice_number,
+            source_type="SupplierInvoice",
+            source_id=supplier_invoice.id,
+            remark=f"Tax on Supplier Invoice {supplier_invoice.invoice_number}",
+        ))
     
     # CR: Accounts Payable
-    await create_gl_entry_from_posting(
+    created_entries.append(await create_gl_entry_from_posting(
         session=session,
         tenant_id=tenant_id,
-        account_id=uuid.UUID(payable_account_id) if isinstance(payable_account_id, str) else payable_account_id,
+        account_id=_account_mapping_id(payable_account_id),
         debit=Decimal("0"),
         credit=base_total,
         posting_date=supplier_invoice.invoice_date,
+        fiscal_year_label=fiscal_year.label,
+        entry_type=GLEntryType.SUPPLIER_INVOICE,
         voucher_type="Supplier Invoice",
-        voucher_id=supplier_invoice.id,
-        narration=f"Supplier Invoice {supplier_invoice.invoice_number}",
-        fiscal_year_id=fiscal_year.id,
-        reference_type="SupplierInvoice",
-        reference_id=supplier_invoice.id,
-        reference_number=supplier_invoice.invoice_number
-    )
+        voucher_number=supplier_invoice.invoice_number,
+        source_type="SupplierInvoice",
+        source_id=supplier_invoice.id,
+        remark=f"Supplier Invoice {supplier_invoice.invoice_number}",
+    ))
     
     state.status = PostingStatus.POSTED
     state.posting_rule_id = rule.id
     state.rule_version_at_posting = rule.version
+    state.gl_entry_ids = [str(entry.id) for entry in created_entries]
+    state.error_message = None
     state.posted_at = datetime.now(UTC)
     await session.flush()
     
@@ -422,45 +448,49 @@ async def post_supplier_payment(
     if not bank_account_id or not payable_account_id:
         return False, "Posting rule missing required account mappings"
     
-    base_amount = supplier_payment.base_amount or Decimal("0")
+    base_amount = _decimal_amount(supplier_payment.base_amount)
+    payment_reference = _payment_reference(supplier_payment)
+    created_entries: list[GLEntry] = []
     
     # DR: Accounts Payable
-    await create_gl_entry_from_posting(
+    created_entries.append(await create_gl_entry_from_posting(
         session=session,
         tenant_id=tenant_id,
-        account_id=uuid.UUID(payable_account_id) if isinstance(payable_account_id, str) else payable_account_id,
+        account_id=_account_mapping_id(payable_account_id),
         debit=base_amount,
         credit=Decimal("0"),
         posting_date=supplier_payment.payment_date,
+        fiscal_year_label=fiscal_year.label,
+        entry_type=GLEntryType.SUPPLIER_PAYMENT,
         voucher_type="Supplier Payment",
-        voucher_id=supplier_payment.id,
-        narration=f"Payment {supplier_payment.payment_number or supplier_payment.id}",
-        fiscal_year_id=fiscal_year.id,
-        reference_type="SupplierPayment",
-        reference_id=supplier_payment.id,
-        reference_number=supplier_payment.payment_number
-    )
+        voucher_number=payment_reference,
+        source_type="SupplierPayment",
+        source_id=supplier_payment.id,
+        remark=f"Payment {payment_reference}",
+    ))
     
     # CR: Cash/Bank
-    await create_gl_entry_from_posting(
+    created_entries.append(await create_gl_entry_from_posting(
         session=session,
         tenant_id=tenant_id,
-        account_id=uuid.UUID(bank_account_id) if isinstance(bank_account_id, str) else bank_account_id,
+        account_id=_account_mapping_id(bank_account_id),
         debit=Decimal("0"),
         credit=base_amount,
         posting_date=supplier_payment.payment_date,
+        fiscal_year_label=fiscal_year.label,
+        entry_type=GLEntryType.SUPPLIER_PAYMENT,
         voucher_type="Supplier Payment",
-        voucher_id=supplier_payment.id,
-        narration=f"Payment {supplier_payment.payment_number or supplier_payment.id}",
-        fiscal_year_id=fiscal_year.id,
-        reference_type="SupplierPayment",
-        reference_id=supplier_payment.id,
-        reference_number=supplier_payment.payment_number
-    )
+        voucher_number=payment_reference,
+        source_type="SupplierPayment",
+        source_id=supplier_payment.id,
+        remark=f"Payment {payment_reference}",
+    ))
     
     state.status = PostingStatus.POSTED
     state.posting_rule_id = rule.id
     state.rule_version_at_posting = rule.version
+    state.gl_entry_ids = [str(entry.id) for entry in created_entries]
+    state.error_message = None
     state.posted_at = datetime.now(UTC)
     await session.flush()
     
@@ -498,11 +528,19 @@ async def reverse_document_posting(
         return False, "No open fiscal year for reversal date"
     
     # Get the original GL entries
+    gl_entry_ids = [
+        uuid.UUID(entry_id) if isinstance(entry_id, str) else entry_id
+        for entry_id in state.gl_entry_ids
+    ]
+    if not gl_entry_ids:
+        return False, "No GL entries found for reversal"
+
     result = await session.execute(
         select(GLEntry).where(
-            GLEntry.tenant_id == tenant_id,
-            GLEntry.voucher_type == document_type.value.title().replace("_", " "),
-            GLEntry.voucher_id == document_id
+            and_(
+                GLEntry.tenant_id == tenant_id,
+                GLEntry.id.in_(gl_entry_ids),
+            )
         )
     )
     original_entries = result.scalars().all()
@@ -510,44 +548,39 @@ async def reverse_document_posting(
     if not original_entries:
         return False, "No GL entries found for reversal"
     
-    # Create reversing entries
-    for entry in original_entries:
-        # Swap debit and credit for reversal
-        await create_gl_entry_from_posting(
-            session=session,
-            tenant_id=tenant_id,
-            account_id=entry.account_id,
-            debit=entry.credit,  # Swap
-            credit=entry.debit,  # Swap
-            posting_date=reversal_date.date() if hasattr(reversal_date, 'date') else reversal_date,
-            voucher_type=f"Reversal - {entry.voucher_type}",
-            voucher_id=entry.voucher_id,
-            narration=reversal_narration or f"Reversal: {entry.narration}",
-            fiscal_year_id=reversal_fiscal_year.id,
-            reference_type=entry.reference_type,
-            reference_id=entry.reference_id,
-            reference_number=entry.reference_number,
-            is_reversal=True,
-            reversed_entry_id=entry.id
-        )
-    
-    # Create reversal state
-    reversal_state = DocumentPostingState(
-        tenant_id=tenant_id,
-        document_type=document_type,
-        document_id=document_id,
-        status=PostingStatus.REVERSED,
-        posting_rule_id=state.posting_rule_id,
-        rule_version_at_posting=state.rule_version_at_posting,
-        reverses_state_id=state.id,
-        posted_at=datetime.now(UTC)
-    )
-    session.add(reversal_state)
+    reversal_entries: list[GLEntry] = []
     
     # Update original state
     state.status = PostingStatus.REVERSED
-    state.reversed_by_state_id = reversal_state.id
-    
+    state.error_message = None
+    state.posted_at = datetime.now(UTC)
+
+    # Create reversing entries
+    for entry in original_entries:
+        reversal_entry = await create_gl_entry_from_posting(
+            session=session,
+            tenant_id=tenant_id,
+            account_id=entry.account_id,
+            debit=entry.credit,
+            credit=entry.debit,
+            posting_date=reversal_date.date() if hasattr(reversal_date, 'date') else reversal_date,
+            fiscal_year_label=reversal_fiscal_year.label,
+            entry_type=entry.entry_type,
+            voucher_type=f"Reversal - {entry.voucher_type}",
+            voucher_number=entry.voucher_number,
+            source_type=entry.source_type,
+            source_id=entry.source_id,
+            remark=reversal_narration or f"Reversal: {entry.remark or entry.voucher_number}",
+            reverses_id=entry.id,
+        )
+        entry.reversed_by_id = reversal_entry.id
+        reversal_entries.append(reversal_entry)
+
+    state.gl_entry_ids = [
+        *state.gl_entry_ids,
+        *(str(entry.id) for entry in reversal_entries),
+    ]
+
     await session.flush()
     return True, None
 
@@ -561,15 +594,14 @@ async def create_gl_entry_from_posting(
     debit: Decimal,
     credit: Decimal,
     posting_date: Any,
+    fiscal_year_label: str,
+    entry_type: GLEntryType | str,
     voucher_type: str,
-    voucher_id: uuid.UUID,
-    narration: str,
-    fiscal_year_id: uuid.UUID,
-    reference_type: str | None = None,
-    reference_id: uuid.UUID | None = None,
-    reference_number: str | None = None,
-    is_reversal: bool = False,
-    reversed_entry_id: uuid.UUID | None = None
+    voucher_number: str,
+    source_type: str | None = None,
+    source_id: uuid.UUID | None = None,
+    remark: str | None = None,
+    reverses_id: uuid.UUID | None = None,
 ) -> GLEntry:
     """Create a GL entry for document posting."""
     # Validate posting date is a date, not datetime
@@ -580,19 +612,16 @@ async def create_gl_entry_from_posting(
         tenant_id=tenant_id,
         account_id=account_id,
         posting_date=posting_date,
+        fiscal_year=fiscal_year_label,
         debit=debit,
         credit=credit,
-        fiscal_year_id=fiscal_year_id,
+        entry_type=entry_type,
         voucher_type=voucher_type,
-        voucher_id=voucher_id,
-        voucher_number=reference_number,
-        narration=narration,
-        reference_type=reference_type,
-        reference_id=reference_id,
-        reference_number=reference_number,
-        is_reversal=is_reversal,
-        reversed_entry_id=reversed_entry_id,
-        created_by="system"
+        voucher_number=voucher_number,
+        source_type=source_type,
+        source_id=source_id,
+        remark=remark,
+        reverses_id=reverses_id,
     )
     session.add(entry)
     await session.flush()
@@ -613,7 +642,7 @@ async def get_open_fiscal_year(
             FiscalYear.tenant_id == tenant_id,
             FiscalYear.start_date <= target_date,
             FiscalYear.end_date >= target_date,
-            FiscalYear.status == "open"
+            FiscalYear.status == FiscalYearStatus.OPEN.value
         )
     )
     return result.scalar_one_or_none()

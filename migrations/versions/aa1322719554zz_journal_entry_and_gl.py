@@ -63,11 +63,11 @@ def upgrade() -> None:
         "journal_entries",
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False, default=uuid.uuid4),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("voucher_type", sa.Enum("Journal Entry", "Opening Entry", name="voucher_type"), nullable=False, server_default="Journal Entry"),
+        sa.Column("voucher_type", voucher_type, nullable=False, server_default="Journal Entry"),
         sa.Column("voucher_number", sa.String(length=50), nullable=False),
         sa.Column("posting_date", sa.Date(), nullable=False),
         sa.Column("reference_date", sa.Date(), nullable=True),
-        sa.Column("status", sa.Enum("Draft", "Submitted", "Cancelled", name="journal_entry_status"), nullable=False, server_default="Draft"),
+        sa.Column("status", journal_entry_status, nullable=False, server_default="Draft"),
         sa.Column("narration", sa.Text(), nullable=True),
         sa.Column("total_debit", sa.Numeric(precision=20, scale=6), nullable=False, server_default="0"),
         sa.Column("total_credit", sa.Numeric(precision=20, scale=6), nullable=False, server_default="0"),
@@ -124,7 +124,7 @@ def upgrade() -> None:
     op.create_check_constraint(
         "ck_journal_entries_balanced",
         "journal_entries",
-        "total_debit = total_credit",
+        "status <> 'Submitted' OR total_debit = total_credit",
     )
 
     # Add foreign key for reversal linkage
@@ -193,7 +193,7 @@ def upgrade() -> None:
         sa.Column("fiscal_year", sa.String(length=20), nullable=False),
         sa.Column("debit", sa.Numeric(precision=20, scale=6), nullable=False, server_default="0"),
         sa.Column("credit", sa.Numeric(precision=20, scale=6), nullable=False, server_default="0"),
-        sa.Column("entry_type", sa.Enum("Journal Entry", "Opening Entry", name="gl_entry_type"), nullable=False, server_default="Journal Entry"),
+        sa.Column("entry_type", gl_entry_type, nullable=False, server_default="Journal Entry"),
         sa.Column("voucher_type", sa.String(length=50), nullable=False),
         sa.Column("voucher_number", sa.String(length=50), nullable=False),
         sa.Column("source_type", sa.String(length=50), nullable=True),

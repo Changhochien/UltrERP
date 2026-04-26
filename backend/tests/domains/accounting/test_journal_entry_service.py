@@ -460,6 +460,7 @@ class TestReverseJournalEntry:
 
         assert reversing.status == JournalEntryStatus.SUBMITTED.value
         assert reversing.reverses_id == original.id
+        assert len(reversing.lines) == 2
 
         # Reversing amounts should be swapped
         assert reversing.total_debit == 1000.0  # Was credit
@@ -467,6 +468,12 @@ class TestReverseJournalEntry:
 
         # GL entries should have swapped amounts
         assert len(reversing_gl) == 2
+        reversing_line_ids = {line.id for line in reversing.lines}
+        assert all(gl.journal_entry_line_id in reversing_line_ids for gl in reversing_gl)
+        assert {(line.debit, line.credit) for line in reversing.lines} == {
+            (0, 1000.0),
+            (1000.0, 0),
+        }
 
         # Check original GL entries are still there (not deleted)
         from sqlalchemy import select

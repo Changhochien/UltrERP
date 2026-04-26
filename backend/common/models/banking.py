@@ -12,7 +12,11 @@ from sqlalchemy import Boolean, Date, DateTime, Enum as SAEnum, ForeignKey, Inde
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from backend.common.models import Base
+from common.database import Base
+
+
+def _enum_values(enum_cls: type[Enum]) -> list[str]:
+    return [member.value for member in enum_cls]
 
 
 class BankTransactionStatus(str, Enum):
@@ -44,7 +48,7 @@ class BankAccount(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False
+        UUID(as_uuid=True), nullable=False
     )
     account_name: Mapped[str] = mapped_column(String(255), nullable=False)
     account_number: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -74,7 +78,7 @@ class BankTransaction(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False
+        UUID(as_uuid=True), nullable=False
     )
     bank_account_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("bank_accounts.id"), nullable=False
@@ -104,7 +108,7 @@ class BankTransaction(Base):
     
     # Matching
     status: Mapped[str] = mapped_column(
-        SAEnum(BankTransactionStatus, name="bank_tx_status_enum"),
+        SAEnum(BankTransactionStatus, name="bank_tx_status_enum", values_callable=_enum_values),
         nullable=False,
         default=BankTransactionStatus.UNMATCHED
     )
@@ -129,7 +133,7 @@ class BankTransactionMatch(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False
+        UUID(as_uuid=True), nullable=False
     )
     bank_transaction_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("bank_transactions.id"), nullable=False
@@ -166,7 +170,7 @@ class DunningNotice(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False
+        UUID(as_uuid=True), nullable=False
     )
     
     # Reference to source invoice
@@ -184,7 +188,7 @@ class DunningNotice(Base):
     
     # Status
     status: Mapped[str] = mapped_column(
-        SAEnum(DunningNoticeStatus, name="dunning_status_enum"),
+        SAEnum(DunningNoticeStatus, name="dunning_status_enum", values_callable=_enum_values),
         nullable=False,
         default=DunningNoticeStatus.DRAFT
     )

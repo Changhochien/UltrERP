@@ -36,7 +36,7 @@ def upgrade() -> None:
     op.create_table(
         'budgets',
         sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('tenants.id'), nullable=False),
+        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('budget_number', sa.String(50), nullable=False, unique=True),
         sa.Column('budget_name', sa.String(255), nullable=False),
         sa.Column('description', sa.Text(), nullable=True),
@@ -72,7 +72,7 @@ def upgrade() -> None:
     op.create_table(
         'budget_periods',
         sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('tenants.id'), nullable=False),
+        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('budget_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('budgets.id'), nullable=False),
         sa.Column('period_start', sa.Date(), nullable=False),
         sa.Column('period_end', sa.Date(), nullable=False),
@@ -90,7 +90,7 @@ def upgrade() -> None:
     op.create_table(
         'budget_account_allocations',
         sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('tenants.id'), nullable=False),
+        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('budget_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('budgets.id'), nullable=False),
         sa.Column('account_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('accounts.id'), nullable=False),
         sa.Column('action', budget_check_action_enum, nullable=False, server_default='warn'),

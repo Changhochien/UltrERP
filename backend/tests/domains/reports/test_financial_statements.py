@@ -9,6 +9,7 @@ from decimal import Decimal
 
 import pytest
 import pytest_asyncio
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.models.account import (
@@ -171,6 +172,23 @@ async def create_and_submit_journal_entry(
 @pytest.mark.asyncio
 class TestProfitAndLoss:
     """Tests for Profit and Loss report."""
+
+    async def test_pnl_without_accounts_reports_configuration_gap(
+        self,
+        db: AsyncSession,
+        tenant_id: uuid.UUID,
+    ) -> None:
+        """P&L distinguishes a missing chart from a quiet accounting period."""
+        result = await get_profit_and_loss(
+            db,
+            tenant_id,
+            from_date=date(2026, 1, 1),
+            to_date=date(2026, 1, 31),
+        )
+
+        assert result.metadata.empty_reason == EmptyReason.NO_ACCOUNTS_CONFIGURED
+        assert result.income_rows == []
+        assert result.expense_rows == []
 
     async def test_pnl_empty_period(
         self,
@@ -422,13 +440,13 @@ class TestBalanceSheet:
         setup_accounts_and_fiscal_year,
     ) -> None:
         """BS correctly shows asset account balances."""
-        cash, _, _, _, _, _, _ = setup_accounts_and_fiscal_year
+        cash, _, equity, _, _, _, _ = setup_accounts_and_fiscal_year
 
         # Create entries to cash account
         await create_and_submit_journal_entry(
             db, tenant_id, actor_id,
             posting_date=date(2026, 3, 15),
-            lines=[(cash.id, 5000.0, 0.0)],  # Debit increases asset
+            lines=[(cash.id, 5000.0, 0.0), (equity.id, 0.0, 5000.0)],
             narration="Initial deposit",
         )
 
@@ -512,20 +530,20 @@ class TestBalanceSheet:
         setup_accounts_and_fiscal_year,
     ) -> None:
         """BS only includes entries up to the as-of date."""
-        cash, _, _, _, _, _, _ = setup_accounts_and_fiscal_year
+        cash, _, equity, _, _, _, _ = setup_accounts_and_fiscal_year
 
         # Entry on March 15
         await create_and_submit_journal_entry(
             db, tenant_id, actor_id,
             posting_date=date(2026, 3, 15),
-            lines=[(cash.id, 1000.0, 0.0)],
+            lines=[(cash.id, 1000.0, 0.0), (equity.id, 0.0, 1000.0)],
             narration="March entry",
         )
         # Entry on April 15
         await create_and_submit_journal_entry(
             db, tenant_id, actor_id,
             posting_date=date(2026, 4, 15),
-            lines=[(cash.id, 500.0, 0.0)],
+            lines=[(cash.id, 500.0, 0.0), (equity.id, 0.0, 500.0)],
             narration="April entry",
         )
 
@@ -553,12 +571,12 @@ class TestBalanceSheet:
         setup_accounts_and_fiscal_year,
     ) -> None:
         """BS CSV export contains correct data."""
-        cash, _, _, _, _, _, _ = setup_accounts_and_fiscal_year
+        cash, _, equity, _, _, _, _ = setup_accounts_and_fiscal_year
 
         await create_and_submit_journal_entry(
             db, tenant_id, actor_id,
             posting_date=date(2026, 3, 15),
-            lines=[(cash.id, 1000.0, 0.0)],
+            lines=[(cash.id, 1000.0, 0.0), (equity.id, 0.0, 1000.0)],
         )
 
         result = await get_balance_sheet(
@@ -579,6 +597,30 @@ class TestBalanceSheet:
 @pytest.mark.asyncio
 class TestTrialBalance:
     """Tests for Trial Balance report."""
+
+    async def test_trial_balance_all_disabled_accounts_reports_disabled_state(
+        self,
+        db: AsyncSession,
+        tenant_id: uuid.UUID,
+        setup_accounts_and_fiscal_year,
+    ) -> None:
+        """Trial balance distinguishes disabled accounts from missing activity."""
+        result = await db.execute(
+            select(Account).where(
+                Account.tenant_id == tenant_id,
+                Account.is_group == False,
+            )
+        )
+        for account in result.scalars().all():
+            account.is_disabled = True
+        await db.flush()
+
+        result = await get_trial_balance(db, tenant_id, as_of_date=date(2026, 1, 31))
+
+        assert result.metadata.empty_reason == EmptyReason.ALL_ACCOUNTS_DISABLED
+        assert result.rows == []
+        assert result.total_debit == Decimal("0")
+        assert result.total_credit == Decimal("0")
 
     async def test_tb_empty_period(
         self,
@@ -712,13 +754,13 @@ class TestAccountRollups:
         setup_accounts_and_fiscal_year,
     ) -> None:
         """Child account balances roll up to parent groups."""
-        cash, _, _, _, _, _, _ = setup_accounts_and_fiscal_year
+        cash, _, equity, _, _, _, _ = setup_accounts_and_fiscal_year
 
         # Create entries to cash (a child of Assets)
         await create_and_submit_journal_entry(
             db, tenant_id, actor_id,
             posting_date=date(2026, 3, 15),
-            lines=[(cash.id, 1000.0, 0.0)],
+            lines=[(cash.id, 1000.0, 0.0), (equity.id, 0.0, 1000.0)],
         )
 
         balances = await get_account_balances(
@@ -740,12 +782,12 @@ class TestAccountRollups:
         setup_accounts_and_fiscal_year,
     ) -> None:
         """Ledger accounts show their own balances."""
-        cash, _, _, _, _, _, _ = setup_accounts_and_fiscal_year
+        cash, _, equity, _, _, _, _ = setup_accounts_and_fiscal_year
 
         await create_and_submit_journal_entry(
             db, tenant_id, actor_id,
             posting_date=date(2026, 3, 15),
-            lines=[(cash.id, 2000.0, 0.0)],
+            lines=[(cash.id, 2000.0, 0.0), (equity.id, 0.0, 2000.0)],
         )
 
         balances = await get_account_balances(

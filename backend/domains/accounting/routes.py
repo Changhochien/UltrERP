@@ -1160,9 +1160,12 @@ async def post_document_endpoint(
     This endpoint is for manual posting of documents that support auto-posting.
     For automatic posting, the invoice/payment services call the posting functions directly.
     """
-    from backend.domains.accounting.posting import PostingState
     from sqlalchemy import select
-    from common.models import Invoice, Payment, SupplierInvoice, SupplierPayment
+    from common.models.posting_rule import DocumentPostingState as DPSModel
+    from common.models.supplier_invoice import SupplierInvoice
+    from common.models.supplier_payment import SupplierPayment
+    from domains.invoices.models import Invoice
+    from domains.payments.models import Payment
     
     tenant_id = _get_tenant_id(current_user)
     
@@ -1217,10 +1220,9 @@ async def post_document_endpoint(
     success, error_message = await posting_func(db, doc, tenant_id)
     
     # Get updated state
-    from backend.domains.accounting.posting import DocumentPostingState as DPSModel
     result = await db.execute(
         select(DPSModel).where(
-            DPSModel.document_type == document_type,
+            DPSModel.document_type == doc_type_enum,
             DPSModel.document_id == document_id,
             DPSModel.tenant_id == tenant_id
         )
@@ -1273,10 +1275,10 @@ async def reverse_document_endpoint(
     )
     
     # Get updated state
-    from backend.domains.accounting.posting import DocumentPostingState as DPSModel
+    from common.models.posting_rule import DocumentPostingState as DPSModel
     result = await db.execute(
         select(DPSModel).where(
-            DPSModel.document_type == document_type,
+            DPSModel.document_type == doc_type_enum,
             DPSModel.document_id == document_id,
             DPSModel.tenant_id == tenant_id
         )

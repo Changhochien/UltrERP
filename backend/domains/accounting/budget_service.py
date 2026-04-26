@@ -11,15 +11,15 @@ from typing import Any
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.common.models.account import Account, AccountRootType, AccountType
-from backend.common.models.budget import (
+from common.models.account import Account, AccountRootType, AccountType
+from common.models.budget import (
     Budget,
     BudgetAccountAllocation,
     BudgetCheckAction,
     BudgetPeriod,
     BudgetStatus,
 )
-from backend.common.models.gl_entry import GLEntry
+from common.models.gl_entry import GLEntry
 
 
 # ============================================================
@@ -198,7 +198,6 @@ async def allocate_budget_periods(
                 period_name=period_start.strftime("%B %Y"),
                 allocated_amount=monthly_amount.quantize(Decimal("0.01")),
                 distribution_type="equal",
-                created_by=created_by,
             )
             session.add(period)
             periods.append(period)
@@ -221,7 +220,6 @@ async def allocate_budget_periods(
                 period_name=period_start.strftime("%B %Y"),
                 allocated_amount=amount,
                 distribution_type="manual",
-                created_by=created_by,
             )
             session.add(period)
             periods.append(period)
@@ -358,7 +356,7 @@ async def check_budget(
             GLEntry.account_id == account_id,
             GLEntry.posting_date >= period.period_start,
             GLEntry.posting_date <= period.period_end,
-            GLEntry.is_reversal == False
+            GLEntry.reversed_by_id.is_(None)
         )
     )
     spent = spent_result.scalar() or Decimal("0")
@@ -449,7 +447,7 @@ async def get_budget_variance_report(
         GLEntry.tenant_id == tenant_id,
         GLEntry.posting_date >= from_date,
         GLEntry.posting_date <= to_date,
-        GLEntry.is_reversal == False
+        GLEntry.reversed_by_id.is_(None)
     ).group_by(GLEntry.account_id)
     
     actuals_result = await session.execute(query)

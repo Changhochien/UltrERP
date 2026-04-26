@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import (
     Date,
     DateTime,
+    Enum as SAEnum,
     ForeignKey,
     Index,
     Numeric,
@@ -29,15 +30,19 @@ if TYPE_CHECKING:
     pass
 
 
+def _enum_values(enum_cls: type[enum.Enum]) -> list[str]:
+    return [member.value for member in enum_cls]
+
+
 class GLEntryType(str, enum.Enum):
     """GL entry type for classification."""
 
     JOURNAL_ENTRY = "Journal Entry"
     OPENING_ENTRY = "Opening Entry"
-    # Future types:
-    # INVOICE = "Sales Invoice"
-    # PAYMENT = "Payment"
-    # PURCHASE_INVOICE = "Purchase Invoice"
+    CUSTOMER_INVOICE = "Customer Invoice"
+    CUSTOMER_PAYMENT = "Customer Payment"
+    SUPPLIER_INVOICE = "Supplier Invoice"
+    SUPPLIER_PAYMENT = "Supplier Payment"
 
 
 class GLEntry(Base):
@@ -84,8 +89,10 @@ class GLEntry(Base):
     )
 
     # Voucher/source document lineage
-    entry_type: Mapped[str] = mapped_column(
-        String(50), nullable=False, default=GLEntryType.JOURNAL_ENTRY.value
+    entry_type: Mapped[GLEntryType] = mapped_column(
+        SAEnum(GLEntryType, name="gl_entry_type", values_callable=_enum_values),
+        nullable=False,
+        default=GLEntryType.JOURNAL_ENTRY,
     )
     voucher_type: Mapped[str] = mapped_column(String(50), nullable=False)
     voucher_number: Mapped[str] = mapped_column(String(50), nullable=False)

@@ -2,22 +2,24 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime, UTC
+from datetime import date
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
+import pytest_asyncio
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.common.models.account import Account, AccountRootType, AccountType
-from backend.common.models.fiscal_year import FiscalYear, FiscalYearStatus
-from backend.common.models.gl_entry import GLEntry
-from backend.common.models.invoice import Invoice, InvoiceStatus
-from backend.common.models.posting_rule import (
-    DocumentPostingState,
+from common.models.account import Account, AccountRootType, AccountType, _ROOT_TYPE_TO_REPORT_TYPE
+from common.models.fiscal_year import FiscalYear, FiscalYearStatus
+from common.models.gl_entry import GLEntry
+from common.models.posting_rule import (
     DocumentType,
     PostingRule,
     PostingStatus,
 )
+from common.models.supplier_invoice import SupplierInvoiceStatus
 from backend.domains.accounting.posting import (
     ensure_posting_state,
     get_document_posting_status,
@@ -27,6 +29,14 @@ from backend.domains.accounting.posting import (
     post_supplier_invoice,
     reverse_document_posting,
 )
+from tests.db import isolated_async_session
+
+
+@pytest_asyncio.fixture
+async def db() -> AsyncSession:
+    """Provide an isolated database session for each test."""
+    async with isolated_async_session() as session:
+        yield session
 
 
 @pytest.fixture
@@ -41,10 +51,10 @@ async def fiscal_year(db: AsyncSession, tenant_id: uuid.UUID) -> FiscalYear:
     """Create an open fiscal year for testing."""
     fy = FiscalYear(
         tenant_id=tenant_id,
-        label="FY 2026",
+        label="FY2026",
         start_date=date(2026, 1, 1),
         end_date=date(2026, 12, 31),
-        status=FiscalYearStatus.OPEN,
+        status=FiscalYearStatus.OPEN.value,
     )
     db.add(fy)
     await db.flush()
@@ -62,6 +72,7 @@ async def accounts(db: AsyncSession, tenant_id: uuid.UUID) -> dict[str, Account]
         account_number="1110",
         account_name="Cash",
         root_type=AccountRootType.ASSET,
+        report_type=_ROOT_TYPE_TO_REPORT_TYPE[AccountRootType.ASSET],
         account_type=AccountType.CASH,
         is_group=False,
     )
@@ -73,6 +84,7 @@ async def accounts(db: AsyncSession, tenant_id: uuid.UUID) -> dict[str, Account]
         account_number="1120",
         account_name="Accounts Receivable",
         root_type=AccountRootType.ASSET,
+        report_type=_ROOT_TYPE_TO_REPORT_TYPE[AccountRootType.ASSET],
         account_type=AccountType.RECEIVABLE,
         is_group=False,
     )
@@ -84,6 +96,7 @@ async def accounts(db: AsyncSession, tenant_id: uuid.UUID) -> dict[str, Account]
         account_number="2110",
         account_name="Accounts Payable",
         root_type=AccountRootType.LIABILITY,
+        report_type=_ROOT_TYPE_TO_REPORT_TYPE[AccountRootType.LIABILITY],
         account_type=AccountType.PAYABLE,
         is_group=False,
     )
@@ -95,7 +108,8 @@ async def accounts(db: AsyncSession, tenant_id: uuid.UUID) -> dict[str, Account]
         account_number="4100",
         account_name="Sales Revenue",
         root_type=AccountRootType.INCOME,
-        account_type=AccountType.INCOME,
+        report_type=_ROOT_TYPE_TO_REPORT_TYPE[AccountRootType.INCOME],
+        account_type=AccountType.SALES,
         is_group=False,
     )
     db.add(revenue)
@@ -106,6 +120,7 @@ async def accounts(db: AsyncSession, tenant_id: uuid.UUID) -> dict[str, Account]
         account_number="5100",
         account_name="Operating Expenses",
         root_type=AccountRootType.EXPENSE,
+        report_type=_ROOT_TYPE_TO_REPORT_TYPE[AccountRootType.EXPENSE],
         account_type=AccountType.EXPENSE,
         is_group=False,
     )
@@ -117,7 +132,8 @@ async def accounts(db: AsyncSession, tenant_id: uuid.UUID) -> dict[str, Account]
         account_number="2150",
         account_name="Tax Payable",
         root_type=AccountRootType.LIABILITY,
-        account_type=AccountType.TAX,
+        report_type=_ROOT_TYPE_TO_REPORT_TYPE[AccountRootType.LIABILITY],
+        account_type=AccountType.TAX_LIABILITY,
         is_group=False,
     )
     db.add(tax)
@@ -240,25 +256,14 @@ class TestCustomerInvoicePosting:
     ):
         """Test that posting a customer invoice creates GL entries."""
         # Create a test invoice
-        invoice = Invoice(
-            tenant_id=tenant_id,
+        invoice = SimpleNamespace(
+            id=uuid.uuid4(),
             invoice_number="INV-001",
             invoice_date=date(2026, 3, 15),
-            buyer_type="business",
-            buyer_identifier="12345678",
-            buyer_name="Test Customer",
-            status=InvoiceStatus.SUBMITTED,
-            subtotal_amount=Decimal("1000"),
-            tax_amount=Decimal("50"),
-            total_amount=Decimal("1050"),
             base_subtotal_amount=Decimal("1000"),
             base_tax_amount=Decimal("50"),
             base_total_amount=Decimal("1050"),
-            currency_code="TWD",
-            conversion_rate=Decimal("1"),
         )
-        db.add(invoice)
-        await db.flush()
         
         # Post the invoice
         success, error = await post_customer_invoice(db, invoice, tenant_id)
@@ -272,13 +277,15 @@ class TestCustomerInvoicePosting:
         )
         assert state.status == PostingStatus.POSTED
         assert state.posting_rule_id == posting_rule.id
+        assert len(state.gl_entry_ids) == 3
         
         # Check GL entries were created
         result = await db.execute(
             select(GLEntry).where(
                 GLEntry.tenant_id == tenant_id,
                 GLEntry.voucher_type == "Customer Invoice",
-                GLEntry.voucher_id == invoice.id
+                GLEntry.source_type == "Invoice",
+                GLEntry.source_id == invoice.id,
             )
         )
         gl_entries = result.scalars().all()
@@ -297,25 +304,14 @@ class TestCustomerInvoicePosting:
         fiscal_year: FiscalYear,
     ):
         """Test that posting without a rule returns not_configured."""
-        invoice = Invoice(
-            tenant_id=tenant_id,
+        invoice = SimpleNamespace(
+            id=uuid.uuid4(),
             invoice_number="INV-002",
             invoice_date=date(2026, 3, 15),
-            buyer_type="business",
-            buyer_identifier="12345678",
-            buyer_name="Test Customer",
-            status=InvoiceStatus.SUBMITTED,
-            subtotal_amount=Decimal("1000"),
-            tax_amount=Decimal("50"),
-            total_amount=Decimal("1050"),
             base_subtotal_amount=Decimal("1000"),
             base_tax_amount=Decimal("50"),
             base_total_amount=Decimal("1050"),
-            currency_code="TWD",
-            conversion_rate=Decimal("1"),
         )
-        db.add(invoice)
-        await db.flush()
         
         success, error = await post_customer_invoice(db, invoice, tenant_id)
         
@@ -348,25 +344,14 @@ class TestReversal:
     ):
         """Test that reversal creates reversing GL entries."""
         # Create and post an invoice
-        invoice = Invoice(
-            tenant_id=tenant_id,
+        invoice = SimpleNamespace(
+            id=uuid.uuid4(),
             invoice_number="INV-003",
             invoice_date=date(2026, 3, 15),
-            buyer_type="business",
-            buyer_identifier="12345678",
-            buyer_name="Test Customer",
-            status=InvoiceStatus.SUBMITTED,
-            subtotal_amount=Decimal("1000"),
-            tax_amount=Decimal("50"),
-            total_amount=Decimal("1050"),
             base_subtotal_amount=Decimal("1000"),
             base_tax_amount=Decimal("50"),
             base_total_amount=Decimal("1050"),
-            currency_code="TWD",
-            conversion_rate=Decimal("1"),
         )
-        db.add(invoice)
-        await db.flush()
         
         await post_customer_invoice(db, invoice, tenant_id)
         
@@ -388,8 +373,8 @@ class TestReversal:
         result = await db.execute(
             select(GLEntry).where(
                 GLEntry.tenant_id == tenant_id,
-                GLEntry.reference_type == "Invoice",
-                GLEntry.reference_id == invoice.id
+                GLEntry.source_type == "Invoice",
+                GLEntry.source_id == invoice.id
             )
         )
         gl_entries = result.scalars().all()
@@ -414,26 +399,15 @@ class TestSupplierInvoicePosting:
         supplier_posting_rule: PostingRule,
     ):
         """Test that posting a supplier invoice creates GL entries."""
-        from backend.common.models.supplier_invoice import SupplierInvoice, SupplierInvoiceStatus
-        
         # Create a test supplier invoice
-        supplier_invoice = SupplierInvoice(
-            tenant_id=tenant_id,
+        supplier_invoice = SimpleNamespace(
+            id=uuid.uuid4(),
             invoice_number="SI-001",
             invoice_date=date(2026, 3, 15),
-            supplier_id=uuid.uuid4(),
-            status=SupplierInvoiceStatus.SUBMITTED,
-            subtotal_amount=Decimal("800"),
-            tax_amount=Decimal("40"),
-            total_amount=Decimal("840"),
             base_subtotal_amount=Decimal("800"),
             base_tax_amount=Decimal("40"),
             base_total_amount=Decimal("840"),
-            currency_code="TWD",
-            conversion_rate=Decimal("1"),
         )
-        db.add(supplier_invoice)
-        await db.flush()
         
         # Post the supplier invoice
         success, error = await post_supplier_invoice(db, supplier_invoice, tenant_id)
@@ -446,7 +420,8 @@ class TestSupplierInvoicePosting:
             select(GLEntry).where(
                 GLEntry.tenant_id == tenant_id,
                 GLEntry.voucher_type == "Supplier Invoice",
-                GLEntry.voucher_id == supplier_invoice.id
+                GLEntry.source_type == "SupplierInvoice",
+                GLEntry.source_id == supplier_invoice.id,
             )
         )
         gl_entries = result.scalars().all()

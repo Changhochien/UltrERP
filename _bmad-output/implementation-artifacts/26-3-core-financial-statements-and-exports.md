@@ -144,6 +144,7 @@ This story should add core statements and export-ready interfaces, not a full re
 
 - 2026-04-26: Story drafted from Epic 26, the ERPNext accounting gap analysis, the existing UltrERP reports domain, and the validated accounting report.
 - 2026-04-26: Implementation completed - all tasks and subtasks completed.
+- 2026-04-26: Review remediation fixed empty-state classification for ledger-capable accounts, corrected trial-balance normal-balance handling, and added current-period earnings/loss into Balance Sheet equity totals. Validation passed in `backend/tests/domains/reports/test_financial_statements.py`.
 
 ### Implementation Summary
 

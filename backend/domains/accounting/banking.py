@@ -13,7 +13,7 @@ from typing import Any, TypedDict
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.common.models.banking import (
+from common.models.banking import (
     BankAccount,
     BankTransaction,
     BankTransactionMatch,
@@ -21,8 +21,9 @@ from backend.common.models.banking import (
     DunningNotice,
     DunningNoticeStatus,
 )
-from backend.common.models.invoice import Invoice, InvoiceStatus
-from backend.common.models.payment import Payment, PaymentStatus
+from domains.invoices.enums import InvoiceStatus
+from domains.invoices.models import Invoice
+from domains.payments.models import Payment
 
 
 class BankTransactionSuggestion(TypedDict):
@@ -34,6 +35,10 @@ class BankTransactionSuggestion(TypedDict):
     date: date
     confidence: Decimal
     description: str
+
+
+def _payment_reference(payment: Payment) -> str:
+    return payment.payment_ref or payment.reference_number or str(payment.id)
 
 
 # ============================================================
@@ -212,26 +217,24 @@ async def get_transaction_suggestions(
     amount = transaction.debit if transaction.debit > 0 else transaction.credit
     
     # Search for matching payments by reference
-    payment_query = select(Payment).where(
-        Payment.tenant_id == tenant_id,
-        Payment.status == PaymentStatus.MATCHED,
-    )
+    payment_query = select(Payment).where(Payment.tenant_id == tenant_id)
     payments = (await session.execute(payment_query)).scalars().all()
     
     for payment in payments:
         payment_amount = payment.base_amount or payment.amount
+        payment_reference = _payment_reference(payment)
         
         # Check for reference match
-        if transaction.reference_number and payment.payment_number:
-            if transaction.reference_number.lower() in payment.payment_number.lower():
+        if transaction.reference_number and payment_reference:
+            if transaction.reference_number.lower() in payment_reference.lower():
                 suggestions.append(BankTransactionSuggestion(
                     voucher_type="Payment",
                     voucher_id=str(payment.id),
                     amount=payment_amount,
-                    reference=payment.payment_number,
+                    reference=payment_reference,
                     date=payment.payment_date,
                     confidence=Decimal("90"),
-                    description=f"Payment {payment.payment_number}"
+                    description=f"Payment {payment_reference}"
                 ))
         
         # Check for amount match
@@ -241,10 +244,10 @@ async def get_transaction_suggestions(
                     voucher_type="Payment",
                     voucher_id=str(payment.id),
                     amount=payment_amount,
-                    reference=payment.payment_number,
+                    reference=payment_reference,
                     date=payment.payment_date,
                     confidence=Decimal("80"),
-                    description=f"Payment {payment.payment_number} (amount match)"
+                    description=f"Payment {payment_reference} (amount match)"
                 ))
     
     return suggestions
@@ -350,7 +353,7 @@ async def get_overdue_invoices(
     result = await session.execute(
         select(Invoice).where(
             Invoice.tenant_id == tenant_id,
-            Invoice.status == InvoiceStatus.SUBMITTED,
+            Invoice.status == InvoiceStatus.ISSUED,
             Invoice.invoice_date <= cutoff_date
         )
     )
@@ -378,7 +381,7 @@ async def create_dunning_notice(
         raise ValueError("Invoice not found")
     
     # Calculate amounts
-    outstanding = invoice.base_total_amount or Decimal("0")
+    outstanding = invoice.total_amount or Decimal("0")
     fee = data.get("fee_amount", Decimal("0"))
     interest = data.get("interest_amount", Decimal("0"))
     total = outstanding + fee + interest

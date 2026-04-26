@@ -1,6 +1,6 @@
 # Story 26.6: Budget Controls and Variance Reporting
 
-**Status:** ready-for-dev
+**Status:** completed
 
 **Story ID:** 26.6
 
@@ -147,13 +147,18 @@ Keep the first slice practical. Land explicit budget records, allocation, alert/
 
 ## Dev Agent Record
 
-**Status:** ready-for-dev
+**Status:** completed
 **Last Updated:** 2026-04-26
 
 ### Completion Notes List
 
 - 2026-04-26: Story drafted from Epic 26, the accounting gap analysis for Epics 26 and 32, ERPNext budget references, and the current UltrERP procurement and reporting boundaries.
+- 2026-04-26: Review remediation normalized budget service imports to the shared accounting namespace, removed invalid `BudgetPeriod.created_by` writes, and replaced `GLEntry.is_reversal` query predicates with the real `reversed_by_id` filter.
+- 2026-04-26: Budget tests were aligned to the current account and GL schemas, including required `report_type` values and the current `GLEntry` fields. Validation passed in `backend/tests/domains/accounting/test_budget.py`.
 
 ### File List
 
-- Story context only. No implementation files yet.
+- `backend/domains/accounting/budget_service.py` - Budget allocation, validation, and variance reporting aligned to the shared model namespace and current GL schema.
+- `backend/tests/domains/accounting/test_budget.py` - Regression coverage updated to the real account and GL contracts and isolated async DB fixture.
+- `backend/common/models/budget.py` - Budget model contract used by the repaired service and tests.
+- `migrations/versions/aa1322719557zz_budget_controls.py` - Tenant foreign-key assumptions removed for the budget tables.

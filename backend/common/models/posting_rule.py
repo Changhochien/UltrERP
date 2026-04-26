@@ -14,10 +14,14 @@ from sqlalchemy import Boolean, DateTime, Enum as SAEnum, ForeignKey, Index, Num
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from backend.common.models import Base
+from common.database import Base
 
 if TYPE_CHECKING:
     pass
+
+
+def _enum_values(enum_cls: type[Enum]) -> list[str]:
+    return [member.value for member in enum_cls]
 
 
 class DocumentType(str, Enum):
@@ -55,10 +59,10 @@ class PostingRule(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False
+        UUID(as_uuid=True), nullable=False
     )
     document_type: Mapped[str] = mapped_column(
-        SAEnum(DocumentType, name="document_type_enum"),
+        SAEnum(DocumentType, name="document_type_enum", values_callable=_enum_values),
         nullable=False
     )
     version: Mapped[int] = mapped_column(default=1)
@@ -101,16 +105,16 @@ class DocumentPostingState(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False
+        UUID(as_uuid=True), nullable=False
     )
     document_type: Mapped[str] = mapped_column(
-        SAEnum(DocumentType, name="document_type_enum"),
+        SAEnum(DocumentType, name="document_type_enum", values_callable=_enum_values),
         nullable=False
     )
     document_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     
     status: Mapped[str] = mapped_column(
-        SAEnum(PostingStatus, name="posting_status_enum"),
+        SAEnum(PostingStatus, name="posting_status_enum", values_callable=_enum_values),
         nullable=False,
         default=PostingStatus.NOT_CONFIGURED
     )

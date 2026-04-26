@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime, UTC
+from datetime import date
 from decimal import Decimal
 
 import pytest
+import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.common.models.banking import (
+from common.models.banking import (
     BankAccount,
     BankTransaction,
     BankTransactionMatch,
@@ -16,7 +17,6 @@ from backend.common.models.banking import (
     DunningNotice,
     DunningNoticeStatus,
 )
-from backend.common.models.invoice import Invoice, InvoiceStatus
 from backend.domains.accounting.banking import (
     create_bank_account,
     create_dunning_notice,
@@ -28,6 +28,17 @@ from backend.domains.accounting.banking import (
     reconcile_transaction,
     transition_dunning_notice,
 )
+from domains.customers.models import Customer
+from domains.invoices.enums import BuyerType, InvoiceStatus
+from domains.invoices.models import Invoice
+from tests.db import isolated_async_session
+
+
+@pytest_asyncio.fixture
+async def db() -> AsyncSession:
+    """Provide an isolated database session for each test."""
+    async with isolated_async_session() as session:
+        yield session
 
 
 @pytest.fixture
@@ -35,6 +46,23 @@ async def tenant_id(db: AsyncSession) -> uuid.UUID:
     """Get or create a test tenant."""
     from common.database import DEFAULT_TENANT_ID
     return DEFAULT_TENANT_ID
+
+
+@pytest.fixture
+async def customer(db: AsyncSession, tenant_id: uuid.UUID) -> Customer:
+    """Create a customer for invoice-backed dunning tests."""
+    customer = Customer(
+        tenant_id=tenant_id,
+        company_name="Overdue Customer Co",
+        normalized_business_number="12345678",
+        billing_address="123 Test Street",
+        contact_name="Overdue Customer",
+        contact_phone="0912345678",
+        contact_email="overdue@example.com",
+    )
+    db.add(customer)
+    await db.flush()
+    return customer
 
 
 @pytest.fixture
@@ -81,24 +109,24 @@ async def bank_transactions(
 
 
 @pytest.fixture
-async def overdue_invoice(db: AsyncSession, tenant_id: uuid.UUID) -> Invoice:
+async def overdue_invoice(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    customer: Customer,
+) -> Invoice:
     """Create an overdue invoice for dunning tests."""
     invoice = Invoice(
         tenant_id=tenant_id,
-        invoice_number="INV-OVERDUE",
+        invoice_number="INV9001",
         invoice_date=date(2026, 1, 15),  # 90+ days ago
-        buyer_type="business",
-        buyer_identifier="12345678",
-        buyer_name="Overdue Customer",
-        status=InvoiceStatus.SUBMITTED,
+        customer_id=customer.id,
+        buyer_type=BuyerType.B2B,
+        buyer_identifier_snapshot=customer.normalized_business_number,
+        status=InvoiceStatus.ISSUED,
         subtotal_amount=Decimal("5000"),
         tax_amount=Decimal("250"),
         total_amount=Decimal("5250"),
-        base_subtotal_amount=Decimal("5000"),
-        base_tax_amount=Decimal("250"),
-        base_total_amount=Decimal("5250"),
         currency_code="TWD",
-        conversion_rate=Decimal("1"),
     )
     db.add(invoice)
     await db.flush()
@@ -209,7 +237,7 @@ class TestDunningService:
         overdue = await get_overdue_invoices(db, tenant_id, days_overdue=30)
         
         assert len(overdue) >= 1
-        assert any(i.invoice_number == "INV-OVERDUE" for i in overdue)
+        assert any(i.invoice_number == "INV9001" for i in overdue)
 
     async def test_create_dunning_notice(
         self, db: AsyncSession, tenant_id: uuid.UUID, overdue_invoice: Invoice

@@ -1,6 +1,6 @@
 # Story 26.5: Bank Reconciliation and Manual Collections Tracking
 
-**Status:** ready-for-dev
+**Status:** completed
 
 **Story ID:** 26.5
 
@@ -159,13 +159,18 @@ Bank reconciliation is the primary deliverable in this story. Collections scope 
 
 ## Dev Agent Record
 
-**Status:** ready-for-dev
+**Status:** completed
 **Last Updated:** 2026-04-26
 
 ### Completion Notes List
 
 - 2026-04-26: Story drafted from Epic 26, the existing UltrERP payment and outstanding workflows, ERPNext banking/dunning references, and official ERPNext docs.
+- 2026-04-26: Review remediation normalized banking imports to the real shared contracts, fixed transaction suggestion logic to use actual payment reference fields, corrected overdue-invoice filtering, and aligned dunning notices to the invoice schema.
+- 2026-04-26: Validation passed in `backend/tests/domains/accounting/test_banking_collections.py`.
 
 ### File List
 
-- Story context only. No implementation files yet.
+- `backend/common/models/banking.py` - Banking and dunning enums and tenant scoping aligned to the actual database model.
+- `backend/domains/accounting/banking.py` - Reconciliation suggestions, overdue detection, and dunning creation fixed against the real invoice/payment contracts.
+- `backend/tests/domains/accounting/test_banking_collections.py` - Test fixtures updated to the actual customer, invoice, and payment schemas.
+- `migrations/versions/aa1322719556zz_banking_and_collections.py` - Invalid tenant foreign keys removed.

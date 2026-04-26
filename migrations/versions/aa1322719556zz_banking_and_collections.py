@@ -37,7 +37,7 @@ def upgrade() -> None:
     op.create_table(
         'bank_accounts',
         sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('tenants.id'), nullable=False),
+        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('account_name', sa.String(255), nullable=False),
         sa.Column('account_number', sa.String(100), nullable=False),
         sa.Column('bank_name', sa.String(255), nullable=True),
@@ -57,7 +57,7 @@ def upgrade() -> None:
     op.create_table(
         'bank_transactions',
         sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('tenants.id'), nullable=False),
+        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('bank_account_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('bank_accounts.id'), nullable=False),
         sa.Column('import_batch_id', postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column('import_file_name', sa.String(500), nullable=True),
@@ -85,7 +85,7 @@ def upgrade() -> None:
     op.create_table(
         'bank_transaction_matches',
         sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('tenants.id'), nullable=False),
+        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('bank_transaction_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('bank_transactions.id'), nullable=False),
         sa.Column('voucher_type', sa.String(50), nullable=False),
         sa.Column('voucher_id', postgresql.UUID(as_uuid=True), nullable=False),
@@ -105,7 +105,7 @@ def upgrade() -> None:
     op.create_table(
         'dunning_notices',
         sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('tenants.id'), nullable=False),
+        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('invoice_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('invoices.id'), nullable=True),
         sa.Column('customer_id', postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column('notice_number', sa.String(50), nullable=False, unique=True),

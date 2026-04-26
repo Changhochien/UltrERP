@@ -171,13 +171,20 @@ Keep the first slice deliberately narrow. Start with a minimal voucher-type set 
 
 ## Dev Agent Record
 
-**Status:** ready-for-dev
+**Status:** completed
 **Last Updated:** 2026-04-26
 
 ### Completion Notes List
 
 - 2026-04-26: Story drafted from Epic 26, the ERPNext accounting gap analysis, official ERPNext journal-entry guidance, and the current UltrERP invoice/payment foundations.
+- 2026-04-26: Review remediation aligned journal-entry enums and balance constraints with the migrated schema, and fixed reversal flow so reversing journal-entry lines are created before reversal GL rows and linked correctly.
+- 2026-04-26: Validation passed in `backend/tests/domains/accounting/test_journal_entry_service.py` and the shared accounting service suite.
 
 ### File List
 
-- Story context only. No implementation files yet.
+- `backend/common/models/journal_entry.py` - Enum-backed voucher/status columns, corrected reversal self-links, submitted-only balance constraint alignment.
+- `backend/common/models/gl_entry.py` - Shared GL contract used by reversal posting.
+- `backend/domains/accounting/service.py` - Reversal flow now creates reversing lines before reversal GL entries.
+- `backend/tests/domains/accounting/test_journal_entry_service.py` - Regression coverage for reversing-line creation and GL linkage.
+- `migrations/versions/aa1322719554zz_journal_entry_and_gl.py` - Base migration repaired to reuse enums and apply the intended balance check.
+- `migrations/versions/aa1322719559zz_relax_journal_entry_balance_check.py` - Catch-up migration for existing databases.

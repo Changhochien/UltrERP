@@ -1,14 +1,15 @@
 """Common ORM models shared across domains."""
 
+from common.database import Base
 from common.models.account import Account
 from common.models.approval_request import ApprovalRequest
 from common.models.audit_log import AuditLog
 from common.models.category import Category
-from common.models.document import Document
 from common.models.fiscal_year import FiscalYear
 from common.models.gl_entry import GLEntry
 from common.models.inventory_stock import InventoryStock
-from common.models.journal_entry import JournalEntry, JournalEntryLine
+from common.models.journal_entry import JournalEntry
+from common.models.journal_entry_line import JournalEntryLine
 from common.models.legacy_import import LegacyImportRun, LegacyImportTableRun
 from common.models.order import Order
 from common.models.order_line import OrderLine
@@ -27,22 +28,26 @@ from common.models.supplier_payment import SupplierPayment, SupplierPaymentAlloc
 from common.models.unit_of_measure import UnitOfMeasure
 from common.models.user import User
 from common.models.warehouse import Warehouse
+from domains.invoices.models import Invoice
+from domains.payments.models import Payment
 
 __all__ = [
+	"Base",
 	"Account",
 	"ApprovalRequest",
 	"AuditLog",
 	"Category",
-	"Document",
 	"FiscalYear",
 	"GLEntry",
 	"InventoryStock",
+	"Invoice",
 	"JournalEntry",
 	"JournalEntryLine",
 	"LegacyImportRun",
 	"LegacyImportTableRun",
 	"Order",
 	"OrderLine",
+	"Payment",
 	"PhysicalCountLine",
 	"PhysicalCountSession",
 	"PhysicalCountSessionStatus",

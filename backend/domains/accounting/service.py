@@ -11,19 +11,22 @@ from datetime import UTC, date, datetime
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from common.models.account import (
     Account,
     AccountRootType,
+    AccountType,
     _ROOT_TYPE_TO_REPORT_TYPE,
 )
 from common.models.fiscal_year import FiscalYear, FiscalYearStatus
 from common.models.gl_entry import GLEntry, GLEntryType
 from common.models.journal_entry import JournalEntry, JournalEntryStatus, VoucherType
 from common.models.journal_entry_line import JournalEntryLine
+from common.models.budget import BudgetAccountAllocation
+from common.models.posting_rule import PostingRule
 
 from .schemas import (
     AccountCreate,
@@ -576,6 +579,63 @@ async def delete_account(
     if children_result.scalar_one_or_none():
         raise AccountValidationError([
             "Cannot delete account with children. Freeze and disable instead."
+        ])
+
+    dependency_checks = [
+        (
+            select(JournalEntryLine.id)
+            .where(JournalEntryLine.account_id == account_id)
+            .limit(1),
+            "journal entries",
+        ),
+        (
+            select(GLEntry.id)
+            .where(
+                and_(
+                    GLEntry.tenant_id == tenant_id,
+                    GLEntry.account_id == account_id,
+                )
+            )
+            .limit(1),
+            "ledger postings",
+        ),
+        (
+            select(BudgetAccountAllocation.id)
+            .where(
+                and_(
+                    BudgetAccountAllocation.tenant_id == tenant_id,
+                    BudgetAccountAllocation.account_id == account_id,
+                )
+            )
+            .limit(1),
+            "budget allocations",
+        ),
+        (
+            select(PostingRule.id)
+            .where(
+                and_(
+                    PostingRule.tenant_id == tenant_id,
+                    or_(
+                        PostingRule.tax_account_id == account_id,
+                        PostingRule.write_off_account_id == account_id,
+                    ),
+                )
+            )
+            .limit(1),
+            "posting rules",
+        ),
+    ]
+
+    in_use_by: list[str] = []
+    for query, dependency_name in dependency_checks:
+        result = await db.execute(query)
+        if result.scalar_one_or_none() is not None:
+            in_use_by.append(dependency_name)
+
+    if in_use_by:
+        dependency_list = ", ".join(in_use_by)
+        raise AccountValidationError([
+            f"Cannot delete account that is referenced by {dependency_list}. Freeze and disable instead."
         ])
 
     await db.delete(account)
@@ -1752,22 +1812,38 @@ async def reverse_journal_entry(
     db.add(reversing)
     await db.flush()
 
+    reversing_lines: list[JournalEntryLine] = []
+    for line in original.lines:
+        reversing_line = JournalEntryLine(
+            journal_entry_id=reversing.id,
+            account_id=line.account_id,
+            debit=line.credit,
+            credit=line.debit,
+            remark=f"Reversal: {line.remark or ''}",
+            cost_center_id=line.cost_center_id,
+            project_id=line.project_id,
+        )
+        db.add(reversing_line)
+        reversing_lines.append(reversing_line)
+
+    await db.flush()
+
     # Create reversing GL entries
     gl_entries: list[GLEntry] = []
-    for line in original.lines:
+    for original_line, reversing_line in zip(original.lines, reversing_lines, strict=True):
         gl_entry = GLEntry(
             tenant_id=tenant_id,
-            account_id=line.account_id,
+            account_id=reversing_line.account_id,
             posting_date=reversal_date,
             fiscal_year=fiscal_year.label,
-            debit=line.credit,  # Swapped!
-            credit=line.debit,  # Swapped!
+            debit=reversing_line.debit,
+            credit=reversing_line.credit,
             entry_type=GLEntryType[original.voucher_type.upper().replace(" ", "_")].value,
             voucher_type=original.voucher_type,
             voucher_number=reversing_voucher_number,
             journal_entry_id=reversing.id,
-            journal_entry_line_id=line.id,
-            remark=f"Reversal: {line.remark or ''}",
+            journal_entry_line_id=reversing_line.id,
+            remark=reversing_line.remark,
             reverses_id=None,  # We don't link GL entries, just the journal entries
         )
         db.add(gl_entry)
@@ -1782,6 +1858,7 @@ async def reverse_journal_entry(
     original.updated_at = datetime.now(tz=UTC)
 
     await db.flush()
+    await db.refresh(reversing)
 
     logger.info(
         f"Reversed journal entry {original.voucher_number} "

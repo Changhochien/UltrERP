@@ -12,7 +12,11 @@ from sqlalchemy import Boolean, Date, DateTime, Enum as SAEnum, ForeignKey, Inde
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from backend.common.models import Base
+from common.database import Base
+
+
+def _enum_values(enum_cls: type[Enum]) -> list[str]:
+    return [member.value for member in enum_cls]
 
 
 class BudgetStatus(str, Enum):
@@ -41,7 +45,7 @@ class Budget(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False
+        UUID(as_uuid=True), nullable=False
     )
     
     # Budget identification
@@ -58,14 +62,14 @@ class Budget(Base):
     
     # Status
     status: Mapped[str] = mapped_column(
-        SAEnum(BudgetStatus, name="budget_status_enum"),
+        SAEnum(BudgetStatus, name="budget_status_enum", values_callable=_enum_values),
         nullable=False,
         default=BudgetStatus.DRAFT
     )
     
     # Policy for expense accounts
     expense_action: Mapped[str] = mapped_column(
-        SAEnum(BudgetCheckAction, name="budget_check_action_enum"),
+        SAEnum(BudgetCheckAction, name="budget_check_action_enum", values_callable=_enum_values),
         nullable=False,
         default=BudgetCheckAction.WARN
     )
@@ -107,7 +111,7 @@ class BudgetPeriod(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False
+        UUID(as_uuid=True), nullable=False
     )
     budget_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("budgets.id"), nullable=False
@@ -147,7 +151,7 @@ class BudgetAccountAllocation(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False
+        UUID(as_uuid=True), nullable=False
     )
     budget_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("budgets.id"), nullable=False
@@ -158,7 +162,7 @@ class BudgetAccountAllocation(Base):
     
     # Control
     action: Mapped[str] = mapped_column(
-        SAEnum(BudgetCheckAction, name="budget_check_action_enum"),
+        SAEnum(BudgetCheckAction, name="budget_check_action_enum", values_callable=_enum_values),
         nullable=False,
         default=BudgetCheckAction.WARN
     )

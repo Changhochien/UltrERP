@@ -16,6 +16,7 @@ from sqlalchemy import (
     CheckConstraint,
     Date,
     DateTime,
+    Enum as SAEnum,
     ForeignKey,
     Index,
     Numeric,
@@ -29,6 +30,10 @@ from common.database import Base
 
 if TYPE_CHECKING:
     pass
+
+
+def _enum_values(enum_cls: type[enum.Enum]) -> list[str]:
+    return [member.value for member in enum_cls]
 
 
 class JournalEntryStatus(str, enum.Enum):
@@ -77,7 +82,7 @@ class JournalEntry(Base):
         Index("ix_journal_entries_tenant_reverses", "tenant_id", "reverses_id"),
         # Ensure total debit equals total credit on submit
         CheckConstraint(
-            "total_debit = total_credit",
+            "status <> 'Submitted' OR total_debit = total_credit",
             name="ck_journal_entries_balanced",
         ),
     )
@@ -86,8 +91,10 @@ class JournalEntry(Base):
     tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
 
     # Voucher identification
-    voucher_type: Mapped[str] = mapped_column(
-        String(50), nullable=False, default=VoucherType.JOURNAL_ENTRY.value
+    voucher_type: Mapped[VoucherType] = mapped_column(
+        SAEnum(VoucherType, name="voucher_type", values_callable=_enum_values),
+        nullable=False,
+        default=VoucherType.JOURNAL_ENTRY,
     )
     voucher_number: Mapped[str] = mapped_column(String(50), nullable=False)
 
@@ -96,8 +103,14 @@ class JournalEntry(Base):
     reference_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     # Entry status
-    status: Mapped[str] = mapped_column(
-        String(20), nullable=False, default=JournalEntryStatus.DRAFT.value
+    status: Mapped[JournalEntryStatus] = mapped_column(
+        SAEnum(
+            JournalEntryStatus,
+            name="journal_entry_status",
+            values_callable=_enum_values,
+        ),
+        nullable=False,
+        default=JournalEntryStatus.DRAFT,
     )
 
     # Descriptive content
@@ -163,13 +176,11 @@ class JournalEntry(Base):
         "JournalEntry",
         remote_side=[id],
         foreign_keys=[reversed_by_id],
-        back_populates="reverses",
     )
     reverses: Mapped["JournalEntry | None"] = relationship(
         "JournalEntry",
         remote_side=[id],
         foreign_keys=[reverses_id],
-        back_populates="reversed_by",
     )
 
     def __repr__(self) -> str:

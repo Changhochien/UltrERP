@@ -1,6 +1,6 @@
 # Story 26.1: Chart of Accounts and Fiscal Structure
 
-**Status:** review
+**Status:** completed
 
 **Story ID:** 26.1
 
@@ -148,7 +148,7 @@ Keep this story focused on accounting structure. Do not implement journal postin
 
 ## Dev Agent Record
 
-**Status:** review
+**Status:** completed
 **Last Updated:** 2026-04-26
 
 ### Completion Notes List
@@ -158,6 +158,7 @@ Keep this story focused on accounting structure. Do not implement journal postin
   - Backend: Account and FiscalYear models with enums, service layer with full CRUD + freeze/disable logic, API routes, migration
   - Frontend: Chart of Accounts page, Fiscal Years page, TypeScript types, API client, React hooks
   - Tests: 28 backend tests passing covering all ACs
+- 2026-04-26: Review remediation hardened destructive account paths so in-use accounts are blocked before DB failure. Validation now covers journal-entry-line references in `backend/tests/domains/accounting/test_service.py`.
 
 ### File List
 

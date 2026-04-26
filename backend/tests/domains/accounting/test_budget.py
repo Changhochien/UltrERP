@@ -2,20 +2,21 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime, UTC
+from datetime import date
 from decimal import Decimal
 
 import pytest
+import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.common.models.account import Account, AccountRootType, AccountType
-from backend.common.models.budget import (
+from common.models.account import Account, AccountRootType, AccountType, _ROOT_TYPE_TO_REPORT_TYPE
+from common.models.budget import (
     Budget,
     BudgetCheckAction,
     BudgetPeriod,
     BudgetStatus,
 )
-from backend.common.models.gl_entry import GLEntry
+from common.models.gl_entry import GLEntry, GLEntryType
 from backend.domains.accounting.budget_service import (
     allocate_budget_periods,
     check_budget,
@@ -26,6 +27,14 @@ from backend.domains.accounting.budget_service import (
     revise_budget,
     submit_budget,
 )
+from tests.db import isolated_async_session
+
+
+@pytest_asyncio.fixture
+async def db() -> AsyncSession:
+    """Provide an isolated database session for each test."""
+    async with isolated_async_session() as session:
+        yield session
 
 
 @pytest.fixture
@@ -43,6 +52,7 @@ async def expense_account(db: AsyncSession, tenant_id: uuid.UUID) -> Account:
         account_number="6100",
         account_name="Operating Expenses",
         root_type=AccountRootType.EXPENSE,
+        report_type=_ROOT_TYPE_TO_REPORT_TYPE[AccountRootType.EXPENSE],
         account_type=AccountType.EXPENSE,
         is_group=False,
     )
@@ -227,12 +237,13 @@ class TestBudgetValidation:
             tenant_id=tenant_id,
             account_id=expense_account.id,
             posting_date=date(2026, 3, 1),
+            fiscal_year=budget.fiscal_year,
             debit=Decimal("100000"),  # Most of the monthly budget
             credit=Decimal("0"),
-            fiscal_year_id=budget.id,
-            voucher_type="Test",
-            voucher_id=uuid.uuid4(),
-            narration="Test entry",
+            entry_type=GLEntryType.JOURNAL_ENTRY,
+            voucher_type="Journal Entry",
+            voucher_number="BG-CHECK-1",
+            remark="Test entry",
         )
         db.add(gl_entry)
         await db.flush()
@@ -256,7 +267,8 @@ class TestBudgetValidation:
             account_number="4100",
             account_name="Sales Revenue",
             root_type=AccountRootType.INCOME,
-            account_type=AccountType.INCOME,
+            report_type=_ROOT_TYPE_TO_REPORT_TYPE[AccountRootType.INCOME],
+            account_type=AccountType.SALES,
             is_group=False,
         )
         db.add(revenue)
@@ -292,12 +304,13 @@ class TestBudgetVarianceReport:
             tenant_id=tenant_id,
             account_id=expense_account.id,
             posting_date=date(2026, 3, 15),
+            fiscal_year=budget.fiscal_year,
             debit=Decimal("5000"),
             credit=Decimal("0"),
-            fiscal_year_id=budget.id,
-            voucher_type="Test",
-            voucher_id=uuid.uuid4(),
-            narration="Test expense",
+            entry_type=GLEntryType.JOURNAL_ENTRY,
+            voucher_type="Journal Entry",
+            voucher_number="BG-VAR-1",
+            remark="Test expense",
         )
         db.add(gl_entry)
         await db.flush()

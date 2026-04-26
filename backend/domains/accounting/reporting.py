@@ -516,6 +516,45 @@ async def get_account_balances(
     return roots
 
 
+async def determine_empty_reason(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    entry_count: int,
+    root_types: list[str] | None = None,
+) -> EmptyReason | None:
+    """Classify empty report output for the requested account scope."""
+    if entry_count > 0:
+        return None
+
+    account_conditions = [
+        Account.tenant_id == tenant_id,
+        Account.is_group == False,
+    ]
+    if root_types:
+        account_conditions.append(Account.root_type.in_(root_types))
+
+    account_count_result = await db.execute(
+        select(func.count(Account.id)).where(and_(*account_conditions))
+    )
+    account_count = account_count_result.scalar() or 0
+    if account_count == 0:
+        return EmptyReason.NO_ACCOUNTS_CONFIGURED
+
+    active_account_count_result = await db.execute(
+        select(func.count(Account.id)).where(
+            and_(
+                *account_conditions,
+                Account.is_disabled == False,
+            )
+        )
+    )
+    active_account_count = active_account_count_result.scalar() or 0
+    if active_account_count == 0:
+        return EmptyReason.ALL_ACCOUNTS_DISABLED
+
+    return EmptyReason.NO_ENTRIES_IN_PERIOD
+
+
 def build_pl_rows(
     balances: list[AccountBalance],
     indent: int = 0,
@@ -678,17 +717,24 @@ async def get_profit_and_loss(
         to_date=to_date,
     )
 
-    # Build rows
-    income_rows, income_total = build_pl_rows(income_balances)
-    expense_rows, expense_total = build_pl_rows(expense_balances)
+    empty_reason = await determine_empty_reason(
+        db,
+        tenant_id,
+        entry_count,
+        root_types=["Income", "Expense"],
+    )
+
+    if entry_count == 0:
+        income_rows: list[ProfitAndLossRow] = []
+        expense_rows: list[ProfitAndLossRow] = []
+        income_total = Decimal("0")
+        expense_total = Decimal("0")
+    else:
+        income_rows, income_total = build_pl_rows(income_balances)
+        expense_rows, expense_total = build_pl_rows(expense_balances)
 
     # Net profit = Income - Expenses
     net_profit = income_total - expense_total
-
-    # Determine empty reason
-    empty_reason = None
-    if entry_count == 0 and not income_balances and not expense_balances:
-        empty_reason = EmptyReason.NO_ENTRIES_IN_PERIOD
 
     return ProfitAndLossResponse(
         metadata=ReportMetadata(
@@ -762,13 +808,48 @@ async def get_balance_sheet(
     liability_rows, total_liabilities = build_bs_rows(liability_balances)
     equity_rows, total_equity = build_bs_rows(equity_balances)
 
+    income_balances = await get_account_balances(
+        db,
+        tenant_id,
+        root_types=["Income"],
+        as_of_date=as_of_date,
+    )
+    expense_balances = await get_account_balances(
+        db,
+        tenant_id,
+        root_types=["Expense"],
+        as_of_date=as_of_date,
+    )
+    _, income_total = build_pl_rows(income_balances)
+    _, expense_total = build_pl_rows(expense_balances)
+    current_earnings = income_total - expense_total
+    if current_earnings != Decimal("0"):
+        equity_rows.append(
+            BalanceSheetRow(
+                account_id=uuid.UUID(int=0),
+                account_number="",
+                account_name=(
+                    "Current Period Earnings"
+                    if current_earnings > 0
+                    else "Current Period Loss"
+                ),
+                amount=abs(current_earnings),
+                is_group=False,
+                indent_level=0,
+                is_subtotal=True,
+            )
+        )
+        total_equity += current_earnings
+
     # Total Liabilities and Equity
     total_liabilities_and_equity = total_liabilities + total_equity
 
-    # Determine empty reason
-    empty_reason = None
-    if entry_count == 0 and not asset_balances and not liability_balances and not equity_balances:
-        empty_reason = EmptyReason.NO_ENTRIES_IN_PERIOD
+    empty_reason = await determine_empty_reason(
+        db,
+        tenant_id,
+        entry_count,
+        root_types=["Asset", "Liability", "Equity"],
+    )
 
     return BalanceSheetResponse(
         metadata=ReportMetadata(
@@ -862,30 +943,7 @@ async def get_trial_balance(
 
         debit, credit = gl_balances.get(acc.id, (Decimal("0"), Decimal("0")))
 
-        # Calculate balance based on account type
-        if acc.root_type in ("Income", "Expense"):
-            # For P&L accounts: credit - debit (net movement)
-            balance = credit - debit
-            # In trial balance, Income accounts show negative (credit) balances
-            # and Expense accounts show positive (debit) balances
-            if acc.root_type == "Income":
-                # Income credits increase, so show as credit
-                if balance > 0:
-                    credit = balance
-                    debit = Decimal("0")
-                else:
-                    debit = abs(balance)
-                    credit = Decimal("0")
-            else:
-                # Expense debits increase, so show as debit
-                if balance > 0:
-                    debit = balance
-                    credit = Decimal("0")
-                else:
-                    credit = abs(balance)
-                    debit = Decimal("0")
-        else:
-            # For Balance Sheet accounts: debit - credit
+        if acc.root_type in ("Asset", "Expense"):
             balance = debit - credit
             if balance >= 0:
                 debit = balance
@@ -893,6 +951,14 @@ async def get_trial_balance(
             else:
                 credit = abs(balance)
                 debit = Decimal("0")
+        else:
+            balance = credit - debit
+            if balance >= 0:
+                credit = balance
+                debit = Decimal("0")
+            else:
+                debit = abs(balance)
+                credit = Decimal("0")
 
         rows.append(TrialBalanceRow(
             account_id=acc.id,
@@ -908,10 +974,8 @@ async def get_trial_balance(
     # Check if balanced (with small tolerance for floating point)
     is_balanced = abs(total_debit - total_credit) < Decimal("0.01")
 
-    # Determine empty reason
-    empty_reason = None
-    if not gl_balances:
-        empty_reason = EmptyReason.NO_ENTRIES_IN_PERIOD
+    entry_count = sum(1 for debit, credit in gl_balances.values() if debit != 0 or credit != 0)
+    empty_reason = await determine_empty_reason(db, tenant_id, entry_count)
 
     return TrialBalanceResponse(
         metadata=ReportMetadata(

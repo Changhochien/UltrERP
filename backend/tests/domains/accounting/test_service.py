@@ -14,6 +14,8 @@ from common.models.account import (
     AccountType,
 )
 from common.models.fiscal_year import FiscalYear, FiscalYearStatus
+from common.models.journal_entry import JournalEntry, VoucherType
+from common.models.journal_entry_line import JournalEntryLine
 from domains.accounting.schemas import AccountCreate, FiscalYearCreate
 from domains.accounting.service import (
     AccountNotFoundError,
@@ -356,6 +358,53 @@ class TestDisableAccount:
         with pytest.raises(AccountValidationError) as exc_info:
             await disable_account(db, tenant_id, account.id)
         assert "Group accounts cannot be disabled" in str(exc_info.value.errors)
+
+
+@pytest.mark.asyncio
+class TestDeleteAccount:
+    """Tests for delete_account service function."""
+
+    async def test_delete_account_rejected_when_referenced_by_journal_line(
+        self, db: AsyncSession, tenant_id: uuid.UUID
+    ) -> None:
+        """Accounts already used in journal lines are rejected with a domain error."""
+        account = await create_account(
+            db,
+            tenant_id,
+            AccountCreate(
+                account_number="1000",
+                account_name="Cash",
+                root_type=AccountRootType.ASSET,
+                account_type=AccountType.CASH,
+                is_group=False,
+            ),
+        )
+
+        journal_entry = JournalEntry(
+            tenant_id=tenant_id,
+            voucher_type=VoucherType.JOURNAL_ENTRY,
+            voucher_number="JE-0001",
+            posting_date=date(2026, 1, 15),
+            total_debit=100,
+            total_credit=100,
+        )
+        db.add(journal_entry)
+        await db.flush()
+
+        db.add(
+            JournalEntryLine(
+                journal_entry_id=journal_entry.id,
+                account_id=account.id,
+                debit=100,
+                credit=0,
+            )
+        )
+        await db.flush()
+
+        with pytest.raises(AccountValidationError) as exc_info:
+            await delete_account(db, tenant_id, account.id)
+
+        assert "referenced by journal entries" in str(exc_info.value.errors)
 
 
 # ============================================================

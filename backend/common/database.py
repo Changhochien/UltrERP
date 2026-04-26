@@ -7,6 +7,7 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.pool import NullPool
 
 from common.config import settings
+from common.tenant import DEFAULT_TENANT_ID
 
 metadata = MetaData(
 	naming_convention={

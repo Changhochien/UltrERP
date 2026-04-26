@@ -1,6 +1,6 @@
 # Story 26.4: Document Auto-Posting for Sales, Purchasing, and Payments
 
-**Status:** ready-for-dev
+**Status:** completed
 
 **Story ID:** 26.4
 
@@ -159,13 +159,23 @@ Keep the implementation explicit and narrow. Start only with customer invoices, 
 
 ## Dev Agent Record
 
-**Status:** ready-for-dev
+**Status:** completed
 **Last Updated:** 2026-04-26
 
 ### Completion Notes List
 
 - 2026-04-26: Story drafted from Epic 26, the validated accounting report, the current UltrERP invoice/payment/purchases flows, and ERPNext reference code for explicit posting and reversal behavior.
+- 2026-04-26: Review remediation rebound document posting to the real invoice and payment contracts, repaired shared model exports and registration, removed invalid tenant foreign keys from the posting models and migration, and extended `gl_entry_type` for document-driven postings.
+- 2026-04-26: Validation passed in `backend/tests/domains/accounting/test_document_posting.py` after applying repair migrations `aa1322719558zz` and `aa1322719559zz`.
 
 ### File List
 
-- Story context only. No implementation files yet.
+- `backend/common/models/__init__.py` - Shared model exports corrected for accounting bootstrap.
+- `backend/common/model_registry.py` - Explicit accounting model registration added for tests and bootstrap.
+- `backend/common/models/posting_rule.py` - Posting-rule and posting-state ORM contract aligned to the real tenant model.
+- `backend/common/models/gl_entry.py` - Document posting entry types extended and enum binding corrected.
+- `backend/domains/accounting/posting.py` - Customer and supplier document posting now writes the real GL schema and reversal lineage.
+- `backend/domains/accounting/routes.py` - Posting status and reversal routes aligned with the corrected model contracts.
+- `backend/tests/domains/accounting/test_document_posting.py` - Regression coverage updated to the real invoice/payment and GL contracts.
+- `migrations/versions/aa1322719555zz_document_auto_posting.py` - Invalid tenant FKs and obsolete GL reversal columns removed.
+- `migrations/versions/aa1322719558zz_extend_gl_entry_type_for_document_posting.py` - Repair migration for document posting enum values.
