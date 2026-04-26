@@ -13,8 +13,6 @@ import {
   VoucherType,
 } from "@/domain/accounting/types";
 import { useAccountLedger } from "@/domain/accounting/hooks/useLedger";
-import { useAccountTree } from "@/domain/accounting/hooks/useAccounts";
-import { useFlattenedAccounts } from "@/domain/accounting/hooks/useAccounts";
 import {
   buildJournalEntryDetailPath,
   buildAccountDetailPath,
@@ -43,17 +41,12 @@ export function LedgerTable({
   const [toDate, setToDate] = useState<string>(initialToDate || "");
 
   // Fetch ledger
-  const { data: ledger, isLoading, refetch } = useAccountLedger({
+  const { data: ledger, refetch } = useAccountLedger({
     accountId,
     journalEntryId,
     fromDate: fromDate || undefined,
     toDate: toDate || undefined,
   });
-
-  // Fetch accounts for filter dropdown
-  const { tree } = useAccountTree();
-  const accounts = useFlattenedAccounts(tree);
-  const ledgerAccounts = accounts.filter((acc) => !acc.is_group);
 
   // Format date
   const formatDate = (dateStr: string) => {

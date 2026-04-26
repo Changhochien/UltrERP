@@ -404,6 +404,7 @@ export async function fetchGeneralLedger(options?: {
   page?: number;
   pageSize?: number;
   accountId?: string;
+  journalEntryId?: string;
   fromDate?: string;
   toDate?: string;
   voucherType?: string;
@@ -417,6 +418,9 @@ export async function fetchGeneralLedger(options?: {
 
   if (options?.accountId) {
     params.set("account_id", options.accountId);
+  }
+  if (options?.journalEntryId) {
+    params.set("journal_entry_id", options.journalEntryId);
   }
   if (options?.fromDate) {
     params.set("from_date", options.fromDate);

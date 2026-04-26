@@ -75,12 +75,10 @@ function useAsyncData<T>(
 }
 
 export function useFiscalYears(page = 1, pageSize = 50) {
-  const { data, error, isLoading, execute } = useAsyncData(
+  const { data, error, isLoading, refetch } = useAsyncData(
     () => fetchFiscalYears(page, pageSize),
     [page, pageSize]
   );
-
-  const refetch = useCallback(() => execute(), [execute]);
 
   return {
     fiscalYears: data ?? null,
@@ -91,11 +89,9 @@ export function useFiscalYears(page = 1, pageSize = 50) {
 }
 
 export function useOpenFiscalYears() {
-  const { data, error, isLoading, execute } = useAsyncData(() =>
+  const { data, error, isLoading, refetch } = useAsyncData(() =>
     fetchOpenFiscalYears()
   );
-
-  const refetch = useCallback(() => execute(), [execute]);
 
   return {
     openFiscalYears: data ?? [],

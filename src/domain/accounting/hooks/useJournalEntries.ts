@@ -3,12 +3,9 @@
  */
 
 import { useCallback, useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
 
 import type {
   JournalEntry,
-  JournalEntryDetail,
-  JournalEntryListResponse,
   JournalEntryReverseResponse,
   JournalEntrySubmitResponse,
 } from "@/domain/accounting/types";
@@ -20,7 +17,6 @@ import {
   submitJournalEntry,
   updateJournalEntry,
 } from "@/lib/api/accounting";
-import { useToast } from "@/hooks/useToast";
 
 interface UseJournalEntriesOptions {
   page?: number;
@@ -29,14 +25,6 @@ interface UseJournalEntriesOptions {
   voucherType?: string;
   fromDate?: string;
   toDate?: string;
-}
-
-interface UseJournalEntriesResult {
-  entries: JournalEntry[];
-  isLoading: boolean;
-  error: Error | null;
-  total: number;
-  refetch: () => void;
 }
 
 function useAsyncData<T>(
@@ -109,9 +97,6 @@ export function useJournalEntries(options: UseJournalEntriesOptions = {}) {
 }
 
 export function useJournalEntry(journalEntryId: string | undefined) {
-  const { t } = useTranslation();
-  const toast = useToast();
-
   const fetchFn = useCallback(
     () => (journalEntryId ? fetchJournalEntry(journalEntryId) : Promise.resolve(null)),
     [journalEntryId]
@@ -141,9 +126,9 @@ export function useJournalEntry(journalEntryId: string | undefined) {
   const updateEntry = useCallback(
     async (
       id: string,
-      data: Parameters<typeof updateJournalEntry>[1]
+      updateData: Parameters<typeof updateJournalEntry>[1]
     ): Promise<JournalEntry> => {
-      const result = await updateJournalEntry(id, data);
+      const result = await updateJournalEntry(id, updateData);
       return result;
     },
     []
@@ -165,9 +150,6 @@ export function useJournalEntry(journalEntryId: string | undefined) {
 export function useCreateJournalEntry(
   onSuccess?: (entry: JournalEntry) => void
 ) {
-  const { t } = useTranslation();
-  const toast = useToast();
-
   const create = useCallback(
     async (data: Parameters<typeof createJournalEntry>[0]): Promise<JournalEntry> => {
       const entry = await createJournalEntry(data);

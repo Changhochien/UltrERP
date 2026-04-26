@@ -5,7 +5,8 @@
 import { useCallback, useState, useEffect } from "react";
 
 import type {
-  GLEntryListResponse,
+  AccountRootType,
+  AccountType,
   LedgerSummaryResponse,
 } from "@/domain/accounting/types";
 import {
@@ -22,13 +23,6 @@ interface UseLedgerOptions {
   pageSize?: number;
   voucherType?: string;
   includeReversed?: boolean;
-}
-
-interface UseLedgerResult {
-  entries: GLEntryListResponse | null;
-  isLoading: boolean;
-  error: Error | null;
-  refetch: () => void;
 }
 
 function useAsyncData<T>(
@@ -142,9 +136,9 @@ export function useAccountLedger(options: {
           parent_number: null,
           account_number: firstEntry.account_number,
           account_name: firstEntry.account_name,
-          root_type: firstEntry.account_root_type as any,
-          report_type: "Balance Sheet" as any,
-          account_type: firstEntry.account_type,
+          root_type: firstEntry.account_root_type as AccountRootType,
+          report_type: "Balance Sheet",
+          account_type: firstEntry.account_type as AccountType,
           is_group: false,
           is_frozen: false,
           is_disabled: false,

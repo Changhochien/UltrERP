@@ -30,20 +30,16 @@ import {
   VoucherType,
   VOUCHER_TYPE_LABELS,
 } from "@/domain/accounting/types";
-import { useAccountTree } from "@/domain/accounting/hooks/useAccounts";
+import { useAccountTree, useFlattenedAccounts } from "@/domain/accounting/hooks/useAccounts";
 import { useCreateJournalEntry } from "@/domain/accounting/hooks/useJournalEntries";
-import { useOpenFiscalYears } from "@/domain/accounting/hooks/useFiscalYears";
-import { useFlattenedAccounts } from "@/domain/accounting/hooks/useAccounts";
 
 interface JournalEntryFormProps {
-  mode: "create" | "edit";
   initialData?: JournalEntryFormData;
   onSuccess: (entry: any) => void;
   onCancel: () => void;
 }
 
 export function JournalEntryForm({
-  mode,
   initialData,
   onSuccess,
   onCancel,
@@ -51,10 +47,9 @@ export function JournalEntryForm({
   const { t } = useTranslation();
   const toast = useToast();
 
-  // Fetch accounts and fiscal years
+  // Fetch accounts
   const { tree } = useAccountTree();
   const accounts = useFlattenedAccounts(tree);
-  const { openFiscalYears } = useOpenFiscalYears();
 
   // Form state
   const [formData, setFormData] = useState<JournalEntryFormData>({
@@ -104,17 +99,17 @@ export function JournalEntryForm({
 
   // Update line
   const updateLine = useCallback(
-    (index: number, field: string, value: any) => {
+    (index: number, field: string, value: number | string) => {
       setFormData((prev) => {
         const newLines = [...prev.lines];
         newLines[index] = { ...newLines[index], [field]: value };
 
         // If updating debit to non-zero, clear credit
-        if (field === "debit" && value > 0) {
+        if (field === "debit" && typeof value === "number" && value > 0) {
           newLines[index].credit = 0;
         }
         // If updating credit to non-zero, clear debit
-        if (field === "credit" && value > 0) {
+        if (field === "credit" && typeof value === "number" && value > 0) {
           newLines[index].debit = 0;
         }
 
@@ -126,27 +121,27 @@ export function JournalEntryForm({
 
   // Validate form
   const validate = useCallback((): string[] => {
-    const errors: string[] = [];
+    const validationErrors: string[] = [];
 
     if (formData.lines.length < 2) {
-      errors.push(t("accounting.atLeastTwoLines"));
+      validationErrors.push(t("accounting.atLeastTwoLines"));
     }
 
     for (let i = 0; i < formData.lines.length; i++) {
       const line = formData.lines[i];
       if (!line.account_id) {
-        errors.push(t("accounting.lineAccountRequired", { line: i + 1 }));
+        validationErrors.push(t("accounting.lineAccountRequired", { line: i + 1 }));
       }
       if (line.debit === 0 && line.credit === 0) {
-        errors.push(t("accounting.lineAmountRequired", { line: i + 1 }));
+        validationErrors.push(t("accounting.lineAmountRequired", { line: i + 1 }));
       }
       if (line.debit > 0 && line.credit > 0) {
-        errors.push(t("accounting.lineSingleAmount", { line: i + 1 }));
+        validationErrors.push(t("accounting.lineSingleAmount", { line: i + 1 }));
       }
     }
 
     if (!isBalanced) {
-      errors.push(
+      validationErrors.push(
         t("accounting.entryMustBeBalanced", {
           debit: totalDebit.toFixed(2),
           credit: totalCredit.toFixed(2),
@@ -154,7 +149,7 @@ export function JournalEntryForm({
       );
     }
 
-    return errors;
+    return validationErrors;
   }, [formData, isBalanced, totalDebit, totalCredit, t]);
 
   // Handle submit
@@ -171,9 +166,7 @@ export function JournalEntryForm({
     try {
       const payload: CreateJournalEntryRequest = {
         voucher_type: formData.voucher_type,
-        posting_date: formData.posting_date
-          .toISOString()
-          .split("T")[0] as any,
+        posting_date: formData.posting_date.toISOString().split("T")[0],
         reference_date: formData.reference_date?.toISOString().split("T")[0] || null,
         narration: formData.narration || null,
         lines: formData.lines.map((line) => ({
@@ -186,10 +179,9 @@ export function JournalEntryForm({
 
       const result = await createEntry(payload);
       onSuccess(result);
-    } catch (err: any) {
-      setErrors([
-        err?.detail?.errors?.join(", ") || t("accounting.createFailed"),
-      ]);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : t("accounting.createFailed");
+      setErrors([errorMessage]);
     } finally {
       setIsSubmitting(false);
     }
@@ -250,7 +242,7 @@ export function JournalEntryForm({
             {t("accounting.postingDate")}
           </label>
           <Popover>
-            <PopoverTrigger asChild>
+            <PopoverTrigger>
               <Button
                 variant="outline"
                 className={cn(
@@ -268,7 +260,6 @@ export function JournalEntryForm({
                 onSelect={(date) =>
                   setFormData((prev) => ({ ...prev, posting_date: date || new Date() }))
                 }
-                initialFocus
               />
             </PopoverContent>
           </Popover>
