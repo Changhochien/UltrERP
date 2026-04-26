@@ -12,8 +12,10 @@ import {
 } from "../../hooks/useSettings";
 import type { SettingsCategory } from "../../lib/api/settings";
 import CurrencyMastersPanel from "./CurrencyMastersPanel";
+import PaymentTermsPanel from "./PaymentTermsPanel";
 
 const CURRENCY_MASTERS_TAB = "__currency_masters";
+const PAYMENT_TERMS_TAB = "__payment_terms";
 
 interface CategoryInfo {
   label: string;
@@ -63,7 +65,7 @@ function CategoryContent({
   errorKey: string | null;
   saveError: string | null;
 }) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("settings");
 
   if (category.items.length === 0) {
     return (
@@ -73,10 +75,10 @@ function CategoryContent({
             <Settings className="size-8 text-muted-foreground/50" />
           </div>
           <p className="text-sm font-medium text-muted-foreground">
-            {t("settingsPage.emptyCategory")}
+            {t("emptyCategory")}
           </p>
           <p className="mt-1 text-xs text-muted-foreground/60">
-            {t("settingsPage.configureMessage")}
+            {t("configureMessage")}
           </p>
         </div>
       </SectionCard>
@@ -89,7 +91,7 @@ function CategoryContent({
       description={categoryInfo.description || category.description}
       actions={
         <span className="text-xs text-muted-foreground">
-          {category.items.length} {category.items.length === 1 ? t("settingsPage.settingsCount_one", { count: 1 }) : t("settingsPage.settingsCount_other", { count: category.items.length })}
+          {category.items.length} {category.items.length === 1 ? t("settingsCount_one", { count: 1 }) : t("settingsCount_other", { count: category.items.length })}
         </span>
       }
     >
@@ -111,7 +113,7 @@ function CategoryContent({
 }
 
 export function SettingsPage() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("settings");
   const { categories, loading, error, refresh } = useSettings();
   const { updateSetting } = useUpdateSetting();
   const { resetSetting } = useResetSetting();
@@ -135,7 +137,10 @@ export function SettingsPage() {
     };
   }).concat({
     value: CURRENCY_MASTERS_TAB,
-    label: t("settingsPage.currencyMasters.tab", { defaultValue: "Currencies" }),
+    label: t("currencyMasters.tab", { defaultValue: "Currencies" }),
+  }, {
+    value: PAYMENT_TERMS_TAB,
+    label: t("paymentTerms.tab", { defaultValue: "Payment Terms" }),
   });
 
   // Find current category data
@@ -149,7 +154,7 @@ export function SettingsPage() {
     if (valueType === "int") {
       const num = Number(value);
       if (isNaN(num) || !Number.isInteger(num)) {
-        const msg = t("settingsPage.invalidInt");
+        const msg = t("invalidInt");
         setSaveError(msg);
         setErrorKey(key);
         return;
@@ -159,7 +164,7 @@ export function SettingsPage() {
       try {
         JSON.parse(value);
       } catch {
-        const msg = t("settingsPage.invalidJson");
+        const msg = t("invalidJson");
         setSaveError(msg);
         setErrorKey(key);
         return;
@@ -171,7 +176,7 @@ export function SettingsPage() {
       await updateSetting(key, value);
       await refresh();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : t("settingsPage.saveError");
+      const msg = err instanceof Error ? err.message : t("saveError");
       setSaveError(msg);
       setErrorKey(key);
     } finally {
@@ -193,7 +198,7 @@ export function SettingsPage() {
       // Clear undo state after 5s
       setTimeout(() => setLastReset(null), 5000);
     } catch (err) {
-      setResetError(err instanceof Error ? err.message : t("settingsPage.resetError"));
+      setResetError(err instanceof Error ? err.message : t("resetError"));
       setLastReset(null);
     } finally {
       setResettingKey(null);
@@ -209,7 +214,7 @@ export function SettingsPage() {
       await refresh();
       setLastReset(null);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : t("settingsPage.saveError"));
+      setSaveError(err instanceof Error ? err.message : t("saveError"));
     } finally {
       setSavingKey(null);
     }
@@ -219,9 +224,9 @@ export function SettingsPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          eyebrow={t("settingsPage.eyebrow")}
-          title={t("settingsPage.title")}
-          description={t("settingsPage.description")}
+          eyebrow={t("eyebrow")}
+          title={t("title")}
+          description={t("description")}
         />
         <SettingsLoadingSkeleton />
       </div>
@@ -232,9 +237,9 @@ export function SettingsPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          eyebrow={t("settingsPage.eyebrow")}
-          title={t("settingsPage.title")}
-          description={t("settingsPage.description")}
+          eyebrow={t("eyebrow")}
+          title={t("title")}
+          description={t("description")}
         />
         <SurfaceMessage tone="danger">{error}</SurfaceMessage>
       </div>
@@ -245,12 +250,12 @@ export function SettingsPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          eyebrow={t("settingsPage.eyebrow")}
-          title={t("settingsPage.title")}
-          description={t("settingsPage.description")}
+          eyebrow={t("eyebrow")}
+          title={t("title")}
+          description={t("description")}
         />
         <SurfaceMessage tone="default">
-          {t("settingsPage.noCategories")}
+          {t("noCategories")}
         </SurfaceMessage>
       </div>
     );
@@ -259,15 +264,15 @@ export function SettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow={t("settingsPage.eyebrow")}
-        title={t("settingsPage.title")}
-        description={t("settingsPage.description")}
+        eyebrow={t("eyebrow")}
+        title={t("title")}
+        description={t("description")}
         tabs={
           <PageTabs
             items={pageTabItems}
             value={currentCategory ?? ""}
             onValueChange={setActiveCategory}
-            ariaLabel={t("settingsPage.title")}
+            ariaLabel={t("title")}
           />
         }
       />
@@ -280,13 +285,13 @@ export function SettingsPage() {
 
       {lastReset ? (
         <SurfaceMessage tone="default">
-          {t("settingsPage.resetDone")}{" "}
+          {t("resetDone")}{" "}
           <button
             type="button"
             className="underline underline-offset-2 font-medium"
             onClick={handleUndoReset}
           >
-            {t("settingsPage.undo")}
+            {t("undo")}
           </button>
         </SurfaceMessage>
       ) : null}
@@ -305,6 +310,7 @@ export function SettingsPage() {
       )}
 
       {currentCategory === CURRENCY_MASTERS_TAB ? <CurrencyMastersPanel /> : null}
+      {currentCategory === PAYMENT_TERMS_TAB ? <PaymentTermsPanel /> : null}
     </div>
   );
 }

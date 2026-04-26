@@ -49,7 +49,7 @@ function metricTrendDirection(trend: "increasing" | "declining" | "stable") {
 }
 
 export function CustomerProductProfile({ customerId }: CustomerProductProfileProps) {
-  const { t } = useTranslation("common", { keyPrefix: "intelligence.customerProfile" });
+  const { t } = useTranslation("intelligence", { keyPrefix: "customerProfile" });
   const { data, isLoading, error } = useCustomerProductProfile(customerId);
 
   if (isLoading) {

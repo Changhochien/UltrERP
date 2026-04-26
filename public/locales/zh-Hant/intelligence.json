@@ -1,1 +1,243 @@
-{}
+{
+  "page": {
+    "eyebrow": "商業洞察",
+    "title": "洞察工作區",
+    "description": "提供給代理與業務使用的角色管制客戶與商品訊號。",
+    "workspaceTitle": "工作區已啟用",
+    "workspaceDescription": "Epic 19 的後續故事會依衝刺順序把洞察卡片、表格與 MCP 分析能力放進這裡。",
+    "placeholder": "洞察功能門檻已啟用。sales、admin 與 owner 可進入此工作區，其餘分析功能會依衝刺順序逐步交付。"
+  },
+  "customerProfile": {
+    "title": "商品輪廓",
+    "description": "整理此客戶購買了什麼、下單頻率，以及最近新啟用的品類。",
+    "totalRevenue12m": "12 個月營收",
+    "orders12m": "12 個月訂單數",
+    "averageOrderValue": "平均訂單金額",
+    "lastOrder": "最近一次訂單",
+    "frequencyTrend": "下單頻率趨勢",
+    "aovTrend": "平均訂單金額趨勢",
+    "dormant": "沉睡",
+    "activityBasis": "以已確認、已出貨與已完成訂單為基礎。",
+    "topCategories": "主要品類",
+    "topCategoriesDescription": "最近 12 個月的營收品類分布。",
+    "topProducts": "主要商品",
+    "topProductsDescription": "依最近 12 個月訂單次數排序的商品。",
+    "new": "新",
+    "noOrdersYet": "尚無符合條件的訂單",
+    "daysSinceLastOrder": "距離上次訂單 {{count}} 天",
+    "noCategoryData": "目前尚無品類活動。",
+    "noProductData": "目前尚無商品活動。",
+    "product": "商品",
+    "category": "品類",
+    "orders": "訂單",
+    "revenue": "營收",
+    "loadError": "載入商品輪廓失敗。",
+    "trend": {
+      "increasing": "成長中",
+      "declining": "下降中",
+      "stable": "穩定"
+    },
+    "confidence": {
+      "high": "高信心",
+      "medium": "中等信心",
+      "low": "低信心"
+    }
+  },
+  "customerBuyingBehavior": {
+    "title": "客戶購買行為",
+    "description": "比較不同客戶分群的品類組合、交叉銷售提升與逐月購買型態。",
+    "customerTypeLabel": "客戶類型",
+    "filterDealers": "經銷商",
+    "filterEndUsers": "終端客戶",
+    "filterUnknown": "未知",
+    "filterAll": "全部",
+    "includeCurrentMonth": "包含本月即時資料",
+    "generatedAt": "產生時間：{value}",
+    "partial": "包含本月即時資料",
+    "historical": "僅已結束月份",
+    "dataBasis": {
+      "transactional_fallback": "交易即時計算"
+    },
+    "summary": {
+      "customers": "客戶數",
+      "avgRevenue": "平均每客營收",
+      "avgOrders": "平均每客訂單數",
+      "avgCategories": "平均每客品類數"
+    },
+    "topCategoriesTitle": "主要品類",
+    "crossSellTitle": "交叉銷售機會",
+    "patternsTitle": "購買型態",
+    "table": {
+      "category": "品類",
+      "revenue": "營收",
+      "share": "占比",
+      "customers": "客戶數",
+      "anchor": "起始品類",
+      "recommended": "推薦品類",
+      "shared": "共同客戶",
+      "segmentPenetration": "分群滲透率",
+      "lift": "提升倍數"
+    },
+    "pattern": {
+      "orders": "{count} 筆訂單",
+      "customers": "{count} 位客戶"
+    },
+    "empty": "此分群目前沒有符合條件的客戶購買行為。",
+    "emptyTopCategories": "目前尚無品類證據。",
+    "emptyCrossSell": "目前尚無達到門檻的交叉銷售機會。",
+    "loadError": "載入客戶購買行為失敗。"
+  },
+  "productPerformance": {
+    "title": "商品績效",
+    "description": "依本期與前期營收表現及生命週期，排序最值得追蹤的商品。",
+    "categoryPlaceholder": "篩選品類",
+    "lifecycleLabel": "生命週期",
+    "allStages": "全部階段",
+    "includeCurrentMonth": "包含本月即時資料",
+    "generatedAt": "產生時間：{value}",
+    "partial": "包含本月即時資料",
+    "historical": "僅已結束月份",
+    "dataBasis": {
+      "aggregate_only": "僅聚合資料",
+      "aggregate_plus_live_current_month": "聚合資料 + 本月即時資料"
+    },
+    "summary": {
+      "products": "商品數",
+      "currentWindow": "本期區間",
+      "priorWindow": "前期區間",
+      "windowNote": "顯示前 {count} 筆"
+    },
+    "table": {
+      "product": "商品",
+      "category": "品類",
+      "lifecycle": "生命週期",
+      "currentRevenue": "本期營收",
+      "priorRevenue": "前期營收",
+      "delta": "變化",
+      "peakMonth": "單月高峰營收",
+      "monthsOnSale": "已銷售 {count} 個月"
+    },
+    "stage": {
+      "new": "新商品",
+      "end_of_life": "生命末期",
+      "declining": "下滑",
+      "growing": "成長",
+      "mature": "成熟",
+      "stable": "穩定"
+    },
+    "reason": {
+      "new": "首次銷售落在目前比較區間內。",
+      "end_of_life": "目前區間沒有營收，且最後一次銷售已至少早於錨點月份 6 個完整月份。",
+      "declining": "目前營收已低於前一期比較區間的 80%。",
+      "growing": "目前營收至少比前一期比較區間高出 20%。",
+      "mature": "已銷售超過 24 個月，且營收仍維持在前一期附近。",
+      "stable": "目前營收仍為正值，且未觸發其他生命週期規則。"
+    },
+    "empty": "此比較區間目前沒有符合條件的商品。",
+    "loadError": "載入商品績效失敗。"
+  },
+  "affinity": {
+    "title": "商品關聯地圖",
+    "description": "以客戶層級共購資料計算重疊率與 Jaccard 關聯分數。",
+    "productA": "商品 A",
+    "productB": "商品 B",
+    "sharedCustomers": "共同客戶數",
+    "overlap": "重疊率",
+    "affinityScore": "關聯分數",
+    "pitchHint": "推薦話術",
+    "sharedOrders": "共同訂單：{count}",
+    "computedAt": "計算時間：{value}",
+    "minShared": "最低共同客戶 {count}",
+    "topPairs": "前 {count} 組配對",
+    "empty": "目前尚無符合條件的商品關聯。",
+    "loadError": "載入商品關聯地圖失敗。",
+    "showing": "顯示 {shown} / {total} 組配對",
+    "sortBy": "依 {label} 排序",
+    "sortDirection": {
+      "asc": "遞增",
+      "desc": "遞減"
+    }
+  },
+  "categoryTrends": {
+    "title": "品類趨勢雷達",
+    "description": "比較目前與前一期的滾動需求訊號，找出值得加碼或關注的品類。",
+    "period30d": "30 天",
+    "period90d": "90 天",
+    "period12m": "12 個月",
+    "currentPeriod": "本期",
+    "priorPeriod": "前期",
+    "delta": "營收變化",
+    "newCustomers": "新增",
+    "churnedCustomers": "流失",
+    "customerFootnote": "{current} / {prior} 位客戶",
+    "topProducts": "主力商品",
+    "empty": "目前尚無品類需求訊號。",
+    "loadError": "載入品類趨勢失敗。",
+    "generatedAt": "產生時間：{value}",
+    "activityBasis": "以已確認、已出貨、已完成訂單的需求金額為基礎。",
+    "trend": {
+      "growing": "成長",
+      "declining": "下滑",
+      "stable": "穩定"
+    },
+    "trendContext": {
+      "newly_active": "新近活躍",
+      "insufficient_history": "歷史資料不足"
+    }
+  },
+  "riskSignals": {
+    "title": "客戶風險訊號",
+    "description": "將沉睡、風險、成長、穩定與新客戶依優先順序排成外呼清單。",
+    "empty": "目前尚無客戶風險訊號。",
+    "loadError": "載入客戶風險訊號失敗。",
+    "generatedAt": "產生時間：{value}",
+    "filters": {
+      "all": "全部",
+      "growing": "成長",
+      "at_risk": "高風險",
+      "dormant": "沉睡",
+      "new": "新客戶",
+      "stable": "穩定"
+    },
+    "status": {
+      "growing": "成長",
+      "at_risk": "高風險",
+      "dormant": "沉睡",
+      "new": "新客戶",
+      "stable": "穩定"
+    },
+    "revenueCurrent": "本期營收",
+    "revenuePrior": "前期營收",
+    "delta": "變化",
+    "daysSinceLastOrder": "距上次下單 {count} 天",
+    "expanded": "新增品類：{value}",
+    "contracted": "縮減品類：{value}",
+    "noSignals": "此帳戶目前沒有次要提示。"
+  },
+  "prospectGaps": {
+    "title": "潛在空白品類分析",
+    "description": "找出目前未購買目標品類、但相似度高且值得外呼的活躍客戶。",
+    "categoryLabel": "目標品類",
+    "customerTypeLabel": "客戶類型",
+    "filterDealers": "經銷商",
+    "filterEndUsers": "終端客戶",
+    "filterAll": "全部",
+    "existingBuyers": "既有買家 {count} 家",
+    "company": "公司",
+    "reason": "原因",
+    "lastOrder": "最近訂單",
+    "categoryCount": "品類數",
+    "aov": "平均客單價",
+    "affinityScore": "適配分數",
+    "tags": "標籤",
+    "empty": "此品類目前沒有可用的空白客戶名單。",
+    "loadError": "載入空白品類分析失敗。"
+  },
+  "marketOpportunities": {
+    "showDetail": "展開詳情",
+    "hideDetail": "收合詳情",
+    "affectedCustomers": "影響客戶 {count} 家",
+    "action": "建議動作",
+    "deferred": "v1 暫不提供：{value}"
+  }
+}

@@ -1,1 +1,273 @@
-{}
+{
+  "eyebrow": "管理",
+  "title": "管理",
+  "description": "僅限擁有者檢視工作區使用者、角色與最新管理稽核紀錄。",
+  "errors": {
+    "loadFailed": "載入管理資料失敗",
+    "saveFailed": "儲存使用者失敗"
+  },
+  "users": {
+    "title": "使用者",
+    "description": "檢視工作區使用者名單、角色與啟用狀態。",
+    "loadingDescription": "工作區存取名單。",
+    "emptyTitle": "找不到使用者。",
+    "emptyDescription": "此租戶目前沒有可顯示的使用者。",
+    "addUser": "新增使用者",
+    "editUser": "編輯",
+    "columns": {
+      "email": "電子郵件",
+      "displayName": "名稱",
+      "role": "角色",
+      "status": "狀態",
+      "actions": "操作"
+    },
+    "filters": {
+      "search": "搜尋",
+      "searchPlaceholder": "依電子郵件或名稱搜尋",
+      "role": "角色篩選",
+      "status": "狀態篩選",
+      "allRoles": "所有角色",
+      "allStatuses": "所有狀態"
+    },
+    "fields": {
+      "email": "電子郵件",
+      "displayName": "顯示名稱",
+      "role": "角色",
+      "status": "狀態",
+      "password": "密碼",
+      "resetPassword": "重設密碼"
+    },
+    "summary": "顯示 {total} 位中的 {filtered} 位使用者。",
+    "roles": {
+      "owner": "擁有者",
+      "finance": "財務",
+      "warehouse": "倉儲",
+      "sales": "業務"
+    },
+    "statuses": {
+      "active": "啟用",
+      "disabled": "停用"
+    },
+    "errors": {
+      "formUnavailable": "使用者表單尚未就緒",
+      "emailRequired": "必須填寫電子郵件",
+      "emailInvalid": "請輸入有效的電子郵件地址",
+      "displayNameRequired": "必須填寫顯示名稱",
+      "passwordTooShort": "密碼至少需要 8 個字元",
+      "resetPasswordTooShort": "重設密碼至少需要 8 個字元",
+      "copyFailed": "複製密碼失敗"
+    },
+    "dialog": {
+      "createTitle": "新增使用者",
+      "editTitle": "編輯使用者",
+      "createDescription": "建立新的工作區使用者並設定其初始角色。",
+      "editDescription": "更新所選使用者的角色、狀態或密碼。",
+      "passwordHelp": "請使用至少 8 個字元。",
+      "resetPasswordHelp": "留白可保留目前密碼。",
+      "generatePassword": "產生密碼",
+      "copyPassword": "複製",
+      "passwordGenerated": "已產生臨時密碼。",
+      "passwordCopied": "已將密碼複製到剪貼簿。",
+      "cancel": "取消",
+      "createAction": "建立使用者",
+      "save": "儲存變更",
+      "creating": "建立中...",
+      "saving": "儲存中..."
+    }
+  },
+  "auditLog": {
+    "title": "稽核紀錄",
+    "description": "此工作區最近的管理操作紀錄。",
+    "loadingDescription": "最近的管理操作。",
+    "emptyTitle": "找不到稽核紀錄。",
+    "emptyDescription": "有管理活動時會顯示在這裡。",
+    "summary": "顯示 {total} 筆中的 {filtered} 筆稽核紀錄。",
+    "filters": {
+      "actor": "執行者篩選",
+      "actorPlaceholder": "依執行者 ID 篩選",
+      "actorType": "執行者類型篩選",
+      "actorTypePlaceholder": "依執行者類型篩選",
+      "action": "動作篩選",
+      "actionPlaceholder": "依動作篩選",
+      "entityType": "目標類型篩選",
+      "entityTypePlaceholder": "依目標類型篩選",
+      "entityId": "目標 ID 篩選",
+      "entityIdPlaceholder": "依目標 ID 篩選",
+      "createdAfter": "建立時間起",
+      "createdBefore": "建立時間迄"
+    },
+    "presets": {
+      "today": "今天",
+      "last7Days": "最近 7 天",
+      "thisMonth": "本月",
+      "clear": "清除日期"
+    },
+    "columns": {
+      "createdAt": "時間",
+      "actor": "執行者",
+      "actorType": "執行者類型",
+      "action": "動作",
+      "target": "目標",
+      "details": "詳細資料"
+    },
+    "actions": {
+      "view": "檢視"
+    },
+    "savedPresets": {
+      "name": "預設名稱",
+      "namePlaceholder": "儲存目前的稽核篩選條件",
+      "save": "儲存預設",
+      "empty": "尚未儲存任何稽核預設。",
+      "delete": "刪除預設"
+    },
+    "export": {
+      "csv": "匯出 CSV",
+      "json": "匯出 JSON"
+    },
+    "detailSheet": {
+      "title": "稽核事件",
+      "description": "檢視所選稽核事件的備註與狀態變更內容。",
+      "emptyState": "未記錄資料。",
+      "fields": {
+        "createdAt": "時間",
+        "action": "動作",
+        "actor": "執行者",
+        "actorType": "執行者類型",
+        "target": "目標",
+        "correlationId": "關聯 ID",
+        "notes": "備註",
+        "beforeState": "變更前",
+        "afterState": "變更後"
+      }
+    }
+  },
+  "permissions": {
+    "title": "權限矩陣",
+    "description": "直接檢視目前前端實際套用的角色權限對照。",
+    "emptyTitle": "找不到權限資料。",
+    "emptyDescription": "角色權限規則可用時會顯示於此。",
+    "columns": {
+      "feature": "功能"
+    },
+    "levels": {
+      "write": "可編輯",
+      "read": "可檢視",
+      "none": "無權限"
+    },
+    "features": {
+      "dashboard": "儀表板",
+      "inventory": "庫存",
+      "purchases": "採購",
+      "customers": "客戶",
+      "invoices": "發票",
+      "orders": "訂單",
+      "payments": "付款",
+      "admin": "管理",
+      "owner_dashboard": "老闆儀表板",
+      "settings": "設定"
+    }
+  },
+  "settingsHub": {
+    "title": "工作區控制",
+    "description": "快速前往設定頁面以管理全域工作區設定。",
+    "openSettings": "開啟設定",
+    "items": {
+      "general": "一般預設值與工作區設定",
+      "security": "安全性、驗證與權限相關設定",
+      "appearance": "主題與介面呈現設定",
+      "data": "資料處理與營運設定"
+    }
+  },
+  "legacyRefresh": {
+    "eyebrow": "舊系統資料",
+    "title": "舊資料刷新控制台",
+    "description": "在並行運作期間啟動並監控舊系統資料刷新作業。",
+    "loading": "正在載入舊資料刷新狀態…",
+    "columns": {
+      "latestRun": "最新執行",
+      "latestSuccess": "最新成功",
+      "latestPromoted": "最新升級"
+    },
+    "status": {
+      "locked": "已鎖定",
+      "idle": "閒置",
+      "eligible": "可升級",
+      "blocked": "已阻擋"
+    },
+    "trigger": {
+      "title": "觸發刷新作業",
+      "description": "為所選 lane 啟動完整重建或增量刷新。",
+      "launch": "啟動刷新",
+      "launching": "啟動中…",
+      "launched": "刷新作業已啟動"
+    },
+    "fields": {
+      "tenantId": "租戶 ID",
+      "tenantIdPlaceholder": "例如 00000000-0000-0000-0000-000000000000",
+      "schemaName": "目標 Schema",
+      "schemaNamePlaceholder": "例如 erpnext_prod",
+      "sourceSchema": "來源 Schema",
+      "mode": "刷新模式",
+      "lookbackDays": "回看天數",
+      "reconciliationThreshold": "對帳閾值",
+      "dryRun": "試跑"
+    },
+    "modes": {
+      "incremental": "增量",
+      "fullRebaseline": "完整重建"
+    },
+    "recentRuns": {
+      "title": "近期執行",
+      "description": "所有 lane 最近的刷新作業執行情況。",
+      "refresh": "重新整理",
+      "empty": "尚未記錄任何近期執行。"
+    },
+    "lanes": {
+      "title": "Lane 狀態",
+      "description": "各舊資料刷新 lane 的即時狀態。",
+      "refresh": "重新整理"
+    },
+    "details": {
+      "currentMode": "目前模式",
+      "affectedDomains": "受影響領域",
+      "summaryPath": "最新摘要路徑",
+      "incrementalStatePath": "增量狀態路徑",
+      "noAffectedDomains": "未回報範圍領域"
+    },
+    "salesMonthly": {
+      "title": "月銷售快照作業",
+      "description": "檢查快照覆蓋狀態、修補缺漏的封帳月份，並執行有界歷史回填。",
+      "fields": {
+        "tenantId": "租戶 ID",
+        "startMonth": "開始月份",
+        "startMonthPlaceholder": "選擇開始月份",
+        "endMonth": "結束月份",
+        "endMonthPlaceholder": "選擇結束月份"
+      },
+      "actions": {
+        "checkHealth": "檢查健康狀態",
+        "checkingHealth": "檢查中…",
+        "repairMissing": "修補缺漏月份",
+        "repairingMissing": "修補中…",
+        "backfill": "回填區間",
+        "backfilling": "回填中…"
+      },
+      "status": {
+        "healthy": "健康",
+        "degraded": "降級"
+      },
+      "summary": {
+        "checkedMonths": "已檢查 {count} 個封帳月份",
+        "missingMonths": "缺漏 {count} 個月份",
+        "currentOpenMonth": "目前開放月份：{month}"
+      },
+      "empty": "在所選區間內找不到缺漏的封帳月份快照。",
+      "notices": {
+        "healthy": "找不到缺漏的月銷售快照。",
+        "degraded": "找到 {count} 個缺漏的封帳月份。",
+        "repaired": "已修補 {count} 個缺漏月份。",
+        "backfilled": "已回填 {count} 個月份。"
+      }
+    }
+  }
+}

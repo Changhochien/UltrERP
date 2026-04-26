@@ -78,7 +78,7 @@ function sortTrends(trends: CategoryTrend[]): CategoryTrend[] {
 }
 
 export function CategoryTrendRadar() {
-  const { t, i18n } = useTranslation("common", { keyPrefix: "intelligence.categoryTrends" });
+  const { t, i18n } = useTranslation("intelligence", { keyPrefix: "categoryTrends" });
   const [period, setPeriod] = useState<"last_30d" | "last_90d" | "last_12m">("last_90d");
   const { data, isLoading, error } = useCategoryTrends(period);
   const { data: marketSignals } = useMarketOpportunities(period);

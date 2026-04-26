@@ -1486,8 +1486,8 @@ last_updated: "2026-04-22"
 
   # Epic 41 - Translation Namespace Architecture Hardening
   epic-41:
-    status: "in-progress"
-    validation_note: "Backlog drafted on 2026-04-26 from the translation architecture investigation. The frontend currently loads only the common namespace even though the locale resources exceed 3,500 lines per language. Stories 41.1 through 41.5 sequence a behavior-preserving namespace migration with shell and route extraction, feature-scoped locale files, and namespace hygiene guardrails."
+    status: "completed"
+    validation_note: "Epic 41 COMPLETED on 2026-04-26. All 5 stories implemented: Multi-namespace i18n scaffolding (41.1), Shell and Route extraction (41.2), Operations namespace migration (41.3), Sales and Finance migration (41.4), Common namespace reduction (41.5). common.json reduced from 3,663 lines to ~150 lines containing only shared primitives. 16 namespaces now active. Locale parity check passes. Build passes."
     recommended_execution_order:
       - "41.1 Multi-Namespace i18n Scaffolding"
       - "41.2 Shell and Route Translation Extraction"
@@ -1675,8 +1675,8 @@ last_updated: "2026-04-26"
         prerequisites: ["41-3-operations-namespace-migration"]
       41-5-common-namespace-reduction:
         title: "Common Namespace Reduction and Locale Hygiene"
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "41.5"
         story_file: "41-5-common-namespace-reduction.md"
-        validation: "Story artifact created from Epic 41 i18n architecture planning."
+        validation: "Epic 41 COMPLETE - All 5 stories implemented. common.json reduced to shared primitives (common, datePicker, dateRangePicker, dateRangeFilter, messages, infoPopover). Extracted 78 total keys to dedicated namespaces. Build passes, locale parity check passes."
         prerequisites: ["41-4-sales-and-finance-namespace-migration"]

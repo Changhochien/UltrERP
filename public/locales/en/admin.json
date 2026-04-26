@@ -1,1 +1,273 @@
-{}
+{
+  "eyebrow": "Admin",
+  "title": "Admin",
+  "description": "Owner-only workspace controls for users, roles, and recent administrative activity.",
+  "errors": {
+    "loadFailed": "Failed to load admin data",
+    "saveFailed": "Failed to save user"
+  },
+  "users": {
+    "title": "Users",
+    "description": "Review workspace members, their assigned roles, and current access state.",
+    "loadingDescription": "Workspace access list.",
+    "emptyTitle": "No users found.",
+    "emptyDescription": "There are no users to display for this tenant.",
+    "addUser": "Add User",
+    "editUser": "Edit",
+    "columns": {
+      "email": "Email",
+      "displayName": "Name",
+      "role": "Role",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "filters": {
+      "search": "Search",
+      "searchPlaceholder": "Search by email or name",
+      "role": "Role filter",
+      "status": "Status filter",
+      "allRoles": "All roles",
+      "allStatuses": "All statuses"
+    },
+    "fields": {
+      "email": "Email",
+      "displayName": "Display Name",
+      "role": "Role",
+      "status": "Status",
+      "password": "Password",
+      "resetPassword": "Reset Password"
+    },
+    "summary": "Showing {filtered} of {total} users.",
+    "roles": {
+      "owner": "Owner",
+      "finance": "Finance",
+      "warehouse": "Warehouse",
+      "sales": "Sales"
+    },
+    "statuses": {
+      "active": "Active",
+      "disabled": "Disabled"
+    },
+    "errors": {
+      "formUnavailable": "User form is not ready",
+      "emailRequired": "Email is required",
+      "emailInvalid": "Enter a valid email address",
+      "displayNameRequired": "Display name is required",
+      "passwordTooShort": "Password must be at least 8 characters",
+      "resetPasswordTooShort": "Reset password must be at least 8 characters",
+      "copyFailed": "Failed to copy password"
+    },
+    "dialog": {
+      "createTitle": "Add User",
+      "editTitle": "Edit User",
+      "createDescription": "Create a new workspace user and assign their initial role.",
+      "editDescription": "Update the selected user's role, status, or password.",
+      "passwordHelp": "Use at least 8 characters.",
+      "resetPasswordHelp": "Leave blank to keep the current password.",
+      "generatePassword": "Generate",
+      "copyPassword": "Copy",
+      "passwordGenerated": "Generated a temporary password.",
+      "passwordCopied": "Copied password to clipboard.",
+      "cancel": "Cancel",
+      "createAction": "Create User",
+      "save": "Save Changes",
+      "creating": "Creating...",
+      "saving": "Saving..."
+    }
+  },
+  "auditLog": {
+    "title": "Audit Log",
+    "description": "Recent administrative events for this workspace.",
+    "loadingDescription": "Recent administrative actions.",
+    "emptyTitle": "No audit entries found.",
+    "emptyDescription": "Administrative events will appear here as activity occurs.",
+    "summary": "Showing {filtered} of {total} audit entries.",
+    "filters": {
+      "actor": "Actor filter",
+      "actorPlaceholder": "Filter by actor id",
+      "actorType": "Actor type filter",
+      "actorTypePlaceholder": "Filter by actor type",
+      "action": "Action filter",
+      "actionPlaceholder": "Filter by action",
+      "entityType": "Entity type filter",
+      "entityTypePlaceholder": "Filter by entity type",
+      "entityId": "Entity id filter",
+      "entityIdPlaceholder": "Filter by entity id",
+      "createdAfter": "Created after",
+      "createdBefore": "Created before"
+    },
+    "presets": {
+      "today": "Today",
+      "last7Days": "Last 7 Days",
+      "thisMonth": "This Month",
+      "clear": "Clear dates"
+    },
+    "columns": {
+      "createdAt": "When",
+      "actor": "Actor",
+      "actorType": "Actor Type",
+      "action": "Action",
+      "target": "Target",
+      "details": "Details"
+    },
+    "actions": {
+      "view": "View"
+    },
+    "savedPresets": {
+      "name": "Preset name",
+      "namePlaceholder": "Save the current audit filters",
+      "save": "Save preset",
+      "empty": "No saved audit presets yet.",
+      "delete": "Delete preset"
+    },
+    "export": {
+      "csv": "Export CSV",
+      "json": "Export JSON"
+    },
+    "detailSheet": {
+      "title": "Audit Entry",
+      "description": "Inspect the selected audit event, including notes and state changes.",
+      "emptyState": "No data recorded.",
+      "fields": {
+        "createdAt": "When",
+        "action": "Action",
+        "actor": "Actor",
+        "actorType": "Actor type",
+        "target": "Target",
+        "correlationId": "Correlation id",
+        "notes": "Notes",
+        "beforeState": "Before state",
+        "afterState": "After state"
+      }
+    }
+  },
+  "permissions": {
+    "title": "Permission Matrix",
+    "description": "Live visibility into the role map currently enforced in the frontend.",
+    "emptyTitle": "No permissions found.",
+    "emptyDescription": "Role access rules will appear here once available.",
+    "columns": {
+      "feature": "Feature"
+    },
+    "levels": {
+      "write": "Write",
+      "read": "Read",
+      "none": "No access"
+    },
+    "features": {
+      "dashboard": "Dashboard",
+      "inventory": "Inventory",
+      "purchases": "Purchases",
+      "customers": "Customers",
+      "invoices": "Invoices",
+      "orders": "Orders",
+      "payments": "Payments",
+      "admin": "Admin",
+      "owner_dashboard": "Owner Dashboard",
+      "settings": "Settings"
+    }
+  },
+  "settingsHub": {
+    "title": "Workspace Controls",
+    "description": "Jump to the settings surface for global workspace configuration.",
+    "openSettings": "Open Settings",
+    "items": {
+      "general": "General defaults and workspace configuration",
+      "security": "Security, auth, and permission-adjacent settings",
+      "appearance": "Theme and interface presentation settings",
+      "data": "Data-handling and operational configuration"
+    }
+  },
+  "legacyRefresh": {
+    "eyebrow": "Legacy Data",
+    "title": "Legacy Refresh Control Plane",
+    "description": "Launch and monitor legacy data refresh jobs for the coexistence period.",
+    "loading": "Loading legacy refresh status…",
+    "columns": {
+      "latestRun": "Latest Run",
+      "latestSuccess": "Latest Success",
+      "latestPromoted": "Latest Promoted"
+    },
+    "status": {
+      "locked": "Locked",
+      "idle": "Idle",
+      "eligible": "Promotion Eligible",
+      "blocked": "Blocked"
+    },
+    "trigger": {
+      "title": "Trigger Refresh Job",
+      "description": "Launch a full rebaseline or incremental refresh for the selected lane.",
+      "launch": "Launch Refresh",
+      "launching": "Launching…",
+      "launched": "Refresh job launched"
+    },
+    "fields": {
+      "tenantId": "Tenant ID",
+      "tenantIdPlaceholder": "e.g. 00000000-0000-0000-0000-000000000000",
+      "schemaName": "Target Schema",
+      "schemaNamePlaceholder": "e.g. erpnext_prod",
+      "sourceSchema": "Source Schema",
+      "mode": "Refresh Mode",
+      "lookbackDays": "Lookback Days",
+      "reconciliationThreshold": "Reconciliation Threshold",
+      "dryRun": "Dry run"
+    },
+    "modes": {
+      "incremental": "Incremental",
+      "fullRebaseline": "Full Rebaseline"
+    },
+    "recentRuns": {
+      "title": "Recent Runs",
+      "description": "Most recent refresh job executions across all lanes.",
+      "refresh": "Refresh",
+      "empty": "No recent runs recorded."
+    },
+    "lanes": {
+      "title": "Lane Status",
+      "description": "Live state for each active legacy refresh lane.",
+      "refresh": "Refresh"
+    },
+    "details": {
+      "currentMode": "Current Mode",
+      "affectedDomains": "Affected Domains",
+      "summaryPath": "Latest Summary Path",
+      "incrementalStatePath": "Incremental State Path",
+      "noAffectedDomains": "No scoped domains reported"
+    },
+    "salesMonthly": {
+      "title": "Sales Monthly Operations",
+      "description": "Inspect snapshot coverage, repair missing closed months, and run bounded historical backfills.",
+      "fields": {
+        "tenantId": "Tenant ID",
+        "startMonth": "Start Month",
+        "startMonthPlaceholder": "Select start month",
+        "endMonth": "End Month",
+        "endMonthPlaceholder": "Select end month"
+      },
+      "actions": {
+        "checkHealth": "Check Health",
+        "checkingHealth": "Checking…",
+        "repairMissing": "Repair Missing Months",
+        "repairingMissing": "Repairing…",
+        "backfill": "Backfill Range",
+        "backfilling": "Backfilling…"
+      },
+      "status": {
+        "healthy": "Healthy",
+        "degraded": "Degraded"
+      },
+      "summary": {
+        "checkedMonths": "{count} closed months checked",
+        "missingMonths": "{count} missing months",
+        "currentOpenMonth": "Current open month: {month}"
+      },
+      "empty": "No missing closed-month snapshot gaps were found in the selected window.",
+      "notices": {
+        "healthy": "No missing sales-monthly gaps were found.",
+        "degraded": "Found {count} missing closed months.",
+        "repaired": "Repaired {count} missing months.",
+        "backfilled": "Backfilled {count} months."
+      }
+    }
+  }
+}

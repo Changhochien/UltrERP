@@ -40,7 +40,7 @@ function formatGeneratedAt(value: string, language: string): string {
 }
 
 export function RiskSignalFeed() {
-  const { t, i18n } = useTranslation("common", { keyPrefix: "intelligence.riskSignals" });
+  const { t, i18n } = useTranslation("intelligence", { keyPrefix: "riskSignals" });
   const [status, setStatus] = useState<"all" | "growing" | "at_risk" | "dormant" | "new" | "stable">("all");
   const { data, isLoading, error } = useCustomerRiskSignals(status, 50);
 

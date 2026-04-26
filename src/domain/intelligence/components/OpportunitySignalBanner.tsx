@@ -23,7 +23,7 @@ function severityIcon(severity: OpportunitySignal["severity"]) {
 }
 
 export function OpportunitySignalBanner({ signals, deferredSignalTypes = [] }: OpportunitySignalBannerProps) {
-  const { t } = useTranslation("common", { keyPrefix: "intelligence.marketOpportunities" });
+  const { t } = useTranslation("intelligence", { keyPrefix: "marketOpportunities" });
   const [expandedHeadlines, setExpandedHeadlines] = useState<Record<string, boolean>>({});
 
   if (signals.length === 0 && deferredSignalTypes.length === 0) {

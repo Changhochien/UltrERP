@@ -65,7 +65,7 @@ function formatDataBasis(
 }
 
 export function CustomerBuyingBehaviorCard() {
-  const { t, i18n } = useTranslation("common", { keyPrefix: "intelligence.customerBuyingBehavior" });
+  const { t, i18n } = useTranslation("intelligence", { keyPrefix: "customerBuyingBehavior" });
   const [customerType, setCustomerType] = useState<CustomerBuyingBehaviorCustomerType>("dealer");
   const [period, setPeriod] = useState<CustomerBuyingBehaviorPeriod>("12m");
   const [includeCurrentMonth, setIncludeCurrentMonth] = useState(false);

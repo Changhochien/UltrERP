@@ -39,7 +39,7 @@ function formatDataBasis(value: RevenueDiagnosisDataBasis): string {
 }
 
 export function RevenueDiagnosisCard() {
-  const { t, i18n } = useTranslation("common", { keyPrefix: "intelligence.revenueDiagnosis" });
+  const { t, i18n } = useTranslation("intelligence", { keyPrefix: "revenueDiagnosis" });
   const [period, setPeriod] = useState<RevenueDiagnosisPeriod>("1m");
   const [categoryInput, setCategoryInput] = useState("");
   const deferredCategory = useDeferredValue(categoryInput.trim() || undefined);

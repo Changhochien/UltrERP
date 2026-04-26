@@ -61,7 +61,7 @@ function formatStageReason(
 }
 
 export function ProductPerformanceCard() {
-  const { t, i18n } = useTranslation("common", { keyPrefix: "intelligence.productPerformance" });
+  const { t, i18n } = useTranslation("intelligence", { keyPrefix: "productPerformance" });
   const [categoryInput, setCategoryInput] = useState("");
   const [lifecycleStage, setLifecycleStage] = useState<LifecycleFilter>("all");
   const [includeCurrentMonth, setIncludeCurrentMonth] = useState(false);

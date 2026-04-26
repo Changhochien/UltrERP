@@ -1,1 +1,133 @@
-{}
+{
+  "actionCenter": {
+    "description": "Recent activity and notifications.",
+    "title": "Action Center"
+  },
+  "pageDescription": "Operational overview with role-filtered shortcuts and live business signals.",
+  "lowStock": {
+    "allOk": "All stock levels OK",
+    "description": "Products below reorder point",
+    "stock": "Stock: {current} / Reorder: {point}",
+    "title": "Low Stock Alerts"
+  },
+  "quickActions": {
+    "admin": "Admin",
+    "adminDescription": "Manage roles, policies, and workspace controls.",
+    "customers": "Customers",
+    "customersDescription": "Search accounts and manage customer records.",
+    "inventory": "Inventory",
+    "inventoryDescription": "Review stock levels and replenishment needs.",
+    "invoices": "Invoices",
+    "invoicesDescription": "Track invoice status and payment progress.",
+    "newInvoice": "New Invoice",
+    "newInvoiceDescription": "Draft and issue a new sales invoice.",
+    "newCustomer": "New Customer",
+    "newCustomerDescription": "Create a new customer profile for your workspace.",
+    "newOrder": "New Order",
+    "newOrderDescription": "Create a new sales order from the dashboard.",
+    "orders": "Orders",
+    "ordersDescription": "Monitor order flow and fulfillment status.",
+    "payments": "Payments",
+    "paymentsDescription": "Review receipts and outstanding balances."
+  },
+  "revenue": {
+    "description": "Daily revenue overview",
+    "noChangeData": "No change",
+    "revenueChange": "{change}",
+    "revenueComparison": "Revenue Comparison",
+    "title": "Revenue",
+    "yesterday": "Yesterday ({date}): {amount}"
+  },
+  "topProducts": {
+    "description": "Top selling products",
+    "noData": "No sales data for this period",
+    "product": "Product",
+    "qtySold": "Qty Sold",
+    "rank": "#",
+    "revenue": "Revenue",
+    "thisWeek": "This Week",
+    "title": "Top Products",
+    "today": "Today"
+  },
+  "visitorStats": {
+    "analyticsNotConfigured": "Analytics not configured",
+    "analyticsUnavailable": "Analytics unavailable",
+    "conversion": "Conversion",
+    "inquiries": "Inquiries",
+    "title": "Visitor Stats",
+    "uniqueVisitors": "Unique Visitors",
+    "yesterday": "Yesterday ({date})"
+  },
+  "kpi": {
+    "title": "KPI Summary",
+    "description": "Today's key business metrics.",
+    "todayRevenue": "Today's Revenue",
+    "openInvoices": "Open Invoices",
+    "openInvoiceAmount": "Open Invoice Amount",
+    "pendingOrders": "Pending Orders",
+    "pendingOrderRevenue": "Pending Order Revenue",
+    "lowStock": "Low Stock Products",
+    "overdueReceivables": "Overdue Receivables"
+  },
+  "grossMargin": {
+    "title": "Gross Margin",
+    "description": "Margin % vs previous period.",
+    "unavailable": "Margin data unavailable",
+    "vsPreviousPeriod": "vs. previous period",
+    "revenue": "Revenue",
+    "cogs": "COGS"
+  },
+  "cashFlow": {
+    "title": "Cash Flow",
+    "description": "Weekly inflows vs outflows.",
+    "inflows": "Inflows",
+    "outflows": "Outflows",
+    "net": "Net",
+    "totalInflows": "Total Inflows",
+    "totalOutflows": "Total Outflows",
+    "netCashFlow": "Net Cash Flow"
+  },
+  "revenueTrend": {
+    "title": "Revenue Trend",
+    "30d": "30 Days",
+    "90d": "90 Days",
+    "1y": "1 Year",
+    "month": "Month",
+    "quarter": "Quarter",
+    "year": "Year",
+    "loadMore": "Load more",
+    "zoomHint": "Drag the navigator to zoom and pan."
+  },
+  "arAging": {
+    "title": "AR Aging",
+    "asOf": "As of {date}",
+    "invoices": "{count} invoice(s)",
+    "totalOutstanding": "Total Outstanding",
+    "totalOverdue": "Total Overdue"
+  },
+  "apAging": {
+    "title": "AP Aging",
+    "asOf": "As of {date}",
+    "invoices": "{count} invoice(s)",
+    "totalOutstanding": "Total Outstanding",
+    "totalOverdue": "Total Overdue"
+  },
+  "topCustomers": {
+    "title": "Top Customers",
+    "description": "Customers ranked by revenue.",
+    "month": "Month",
+    "quarter": "Quarter",
+    "year": "Year",
+    "company": "Company",
+    "revenue": "Revenue",
+    "invoices": "Invoices",
+    "anchorMonth": "Anchor month",
+    "previousPeriod": "Previous period",
+    "nextPeriod": "Next period",
+    "periodRange": "Period: {start} to {end}",
+    "topTotal": "Top {count} total: {amount}",
+    "lastInvoice": "Last invoice {date}",
+    "avgInvoice": "Avg {amount}",
+    "noData": "No data for this period."
+  }
+}

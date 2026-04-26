@@ -43,7 +43,7 @@ function scoreColor(score: number): string {
 }
 
 export function ProspectGapTable({ defaultCategory = "Supplies" }: ProspectGapTableProps) {
-  const { t } = useTranslation("common", { keyPrefix: "intelligence.prospectGaps" });
+  const { t } = useTranslation("intelligence", { keyPrefix: "prospectGaps" });
   const [category, setCategory] = useState("");
   const [customerType, setCustomerType] = useState<ProspectGapCustomerFilter>("dealer");
   const { data: categoryTrendData } = useCategoryTrends("last_12m");

@@ -61,7 +61,7 @@ function sortPairs(
 }
 
 export function AffinityMatrix({ minShared = 2, limit = 50 }: AffinityMatrixProps) {
-  const { t, i18n } = useTranslation("common", { keyPrefix: "intelligence.affinity" });
+  const { t, i18n } = useTranslation("intelligence", { keyPrefix: "affinity" });
   const { data, isLoading, error } = useProductAffinity(minShared, limit);
   const [sortKey, setSortKey] = useState<SortKey>("affinity_score");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
