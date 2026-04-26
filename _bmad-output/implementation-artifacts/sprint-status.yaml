@@ -1648,14 +1648,14 @@ last_updated: "2026-04-26"
     stories:
       27-1-bom-master-and-submission-workflow:
         title: "BOM Master and Submission Workflow"
-        status: "ready-for-dev"
+        status: "committed"
         story_id: "27.1"
         story_file: "27-1-bom-master-and-submission-workflow.md"
         validation: "Story artifact created from Epic 27, ERPNext BOM references, official BOM docs, and current UltrERP product and inventory seams."
         prerequisites: []
       27-2-work-orders-with-direct-material-transfer:
         title: "Work Orders With Direct Material Transfer"
-        status: "ready-for-dev"
+        status: "in-progress"
         story_id: "27.2"
         story_file: "27-2-work-orders-with-direct-material-transfer.md"
         validation: "Story artifact created from Epic 27, ERPNext work-order references, official work-order docs, and current UltrERP inventory and demand patterns."

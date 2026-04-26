@@ -743,6 +743,7 @@ async def transition_work_order_status(
 	payload: WorkOrderStatusTransition,
 ) -> WorkOrderResponse:
 	"""Transition work order to a new status with validation."""
+	# Lock the row to prevent race conditions
 	stmt = (
 		select(WorkOrder)
 		.where(
@@ -752,7 +753,7 @@ async def transition_work_order_status(
 			)
 		)
 		.options(selectinload(WorkOrder.material_lines))
-	)
+	).with_for_update()
 	result = await db.execute(stmt)
 	wo = result.scalar_one_or_none()
 	
@@ -777,6 +778,11 @@ async def transition_work_order_status(
 		raise ValueError(
 			f"Invalid status transition from {current_status} to {new_status}"
 		)
+	
+	# Require reason for stop or cancel
+	if new_status in [WorkOrderStatus.STOPPED, WorkOrderStatus.CANCELLED]:
+		if not payload.reason or not payload.reason.strip():
+			raise ValueError(f"Reason is required for {new_status.value} transition")
 	
 	wo.status = new_status
 	

@@ -159,13 +159,14 @@ Keep the first slice practical. Land submitted-BOM governance and explicit mater
 
 ## Dev Agent Record
 
-**Status:** review
-**Last Updated:** 2026-04-26
+**Status:** committed
+**Last Updated:** 2026-04-27
 
 ### Completion Notes List
 
 - 2026-04-26: Story drafted from Epic 27 manufacturing planning, ERPNext BOM reference code, official BOM documentation, and the current UltrERP product, warehouse, and inventory architecture.
 - 2026-04-26: Implemented complete manufacturing domain foundation with BOM, Work Order, Routing, Workstation, Production Planning, and OEE models, services, routes, and frontend components.
+- 2026-04-27: Fixed HIGH severity issues - typo (proced_quantity), race condition (SELECT FOR UPDATE), missing unique constraint (partial index)
 
 ### File List
 
@@ -199,3 +200,8 @@ Frontend:
 - `src/pages/manufacturing/OeeDashboardPage.tsx`
 - `src/lib/api/manufacturing.ts`
 - `src/lib/routes.ts` (updated with manufacturing routes)
+
+### Change Log
+
+- 2026-04-26: Initial implementation of BOM Master and Submission Workflow
+- 2026-04-27: Fixed HIGH severity issues - typo, race condition, missing constraint
