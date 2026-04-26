@@ -14,10 +14,9 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from datetime import date
-from decimal import Decimal, ROUND_HALF_UP
-from typing import Literal
+from decimal import ROUND_HALF_UP, Decimal
 
-from sqlalchemy import and_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.models.currency import Currency, ExchangeRate
@@ -108,7 +107,7 @@ async def get_tenant_base_currency(
     result = await session.execute(
         select(Currency).where(
             Currency.tenant_id == tenant_id,
-            Currency.is_base_currency == True,
+            Currency.is_base_currency,
         )
     )
     currency = result.scalar_one_or_none()
@@ -206,7 +205,7 @@ async def resolve_exchange_rate(
             ExchangeRate.source_currency_code == source_code,
             ExchangeRate.target_currency_code == target_code,
             ExchangeRate.effective_date <= effective_date,
-            ExchangeRate.is_active == True,
+            ExchangeRate.is_active,
         )
         .order_by(ExchangeRate.effective_date.desc())
         .limit(1)

@@ -12,10 +12,11 @@ from common.auth import require_role
 from common.database import get_db
 from domains.settings.currency_service import (
     convert_amount as do_convert,
+)
+from domains.settings.currency_service import (
     create_currency,
     create_exchange_rate,
     get_currency,
-    get_currency_by_code,
     list_currencies,
     list_exchange_rates,
     lookup_exchange_rate,

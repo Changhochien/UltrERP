@@ -10,13 +10,11 @@ from sqlalchemy import (
     Boolean,
     Date,
     DateTime,
-    ForeignKey,
     Index,
     Integer,
     Numeric,
     String,
     Uuid,
-    func,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 

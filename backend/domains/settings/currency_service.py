@@ -7,10 +7,9 @@ helpers for tenant-scoped currency management.
 from __future__ import annotations
 
 import uuid
-from decimal import Decimal
-from typing import Literal
+from datetime import date
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.models.currency import Currency, ExchangeRate
@@ -31,7 +30,6 @@ from domains.settings.schemas_currency import (
     ExchangeRateLookupResponse,
     ExchangeRateUpdate,
 )
-
 
 # ============================================================
 # Currency Service
@@ -61,7 +59,7 @@ async def list_currencies(
     query = select(Currency).where(Currency.tenant_id == tenant_id)
 
     if active_only:
-        query = query.where(Currency.is_active == True)
+        query = query.where(Currency.is_active)
 
     # Count total
     count_query = select(func.count()).select_from(query.subquery())
@@ -177,7 +175,7 @@ async def create_currency(
         existing_base = await session.execute(
             select(Currency).where(
                 Currency.tenant_id == tenant_id,
-                Currency.is_base_currency == True,
+                Currency.is_base_currency,
             )
         )
         for base_curr in existing_base.scalars().all():
@@ -260,7 +258,7 @@ async def set_base_currency(
     result = await session.execute(
         select(Currency).where(
             Currency.tenant_id == tenant_id,
-            Currency.is_base_currency == True,
+            Currency.is_base_currency,
         )
     )
     for curr in result.scalars().all():
@@ -308,7 +306,7 @@ async def list_exchange_rates(
     if target_currency:
         query = query.where(ExchangeRate.target_currency_code == target_currency.upper())
     if active_only:
-        query = query.where(ExchangeRate.is_active == True)
+        query = query.where(ExchangeRate.is_active)
 
     # Count total
     count_query = select(func.count()).select_from(query.subquery())

@@ -9,7 +9,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
-
 # ============================================================
 # Currency Schemas
 # ============================================================
@@ -27,7 +26,9 @@ class CurrencyBase(BaseModel):
 class CurrencyCreate(CurrencyBase):
     """Schema for creating a new currency."""
 
-    is_base_currency: Annotated[bool, Field(default=False, description="Set as tenant base currency")]
+    is_base_currency: Annotated[
+        bool, Field(default=False, description="Set as tenant base currency")
+    ]
 
 
 class CurrencyUpdate(BaseModel):
@@ -74,8 +75,12 @@ class CurrencyListResponse(BaseModel):
 class ExchangeRateBase(BaseModel):
     """Base schema for exchange rate with common fields."""
 
-    source_currency_code: Annotated[str, Field(min_length=3, max_length=3, description="Source currency code")]
-    target_currency_code: Annotated[str, Field(min_length=3, max_length=3, description="Target currency code")]
+    source_currency_code: Annotated[
+        str, Field(min_length=3, max_length=3, description="Source currency code")
+    ]
+    target_currency_code: Annotated[
+        str, Field(min_length=3, max_length=3, description="Target currency code")
+    ]
     effective_date: Annotated[date, Field(description="Date from which this rate applies")]
     rate: Annotated[Decimal, Field(gt=0, description="Exchange rate (positive decimal)")]
     rate_source: Annotated[str | None, Field(max_length=50)] = None
@@ -84,7 +89,9 @@ class ExchangeRateBase(BaseModel):
 class ExchangeRateCreate(ExchangeRateBase):
     """Schema for creating a new exchange rate."""
 
-    is_inverse: Annotated[bool, Field(default=False, description="Is this an inverse/computed rate")]
+    is_inverse: Annotated[
+        bool, Field(default=False, description="Is this an inverse/computed rate")
+    ]
 
     @field_validator("source_currency_code", "target_currency_code")
     @classmethod
@@ -141,7 +148,10 @@ class ExchangeRateLookupRequest(BaseModel):
     source_currency_code: Annotated[str, Field(min_length=3, max_length=3)]
     target_currency_code: Annotated[str, Field(min_length=3, max_length=3)]
     effective_date: Annotated[date, Field(description="Date to look up rate for")]
-    allow_identity: Annotated[bool, Field(default=True, description="Allow identity rate for same currency")]
+    allow_identity: Annotated[
+        bool,
+        Field(default=True, description="Allow identity rate for same currency"),
+    ]
 
     @field_validator("source_currency_code", "target_currency_code")
     @classmethod
