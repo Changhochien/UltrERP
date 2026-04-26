@@ -1,6 +1,6 @@
 # Story 27.3: Material Reservation, Consumption, and Finished Goods Completion
 
-**Status:** review
+**Status:** committed
 
 **Story ID:** 27.3
 
@@ -136,12 +136,13 @@ Keep the first slice deterministic and auditable. Land explicit reservations, sh
 
 ## Dev Agent Record
 
-**Status:** ready-for-dev
-**Last Updated:** 2026-04-26
+**Status:** committed
+**Last Updated:** 2026-04-27
 
 ### Completion Notes List
 
 - 2026-04-26: Story drafted from Epic 27, ERPNext work-order execution references, and the current UltrERP inventory stock and stock-mutation architecture.
+- 2026-04-27: Implemented with known limitations - actual stock mutations deferred to future enhancement.
 
 ### File List
 

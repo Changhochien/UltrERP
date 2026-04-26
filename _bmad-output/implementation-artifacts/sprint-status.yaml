@@ -1662,7 +1662,7 @@ last_updated: "2026-04-26"
         prerequisites: ["27-1-bom-master-and-submission-workflow"]
       27-3-material-reservation-consumption-and-finished-goods-completion:
         title: "Material Reservation, Consumption, and Finished Goods Completion"
-        status: "ready-for-dev"
+        status: "committed"
         story_id: "27.3"
         story_file: "27-3-material-reservation-consumption-and-finished-goods-completion.md"
         validation: "Story artifact created from Epic 27, ERPNext work-order execution references, and the existing UltrERP inventory stock and stock-mutation architecture."

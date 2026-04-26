@@ -1843,7 +1843,7 @@ async def firm_production_plan(
 			)
 		)
 		.options(selectinload(ProductionPlan.lines))
-	)
+	).with_for_update()
 	result = await db.execute(stmt)
 	plan = result.scalar_one_or_none()
 	

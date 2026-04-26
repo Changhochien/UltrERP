@@ -2,7 +2,7 @@
  * React hooks for account management (Epic 26).
  */
 
-import { useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import type {
@@ -24,6 +24,58 @@ import {
   updateAccount,
 } from "@/lib/api/accounting";
 import { useToast } from "@/hooks/useToast";
+
+// Simple async data hook
+function useAsyncData<T>(
+  fetchFn: () => Promise<T>,
+  deps: React.DependencyList = []
+) {
+  const [data, setData] = useState<T | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    setError(null);
+
+    fetchFn()
+      .then((result) => {
+        if (!cancelled) {
+          setData(result);
+          setIsLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err);
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+
+  const refetch = useCallback(() => {
+    setIsLoading(true);
+    setError(null);
+
+    fetchFn()
+      .then((result) => {
+        setData(result);
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        setError(err);
+        setIsLoading(false);
+      });
+  }, [fetchFn]);
+
+  return { data, error, isLoading, refetch };
+}
 
 export function useAccountTree(includeDisabled = false) {
   const fetchTree = useCallback(
@@ -227,58 +279,4 @@ function flattenAccounts(nodes: AccountTreeNode[]): Account[] {
   }
 
   return result;
-}
-
-// Simple async data hook
-import { useState, useEffect } from "react";
-
-function useAsyncData<T>(
-  fetchFn: () => Promise<T>,
-  deps: React.DependencyList = []
-) {
-  const [data, setData] = useState<T | null>(null);
-  const [error, setError] = useState<Error | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    setIsLoading(true);
-    setError(null);
-
-    fetchFn()
-      .then((result) => {
-        if (!cancelled) {
-          setData(result);
-          setIsLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(err);
-          setIsLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
-
-  const refetch = useCallback(() => {
-    setIsLoading(true);
-    setError(null);
-
-    fetchFn()
-      .then((result) => {
-        setData(result);
-        setIsLoading(false);
-      })
-      .catch((err) => {
-        setError(err);
-        setIsLoading(false);
-      });
-  }, [fetchFn]);
-
-  return { data, error, isLoading, refetch };
 }
