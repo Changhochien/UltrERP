@@ -59,6 +59,24 @@ export const COLLECTIONS_ROUTE = "/accounting/collections";
 export const BUDGETS_ROUTE = "/accounting/budgets";
 export const BUDGET_VARIANCE_ROUTE = "/accounting/budgets/variance";
 
+// Manufacturing routes (Epic 27)
+export const MANUFACTURING_ROUTE = "/manufacturing";
+export const BOM_LIST_ROUTE = "/manufacturing/boms";
+export const BOM_CREATE_ROUTE = "/manufacturing/boms/create";
+export const BOM_DETAIL_ROUTE = "/manufacturing/boms/:bomId";
+export const WORK_ORDERS_ROUTE = "/manufacturing/work-orders";
+export const WORK_ORDER_CREATE_ROUTE = "/manufacturing/work-orders/create";
+export const WORK_ORDER_DETAIL_ROUTE = "/manufacturing/work-orders/:workOrderId";
+export const WORKSTATIONS_ROUTE = "/manufacturing/workstations";
+export const WORKSTATION_DETAIL_ROUTE = "/manufacturing/workstations/:workstationId";
+export const ROUTINGS_ROUTE = "/manufacturing/routings";
+export const ROUTING_DETAIL_ROUTE = "/manufacturing/routings/:routingId";
+export const PRODUCTION_PLANNING_ROUTE = "/manufacturing/planning";
+export const PRODUCTION_PLANS_ROUTE = "/manufacturing/production-plans";
+export const PRODUCTION_PLAN_DETAIL_ROUTE = "/manufacturing/production-plans/:planId";
+export const OEE_DASHBOARD_ROUTE = "/manufacturing/oee";
+
+
 export type AppRoute =
   | typeof HOME_ROUTE
   | typeof LOGIN_ROUTE

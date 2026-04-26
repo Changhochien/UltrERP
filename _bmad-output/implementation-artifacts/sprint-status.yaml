@@ -1634,6 +1634,148 @@ last_updated: "2026-04-26"
         prerequisites: ["26-1-chart-of-accounts-and-fiscal-structure", "26-2-journal-entry-and-general-ledger-posting", "26-3-core-financial-statements-and-exports"]
         cross_epic: "Budget foundation here must remain compatible with the richer budget extensions planned under Epic 32."
 
+  epic-27:
+    status: "in-progress"
+    validation_note: "Story artifacts created on 2026-04-26 from Epic 27 manufacturing planning, ERPNext manufacturing gap analysis, ERPNext reference code, official manufacturing docs, OEE calculation guidance, and current UltrERP inventory, orders, and procurement surfaces. No implementation has landed yet."
+    recommended_execution_order:
+      - "27.1 BOM Master and Submission Workflow"
+      - "27.2 Work Orders With Direct Material Transfer"
+      - "27.3 Material Reservation, Consumption, and Finished Goods Completion"
+      - "27.5 Routing and Workstation Management"
+      - "27.4 Production Planning From Demand Signals"
+      - "27.6 Production Plan and Demand Aggregation"
+      - "27.7 Downtime Tracking and OEE Calculation"
+    stories:
+      27-1-bom-master-and-submission-workflow:
+        title: "BOM Master and Submission Workflow"
+        status: "ready-for-dev"
+        story_id: "27.1"
+        story_file: "27-1-bom-master-and-submission-workflow.md"
+        validation: "Story artifact created from Epic 27, ERPNext BOM references, official BOM docs, and current UltrERP product and inventory seams."
+        prerequisites: []
+      27-2-work-orders-with-direct-material-transfer:
+        title: "Work Orders With Direct Material Transfer"
+        status: "ready-for-dev"
+        story_id: "27.2"
+        story_file: "27-2-work-orders-with-direct-material-transfer.md"
+        validation: "Story artifact created from Epic 27, ERPNext work-order references, official work-order docs, and current UltrERP inventory and demand patterns."
+        prerequisites: ["27-1-bom-master-and-submission-workflow"]
+      27-3-material-reservation-consumption-and-finished-goods-completion:
+        title: "Material Reservation, Consumption, and Finished Goods Completion"
+        status: "ready-for-dev"
+        story_id: "27.3"
+        story_file: "27-3-material-reservation-consumption-and-finished-goods-completion.md"
+        validation: "Story artifact created from Epic 27, ERPNext work-order execution references, and the existing UltrERP inventory stock and stock-mutation architecture."
+        prerequisites: ["27-2-work-orders-with-direct-material-transfer"]
+        cross_epic: "Reuses Epic 4 warehouse, stock, and transfer foundations rather than introducing a second inventory system."
+      27-4-production-planning-from-demand-signals:
+        title: "Production Planning From Demand Signals"
+        status: "ready-for-dev"
+        story_id: "27.4"
+        story_file: "27-4-production-planning-from-demand-signals.md"
+        validation: "Story artifact created from Epic 27 planning goals, ERPNext production-plan research, and the current UltrERP orders and inventory demand signals."
+        prerequisites: ["27-1-bom-master-and-submission-workflow", "27-2-work-orders-with-direct-material-transfer", "27-3-material-reservation-consumption-and-finished-goods-completion", "27-5-routing-and-workstation-management"]
+        cross_epic: "Reuses confirmed-order demand from the orders domain and current inventory availability from Epic 4."
+      27-5-routing-and-workstation-management:
+        title: "Routing and Workstation Management"
+        status: "ready-for-dev"
+        story_id: "27.5"
+        story_file: "27-5-routing-and-workstation-management.md"
+        validation: "Story artifact created from Epic 27 routing additions, ERPNext routing and workstation references, and current UltrERP work-order planning seams."
+        prerequisites: ["27-1-bom-master-and-submission-workflow", "27-2-work-orders-with-direct-material-transfer"]
+      27-6-production-plan-and-demand-aggregation:
+        title: "Production Plan and Demand Aggregation"
+        status: "ready-for-dev"
+        story_id: "27.6"
+        story_file: "27-6-production-plan-and-demand-aggregation.md"
+        validation: "Story artifact created from Epic 27 planning scope, ERPNext production-plan references, and the current UltrERP orders, inventory, and routing-based planning seams."
+        prerequisites: ["27-4-production-planning-from-demand-signals", "27-5-routing-and-workstation-management"]
+        cross_epic: "Builds on orders demand and inventory availability while staying compatible with future procurement planning work."
+      27-7-downtime-tracking-and-oee-calculation:
+        title: "Downtime Tracking and OEE Calculation"
+        status: "ready-for-dev"
+        story_id: "27.7"
+        story_file: "27-7-downtime-tracking-and-oee-calculation.md"
+        validation: "Story artifact created from Epic 27 downtime and OEE scope, ERPNext downtime-entry references, and standard OEE calculation guidance."
+        prerequisites: ["27-5-routing-and-workstation-management", "27-3-material-reservation-consumption-and-finished-goods-completion"]
+        cross_epic: "Keeps OEE inputs compatible with later Epic 29 quality and manufacturing analytics work."
+
+  epic-28:
+    status: "in-progress"
+    validation_note: "Story artifacts created on 2026-04-26 from Epic 28 people, contacts, service, and quality planning, vendored ERPNext and Frappe references, official ERPNext docs, and the current UltrERP auth, CRM, quality, LINE notification, and desktop notification seams. No implementation has landed yet."
+    recommended_execution_order:
+      - "28.1 Employee and Organization Structure"
+      - "28.2 Shared Contact-Person CRUD and Dynamic Links"
+      - "28.3 Activity Types and Timesheets"
+      - "28.4 Issue Tracking and SLA Management"
+      - "28.5 Warranty and Service Handoff Hooks"
+      - "28.7 Quality Procedure Management"
+      - "28.6 NCR and CAPA Management"
+      - "28.8 Quality Goals and Quality Meetings"
+    stories:
+      28-1-employee-and-organization-structure:
+        title: "Employee and Organization Structure"
+        status: "ready-for-dev"
+        story_id: "28.1"
+        story_file: "28-1-employee-and-organization-structure.md"
+        validation: "Story artifact created from Epic 28 workforce requirements, Frappe HR employee references, and the current UltrERP auth and assignment seams."
+        prerequisites: []
+      28-2-shared-contact-person-crud-and-dynamic-links:
+        title: "Shared Contact-Person CRUD and Dynamic Links"
+        status: "ready-for-dev"
+        story_id: "28.2"
+        story_file: "28-2-shared-contact-person-crud-and-dynamic-links.md"
+        validation: "Story artifact created from Epic 28 contact-system requirements, Frappe dynamic-link guidance, and the current UltrERP CRM and workspace patterns."
+        prerequisites: []
+        cross_epic: "Portal and omnichannel stories in Epic 30 should reuse shared contacts instead of duplicating person records."
+      28-3-activity-types-and-timesheets:
+        title: "Activity Types and Timesheets"
+        status: "ready-for-dev"
+        story_id: "28.3"
+        story_file: "28-3-activity-types-and-timesheets.md"
+        validation: "Story artifact created from Epic 28 timesheet scope, ERPNext time-tracking references, and the current UltrERP list/detail and service-ready data patterns."
+        prerequisites: ["28-1-employee-and-organization-structure"]
+      28-4-issue-tracking-and-sla-management:
+        title: "Issue Tracking and SLA Management"
+        status: "ready-for-dev"
+        story_id: "28.4"
+        story_file: "28-4-issue-tracking-and-sla-management.md"
+        validation: "Story artifact created from Epic 28 service-desk scope, ERPNext issue and SLA references, and the current UltrERP auth, contact, and reporting seams."
+        prerequisites: ["28-1-employee-and-organization-structure", "28-2-shared-contact-person-crud-and-dynamic-links"]
+        cross_epic: "Portal ticketing in Epic 30 should build on the same issue, contact, and SLA model rather than a second support queue."
+      28-5-warranty-and-service-handoff-hooks:
+        title: "Warranty and Service Handoff Hooks"
+        status: "ready-for-dev"
+        story_id: "28.5"
+        story_file: "28-5-warranty-and-service-handoff-hooks.md"
+        validation: "Story artifact created from Epic 28 warranty-handoff scope, ERPNext warranty-claim references, and the planned compatibility with later traceability and asset stories."
+        prerequisites: ["28-4-issue-tracking-and-sla-management"]
+        cross_epic: "Warranty context here must stay compatible with Epic 29 traceability and Epic 31 asset lifecycle work."
+      28-6-ncr-and-capa-management:
+        title: "NCR and CAPA Management"
+        status: "ready-for-dev"
+        story_id: "28.6"
+        story_file: "28-6-ncr-and-capa-management.md"
+        validation: "Story artifact created from Epic 28 quality scope, ERPNext non-conformance guidance, and the current UltrERP audit, approval, and notification seams."
+        prerequisites: ["28-7-quality-procedure-management"]
+        cross_epic: "Inspection linkage should stay optional until Epic 29 quality-inspection records exist."
+      28-7-quality-procedure-management:
+        title: "Quality Procedure Management"
+        status: "ready-for-dev"
+        story_id: "28.7"
+        story_file: "28-7-quality-procedure-management.md"
+        validation: "Story artifact created from Epic 28 quality-procedure scope, ERPNext quality-procedure references, and the current UltrERP quality-domain planning seams."
+        prerequisites: ["28-1-employee-and-organization-structure"]
+        cross_epic: "Provides the governed procedure backbone for Epic 29 inspections and Story 28.6 NCRs."
+      28-8-quality-goals-and-quality-meetings:
+        title: "Quality Goals and Quality Meetings"
+        status: "ready-for-dev"
+        story_id: "28.8"
+        story_file: "28-8-quality-goals-and-quality-meetings.md"
+        validation: "Story artifact created from Epic 28 quality-governance scope, ERPNext quality goal and meeting references, and the current UltrERP notification and reporting seams."
+        prerequisites: ["28-7-quality-procedure-management", "28-6-ncr-and-capa-management"]
+        cross_epic: "Goal review and meeting outcomes should remain compatible with Epic 29 SPC and supplier-quality reporting."
+
   # Epic 41 - Translation Namespace Architecture Hardening
   epic-41:
     status: "in-progress"
