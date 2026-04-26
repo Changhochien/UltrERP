@@ -6,6 +6,7 @@ import { PageHeader, PageTabs, SectionCard } from "../../components/layout/PageL
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { usePermissions } from "../../hooks/usePermissions";
+import { useCommercialDefaultsOptions } from "../../hooks/useCommercialDefaultsOptions";
 import { setSupplierStatus, updateSupplier } from "../../lib/api/inventory";
 import { INVENTORY_SUPPLIERS_ROUTE } from "../../lib/routes";
 import { SupplierForm, type SupplierFormFieldError } from "../../domain/inventory/components/SupplierForm";
@@ -22,12 +23,13 @@ function toFieldErrors(
 }
 
 export function SupplierDetailPage() {
-  const { t } = useTranslation("common", { keyPrefix: "inventory.supplierDetail" });
+  const { t } = useTranslation("inventory");
   const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
   const { supplierId } = useParams<{ supplierId: string }>();
   const { canWrite } = usePermissions();
   const { supplier, loading, error, reload } = useSupplierDetail(supplierId ?? null);
+  const commercialOptions = useCommercialDefaultsOptions();
   const [statusPending, setStatusPending] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
   const inventoryTabs = buildInventorySectionTabs(tCommon);
@@ -53,6 +55,11 @@ export function SupplierDetailPage() {
 
     await reload();
   }
+
+  const paymentTermsName = supplier?.payment_terms_template_id
+    ? commercialOptions.paymentTerms.find((template) => template.id === supplier.payment_terms_template_id)?.template_name
+      ?? supplier.payment_terms_template_id
+    : t("notSet");
 
   return (
     <div className="space-y-6">
@@ -120,6 +127,14 @@ export function SupplierDetailPage() {
                 </dd>
               </div>
               <div>
+                <dt className="text-sm font-medium text-muted-foreground">{t("defaultCurrency")}</dt>
+                <dd className="mt-1">{supplier.default_currency_code ?? t("notSet")}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-muted-foreground">{t("paymentTerms")}</dt>
+                <dd className="mt-1">{paymentTermsName}</dd>
+              </div>
+              <div>
                 <dt className="text-sm font-medium text-muted-foreground">{t("contactEmail")}</dt>
                 <dd className="mt-1">{supplier.contact_email ?? t("notSet")}</dd>
               </div>
@@ -151,6 +166,8 @@ export function SupplierDetailPage() {
                     supplier.default_lead_time_days == null
                       ? ""
                       : String(supplier.default_lead_time_days),
+                  default_currency_code: supplier.default_currency_code ?? "",
+                  payment_terms_template_id: supplier.payment_terms_template_id ?? "",
                 }}
                 submitLabel={t("save")}
                 submittingLabel={t("saving")}

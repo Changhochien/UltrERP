@@ -52,7 +52,8 @@ function InsightTile({ label, value }: { label: string; value: string }) {
 }
 
 export function RFQListPage() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("procurement");
+  const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -97,7 +98,7 @@ export function RFQListPage() {
           return;
         }
         setInsightsError(
-          err instanceof Error ? err.message : t("procurement.reporting.loadError"),
+          err instanceof Error ? err.message : t("reporting.loadError"),
         );
       })
       .finally(() => {
@@ -140,19 +141,19 @@ export function RFQListPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <PageHeader
-          title={t("procurement.rfq.title")}
-          description={t("procurement.rfq.description")}
+          title={t("rfq.title")}
+          description={t("rfq.description")}
         />
         <Button onClick={() => navigate(RFQ_CREATE_ROUTE)}>
-          {t("procurement.rfq.create")}
+          {t("rfq.create")}
         </Button>
       </div>
 
       <SectionCard>
         <div className="space-y-6">
           <div>
-            <h2 className="text-lg font-semibold">{t("procurement.reporting.title")}</h2>
-            <p className="text-sm text-muted-foreground">{t("procurement.reporting.description")}</p>
+            <h2 className="text-lg font-semibold">{t("reporting.title")}</h2>
+            <p className="text-sm text-muted-foreground">{t("reporting.description")}</p>
             {summary ? (
               <p className="mt-1 text-xs text-muted-foreground">
                 {summary.period.from} - {summary.period.to}
@@ -161,26 +162,26 @@ export function RFQListPage() {
           </div>
 
           {insightsLoading ? (
-            <p className="text-muted-foreground">{t("common.status.loading")}</p>
+            <p className="text-muted-foreground">{tCommon("status.loading")}</p>
           ) : insightsError ? (
             <p className="text-destructive">{insightsError}</p>
           ) : summary && turnaroundStats && supplierPerformance ? (
             <div className="space-y-6">
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <InsightTile
-                  label={t("procurement.reporting.rfqsSubmitted")}
+                  label={t("reporting.rfqsSubmitted")}
                   value={`${formatMetric(summary.rfqs.submitted)} / ${formatMetric(summary.rfqs.total)}`}
                 />
                 <InsightTile
-                  label={t("procurement.reporting.quotationsSubmitted")}
+                  label={t("reporting.quotationsSubmitted")}
                   value={`${formatMetric(summary.supplier_quotations.submitted)} / ${formatMetric(summary.supplier_quotations.total)}`}
                 />
                 <InsightTile
-                  label={t("procurement.reporting.activePurchaseOrders")}
+                  label={t("reporting.activePurchaseOrders")}
                   value={`${formatMetric(summary.purchase_orders.active)} / ${formatMetric(summary.purchase_orders.total)}`}
                 />
                 <InsightTile
-                  label={t("procurement.reporting.blockedWarnedSuppliers")}
+                  label={t("reporting.blockedWarnedSuppliers")}
                   value={`${formatMetric(summary.supplier_controls.blocked_suppliers)} / ${formatMetric(summary.supplier_controls.warned_suppliers)}`}
                 />
               </div>
@@ -188,26 +189,26 @@ export function RFQListPage() {
               <div className="grid gap-4 xl:grid-cols-2">
                 <div className="rounded-lg border bg-background p-4 space-y-4">
                   <div>
-                    <h3 className="font-semibold">{t("procurement.reporting.quoteTurnaround")}</h3>
+                    <h3 className="font-semibold">{t("reporting.quoteTurnaround")}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {t("procurement.reporting.quotesAnalysed")}: {formatMetric(turnaroundStats.total_quotes)}
+                      {t("reporting.quotesAnalysed")}: {formatMetric(turnaroundStats.total_quotes)}
                     </p>
                   </div>
 
                   {turnaroundStats.total_quotes === 0 ? (
-                    <p className="text-sm text-muted-foreground">{t("procurement.reporting.noQuoteData")}</p>
+                    <p className="text-sm text-muted-foreground">{t("reporting.noQuoteData")}</p>
                   ) : (
                     <div className="grid gap-4 sm:grid-cols-3">
                       <InsightTile
-                        label={t("procurement.reporting.averageResponseTime")}
+                        label={t("reporting.averageResponseTime")}
                         value={formatNullableMetric(turnaroundStats.avg_turnaround_days)}
                       />
                       <InsightTile
-                        label={t("procurement.reporting.fastestResponse")}
+                        label={t("reporting.fastestResponse")}
                         value={formatNullableMetric(turnaroundStats.min_turnaround_days)}
                       />
                       <InsightTile
-                        label={t("procurement.reporting.slowestResponse")}
+                        label={t("reporting.slowestResponse")}
                         value={formatNullableMetric(turnaroundStats.max_turnaround_days)}
                       />
                     </div>
@@ -216,41 +217,41 @@ export function RFQListPage() {
 
                 <div className="rounded-lg border bg-background p-4 space-y-4">
                   <div>
-                    <h3 className="font-semibold">{t("procurement.reporting.supplierPerformance")}</h3>
+                    <h3 className="font-semibold">{t("reporting.supplierPerformance")}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {t("procurement.reporting.topSuppliers")}
+                      {t("reporting.topSuppliers")}
                     </p>
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     <InsightTile
-                      label={t("procurement.reporting.overallAwardRate")}
+                      label={t("reporting.overallAwardRate")}
                       value={formatPercent(supplierPerformance.overall.award_rate)}
                     />
                     <InsightTile
-                      label={t("procurement.reporting.awardedQuotes")}
+                      label={t("reporting.awardedQuotes")}
                       value={`${formatMetric(supplierPerformance.overall.awarded_quotes)} / ${formatMetric(supplierPerformance.overall.total_quotes)}`}
                     />
                     <InsightTile
-                      label={t("procurement.reporting.monitoredSuppliers")}
+                      label={t("reporting.monitoredSuppliers")}
                       value={formatMetric(supplierPerformance.supplier_controls.total_suppliers)}
                     />
                     <InsightTile
-                      label={t("procurement.reporting.blockedSuppliers")}
+                      label={t("reporting.blockedSuppliers")}
                       value={formatMetric(supplierPerformance.supplier_controls.blocked_count)}
                     />
                   </div>
 
                   {topSuppliers.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">{t("procurement.reporting.noSupplierData")}</p>
+                    <p className="text-sm text-muted-foreground">{t("reporting.noSupplierData")}</p>
                   ) : (
                     <div className="overflow-x-auto rounded-md border">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b text-left text-muted-foreground">
-                            <th className="px-3 py-2 font-medium">{t("procurement.reporting.supplier")}</th>
-                            <th className="px-3 py-2 font-medium">{t("procurement.reporting.totalQuotes")}</th>
-                            <th className="px-3 py-2 font-medium">{t("procurement.reporting.awardRate")}</th>
+                            <th className="px-3 py-2 font-medium">{t("reporting.supplier")}</th>
+                            <th className="px-3 py-2 font-medium">{t("reporting.totalQuotes")}</th>
+                            <th className="px-3 py-2 font-medium">{t("reporting.awardRate")}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y">
@@ -274,7 +275,7 @@ export function RFQListPage() {
 
       <form onSubmit={handleSearch} className="flex gap-3 flex-wrap">
         <Input
-          placeholder={t("procurement.rfq.searchPlaceholder")}
+          placeholder={t("rfq.searchPlaceholder")}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="max-w-xs"
@@ -286,16 +287,16 @@ export function RFQListPage() {
         >
           {STATUS_OPTIONS.map((s) => (
             <option key={s || "all"} value={s}>
-              {s ? t(`procurement.rfq.status.${s}`) : t("common.filters.allStatuses")}
+              {s ? t(`procurement.rfq.status.${s}`) : tCommon("filters.allStatuses")}
             </option>
           ))}
         </select>
         <Button type="submit" variant="outline">
-          {t("common.actions.search")}
+          {tCommon("actions.search")}
         </Button>
       </form>
 
-      {loading && <p className="text-muted-foreground">{t("common.status.loading")}</p>}
+      {loading && <p className="text-muted-foreground">{tCommon("status.loading")}</p>}
       {error && (
         <p className="text-destructive">{error}</p>
       )}
@@ -304,19 +305,19 @@ export function RFQListPage() {
         <SectionCard>
           {data.items.length === 0 ? (
             <p className="text-muted-foreground py-8 text-center">
-              {t("procurement.rfq.empty")}
+              {t("rfq.empty")}
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-muted-foreground">
-                    <th className="pb-2 font-medium">{t("procurement.rfq.fields.name")}</th>
-                    <th className="pb-2 font-medium">{t("procurement.rfq.fields.status")}</th>
-                    <th className="pb-2 font-medium">{t("procurement.rfq.fields.company")}</th>
-                    <th className="pb-2 font-medium">{t("procurement.rfq.fields.transactionDate")}</th>
-                    <th className="pb-2 font-medium">{t("procurement.rfq.fields.suppliers")}</th>
-                    <th className="pb-2 font-medium">{t("procurement.rfq.fields.quotesReceived")}</th>
+                    <th className="pb-2 font-medium">{t("rfq.fields.name")}</th>
+                    <th className="pb-2 font-medium">{t("rfq.fields.status")}</th>
+                    <th className="pb-2 font-medium">{t("rfq.fields.company")}</th>
+                    <th className="pb-2 font-medium">{t("rfq.fields.transactionDate")}</th>
+                    <th className="pb-2 font-medium">{t("rfq.fields.suppliers")}</th>
+                    <th className="pb-2 font-medium">{t("rfq.fields.quotesReceived")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -352,7 +353,7 @@ export function RFQListPage() {
           {data && data.pages > 1 && (
             <div className="mt-4 flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
-                {t("common.pagination.pageInfo", {
+                {tCommon("pagination.pageInfo", {
                   page: data.page,
                   pages: data.pages,
                   total: data.total,
@@ -365,7 +366,7 @@ export function RFQListPage() {
                   disabled={page <= 1}
                   onClick={() => applyFilters(query, statusFilter, page - 1)}
                 >
-                  {t("common.pagination.previous")}
+                  {tCommon("pagination.previous")}
                 </Button>
                 <Button
                   size="sm"
@@ -373,7 +374,7 @@ export function RFQListPage() {
                   disabled={page >= data.pages}
                   onClick={() => applyFilters(query, statusFilter, page + 1)}
                 >
-                  {t("common.pagination.next")}
+                  {tCommon("pagination.next")}
                 </Button>
               </div>
             </div>

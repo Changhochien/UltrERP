@@ -25,7 +25,7 @@ function toFieldErrors(
 }
 
 export function SuppliersPage() {
-  const { t } = useTranslation("common", { keyPrefix: "inventory.suppliersPage" });
+  const { t } = useTranslation("inventory");
   const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
   const { canWrite } = usePermissions();

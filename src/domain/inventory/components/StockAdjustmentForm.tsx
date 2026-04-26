@@ -38,7 +38,7 @@ export function StockAdjustmentForm({
   defaultWarehouseId = "",
   confirmBeforeSubmit = true,
 }: StockAdjustmentFormProps) {
-  const { t } = useTranslation("common", { keyPrefix: "inventory.stockAdjustmentForm" });
+  const { t } = useTranslation("inventory", { keyPrefix: "stockAdjustmentForm" });
   const { warehouses, loading: whLoading } = useWarehouses();
   const { codes, loading: codesLoading } = useReasonCodes();
   const { submit, submitting, result, error, clearError } =

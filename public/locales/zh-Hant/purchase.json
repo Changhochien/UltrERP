@@ -1,1 +1,65 @@
-{}
+{
+  "page": {
+    "description": "檢視已匯入的供應商發票，並稽核遷移後的應付帳款歷史。",
+    "detailDescription": "檢視所選供應商發票與其匯入明細歷史。",
+    "detailTitle": "供應商發票詳情",
+    "eyebrow": "採購",
+    "title": "採購",
+    "workspaceDescription": "瀏覽已匯入的供應商發票，並開啟應付帳款明細檢視。",
+    "workspaceTitle": "供應商發票工作區"
+  },
+  "list": {
+    "allStatuses": "所有狀態",
+    "ariaLabel": "供應商發票列表",
+    "columns": {
+      "invoiceDate": "發票日期",
+      "invoiceNumber": "發票號碼",
+      "lines": "明細數",
+      "status": "狀態",
+      "supplier": "供應商",
+      "total": "總額"
+    },
+    "description": "檢視已匯入的應付歷史並開啟發票層級詳情。",
+    "emptyDescription": "請調整狀態篩選條件或稍後再試。",
+    "emptyTitle": "找不到供應商發票。",
+    "rowLabel": "供應商發票 {invoiceNumber}",
+    "statusFilter": "狀態",
+    "statusOverview": "狀態總覽",
+    "summary": "本頁顯示 {count} 筆供應商發票。",
+    "title": "已匯入的供應商發票"
+  },
+  "detail": {
+    "ariaLabel": "供應商發票詳情",
+    "backToList": "返回列表",
+    "columns": {
+      "description": "說明",
+      "productCode": "產品編號",
+      "productName": "產品",
+      "quantity": "數量",
+      "total": "總額",
+      "unitPrice": "單價"
+    },
+    "currency": "幣別",
+    "emptyDescription": "如有匯入的明細資料，將顯示於此。",
+    "emptyTitle": "找不到供應商發票明細。",
+    "invoiceDate": "發票日期",
+    "linesDescription": "已匯入的供應商發票明細與對應產品資訊。",
+    "linesTitle": "匯入明細",
+    "loading": "載入供應商發票中…",
+    "noNotes": "沒有備註。",
+    "notFound": "找不到供應商發票。",
+    "notes": "備註",
+    "subtotal": "小計",
+    "summaryDescription": "此應付單據的供應商、金額與匯入標頭資訊。",
+    "summaryTitle": "供應商發票摘要",
+    "supplier": "供應商",
+    "tax": "稅額",
+    "title": "供應商發票 {invoiceNumber}",
+    "total": "總額"
+  },
+  "status": {
+    "open": "未結",
+    "paid": "已付款",
+    "voided": "已作廢"
+  }
+}

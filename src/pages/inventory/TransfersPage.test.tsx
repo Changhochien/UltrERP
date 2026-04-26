@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("react-i18next", () => ({
   useTranslation: (_ns?: string, options?: { keyPrefix?: string }) => ({
     t: (key: string, vars?: Record<string, unknown>) => {
-      if (options?.keyPrefix === "inventory.transfersPage" && key === "historyCount") {
+      if (options?.keyPrefix === "transfersPage" && key === "historyCount") {
         return `${vars?.count} transfers`;
       }
       return options?.keyPrefix ? `${options.keyPrefix}.${key}` : key;

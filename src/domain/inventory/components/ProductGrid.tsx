@@ -29,7 +29,7 @@ function stockBarPercent(product: ProductSearchResult): number {
 }
 
 export function ProductGrid({ onProductClick }: ProductGridProps) {
-  const { t } = useTranslation("common", { keyPrefix: "inventory.productGrid" });
+  const { t } = useTranslation("inventory");
   const { selectedWarehouse } = useWarehouseContext();
   const { results, loading, error, search } = useProductSearch();
 

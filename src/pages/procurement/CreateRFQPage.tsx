@@ -24,7 +24,8 @@ function today(): string {
 }
 
 export default function CreateRFQPage() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("procurement");
+  const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
   const { toast } = useToast();
   const { create, loading, error } = useCreateRFQ();
@@ -123,7 +124,7 @@ export default function CreateRFQPage() {
       setSupplierControlResult(idx, result);
       return result;
     } catch (err) {
-      const message = err instanceof Error ? err.message : t("procurement.rfq.supplierControlCheckError");
+      const message = err instanceof Error ? err.message : t("rfq.supplierControlCheckError");
       setSupplierControlResult(idx, null);
       setSupplierControlError(idx, message);
       throw err;
@@ -161,7 +162,7 @@ export default function CreateRFQPage() {
         toast({ title: controlResult.reason, variant: "destructive" });
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : t("procurement.rfq.supplierControlCheckError");
+      const message = err instanceof Error ? err.message : t("rfq.supplierControlCheckError");
       clearSupplierSelection(idx);
       setSupplierControlError(idx, message);
       toast({ title: message, variant: "destructive" });
@@ -171,11 +172,11 @@ export default function CreateRFQPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!company) {
-      toast({ title: t("common.validation.required", { field: t("procurement.rfq.fields.company") }), variant: "destructive" });
+      toast({ title: tCommon("validation.required", { field: t("rfq.fields.company") }), variant: "destructive" });
       return;
     }
     if (items.every((i) => !i.item_name && !i.item_code)) {
-      toast({ title: t("common.validation.requiredItems"), variant: "destructive" });
+      toast({ title: tCommon("validation.requiredItems"), variant: "destructive" });
       return;
     }
 
@@ -184,7 +185,7 @@ export default function CreateRFQPage() {
       .filter(({ supplier }) => supplier.supplier_name || supplier.supplier_id);
 
     if (supplierControlLoading.some(Boolean)) {
-      toast({ title: t("procurement.rfq.supplierControlChecking"), variant: "destructive" });
+      toast({ title: t("rfq.supplierControlChecking"), variant: "destructive" });
       return;
     }
 
@@ -214,11 +215,11 @@ export default function CreateRFQPage() {
         items: items.filter((i) => i.item_name || i.item_code),
         suppliers: supplierEntries.map(({ supplier }) => supplier),
       });
-      toast({ title: t("procurement.rfq.created"), variant: "success" });
+      toast({ title: t("rfq.created"), variant: "success" });
       navigate(`${RFQ_DETAIL_ROUTE.replace(":rfqId", rfq.id)}`);
     } catch (err) {
       toast({
-        title: err instanceof Error ? err.message : t("procurement.rfq.createError"),
+        title: err instanceof Error ? err.message : t("rfq.createError"),
         variant: "destructive",
       });
     }
@@ -232,26 +233,26 @@ export default function CreateRFQPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={t("procurement.rfq.create")}
-        description={t("procurement.rfq.createDescription")}
+        title={t("rfq.create")}
+        description={t("rfq.createDescription")}
       />
 
       <form onSubmit={handleSubmit} className="space-y-8 max-w-3xl">
         {/* Header fields */}
         <div className="rounded-lg border bg-card p-6 space-y-4">
-          <h2 className="text-lg font-semibold">{t("procurement.rfq.sectionHeader")}</h2>
+          <h2 className="text-lg font-semibold">{t("rfq.sectionHeader")}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium">{t("procurement.rfq.fields.company")} *</label>
+              <label className="text-sm font-medium">{t("rfq.fields.company")} *</label>
               <Input
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
-                placeholder={t("procurement.rfq.fields.companyPlaceholder")}
+                placeholder={t("rfq.fields.companyPlaceholder")}
                 className="mt-1"
               />
             </div>
             <div>
-              <label className="text-sm font-medium">{t("procurement.rfq.fields.currency")}</label>
+              <label className="text-sm font-medium">{t("rfq.fields.currency")}</label>
               <Input
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
@@ -260,7 +261,7 @@ export default function CreateRFQPage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium">{t("procurement.rfq.fields.transactionDate")}</label>
+              <label className="text-sm font-medium">{t("rfq.fields.transactionDate")}</label>
               <Input
                 type="date"
                 value={transactionDate}
@@ -269,7 +270,7 @@ export default function CreateRFQPage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium">{t("procurement.rfq.fields.scheduleDate")}</label>
+              <label className="text-sm font-medium">{t("rfq.fields.scheduleDate")}</label>
               <Input
                 type="date"
                 value={scheduleDate}
@@ -283,31 +284,31 @@ export default function CreateRFQPage() {
         {/* Items */}
         <div className="rounded-lg border bg-card p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">{t("procurement.rfq.items")}</h2>
+            <h2 className="text-lg font-semibold">{t("rfq.items")}</h2>
             <Button type="button" variant="outline" size="sm" onClick={addItem}>
-              {t("procurement.rfq.addItem")}
+              {t("rfq.addItem")}
             </Button>
           </div>
           {items.map((item, idx) => (
             <div key={idx} className="grid grid-cols-1 sm:grid-cols-6 gap-2 p-3 border rounded-md">
               <div className="sm:col-span-2">
-                <label className="text-xs text-muted-foreground">{t("procurement.rfq.fields.itemCode")}</label>
+                <label className="text-xs text-muted-foreground">{t("rfq.fields.itemCode")}</label>
                 <Input
                   value={item.item_code}
                   onChange={(e) => updateItem(idx, "item_code", e.target.value)}
-                  placeholder={t("procurement.rfq.fields.itemCodePlaceholder")}
+                  placeholder={t("rfq.fields.itemCodePlaceholder")}
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="text-xs text-muted-foreground">{t("procurement.rfq.fields.itemName")}</label>
+                <label className="text-xs text-muted-foreground">{t("rfq.fields.itemName")}</label>
                 <Input
                   value={item.item_name}
                   onChange={(e) => updateItem(idx, "item_name", e.target.value)}
-                  placeholder={t("procurement.rfq.fields.itemNamePlaceholder")}
+                  placeholder={t("rfq.fields.itemNamePlaceholder")}
                 />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">{t("procurement.rfq.fields.qty")}</label>
+                <label className="text-xs text-muted-foreground">{t("rfq.fields.qty")}</label>
                 <Input
                   type="number"
                   value={item.qty}
@@ -319,7 +320,7 @@ export default function CreateRFQPage() {
                 <Input
                   value={item.uom}
                   onChange={(e) => updateItem(idx, "uom", e.target.value)}
-                  placeholder={t("procurement.rfq.fields.uom")}
+                  placeholder={t("rfq.fields.uom")}
                   className="flex-1"
                 />
                 {items.length > 1 && (
@@ -335,27 +336,27 @@ export default function CreateRFQPage() {
         {/* Suppliers */}
         <div className="rounded-lg border bg-card p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">{t("procurement.rfq.suppliers")}</h2>
+            <h2 className="text-lg font-semibold">{t("rfq.suppliers")}</h2>
             <Button type="button" variant="outline" size="sm" onClick={addSupplier}>
-              {t("procurement.rfq.addSupplier")}
+              {t("rfq.addSupplier")}
             </Button>
           </div>
-          <p className="text-sm text-muted-foreground">{t("procurement.rfq.supplierMasterHint")}</p>
+          <p className="text-sm text-muted-foreground">{t("rfq.supplierMasterHint")}</p>
           {suppliers.map((supp, idx) => (
             <div key={idx} className="space-y-3 p-3 border rounded-md">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div>
-                  <label className="text-xs text-muted-foreground">{t("procurement.rfq.fields.supplierName")}</label>
+                  <label className="text-xs text-muted-foreground">{t("rfq.fields.supplierName")}</label>
                   <SupplierCombobox
                     value={supp.supplier_id ?? ""}
                     onChange={(supplierId) => void handleSupplierSelected(idx, supplierId)}
                     onClear={() => clearSupplierSelection(idx)}
-                    placeholder={t("procurement.rfq.fields.supplierNamePlaceholder")}
-                    ariaLabel={t("procurement.rfq.fields.supplierName")}
+                    placeholder={t("rfq.fields.supplierNamePlaceholder")}
+                    ariaLabel={t("rfq.fields.supplierName")}
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">{t("procurement.rfq.fields.contactEmail")}</label>
+                  <label className="text-xs text-muted-foreground">{t("rfq.fields.contactEmail")}</label>
                   <Input
                     type="email"
                     value={supp.contact_email}
@@ -367,7 +368,7 @@ export default function CreateRFQPage() {
                   <Input
                     value={supp.notes}
                     onChange={(e) => updateSupplier(idx, "notes", e.target.value)}
-                    placeholder={t("procurement.rfq.fields.notes")}
+                    placeholder={t("rfq.fields.notes")}
                     className="flex-1"
                   />
                   {suppliers.length > 1 && (
@@ -379,7 +380,7 @@ export default function CreateRFQPage() {
               </div>
 
               {supplierControlLoading[idx] ? (
-                <p className="text-sm text-muted-foreground">{t("procurement.rfq.supplierControlChecking")}</p>
+                <p className="text-sm text-muted-foreground">{t("rfq.supplierControlChecking")}</p>
               ) : null}
 
               {supplierControlErrors[idx] ? (
@@ -397,8 +398,8 @@ export default function CreateRFQPage() {
                 >
                   <p className="font-medium">
                     {supplierControlResults[idx]?.is_blocked
-                      ? t("procurement.rfq.supplierControlBlocked")
-                      : t("procurement.rfq.supplierControlWarning")}
+                      ? t("rfq.supplierControlBlocked")
+                      : t("rfq.supplierControlWarning")}
                   </p>
                   <p>{supplierControlResults[idx]?.reason}</p>
                 </div>
@@ -409,25 +410,25 @@ export default function CreateRFQPage() {
 
         {/* Terms */}
         <div className="rounded-lg border bg-card p-6 space-y-4">
-          <h2 className="text-lg font-semibold">{t("procurement.rfq.terms")}</h2>
+          <h2 className="text-lg font-semibold">{t("rfq.terms")}</h2>
           <div>
-            <label className="text-sm font-medium">{t("procurement.rfq.fields.terms")}</label>
+            <label className="text-sm font-medium">{t("rfq.fields.terms")}</label>
             <textarea
               className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               rows={4}
               value={terms}
               onChange={(e) => setTerms(e.target.value)}
-              placeholder={t("procurement.rfq.termsPlaceholder")}
+              placeholder={t("rfq.termsPlaceholder")}
             />
           </div>
           <div>
-            <label className="text-sm font-medium">{t("procurement.rfq.fields.notes")}</label>
+            <label className="text-sm font-medium">{t("rfq.fields.notes")}</label>
             <textarea
               className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               rows={3}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder={t("procurement.rfq.notesPlaceholder")}
+              placeholder={t("rfq.notesPlaceholder")}
             />
           </div>
         </div>
@@ -436,10 +437,10 @@ export default function CreateRFQPage() {
 
         <div className="flex gap-3">
           <Button type="submit" disabled={loading || supplierChecksPending || hasBlockedSupplier}>
-            {loading ? t("common.status.saving") : t("procurement.rfq.save")}
+            {loading ? tCommon("status.saving") : t("rfq.save")}
           </Button>
           <Button type="button" variant="outline" onClick={() => navigate(RFQ_LIST_ROUTE)}>
-            {t("common.actions.cancel")}
+            {tCommon("actions.cancel")}
           </Button>
         </div>
       </form>

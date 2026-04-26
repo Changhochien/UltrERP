@@ -26,7 +26,8 @@ import { buildInventoryTransfersPath, ORDER_CREATE_ROUTE } from "../lib/routes";
 import { buildInventorySectionTabs, getInventorySectionRoute, type InventorySectionTabValue } from "./inventory/inventoryPageTabs";
 
 function InventoryWorkspace() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("inventory");
+  const { t: tRoutes } = useTranslation("routes");
   const navigate = useNavigate();
   const { selectedWarehouse, setSelectedWarehouse } = useWarehouseContext();
   const { canWrite } = usePermissions();
@@ -45,22 +46,22 @@ function InventoryWorkspace() {
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumb={[{ label: t("routes.inventory.label") }]}
-        eyebrow={t("inventory.page.eyebrow")}
-        title={t("inventory.page.title")}
-        description={t("inventory.page.description")}
+        breadcrumb={[{ label: tRoutes("inventory.label") }]}
+        eyebrow={t("page.eyebrow")}
+        title={t("page.title")}
+        description={t("page.description")}
         actions={
           <div className="grid w-full gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end xl:w-[32rem]">
             <div className="space-y-2">
               <div className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-                {t("inventory.page.warehouseScope")}
+                {t("page.warehouseScope")}
               </div>
               <WarehouseSelector
                 value={selectedWarehouse}
                 onChange={setSelectedWarehouse}
               />
               <p className="text-xs text-muted-foreground">
-                {t("inventory.page.warehouseScopeDescription")}
+                {t("page.warehouseScopeDescription")}
               </p>
             </div>
             {canWrite("inventory") && (
@@ -72,7 +73,7 @@ function InventoryWorkspace() {
                   setShowCreateProduct(true);
                 }}
               >
-                {t("inventory.page.addProduct")}
+                {t("page.addProduct")}
               </Button>
             )}
           </div>
@@ -81,7 +82,7 @@ function InventoryWorkspace() {
           <PageTabs
             items={inventoryTabs}
             value="overview"
-            ariaLabel={t("inventory.page.title")}
+            ariaLabel={t("page.title")}
             onValueChange={(next) => navigate(getInventorySectionRoute(next as InventorySectionTabValue))}
           />
         )}
@@ -90,14 +91,14 @@ function InventoryWorkspace() {
       <MetricCards warehouseId={selectedWarehouse?.id} />
 
       <CommandBar
-        ariaLabel={t("inventory.page.commandBar.regionLabel")}
+        ariaLabel={t("page.commandBar.regionLabel")}
         searchValue={productSearch}
         onSearch={setProductSearch}
-        searchPlaceholder={t("inventory.page.commandBar.searchPlaceholder")}
-        searchAriaLabel={t("inventory.page.commandBar.searchPlaceholder")}
-        adjustStockLabel={t("inventory.page.commandBar.adjustStock")}
-        newTransferLabel={t("inventory.page.commandBar.newTransfer")}
-        newOrderLabel={t("inventory.page.commandBar.newOrder")}
+        searchPlaceholder={t("page.commandBar.searchPlaceholder")}
+        searchAriaLabel={t("page.commandBar.searchPlaceholder")}
+        adjustStockLabel={t("page.commandBar.adjustStock")}
+        newTransferLabel={t("page.commandBar.newTransfer")}
+        newOrderLabel={t("page.commandBar.newOrder")}
         onAdjustStock={canManageInventory ? () => {
           setSelectedProductId(null);
           setAdjustProductId("");
@@ -153,9 +154,9 @@ function InventoryWorkspace() {
       >
         <DialogContent className="max-w-3xl p-0 sm:max-w-3xl" showCloseButton>
           <DialogHeader className="px-6 pt-6">
-            <DialogTitle>{t("inventory.page.stockAdjustmentDialog.title")}</DialogTitle>
+            <DialogTitle>{t("page.stockAdjustmentDialog.title")}</DialogTitle>
             <DialogDescription>
-              {t("inventory.page.stockAdjustmentDialog.description")}
+              {t("page.stockAdjustmentDialog.description")}
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[80vh] overflow-y-auto px-6 pb-6">
@@ -180,9 +181,9 @@ function InventoryWorkspace() {
       >
         <DialogContent className="max-w-3xl p-0 sm:max-w-3xl" showCloseButton>
           <DialogHeader className="px-6 pt-6">
-            <DialogTitle>{t("inventory.page.createProductDialog.title")}</DialogTitle>
+            <DialogTitle>{t("page.createProductDialog.title")}</DialogTitle>
             <DialogDescription>
-              {t("inventory.page.createProductDialog.description")}
+              {t("page.createProductDialog.description")}
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[80vh] overflow-y-auto px-6 pb-6">

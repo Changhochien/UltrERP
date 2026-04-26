@@ -1,1 +1,65 @@
-{}
+{
+  "page": {
+    "description": "Review imported supplier invoices and audit migrated AP history.",
+    "detailDescription": "Inspect the selected supplier invoice and its imported line history.",
+    "detailTitle": "Supplier Invoice Detail",
+    "eyebrow": "Purchases",
+    "title": "Purchases",
+    "workspaceDescription": "Browse imported supplier invoices and open a detailed AP audit view.",
+    "workspaceTitle": "Supplier Invoice Workspace"
+  },
+  "list": {
+    "allStatuses": "All statuses",
+    "ariaLabel": "Supplier invoice list",
+    "columns": {
+      "invoiceDate": "Invoice Date",
+      "invoiceNumber": "Invoice #",
+      "lines": "Lines",
+      "status": "Status",
+      "supplier": "Supplier",
+      "total": "Total"
+    },
+    "description": "Review imported AP history and open invoice-level details.",
+    "emptyDescription": "Adjust the status filter or try again later.",
+    "emptyTitle": "No supplier invoices found.",
+    "rowLabel": "Supplier invoice {invoiceNumber}",
+    "statusFilter": "Status",
+    "statusOverview": "Status overview",
+    "summary": "Showing {count} supplier invoices on this page.",
+    "title": "Imported Supplier Invoices"
+  },
+  "detail": {
+    "ariaLabel": "Supplier invoice detail",
+    "backToList": "Back to list",
+    "columns": {
+      "description": "Description",
+      "productCode": "Product Code",
+      "productName": "Product",
+      "quantity": "Quantity",
+      "total": "Total",
+      "unitPrice": "Unit Price"
+    },
+    "currency": "Currency",
+    "emptyDescription": "Imported line items will appear here when available.",
+    "emptyTitle": "No supplier invoice lines found.",
+    "invoiceDate": "Invoice Date",
+    "linesDescription": "Imported supplier invoice lines and mapped product references.",
+    "linesTitle": "Imported Lines",
+    "loading": "Loading supplier invoice…",
+    "noNotes": "No notes recorded.",
+    "notFound": "Supplier invoice not found.",
+    "notes": "Notes",
+    "subtotal": "Subtotal",
+    "summaryDescription": "Supplier, totals, and imported header metadata for this AP document.",
+    "summaryTitle": "Supplier Invoice Summary",
+    "supplier": "Supplier",
+    "tax": "Tax",
+    "title": "Supplier Invoice {invoiceNumber}",
+    "total": "Total"
+  },
+  "status": {
+    "open": "Open",
+    "paid": "Paid",
+    "voided": "Voided"
+  }
+}

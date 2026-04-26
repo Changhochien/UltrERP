@@ -38,7 +38,7 @@ function TransferMetadataRow({
 }
 
 export function TransfersPage() {
-  const { t } = useTranslation("common", { keyPrefix: "inventory.transfersPage" });
+  const { t } = useTranslation("inventory");
   const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();

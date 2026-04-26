@@ -1486,7 +1486,7 @@ last_updated: "2026-04-22"
 
   # Epic 41 - Translation Namespace Architecture Hardening
   epic-41:
-    status: "ready-for-dev"
+    status: "in-progress"
     validation_note: "Backlog drafted on 2026-04-26 from the translation architecture investigation. The frontend currently loads only the common namespace even though the locale resources exceed 3,500 lines per language. Stories 41.1 through 41.5 sequence a behavior-preserving namespace migration with shell and route extraction, feature-scoped locale files, and namespace hygiene guardrails."
     recommended_execution_order:
       - "41.1 Multi-Namespace i18n Scaffolding"
@@ -1513,8 +1513,8 @@ last_updated: "2026-04-22"
         title: "Operations Translation Namespace Migration"
         status: "ready-for-dev"
         story_id: "41.3"
-        story_file: "41-3-operations-translation-namespace-migration.md"
-        validation: "Story artifact created from the 2026-04-26 translation namespace architecture investigation."
+        story_file: "stories/41-3-operations-namespace-migration.md"
+        validation: "Story artifact created 2026-04-26: Extract inventory/procurement/purchase from common.* to dedicated namespaces."
         prerequisites: ["41.1", "41.2"]
       41-4-sales-and-finance-translation-namespace-migration:
         title: "Sales and Finance Translation Namespace Migration"
@@ -1661,10 +1661,10 @@ last_updated: "2026-04-26"
         prerequisites: ["41-1-multi-namespace-i18n-scaffolding"]
       41-3-operations-namespace-migration:
         title: "Operations Namespace Migration"
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "41.3"
         story_file: "41-3-operations-namespace-migration.md"
-        validation: "Story artifact created from Epic 41 i18n architecture planning."
+        validation: "Implemented operations namespace migration (inventory, procurement, purchase). Extracted 28 total keys to dedicated namespaces. Updated 15+ consumers. Build passes, locale parity check passes."
         prerequisites: ["41-2-shell-and-route-translation-extraction"]
       41-4-sales-and-finance-namespace-migration:
         title: "Sales and Finance Namespace Migration"

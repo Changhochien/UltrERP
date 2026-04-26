@@ -8,7 +8,8 @@ import { SupplierInvoiceDetail } from "../domain/purchases/components/SupplierIn
 import { SupplierInvoiceList } from "../domain/purchases/components/SupplierInvoiceList";
 
 export function PurchasesPage() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("purchase");
+  const { t: tRoutes } = useTranslation("routes");
   const location = useLocation();
   const navigate = useNavigate();
   const requestedInvoiceId =
@@ -30,10 +31,10 @@ export function PurchasesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumb={[{ label: t("routes.purchases.label") }]}
-        eyebrow={t("purchase.page.eyebrow")}
-        title={t("purchase.page.title")}
-        description={t("purchase.page.description")}
+        breadcrumb={[{ label: tRoutes("purchases.label") }]}
+        eyebrow={t("page.eyebrow")}
+        title={t("page.title")}
+        description={t("page.description")}
         actions={
           selectedInvoiceId ? (
             <div className="flex flex-wrap gap-3">
@@ -42,7 +43,7 @@ export function PurchasesPage() {
                 variant="outline"
                 onClick={() => handleSelectInvoice(null)}
               >
-                {t("purchase.detail.backToList")}
+                {t("detail.backToList")}
               </Button>
             </div>
           ) : undefined
@@ -52,13 +53,13 @@ export function PurchasesPage() {
       <SectionCard
         title={
           selectedInvoiceId
-            ? t("purchase.page.detailTitle")
-            : t("purchase.page.workspaceTitle")
+            ? t("page.detailTitle")
+            : t("page.workspaceTitle")
         }
         description={
           selectedInvoiceId
-            ? t("purchase.page.detailDescription")
-            : t("purchase.page.workspaceDescription")
+            ? t("page.detailDescription")
+            : t("page.workspaceDescription")
         }
       >
         {selectedInvoiceId ? (
