@@ -1,28 +1,291 @@
 /**
  * Collections Page (Epic 26 - Story 26-5)
- * Placeholder - Implementation pending
+ * Manual dunning and collections tracking
  */
-
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Plus, FileText, CheckCircle, XCircle, AlertTriangle, Send } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/useToast";
+
+interface DunningNotice {
+  id: string;
+  notice_number: string;
+  notice_date: string;
+  status: string;
+  customer_name: string;
+  invoice_number: string;
+  outstanding_amount: string;
+  fee_amount: string;
+  total_amount: string;
+  reminder_level: number;
+}
+
+interface OverdueInvoice {
+  id: string;
+  invoice_number: string;
+  customer_name: string;
+  invoice_date: string;
+  due_date: string;
+  total_amount: string;
+  outstanding_amount: string;
+}
 
 export function CollectionsPage() {
   const { t } = useTranslation();
+  const { toast } = useToast();
+  const [notices, setNotices] = useState<DunningNotice[]>([]);
+  const [overdueInvoices, setOverdueInvoices] = useState<OverdueInvoice[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("notices");
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+
+  const loadNotices = async () => {
+    try {
+      const response = await fetch("/api/v1/accounting/dunning-notices", {
+        headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setNotices(data);
+      }
+    } catch (error) {
+      console.error("Failed to load notices:", error);
+    }
+  };
+
+  const loadOverdueInvoices = async () => {
+    try {
+      const response = await fetch("/api/v1/accounting/overdue-invoices?days_overdue=30", {
+        headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setOverdueInvoices(data);
+      }
+    } catch (error) {
+      console.error("Failed to load overdue invoices:", error);
+    }
+  };
+
+  const handleCreateNotice = async (invoiceId: string, data: any) => {
+    try {
+      const response = await fetch(`/api/v1/accounting/dunning-notices`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ invoice_id: invoiceId, ...data })
+      });
+
+      if (response.ok) {
+        toast({ title: "Success", description: "Dunning notice created" });
+        loadNotices();
+        setShowCreateDialog(false);
+      } else {
+        toast({ title: "Error", description: "Failed to create notice", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to create notice", variant: "destructive" });
+    }
+  };
+
+  const handleTransition = async (noticeId: string, newStatus: string) => {
+    try {
+      const response = await fetch(`/api/v1/accounting/dunning-notices/${noticeId}/transition`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (response.ok) {
+        toast({ title: "Success", description: "Notice updated" });
+        loadNotices();
+      } else {
+        const error = await response.json();
+        toast({ title: "Error", description: error.message || "Failed to update notice", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to update notice", variant: "destructive" });
+    }
+  };
+
+  const draftCount = notices.filter(n => n.status === "draft").length;
+  const openCount = notices.filter(n => n.status === "open").length;
+  const resolvedCount = notices.filter(n => n.status === "resolved").length;
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "draft":
+        return <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-800">Draft</span>;
+      case "open":
+        return <span className="inline-flex items-center rounded-full bg-orange-100 px-2 py-1 text-xs font-medium text-orange-800">Open</span>;
+      case "resolved":
+        return <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800">Resolved</span>;
+      case "cancelled":
+        return <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-800">Cancelled</span>;
+      default:
+        return <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-1 text-xs">{status}</span>;
+    }
+  };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          {t("routes.collections.label", "Collections")}
-        </h1>
-        <p className="text-muted-foreground">
-          {t("routes.collections.description", "Track overdue invoices and dunning notices")}
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {t("routes.collections.label", "Collections")}
+          </h1>
+          <p className="text-muted-foreground">
+            {t("routes.collections.description", "Track overdue invoices and dunning notices")}
+          </p>
+        </div>
+        <Button onClick={loadNotices} variant="outline" size="sm">
+          Refresh
+        </Button>
       </div>
-      <div className="rounded-lg border border-border bg-card p-8 text-center">
-        <p className="text-muted-foreground">
-          {t("common.comingSoon", "Coming soon")} - Collections implementation pending
-        </p>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Draft Notices</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-gray-600">{draftCount}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Open Notices</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{openCount}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Resolved</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{resolvedCount}</div>
+          </CardContent>
+        </Card>
       </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="notices">Dunning Notices</TabsTrigger>
+          <TabsTrigger value="overdue">Overdue Invoices</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="notices" className="space-y-4">
+          <div className="flex justify-end">
+            <Button onClick={() => setShowCreateDialog(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Notice
+            </Button>
+          </div>
+
+          <div className="rounded-md border">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="px-4 py-2 text-left text-sm font-medium">Notice #</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium">Date</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium">Customer</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium">Invoice</th>
+                  <th className="px-4 py-2 text-right text-sm font-medium">Amount</th>
+                  <th className="px-4 py-2 text-center text-sm font-medium">Status</th>
+                  <th className="px-4 py-2 text-center text-sm font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {notices.map((notice) => (
+                  <tr key={notice.id} className="border-b">
+                    <td className="px-4 py-2 text-sm font-mono">{notice.notice_number}</td>
+                    <td className="px-4 py-2 text-sm">{notice.notice_date}</td>
+                    <td className="px-4 py-2 text-sm">{notice.customer_name}</td>
+                    <td className="px-4 py-2 text-sm">{notice.invoice_number}</td>
+                    <td className="px-4 py-2 text-right text-sm">{notice.total_amount}</td>
+                    <td className="px-4 py-2 text-center">{getStatusBadge(notice.status)}</td>
+                    <td className="px-4 py-2 text-center">
+                      {notice.status === "draft" && (
+                        <Button size="sm" onClick={() => handleTransition(notice.id, "open")}>
+                          <Send className="mr-1 h-3 w-3" />
+                          Send
+                        </Button>
+                      )}
+                      {notice.status === "open" && (
+                        <Button size="sm" onClick={() => handleTransition(notice.id, "resolved")}>
+                          <CheckCircle className="mr-1 h-3 w-3" />
+                          Resolve
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {notices.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                      No dunning notices
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="overdue">
+          <div className="rounded-md border">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="px-4 py-2 text-left text-sm font-medium">Invoice #</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium">Customer</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium">Date</th>
+                  <th className="px-4 py-2 text-right text-sm font-medium">Amount</th>
+                  <th className="px-4 py-2 text-right text-sm font-medium">Outstanding</th>
+                  <th className="px-4 py-2 text-center text-sm font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {overdueInvoices.map((invoice) => (
+                  <tr key={invoice.id} className="border-b">
+                    <td className="px-4 py-2 text-sm font-mono">{invoice.invoice_number}</td>
+                    <td className="px-4 py-2 text-sm">{invoice.customer_name}</td>
+                    <td className="px-4 py-2 text-sm">{invoice.invoice_date}</td>
+                    <td className="px-4 py-2 text-right text-sm">{invoice.total_amount}</td>
+                    <td className="px-4 py-2 text-right text-sm text-red-600">{invoice.outstanding_amount}</td>
+                    <td className="px-4 py-2 text-center">
+                      <Button size="sm" onClick={() => setShowCreateDialog(true)}>
+                        <FileText className="mr-1 h-3 w-3" />
+                        Create Notice
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+                {overdueInvoices.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                      No overdue invoices
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
