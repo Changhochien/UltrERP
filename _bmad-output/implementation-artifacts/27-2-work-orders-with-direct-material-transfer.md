@@ -1,6 +1,6 @@
 # Story 27.2: Work Orders With Direct Material Transfer
 
-**Status:** review
+**Status:** committed
 
 **Story ID:** 27.2
 
@@ -139,12 +139,13 @@ Keep this story focused on the work-order document and lifecycle. Actual reserva
 
 ## Dev Agent Record
 
-**Status:** ready-for-dev
-**Last Updated:** 2026-04-26
+**Status:** committed
+**Last Updated:** 2026-04-27
 
 ### Completion Notes List
 
 - 2026-04-26: Story drafted from Epic 27, ERPNext work-order reference code, official work-order documentation, and current UltrERP inventory, orders, and procurement patterns.
+- 2026-04-27: Fixed HIGH severity issues - race condition (SELECT FOR UPDATE), stop/cancel reason validation
 
 ### File List
 
@@ -163,3 +164,9 @@ Keep this story focused on the work-order document and lifecycle. Actual reserva
 - Status machine: draft → submitted → not_started → in_progress → completed/stopped/cancelled
 - Direct material transfer mode supported
 - Material lines created from BOM snapshot at work order creation
+- Stop/cancel operations require explicit reason
+
+### Change Log
+
+- 2026-04-26: Initial implementation of Work Orders
+- 2026-04-27: Fixed HIGH severity issues - race condition (SELECT FOR UPDATE), stop/cancel reason validation
