@@ -43,7 +43,7 @@ interface VarianceReport {
 
 export function BudgetVariancePage() {
   const { t } = useTranslation();
-  const toast = useToast();
+  const { error: toastError } = useToast();
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [selectedBudgetId, setSelectedBudgetId] = useState<string>("");
   const [fromDate, setFromDate] = useState("2026-01-01");
@@ -70,7 +70,7 @@ export function BudgetVariancePage() {
 
   const generateReport = async () => {
     if (!selectedBudgetId) {
-      toast({ title: "Error", description: "Please select a budget", variant: "destructive" });
+      toastError("Error", "Please select a budget");
       return;
     }
 
@@ -92,10 +92,10 @@ export function BudgetVariancePage() {
         const data = await response.json();
         setReport(data);
       } else {
-        toast({ title: "Error", description: "Failed to generate report", variant: "destructive" });
+        toastError("Error", "Failed to generate report");
       }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to generate report", variant: "destructive" });
+      toastError("Error", "Failed to generate report");
     } finally {
       setIsLoading(false);
     }

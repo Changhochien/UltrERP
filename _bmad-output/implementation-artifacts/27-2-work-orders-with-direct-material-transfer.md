@@ -70,6 +70,7 @@ so that in-house production has an explicit execution record with a controlled l
 |------|--------|
 | 2026-04-26 | Initial implementation |
 | 2026-04-27 | Fixed HIGH severity issues |
+| 2026-04-27 | Fixed TypeScript errors in WorkOrderForm (transfer_mode type) |
 
 ### Key Features
 

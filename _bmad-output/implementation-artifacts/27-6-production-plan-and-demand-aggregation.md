@@ -76,3 +76,6 @@ so that manufacturing capacity is planned against aggregated demand with clear s
 - ✅ Python files compile without errors
 - ✅ Manufacturing module imports correctly
 - ✅ Tests pass (85 API tests, 317 domain tests)
+
+### TypeScript Fixes (2026-04-27)
+- Fixed `.map()` callback type annotations in ProductionPlanList

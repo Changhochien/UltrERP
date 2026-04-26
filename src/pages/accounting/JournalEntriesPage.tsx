@@ -52,7 +52,7 @@ import { buildJournalEntryDetailPath } from "@/lib/routes";
 
 export function JournalEntriesPage() {
   const { t } = useTranslation();
-  const toast = useToast();
+  const { success: toastSuccess } = useToast();
   const navigate = useNavigate();
 
   // Filters
@@ -67,7 +67,7 @@ export function JournalEntriesPage() {
   const [createOpen, setCreateOpen] = useState(false);
 
   // Fetch journal entries
-  const { entries, isLoading, total, refetch } = useJournalEntries({
+  const { entries, isLoading, total } = useJournalEntries({
     page,
     pageSize,
     status: statusFilter || undefined,
@@ -78,14 +78,14 @@ export function JournalEntriesPage() {
   const handleCreateSuccess = useCallback(
     (entry: JournalEntry) => {
       setCreateOpen(false);
-      toast.success(
+      toastSuccess(
         t("accounting.journalEntryCreated", {
           voucherNumber: entry.voucher_number,
         })
       );
       navigate(buildJournalEntryDetailPath(entry.id));
     },
-    [t, toast, navigate]
+    [t, toastSuccess, navigate]
   );
 
   // Format date
@@ -115,8 +115,8 @@ export function JournalEntriesPage() {
         </div>
 
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild>
-            <Button>
+          <DialogTrigger>
+            <Button onClick={() => setCreateOpen(true)}>
               {t("accounting.newJournalEntry")}
             </Button>
           </DialogTrigger>
@@ -125,7 +125,6 @@ export function JournalEntriesPage() {
               <DialogTitle>{t("accounting.createJournalEntry")}</DialogTitle>
             </DialogHeader>
             <JournalEntryForm
-              mode="create"
               onSuccess={handleCreateSuccess}
               onCancel={() => setCreateOpen(false)}
             />

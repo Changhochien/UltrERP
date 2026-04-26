@@ -40,6 +40,11 @@ export function BalanceSheetPage() {
   // Date selection
   const [asOfDate, setAsOfDate] = useState<Date | null>(new Date());
 
+  // Wrapper to handle DatePicker's Date | null | undefined
+  const handleDateChange = (date: Date | null | undefined) => {
+    setAsOfDate(date ?? null);
+  };
+
   // Report state
   const [report, setReport] = useState<BalanceSheetResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -119,7 +124,7 @@ export function BalanceSheetPage() {
             {/* Date selector */}
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium">As of Date</label>
-              <DatePicker date={asOfDate} onChange={setAsOfDate} />
+              <DatePicker value={asOfDate} onChange={handleDateChange} />
             </div>
 
             {/* Actions */}

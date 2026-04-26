@@ -1,17 +1,17 @@
 /** Create Work Order Page - Create new manufacturing work order. */
 
+import { useNavigate } from "react-router-dom";
 import { WorkOrderForm } from "@/domain/manufacturing/components/WorkOrderForm";
-import { useRouter } from "next/router";
 
 export function CreateWorkOrderPage() {
-	const router = useRouter();
+	const navigate = useNavigate();
 
 	const handleSuccess = () => {
-		router.push("/manufacturing/work-orders");
+		navigate("/manufacturing/work-orders");
 	};
 
 	const handleCancel = () => {
-		router.push("/manufacturing/work-orders");
+		navigate("/manufacturing/work-orders");
 	};
 
 	return (

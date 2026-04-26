@@ -20,7 +20,7 @@ export function WorkOrderForm({ onSuccess, onCancel }: WorkOrderFormProps) {
 		source_warehouse_id: "",
 		wip_warehouse_id: "",
 		fg_warehouse_id: "",
-		transfer_mode: "direct" as const,
+		transfer_mode: "direct" as "direct" | "manufacture",
 		planned_start_date: "",
 		due_date: "",
 		notes: "",

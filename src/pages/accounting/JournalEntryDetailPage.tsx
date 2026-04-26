@@ -27,7 +27,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/useToast";
 
 import {
-  JournalEntryDetail,
   JournalEntryStatus,
   JOURNAL_ENTRY_STATUS_COLORS,
   JOURNAL_ENTRY_STATUS_LABELS,
@@ -39,12 +38,11 @@ import { LedgerTable } from "@/domain/accounting/components/LedgerTable";
 import {
   buildJournalEntriesPath,
   buildJournalEntryDetailPath,
-  ACCOUNTING_CHART_OF_ACCOUNTS_ROUTE,
 } from "@/lib/routes";
 
 export function JournalEntryDetailPage() {
   const { t } = useTranslation();
-  const toast = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
   const navigate = useNavigate();
   const { journalEntryId } = useParams<{ journalEntryId: string }>();
 
@@ -93,19 +91,19 @@ export function JournalEntryDetailPage() {
     if (!journalEntryId) return;
     try {
       const result = await submitEntry(journalEntryId);
-      toast.success(
+      toastSuccess(
         t("accounting.journalEntrySubmitted", {
           voucherNumber: result.journal_entry.voucher_number,
           glEntries: result.gl_entries_created,
         })
       );
     } catch (err: any) {
-      toast.error(
+      toastError(
         err?.detail?.errors?.join(", ") ||
           t("accounting.submitFailed")
       );
     }
-  }, [journalEntryId, submitEntry, toast, t]);
+  }, [journalEntryId, submitEntry, toastSuccess, toastError, t]);
 
   // Handle reverse
   const handleReverse = useCallback(async () => {
@@ -115,7 +113,7 @@ export function JournalEntryDetailPage() {
         reversalDate,
         cancelReason,
       });
-      toast.success(
+      toastSuccess(
         t("accounting.journalEntryReversed", {
           original: result.original_entry.voucher_number,
           reversing: result.reversing_entry.voucher_number,
@@ -124,12 +122,12 @@ export function JournalEntryDetailPage() {
       setReverseOpen(false);
       refetch();
     } catch (err: any) {
-      toast.error(
+      toastError(
         err?.detail?.errors?.join(", ") ||
           t("accounting.reverseFailed")
       );
     }
-  }, [journalEntryId, reversalDate, cancelReason, reverseEntry, toast, t, refetch]);
+  }, [journalEntryId, reversalDate, cancelReason, reverseEntry, toastSuccess, toastError, t, refetch]);
 
   if (isLoading) {
     return (
@@ -155,7 +153,6 @@ export function JournalEntryDetailPage() {
 
   const isDraft = entry.status === "Draft";
   const isSubmitted = entry.status === "Submitted";
-  const isCancelled = entry.status === "Cancelled";
 
   return (
     <div className="container mx-auto p-6">
@@ -197,8 +194,8 @@ export function JournalEntryDetailPage() {
           )}
           {isSubmitted && (
             <Dialog open={reverseOpen} onOpenChange={setReverseOpen}>
-              <DialogTrigger asChild>
-                <Button variant="destructive">
+              <DialogTrigger>
+                <Button variant="destructive" onClick={() => setReverseOpen(true)}>
                   {t("accounting.reverseEntry")}
                 </Button>
               </DialogTrigger>

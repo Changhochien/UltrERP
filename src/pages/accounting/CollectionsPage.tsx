@@ -4,14 +4,11 @@
  */
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Plus, FileText, CheckCircle, XCircle, AlertTriangle, Send } from "lucide-react";
+import { CheckCircle, Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/useToast";
 
 interface DunningNotice {
   id: string;
@@ -38,12 +35,9 @@ interface OverdueInvoice {
 
 export function CollectionsPage() {
   const { t } = useTranslation();
-  const toast = useToast();
   const [notices, setNotices] = useState<DunningNotice[]>([]);
-  const [overdueInvoices, setOverdueInvoices] = useState<OverdueInvoice[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [overdueInvoices] = useState<OverdueInvoice[]>([]);
   const [activeTab, setActiveTab] = useState("notices");
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   const loadNotices = async () => {
     try {
@@ -59,43 +53,6 @@ export function CollectionsPage() {
     }
   };
 
-  const loadOverdueInvoices = async () => {
-    try {
-      const response = await fetch("/api/v1/accounting/overdue-invoices?days_overdue=30", {
-        headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setOverdueInvoices(data);
-      }
-    } catch (error) {
-      console.error("Failed to load overdue invoices:", error);
-    }
-  };
-
-  const handleCreateNotice = async (invoiceId: string, data: any) => {
-    try {
-      const response = await fetch(`/api/v1/accounting/dunning-notices`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ invoice_id: invoiceId, ...data })
-      });
-
-      if (response.ok) {
-        toast({ title: "Success", description: "Dunning notice created" });
-        loadNotices();
-        setShowCreateDialog(false);
-      } else {
-        toast({ title: "Error", description: "Failed to create notice", variant: "destructive" });
-      }
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to create notice", variant: "destructive" });
-    }
-  };
-
   const handleTransition = async (noticeId: string, newStatus: string) => {
     try {
       const response = await fetch(`/api/v1/accounting/dunning-notices/${noticeId}/transition`, {
@@ -108,14 +65,10 @@ export function CollectionsPage() {
       });
 
       if (response.ok) {
-        toast({ title: "Success", description: "Notice updated" });
         loadNotices();
-      } else {
-        const error = await response.json();
-        toast({ title: "Error", description: error.message || "Failed to update notice", variant: "destructive" });
       }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to update notice", variant: "destructive" });
+      console.error("Failed to update notice:", error);
     }
   };
 
@@ -188,13 +141,6 @@ export function CollectionsPage() {
         </TabsList>
 
         <TabsContent value="notices" className="space-y-4">
-          <div className="flex justify-end">
-            <Button onClick={() => setShowCreateDialog(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Notice
-            </Button>
-          </div>
-
           <div className="rounded-md border">
             <table className="w-full">
               <thead>
@@ -255,7 +201,6 @@ export function CollectionsPage() {
                   <th className="px-4 py-2 text-left text-sm font-medium">Date</th>
                   <th className="px-4 py-2 text-right text-sm font-medium">Amount</th>
                   <th className="px-4 py-2 text-right text-sm font-medium">Outstanding</th>
-                  <th className="px-4 py-2 text-center text-sm font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -266,17 +211,11 @@ export function CollectionsPage() {
                     <td className="px-4 py-2 text-sm">{invoice.invoice_date}</td>
                     <td className="px-4 py-2 text-right text-sm">{invoice.total_amount}</td>
                     <td className="px-4 py-2 text-right text-sm text-red-600">{invoice.outstanding_amount}</td>
-                    <td className="px-4 py-2 text-center">
-                      <Button size="sm" onClick={() => setShowCreateDialog(true)}>
-                        <FileText className="mr-1 h-3 w-3" />
-                        Create Notice
-                      </Button>
-                    </td>
                   </tr>
                 ))}
                 {overdueInvoices.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                       No overdue invoices
                     </td>
                   </tr>

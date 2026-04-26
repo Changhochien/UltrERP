@@ -159,6 +159,12 @@ Keep this story focused on accounting structure. Do not implement journal postin
   - Frontend: Chart of Accounts page, Fiscal Years page, TypeScript types, API client, React hooks
   - Tests: 28 backend tests passing covering all ACs
 - 2026-04-26: Review remediation hardened destructive account paths so in-use accounts are blocked before DB failure. Validation now covers journal-entry-line references in `backend/tests/domains/accounting/test_service.py`.
+- 2026-04-27: TypeScript fixes applied:
+  - Fixed `FileTree` → `FolderTree` icon import in ChartOfAccountsPage.tsx
+  - Fixed toast hook destructuring: `{ success: toastSuccess, error: toastError }`
+  - Fixed DatePicker `onChange` prop to accept `Date | null | undefined`
+  - Added loading state tracking to `useAccounts` and `useFiscalYears` hooks
+  - Fixed AccountType casting in Select `onValueChange` handlers
 
 ### File List
 

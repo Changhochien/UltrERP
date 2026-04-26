@@ -83,6 +83,7 @@ fg_stock.quantity += payload.produced_quantity
 |------|--------|
 | 2026-04-26 | Initial implementation |
 | 2026-04-27 | Added actual stock mutations |
+| 2026-04-27 | TypeScript fixes applied |
 
 ### Verification
 

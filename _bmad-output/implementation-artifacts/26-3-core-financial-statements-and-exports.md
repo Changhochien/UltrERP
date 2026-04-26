@@ -214,3 +214,12 @@ This story should add core statements and export-ready interfaces, not a full re
 1. ✅ P&L, Balance Sheet, Trial Balance calculated from GL data and account structure
 2. ✅ Report exports maintain totals consistency (same data structure for screen and CSV)
 3. ✅ Empty period returns zero-valued totals with explicit `empty_reason`
+
+#### TypeScript Fixes (2026-04-27)
+- Fixed DatePicker `value` and `onChange` props to accept `Date | null | undefined`
+- Fixed toast hook destructuring in report pages
+- Added wrapper handlers for state setters to handle DatePicker callback
+- `src/pages/accounting/BalanceSheetPage.tsx`, `ProfitAndLossPage.tsx`, `TrialBalancePage.tsx`
+- `src/components/ui/DatePicker.tsx` - Updated interface
+- `src/components/ui/date-picker-utils.ts` - Updated `serializeDatePickerValue`
+- `src/domain/accounting/hooks/useReportDateRange.ts` - Updated date change handlers

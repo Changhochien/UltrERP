@@ -3,7 +3,7 @@
  */
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Upload, CheckCircle, AlertCircle, FileText, RefreshCw } from "lucide-react";
+import { Upload, FileText, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,7 +33,7 @@ interface BankTransaction {
 
 export function BankReconciliationPage() {
   const { t } = useTranslation();
-  const toast = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
   const [transactions, setTransactions] = useState<BankTransaction[]>([]);
@@ -75,7 +75,7 @@ export function BankReconciliationPage() {
 
   const handleImport = async () => {
     if (!importFile || !selectedAccount) {
-      toast({ title: "Error", description: "Please select a file and bank account", variant: "destructive" });
+      toastError("Error", "Please select a file and bank account");
       return;
     }
 
@@ -91,15 +91,15 @@ export function BankReconciliationPage() {
       });
 
       if (response.ok) {
-        toast({ title: "Success", description: "Transactions imported successfully" });
+        toastSuccess("Success", "Transactions imported successfully");
         loadTransactions();
         setImportFile(null);
       } else {
         const error = await response.json();
-        toast({ title: "Import Failed", description: error.message || "Failed to import transactions", variant: "destructive" });
+        toastError("Import Failed", error.message || "Failed to import transactions");
       }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to import transactions", variant: "destructive" });
+      toastError("Error", "Failed to import transactions");
     } finally {
       setIsLoading(false);
     }

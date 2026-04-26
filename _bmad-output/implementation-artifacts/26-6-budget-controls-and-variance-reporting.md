@@ -155,6 +155,10 @@ Keep the first slice practical. Land explicit budget records, allocation, alert/
 - 2026-04-26: Story drafted from Epic 26, the accounting gap analysis for Epics 26 and 32, ERPNext budget references, and the current UltrERP procurement and reporting boundaries.
 - 2026-04-26: Review remediation normalized budget service imports to the shared accounting namespace, removed invalid `BudgetPeriod.created_by` writes, and replaced `GLEntry.is_reversal` query predicates with the real `reversed_by_id` filter.
 - 2026-04-26: Budget tests were aligned to the current account and GL schemas, including required `report_type` values and the current `GLEntry` fields. Validation passed in `backend/tests/domains/accounting/test_budget.py`.
+- 2026-04-27: TypeScript fixes applied:
+  - Fixed toast hook destructuring in BudgetsPage.tsx, BudgetVariancePage.tsx
+  - Removed unused imports (Plus, Input, Label) and variables
+  - Removed incomplete create dialog functionality (handleCreateBudget, showCreateDialog)
 
 ### File List
 

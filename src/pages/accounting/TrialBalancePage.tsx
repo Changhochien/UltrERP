@@ -55,6 +55,11 @@ export function TrialBalancePage() {
   // As-of date
   const [asOfDate, setAsOfDate] = useState<Date | null>(new Date());
 
+  // Wrapper to handle DatePicker's Date | null | undefined
+  const handleAsOfDateChange = (date: Date | null | undefined) => {
+    setAsOfDate(date ?? null);
+  };
+
   // Report state
   const [report, setReport] = useState<TrialBalanceResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -169,7 +174,7 @@ export function TrialBalancePage() {
             {reportMode === "as_of" && (
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium">As of Date</label>
-                <DatePicker date={asOfDate} onChange={setAsOfDate} />
+                <DatePicker value={asOfDate} onChange={handleAsOfDateChange} />
               </div>
             )}
 
@@ -194,11 +199,11 @@ export function TrialBalancePage() {
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-sm font-medium">From Date</label>
-                  <DatePicker date={fromDate} onChange={setFromDate} placeholder="Start date" />
+                  <DatePicker value={fromDate} onChange={setFromDate} placeholder="Start date" />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-sm font-medium">To Date</label>
-                  <DatePicker date={toDate} onChange={setToDate} placeholder="End date" />
+                  <DatePicker value={toDate} onChange={setToDate} placeholder="End date" />
                 </div>
               </>
             )}

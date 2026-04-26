@@ -4,11 +4,10 @@
  */
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Plus, Pencil, FileText, CheckCircle, AlertTriangle } from "lucide-react";
+import { FileText, CheckCircle, AlertTriangle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/useToast";
@@ -32,15 +31,12 @@ interface BudgetPeriod {
 
 export function BudgetsPage() {
   const { t } = useTranslation();
-  const toast = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
   const [periods, setPeriods] = useState<BudgetPeriod[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   const loadBudgets = async () => {
-    setIsLoading(true);
     try {
       const response = await fetch("/api/v1/accounting/budgets", {
         headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
@@ -51,8 +47,6 @@ export function BudgetsPage() {
       }
     } catch (error) {
       console.error("Failed to load budgets:", error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -70,29 +64,6 @@ export function BudgetsPage() {
     }
   };
 
-  const handleCreateBudget = async (data: any) => {
-    try {
-      const response = await fetch("/api/v1/accounting/budgets", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(data)
-      });
-
-      if (response.ok) {
-        toast({ title: "Success", description: "Budget created" });
-        loadBudgets();
-        setShowCreateDialog(false);
-      } else {
-        toast({ title: "Error", description: "Failed to create budget", variant: "destructive" });
-      }
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to create budget", variant: "destructive" });
-    }
-  };
-
   const handleSubmitBudget = async (budgetId: string) => {
     try {
       const response = await fetch(`/api/v1/accounting/budgets/${budgetId}/submit`, {
@@ -101,13 +72,13 @@ export function BudgetsPage() {
       });
 
       if (response.ok) {
-        toast({ title: "Success", description: "Budget submitted" });
+        toastSuccess("Success", "Budget submitted");
         loadBudgets();
       } else {
-        toast({ title: "Error", description: "Failed to submit budget", variant: "destructive" });
+        toastError("Error", "Failed to submit budget");
       }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to submit budget", variant: "destructive" });
+      toastError("Error", "Failed to submit budget");
     }
   };
 
@@ -123,13 +94,13 @@ export function BudgetsPage() {
       });
 
       if (response.ok) {
-        toast({ title: "Success", description: "Budget allocated to periods" });
+        toastSuccess("Success", "Budget allocated to periods");
         loadBudgetPeriods(budgetId);
       } else {
-        toast({ title: "Error", description: "Failed to allocate budget", variant: "destructive" });
+        toastError("Error", "Failed to allocate budget");
       }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to allocate budget", variant: "destructive" });
+      toastError("Error", "Failed to allocate budget");
     }
   };
 
@@ -175,10 +146,6 @@ export function BudgetsPage() {
         <div className="flex gap-2">
           <Button onClick={loadBudgets} variant="outline" size="sm">
             Refresh
-          </Button>
-          <Button onClick={() => setShowCreateDialog(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Budget
           </Button>
         </div>
       </div>

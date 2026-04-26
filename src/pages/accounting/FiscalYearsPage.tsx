@@ -55,7 +55,7 @@ const STATUS_COLORS: Record<FiscalYearStatus, { bg: string; text: string }> = {
 
 export function FiscalYearsPage() {
   const { t } = useTranslation();
-  const toast = useToast();
+  const { error: toastError } = useToast();
 
   const [page, setPage] = useState(1);
   const [selectedFiscalYear, setSelectedFiscalYear] = useState<FiscalYear | null>(null);
@@ -101,12 +101,12 @@ export function FiscalYearsPage() {
 
   const handleSaveCreate = async () => {
     if (!formData.label || !formData.start_date || !formData.end_date) {
-      toast.error(t("accounting.fillRequiredFields"));
+      toastError(t("accounting.fillRequiredFields"));
       return;
     }
 
     if (formData.start_date >= formData.end_date) {
-      toast.error(t("accounting.endDateAfterStartDate"));
+      toastError(t("accounting.endDateAfterStartDate"));
       return;
     }
 
@@ -123,7 +123,7 @@ export function FiscalYearsPage() {
     if (!selectedFiscalYear) return;
 
     if (!formData.label || !formData.start_date || !formData.end_date) {
-      toast.error(t("accounting.fillRequiredFields"));
+      toastError(t("accounting.fillRequiredFields"));
       return;
     }
 
@@ -367,15 +367,15 @@ export function FiscalYearsPage() {
               <div className="space-y-2">
                 <Label>{t("accounting.startDate")} *</Label>
                 <DatePicker
-                  value={formData.start_date || undefined}
-                  onChange={(date) => setFormData({ ...formData, start_date: date || null })}
+                  value={formData.start_date}
+                  onChange={(date) => setFormData({ ...formData, start_date: date ?? null })}
                 />
               </div>
               <div className="space-y-2">
                 <Label>{t("accounting.endDate")} *</Label>
                 <DatePicker
-                  value={formData.end_date || undefined}
-                  onChange={(date) => setFormData({ ...formData, end_date: date || null })}
+                  value={formData.end_date}
+                  onChange={(date) => setFormData({ ...formData, end_date: date ?? null })}
                 />
               </div>
             </div>
@@ -426,16 +426,16 @@ export function FiscalYearsPage() {
               <div className="space-y-2">
                 <Label>{t("accounting.startDate")}</Label>
                 <DatePicker
-                  value={formData.start_date || undefined}
-                  onChange={(date) => setFormData({ ...formData, start_date: date || null })}
+                  value={formData.start_date}
+                  onChange={(date) => setFormData({ ...formData, start_date: date ?? null })}
                   disabled={selectedFiscalYear?.status !== "Draft"}
                 />
               </div>
               <div className="space-y-2">
                 <Label>{t("accounting.endDate")}</Label>
                 <DatePicker
-                  value={formData.end_date || undefined}
-                  onDateChange={(date) => setFormData({ ...formData, end_date: date || null })}
+                  value={formData.end_date}
+                  onChange={(date) => setFormData({ ...formData, end_date: date ?? null })}
                   disabled={selectedFiscalYear?.status !== "Draft"}
                 />
               </div>

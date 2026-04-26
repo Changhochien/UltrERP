@@ -179,6 +179,10 @@ Keep the first slice deliberately narrow. Start with a minimal voucher-type set 
 - 2026-04-26: Story drafted from Epic 26, the ERPNext accounting gap analysis, official ERPNext journal-entry guidance, and the current UltrERP invoice/payment foundations.
 - 2026-04-26: Review remediation aligned journal-entry enums and balance constraints with the migrated schema, and fixed reversal flow so reversing journal-entry lines are created before reversal GL rows and linked correctly.
 - 2026-04-26: Validation passed in `backend/tests/domains/accounting/test_journal_entry_service.py` and the shared accounting service suite.
+- 2026-04-27: TypeScript fixes applied to JournalEntriesPage.tsx and JournalEntryDetailPage.tsx:
+  - Fixed toast hook destructuring: `{ success: toastSuccess, error: toastError }`
+  - Removed `asChild` prop from DialogTrigger (incompatible with base-ui Dialog)
+  - Fixed unused imports and variables
 
 ### File List
 

@@ -90,7 +90,7 @@ export function EditCustomerDialog({ customerId, onClose, onSaved, onViewCustome
     );
   }
 
-  function toFormValues(c: CustomerResponse): CustomerCreatePayload {
+  function toFormValues(c: CustomerResponse): Omit<CustomerCreatePayload, 'default_currency_code' | 'payment_terms_template_id'> & { default_currency_code: string; payment_terms_template_id: string } {
     return {
       company_name: c.company_name,
       business_number: c.normalized_business_number,

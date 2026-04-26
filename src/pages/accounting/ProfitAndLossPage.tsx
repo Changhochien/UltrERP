@@ -34,12 +34,6 @@ function formatDateForInput(date: Date | null): string {
   return date.toISOString().split("T")[0];
 }
 
-function parseInputDate(value: string): Date | null {
-  if (!value) return null;
-  const date = new Date(value);
-  return isNaN(date.getTime()) ? null : date;
-}
-
 export function ProfitAndLossPage() {
   const { t } = useTranslation();
   const errorToast = useApiErrorToast();
@@ -167,7 +161,7 @@ export function ProfitAndLossPage() {
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium">From Date</label>
               <DatePicker
-                date={fromDate}
+                value={fromDate}
                 onChange={setFromDate}
                 placeholder="Start date"
               />
@@ -175,7 +169,7 @@ export function ProfitAndLossPage() {
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium">To Date</label>
               <DatePicker
-                date={toDate}
+                value={toDate}
                 onChange={setToDate}
                 placeholder="End date"
               />

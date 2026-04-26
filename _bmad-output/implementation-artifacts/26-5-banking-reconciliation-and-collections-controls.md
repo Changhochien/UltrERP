@@ -167,6 +167,11 @@ Bank reconciliation is the primary deliverable in this story. Collections scope 
 - 2026-04-26: Story drafted from Epic 26, the existing UltrERP payment and outstanding workflows, ERPNext banking/dunning references, and official ERPNext docs.
 - 2026-04-26: Review remediation normalized banking imports to the real shared contracts, fixed transaction suggestion logic to use actual payment reference fields, corrected overdue-invoice filtering, and aligned dunning notices to the invoice schema.
 - 2026-04-26: Validation passed in `backend/tests/domains/accounting/test_banking_collections.py`.
+- 2026-04-27: TypeScript fixes applied:
+  - Fixed toast hook destructuring in BankReconciliationPage.tsx, BudgetsPage.tsx, CollectionsPage.tsx
+  - Fixed DatePicker Date | null | undefined handling
+  - Removed unused imports and variables
+  - CollectionsPage.tsx simplified - removed unused state and handlers
 
 ### File List
 

@@ -57,7 +57,7 @@ export function parseDatePickerInputValue(
     : parseBackendDate(value)
 }
 
-export function serializeDatePickerValue(value: Date | undefined): string {
+export function serializeDatePickerValue(value: Date | null | undefined): string {
   if (!value) {
     return ""
   }

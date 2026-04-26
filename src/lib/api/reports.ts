@@ -17,13 +17,8 @@ export type {
 } from "../../domain/accounting/types";
 
 import type {
-  EmptyReason,
-  ReportMetadata,
-  ProfitAndLossRow,
   ProfitAndLossResponse,
-  BalanceSheetRow,
   BalanceSheetResponse,
-  TrialBalanceRow,
   TrialBalanceResponse,
 } from "../../domain/accounting/types";
 

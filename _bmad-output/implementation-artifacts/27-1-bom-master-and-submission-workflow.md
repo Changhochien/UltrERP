@@ -95,6 +95,7 @@ so that work orders and planning use an explicit approved recipe instead of info
 | 2026-04-26 | Initial implementation |
 | 2026-04-27 | Fixed HIGH severity issues |
 | 2026-04-27 | Fixed import paths and SQLAlchemy types |
+| 2026-04-27 | Fixed TypeScript errors in manufacturing components |
 
 ### Verification
 

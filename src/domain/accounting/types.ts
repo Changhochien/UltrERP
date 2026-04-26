@@ -414,8 +414,8 @@ export type AccountFormData = Omit<CreateAccountRequest, "root_type"> & {
 };
 
 export type FiscalYearFormData = Omit<CreateFiscalYearRequest, "start_date" | "end_date"> & {
-  start_date: Date;
-  end_date: Date;
+  start_date: Date | null;
+  end_date: Date | null;
 };
 
 export type JournalEntryFormData = {

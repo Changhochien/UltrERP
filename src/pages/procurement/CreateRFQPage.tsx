@@ -27,7 +27,7 @@ export default function CreateRFQPage() {
   const { t } = useTranslation("procurement");
   const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
-  const toast = useToast();
+  const { error: toastError, success: toastSuccess } = useToast();
   const { create, loading, error } = useCreateRFQ();
 
   const [company, setCompany] = useState("");
@@ -159,24 +159,24 @@ export default function CreateRFQPage() {
       );
 
       if (controlResult.is_blocked) {
-        toast({ title: controlResult.reason, variant: "destructive" });
+        toastError(controlResult.reason);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : t("rfq.supplierControlCheckError");
       clearSupplierSelection(idx);
       setSupplierControlError(idx, message);
-      toast({ title: message, variant: "destructive" });
+      toastError(message);
     }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!company) {
-      toast({ title: tCommon("validation.required", { field: t("rfq.fields.company") }), variant: "destructive" });
+      toastError(tCommon("validation.required", { field: t("rfq.fields.company") }));
       return;
     }
     if (items.every((i) => !i.item_name && !i.item_code)) {
-      toast({ title: tCommon("validation.requiredItems"), variant: "destructive" });
+      toastError(tCommon("validation.requiredItems"));
       return;
     }
 
@@ -185,7 +185,7 @@ export default function CreateRFQPage() {
       .filter(({ supplier }) => supplier.supplier_name || supplier.supplier_id);
 
     if (supplierControlLoading.some(Boolean)) {
-      toast({ title: t("rfq.supplierControlChecking"), variant: "destructive" });
+      toastError(t("rfq.supplierControlChecking"));
       return;
     }
 
@@ -201,7 +201,7 @@ export default function CreateRFQPage() {
 
       const blockedResult = latestControlResults.find((result) => result?.is_blocked);
       if (blockedResult) {
-        toast({ title: blockedResult.reason, variant: "destructive" });
+        toastError(blockedResult.reason);
         return;
       }
 
@@ -215,13 +215,10 @@ export default function CreateRFQPage() {
         items: items.filter((i) => i.item_name || i.item_code),
         suppliers: supplierEntries.map(({ supplier }) => supplier),
       });
-      toast({ title: t("rfq.created"), variant: "success" });
+      toastSuccess(t("rfq.created"));
       navigate(`${RFQ_DETAIL_ROUTE.replace(":rfqId", rfq.id)}`);
     } catch (err) {
-      toast({
-        title: err instanceof Error ? err.message : t("rfq.createError"),
-        variant: "destructive",
-      });
+      toastError(err instanceof Error ? err.message : t("rfq.createError"));
     }
   }
 

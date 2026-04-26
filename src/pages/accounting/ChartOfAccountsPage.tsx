@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
-  FileTree,
+  FolderTree,
   Plus,
   RefreshCw,
   Snowflake,
@@ -96,7 +96,7 @@ const ACCOUNT_TYPES_BY_ROOT: Record<string, AccountType[]> = {
 
 export function ChartOfAccountsPage() {
   const { t } = useTranslation();
-  const toast = useToast();
+  const { error: toastError } = useToast();
 
   const [showDisabled, setShowDisabled] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
@@ -156,7 +156,7 @@ export function ChartOfAccountsPage() {
 
   const handleSaveCreate = async () => {
     if (!formData.account_number || !formData.account_name || !formData.account_type) {
-      toast.error(t("accounting.fillRequiredFields"));
+      toastError(t("accounting.fillRequiredFields"));
       return;
     }
 
@@ -251,7 +251,7 @@ export function ChartOfAccountsPage() {
       <div className="flex flex-1 flex-col rounded-lg border bg-card">
         <div className="flex items-center justify-between border-b p-4">
           <div className="flex items-center gap-2">
-            <FileTree className="h-5 w-5 text-primary" />
+            <FolderTree className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">{t("accounting.chartOfAccounts")}</h2>
             {tree && (
               <span className="text-sm text-muted-foreground">
@@ -316,7 +316,7 @@ export function ChartOfAccountsPage() {
             />
           ) : (
             <div className="flex flex-col items-center justify-center py-8 text-center">
-              <FileTree className="mb-4 h-12 w-12 text-muted-foreground/50" />
+              <FolderTree className="mb-4 h-12 w-12 text-muted-foreground/50" />
               <p className="text-sm text-muted-foreground">
                 {t("accounting.noAccounts")}
               </p>
@@ -459,7 +459,7 @@ export function ChartOfAccountsPage() {
               <Label>{t("accounting.accountType")} *</Label>
               <Select
                 value={formData.account_type || ""}
-                onValueChange={(v) => setFormData({ ...formData, account_type: v })}
+                onValueChange={(v) => setFormData({ ...formData, account_type: v as AccountType })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder={t("accounting.selectType")} />
@@ -533,7 +533,7 @@ export function ChartOfAccountsPage() {
               <Label>{t("accounting.accountType")}</Label>
               <Select
                 value={formData.account_type || ""}
-                onValueChange={(v) => setFormData({ ...formData, account_type: v })}
+                onValueChange={(v) => setFormData({ ...formData, account_type: v as AccountType })}
                 disabled={selectedAccount?.is_group}
               >
                 <SelectTrigger>

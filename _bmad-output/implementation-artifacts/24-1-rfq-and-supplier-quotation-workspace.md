@@ -138,6 +138,7 @@ GPT-5.4
 - 2026-04-23: Fully implemented Story 24.1. Backend: procurement domain (models, schemas, service, routes), Alembic migration (abc123def456), FastAPI app registration. Frontend: TypeScript types, API client, hooks, RFQ list/detail/create pages, procurement navigation, i18n (en/zh-Hant). Tests: 25 backend + 10 frontend focused tests all passing. Broader backend suite 911/911 passing. TypeScript clean. Ruff clean. Epic 24 added to sprint-status.yaml.
 - 2026-04-23: Code review fixes applied - multi-tenant header extraction, award unique constraint, tests revalidated.
 - 2026-04-24: Review pass corrected RFQ `quotes_received` recomputation after supplier quotation creation and refreshed RFQ award state in the comparison UI, with focused backend/frontend regressions revalidated.
+- 2026-04-27: TypeScript fixes applied - fixed toast hook destructuring in CreateRFQPage.tsx and RFQDetailPage.tsx. Changed `const { toast } = useToast()` to `const { success: toastSuccess, error: toastError } = useToast()` and updated all toast calls to use the correct methods.
 
 ### File List
 
@@ -167,3 +168,4 @@ GPT-5.4
 ## Change Log
 
 - 2026-04-23: Story fully implemented and validated. All ACs satisfied. Tasks 1-5 complete.
+- 2026-04-27: TypeScript fixes - toast hook destructuring corrected in CreateRFQPage.tsx and RFQDetailPage.tsx.

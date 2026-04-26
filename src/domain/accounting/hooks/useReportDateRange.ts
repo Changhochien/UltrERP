@@ -79,16 +79,16 @@ export function useReportDateRange() {
   );
 
   const handleFromDateChange = useCallback(
-    (date: Date | null) => {
-      setFromDate(date);
+    (date: Date | null | undefined) => {
+      setFromDate(date ?? null);
       setSelectedPreset("custom");
     },
     []
   );
 
   const handleToDateChange = useCallback(
-    (date: Date | null) => {
-      setToDate(date);
+    (date: Date | null | undefined) => {
+      setToDate(date ?? null);
       setSelectedPreset("custom");
     },
     []

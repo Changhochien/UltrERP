@@ -69,3 +69,8 @@ so that I can evaluate material shortages and make informed build-vs-buy decisio
 - ✅ Python files compile without errors
 - ✅ Manufacturing module imports correctly
 - ✅ Tests pass (85 API tests, 317 domain tests)
+
+### TypeScript Fixes (2026-04-27)
+- Added `swr` package to dependencies
+- Fixed manufacturing hooks: removed unused type imports
+- Manufacturing components: Fixed `.map()` callback type annotations

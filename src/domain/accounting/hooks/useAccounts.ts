@@ -109,120 +109,162 @@ export function useAccount(accountId: string | null) {
 
 export function useCreateAccount(onSuccess?: (account: Account) => void) {
   const { t } = useTranslation();
-  const toast = useToast();
+  const { success: toastSuccess } = useToast();
+  const [isCreating, setIsCreating] = useState(false);
 
   const create = useCallback(
     async (data: CreateAccountRequest): Promise<Account> => {
-      const account = await createAccount(data);
-      toast.success(t("accounting.accountCreated", { name: account.account_name }));
-      onSuccess?.(account);
-      return account;
+      setIsCreating(true);
+      try {
+        const account = await createAccount(data);
+        toastSuccess(t("accounting.accountCreated", { name: account.account_name }));
+        onSuccess?.(account);
+        return account;
+      } finally {
+        setIsCreating(false);
+      }
     },
-    [t, toast, onSuccess]
+    [t, toastSuccess, onSuccess]
   );
 
-  return { createAccount: create, isLoading: false };
+  return { createAccount: create, isCreating };
 }
 
 export function useUpdateAccount(onSuccess?: (account: Account) => void) {
   const { t } = useTranslation();
-  const toast = useToast();
+  const { success: toastSuccess } = useToast();
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const update = useCallback(
     async (accountId: string, data: UpdateAccountRequest): Promise<Account> => {
-      const account = await updateAccount(accountId, data);
-      toast.success(t("accounting.accountUpdated", { name: account.account_name }));
-      onSuccess?.(account);
-      return account;
+      setIsUpdating(true);
+      try {
+        const account = await updateAccount(accountId, data);
+        toastSuccess(t("accounting.accountUpdated", { name: account.account_name }));
+        onSuccess?.(account);
+        return account;
+      } finally {
+        setIsUpdating(false);
+      }
     },
-    [t, toast, onSuccess]
+    [t, toastSuccess, onSuccess]
   );
 
-  return { updateAccount: update, isLoading: false };
+  return { updateAccount: update, isUpdating };
 }
 
 export function useFreezeAccount(onSuccess?: (account: Account) => void) {
   const { t } = useTranslation();
-  const toast = useToast();
+  const { success: toastSuccess } = useToast();
+  const [isFreezing, setIsFreezing] = useState(false);
 
   const freeze = useCallback(
     async (accountId: string, accountName: string): Promise<Account> => {
-      const account = await freezeAccount(accountId);
-      toast.success(t("accounting.accountFrozen", { name: accountName }));
-      onSuccess?.(account);
-      return account;
+      setIsFreezing(true);
+      try {
+        const account = await freezeAccount(accountId);
+        toastSuccess(t("accounting.accountFrozen", { name: accountName }));
+        onSuccess?.(account);
+        return account;
+      } finally {
+        setIsFreezing(false);
+      }
     },
-    [t, toast, onSuccess]
+    [t, toastSuccess, onSuccess]
   );
 
-  return { freezeAccount: freeze, isLoading: false };
+  return { freezeAccount: freeze, isFreezing };
 }
 
 export function useUnfreezeAccount(onSuccess?: (account: Account) => void) {
   const { t } = useTranslation();
-  const toast = useToast();
+  const { success: toastSuccess } = useToast();
+  const [isUnfreezing, setIsUnfreezing] = useState(false);
 
   const unfreeze = useCallback(
     async (accountId: string, accountName: string): Promise<Account> => {
-      const account = await unfreezeAccount(accountId);
-      toast.success(t("accounting.accountUnfrozen", { name: accountName }));
-      onSuccess?.(account);
-      return account;
+      setIsUnfreezing(true);
+      try {
+        const account = await unfreezeAccount(accountId);
+        toastSuccess(t("accounting.accountUnfrozen", { name: accountName }));
+        onSuccess?.(account);
+        return account;
+      } finally {
+        setIsUnfreezing(false);
+      }
     },
-    [t, toast, onSuccess]
+    [t, toastSuccess, onSuccess]
   );
 
-  return { unfreezeAccount: unfreeze, isLoading: false };
+  return { unfreezeAccount: unfreeze, isUnfreezing };
 }
 
 export function useDisableAccount(onSuccess?: (account: Account) => void) {
   const { t } = useTranslation();
-  const toast = useToast();
+  const { success: toastSuccess } = useToast();
+  const [isDisabling, setIsDisabling] = useState(false);
 
   const disable = useCallback(
     async (accountId: string, accountName: string): Promise<Account> => {
-      const account = await disableAccount(accountId);
-      toast.success(t("accounting.accountDisabled", { name: accountName }));
-      onSuccess?.(account);
-      return account;
+      setIsDisabling(true);
+      try {
+        const account = await disableAccount(accountId);
+        toastSuccess(t("accounting.accountDisabled", { name: accountName }));
+        onSuccess?.(account);
+        return account;
+      } finally {
+        setIsDisabling(false);
+      }
     },
-    [t, toast, onSuccess]
+    [t, toastSuccess, onSuccess]
   );
 
-  return { disableAccount: disable, isLoading: false };
+  return { disableAccount: disable, isDisabling };
 }
 
 export function useDeleteAccount(onSuccess?: () => void) {
   const { t } = useTranslation();
-  const toast = useToast();
+  const { success: toastSuccess } = useToast();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const remove = useCallback(
     async (accountId: string, accountName: string): Promise<void> => {
-      await deleteAccount(accountId);
-      toast.success(t("accounting.accountDeleted", { name: accountName }));
-      onSuccess?.();
+      setIsDeleting(true);
+      try {
+        await deleteAccount(accountId);
+        toastSuccess(t("accounting.accountDeleted", { name: accountName }));
+        onSuccess?.();
+      } finally {
+        setIsDeleting(false);
+      }
     },
-    [t, toast, onSuccess]
+    [t, toastSuccess, onSuccess]
   );
 
-  return { deleteAccount: remove, isLoading: false };
+  return { deleteAccount: remove, isDeleting };
 }
 
 export function useSeedStarterChart(onSuccess?: (result: AccountTreeResponse) => void) {
   const { t } = useTranslation();
-  const toast = useToast();
+  const { success: toastSuccess } = useToast();
+  const [isSeeding, setIsSeeding] = useState(false);
 
   const seed = useCallback(
     async (): Promise<AccountTreeResponse> => {
-      const result = await seedStarterChart();
-      toast.success(t("accounting.starterChartSeeded", { count: result.total_accounts }));
-      onSuccess?.(result);
-      return result;
+      setIsSeeding(true);
+      try {
+        const result = await seedStarterChart();
+        toastSuccess(t("accounting.starterChartSeeded", { count: result.total_accounts }));
+        onSuccess?.(result);
+        return result;
+      } finally {
+        setIsSeeding(false);
+      }
     },
-    [t, toast, onSuccess]
+    [t, toastSuccess, onSuccess]
   );
 
-  return { seedChart: seed, isLoading: false };
+  return { seedChart: seed, isSeeding };
 }
 
 /**

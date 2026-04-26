@@ -103,7 +103,8 @@ export function useOpenFiscalYears() {
 
 export function useCreateFiscalYear() {
   const { t } = useTranslation();
-  const toast = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
+  const [isCreating, setIsCreating] = useState(false);
 
   const create = useCallback(
     async (data: CreateFiscalYearRequest): Promise<FiscalYear> => {
@@ -114,37 +115,41 @@ export function useCreateFiscalYear() {
 
   const createFiscalYearFn = useCallback(
     async (data: FiscalYearFormData) => {
+      setIsCreating(true);
       try {
         const fiscalYear = await create({
           label: data.label,
-          start_date: data.start_date.toISOString().split("T")[0],
-          end_date: data.end_date.toISOString().split("T")[0],
+          start_date: (data.start_date ?? new Date()).toISOString().split("T")[0],
+          end_date: (data.end_date ?? new Date()).toISOString().split("T")[0],
           is_default: data.is_default,
         });
-        toast.success(t("accounting.fiscalYearCreated", { label: fiscalYear.label }));
+        toastSuccess(t("accounting.fiscalYearCreated", { label: fiscalYear.label }));
         return fiscalYear;
       } catch (err) {
         const error = err as ApiError;
         const message = typeof error.detail === "string"
           ? error.detail
           : error.detail?.errors?.[0]?.message ?? t("common.error");
-        toast.error(message);
+        toastError(message);
         throw err;
+      } finally {
+        setIsCreating(false);
       }
     },
-    [create, t, toast]
+    [create, t, toastSuccess, toastError]
   );
 
   return {
     createFiscalYear: createFiscalYearFn,
-    isLoading: false,
+    isCreating,
     error: null,
   };
 }
 
 export function useUpdateFiscalYear() {
   const { t } = useTranslation();
-  const toast = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const update = useCallback(
     async (
@@ -158,32 +163,36 @@ export function useUpdateFiscalYear() {
 
   const updateFiscalYearFn = useCallback(
     async (fiscalYearId: string, data: UpdateFiscalYearRequest) => {
+      setIsUpdating(true);
       try {
         const fiscalYear = await update(fiscalYearId, data);
-        toast.success(t("accounting.fiscalYearUpdated", { label: fiscalYear.label }));
+        toastSuccess(t("accounting.fiscalYearUpdated", { label: fiscalYear.label }));
         return fiscalYear;
       } catch (err) {
         const error = err as ApiError;
         const message = typeof error.detail === "string"
           ? error.detail
           : error.detail?.errors?.[0]?.message ?? t("common.error");
-        toast.error(message);
+        toastError(message);
         throw err;
+      } finally {
+        setIsUpdating(false);
       }
     },
-    [update, t, toast]
+    [update, t, toastSuccess, toastError]
   );
 
   return {
     updateFiscalYear: updateFiscalYearFn,
-    isLoading: false,
+    isUpdating,
     error: null,
   };
 }
 
 export function useCloseFiscalYear() {
   const { t } = useTranslation();
-  const toast = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
+  const [isClosing, setIsClosing] = useState(false);
 
   const close = useCallback(
     async (
@@ -197,32 +206,36 @@ export function useCloseFiscalYear() {
 
   const closeFiscalYearFn = useCallback(
     async (fiscalYearId: string, label: string, closureNotes?: string) => {
+      setIsClosing(true);
       try {
         const fiscalYear = await close(fiscalYearId, closureNotes);
-        toast.success(t("accounting.fiscalYearClosed", { label }));
+        toastSuccess(t("accounting.fiscalYearClosed", { label }));
         return fiscalYear;
       } catch (err) {
         const error = err as ApiError;
         const message = typeof error.detail === "string"
           ? error.detail
           : error.detail?.errors?.[0]?.message ?? t("common.error");
-        toast.error(message);
+        toastError(message);
         throw err;
+      } finally {
+        setIsClosing(false);
       }
     },
-    [close, t, toast]
+    [close, t, toastSuccess, toastError]
   );
 
   return {
     closeFiscalYear: closeFiscalYearFn,
-    isLoading: false,
+    isClosing,
     error: null,
   };
 }
 
 export function useReopenFiscalYear() {
   const { t } = useTranslation();
-  const toast = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
+  const [isReopening, setIsReopening] = useState(false);
 
   const reopen = useCallback(
     async (fiscalYearId: string): Promise<FiscalYear> => {
@@ -233,25 +246,28 @@ export function useReopenFiscalYear() {
 
   const reopenFiscalYearFn = useCallback(
     async (fiscalYearId: string, label: string) => {
+      setIsReopening(true);
       try {
         const fiscalYear = await reopen(fiscalYearId);
-        toast.success(t("accounting.fiscalYearReopened", { label }));
+        toastSuccess(t("accounting.fiscalYearReopened", { label }));
         return fiscalYear;
       } catch (err) {
         const error = err as ApiError;
         const message = typeof error.detail === "string"
           ? error.detail
           : error.detail?.errors?.[0]?.message ?? t("common.error");
-        toast.error(message);
+        toastError(message);
         throw err;
+      } finally {
+        setIsReopening(false);
       }
     },
-    [reopen, t, toast]
+    [reopen, t, toastSuccess, toastError]
   );
 
   return {
     reopenFiscalYear: reopenFiscalYearFn,
-    isLoading: false,
+    isReopening,
     error: null,
   };
 }

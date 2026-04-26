@@ -17,8 +17,8 @@ const triggerClassName =
 
 export interface DatePickerProps
   extends Omit<React.ComponentPropsWithoutRef<"button">, "onChange" | "value"> {
-  value?: Date
-  onChange: (value: Date | undefined) => void
+  value?: Date | null
+  onChange: (value: Date | null | undefined) => void
   placeholder?: string
   defaultMonth?: Date
   allowClear?: boolean
@@ -34,6 +34,7 @@ export function DatePicker({
   disabled,
   ...props
 }: DatePickerProps) {
+  const normalizedValue = value ?? undefined;
   const { i18n, t } = useTranslation("common")
   const [open, setOpen] = React.useState(false)
   const [month, setMonth] = React.useState<Date>(value ?? defaultMonth ?? new Date())
@@ -51,7 +52,7 @@ export function DatePicker({
     }
   }, [defaultMonth, value])
 
-  const displayValue = formatDatePickerValue(value, language)
+  const displayValue = formatDatePickerValue(normalizedValue, language)
 
   return (
     <Popover
@@ -81,10 +82,10 @@ export function DatePicker({
           mode="single"
           month={month}
           onMonthChange={setMonth}
-          selected={value}
+          selected={normalizedValue}
           locale={getDatePickerLocale(language)}
           onSelect={(nextValue) => {
-            onChange(nextValue)
+            onChange(nextValue ?? null)
             if (nextValue) {
               setMonth(nextValue)
               setOpen(false)
@@ -98,7 +99,7 @@ export function DatePicker({
               variant="ghost"
               size="xs"
               onClick={() => {
-                onChange(undefined)
+                onChange(null)
                 setOpen(false)
               }}
             >

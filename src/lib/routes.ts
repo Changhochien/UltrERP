@@ -229,7 +229,7 @@ export function buildJournalEntryDetailPath(journalEntryId: string): string {
   return JOURNAL_ENTRY_DETAIL_ROUTE.replace(":journalEntryId", encodeURIComponent(journalEntryId));
 }
 
-export function buildAccountDetailPath(accountId: string): string {
+export function buildAccountDetailPath(_accountId: string): string {
   return CHART_OF_ACCOUNTS_ROUTE; // Account detail is shown in the chart of accounts page
 }
 

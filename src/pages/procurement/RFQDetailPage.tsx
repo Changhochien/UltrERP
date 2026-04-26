@@ -22,7 +22,7 @@ export function RFQDetailPage() {
   const { t } = useTranslation("procurement");
   const { t: tCommon } = useTranslation("common");
   const { rfqId } = useParams<{ rfqId: string }>();
-  const toast = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
 
   const { rfq, loading, error, refetch } = useRFQ(rfqId);
   const { data: comparison, refetch: refetchComparison } = useRFQComparison(rfqId);
@@ -48,16 +48,16 @@ export function RFQDetailPage() {
   async function handleSubmitRFQ() {
     try {
       await submit(rfqId!);
-      toast({ title: t("rfq.submitted"), variant: "success" });
+      toastSuccess(t("rfq.submitted"));
       refetch();
     } catch {
-      toast({ title: t("rfq.submitError"), variant: "destructive" });
+      toastError(t("rfq.submitError"));
     }
   }
 
   async function handleCreateQuotation() {
     if (!quotationForm.supplier_name) {
-      toast({ title: tCommon("validation.required", { field: t("rfq.fields.supplierName") }), variant: "destructive" });
+      toastError(tCommon("validation.required", { field: t("rfq.fields.supplierName") }));
       return;
     }
     setCreatingSQ(true);
@@ -97,12 +97,12 @@ export function RFQDetailPage() {
         notes: quotationForm.notes,
         items,
       });
-      toast({ title: t("sq.created"), variant: "success" });
+      toastSuccess(t("sq.created"));
       setShowAddQuotation(false);
       refetchComparison();
       refetch();
     } catch {
-      toast({ title: t("sq.createError"), variant: "destructive" });
+      toastError(t("sq.createError"));
     } finally {
       setCreatingSQ(false);
     }
@@ -111,11 +111,11 @@ export function RFQDetailPage() {
   async function handleAward(quotationId: string) {
     try {
       await awardQuotation({ rfq_id: rfqId!, quotation_id: quotationId, awarded_by: "buyer" });
-      toast({ title: t("award.success"), variant: "success" });
+      toastSuccess(t("award.success"));
       refetchComparison();
       refetchAward();
     } catch {
-      toast({ title: t("award.error"), variant: "destructive" });
+      toastError(t("award.error"));
     }
   }
 
