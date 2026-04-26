@@ -207,5 +207,8 @@
     "suspended": "Suspended",
     "title": "Customers",
     "updating": "Updating…"
+  },
+  "analytics": {
+    "totalRevenue": "Analytics Totalrevenue"
   }
 }

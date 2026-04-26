@@ -95,7 +95,11 @@
     "warehouseActions": "倉儲動作",
     "warehouseActionsDescription": "只有在可出貨、保留與缺貨訊號明確時才往下一步推進。",
     "workflowTimeline": "流程時間軸",
-    "workflowTimelineDescription": "用商務、倉儲與帳務節點快速看懂訂單狀態，不再只靠單一狀態字樣判讀。"
+    "workflowTimelineDescription": "用商務、倉儲與帳務節點快速看懂訂單狀態，不再只靠單一狀態字樣判讀。",
+    "adjustQuantities": "Detail Adjustquantities",
+    "stockReservationFailed": "Detail Stockreservationfailed",
+    "billingContext": "Detail Billingcontext",
+    "fulfillment": "Detail Fulfillment"
   },
   "form": {
     "errors": {
@@ -174,7 +178,8 @@
     "utmContent": "UTM 內容",
     "utmMedium": "UTM 媒介",
     "utmSource": "UTM 來源",
-    "unitPrice": "單價"
+    "unitPrice": "單價",
+    "customerPlaceholder": "Form Customerplaceholder"
   },
   "list": {
     "adjustFilter": "請調整搜尋或篩選條件後再試一次。",

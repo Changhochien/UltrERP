@@ -180,7 +180,8 @@
     "utmContent": "UTM Content",
     "utmMedium": "UTM Medium",
     "utmSource": "UTM Source",
-    "unitPrice": "Unit Price"
+    "unitPrice": "Unit Price",
+    "customerPlaceholder": "Form Customerplaceholder"
   },
   "list": {
     "adjustFilter": "Adjust the search or filter criteria and try again.",

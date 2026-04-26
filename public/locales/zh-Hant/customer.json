@@ -107,7 +107,8 @@
       "title": "訂單",
       "description": "此客戶的訂單。",
       "emptyTitle": "無訂單",
-      "emptyDescription": "此客戶沒有訂單記錄。"
+      "emptyDescription": "此客戶沒有訂單記錄。",
+      "createOrder": "Detail Orders Createorder"
     },
     "outstanding": {
       "title": "應收帳款",
@@ -204,5 +205,8 @@
     "suspended": "停權",
     "title": "客戶",
     "updating": "更新中…"
+  },
+  "analytics": {
+    "totalRevenue": "Analytics Totalrevenue"
   }
 }

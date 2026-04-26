@@ -35,7 +35,8 @@
     "noChangeData": "無變動",
     "revenueChange": "{change}",
     "title": "營收",
-    "yesterday": "昨日（{date}）：{amount}"
+    "yesterday": "昨日（{date}）：{amount}",
+    "revenueComparison": "Revenue Revenuecomparison"
   },
   "topProducts": {
     "description": "熱銷產品",

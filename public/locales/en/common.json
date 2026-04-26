@@ -157,5 +157,735 @@
       "quarter": "Quarterly",
       "year": "Yearly"
     }
+  },
+  "settingsPage": {
+    "showPassword": "Settingspage Showpassword",
+    "types": {
+      "bool": "Settingspage Types Bool",
+      "literal": "Settingspage Types Literal",
+      "tuple": "Settingspage Types Tuple",
+      "json": "Settingspage Types Json",
+      "str": "Settingspage Types Str",
+      "int": "Settingspage Types Int"
+    },
+    "hidePassword": "Settingspage Hidepassword",
+    "lastUpdated": "Settingspage Lastupdated",
+    "sensitive": "Settingspage Sensitive",
+    "emptyPlaceholder": "Settingspage Emptyplaceholder",
+    "by": "Settingspage By",
+    "nullable": "Settingspage Nullable",
+    "resetTitle": "Settingspage Resettitle",
+    "jsonPlaceholder": "Settingspage Jsonplaceholder"
+  },
+  "adminPage": {
+    "users": {
+      "dialog": {
+        "copyPassword": "Adminpage Users Dialog Copypassword",
+        "editTitle": "Adminpage Users Dialog Edittitle",
+        "editDescription": "Adminpage Users Dialog Editdescription",
+        "passwordGenerated": "Adminpage Users Dialog Passwordgenerated",
+        "generatePassword": "Adminpage Users Dialog Generatepassword",
+        "createDescription": "Adminpage Users Dialog Createdescription",
+        "createAction": "Adminpage Users Dialog Createaction",
+        "cancel": "Adminpage Users Dialog Cancel",
+        "passwordHelp": "Adminpage Users Dialog Passwordhelp",
+        "creating": "Adminpage Users Dialog Creating",
+        "passwordCopied": "Adminpage Users Dialog Passwordcopied",
+        "saving": "Adminpage Users Dialog Saving",
+        "createTitle": "Adminpage Users Dialog Createtitle",
+        "resetPasswordHelp": "Adminpage Users Dialog Resetpasswordhelp",
+        "save": "Adminpage Users Dialog Save"
+      },
+      "errors": {
+        "emailRequired": "Adminpage Users Errors Emailrequired",
+        "passwordTooShort": "Adminpage Users Errors Passwordtooshort",
+        "copyFailed": "Adminpage Users Errors Copyfailed",
+        "formUnavailable": "Adminpage Users Errors Formunavailable",
+        "emailInvalid": "Adminpage Users Errors Emailinvalid",
+        "displayNameRequired": "Adminpage Users Errors Displaynamerequired",
+        "resetPasswordTooShort": "Adminpage Users Errors Resetpasswordtooshort"
+      },
+      "columns": {
+        "actions": "Adminpage Users Columns Actions",
+        "displayName": "Adminpage Users Columns Displayname",
+        "role": "Adminpage Users Columns Role",
+        "email": "Adminpage Users Columns Email",
+        "status": "Adminpage Users Columns Status"
+      },
+      "filters": {
+        "status": "Adminpage Users Filters Status",
+        "allStatuses": "Adminpage Users Filters Allstatuses",
+        "role": "Adminpage Users Filters Role",
+        "searchPlaceholder": "Adminpage Users Filters Searchplaceholder",
+        "search": "Adminpage Users Filters Search",
+        "allRoles": "Adminpage Users Filters Allroles"
+      },
+      "description": "Adminpage Users Description",
+      "fields": {
+        "displayName": "Adminpage Users Fields Displayname",
+        "resetPassword": "Adminpage Users Fields Resetpassword",
+        "status": "Adminpage Users Fields Status",
+        "role": "Adminpage Users Fields Role",
+        "email": "Adminpage Users Fields Email",
+        "password": "Adminpage Users Fields Password"
+      },
+      "addUser": "Adminpage Users Adduser",
+      "editUser": "Adminpage Users Edituser",
+      "emptyDescription": "Adminpage Users Emptydescription",
+      "emptyTitle": "Adminpage Users Emptytitle",
+      "title": "Adminpage Users Title"
+    },
+    "auditLog": {
+      "filters": {
+        "actorPlaceholder": "Adminpage Auditlog Filters Actorplaceholder",
+        "createdAfter": "Adminpage Auditlog Filters Createdafter",
+        "action": "Adminpage Auditlog Filters Action",
+        "createdBefore": "Adminpage Auditlog Filters Createdbefore",
+        "entityTypePlaceholder": "Adminpage Auditlog Filters Entitytypeplaceholder",
+        "actorTypePlaceholder": "Adminpage Auditlog Filters Actortypeplaceholder",
+        "actor": "Adminpage Auditlog Filters Actor",
+        "actorType": "Adminpage Auditlog Filters Actortype",
+        "actionPlaceholder": "Adminpage Auditlog Filters Actionplaceholder",
+        "entityId": "Adminpage Auditlog Filters Entityid",
+        "entityIdPlaceholder": "Adminpage Auditlog Filters Entityidplaceholder",
+        "entityType": "Adminpage Auditlog Filters Entitytype"
+      },
+      "presets": {
+        "thisMonth": "Adminpage Auditlog Presets Thismonth",
+        "clear": "Adminpage Auditlog Presets Clear",
+        "today": "Adminpage Auditlog Presets Today",
+        "last7Days": "Adminpage Auditlog Presets Last7Days"
+      },
+      "detailSheet": {
+        "description": "Adminpage Auditlog Detailsheet Description",
+        "fields": {
+          "correlationId": "Adminpage Auditlog Detailsheet Fields Correlationid",
+          "createdAt": "Adminpage Auditlog Detailsheet Fields Createdat",
+          "actor": "Adminpage Auditlog Detailsheet Fields Actor",
+          "beforeState": "Adminpage Auditlog Detailsheet Fields Beforestate",
+          "actorType": "Adminpage Auditlog Detailsheet Fields Actortype",
+          "notes": "Adminpage Auditlog Detailsheet Fields Notes",
+          "afterState": "Adminpage Auditlog Detailsheet Fields Afterstate",
+          "target": "Adminpage Auditlog Detailsheet Fields Target",
+          "action": "Adminpage Auditlog Detailsheet Fields Action"
+        },
+        "title": "Adminpage Auditlog Detailsheet Title",
+        "emptyState": "Adminpage Auditlog Detailsheet Emptystate"
+      },
+      "savedPresets": {
+        "save": "Adminpage Auditlog Savedpresets Save",
+        "empty": "Adminpage Auditlog Savedpresets Empty",
+        "namePlaceholder": "Adminpage Auditlog Savedpresets Nameplaceholder",
+        "name": "Adminpage Auditlog Savedpresets Name",
+        "delete": "Adminpage Auditlog Savedpresets Delete"
+      },
+      "export": {
+        "json": "Adminpage Auditlog Export Json",
+        "csv": "Adminpage Auditlog Export Csv"
+      },
+      "columns": {
+        "actor": "Adminpage Auditlog Columns Actor",
+        "actorType": "Adminpage Auditlog Columns Actortype",
+        "target": "Adminpage Auditlog Columns Target",
+        "createdAt": "Adminpage Auditlog Columns Createdat",
+        "details": "Adminpage Auditlog Columns Details",
+        "action": "Adminpage Auditlog Columns Action"
+      },
+      "title": "Adminpage Auditlog Title",
+      "emptyTitle": "Adminpage Auditlog Emptytitle",
+      "actions": {
+        "view": "Adminpage Auditlog Actions View"
+      },
+      "description": "Adminpage Auditlog Description",
+      "emptyDescription": "Adminpage Auditlog Emptydescription"
+    },
+    "legacyRefresh": {
+      "columns": {
+        "latestRun": "Adminpage Legacyrefresh Columns Latestrun",
+        "latestSuccess": "Adminpage Legacyrefresh Columns Latestsuccess",
+        "latestPromoted": "Adminpage Legacyrefresh Columns Latestpromoted"
+      },
+      "details": {
+        "summaryPath": "Adminpage Legacyrefresh Details Summarypath",
+        "currentMode": "Adminpage Legacyrefresh Details Currentmode",
+        "noAffectedDomains": "Adminpage Legacyrefresh Details Noaffecteddomains",
+        "affectedDomains": "Adminpage Legacyrefresh Details Affecteddomains",
+        "incrementalStatePath": "Adminpage Legacyrefresh Details Incrementalstatepath"
+      },
+      "title": "Adminpage Legacyrefresh Title",
+      "fields": {
+        "dryRun": "Adminpage Legacyrefresh Fields Dryrun",
+        "schemaNamePlaceholder": "Adminpage Legacyrefresh Fields Schemanameplaceholder",
+        "mode": "Adminpage Legacyrefresh Fields Mode",
+        "tenantId": "Adminpage Legacyrefresh Fields Tenantid",
+        "lookbackDays": "Adminpage Legacyrefresh Fields Lookbackdays",
+        "reconciliationThreshold": "Adminpage Legacyrefresh Fields Reconciliationthreshold",
+        "schemaName": "Adminpage Legacyrefresh Fields Schemaname",
+        "tenantIdPlaceholder": "Adminpage Legacyrefresh Fields Tenantidplaceholder",
+        "sourceSchema": "Adminpage Legacyrefresh Fields Sourceschema"
+      },
+      "trigger": {
+        "title": "Adminpage Legacyrefresh Trigger Title",
+        "launched": "Adminpage Legacyrefresh Trigger Launched",
+        "launching": "Adminpage Legacyrefresh Trigger Launching",
+        "description": "Adminpage Legacyrefresh Trigger Description",
+        "launch": "Adminpage Legacyrefresh Trigger Launch"
+      },
+      "lanes": {
+        "title": "Adminpage Legacyrefresh Lanes Title",
+        "description": "Adminpage Legacyrefresh Lanes Description",
+        "refresh": "Adminpage Legacyrefresh Lanes Refresh"
+      },
+      "salesMonthly": {
+        "empty": "Adminpage Legacyrefresh Salesmonthly Empty",
+        "actions": {
+          "checkingHealth": "Adminpage Legacyrefresh Salesmonthly Actions Checkinghealth",
+          "backfilling": "Adminpage Legacyrefresh Salesmonthly Actions Backfilling",
+          "backfill": "Adminpage Legacyrefresh Salesmonthly Actions Backfill",
+          "checkHealth": "Adminpage Legacyrefresh Salesmonthly Actions Checkhealth",
+          "repairingMissing": "Adminpage Legacyrefresh Salesmonthly Actions Repairingmissing",
+          "repairMissing": "Adminpage Legacyrefresh Salesmonthly Actions Repairmissing"
+        },
+        "fields": {
+          "endMonthPlaceholder": "Adminpage Legacyrefresh Salesmonthly Fields Endmonthplaceholder",
+          "tenantId": "Adminpage Legacyrefresh Salesmonthly Fields Tenantid",
+          "startMonth": "Adminpage Legacyrefresh Salesmonthly Fields Startmonth",
+          "startMonthPlaceholder": "Adminpage Legacyrefresh Salesmonthly Fields Startmonthplaceholder",
+          "endMonth": "Adminpage Legacyrefresh Salesmonthly Fields Endmonth"
+        },
+        "status": {
+          "healthy": "Adminpage Legacyrefresh Salesmonthly Status Healthy",
+          "degraded": "Adminpage Legacyrefresh Salesmonthly Status Degraded"
+        },
+        "notices": {
+          "healthy": "Adminpage Legacyrefresh Salesmonthly Notices Healthy"
+        },
+        "description": "Adminpage Legacyrefresh Salesmonthly Description",
+        "title": "Adminpage Legacyrefresh Salesmonthly Title"
+      },
+      "recentRuns": {
+        "empty": "Adminpage Legacyrefresh Recentruns Empty",
+        "description": "Adminpage Legacyrefresh Recentruns Description",
+        "title": "Adminpage Legacyrefresh Recentruns Title",
+        "refresh": "Adminpage Legacyrefresh Recentruns Refresh"
+      },
+      "status": {
+        "locked": "Adminpage Legacyrefresh Status Locked",
+        "idle": "Adminpage Legacyrefresh Status Idle",
+        "blocked": "Adminpage Legacyrefresh Status Blocked",
+        "eligible": "Adminpage Legacyrefresh Status Eligible"
+      },
+      "modes": {
+        "incremental": "Adminpage Legacyrefresh Modes Incremental",
+        "fullRebaseline": "Adminpage Legacyrefresh Modes Fullrebaseline"
+      },
+      "eyebrow": "Adminpage Legacyrefresh Eyebrow",
+      "loading": "Adminpage Legacyrefresh Loading",
+      "description": "Adminpage Legacyrefresh Description"
+    },
+    "settingsHub": {
+      "description": "Adminpage Settingshub Description",
+      "items": {
+        "general": "Adminpage Settingshub Items General",
+        "data": "Adminpage Settingshub Items Data",
+        "security": "Adminpage Settingshub Items Security",
+        "appearance": "Adminpage Settingshub Items Appearance"
+      },
+      "openSettings": "Adminpage Settingshub Opensettings",
+      "title": "Adminpage Settingshub Title"
+    },
+    "errors": {
+      "loadFailed": "Adminpage Errors Loadfailed",
+      "saveFailed": "Adminpage Errors Savefailed"
+    },
+    "title": "Adminpage Title",
+    "permissions": {
+      "columns": {
+        "feature": "Adminpage Permissions Columns Feature"
+      },
+      "description": "Adminpage Permissions Description",
+      "emptyTitle": "Adminpage Permissions Emptytitle",
+      "title": "Adminpage Permissions Title",
+      "emptyDescription": "Adminpage Permissions Emptydescription"
+    },
+    "description": "Adminpage Description",
+    "eyebrow": "Adminpage Eyebrow"
+  },
+  "form": {
+    "companyName": "Form Companyname",
+    "creating": "Form Creating",
+    "createTitle": "Form Createtitle",
+    "contactName": "Form Contactname",
+    "baseCurrency": "Form Basecurrency",
+    "contactEmail": "Form Contactemail",
+    "billingAddress": "Form Billingaddress",
+    "creditLimit": "Form Creditlimit",
+    "commercialDefaults": "Form Commercialdefaults",
+    "contactPhone": "Form Contactphone",
+    "paymentTerms": "Form Paymentterms",
+    "defaultCurrency": "Form Defaultcurrency",
+    "useTenantDefault": "Form Usetenantdefault",
+    "businessNumber": "Form Businessnumber"
+  },
+  "accounting": {
+    "allVoucherTypes": "Accounting Allvouchertypes",
+    "total": "Accounting Total",
+    "journalEntryNotFound": "Accounting Journalentrynotfound",
+    "journalEntriesDescription": "Accounting Journalentriesdescription",
+    "endDateAfterStartDate": "Accounting Enddateafterstartdate",
+    "labelFormat": "Accounting Labelformat",
+    "allStatuses": "Accounting Allstatuses",
+    "closeWarning": "Accounting Closewarning",
+    "closureNotes": "Accounting Closurenotes",
+    "deleteWarning": "Accounting Deletewarning",
+    "accountsToCreate": "Accounting Accountstocreate",
+    "remarkOptional": "Accounting Remarkoptional",
+    "totalDebit": "Accounting Totaldebit",
+    "enterCancelReason": "Accounting Entercancelreason",
+    "reportType": "Accounting Reporttype",
+    "closingBalance": "Accounting Closingbalance",
+    "voucherType": "Accounting Vouchertype",
+    "accountNumber": "Accounting Accountnumber",
+    "balanced": "Accounting Balanced",
+    "glEntries": "Accounting Glentries",
+    "accountDetails": "Accounting Accountdetails",
+    "createdAt": "Accounting Createdat",
+    "referenceDate": "Accounting Referencedate",
+    "selectAccount": "Accounting Selectaccount",
+    "parentAccount": "Accounting Parentaccount",
+    "fiscalYears": "Accounting Fiscalyears",
+    "createFirstFiscalYear": "Accounting Createfirstfiscalyear",
+    "startDate": "Accounting Startdate",
+    "close": "Accounting Close",
+    "journalEntries": "Accounting Journalentries",
+    "isDisabled": "Accounting Isdisabled",
+    "accountType": "Accounting Accounttype",
+    "remark": "Accounting Remark",
+    "createJournalEntry": "Accounting Createjournalentry",
+    "rootType": "Accounting Roottype",
+    "showDisabled": "Accounting Showdisabled",
+    "accounts": "Accounting Accounts",
+    "chartOfAccounts": "Accounting Chartofaccounts",
+    "expense": "Accounting Expense",
+    "closeFiscalYear": "Accounting Closefiscalyear",
+    "isDefault": "Accounting Isdefault",
+    "entryLines": "Accounting Entrylines",
+    "disabled": "Accounting Disabled",
+    "reopen": "Accounting Reopen",
+    "reversalDate": "Accounting Reversaldate",
+    "noFiscalYears": "Accounting Nofiscalyears",
+    "createFiscalYear": "Accounting Createfiscalyear",
+    "submittedAt": "Accounting Submittedat",
+    "difference": "Accounting Difference",
+    "atLeastTwoLines": "Accounting Atleasttwolines",
+    "seedChart": "Accounting Seedchart",
+    "toDate": "Accounting Todate",
+    "entryIsBalanced": "Accounting Entryisbalanced",
+    "submitEntry": "Accounting Submitentry",
+    "createSubmit": "Accounting Createsubmit",
+    "seedStarterChart": "Accounting Seedstarterchart",
+    "closureNotesPlaceholder": "Accounting Closurenotesplaceholder",
+    "editAccount": "Accounting Editaccount",
+    "totalCredit": "Accounting Totalcredit",
+    "setAsDefault": "Accounting Setasdefault",
+    "addLine": "Accounting Addline",
+    "editFiscalYear": "Accounting Editfiscalyear",
+    "debit": "Accounting Debit",
+    "actions": "Accounting Actions",
+    "seedStarterChartDescription": "Accounting Seedstarterchartdescription",
+    "glEntriesDescription": "Accounting Glentriesdescription",
+    "createAccount": "Accounting Createaccount",
+    "account": "Accounting Account",
+    "voucherNumber": "Accounting Vouchernumber",
+    "seedStarterChartNote": "Accounting Seedstarterchartnote",
+    "confirmReverse": "Accounting Confirmreverse",
+    "submitFailed": "Accounting Submitfailed",
+    "cancelledAt": "Accounting Cancelledat",
+    "narrationPlaceholder": "Accounting Narrationplaceholder",
+    "cancelReason": "Accounting Cancelreason",
+    "isGroup": "Accounting Isgroup",
+    "noLedgerEntries": "Accounting Noledgerentries",
+    "notBalanced": "Accounting Notbalanced",
+    "reversalChain": "Accounting Reversalchain",
+    "frozen": "Accounting Frozen",
+    "entryDetails": "Accounting Entrydetails",
+    "selectType": "Accounting Selecttype",
+    "createAccountDescription": "Accounting Createaccountdescription",
+    "default": "Accounting Default",
+    "reverseEntry": "Accounting Reverseentry",
+    "endDate": "Accounting Enddate",
+    "createFiscalYearDescription": "Accounting Createfiscalyeardescription",
+    "newJournalEntry": "Accounting Newjournalentry",
+    "status": "Accounting Status",
+    "isFrozen": "Accounting Isfrozen",
+    "equity": "Accounting Equity",
+    "backToJournalEntries": "Accounting Backtojournalentries",
+    "fromDate": "Accounting Fromdate",
+    "cannotUndo": "Accounting Cannotundo",
+    "createFailed": "Accounting Createfailed",
+    "narration": "Accounting Narration",
+    "liability": "Accounting Liability",
+    "noAccounts": "Accounting Noaccounts",
+    "accountName": "Accounting Accountname",
+    "noJournalEntries": "Accounting Nojournalentries",
+    "deleteAccount": "Accounting Deleteaccount",
+    "fillRequiredFields": "Accounting Fillrequiredfields",
+    "income": "Accounting Income",
+    "openingBalance": "Accounting Openingbalance",
+    "credit": "Accounting Credit",
+    "statusHistory": "Accounting Statushistory",
+    "reverseFailed": "Accounting Reversefailed",
+    "asset": "Accounting Asset",
+    "postingDate": "Accounting Postingdate",
+    "label": "Accounting Label"
+  },
+  "page": {
+    "description": "Page Description",
+    "createProductDialog": {
+      "title": "Page Createproductdialog Title",
+      "description": "Page Createproductdialog Description"
+    },
+    "detailDescription": "Page Detaildescription",
+    "detailTitle": "Page Detailtitle",
+    "commandBar": {
+      "searchPlaceholder": "Page Commandbar Searchplaceholder",
+      "adjustStock": "Page Commandbar Adjuststock",
+      "regionLabel": "Page Commandbar Regionlabel",
+      "newOrder": "Page Commandbar Neworder",
+      "newTransfer": "Page Commandbar Newtransfer"
+    },
+    "addProduct": "Page Addproduct",
+    "stockAdjustmentDialog": {
+      "description": "Page Stockadjustmentdialog Description",
+      "title": "Page Stockadjustmentdialog Title"
+    },
+    "workspaceTitle": "Page Workspacetitle",
+    "title": "Page Title",
+    "warehouseScopeDescription": "Page Warehousescopedescription",
+    "workspaceDescription": "Page Workspacedescription",
+    "warehouseScope": "Page Warehousescope",
+    "eyebrow": "Page Eyebrow"
+  },
+  "detail": {
+    "statement": {
+      "filter": {
+        "from": "Detail Statement Filter From",
+        "to": "Detail Statement Filter To"
+      },
+      "empty": "Detail Statement Empty",
+      "table": {
+        "description": "Detail Statement Table Description",
+        "type": "Detail Statement Table Type",
+        "reference": "Detail Statement Table Reference",
+        "date": "Detail Statement Table Date",
+        "balance": "Detail Statement Table Balance",
+        "debit": "Detail Statement Table Debit",
+        "credit": "Detail Statement Table Credit"
+      },
+      "summary": {
+        "totalOutstanding": "Detail Statement Summary Totaloutstanding",
+        "oldestUnpaid": "Detail Statement Summary Oldestunpaid",
+        "avgDaysToPay": "Detail Statement Summary Avgdaystopay"
+      },
+      "paymentType": "Detail Statement Paymenttype",
+      "actions": {
+        "exportCSV": "Detail Statement Actions Exportcsv",
+        "print": "Detail Statement Actions Print"
+      },
+      "invoiceType": "Detail Statement Invoicetype"
+    },
+    "tabs": {
+      "statement": "Detail Tabs Statement",
+      "overview": "Detail Tabs Overview",
+      "orders": "Detail Tabs Orders",
+      "invoices": "Detail Tabs Invoices",
+      "analytics": "Detail Tabs Analytics",
+      "outstanding": "Detail Tabs Outstanding"
+    },
+    "title": "Detail Title",
+    "backToList": "Detail Backtolist",
+    "email": "Detail Email",
+    "overviewTitle": "Detail Overviewtitle",
+    "fields": {
+      "transferId": "Detail Fields Transferid",
+      "actor": "Detail Fields Actor",
+      "product": "Detail Fields Product",
+      "quantity": "Detail Fields Quantity",
+      "createdAt": "Detail Fields Createdat",
+      "toWarehouse": "Detail Fields Towarehouse",
+      "fromWarehouse": "Detail Fields Fromwarehouse",
+      "notes": "Detail Fields Notes"
+    },
+    "notFound": "Detail Notfound",
+    "deleteConfirm": {
+      "message": "Detail Deleteconfirm Message",
+      "error": "Detail Deleteconfirm Error"
+    },
+    "delete": "Detail Delete",
+    "eyebrow": "Detail Eyebrow",
+    "billingAddress": "Detail Billingaddress",
+    "notSet": "Detail Notset",
+    "companyName": "Detail Companyname",
+    "loading": "Detail Loading",
+    "overviewDescription": "Detail Overviewdescription",
+    "edit": "Detail Edit",
+    "description": "Detail Description",
+    "toast": {
+      "updatedTitle": "Detail Toast Updatedtitle",
+      "updateErrorTitle": "Detail Toast Updateerrortitle",
+      "updateErrorDescription": "Detail Toast Updateerrordescription"
+    },
+    "defaultCurrency": "Detail Defaultcurrency",
+    "phone": "Detail Phone",
+    "suspendConfirm": {
+      "message": "Detail Suspendconfirm Message",
+      "error": "Detail Suspendconfirm Error"
+    },
+    "creditLimit": "Detail Creditlimit",
+    "cannotDelete": {
+      "message": "Detail Cannotdelete Message"
+    },
+    "ban": "Detail Ban",
+    "paymentTerms": "Detail Paymentterms",
+    "suspend": "Detail Suspend",
+    "status": "Detail Status",
+    "contactName": "Detail Contactname",
+    "updatedAt": "Detail Updatedat",
+    "createdAt": "Detail Createdat"
+  },
+  "metrics": {
+    "inTransit": "Metrics Intransit",
+    "safetyStock": "Metrics Safetystock",
+    "avgMonthly": "Metrics Avgmonthly",
+    "reserved": "Metrics Reserved",
+    "avgDailyUsage": "Metrics Avgdailyusage",
+    "onOrder": "Metrics Onorder",
+    "leadTime": "Metrics Leadtime",
+    "currentMonthLive": "Metrics Currentmonthlive",
+    "safetyStockUnit": "Metrics Safetystockunit",
+    "seasonalityIndex": "Metrics Seasonalityindex",
+    "lowMonthly": "Metrics Lowmonthly",
+    "leadTimeUnit": "Metrics Leadtimeunit",
+    "avgDailyUsageUnit": "Metrics Avgdailyusageunit",
+    "reorderPointUnit": "Metrics Reorderpointunit",
+    "reorderPoint": "Metrics Reorderpoint",
+    "historyMonths": "Metrics Historymonths",
+    "peakMonthly": "Metrics Peakmonthly"
+  },
+  "col": {
+    "demandBasis": "Col Demandbasis",
+    "ltConfidence": "Col Ltconfidence",
+    "product": "Col Product",
+    "qualityNote": "Col Qualitynote",
+    "reorderPoint": "Col Reorderpoint",
+    "unitCost": "Col Unitcost",
+    "movements": "Col Movements",
+    "note": "Col Note",
+    "supplier": "Col Supplier",
+    "currentRop": "Col Currentrop",
+    "computedRop": "Col Computedrop",
+    "avgDailyUsage": "Col Avgdailyusage",
+    "inTransitQty": "Col Intransitqty",
+    "safetyStock": "Col Safetystock",
+    "suggestedOrderQty": "Col Suggestedorderqty",
+    "reviewCycle": "Col Reviewcycle",
+    "leadTime": "Col Leadtime",
+    "skipReason": "Col Skipreason",
+    "category": "Col Category",
+    "warehouse": "Col Warehouse",
+    "defaultSupplier": "Col Defaultsupplier",
+    "productCode": "Col Productcode",
+    "extendedValue": "Col Extendedvalue",
+    "inventoryPosition": "Col Inventoryposition",
+    "quantity": "Col Quantity",
+    "actions": "Col Actions",
+    "delta": "Col Delta",
+    "currentStock": "Col Currentstock",
+    "suggestedQty": "Col Suggestedqty",
+    "onOrderQty": "Col Onorderqty",
+    "costSource": "Col Costsource",
+    "ltSource": "Col Ltsource",
+    "targetStock": "Col Targetstock",
+    "shortageQty": "Col Shortageqty",
+    "productName": "Col Productname"
+  },
+  "rfq": {
+    "createError": "Rfq Createerror",
+    "fields": {
+      "suppliers": "Rfq Fields Suppliers",
+      "transactionDate": "Rfq Fields Transactiondate",
+      "supplierNamePlaceholder": "Rfq Fields Suppliernameplaceholder",
+      "uom": "Rfq Fields Uom",
+      "terms": "Rfq Fields Terms",
+      "contactEmail": "Rfq Fields Contactemail",
+      "itemCode": "Rfq Fields Itemcode",
+      "currency": "Rfq Fields Currency",
+      "status": "Rfq Fields Status",
+      "quotesReceived": "Rfq Fields Quotesreceived",
+      "notes": "Rfq Fields Notes",
+      "qty": "Rfq Fields Qty",
+      "itemCodePlaceholder": "Rfq Fields Itemcodeplaceholder",
+      "quoteStatus": "Rfq Fields Quotestatus",
+      "supplierName": "Rfq Fields Suppliername",
+      "itemName": "Rfq Fields Itemname",
+      "scheduleDate": "Rfq Fields Scheduledate",
+      "itemNamePlaceholder": "Rfq Fields Itemnameplaceholder",
+      "name": "Rfq Fields Name",
+      "company": "Rfq Fields Company",
+      "companyPlaceholder": "Rfq Fields Companyplaceholder"
+    },
+    "save": "Rfq Save",
+    "searchPlaceholder": "Rfq Searchplaceholder",
+    "notesPlaceholder": "Rfq Notesplaceholder",
+    "supplierControlWarning": "Rfq Suppliercontrolwarning",
+    "sectionHeader": "Rfq Sectionheader",
+    "submit": "Rfq Submit",
+    "suppliers": "Rfq Suppliers",
+    "createDescription": "Rfq Createdescription",
+    "items": "Rfq Items",
+    "supplierControlBlocked": "Rfq Suppliercontrolblocked",
+    "noSuppliers": "Rfq Nosuppliers",
+    "terms": "Rfq Terms",
+    "submitted": "Rfq Submitted",
+    "noItems": "Rfq Noitems",
+    "create": "Rfq Create",
+    "supplierControlCheckError": "Rfq Suppliercontrolcheckerror",
+    "submitError": "Rfq Submiterror",
+    "noQuotations": "Rfq Noquotations",
+    "supplierControlChecking": "Rfq Suppliercontrolchecking",
+    "description": "Rfq Description",
+    "addItem": "Rfq Additem",
+    "supplierMasterHint": "Rfq Suppliermasterhint",
+    "addSupplier": "Rfq Addsupplier",
+    "empty": "Rfq Empty",
+    "created": "Rfq Created",
+    "title": "Rfq Title",
+    "termsPlaceholder": "Rfq Termsplaceholder"
+  },
+  "guest": "Common Guest",
+  "noTenant": "Common Notenant",
+  "loading": "Common Loading",
+  "reversing": "Common Reversing",
+  "submitting": "Common Submitting",
+  "cancel": "Common Cancel",
+  "no": "Common No",
+  "next": "Common Next",
+  "error": "Common Error",
+  "yes": "Common Yes",
+  "previous": "Common Previous",
+  "filter": "Common Filter",
+  "reset": "Common Reset",
+  "edit": "Common Edit",
+  "retry": "Common Retry",
+  "delete": "Common Delete",
+  "save": "Common Save",
+  "status": {
+    "submitted": "Status Submitted",
+    "in_progress": "Status In Progress",
+    "approved": "Status Approved"
+  },
+  "columns": {
+    "notes": "Columns Notes",
+    "reason": "Columns Reason",
+    "product": "Columns Product",
+    "actions": "Columns Actions",
+    "variance": "Columns Variance",
+    "createdAt": "Columns Createdat",
+    "route": "Columns Route",
+    "actor": "Columns Actor",
+    "snapshot": "Columns Snapshot",
+    "quantity": "Columns Quantity",
+    "warehouse": "Columns Warehouse",
+    "created": "Columns Created",
+    "date": "Columns Date",
+    "counted": "Columns Counted",
+    "status": "Columns Status"
+  },
+  "summary": {
+    "varianceTotal": "Summary Variancetotal",
+    "countedLines": "Summary Countedlines",
+    "warehouse": "Summary Warehouse",
+    "status": "Summary Status"
+  },
+  "reporting": {
+    "supplierPerformance": "Reporting Supplierperformance",
+    "title": "Reporting Title",
+    "noQuoteData": "Reporting Noquotedata",
+    "blockedSuppliers": "Reporting Blockedsuppliers",
+    "activePurchaseOrders": "Reporting Activepurchaseorders",
+    "supplier": "Reporting Supplier",
+    "quoteTurnaround": "Reporting Quoteturnaround",
+    "blockedWarnedSuppliers": "Reporting Blockedwarnedsuppliers",
+    "loadError": "Reporting Loaderror",
+    "awardedQuotes": "Reporting Awardedquotes",
+    "rfqsSubmitted": "Reporting Rfqssubmitted",
+    "awardRate": "Reporting Awardrate",
+    "topSuppliers": "Reporting Topsuppliers",
+    "totalQuotes": "Reporting Totalquotes",
+    "fastestResponse": "Reporting Fastestresponse",
+    "quotesAnalysed": "Reporting Quotesanalysed",
+    "description": "Reporting Description",
+    "monitoredSuppliers": "Reporting Monitoredsuppliers",
+    "quotationsSubmitted": "Reporting Quotationssubmitted",
+    "noSupplierData": "Reporting Nosupplierdata",
+    "overallAwardRate": "Reporting Overallawardrate",
+    "slowestResponse": "Reporting Slowestresponse",
+    "averageResponseTime": "Reporting Averageresponsetime"
+  },
+  "award": {
+    "selectAsWinner": "Award Selectaswinner",
+    "winner": "Award Winner",
+    "error": "Award Error",
+    "createPurchaseOrder": "Award Createpurchaseorder",
+    "success": "Award Success"
+  },
+  "salesHistory": {
+    "title": "Saleshistory Title"
+  },
+  "sq": {
+    "expired": "Sq Expired",
+    "createError": "Sq Createerror",
+    "save": "Sq Save",
+    "fields": {
+      "grandTotal": "Sq Fields Grandtotal",
+      "leadTime": "Sq Fields Leadtime",
+      "validTill": "Sq Fields Validtill",
+      "leadTimeDays": "Sq Fields Leadtimedays"
+    },
+    "add": "Sq Add",
+    "created": "Sq Created"
+  },
+  "qualityMessage": {
+    "supplierDefault": "Qualitymessage Supplierdefault",
+    "leadTimeMissing": "Qualitymessage Leadtimemissing"
+  },
+  "navMenu": {
+    "workspace": "Navmenu Workspace",
+    "theme": "Navmenu Theme",
+    "logOut": "Navmenu Logout"
+  },
+  "stockByWarehouse": {
+    "noRecords": "Stockbywarehouse Norecords"
+  },
+  "nav": {
+    "language": "Nav Language"
+  },
+  "auditPagination": {
+    "previous": "Auditpagination Previous",
+    "next": "Auditpagination Next"
+  },
+  "filters": {
+    "product": "Filters Product",
+    "clear": "Filters Clear",
+    "productPlaceholder": "Filters Productplaceholder",
+    "warehouse": "Filters Warehouse",
+    "allWarehouses": "Filters Allwarehouses"
+  },
+  "costSource": {
+    "latest_purchase": "Costsource Latest Purchase",
+    "missing": "Costsource Missing"
+  },
+  "monthlyDemand": {
+    "title": "Monthlydemand Title"
   }
 }
