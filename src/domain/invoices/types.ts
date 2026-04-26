@@ -74,6 +74,10 @@ export interface InvoiceLineResponse {
 	tax_rate: string;
 	tax_amount: string;
 	total_amount: string;
+	base_unit_price?: string | null;
+	base_subtotal_amount?: string | null;
+	base_tax_amount?: string | null;
+	base_total_amount?: string | null;
 	zero_tax_rate_reason: string | null;
 }
 
@@ -108,9 +112,18 @@ export interface InvoiceResponse {
 	buyer_type: string;
 	buyer_identifier_snapshot: string;
 	currency_code: string;
+	conversion_rate?: string | null;
+	conversion_effective_date?: string | null;
+	applied_rate_source?: string | null;
+	currency_source?: string | null;
+	payment_terms_source?: string | null;
 	subtotal_amount: string;
 	tax_amount: string;
 	total_amount: string;
+	base_subtotal_amount?: string | null;
+	base_discount_amount?: string | null;
+	base_tax_amount?: string | null;
+	base_total_amount?: string | null;
 	status: string;
 	version: number;
 	voided_at: string | null;
@@ -134,6 +147,9 @@ export interface InvoiceListItem {
 	customer_id: string;
 	order_id?: string | null;
 	currency_code: string;
+	base_total_amount?: string | null;
+	conversion_rate?: string | null;
+	applied_rate_source?: string | null;
 	total_amount: string;
 	status: string;
 	created_at: string;

@@ -129,6 +129,20 @@ class TestModelFieldsExist:
         assert hasattr(PaymentSchedule, "paid_date")
 
 
+class TestPaymentTermsRoutes:
+    """Tests for payment terms template API route registration."""
+
+    def test_template_crud_routes_exist(self):
+        from domains.settings.routes_payment_terms import router
+
+        routes = {(route.path, tuple(sorted(route.methods))) for route in router.routes}
+
+        assert ("/payment-terms-templates", ("GET",)) in routes
+        assert ("/payment-terms-templates", ("POST",)) in routes
+        assert ("/payment-terms-templates/{template_id}", ("GET",)) in routes
+        assert ("/payment-terms-templates/{template_id}", ("PATCH",)) in routes
+
+
 # === Test PaymentSchedule Methods ===
 
 class TestPaymentScheduleMarkPaid:

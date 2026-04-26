@@ -8,6 +8,8 @@ export interface CustomerCreatePayload {
   contact_phone: string;
   contact_email: string;
   credit_limit: string;
+  default_currency_code?: string | null;
+  payment_terms_template_id?: string | null;
 }
 
 export interface CustomerResponse {
@@ -20,6 +22,8 @@ export interface CustomerResponse {
   contact_phone: string;
   contact_email: string;
   credit_limit: string;
+  default_currency_code?: string | null;
+  payment_terms_template_id?: string | null;
   status: string;
   version: number;
   created_at: string;
@@ -32,6 +36,8 @@ export interface CustomerSummary {
   normalized_business_number: string;
   contact_phone: string;
   status: string;
+  default_currency_code?: string | null;
+  payment_terms_template_id?: string | null;
 }
 
 export interface CustomerListResponse {
@@ -50,6 +56,8 @@ export interface CustomerUpdatePayload {
   contact_phone?: string;
   contact_email?: string;
   credit_limit?: string;
+  default_currency_code?: string | null;
+  payment_terms_template_id?: string | null;
   status?: string;
   version: number;
 }

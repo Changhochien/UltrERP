@@ -130,6 +130,8 @@ Claude Sonnet 4
 
 - Backend tests: `uv run pytest tests/domains/settings/test_payment_terms_service.py -v` (21 tests passed)
 - Migration: `cd migrations && uv run alembic upgrade head` (successful)
+- Copilot quality review: `cd backend && uv run pytest tests/domains/settings/test_currency_service.py tests/domains/settings/test_currency_aware_documents.py tests/domains/settings/test_payment_terms_service.py tests/domains/settings/test_commercial_profile_service.py` (105 tests passed)
+- Copilot frontend verification: `pnpm build` (passed; Vite reported a large chunk size warning)
 
 ### Completion Notes List
 
@@ -143,6 +145,12 @@ Claude Sonnet 4
   - Created migration for new tables
   - Added comprehensive tests (21 tests)
   - All 21 tests pass
+- 2026-04-26: Copilot code/quality review hardening:
+  - Added finance-facing payment terms template API schemas and CRUD routes under `/api/v1/settings/payment-terms-templates`.
+  - Registered the payment terms template router in the FastAPI app.
+  - Added template update support and eager detail loading in the service.
+  - Wired order and invoice creation to generate explicit `PaymentSchedule` rows using legacy compatibility terms or customer template defaults.
+  - Added frontend API helpers for payment terms template list/create/update calls.
 
 ### Implementation Notes
 
@@ -156,9 +164,16 @@ Claude Sonnet 4
 **New Files:**
 - `backend/common/models/payment_terms.py` - Payment terms models
 - `backend/domains/settings/payment_terms_service.py` - Payment terms service
+- `backend/domains/settings/schemas_payment_terms.py` - Payment terms API schemas
+- `backend/domains/settings/routes_payment_terms.py` - Payment terms template API routes
+- `src/lib/api/paymentTerms.ts` - Frontend API helpers for payment terms templates
 - `migrations/versions/25_3_add_payment_terms_templates.py` - Database migration
 - `backend/tests/domains/settings/test_payment_terms_service.py` - Test suite (21 tests)
+- `backend/app/main.py` - Registered payment terms template routes
+- `backend/domains/orders/services.py` - Generates order payment schedules
+- `backend/domains/invoices/service.py` - Generates invoice payment schedules
 
 ## Change Log
 
 - 2026-04-26: Implemented Story 25-3 payment terms template builder and schedule handling. Added PaymentTermsTemplate, PaymentTermsTemplateDetail, and PaymentSchedule models with full CRUD and schedule generation support. Legacy terms NET_30, NET_60, NET_90, COD, PREPAID are supported. All 21 tests pass.
+- 2026-04-26: Code-review hardening completed. Payment terms templates are now exposed through HTTP APIs, document creation writes explicit schedule rows, and focused backend tests plus frontend build verification pass.

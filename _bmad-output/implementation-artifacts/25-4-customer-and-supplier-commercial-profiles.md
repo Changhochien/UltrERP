@@ -69,6 +69,8 @@ Claude Sonnet 4
 - Backend tests: `uv run pytest tests/domains/settings/test_commercial_profile_service.py -v` (23 tests passed)
 - Backend tests: `uv run pytest tests/domains/settings/ --ignore=tests/domains/settings/test_routes.py -v` (120 tests passed)
 - Migration: `cd migrations && uv run alembic upgrade head` (successful)
+- Copilot quality review: `cd backend && uv run pytest tests/domains/settings/test_currency_service.py tests/domains/settings/test_currency_aware_documents.py tests/domains/settings/test_payment_terms_service.py tests/domains/settings/test_commercial_profile_service.py tests/domains/crm/test_quotation_service.py tests/domains/crm/test_quotation_service_helpers.py` (140 tests passed)
+- Copilot frontend verification: `pnpm build` (passed; Vite reported a large chunk size warning)
 
 ### Completion Notes List
 
@@ -81,6 +83,12 @@ Claude Sonnet 4
   - Created migration for new fields
   - Added comprehensive tests (23 tests)
   - All 120 settings tests pass
+- 2026-04-26: Copilot code/quality review hardening:
+  - Removed the silent identity-rate fallback from non-base commercial profile currency resolution; missing foreign-currency rates now fail deterministically.
+  - Exposed customer commercial defaults through customer create/update/list/detail schemas and persisted them in customer service mutations.
+  - Exposed supplier commercial defaults through inventory supplier create/update/response schemas and persisted them in supplier mutations.
+  - Applied customer profile currency defaults to quotations, orders, and invoices with source metadata for profile, source-document, manual override, and legacy compatibility cases.
+  - Added a regression test proving missing non-base rates are not silently treated as identity.
 
 ### Implementation Notes
 
@@ -102,7 +110,17 @@ Claude Sonnet 4
 - `backend/common/models/order.py` - Added currency_source and payment_terms_source
 - `backend/domains/invoices/models.py` - Added currency_source and payment_terms_source
 - `backend/domains/crm/models.py` - Added currency_source and payment_terms_source to Quotation
+- `backend/domains/settings/commercial_profile_service.py` - Deterministic non-base FX failure and normalized source currencies
+- `backend/domains/customers/schemas.py` - Customer commercial default API fields
+- `backend/domains/customers/service.py` - Persists customer commercial defaults
+- `backend/domains/inventory/schemas.py` - Supplier commercial default API fields
+- `backend/domains/inventory/commands/_supplier.py` - Persists supplier commercial defaults
+- `backend/domains/crm/_shared.py` - Includes customer commercial defaults in party context
+- `backend/domains/crm/_quotation.py` - Applies customer commercial defaults and source metadata to quotations
+- `src/domain/customers/types.ts` - Frontend customer commercial default types
+- `src/domain/inventory/types.ts` - Frontend supplier commercial default types
 
 ## Change Log
 
 - 2026-04-26: Implemented Story 25-4 customer and supplier commercial profiles. Added default currency and payment terms template references to party masters, source metadata tracking on documents, and deterministic fallback service. All 120 tests pass.
+- 2026-04-26: Code-review hardening completed. Party commercial defaults are exposed through APIs and applied in core sales document flows, non-base FX lookup fails deterministically when no rate exists, and affected backend tests plus frontend build verification pass.

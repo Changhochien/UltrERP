@@ -25,8 +25,8 @@ from domains.settings.fx_conversion import (
     ConversionResult,
     calculate_base_amounts,
     convert_amount,
-    get_currency_precision,
-    round_for_currency,
+    validate_conversion_drift,
+    validate_line_header_consistency,
 )
 
 if TYPE_CHECKING:
@@ -224,6 +224,128 @@ class DocumentCurrencySnapshot:
         )
 
         return base_unit_price, base_subtotal, base_tax, base_total
+
+
+async def apply_document_currency_snapshot(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    document: object,
+    *,
+    currency_code: str,
+    transaction_date: date,
+    subtotal: Decimal,
+    tax_amount: Decimal,
+    total: Decimal,
+    currency_source: str | None = None,
+) -> DocumentCurrencySnapshot:
+    snapshot = DocumentCurrencySnapshot(
+        session,
+        tenant_id,
+        currency_code,
+        transaction_date,
+    )
+    if snapshot.transaction_currency == "TWD":
+        from common.models.currency import Currency
+
+        snapshot._base_currency = Currency(
+            tenant_id=tenant_id,
+            code="TWD",
+            symbol="NT$",
+            decimal_places=0,
+            is_active=True,
+            is_base_currency=True,
+        )
+        snapshot._conversion_result = ConversionResult(
+            original_amount=Decimal("1.0"),
+            converted_amount=Decimal("1.0"),
+            rate=Decimal("1.0"),
+            source_currency="TWD",
+            target_currency="TWD",
+            effective_date=transaction_date,
+            rate_source="identity",
+            precision_used=0,
+        )
+        snapshot._base_precision = 0
+    else:
+        await snapshot.resolve()
+    base_subtotal, base_tax, base_total, base_discount = snapshot.calculate_base_amounts(
+        subtotal,
+        tax_amount,
+        total,
+    )
+
+    is_valid, error = validate_conversion_drift(
+        original_total=total,
+        rate=snapshot.rate,
+        stored_base_total=base_total,
+        target_precision=snapshot._base_precision,
+    )
+    if not is_valid:
+        raise ValueError(error or "Currency conversion drift detected.")
+
+    if hasattr(document, "currency_code"):
+        setattr(document, "currency_code", snapshot.transaction_currency)
+    elif hasattr(document, "currency"):
+        setattr(document, "currency", snapshot.transaction_currency)
+    setattr(document, "conversion_rate", snapshot.rate)
+    setattr(document, "conversion_effective_date", snapshot.effective_date)
+    setattr(document, "applied_rate_source", snapshot.rate_source)
+    if hasattr(document, "base_subtotal_amount"):
+        setattr(document, "base_subtotal_amount", base_subtotal)
+    elif hasattr(document, "base_subtotal"):
+        setattr(document, "base_subtotal", base_subtotal)
+    if hasattr(document, "base_discount_amount"):
+        setattr(document, "base_discount_amount", base_discount)
+    if hasattr(document, "base_tax_amount"):
+        setattr(document, "base_tax_amount", base_tax)
+    elif hasattr(document, "base_total_taxes"):
+        setattr(document, "base_total_taxes", base_tax)
+    if hasattr(document, "base_total_amount"):
+        setattr(document, "base_total_amount", base_total)
+    elif hasattr(document, "base_grand_total"):
+        setattr(document, "base_grand_total", base_total)
+    if currency_source is not None and hasattr(document, "currency_source"):
+        setattr(document, "currency_source", currency_source)
+    return snapshot
+
+
+def apply_line_currency_snapshot(
+    snapshot: DocumentCurrencySnapshot,
+    line: object,
+    *,
+    unit_price: Decimal,
+    subtotal: Decimal,
+    tax_amount: Decimal,
+    total: Decimal,
+) -> None:
+    base_unit_price, base_subtotal, base_tax, base_total = snapshot.calculate_line_base_amounts(
+        unit_price,
+        subtotal,
+        tax_amount,
+        total,
+    )
+    setattr(line, "base_unit_price", base_unit_price)
+    setattr(line, "base_subtotal_amount", base_subtotal)
+    setattr(line, "base_tax_amount", base_tax)
+    setattr(line, "base_total_amount", base_total)
+
+
+def validate_document_line_header_snapshot(
+    snapshot: DocumentCurrencySnapshot,
+    lines: list[object],
+    header_base_total: Decimal,
+) -> None:
+    line_total = sum(
+        (getattr(line, "base_total_amount", None) or Decimal("0.00"))
+        for line in lines
+    )
+    is_valid, error = validate_line_header_consistency(
+        lines_base_total=line_total,
+        header_base_total=header_base_total,
+        precision=snapshot._base_precision,
+    )
+    if not is_valid:
+        raise ValueError(error or "Line/header currency totals do not match.")
 
 
 async def get_default_currency(session: AsyncSession, tenant_id: uuid.UUID) -> str:

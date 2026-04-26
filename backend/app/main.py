@@ -34,6 +34,7 @@ from domains.purchases.routes import router as purchases_router
 from domains.reports.routes import router as reports_router
 from domains.settings.routes import router as settings_router
 from domains.settings.routes_currency import router as currency_router, exchange_router as exchange_rate_router
+from domains.settings.routes_payment_terms import router as payment_terms_router
 from domains.users.routes import router as users_router
 
 
@@ -104,6 +105,7 @@ def create_app() -> FastAPI:
 	api_v1.include_router(settings_router, prefix="/settings", tags=["settings"])
 	api_v1.include_router(currency_router, prefix="/settings")
 	api_v1.include_router(exchange_rate_router, prefix="/settings")
+	api_v1.include_router(payment_terms_router, prefix="/settings")
 	app.include_router(api_v1)
 
 	@app.api_route(

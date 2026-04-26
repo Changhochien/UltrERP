@@ -137,6 +137,10 @@ async def create_customer(
         contact_email=data.contact_email.strip(),
         credit_limit=data.credit_limit,
         default_discount_percent=data.default_discount_percent,
+        default_currency_code=(
+            data.default_currency_code.upper().strip() if data.default_currency_code else None
+        ),
+        payment_terms_template_id=data.payment_terms_template_id,
         customer_type=data.customer_type,
     )
 
@@ -369,6 +373,12 @@ async def update_customer(
             customer.credit_limit = data.credit_limit
         if "default_discount_percent" in fields and data.default_discount_percent is not None:
             customer.default_discount_percent = data.default_discount_percent
+        if "default_currency_code" in fields:
+            customer.default_currency_code = (
+                data.default_currency_code.upper().strip() if data.default_currency_code else None
+            )
+        if "payment_terms_template_id" in fields:
+            customer.payment_terms_template_id = data.payment_terms_template_id
         if "customer_type" in fields and data.customer_type is not None:
             customer.customer_type = data.customer_type
 

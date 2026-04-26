@@ -137,6 +137,7 @@ async def create_currency_endpoint(
     tenant_id = _get_tenant_id(current_user)
     try:
         currency = await create_currency(db, tenant_id, data)
+        await db.commit()
         return CurrencyResponse.model_validate(currency)
     except ValueError as e:
         raise HTTPException(
@@ -156,6 +157,7 @@ async def update_currency_endpoint(
     tenant_id = _get_tenant_id(current_user)
     try:
         currency = await update_currency(db, tenant_id, currency_id, data)
+        await db.commit()
         return CurrencyResponse.model_validate(currency)
     except CurrencyNotFoundError as e:
         raise HTTPException(
@@ -179,6 +181,7 @@ async def set_base_currency_endpoint(
     tenant_id = _get_tenant_id(current_user)
     try:
         currency = await set_base_currency(db, tenant_id, currency_id)
+        await db.commit()
         return CurrencyResponse.model_validate(currency)
     except CurrencyNotFoundError as e:
         raise HTTPException(
@@ -250,6 +253,7 @@ async def create_exchange_rate_endpoint(
     tenant_id = _get_tenant_id(current_user)
     try:
         rate = await create_exchange_rate(db, tenant_id, data)
+        await db.commit()
         return ExchangeRateResponse.model_validate(rate)
     except ValueError as e:
         raise HTTPException(
@@ -269,6 +273,7 @@ async def update_exchange_rate_endpoint(
     tenant_id = _get_tenant_id(current_user)
     try:
         rate = await update_exchange_rate(db, tenant_id, rate_id, data)
+        await db.commit()
         return ExchangeRateResponse.model_validate(rate)
     except ExchangeRateNotFoundError as e:
         raise HTTPException(

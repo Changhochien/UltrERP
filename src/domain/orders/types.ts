@@ -61,6 +61,7 @@ export interface OrderSalesTeamAssignment {
 export interface OrderCreatePayload {
   customer_id: string;
   source_quotation_id?: string;
+  currency_code?: string | null;
   payment_terms_code?: PaymentTermsCode;
   discount_amount?: number;
   discount_percent?: number;
@@ -90,6 +91,10 @@ export interface OrderLineResponse {
   tax_amount: string;
   subtotal_amount: string;
   total_amount: string;
+  base_unit_price?: string | null;
+  base_subtotal_amount?: string | null;
+  base_tax_amount?: string | null;
+  base_total_amount?: string | null;
   available_stock_snapshot: number | null;
   backorder_note: string | null;
 }
@@ -113,11 +118,21 @@ export interface OrderResponse {
   source_quotation_id?: string | null;
   payment_terms_code: string;
   payment_terms_days: number;
+  currency_code?: string | null;
+  conversion_rate?: string | null;
+  conversion_effective_date?: string | null;
+  applied_rate_source?: string | null;
+  currency_source?: string | null;
+  payment_terms_source?: string | null;
   subtotal_amount: string;
   discount_amount: string | null;
   discount_percent: string | null;
   tax_amount: string;
   total_amount: string;
+  base_subtotal_amount?: string | null;
+  base_discount_amount?: string | null;
+  base_tax_amount?: string | null;
+  base_total_amount?: string | null;
   sales_team: OrderSalesTeamAssignment[];
   total_commission: string;
   invoice_id: string | null;

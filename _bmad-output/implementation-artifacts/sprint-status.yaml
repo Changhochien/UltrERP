@@ -1501,33 +1501,33 @@ last_updated: "2026-04-26"
         status: "completed"
         story_id: "25.1"
         story_file: "25-1-currency-and-exchange-rate-masters.md"
-        validation: "Implemented Currency and ExchangeRate models, exchange rate resolution service with deterministic fallback, API routes, and 25 backend tests passing. No GL posting or revaluation logic implemented."
+        validation: "Implemented Currency and ExchangeRate models, deterministic exchange-rate resolution, durable currency/exchange-rate API mutations, and identity-rate validation for active supported currencies. Focused Epic 25 backend tests and frontend build verification pass. No GL posting or revaluation logic implemented."
         prerequisites: []
       25-2-currency-aware-commercial-documents:
         title: "Currency-Aware Commercial Documents"
         status: "completed"
         story_id: "25.2"
         story_file: "25-2-currency-aware-commercial-documents.md"
-        validation: "Implemented currency snapshot fields on all commercial documents, shared FX conversion utilities, same-currency validation for payments, and 59 tests passing."
+        validation: "Implemented currency snapshot fields and hardened core quotation/order/invoice/payment write paths so applied-rate snapshots and base amounts are populated at creation time. Affected settings and quotation tests plus frontend build verification pass."
         prerequisites: ["25-1-currency-and-exchange-rate-masters"]
       25-3-payment-terms-template-builder:
         title: "Payment Terms Template Builder and Schedule Handling"
         status: "completed"
         story_id: "25.3"
         story_file: "25-3-payment-terms-template-builder-and-schedule-handling.md"
-        validation: "Implemented PaymentTermsTemplate, PaymentTermsTemplateDetail, PaymentSchedule models with CRUD operations, legacy term support, and 21 tests passing."
+        validation: "Implemented PaymentTermsTemplate, PaymentTermsTemplateDetail, PaymentSchedule models, exposed template CRUD routes, added frontend API helpers, and wired order/invoice schedule generation with legacy term compatibility. Focused tests and frontend build verification pass."
         prerequisites: ["25-2-currency-aware-commercial-documents"]
       25-4-customer-supplier-commercial-profiles:
         title: "Customer and Supplier Commercial Profiles"
         status: "completed"
         story_id: "25.4"
         story_file: "25-4-customer-and-supplier-commercial-profiles.md"
-        validation: "Implemented default currency and payment terms template references on Customer and Supplier, source metadata tracking, and deterministic fallback service with 23 tests passing."
+        validation: "Implemented default currency and payment terms template references on Customer and Supplier, exposed/persisted defaults through APIs, applied customer defaults in core sales document flows, and removed silent non-base FX identity fallback. Focused tests and frontend build verification pass."
         prerequisites: ["25-3-payment-terms-template-builder"]
       25-5-fx-rounding-display-audit:
         title: "FX Rounding, Display, and Audit Safeguards"
         status: "completed"
         story_id: "25.5"
         story_file: "25-5-fx-rounding-display-and-audit-safeguards.md"
-        validation: "Implemented frontend money formatting utilities, FX validation guards, and 33 frontend tests passing."
+        validation: "Implemented frontend money formatting utilities and backend FX validation guards; document write paths consume the shared snapshot validator, and frontend parsing is type-safe. Focused backend tests and frontend build verification pass."
         prerequisites: ["25-1-currency-and-exchange-rate-masters", "25-2-currency-aware-commercial-documents"]

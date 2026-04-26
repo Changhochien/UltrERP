@@ -5,8 +5,6 @@
  * all commercial documents.
  */
 
-import type { MoneyAmount } from "@/types/commercial";
-
 /**
  * Currency display configuration
  */
@@ -60,6 +58,11 @@ function formatNumber(value: number, decimalPlaces: number): string {
   return `${integerPart}.${parts[1]}`;
 }
 
+function toFiniteNumber(value: number | string): number | null {
+  const parsed = typeof value === "string" ? parseFloat(value) : value;
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 /**
  * Format a money amount for display
  */
@@ -68,8 +71,8 @@ export function formatMoney(
   currencyCode: string,
   options?: Partial<CurrencyDisplayConfig>
 ): string {
-  const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
-  if (isNaN(numAmount)) {
+  const numAmount = toFiniteNumber(amount);
+  if (numAmount === null) {
     return `${currencyCode} --`;
   }
 
@@ -123,8 +126,8 @@ export function formatDualMoney(
  * Format conversion rate for display
  */
 export function formatConversionRate(rate: string | number, precision: number = 6): string {
-  const numRate = typeof rate === "string" ? parseFloat(rate) : rate;
-  if (isNaN(numRate)) return "--";
+  const numRate = toFiniteNumber(rate);
+  if (numRate === null) return "--";
   return numRate.toFixed(precision);
 }
 
@@ -162,10 +165,16 @@ export function validateLineHeaderTotals(
   headerBaseTotal: number | string,
   tolerance: number = 0.01
 ): FXValidationResult {
-  const headerNum = typeof headerBaseTotal === "string" ? parseFloat(headerBaseTotal) : headerBaseTotal;
-  const sumOfLines = lineBaseTotals.reduce((sum, val) => {
-    const num = typeof val === "string" ? parseFloat(val) : val;
-    return sum + (isNaN(num) ? 0 : num);
+  const headerNum = toFiniteNumber(headerBaseTotal);
+  if (headerNum === null) {
+    return {
+      isValid: false,
+      error: "Invalid header total provided for line/header validation",
+    };
+  }
+  const sumOfLines = lineBaseTotals.reduce<number>((sum, val) => {
+    const num = toFiniteNumber(val);
+    return sum + (num ?? 0);
   }, 0);
 
   const difference = Math.abs(headerNum - sumOfLines);
@@ -196,11 +205,11 @@ export function validateConversionDrift(
   targetPrecision: number = 2,
   tolerance: number = 0.02
 ): FXValidationResult {
-  const origNum = typeof originalTotal === "string" ? parseFloat(originalTotal) : originalTotal;
-  const rateNum = typeof conversionRate === "string" ? parseFloat(conversionRate) : conversionRate;
-  const storedNum = typeof storedBaseTotal === "string" ? parseFloat(storedBaseTotal) : storedBaseTotal;
+  const origNum = toFiniteNumber(originalTotal);
+  const rateNum = toFiniteNumber(conversionRate);
+  const storedNum = toFiniteNumber(storedBaseTotal);
 
-  if (isNaN(origNum) || isNaN(rateNum) || isNaN(storedNum)) {
+  if (origNum === null || rateNum === null || storedNum === null) {
     return {
       isValid: false,
       error: "Invalid numeric values provided for conversion validation",

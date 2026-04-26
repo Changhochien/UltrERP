@@ -10,6 +10,7 @@ This test module validates:
 import uuid
 from datetime import date
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 
@@ -254,6 +255,37 @@ class TestEdgeCases:
             str_value = source.value
             assert isinstance(str_value, str)
             assert len(str_value) > 0
+
+    @pytest.mark.asyncio
+    async def test_missing_non_base_rate_is_not_silently_identity(self, monkeypatch):
+        """Foreign-currency defaults must fail if no dated rate is configured."""
+        from domains.settings import commercial_profile_service, exchange_rate_service
+        from domains.settings.exchange_rate_service import ExchangeRateNotFoundError
+
+        async def fake_base_currency(session, tenant_id):
+            return SimpleNamespace(code="TWD")
+
+        async def fake_resolve_exchange_rate(*args, **kwargs):
+            raise ExchangeRateNotFoundError("USD", "TWD", date(2026, 4, 20), uuid.uuid4())
+
+        monkeypatch.setattr(
+            commercial_profile_service,
+            "get_tenant_base_currency",
+            fake_base_currency,
+        )
+        monkeypatch.setattr(
+            exchange_rate_service,
+            "resolve_exchange_rate",
+            fake_resolve_exchange_rate,
+        )
+
+        with pytest.raises(ExchangeRateNotFoundError):
+            await commercial_profile_service.resolve_document_currency(
+                session=object(),
+                tenant_id=uuid.uuid4(),
+                explicit_currency="USD",
+                effective_date=date(2026, 4, 20),
+            )
 
     def test_fallback_order_determinism(self):
         """Test that fallback order is deterministic."""

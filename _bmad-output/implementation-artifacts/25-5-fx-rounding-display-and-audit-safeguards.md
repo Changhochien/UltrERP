@@ -63,6 +63,8 @@ Claude Sonnet 4
 
 - Backend tests: `uv run pytest tests/domains/settings/test_currency_aware_documents.py -v` (30 tests passed)
 - Frontend tests: `pnpm exec vitest run src/utils/__tests__/moneyFormat.test.ts` (33 tests passed)
+- Copilot quality review: `cd backend && uv run pytest tests/domains/settings/test_currency_service.py tests/domains/settings/test_currency_aware_documents.py tests/domains/settings/test_payment_terms_service.py tests/domains/settings/test_commercial_profile_service.py tests/domains/crm/test_quotation_service.py tests/domains/crm/test_quotation_service_helpers.py` (140 tests passed)
+- Copilot frontend verification: `pnpm build` (passed; Vite reported a large chunk size warning)
 
 ### Completion Notes List
 
@@ -74,6 +76,10 @@ Claude Sonnet 4
   - Added formatMoney, formatDualMoney, formatExchangeRate utilities
   - Added currency display configurations for TWD, USD, EUR, JPY, GBP, etc.
   - Added 33 frontend tests, all passing
+- 2026-04-26: Copilot code/quality review hardening:
+  - Made the backend document snapshot helper validate conversion drift and line/header base totals when orders and invoices are saved.
+  - Reused the shared snapshot helper from quotation, order, and invoice services instead of leaving service-specific base amount calculations ad hoc.
+  - Reworked frontend money formatting numeric parsing through a finite-number helper so TypeScript and runtime validation reject invalid values consistently.
 
 ### Implementation Notes
 
@@ -92,6 +98,7 @@ Claude Sonnet 4
 - `src/utils/moneyFormat.ts` - Frontend money formatting utilities
 - `src/types/commercial.ts` - Commercial currency types
 - `src/utils/__tests__/moneyFormat.test.ts` - Frontend tests (33 tests)
+- `backend/domains/settings/document_currency.py` - Shared document FX snapshot application and validation helper
 
 **Already Implemented (Stories 25-1, 25-2):**
 - `backend/domains/settings/fx_conversion.py` - Backend FX utilities
@@ -100,3 +107,4 @@ Claude Sonnet 4
 ## Change Log
 
 - 2026-04-26: Implemented Story 25-5 FX safeguards with frontend formatting utilities and validation. Added moneyFormat.ts with consistent currency display, dual currency formatting, and validation guards. Added 33 frontend tests. Epic 25 complete!
+- 2026-04-26: Code-review hardening completed. Backend write paths now consume the shared FX validation helper, frontend money parsing is type-safe, and affected backend tests plus frontend build verification pass.

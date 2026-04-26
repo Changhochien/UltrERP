@@ -147,6 +147,7 @@ async def resolve_document_currency(
     supplier_id: uuid.UUID | None = None,
     explicit_currency: str | None = None,
     source_document_currency: str | None = None,
+    effective_date: date | None = None,
 ) -> CurrencySnapshot:
     """Resolve currency for a document with deterministic fallback.
 
@@ -162,6 +163,7 @@ async def resolve_document_currency(
         supplier_id: Supplier identifier (for procurement documents)
         explicit_currency: Explicitly set currency code
         source_document_currency: Currency from source document
+        effective_date: Date used for exchange-rate lookup
 
     Returns:
         CurrencySnapshot with resolved currency and metadata
@@ -171,12 +173,12 @@ async def resolve_document_currency(
 
     # Step 1: Check source document
     if source_document_currency is not None:
-        resolved_currency = source_document_currency
+        resolved_currency = source_document_currency.upper().strip()
         source = CommercialValueSource.SOURCE_DOCUMENT
 
     # Step 2: Check explicit/manual override
     elif explicit_currency is not None:
-        resolved_currency = explicit_currency
+        resolved_currency = explicit_currency.upper().strip()
         source = CommercialValueSource.MANUAL_OVERRIDE
 
     # Step 3: Check party profile
@@ -185,14 +187,14 @@ async def resolve_document_currency(
             session, tenant_id, customer_id
         )
         if customer_defaults.currency_code is not None:
-            resolved_currency = customer_defaults.currency_code
+            resolved_currency = customer_defaults.currency_code.upper().strip()
             source = CommercialValueSource.PROFILE_DEFAULT
         elif supplier_id is not None:
             supplier_defaults = await get_supplier_commercial_defaults(
                 session, tenant_id, supplier_id
             )
             if supplier_defaults.currency_code is not None:
-                resolved_currency = supplier_defaults.currency_code
+                resolved_currency = supplier_defaults.currency_code.upper().strip()
                 source = CommercialValueSource.PROFILE_DEFAULT
             else:
                 # Step 4: Fall back to tenant base
@@ -210,7 +212,7 @@ async def resolve_document_currency(
             session, tenant_id, supplier_id
         )
         if supplier_defaults.currency_code is not None:
-            resolved_currency = supplier_defaults.currency_code
+            resolved_currency = supplier_defaults.currency_code.upper().strip()
             source = CommercialValueSource.PROFILE_DEFAULT
         else:
             # Fall back to tenant base
@@ -225,39 +227,32 @@ async def resolve_document_currency(
         source = CommercialValueSource.LEGACY_COMPATIBILITY
 
     # Get conversion rate
-    from domains.settings.fx_conversion import convert_amount, round_for_currency
     from domains.settings.exchange_rate_service import resolve_exchange_rate
 
     base = await get_tenant_base_currency(session, tenant_id)
+    lookup_date = effective_date or date.today()
 
     if resolved_currency == base.code:
         # Identity rate
         rate = Decimal("1.0")
-        effective_date = date.today()
+        resolved_effective_date = lookup_date
         rate_source = "identity"
     else:
-        # Look up exchange rate
-        try:
-            resolved_rate = await resolve_exchange_rate(
-                session,
-                tenant_id,
-                resolved_currency,
-                base.code,
-                date.today(),
-            )
-            rate = resolved_rate.rate
-            effective_date = resolved_rate.effective_date
-            rate_source = resolved_rate.rate_source
-        except Exception:
-            # Fall back to identity if rate not found
-            rate = Decimal("1.0")
-            effective_date = date.today()
-            rate_source = "identity"
+        resolved_rate = await resolve_exchange_rate(
+            session,
+            tenant_id,
+            resolved_currency,
+            base.code,
+            lookup_date,
+        )
+        rate = resolved_rate.rate
+        resolved_effective_date = resolved_rate.effective_date
+        rate_source = resolved_rate.rate_source
 
     return CurrencySnapshot(
         currency_code=resolved_currency,
         conversion_rate=rate,
-        effective_date=effective_date,
+        effective_date=resolved_effective_date,
         rate_source=rate_source,
         source=source,
     )

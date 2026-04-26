@@ -49,6 +49,11 @@ class PaymentResponse(BaseModel):
     customer_id: uuid.UUID
     payment_ref: str
     amount: Decimal
+    currency_code: str | None = None
+    conversion_rate: Decimal | None = None
+    conversion_effective_date: date | None = None
+    applied_rate_source: str | None = None
+    base_amount: Decimal | None = None
     payment_method: str
     payment_date: date
     reference_number: str | None = None
@@ -74,6 +79,8 @@ class PaymentListItem(BaseModel):
     id: uuid.UUID
     payment_ref: str
     amount: Decimal
+    currency_code: str | None = None
+    base_amount: Decimal | None = None
     payment_method: str
     payment_date: date
     invoice_id: uuid.UUID | None

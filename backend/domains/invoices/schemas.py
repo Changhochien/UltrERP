@@ -51,6 +51,10 @@ class InvoiceLineResponse(BaseModel):
     tax_rate: Decimal
     tax_amount: Decimal
     total_amount: Decimal
+    base_unit_price: Decimal | None = None
+    base_subtotal_amount: Decimal | None = None
+    base_tax_amount: Decimal | None = None
+    base_total_amount: Decimal | None = None
     zero_tax_rate_reason: str | None
 
 
@@ -88,9 +92,18 @@ class InvoiceResponse(BaseModel):
     buyer_type: str
     buyer_identifier_snapshot: str
     currency_code: str
+    conversion_rate: Decimal | None = None
+    conversion_effective_date: date | None = None
+    applied_rate_source: str | None = None
+    currency_source: str | None = None
+    payment_terms_source: str | None = None
     subtotal_amount: Decimal
     tax_amount: Decimal
     total_amount: Decimal
+    base_subtotal_amount: Decimal | None = None
+    base_discount_amount: Decimal | None = None
+    base_tax_amount: Decimal | None = None
+    base_total_amount: Decimal | None = None
     status: str
     version: int
     legacy_header_snapshot: dict[str, Any] | None = None
@@ -117,6 +130,9 @@ class InvoiceListItem(BaseModel):
     customer_id: uuid.UUID
     order_id: uuid.UUID | None = None
     currency_code: str
+    base_total_amount: Decimal | None = None
+    conversion_rate: Decimal | None = None
+    applied_rate_source: str | None = None
     total_amount: Decimal
     status: str
     legacy_header_snapshot: dict[str, Any] | None = None

@@ -26,6 +26,11 @@ export interface Payment {
 	customer_id: string;
 	payment_ref: string;
 	amount: string;
+	currency_code?: string | null;
+	conversion_rate?: string | null;
+	conversion_effective_date?: string | null;
+	applied_rate_source?: string | null;
+	base_amount?: string | null;
 	payment_method: string;
 	payment_date: string;
 	reference_number: string | null;
@@ -43,6 +48,8 @@ export interface PaymentListItem {
 	id: string;
 	payment_ref: string;
 	amount: string;
+	currency_code?: string | null;
+	base_amount?: string | null;
 	payment_method: string;
 	payment_date: string;
 	invoice_id: string | null;

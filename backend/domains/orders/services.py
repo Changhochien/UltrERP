@@ -38,6 +38,13 @@ from domains.orders.schemas import (
     OrderUTMAttributionOrigin,
 )
 from domains.payments.models import Payment
+from domains.settings.commercial_profile_service import CommercialValueSource
+from domains.settings.document_currency import (
+    apply_document_currency_snapshot,
+    apply_line_currency_snapshot,
+    validate_document_line_header_snapshot,
+)
+from domains.settings.payment_terms_service import generate_schedule
 
 logger = logging.getLogger(__name__)
 
@@ -329,6 +336,34 @@ async def create_order(
             else Decimal("0.0000")
         )
         crm_context_snapshot = build_order_crm_context_snapshot(data)
+        explicit_currency = data.currency_code.upper().strip() if data.currency_code else None
+        source_currency = (
+            source_quotation.currency.upper().strip()
+            if source_quotation is not None and source_quotation.currency
+            else None
+        )
+        profile_currency = (
+            customer.default_currency_code.upper().strip()
+            if getattr(customer, "default_currency_code", None)
+            else None
+        )
+        if source_currency:
+            currency_code = source_currency
+            currency_source = CommercialValueSource.SOURCE_DOCUMENT.value
+        elif explicit_currency:
+            currency_code = explicit_currency
+            currency_source = CommercialValueSource.MANUAL_OVERRIDE.value
+        elif profile_currency:
+            currency_code = profile_currency
+            currency_source = CommercialValueSource.PROFILE_DEFAULT.value
+        else:
+            currency_code = "TWD"
+            currency_source = CommercialValueSource.LEGACY_COMPATIBILITY.value
+        payment_terms_source = (
+            CommercialValueSource.MANUAL_OVERRIDE.value
+            if "payment_terms_code" in data.model_fields_set
+            else CommercialValueSource.LEGACY_COMPATIBILITY.value
+        )
 
         order = Order(
             tenant_id=tid,
@@ -336,8 +371,11 @@ async def create_order(
             source_quotation_id=data.source_quotation_id,
             order_number=order_number,
             status=OrderStatus.PENDING.value,
+            currency_code=currency_code,
+            currency_source=currency_source,
             payment_terms_code=data.payment_terms_code.value,
             payment_terms_days=int(terms_config["days"]),
+            payment_terms_source=payment_terms_source,
             discount_amount=normalized_discount_amount,
             discount_percent=normalized_discount_percent,
             crm_context_snapshot=crm_context_snapshot,
@@ -355,6 +393,7 @@ async def create_order(
 
         # Create line items with tax calculation and stock snapshot
         line_amounts_list = []
+        order_lines: list[OrderLine] = []
         for idx, line_data in enumerate(data.lines, start=1):
             try:
                 policy_code = TaxPolicyCode(line_data.tax_policy_code)
@@ -410,6 +449,7 @@ async def create_order(
                 backorder_note=backorder_note,
             )
             session.add(order_line)
+            order_lines.append(order_line)
 
         await session.flush()
 
@@ -424,6 +464,42 @@ async def create_order(
         order.subtotal_amount = totals["subtotal_amount"]
         order.tax_amount = totals["tax_amount"]
         order.total_amount = totals["total_amount"]
+        snapshot = await apply_document_currency_snapshot(
+            session,
+            tid,
+            order,
+            currency_code=currency_code,
+            transaction_date=date.today(),
+            subtotal=order.subtotal_amount or Decimal("0.00"),
+            tax_amount=order.tax_amount or Decimal("0.00"),
+            total=order.total_amount or Decimal("0.00"),
+            currency_source=currency_source,
+        )
+        for order_line, amounts in zip(order_lines, line_amounts_list, strict=True):
+            apply_line_currency_snapshot(
+                snapshot,
+                order_line,
+                unit_price=order_line.unit_price,
+                subtotal=amounts.subtotal,
+                tax_amount=amounts.tax_amount,
+                total=amounts.total_amount,
+            )
+        validate_document_line_header_snapshot(
+            snapshot,
+            order_lines,
+            (order.base_subtotal_amount or Decimal("0.00"))
+            + (order.base_tax_amount or Decimal("0.00")),
+        )
+        await generate_schedule(
+            session,
+            tid,
+            document_type="order",
+            document_id=order.id,
+            template_id=None,
+            document_date=date.today(),
+            total_amount=order.total_amount or Decimal("0.00"),
+            payment_terms_code=order.payment_terms_code,
+        )
         sales_team_snapshot, total_commission = _build_sales_team_snapshot(
             data.sales_team,
             commissionable_amount=order.subtotal_amount or Decimal("0.00"),
@@ -573,6 +649,8 @@ async def confirm_order(
         invoice_data = InvoiceCreate(
             customer_id=order.customer_id,
             invoice_date=date.today(),
+            currency_code=order.currency_code or "TWD",
+            order_id=order.id,
             buyer_type=buyer_type,
             buyer_identifier=buyer_identifier if buyer_type == BuyerType.B2B else None,
             lines=[

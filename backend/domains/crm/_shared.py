@@ -267,6 +267,8 @@ async def _resolve_party_context(
                     "contact_person": customer.contact_name,
                     "contact_email": customer.contact_email,
                     "contact_mobile": customer.contact_phone,
+                    "default_currency_code": customer.default_currency_code or "",
+                    "payment_terms_template_id": str(customer.payment_terms_template_id or ""),
                 },
             )
         raise ValidationError(

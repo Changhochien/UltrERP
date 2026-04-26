@@ -175,7 +175,20 @@ async def resolve_exchange_rate(
     source_code = source_currency_code.upper().strip()
     target_code = target_currency_code.upper().strip()
 
-    # Step 1: Identity rate for same currency
+    # Validate source currency exists and is active
+    source_result = await session.execute(
+        select(Currency).where(
+            Currency.tenant_id == tenant_id,
+            Currency.code == source_code,
+        )
+    )
+    source_currency = source_result.scalar_one_or_none()
+    if source_currency is None:
+        raise CurrencyNotFoundError(source_code, tenant_id)
+    if not source_currency.is_active:
+        raise CurrencyNotFoundError(source_code, tenant_id, is_inactive=True)
+
+    # Step 1: Identity rate for same currency, after validating the code is supported.
     if source_code == target_code:
         if allow_identity:
             return ResolvedExchangeRate(
@@ -191,19 +204,6 @@ async def resolve_exchange_rate(
             effective_date=effective_date,
             tenant_id=tenant_id,
         )
-
-    # Validate source currency exists and is active
-    source_result = await session.execute(
-        select(Currency).where(
-            Currency.tenant_id == tenant_id,
-            Currency.code == source_code,
-        )
-    )
-    source_currency = source_result.scalar_one_or_none()
-    if source_currency is None:
-        raise CurrencyNotFoundError(source_code, tenant_id)
-    if not source_currency.is_active:
-        raise CurrencyNotFoundError(source_code, tenant_id, is_inactive=True)
 
     # Validate target currency exists and is active
     target_result = await session.execute(

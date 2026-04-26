@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import enum
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -102,6 +102,7 @@ class OrderSalesTeamAssignment(BaseModel):
 class OrderCreate(BaseModel):
     customer_id: uuid.UUID
     source_quotation_id: uuid.UUID | None = None
+    currency_code: str | None = Field(default=None, min_length=3, max_length=3)
     payment_terms_code: PaymentTermsCode = PaymentTermsCode.NET_30
     discount_amount: Decimal = Field(default=Decimal("0.00"), ge=0, max_digits=20, decimal_places=2)
     discount_percent: Decimal = Field(default=Decimal("0.0000"), ge=0, le=1, max_digits=5, decimal_places=4)
@@ -138,6 +139,10 @@ class OrderLineResponse(BaseModel):
     tax_amount: Decimal
     subtotal_amount: Decimal
     total_amount: Decimal
+    base_unit_price: Decimal | None = None
+    base_subtotal_amount: Decimal | None = None
+    base_tax_amount: Decimal | None = None
+    base_total_amount: Decimal | None = None
     description: str
     available_stock_snapshot: int | None
     backorder_note: str | None
@@ -165,11 +170,21 @@ class OrderResponse(BaseModel):
     status: OrderStatus
     payment_terms_code: str
     payment_terms_days: int
+    currency_code: str | None = None
+    conversion_rate: Decimal | None = None
+    conversion_effective_date: datetime | date | None = None
+    applied_rate_source: str | None = None
+    currency_source: str | None = None
+    payment_terms_source: str | None = None
     subtotal_amount: Decimal | None
     discount_amount: Decimal | None
     discount_percent: Decimal | None
     tax_amount: Decimal | None
     total_amount: Decimal | None
+    base_subtotal_amount: Decimal | None = None
+    base_discount_amount: Decimal | None = None
+    base_tax_amount: Decimal | None = None
+    base_total_amount: Decimal | None = None
     sales_team: list[OrderSalesTeamAssignment] = Field(default_factory=list)
     total_commission: Decimal = Field(default=Decimal("0.00"))
     invoice_id: uuid.UUID | None

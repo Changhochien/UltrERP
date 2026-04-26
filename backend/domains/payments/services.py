@@ -19,6 +19,30 @@ from domains.payments.models import Payment
 from domains.payments.schemas import PaymentCreate, PaymentCreateUnmatched
 
 ACTOR_ID = str(DEFAULT_TENANT_ID)
+_BASE_AMOUNT_QUANT = Decimal("0.01")
+
+
+def _base_payment_amount(amount: Decimal, invoice: Invoice) -> Decimal:
+    if invoice.total_amount and invoice.base_total_amount is not None:
+        return (amount * invoice.base_total_amount / invoice.total_amount).quantize(_BASE_AMOUNT_QUANT)
+    rate = invoice.conversion_rate or Decimal("1.0")
+    return (amount * rate).quantize(_BASE_AMOUNT_QUANT)
+
+
+def _apply_invoice_currency_snapshot(payment: Payment, invoice: Invoice) -> None:
+    payment.currency_code = invoice.currency_code
+    payment.conversion_rate = invoice.conversion_rate or Decimal("1.0")
+    payment.conversion_effective_date = invoice.conversion_effective_date or invoice.invoice_date
+    payment.applied_rate_source = invoice.applied_rate_source or "identity"
+    payment.base_amount = _base_payment_amount(payment.amount, invoice)
+
+
+def _apply_local_currency_snapshot(payment: Payment) -> None:
+    payment.currency_code = "TWD"
+    payment.conversion_rate = Decimal("1.0")
+    payment.conversion_effective_date = payment.payment_date
+    payment.applied_rate_source = "identity"
+    payment.base_amount = payment.amount.quantize(_BASE_AMOUNT_QUANT)
 
 
 async def _generate_payment_ref(
@@ -126,6 +150,7 @@ async def record_payment(
             match_type="manual",
             matched_at=now,
         )
+        _apply_invoice_currency_snapshot(payment, invoice)
         session.add(payment)
 
         # AC2: Auto-transition to "paid" when fully paid
@@ -257,6 +282,7 @@ async def record_unmatched_payment(
             match_type=None,
             matched_at=None,
         )
+        _apply_local_currency_snapshot(payment)
         session.add(payment)
 
         audit = AuditLog(
@@ -455,6 +481,7 @@ async def _allocate_payment(
     payment.matched_at = now
     payment.suggested_invoice_id = None
     payment.updated_at = now
+    _apply_invoice_currency_snapshot(payment, invoice)
 
     # Compute outstanding AFTER this allocation
     paid_result = await session.execute(

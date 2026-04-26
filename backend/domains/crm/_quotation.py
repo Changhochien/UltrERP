@@ -52,6 +52,8 @@ from domains.crm.schemas import (
     QuotationTransition,
     QuotationUpdate,
 )
+from domains.settings.commercial_profile_service import CommercialValueSource
+from domains.settings.document_currency import apply_document_currency_snapshot
 
 # ---------------------------------------------------------------------------
 # Validation helpers
@@ -382,6 +384,24 @@ def _build_quotation_record(
     common_fields["territory"] = effective_territory
     common_fields["customer_group"] = effective_customer_group
 
+    explicit_currency = "currency" in merged.model_fields_set
+    profile_currency = _trim(defaults.get("default_currency_code"))
+    currency = merged.currency.strip().upper()
+    if not explicit_currency and profile_currency:
+        currency = profile_currency.upper()
+        currency_source = CommercialValueSource.PROFILE_DEFAULT.value
+    elif explicit_currency:
+        currency_source = CommercialValueSource.MANUAL_OVERRIDE.value
+    else:
+        currency_source = CommercialValueSource.LEGACY_COMPATIBILITY.value
+    payment_terms_source = (
+        CommercialValueSource.MANUAL_OVERRIDE.value
+        if "terms_template" in merged.model_fields_set and _trim(merged.terms_template)
+        else CommercialValueSource.PROFILE_DEFAULT.value
+        if _trim(defaults.get("payment_terms_template_id"))
+        else CommercialValueSource.LEGACY_COMPATIBILITY.value
+    )
+
     return Quotation(
         tenant_id=tenant_id,
         quotation_to=merged.quotation_to,
@@ -391,11 +411,13 @@ def _build_quotation_record(
         transaction_date=merged.transaction_date,
         valid_till=effective_valid_till,
         company=merged.company.strip(),
-        currency=merged.currency.strip().upper(),
+        currency=currency,
         subtotal=subtotal,
         total_taxes=total_taxes,
         grand_total=grand_total,
         base_grand_total=grand_total,
+        currency_source=currency_source,
+        payment_terms_source=payment_terms_source,
         ordered_amount=Decimal("0.00"),
         order_count=0,
         **common_fields,
@@ -821,6 +843,17 @@ async def create_quotation(
 
     async with session.begin():
         await set_tenant(session, tid)
+        await apply_document_currency_snapshot(
+            session,
+            tid,
+            quotation,
+            currency_code=quotation.currency,
+            transaction_date=quotation.transaction_date,
+            subtotal=quotation.subtotal,
+            tax_amount=quotation.total_taxes,
+            total=quotation.grand_total,
+            currency_source=quotation.currency_source,
+        )
         session.add(quotation)
 
     await session.refresh(quotation)
@@ -1002,12 +1035,35 @@ async def update_quotation(
     async with session.begin():
         await set_tenant(session, tid)
         _apply_quotation_fields_to_record(quotation, merged, party_name, party_label, party_defaults)
+        if "currency" in data.model_fields_set:
+            quotation.currency_source = CommercialValueSource.MANUAL_OVERRIDE.value
+        elif _trim(party_defaults.get("default_currency_code")):
+            quotation.currency_source = quotation.currency_source or CommercialValueSource.PROFILE_DEFAULT.value
+        else:
+            quotation.currency_source = quotation.currency_source or CommercialValueSource.LEGACY_COMPATIBILITY.value
+
+        if "terms_template" in data.model_fields_set and _trim(merged.terms_template):
+            quotation.payment_terms_source = CommercialValueSource.MANUAL_OVERRIDE.value
+        elif _trim(party_defaults.get("payment_terms_template_id")):
+            quotation.payment_terms_source = quotation.payment_terms_source or CommercialValueSource.PROFILE_DEFAULT.value
+        else:
+            quotation.payment_terms_source = quotation.payment_terms_source or CommercialValueSource.LEGACY_COMPATIBILITY.value
         quotation.subtotal = subtotal
         quotation.total_taxes = total_taxes
         quotation.grand_total = grand_total
-        quotation.base_grand_total = grand_total
         quotation.items = serialized_items
         quotation.taxes = serialized_taxes
+        await apply_document_currency_snapshot(
+            session,
+            tid,
+            quotation,
+            currency_code=quotation.currency,
+            transaction_date=quotation.transaction_date,
+            subtotal=quotation.subtotal,
+            tax_amount=quotation.total_taxes,
+            total=quotation.grand_total,
+            currency_source=quotation.currency_source,
+        )
     return await _synchronize_quotation_status(session, quotation, tid)
 
 

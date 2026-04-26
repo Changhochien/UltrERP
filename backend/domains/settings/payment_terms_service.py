@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from common.models.payment_terms import (
     LEGACY_TERM_MAPPINGS,
@@ -52,6 +53,12 @@ class InvalidInstallmentTotalError(PaymentTermsError):
         )
 
 
+def _validate_detail_total(details: list[dict]) -> None:
+    total_portion = sum(d.get("invoice_portion", Decimal("100.00")) for d in details)
+    if total_portion != Decimal("100.00"):
+        raise InvalidInstallmentTotalError(total_portion)
+
+
 async def create_template(
     session: AsyncSession,
     tenant_id: uuid.UUID,
@@ -87,10 +94,7 @@ async def create_template(
     Raises:
         InvalidInstallmentTotalError: If portions don't sum to 100%
     """
-    # Validate total portion
-    total_portion = sum(d.get("invoice_portion", Decimal("100.00")) for d in details)
-    if total_portion != Decimal("100.00"):
-        raise InvalidInstallmentTotalError(total_portion)
+    _validate_detail_total(details)
 
     template = PaymentTermsTemplate(
         tenant_id=tenant_id,
@@ -116,7 +120,7 @@ async def create_template(
             mode_of_payment=detail_data.get("mode_of_payment"),
             description=detail_data.get("description"),
         )
-        session.add(detail)
+        template.details.append(detail)
 
     await session.flush()
     return template
@@ -142,6 +146,7 @@ async def get_template(
     """
     result = await session.execute(
         select(PaymentTermsTemplate)
+        .options(selectinload(PaymentTermsTemplate.details))
         .where(
             PaymentTermsTemplate.id == template_id,
             PaymentTermsTemplate.tenant_id == tenant_id,
@@ -168,12 +173,65 @@ async def list_templates(
     Returns:
         List of PaymentTermsTemplate
     """
-    query = select(PaymentTermsTemplate).where(PaymentTermsTemplate.tenant_id == tenant_id)
+    query = (
+        select(PaymentTermsTemplate)
+        .options(selectinload(PaymentTermsTemplate.details))
+        .where(PaymentTermsTemplate.tenant_id == tenant_id)
+    )
     if not include_inactive:
         query = query.where(PaymentTermsTemplate.is_active == True)  # noqa: E712
 
     result = await session.execute(query.order_by(PaymentTermsTemplate.template_name))
     return list(result.scalars().all())
+
+
+async def update_template(
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    template_id: uuid.UUID,
+    *,
+    template_name: str | None = None,
+    description: str | None = None,
+    allocate_payment: bool | None = None,
+    is_active: bool | None = None,
+    legacy_code: str | None = None,
+    details: list[dict] | None = None,
+) -> PaymentTermsTemplate:
+    """Update a payment terms template and optionally replace detail rows."""
+    template = await get_template(session, template_id, tenant_id)
+
+    if template_name is not None:
+        template.template_name = template_name.strip()
+    if description is not None:
+        template.description = description
+    if allocate_payment is not None:
+        template.allocate_payment_based_on_payment_terms = allocate_payment
+    if is_active is not None:
+        template.is_active = is_active
+    if legacy_code is not None:
+        template.legacy_code = legacy_code
+
+    if details is not None:
+        _validate_detail_total(details)
+        template.details.clear()
+        for detail_data in details:
+            template.details.append(
+                PaymentTermsTemplateDetail(
+                    tenant_id=tenant_id,
+                    template_id=template.id,
+                    row_number=detail_data["row_number"],
+                    invoice_portion=detail_data.get("invoice_portion", Decimal("100.00")),
+                    credit_days=detail_data.get("credit_days", 30),
+                    credit_months=detail_data.get("credit_months", 0),
+                    discount_percent=detail_data.get("discount_percent"),
+                    discount_validity_days=detail_data.get("discount_validity_days"),
+                    mode_of_payment=detail_data.get("mode_of_payment"),
+                    description=detail_data.get("description"),
+                )
+            )
+
+    await session.flush()
+    return template
 
 
 async def generate_schedule(

@@ -494,6 +494,8 @@ export interface Supplier {
   phone: string | null;
   address: string | null;
   default_lead_time_days: number | null;
+  default_currency_code: string | null;
+  payment_terms_template_id: string | null;
   is_active: boolean;
   created_at: string;
 }
@@ -504,6 +506,8 @@ export interface SupplierCreate {
   phone?: string;
   address?: string;
   default_lead_time_days?: number;
+  default_currency_code?: string | null;
+  payment_terms_template_id?: string | null;
 }
 
 export interface SupplierUpdate extends SupplierCreate {}

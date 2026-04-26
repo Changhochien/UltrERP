@@ -152,6 +152,8 @@ Claude Sonnet 4
 - Backend tests: `uv run pytest tests/domains/settings/test_currency_service.py -v` (29 tests passed)
 - Total: 59 tests passed
 - Migration: `cd migrations && uv run alembic upgrade head` (successful)
+- Copilot quality review: `cd backend && uv run pytest tests/domains/settings/test_currency_service.py tests/domains/settings/test_currency_aware_documents.py tests/domains/settings/test_payment_terms_service.py tests/domains/settings/test_commercial_profile_service.py tests/domains/crm/test_quotation_service.py tests/domains/crm/test_quotation_service_helpers.py` (140 tests passed)
+- Copilot frontend verification: `pnpm build` (passed; Vite reported a large chunk size warning)
 
 ### Completion Notes List
 
@@ -168,6 +170,12 @@ Claude Sonnet 4
   - Created document_currency.py helper for snapshot application
   - Created comprehensive test suite (30 tests)
   - All 59 tests pass (including Story 25-1 tests)
+- 2026-04-26: Copilot code/quality review hardening:
+  - Wired order, quotation, invoice, and customer payment create flows to persist applied-rate snapshots and stored base amounts at write time instead of only having nullable columns.
+  - Carried order currency into invoice creation during order confirmation and generated invoice/order payment schedules from the saved document context.
+  - Made matched payments inherit invoice currency, conversion-rate, effective-date, applied-rate source, and proportional base amount.
+  - Exposed FX snapshot fields in order, invoice, and payment response schemas and frontend domain types.
+  - Verified affected settings and quotation service tests plus the frontend build.
 
 ### Implementation Notes
 
@@ -194,8 +202,20 @@ Claude Sonnet 4
 - `backend/common/models/supplier_payment.py` - Added currency fields
 - `backend/domains/payments/models.py` - Added currency fields
 - `backend/domains/crm/models.py` - Added conversion fields to Quotation
+- `backend/domains/orders/services.py` - Applies order FX snapshots, line base amounts, and schedule rows
+- `backend/domains/invoices/service.py` - Applies invoice FX snapshots, line base amounts, and schedule rows
+- `backend/domains/payments/services.py` - Applies payment FX/base snapshots from matched invoices
+- `backend/domains/crm/_quotation.py` - Applies quotation FX snapshots on create/update
+- `backend/domains/settings/document_currency.py` - Shared snapshot helper now supports order/invoice and quotation field names
+- `backend/domains/orders/schemas.py` - Exposes order FX snapshot fields
+- `backend/domains/invoices/schemas.py` - Exposes invoice FX snapshot fields
+- `backend/domains/payments/schemas.py` - Exposes payment FX snapshot fields
+- `src/domain/orders/types.ts` - Frontend order FX snapshot types
+- `src/domain/invoices/types.ts` - Frontend invoice FX snapshot types
+- `src/domain/payments/types.ts` - Frontend payment FX snapshot types
 - `migrations/versions/25_1_add_currency_and_exchange_rate_masters.py` - Fixed migration
 
 ## Change Log
 
 - 2026-04-26: Implemented Story 25-2 with full currency-aware commercial document support. Added currency snapshot fields to all commercial document models, created shared FX conversion utilities, implemented same-currency validation for payments, and added comprehensive test coverage. All 59 tests pass.
+- 2026-04-26: Code-review hardening completed. Core sales document and payment write paths now populate the Epic 25 snapshot fields, and affected backend tests plus frontend build verification pass.

@@ -745,6 +745,8 @@ class SupplierBase(BaseModel):
     phone: str | None = Field(default=None, max_length=50)
     address: str | None = Field(default=None, max_length=500)
     default_lead_time_days: int | None = Field(default=None, ge=0)
+    default_currency_code: str | None = Field(default=None, min_length=3, max_length=3)
+    payment_terms_template_id: uuid.UUID | None = None
 
 
 class SupplierCreate(SupplierBase):
@@ -816,6 +818,8 @@ class SupplierResponse(BaseModel):
     phone: str | None
     address: str | None
     default_lead_time_days: int | None
+    default_currency_code: str | None = None
+    payment_terms_template_id: uuid.UUID | None = None
     is_active: bool
     legacy_master_snapshot: dict[str, Any] | None = None
     created_at: datetime

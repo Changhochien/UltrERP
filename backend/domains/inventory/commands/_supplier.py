@@ -42,12 +42,16 @@ def _normalize_optional_text(value: Any) -> str | None:
 
 def _normalize_supplier_payload(
     data: Any,
-) -> tuple[str, str | None, str | None, str | None, int | None]:
+) -> tuple[str, str | None, str | None, str | None, int | None, str | None, uuid.UUID | None]:
     """Normalize supplier payload and preserve the legacy service contract."""
     name = (_normalize_optional_text(_payload_value(data, "name")) or "")
     contact_email = _normalize_optional_text(_payload_value(data, "contact_email"))
     phone = _normalize_optional_text(_payload_value(data, "phone"))
     address = _normalize_optional_text(_payload_value(data, "address"))
+    default_currency_code = _normalize_optional_text(_payload_value(data, "default_currency_code"))
+    if default_currency_code is not None:
+        default_currency_code = default_currency_code.upper()
+    payment_terms_template_id = _payload_value(data, "payment_terms_template_id")
     lead_time_value = _payload_value(data, "default_lead_time_days")
     default_lead_time_days = int(lead_time_value) if lead_time_value is not None else None
 
@@ -65,7 +69,15 @@ def _normalize_supplier_payload(
     if errors:
         raise ValidationError(errors)
 
-    return name, contact_email, phone, address, default_lead_time_days
+    return (
+        name,
+        contact_email,
+        phone,
+        address,
+        default_lead_time_days,
+        default_currency_code,
+        payment_terms_template_id,
+    )
 
 
 async def create_supplier(
@@ -76,7 +88,15 @@ async def create_supplier(
     """Create a new supplier."""
     from common.models.supplier import Supplier
 
-    name, contact_email, phone, address, default_lead_time_days = _normalize_supplier_payload(data)
+    (
+        name,
+        contact_email,
+        phone,
+        address,
+        default_lead_time_days,
+        default_currency_code,
+        payment_terms_template_id,
+    ) = _normalize_supplier_payload(data)
 
     supplier = Supplier(
         tenant_id=tenant_id,
@@ -85,6 +105,8 @@ async def create_supplier(
         phone=phone,
         address=address,
         default_lead_time_days=default_lead_time_days,
+        default_currency_code=default_currency_code,
+        payment_terms_template_id=payment_terms_template_id,
         is_active=True,
     )
     session.add(supplier)
@@ -110,12 +132,22 @@ async def update_supplier(
     if supplier is None:
         return None
 
-    name, contact_email, phone, address, default_lead_time_days = _normalize_supplier_payload(data)
+    (
+        name,
+        contact_email,
+        phone,
+        address,
+        default_lead_time_days,
+        default_currency_code,
+        payment_terms_template_id,
+    ) = _normalize_supplier_payload(data)
     supplier.name = name
     supplier.contact_email = contact_email
     supplier.phone = phone
     supplier.address = address
     supplier.default_lead_time_days = default_lead_time_days
+    supplier.default_currency_code = default_currency_code
+    supplier.payment_terms_template_id = payment_terms_template_id
     await session.flush()
     return supplier
 

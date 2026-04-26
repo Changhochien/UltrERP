@@ -27,6 +27,8 @@ class CustomerCreate(BaseModel):
         max_digits=5,
         decimal_places=4,
     )
+    default_currency_code: str | None = Field(default=None, min_length=3, max_length=3)
+    payment_terms_template_id: uuid.UUID | None = None
     customer_type: Literal["dealer", "end_user", "unknown"] = "unknown"
 
 
@@ -51,6 +53,8 @@ class CustomerUpdate(BaseModel):
         max_digits=5,
         decimal_places=4,
     )
+    default_currency_code: str | None = Field(default=None, min_length=3, max_length=3)
+    payment_terms_template_id: uuid.UUID | None = None
     customer_type: Literal["dealer", "end_user", "unknown"] | None = None
     version: int = Field(..., ge=1)
 
@@ -70,6 +74,8 @@ class CustomerResponse(BaseModel):
     contact_email: str
     credit_limit: Decimal
     default_discount_percent: Decimal
+    default_currency_code: str | None = None
+    payment_terms_template_id: uuid.UUID | None = None
     status: str
     customer_type: Literal["dealer", "end_user", "unknown"]
     legacy_master_snapshot: dict[str, Any] | None = None
@@ -89,6 +95,8 @@ class CustomerSummary(BaseModel):
     contact_phone: str
     status: str
     customer_type: Literal["dealer", "end_user", "unknown"]
+    default_currency_code: str | None = None
+    payment_terms_template_id: uuid.UUID | None = None
 
 
 class CustomerListParams(BaseModel):

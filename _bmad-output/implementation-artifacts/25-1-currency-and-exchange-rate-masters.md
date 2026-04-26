@@ -1,6 +1,6 @@
 # Story 25.1: Currency and Exchange-Rate Masters
 
-Status: review
+Status: completed
 
 ## Story
 
@@ -118,6 +118,8 @@ Claude Sonnet 4
 
 - Backend tests: `uv run pytest tests/domains/settings/test_currency_service.py -v` (25 tests passed)
 - Frontend tests: `pnpm test -- --run` (419 tests passed)
+- Copilot quality review: `cd backend && uv run pytest tests/domains/settings/test_currency_service.py tests/domains/settings/test_currency_aware_documents.py tests/domains/settings/test_payment_terms_service.py tests/domains/settings/test_commercial_profile_service.py` (105 tests passed)
+- Copilot frontend verification: `pnpm build` (passed; Vite reported a large chunk size warning)
 
 ### Completion Notes List
 
@@ -132,6 +134,10 @@ Claude Sonnet 4
   - Added comprehensive tests (25 tests, all passing)
   - Registered new routes in main app
   - Registered new models in model registry
+- 2026-04-26: Copilot code/quality review hardening:
+  - Made currency and exchange-rate mutation routes commit successful writes explicitly.
+  - Hardened same-currency identity resolution so unsupported or inactive currency codes cannot bypass currency validation.
+  - Re-verified the settings currency, document currency, payment terms, and commercial profile test slice.
 
 ### Implementation Notes
 
@@ -154,9 +160,12 @@ Claude Sonnet 4
 
 **Modified Files:**
 - `backend/app/main.py` - Registered new currency routes
+- `backend/domains/settings/exchange_rate_service.py` - Validates supported currency before identity-rate resolution
+- `backend/domains/settings/routes_currency.py` - Commits successful currency and exchange-rate mutations
 - `backend/common/model_registry.py` - Registered currency models
 - `_bmad-output/implementation-artifacts/25-1-currency-and-exchange-rate-masters.md` - Updated status
 
 ## Change Log
 
 - 2026-04-26: Initial implementation of Story 25-1 currency and exchange rate masters. Added Currency and ExchangeRate models, exchange rate resolution service, API routes, and comprehensive tests. All 25 backend tests and 419 frontend tests pass.
+- 2026-04-26: Code-review hardening completed. Currency maintenance writes are durable, identity lookup validates active support first, and Epic 25 focused backend tests plus frontend build verification pass.

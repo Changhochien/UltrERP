@@ -31,6 +31,13 @@ from domains.invoices.models import EguiSubmission, Invoice, InvoiceLine, Invoic
 from domains.invoices.schemas import InvoiceCreate, InvoiceCreateLine
 from domains.invoices.tax import aggregate_invoice_totals, calculate_line_amounts
 from domains.payments.models import Payment
+from domains.settings.commercial_profile_service import CommercialValueSource
+from domains.settings.document_currency import (
+    apply_document_currency_snapshot,
+    apply_line_currency_snapshot,
+    validate_document_line_header_snapshot,
+)
+from domains.settings.payment_terms_service import generate_schedule
 
 if TYPE_CHECKING:
     from common.object_store import ObjectStore
@@ -549,6 +556,7 @@ async def _create_invoice_core(
     if customer is None:
         raise ValidationError([{"field": "customer_id", "message": "Customer does not exist."}])
 
+    source_order: Order | None = None
     # Validate order_id if provided
     if data.order_id is not None:
         order_check = await session.execute(
@@ -557,7 +565,8 @@ async def _create_invoice_core(
                 Order.tenant_id == tenant_id,
             )
         )
-        if order_check.scalar_one_or_none() is None:
+        source_order = order_check.scalar_one_or_none()
+        if source_order is None:
             raise ValidationError([{"field": "order_id", "message": "Order does not exist."}])
 
     number_range = await _get_active_number_range(session, tenant_id)
@@ -592,6 +601,31 @@ async def _create_invoice_core(
     totals = aggregate_invoice_totals(calculated_lines)
 
     invoice_date = data.invoice_date or date.today()
+    if source_order is not None and source_order.currency_code:
+        currency_code = source_order.currency_code.upper()
+        currency_source = CommercialValueSource.SOURCE_DOCUMENT.value
+    elif "currency_code" in data.model_fields_set:
+        currency_code = data.currency_code.upper().strip()
+        currency_source = CommercialValueSource.MANUAL_OVERRIDE.value
+    elif customer.default_currency_code:
+        currency_code = customer.default_currency_code.upper().strip()
+        currency_source = CommercialValueSource.PROFILE_DEFAULT.value
+    else:
+        currency_code = data.currency_code.upper().strip()
+        currency_source = CommercialValueSource.LEGACY_COMPATIBILITY.value
+
+    payment_terms_code = (
+        source_order.payment_terms_code
+        if source_order is not None and source_order.payment_terms_code
+        else "NET_30"
+    )
+    payment_terms_source = (
+        CommercialValueSource.SOURCE_DOCUMENT.value
+        if source_order is not None and source_order.payment_terms_code
+        else CommercialValueSource.PROFILE_DEFAULT.value
+        if customer.payment_terms_template_id is not None
+        else CommercialValueSource.LEGACY_COMPATIBILITY.value
+    )
 
     invoice = Invoice(
         tenant_id=tenant_id,
@@ -600,7 +634,9 @@ async def _create_invoice_core(
         customer_id=customer.id,
         buyer_type=data.buyer_type.value,
         buyer_identifier_snapshot=buyer_identifier,
-        currency_code=data.currency_code.upper(),
+        currency_code=currency_code,
+        currency_source=currency_source,
+        payment_terms_source=payment_terms_source,
         subtotal_amount=totals["subtotal_amount"],
         tax_amount=totals["tax_amount"],
         total_amount=totals["total_amount"],
@@ -645,11 +681,47 @@ async def _create_invoice_core(
             )
         )
 
+    snapshot = await apply_document_currency_snapshot(
+        session,
+        tenant_id,
+        invoice,
+        currency_code=currency_code,
+        transaction_date=invoice_date,
+        subtotal=invoice.subtotal_amount,
+        tax_amount=invoice.tax_amount,
+        total=invoice.total_amount,
+        currency_source=currency_source,
+    )
+    for invoice_line, amounts in zip(invoice.lines, calculated_lines, strict=True):
+        apply_line_currency_snapshot(
+            snapshot,
+            invoice_line,
+            unit_price=invoice_line.unit_price,
+            subtotal=amounts.subtotal,
+            tax_amount=amounts.tax_amount,
+            total=amounts.total_amount,
+        )
+    validate_document_line_header_snapshot(
+        snapshot,
+        invoice.lines,
+        invoice.base_total_amount or Decimal("0.00"),
+    )
+
     number_range.next_number += 1
     number_range.updated_at = datetime.now(tz=UTC)
 
     session.add(invoice)
     await session.flush()
+    await generate_schedule(
+        session,
+        tenant_id,
+        document_type="invoice",
+        document_id=invoice.id,
+        template_id=customer.payment_terms_template_id,
+        document_date=invoice_date,
+        total_amount=invoice.total_amount,
+        payment_terms_code=payment_terms_code,
+    )
     return invoice
 
 
