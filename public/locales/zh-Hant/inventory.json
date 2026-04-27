@@ -161,13 +161,6 @@
     "emptyDescription": "建立新調撥，或放寬篩選條件以查看歷史紀錄。",
     "emptyNote": "無備註",
     "viewDetails": "查看詳情",
-    "filters": {
-      "product": "產品",
-      "productPlaceholder": "依產品篩選…",
-      "warehouse": "倉庫",
-      "allWarehouses": "所有倉庫",
-      "clear": "清除篩選"
-    },
     "columns": {
       "product": "產品",
       "route": "調撥路徑",
@@ -935,5 +928,12 @@
       "loading": "載入供應商中…",
       "empty": "尚未建立供應商關聯。"
     }
+  },
+  "filters": {
+    "product": "產品",
+    "productPlaceholder": "依產品篩選…",
+    "warehouse": "倉庫",
+    "allWarehouses": "所有倉庫",
+    "clear": "清除篩選"
   }
 }

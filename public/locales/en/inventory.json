@@ -161,13 +161,6 @@
     "emptyDescription": "Create a transfer or widen your filters to see history rows.",
     "emptyNote": "No notes",
     "viewDetails": "View Details",
-    "filters": {
-      "product": "Product",
-      "productPlaceholder": "Filter by product…",
-      "warehouse": "Warehouse",
-      "allWarehouses": "All warehouses",
-      "clear": "Clear Filters"
-    },
     "columns": {
       "product": "Product",
       "route": "Route",
@@ -935,5 +928,12 @@
       "loading": "Loading suppliers…",
       "empty": "No supplier associations yet."
     }
+  },
+  "filters": {
+    "product": "Product",
+    "productPlaceholder": "Filter by product…",
+    "warehouse": "Warehouse",
+    "allWarehouses": "All warehouses",
+    "clear": "Clear Filters"
   }
 }
