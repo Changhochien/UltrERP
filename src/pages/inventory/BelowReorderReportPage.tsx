@@ -12,7 +12,7 @@ import { exportBelowReorderReport } from "../../lib/api/inventory";
 import { buildInventorySectionTabs, getInventorySectionRoute, type InventorySectionTabValue } from "./inventoryPageTabs";
 
 function BelowReorderReportWorkspace() {
-  const { t } = useTranslation("inventory");
+  const { t } = useTranslation("inventory", { keyPrefix: "belowReorderReportPage" });
   const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
   const { selectedWarehouse, setSelectedWarehouse } = useWarehouseContext();

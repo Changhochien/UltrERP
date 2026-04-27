@@ -29,7 +29,7 @@ function buildDrafts(session: PhysicalCountSession): DraftMap {
 }
 
 export function CountSessionDetailPage() {
-  const { t } = useTranslation("inventory");
+  const { t } = useTranslation("inventory", { keyPrefix: "countSessionDetailPage" });
   const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
   const params = useParams<{ sessionId: string }>();

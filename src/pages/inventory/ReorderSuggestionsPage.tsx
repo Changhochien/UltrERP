@@ -45,7 +45,7 @@ function CreatedOrdersSummary({
 }: {
   orders: ReorderSuggestionCreatedOrder[];
 }) {
-  const { t } = useTranslation("inventory");
+  const { t } = useTranslation("inventory", { keyPrefix: "reorderSuggestionsPage" });
 
   if (orders.length === 0) {
     return null;
@@ -68,7 +68,7 @@ function CreatedOrdersSummary({
 }
 
 function ReorderSuggestionsWorkspace() {
-  const { t } = useTranslation("inventory");
+  const { t } = useTranslation("inventory", { keyPrefix: "reorderSuggestionsPage" });
   const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
   const { selectedWarehouse, setSelectedWarehouse } = useWarehouseContext();

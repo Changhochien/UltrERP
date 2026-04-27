@@ -33,7 +33,7 @@ import { getStatusVariant } from "@/domain/inventory/utils";
 import type { WarehouseStockInfo } from "@/domain/inventory/types";
 
 function StockHealthBar({ warehouses }: { warehouses: WarehouseStockInfo[] }) {
-  const { t } = useTranslation("inventory");
+  const { t } = useTranslation("inventory", { keyPrefix: "productDetail" });
   const totalStock = warehouses.reduce((sum, w) => sum + w.current_stock, 0);
   if (totalStock === 0) {
     return (
@@ -109,7 +109,7 @@ function StockHealthBar({ warehouses }: { warehouses: WarehouseStockInfo[] }) {
 }
 
 function AuditLogTabContent({ productId }: { productId: string }) {
-  const { t } = useTranslation("inventory");
+  const { t } = useTranslation("inventory", { keyPrefix: "productDetail" });
   const PAGE_SIZE = 50;
   const [offset, setOffset] = useState(0);
   const { items, total, loading, error } = useProductAuditLog(productId, {
@@ -154,7 +154,7 @@ function AuditLogTabContent({ productId }: { productId: string }) {
 }
 
 function ProductDetailContent({ productId }: { productId: string }) {
-  const { t } = useTranslation("inventory");
+  const { t } = useTranslation("inventory", { keyPrefix: "productDetail" });
   const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();

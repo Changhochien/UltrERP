@@ -21,7 +21,7 @@ function toFieldError(field: string, errors?: Array<{ field: string; message: st
 }
 
 export function UnitsPage() {
-  const { t } = useTranslation("inventory");
+  const { t } = useTranslation("inventory", { keyPrefix: "unitsPage" });
   const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
   const { canWrite } = usePermissions();
