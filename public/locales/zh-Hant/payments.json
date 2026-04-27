@@ -20,5 +20,32 @@
       "unmatchedRecordedDescription": "收款單 {paymentRef} 已可進入對帳流程。",
       "unmatchedRecordedTitle": "未對帳付款已記錄"
     }
+  },
+  "collections": {
+    "title": "催收款",
+    "description": "追蹤逾期發票和催款通知",
+    "refresh": "重新整理",
+    "draftNotices": "草稿通知",
+    "openNotices": "待處理通知",
+    "resolved": "已處理",
+    "dunningNotices": "催款通知",
+    "overdueInvoices": "逾期發票",
+    "noticeNumber": "通知單號",
+    "date": "日期",
+    "customer": "客戶",
+    "invoice": "發票",
+    "amount": "金額",
+    "status": "狀態",
+    "actions": "動作",
+    "send": "寄出",
+    "resolve": "完成",
+    "noDunningNotices": "尚無催款通知",
+    "noOverdueInvoices": "尚無逾期發票",
+    "invoiceNumber": "發票號碼",
+    "outstanding": "未收金額",
+    "statusDraft": "草稿",
+    "statusOpen": "待處理",
+    "statusResolved": "已處理",
+    "statusCancelled": "已取消"
   }
 }

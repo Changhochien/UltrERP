@@ -79,13 +79,13 @@ export function CollectionsPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "draft":
-        return <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-800">Draft</span>;
+        return <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-800">{t("collections.statusDraft")}</span>;
       case "open":
-        return <span className="inline-flex items-center rounded-full bg-orange-100 px-2 py-1 text-xs font-medium text-orange-800">Open</span>;
+        return <span className="inline-flex items-center rounded-full bg-orange-100 px-2 py-1 text-xs font-medium text-orange-800">{t("collections.statusOpen")}</span>;
       case "resolved":
-        return <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800">Resolved</span>;
+        return <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800">{t("collections.statusResolved")}</span>;
       case "cancelled":
-        return <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-800">Cancelled</span>;
+        return <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-800">{t("collections.statusCancelled")}</span>;
       default:
         return <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-1 text-xs">{status}</span>;
     }
@@ -103,14 +103,14 @@ export function CollectionsPage() {
           </p>
         </div>
         <Button onClick={loadNotices} variant="outline" size="sm">
-          Refresh
+          {t("collections.refresh")}
         </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Draft Notices</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("collections.draftNotices")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-600">{draftCount}</div>
@@ -118,7 +118,7 @@ export function CollectionsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Open Notices</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("collections.openNotices")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">{openCount}</div>
@@ -126,7 +126,7 @@ export function CollectionsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Resolved</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("collections.resolved")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{resolvedCount}</div>
@@ -136,8 +136,8 @@ export function CollectionsPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="notices">Dunning Notices</TabsTrigger>
-          <TabsTrigger value="overdue">Overdue Invoices</TabsTrigger>
+          <TabsTrigger value="notices">{t("collections.dunningNotices")}</TabsTrigger>
+          <TabsTrigger value="overdue">{t("collections.overdueInvoices")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="notices" className="space-y-4">
@@ -145,13 +145,13 @@ export function CollectionsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-2 text-left text-sm font-medium">Notice #</th>
-                  <th className="px-4 py-2 text-left text-sm font-medium">Date</th>
-                  <th className="px-4 py-2 text-left text-sm font-medium">Customer</th>
-                  <th className="px-4 py-2 text-left text-sm font-medium">Invoice</th>
-                  <th className="px-4 py-2 text-right text-sm font-medium">Amount</th>
-                  <th className="px-4 py-2 text-center text-sm font-medium">Status</th>
-                  <th className="px-4 py-2 text-center text-sm font-medium">Actions</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium">{t("collections.noticeNumber")}</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium">{t("collections.date")}</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium">{t("collections.customer")}</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium">{t("collections.invoice")}</th>
+                  <th className="px-4 py-2 text-right text-sm font-medium">{t("collections.amount")}</th>
+                  <th className="px-4 py-2 text-center text-sm font-medium">{t("collections.status")}</th>
+                  <th className="px-4 py-2 text-center text-sm font-medium">{t("collections.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -167,13 +167,13 @@ export function CollectionsPage() {
                       {notice.status === "draft" && (
                         <Button size="sm" onClick={() => handleTransition(notice.id, "open")}>
                           <Send className="mr-1 h-3 w-3" />
-                          Send
+                          {t("collections.send")}
                         </Button>
                       )}
                       {notice.status === "open" && (
                         <Button size="sm" onClick={() => handleTransition(notice.id, "resolved")}>
                           <CheckCircle className="mr-1 h-3 w-3" />
-                          Resolve
+                          {t("collections.resolve")}
                         </Button>
                       )}
                     </td>
@@ -182,7 +182,7 @@ export function CollectionsPage() {
                 {notices.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                      No dunning notices
+                      {t("collections.noDunningNotices")}
                     </td>
                   </tr>
                 )}
@@ -196,11 +196,11 @@ export function CollectionsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-2 text-left text-sm font-medium">Invoice #</th>
-                  <th className="px-4 py-2 text-left text-sm font-medium">Customer</th>
-                  <th className="px-4 py-2 text-left text-sm font-medium">Date</th>
-                  <th className="px-4 py-2 text-right text-sm font-medium">Amount</th>
-                  <th className="px-4 py-2 text-right text-sm font-medium">Outstanding</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium">{t("collections.invoiceNumber")}</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium">{t("collections.customer")}</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium">{t("collections.date")}</th>
+                  <th className="px-4 py-2 text-right text-sm font-medium">{t("collections.amount")}</th>
+                  <th className="px-4 py-2 text-right text-sm font-medium">{t("collections.outstanding")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -216,7 +216,7 @@ export function CollectionsPage() {
                 {overdueInvoices.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
-                      No overdue invoices
+                      {t("collections.noOverdueInvoices")}
                     </td>
                   </tr>
                 )}

@@ -20,5 +20,32 @@
       "unmatchedRecordedDescription": "Receipt {paymentRef} is ready for reconciliation.",
       "unmatchedRecordedTitle": "Unmatched payment recorded"
     }
+  },
+  "collections": {
+    "title": "Collections",
+    "description": "Track overdue invoices and dunning notices",
+    "refresh": "Refresh",
+    "draftNotices": "Draft Notices",
+    "openNotices": "Open Notices",
+    "resolved": "Resolved",
+    "dunningNotices": "Dunning Notices",
+    "overdueInvoices": "Overdue Invoices",
+    "noticeNumber": "Notice #",
+    "date": "Date",
+    "customer": "Customer",
+    "invoice": "Invoice",
+    "amount": "Amount",
+    "status": "Status",
+    "actions": "Actions",
+    "send": "Send",
+    "resolve": "Resolve",
+    "noDunningNotices": "No dunning notices",
+    "noOverdueInvoices": "No overdue invoices",
+    "invoiceNumber": "Invoice #",
+    "outstanding": "Outstanding",
+    "statusDraft": "Draft",
+    "statusOpen": "Open",
+    "statusResolved": "Resolved",
+    "statusCancelled": "Cancelled"
   }
 }
