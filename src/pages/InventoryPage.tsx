@@ -26,8 +26,8 @@ import { buildInventoryTransfersPath, ORDER_CREATE_ROUTE } from "../lib/routes";
 import { buildInventorySectionTabs, getInventorySectionRoute, type InventorySectionTabValue } from "./inventory/inventoryPageTabs";
 
 function InventoryWorkspace() {
-  const { t } = useTranslation("inventory");
-  const { t: tRoutes } = useTranslation("routes");
+  const { t } = useTranslation("inventory", { keyPrefix: "page" });
+  const { t: tRoutes } = useTranslation("common", { keyPrefix: "routes" });
   const navigate = useNavigate();
   const { selectedWarehouse, setSelectedWarehouse } = useWarehouseContext();
   const { canWrite } = usePermissions();
