@@ -69,27 +69,27 @@ export function ProductionPlanForm({ onSuccess, onCancel }: ProductionPlanFormPr
 			<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
 				<div>
 					<label className="block text-sm font-medium text-gray-700">Name</label>
-					<input required type="text" value={formData.name} onChange={(event) => setFormData({ ...formData, name: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+					<input aria-label="Name" required type="text" value={formData.name} onChange={(event) => setFormData({ ...formData, name: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
 				</div>
 				<div>
 					<label className="block text-sm font-medium text-gray-700">Planning Strategy</label>
-					<select value={formData.planning_strategy} onChange={(event) => setFormData({ ...formData, planning_strategy: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2">
+					<select aria-label="Planning Strategy" value={formData.planning_strategy} onChange={(event) => setFormData({ ...formData, planning_strategy: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2">
 						<option value="make_to_order">Make to Order</option>
 						<option value="make_to_stock">Make to Stock</option>
 					</select>
 				</div>
 				<div>
 					<label className="block text-sm font-medium text-gray-700">Start Date</label>
-					<input required type="date" value={formData.start_date} onChange={(event) => setFormData({ ...formData, start_date: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+					<input aria-label="Start Date" required type="date" value={formData.start_date} onChange={(event) => setFormData({ ...formData, start_date: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
 				</div>
 				<div>
 					<label className="block text-sm font-medium text-gray-700">End Date</label>
-					<input required type="date" value={formData.end_date} onChange={(event) => setFormData({ ...formData, end_date: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+					<input aria-label="End Date" required type="date" value={formData.end_date} onChange={(event) => setFormData({ ...formData, end_date: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
 				</div>
 			</div>
 			<div>
 				<label className="block text-sm font-medium text-gray-700">Notes</label>
-				<textarea rows={3} value={formData.notes} onChange={(event) => setFormData({ ...formData, notes: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+				<textarea aria-label="Notes" rows={3} value={formData.notes} onChange={(event) => setFormData({ ...formData, notes: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
 			</div>
 			<div className="rounded-lg border border-gray-200 bg-white p-6">
 				<div className="mb-4 flex items-center justify-between">
@@ -104,7 +104,7 @@ export function ProductionPlanForm({ onSuccess, onCancel }: ProductionPlanFormPr
 							<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 								<div>
 									<label className="block text-sm font-medium text-gray-700">Product ID</label>
-									<input required={index === 0} type="text" value={line.product_id} onChange={(event) => {
+									<input aria-label="Product ID" required={index === 0} type="text" value={line.product_id} onChange={(event) => {
 										const lines = [...formData.lines];
 										lines[index] = { ...line, product_id: event.target.value };
 										setFormData({ ...formData, lines });
@@ -112,7 +112,7 @@ export function ProductionPlanForm({ onSuccess, onCancel }: ProductionPlanFormPr
 								</div>
 								<div>
 									<label className="block text-sm font-medium text-gray-700">BOM ID</label>
-									<input type="text" value={line.bom_id} onChange={(event) => {
+									<input aria-label="BOM ID" type="text" value={line.bom_id} onChange={(event) => {
 										const lines = [...formData.lines];
 										lines[index] = { ...line, bom_id: event.target.value };
 										setFormData({ ...formData, lines });
@@ -120,7 +120,7 @@ export function ProductionPlanForm({ onSuccess, onCancel }: ProductionPlanFormPr
 								</div>
 								<div>
 									<label className="block text-sm font-medium text-gray-700">Routing ID</label>
-									<input type="text" value={line.routing_id} onChange={(event) => {
+									<input aria-label="Routing ID" type="text" value={line.routing_id} onChange={(event) => {
 										const lines = [...formData.lines];
 										lines[index] = { ...line, routing_id: event.target.value };
 										setFormData({ ...formData, lines });
@@ -128,7 +128,7 @@ export function ProductionPlanForm({ onSuccess, onCancel }: ProductionPlanFormPr
 								</div>
 								<div>
 									<label className="block text-sm font-medium text-gray-700">Forecast Demand</label>
-									<input type="number" min="0" step="0.000001" value={line.forecast_demand} onChange={(event) => {
+									<input aria-label="Forecast Demand" type="number" min="0" step="0.000001" value={line.forecast_demand} onChange={(event) => {
 										const lines = [...formData.lines];
 										lines[index] = { ...line, forecast_demand: event.target.value };
 										setFormData({ ...formData, lines });
@@ -136,7 +136,7 @@ export function ProductionPlanForm({ onSuccess, onCancel }: ProductionPlanFormPr
 								</div>
 								<div>
 									<label className="block text-sm font-medium text-gray-700">Proposed Quantity</label>
-									<input type="number" min="0" step="0.000001" value={line.proposed_qty} onChange={(event) => {
+									<input aria-label="Proposed Quantity" type="number" min="0" step="0.000001" value={line.proposed_qty} onChange={(event) => {
 										const lines = [...formData.lines];
 										lines[index] = { ...line, proposed_qty: event.target.value };
 										setFormData({ ...formData, lines });

@@ -63,16 +63,16 @@ export function RoutingForm({ onSuccess, onCancel }: RoutingFormProps) {
 			<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
 				<div>
 					<label className="block text-sm font-medium text-gray-700">Code</label>
-					<input required type="text" value={formData.code} onChange={(event) => setFormData({ ...formData, code: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+					<input aria-label="Code" required type="text" value={formData.code} onChange={(event) => setFormData({ ...formData, code: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
 				</div>
 				<div>
 					<label className="block text-sm font-medium text-gray-700">Name</label>
-					<input required type="text" value={formData.name} onChange={(event) => setFormData({ ...formData, name: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+					<input aria-label="Name" required type="text" value={formData.name} onChange={(event) => setFormData({ ...formData, name: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
 				</div>
 			</div>
 			<div>
 				<label className="block text-sm font-medium text-gray-700">Description</label>
-				<textarea rows={3} value={formData.description} onChange={(event) => setFormData({ ...formData, description: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+				<textarea aria-label="Description" rows={3} value={formData.description} onChange={(event) => setFormData({ ...formData, description: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
 			</div>
 			<div className="rounded-lg border border-gray-200 bg-white p-6">
 				<div className="mb-4 flex items-center justify-between">
@@ -87,7 +87,7 @@ export function RoutingForm({ onSuccess, onCancel }: RoutingFormProps) {
 							<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 								<div>
 									<label className="block text-sm font-medium text-gray-700">Operation Name</label>
-									<input required={index === 0} type="text" value={operation.operation_name} onChange={(event) => {
+									<input aria-label="Operation Name" required={index === 0} type="text" value={operation.operation_name} onChange={(event) => {
 										const operations = [...formData.operations];
 										operations[index] = { ...operation, operation_name: event.target.value };
 										setFormData({ ...formData, operations });
@@ -95,7 +95,7 @@ export function RoutingForm({ onSuccess, onCancel }: RoutingFormProps) {
 								</div>
 								<div>
 									<label className="block text-sm font-medium text-gray-700">Workstation</label>
-									<select value={operation.workstation_id} onChange={(event) => {
+									<select aria-label="Workstation" value={operation.workstation_id} onChange={(event) => {
 										const operations = [...formData.operations];
 										operations[index] = { ...operation, workstation_id: event.target.value };
 										setFormData({ ...formData, operations });
@@ -106,7 +106,7 @@ export function RoutingForm({ onSuccess, onCancel }: RoutingFormProps) {
 								</div>
 								<div>
 									<label className="block text-sm font-medium text-gray-700">Sequence</label>
-									<input type="number" min="1" step="1" value={operation.sequence} onChange={(event) => {
+									<input aria-label="Sequence" type="number" min="1" step="1" value={operation.sequence} onChange={(event) => {
 										const operations = [...formData.operations];
 										operations[index] = { ...operation, sequence: event.target.value };
 										setFormData({ ...formData, operations });
@@ -114,7 +114,7 @@ export function RoutingForm({ onSuccess, onCancel }: RoutingFormProps) {
 								</div>
 								<div>
 									<label className="block text-sm font-medium text-gray-700">Setup Minutes</label>
-									<input type="number" min="0" step="1" value={operation.setup_minutes} onChange={(event) => {
+									<input aria-label="Setup Minutes" type="number" min="0" step="1" value={operation.setup_minutes} onChange={(event) => {
 										const operations = [...formData.operations];
 										operations[index] = { ...operation, setup_minutes: event.target.value };
 										setFormData({ ...formData, operations });
@@ -122,7 +122,7 @@ export function RoutingForm({ onSuccess, onCancel }: RoutingFormProps) {
 								</div>
 								<div>
 									<label className="block text-sm font-medium text-gray-700">Fixed Run Minutes</label>
-									<input type="number" min="0" step="1" value={operation.fixed_run_minutes} onChange={(event) => {
+									<input aria-label="Fixed Run Minutes" type="number" min="0" step="1" value={operation.fixed_run_minutes} onChange={(event) => {
 										const operations = [...formData.operations];
 										operations[index] = { ...operation, fixed_run_minutes: event.target.value };
 										setFormData({ ...formData, operations });
@@ -130,7 +130,7 @@ export function RoutingForm({ onSuccess, onCancel }: RoutingFormProps) {
 								</div>
 								<div>
 									<label className="block text-sm font-medium text-gray-700">Variable Run Minutes / Unit</label>
-									<input type="number" min="0" step="0.000001" value={operation.variable_run_minutes_per_unit} onChange={(event) => {
+									<input aria-label="Variable Run Minutes / Unit" type="number" min="0" step="0.000001" value={operation.variable_run_minutes_per_unit} onChange={(event) => {
 										const operations = [...formData.operations];
 										operations[index] = { ...operation, variable_run_minutes_per_unit: event.target.value };
 										setFormData({ ...formData, operations });
@@ -138,7 +138,7 @@ export function RoutingForm({ onSuccess, onCancel }: RoutingFormProps) {
 								</div>
 								<div>
 									<label className="block text-sm font-medium text-gray-700">Batch Size</label>
-									<input type="number" min="1" step="1" value={operation.batch_size} onChange={(event) => {
+									<input aria-label="Batch Size" type="number" min="1" step="1" value={operation.batch_size} onChange={(event) => {
 										const operations = [...formData.operations];
 										operations[index] = { ...operation, batch_size: event.target.value };
 										setFormData({ ...formData, operations });
@@ -146,7 +146,7 @@ export function RoutingForm({ onSuccess, onCancel }: RoutingFormProps) {
 								</div>
 								<div>
 									<label className="block text-sm font-medium text-gray-700">Overlap Lag Minutes</label>
-									<input type="number" min="0" step="1" value={operation.overlap_lag_minutes} onChange={(event) => {
+									<input aria-label="Overlap Lag Minutes" type="number" min="0" step="1" value={operation.overlap_lag_minutes} onChange={(event) => {
 										const operations = [...formData.operations];
 										operations[index] = { ...operation, overlap_lag_minutes: event.target.value };
 										setFormData({ ...formData, operations });

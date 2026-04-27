@@ -46,6 +46,7 @@ so that manufacturing capacity is planned against aggregated demand with clear s
 - 2026-04-27: Added a production-plan detail page so planners can inspect aggregated demand and firm plans from the frontend.
 - 2026-04-27: Focused manufacturing tests now cover aggregated demand defaults, proposed quantity, and capacity summary population.
 - 2026-04-27: Added the protected production-plan create page and manual line authoring form so planners can seed demand aggregation from the mounted frontend shell.
+- 2026-04-27: Added focused frontend form coverage for production-plan authoring and fixed accessible control labels on the new create workflow.
 
 ### Issues Fixed
 
@@ -85,6 +86,7 @@ so that manufacturing capacity is planned against aggregated demand with clear s
 - ✅ Tests pass (85 API tests, 317 domain tests)
 - ✅ Added focused unit coverage for production-plan demand aggregation defaults and computed proposed quantity.
 - ✅ Frontend build and locale parity pass with the production-plan create workflow mounted in navigation metadata.
+- ✅ Focused Vitest coverage now verifies production-plan authoring payload mapping from the new frontend form.
 
 ### TypeScript Fixes (2026-04-27)
 - Fixed `.map()` callback type annotations in ProductionPlanList

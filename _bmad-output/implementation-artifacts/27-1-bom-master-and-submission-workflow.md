@@ -47,6 +47,7 @@ so that work orders and planning use an explicit approved recipe instead of info
 - 2026-04-27: Added a BOM detail route/page in the frontend so planners can inspect submitted materials and revision history in-app.
 - 2026-04-27: Focused manufacturing tests now lock the active-BOM uniqueness metadata used for revision-safe submission and supersession.
 - 2026-04-27: Added the protected BOM create page and authoring form so planners can create BOM headers and component lines directly from the mounted manufacturing workspace.
+- 2026-04-27: Added focused frontend form coverage for BOM authoring and fixed accessible control labels on the new create workflow.
 
 ### Issues Fixed
 
@@ -112,3 +113,4 @@ so that work orders and planning use an explicit approved recipe instead of info
 - ✅ Tests pass (85 API tests, 317 domain tests)
 - ✅ Added focused manufacturing metadata regression coverage for the active-BOM uniqueness model.
 - ✅ Frontend build and locale parity pass with the BOM create workflow mounted in the manufacturing shell.
+- ✅ Focused Vitest coverage now verifies BOM authoring payload mapping from the new frontend form.

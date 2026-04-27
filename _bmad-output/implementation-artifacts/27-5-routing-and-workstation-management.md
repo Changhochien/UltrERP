@@ -46,6 +46,7 @@ so that work orders can calculate planned time and cost based on the production 
 - 2026-04-27: Added routing and workstation detail pages, including an in-app routing calculation surface for planned time and labor cost.
 - 2026-04-27: Focused manufacturing tests now cover workstation-rate routing calculations used for planned time and cost.
 - 2026-04-27: Added protected workstation and routing create pages with inline authoring forms so manufacturing users can maintain both masters from the frontend workspace.
+- 2026-04-27: Added focused frontend form coverage for workstation and routing authoring and fixed accessible control labels on the new create workflows.
 
 ### File List
 
@@ -81,6 +82,7 @@ so that work orders can calculate planned time and cost based on the production 
 - ✅ Tests pass (85 API tests, 317 domain tests)
 - ✅ Added focused unit coverage for routing time and workstation-rate cost calculation.
 - ✅ Frontend build and locale parity pass with mounted workstation and routing create workflows.
+- ✅ Focused Vitest coverage now verifies workstation and routing authoring payload mapping from the new frontend forms.
 
 ### TypeScript Fixes (2026-04-27)
 - Fixed `.map()` callback type annotations in RoutingList, WorkstationList

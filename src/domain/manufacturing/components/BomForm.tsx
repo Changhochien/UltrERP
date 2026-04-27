@@ -80,31 +80,31 @@ export function BomForm({ onSuccess, onCancel }: BomFormProps) {
 			<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
 				<div>
 					<label className="block text-sm font-medium text-gray-700">Product ID</label>
-					<input required type="text" value={formData.product_id} onChange={(event) => setFormData({ ...formData, product_id: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+					<input aria-label="Product ID" required type="text" value={formData.product_id} onChange={(event) => setFormData({ ...formData, product_id: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
 				</div>
 				<div>
 					<label className="block text-sm font-medium text-gray-700">Code</label>
-					<input type="text" value={formData.code} onChange={(event) => setFormData({ ...formData, code: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+					<input aria-label="Code" type="text" value={formData.code} onChange={(event) => setFormData({ ...formData, code: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
 				</div>
 				<div>
 					<label className="block text-sm font-medium text-gray-700">Name</label>
-					<input type="text" value={formData.name} onChange={(event) => setFormData({ ...formData, name: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+					<input aria-label="Name" type="text" value={formData.name} onChange={(event) => setFormData({ ...formData, name: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
 				</div>
 				<div>
 					<label className="block text-sm font-medium text-gray-700">Revision</label>
-					<input type="text" value={formData.revision} onChange={(event) => setFormData({ ...formData, revision: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+					<input aria-label="Revision" type="text" value={formData.revision} onChange={(event) => setFormData({ ...formData, revision: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
 				</div>
 				<div>
 					<label className="block text-sm font-medium text-gray-700">BOM Quantity</label>
-					<input required type="number" min="0.000001" step="0.000001" value={formData.bom_quantity} onChange={(event) => setFormData({ ...formData, bom_quantity: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+					<input aria-label="BOM Quantity" required type="number" min="0.000001" step="0.000001" value={formData.bom_quantity} onChange={(event) => setFormData({ ...formData, bom_quantity: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
 				</div>
 				<div>
 					<label className="block text-sm font-medium text-gray-700">Unit</label>
-					<input type="text" value={formData.unit} onChange={(event) => setFormData({ ...formData, unit: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+					<input aria-label="Unit" type="text" value={formData.unit} onChange={(event) => setFormData({ ...formData, unit: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
 				</div>
 				<div className="md:col-span-2">
 					<label className="block text-sm font-medium text-gray-700">Routing ID</label>
-					<input type="text" value={formData.routing_id} onChange={(event) => setFormData({ ...formData, routing_id: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+					<input aria-label="Routing ID" type="text" value={formData.routing_id} onChange={(event) => setFormData({ ...formData, routing_id: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
 				</div>
 			</div>
 
@@ -121,7 +121,7 @@ export function BomForm({ onSuccess, onCancel }: BomFormProps) {
 							<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 								<div>
 									<label className="block text-sm font-medium text-gray-700">Item ID</label>
-									<input required={index === 0} type="text" value={item.item_id} onChange={(event) => {
+									<input aria-label="Item ID" required={index === 0} type="text" value={item.item_id} onChange={(event) => {
 										const items = [...formData.items];
 										items[index] = { ...item, item_id: event.target.value };
 										setFormData({ ...formData, items });
@@ -129,7 +129,7 @@ export function BomForm({ onSuccess, onCancel }: BomFormProps) {
 								</div>
 								<div>
 									<label className="block text-sm font-medium text-gray-700">Item Code</label>
-									<input required={index === 0} type="text" value={item.item_code} onChange={(event) => {
+									<input aria-label="Item Code" required={index === 0} type="text" value={item.item_code} onChange={(event) => {
 										const items = [...formData.items];
 										items[index] = { ...item, item_code: event.target.value };
 										setFormData({ ...formData, items });
@@ -137,7 +137,7 @@ export function BomForm({ onSuccess, onCancel }: BomFormProps) {
 								</div>
 								<div>
 									<label className="block text-sm font-medium text-gray-700">Item Name</label>
-									<input required={index === 0} type="text" value={item.item_name} onChange={(event) => {
+									<input aria-label="Item Name" required={index === 0} type="text" value={item.item_name} onChange={(event) => {
 										const items = [...formData.items];
 										items[index] = { ...item, item_name: event.target.value };
 										setFormData({ ...formData, items });
@@ -145,7 +145,7 @@ export function BomForm({ onSuccess, onCancel }: BomFormProps) {
 								</div>
 								<div>
 									<label className="block text-sm font-medium text-gray-700">Required Quantity</label>
-									<input required={index === 0} type="number" min="0.000001" step="0.000001" value={item.required_quantity} onChange={(event) => {
+									<input aria-label="Required Quantity" required={index === 0} type="number" min="0.000001" step="0.000001" value={item.required_quantity} onChange={(event) => {
 										const items = [...formData.items];
 										items[index] = { ...item, required_quantity: event.target.value };
 										setFormData({ ...formData, items });
@@ -153,7 +153,7 @@ export function BomForm({ onSuccess, onCancel }: BomFormProps) {
 								</div>
 								<div>
 									<label className="block text-sm font-medium text-gray-700">Unit</label>
-									<input type="text" value={item.unit} onChange={(event) => {
+									<input aria-label="Unit" type="text" value={item.unit} onChange={(event) => {
 										const items = [...formData.items];
 										items[index] = { ...item, unit: event.target.value };
 										setFormData({ ...formData, items });
@@ -161,7 +161,7 @@ export function BomForm({ onSuccess, onCancel }: BomFormProps) {
 								</div>
 								<div>
 									<label className="block text-sm font-medium text-gray-700">Source Warehouse ID</label>
-									<input type="text" value={item.source_warehouse_id} onChange={(event) => {
+									<input aria-label="Source Warehouse ID" type="text" value={item.source_warehouse_id} onChange={(event) => {
 										const items = [...formData.items];
 										items[index] = { ...item, source_warehouse_id: event.target.value };
 										setFormData({ ...formData, items });
@@ -180,7 +180,7 @@ export function BomForm({ onSuccess, onCancel }: BomFormProps) {
 
 			<div>
 				<label className="block text-sm font-medium text-gray-700">Notes</label>
-				<textarea rows={3} value={formData.notes} onChange={(event) => setFormData({ ...formData, notes: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+				<textarea aria-label="Notes" rows={3} value={formData.notes} onChange={(event) => setFormData({ ...formData, notes: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
 			</div>
 
 			<div className="flex items-center justify-end gap-4">

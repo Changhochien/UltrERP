@@ -48,24 +48,24 @@ export function WorkstationForm({ onSuccess, onCancel }: WorkstationFormProps) {
 			<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
 				<div>
 					<label className="block text-sm font-medium text-gray-700">Code</label>
-					<input required type="text" value={formData.code} onChange={(event) => setFormData({ ...formData, code: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+					<input aria-label="Code" required type="text" value={formData.code} onChange={(event) => setFormData({ ...formData, code: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
 				</div>
 				<div>
 					<label className="block text-sm font-medium text-gray-700">Name</label>
-					<input required type="text" value={formData.name} onChange={(event) => setFormData({ ...formData, name: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+					<input aria-label="Name" required type="text" value={formData.name} onChange={(event) => setFormData({ ...formData, name: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
 				</div>
 				<div>
 					<label className="block text-sm font-medium text-gray-700">Hourly Cost</label>
-					<input type="number" min="0" step="0.01" value={formData.hourly_cost} onChange={(event) => setFormData({ ...formData, hourly_cost: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+					<input aria-label="Hourly Cost" type="number" min="0" step="0.01" value={formData.hourly_cost} onChange={(event) => setFormData({ ...formData, hourly_cost: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
 				</div>
 				<div>
 					<label className="block text-sm font-medium text-gray-700">Capacity</label>
-					<input type="number" min="1" step="1" value={formData.capacity} onChange={(event) => setFormData({ ...formData, capacity: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+					<input aria-label="Capacity" type="number" min="1" step="1" value={formData.capacity} onChange={(event) => setFormData({ ...formData, capacity: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
 				</div>
 			</div>
 			<div>
 				<label className="block text-sm font-medium text-gray-700">Description</label>
-				<textarea rows={3} value={formData.description} onChange={(event) => setFormData({ ...formData, description: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+				<textarea aria-label="Description" rows={3} value={formData.description} onChange={(event) => setFormData({ ...formData, description: event.target.value })} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
 			</div>
 			<div className="rounded-lg border border-gray-200 bg-white p-6">
 				<div className="mb-4 flex items-center justify-between">
@@ -79,7 +79,7 @@ export function WorkstationForm({ onSuccess, onCancel }: WorkstationFormProps) {
 						<div key={`${hour.day_of_week}-${index}`} className="grid grid-cols-1 gap-4 md:grid-cols-4 md:items-end">
 							<div>
 								<label className="block text-sm font-medium text-gray-700">Day</label>
-								<select value={hour.day_of_week} onChange={(event) => {
+								<select aria-label="Day" value={hour.day_of_week} onChange={(event) => {
 									const hours = [...formData.hours];
 									hours[index] = { ...hour, day_of_week: event.target.value };
 									setFormData({ ...formData, hours });
@@ -95,7 +95,7 @@ export function WorkstationForm({ onSuccess, onCancel }: WorkstationFormProps) {
 							</div>
 							<div>
 								<label className="block text-sm font-medium text-gray-700">Start</label>
-								<input type="time" value={hour.start_time} onChange={(event) => {
+								<input aria-label="Start" type="time" value={hour.start_time} onChange={(event) => {
 									const hours = [...formData.hours];
 									hours[index] = { ...hour, start_time: event.target.value };
 									setFormData({ ...formData, hours });
@@ -103,7 +103,7 @@ export function WorkstationForm({ onSuccess, onCancel }: WorkstationFormProps) {
 							</div>
 							<div>
 								<label className="block text-sm font-medium text-gray-700">End</label>
-								<input type="time" value={hour.end_time} onChange={(event) => {
+								<input aria-label="End" type="time" value={hour.end_time} onChange={(event) => {
 									const hours = [...formData.hours];
 									hours[index] = { ...hour, end_time: event.target.value };
 									setFormData({ ...formData, hours });
