@@ -227,7 +227,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
           {product ? (
             <Breadcrumb
               items={[
-                { label: t("routes.inventory.label"), href: INVENTORY_ROUTE },
+                { label: t("inventory.label"), href: INVENTORY_ROUTE },
                 { label: product.name },
               ]}
             />
