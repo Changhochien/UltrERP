@@ -49,7 +49,7 @@ export interface CreateLeadPageProps {
 }
 
 export default function CreateLeadPage({ onNavigate }: CreateLeadPageProps) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("crm");
 const { t: tRoutes } = useTranslation("routes");
   const { error: showErrorToast, success: showSuccessToast } = useToast();
   const [submitting, setSubmitting] = useState(false);
@@ -66,8 +66,8 @@ const { t: tRoutes } = useTranslation("routes");
       const result = await createLead(payload);
       if (result.ok) {
         showSuccessToast(
-          t("crm.createPage.toast.successTitle"),
-          t("crm.createPage.toast.successDescription", { name: result.data.lead_name }),
+          t("createPage.toast.successTitle"),
+          t("createPage.toast.successDescription", { name: result.data.lead_name }),
         );
         setCreated(result.data);
       } else if (result.duplicate) {
@@ -76,8 +76,8 @@ const { t: tRoutes } = useTranslation("routes");
       } else {
         setServerErrors(result.errors);
         showErrorToast(
-          t("crm.createPage.toast.errorTitle"),
-          result.errors[0]?.message ?? t("crm.createPage.toast.errorDescription"),
+          t("createPage.toast.errorTitle"),
+          result.errors[0]?.message ?? t("createPage.toast.errorDescription"),
         );
       }
     } finally {
@@ -104,13 +104,13 @@ const { t: tRoutes } = useTranslation("routes");
             { label: tRoutes("crmLeads.label"), href: CRM_LEADS_ROUTE as AppRoute },
             { label: tRoutes("createLead.label") },
           ]}
-          eyebrow={t("crm.createPage.eyebrow")}
-          title={t("crm.createPage.titleCreated")}
-          description={t("crm.createPage.descriptionCreated")}
+          eyebrow={t("createPage.eyebrow")}
+          title={t("createPage.titleCreated")}
+          description={t("createPage.descriptionCreated")}
         />
         <SectionCard
-          title={t("crm.createPage.createdRecord")}
-          description={t("crm.createPage.createdRecordDescription")}
+          title={t("createPage.createdRecord")}
+          description={t("createPage.createdRecordDescription")}
         >
           <div className="space-y-4 text-sm">
             <p>
@@ -125,7 +125,7 @@ const { t: tRoutes } = useTranslation("routes");
                 setDuplicate(null);
               }}
             >
-              {t("crm.createPage.createAnother")}
+              {t("createPage.createAnother")}
             </Button>
           </div>
         </SectionCard>
@@ -140,13 +140,13 @@ const { t: tRoutes } = useTranslation("routes");
           { label: tRoutes("crmLeads.label"), href: CRM_LEADS_ROUTE as AppRoute },
           { label: tRoutes("createLead.label") },
         ]}
-        eyebrow={t("crm.createPage.eyebrow")}
-        title={t("crm.createPage.title")}
-        description={t("crm.createPage.description")}
+        eyebrow={t("createPage.eyebrow")}
+        title={t("createPage.title")}
+        description={t("createPage.description")}
       />
       <SectionCard
-        title={t("crm.createPage.formTitle")}
-        description={t("crm.createPage.formDescription")}
+        title={t("createPage.formTitle")}
+        description={t("createPage.formDescription")}
       >
         {duplicate ? (
           <DuplicateLeadWarning

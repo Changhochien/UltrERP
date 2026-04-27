@@ -17,7 +17,7 @@ export interface OpportunityPipelineSummaryProps {
 }
 
 export function OpportunityPipelineSummary({ items }: OpportunityPipelineSummaryProps) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("crm");
   const counts = useMemo(() => {
     return STATUS_ORDER.reduce<Record<OpportunityStatus, number>>((acc, status) => {
       acc[status] = items.filter((item) => item.status === status).length;

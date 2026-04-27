@@ -34,33 +34,33 @@ export function LeadResultsTable({
   onPageChange,
   onSelect,
 }: LeadResultsTableProps) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("crm");
 
   return (
     <DataTable
       columns={[
         {
           id: "lead_name",
-          header: t("crm.table.lead"),
+          header: t("table.lead"),
           sortable: true,
           getSortValue: (lead) => lead.lead_name,
           cell: (lead) => (
             <div className="space-y-0.5">
               <span className="font-medium">{lead.lead_name}</span>
-              <p className="text-xs text-muted-foreground">{lead.company_name || t("crm.table.noCompany")}</p>
+              <p className="text-xs text-muted-foreground">{lead.company_name || t("table.noCompany")}</p>
             </div>
           ),
         },
         {
           id: "lead_owner",
-          header: t("crm.table.owner"),
+          header: t("table.owner"),
           sortable: true,
           getSortValue: (lead) => lead.lead_owner,
           cell: (lead) => lead.lead_owner || "-",
         },
         {
           id: "status",
-          header: t("crm.table.status"),
+          header: t("table.status"),
           sortable: true,
           getSortValue: (lead) => lead.status,
           cell: (lead) => (
@@ -71,15 +71,15 @@ export function LeadResultsTable({
         },
         {
           id: "qualification_status",
-          header: t("crm.table.qualification"),
+          header: t("table.qualification"),
           sortable: true,
           getSortValue: (lead) => lead.qualification_status,
           cell: (lead) => t(`crm.qualificationValues.${lead.qualification_status}`),
         },
       ]}
       data={items}
-      emptyTitle={t("crm.table.emptyTitle")}
-      emptyDescription={t("crm.table.emptyDescription")}
+      emptyTitle={t("table.emptyTitle")}
+      emptyDescription={t("table.emptyDescription")}
       page={page}
       pageSize={pageSize}
       totalItems={totalCount}

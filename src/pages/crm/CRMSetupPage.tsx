@@ -194,7 +194,7 @@ function MasterNodeEditor({
 }
 
 export default function CRMSetupPage() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("crm");
 const { t: tRoutes } = useTranslation("routes");
   const { user } = useAuth();
   const { success: showSuccessToast, error: showErrorToast } = useToast();
@@ -240,11 +240,11 @@ const { t: tRoutes } = useTranslation("routes");
         opportunity_auto_close_days: settingsDraft.opportunity_auto_close_days,
       });
       if (result.ok) {
-        showSuccessToast(t("crm.setup.settingsSavedTitle"), t("crm.setup.settingsSavedDescription"));
+        showSuccessToast(t("setup.settingsSavedTitle"), t("setup.settingsSavedDescription"));
         reload();
         return;
       }
-      showErrorToast(t("crm.setup.settingsErrorTitle"), result.errors[0]?.message ?? t("crm.setup.settingsErrorDescription"));
+      showErrorToast(t("setup.settingsErrorTitle"), result.errors[0]?.message ?? t("setup.settingsErrorDescription"));
     } finally {
       setSettingsSaving(false);
     }
@@ -255,11 +255,11 @@ const { t: tRoutes } = useTranslation("routes");
     try {
       const result = await updateCRMSalesStage(stageId, payload);
       if (result.ok) {
-        showSuccessToast(t("crm.setup.masterSavedTitle"), t("crm.setup.masterSavedDescription"));
+        showSuccessToast(t("setup.masterSavedTitle"), t("setup.masterSavedDescription"));
         reload();
         return;
       }
-      showErrorToast(t("crm.setup.masterErrorTitle"), result.errors[0]?.message ?? t("crm.setup.masterErrorDescription"));
+      showErrorToast(t("setup.masterErrorTitle"), result.errors[0]?.message ?? t("setup.masterErrorDescription"));
     } finally {
       setSavingKey(null);
     }
@@ -270,11 +270,11 @@ const { t: tRoutes } = useTranslation("routes");
     try {
       const result = await updateCRMTerritory(territoryId, payload);
       if (result.ok) {
-        showSuccessToast(t("crm.setup.masterSavedTitle"), t("crm.setup.masterSavedDescription"));
+        showSuccessToast(t("setup.masterSavedTitle"), t("setup.masterSavedDescription"));
         reload();
         return;
       }
-      showErrorToast(t("crm.setup.masterErrorTitle"), result.errors[0]?.message ?? t("crm.setup.masterErrorDescription"));
+      showErrorToast(t("setup.masterErrorTitle"), result.errors[0]?.message ?? t("setup.masterErrorDescription"));
     } finally {
       setSavingKey(null);
     }
@@ -285,11 +285,11 @@ const { t: tRoutes } = useTranslation("routes");
     try {
       const result = await updateCRMCustomerGroup(customerGroupId, payload);
       if (result.ok) {
-        showSuccessToast(t("crm.setup.masterSavedTitle"), t("crm.setup.masterSavedDescription"));
+        showSuccessToast(t("setup.masterSavedTitle"), t("setup.masterSavedDescription"));
         reload();
         return;
       }
-      showErrorToast(t("crm.setup.masterErrorTitle"), result.errors[0]?.message ?? t("crm.setup.masterErrorDescription"));
+      showErrorToast(t("setup.masterErrorTitle"), result.errors[0]?.message ?? t("setup.masterErrorDescription"));
     } finally {
       setSavingKey(null);
     }
@@ -301,11 +301,11 @@ const { t: tRoutes } = useTranslation("routes");
       const result = await createCRMSalesStage(newStage);
       if (result.ok) {
         setNewStage({ name: "", probability: 0, sort_order: 50, is_active: true });
-        showSuccessToast(t("crm.setup.masterSavedTitle"), t("crm.setup.masterSavedDescription"));
+        showSuccessToast(t("setup.masterSavedTitle"), t("setup.masterSavedDescription"));
         reload();
         return;
       }
-      showErrorToast(t("crm.setup.masterErrorTitle"), result.errors[0]?.message ?? t("crm.setup.masterErrorDescription"));
+      showErrorToast(t("setup.masterErrorTitle"), result.errors[0]?.message ?? t("setup.masterErrorDescription"));
     } finally {
       setSavingKey(null);
     }
@@ -317,11 +317,11 @@ const { t: tRoutes } = useTranslation("routes");
       const result = await createCRMTerritory(newTerritory);
       if (result.ok) {
         setNewTerritory({ name: "", parent_id: null, is_group: false, sort_order: 50, is_active: true });
-        showSuccessToast(t("crm.setup.masterSavedTitle"), t("crm.setup.masterSavedDescription"));
+        showSuccessToast(t("setup.masterSavedTitle"), t("setup.masterSavedDescription"));
         reload();
         return;
       }
-      showErrorToast(t("crm.setup.masterErrorTitle"), result.errors[0]?.message ?? t("crm.setup.masterErrorDescription"));
+      showErrorToast(t("setup.masterErrorTitle"), result.errors[0]?.message ?? t("setup.masterErrorDescription"));
     } finally {
       setSavingKey(null);
     }
@@ -333,11 +333,11 @@ const { t: tRoutes } = useTranslation("routes");
       const result = await createCRMCustomerGroup(newCustomerGroup);
       if (result.ok) {
         setNewCustomerGroup({ name: "", parent_id: null, is_group: false, sort_order: 50, is_active: true });
-        showSuccessToast(t("crm.setup.masterSavedTitle"), t("crm.setup.masterSavedDescription"));
+        showSuccessToast(t("setup.masterSavedTitle"), t("setup.masterSavedDescription"));
         reload();
         return;
       }
-      showErrorToast(t("crm.setup.masterErrorTitle"), result.errors[0]?.message ?? t("crm.setup.masterErrorDescription"));
+      showErrorToast(t("setup.masterErrorTitle"), result.errors[0]?.message ?? t("setup.masterErrorDescription"));
     } finally {
       setSavingKey(null);
     }
@@ -347,20 +347,20 @@ const { t: tRoutes } = useTranslation("routes");
     <div className="space-y-6">
       <PageHeader
         breadcrumb={[{ label: tRoutes("crmSetup.label"), href: CRM_SETUP_ROUTE as AppRoute }]}
-        eyebrow={t("crm.setup.eyebrow")}
-        title={t("crm.setup.title")}
-        description={t("crm.setup.description")}
+        eyebrow={t("setup.eyebrow")}
+        title={t("setup.title")}
+        description={t("setup.description")}
       />
 
       {!isAdmin ? (
-        <SurfaceMessage tone="warning">{t("crm.setup.adminOnlyNotice")}</SurfaceMessage>
+        <SurfaceMessage tone="warning">{t("setup.adminOnlyNotice")}</SurfaceMessage>
       ) : null}
       {error ? <SurfaceMessage tone="warning">{error}</SurfaceMessage> : null}
 
-      <SectionCard title={t("crm.setup.settingsTitle")} description={t("crm.setup.settingsDescription")}>
+      <SectionCard title={t("setup.settingsTitle")} description={t("setup.settingsDescription")}>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <Field>
-            <FieldLabel htmlFor="lead_duplicate_policy">{t("crm.setup.duplicatePolicy")}</FieldLabel>
+            <FieldLabel htmlFor="lead_duplicate_policy">{t("setup.duplicatePolicy")}</FieldLabel>
             <select
               id="lead_duplicate_policy"
               className={SELECT_CLASS_NAME}
@@ -368,12 +368,12 @@ const { t: tRoutes } = useTranslation("routes");
               onChange={(event) => setSettingsDraft((current) => ({ ...current, lead_duplicate_policy: event.target.value as CRMSettings["lead_duplicate_policy"] }))}
               disabled={!isAdmin}
             >
-              <option value="block">{t("crm.setup.duplicatePolicyBlock")}</option>
-              <option value="allow">{t("crm.setup.duplicatePolicyAllow")}</option>
+              <option value="block">{t("setup.duplicatePolicyBlock")}</option>
+              <option value="allow">{t("setup.duplicatePolicyAllow")}</option>
             </select>
           </Field>
           <Field>
-            <FieldLabel htmlFor="default_quotation_validity_days">{t("crm.setup.defaultQuotationValidityDays")}</FieldLabel>
+            <FieldLabel htmlFor="default_quotation_validity_days">{t("setup.defaultQuotationValidityDays")}</FieldLabel>
             <Input
               id="default_quotation_validity_days"
               type="number"
@@ -384,7 +384,7 @@ const { t: tRoutes } = useTranslation("routes");
             />
           </Field>
           <Field>
-            <FieldLabel htmlFor="opportunity_auto_close_days">{t("crm.setup.opportunityAutoCloseDays")}</FieldLabel>
+            <FieldLabel htmlFor="opportunity_auto_close_days">{t("setup.opportunityAutoCloseDays")}</FieldLabel>
             <Input
               id="opportunity_auto_close_days"
               type="number"
@@ -398,25 +398,25 @@ const { t: tRoutes } = useTranslation("routes");
         <div className="mt-4 flex flex-wrap gap-4 text-sm text-foreground">
           <label className="flex items-center gap-2">
             <Checkbox checked={settingsDraft.contact_creation_enabled} onCheckedChange={(checked) => setSettingsDraft((current) => ({ ...current, contact_creation_enabled: Boolean(checked) }))} disabled={!isAdmin} />
-            {t("crm.setup.contactCreationEnabled")}
+            {t("setup.contactCreationEnabled")}
           </label>
           <label className="flex items-center gap-2">
             <Checkbox checked={settingsDraft.carry_forward_communications} onCheckedChange={(checked) => setSettingsDraft((current) => ({ ...current, carry_forward_communications: Boolean(checked) }))} disabled={!isAdmin} />
-            {t("crm.setup.carryForwardCommunications")}
+            {t("setup.carryForwardCommunications")}
           </label>
           <label className="flex items-center gap-2">
             <Checkbox checked={settingsDraft.carry_forward_comments} onCheckedChange={(checked) => setSettingsDraft((current) => ({ ...current, carry_forward_comments: Boolean(checked) }))} disabled={!isAdmin} />
-            {t("crm.setup.carryForwardComments")}
+            {t("setup.carryForwardComments")}
           </label>
         </div>
         <div className="mt-4 flex justify-end">
           <Button type="button" onClick={saveSettings} disabled={!isAdmin || settingsSaving}>
-            {settingsSaving ? t("crm.setup.saving") : t("crm.setup.saveSettings")}
+            {settingsSaving ? t("setup.saving") : t("setup.saveSettings")}
           </Button>
         </div>
       </SectionCard>
 
-      <SectionCard title={t("crm.setup.salesStagesTitle")} description={t("crm.setup.salesStagesDescription")}>
+      <SectionCard title={t("setup.salesStagesTitle")} description={t("setup.salesStagesDescription")}>
         <div className="space-y-3">
           <div className="grid gap-3 rounded-xl border border-dashed border-border/70 bg-muted/20 p-4 md:grid-cols-[minmax(0,1.6fr)_120px_120px_auto_auto] md:items-end">
             <Field>
@@ -436,7 +436,7 @@ const { t: tRoutes } = useTranslation("routes");
               Active
             </label>
             <Button type="button" variant="outline" onClick={createStage} disabled={!isAdmin || savingKey === "new-stage"}>
-              {savingKey === "new-stage" ? t("crm.setup.saving") : t("crm.setup.addMaster")}
+              {savingKey === "new-stage" ? t("setup.saving") : t("setup.addMaster")}
             </Button>
           </div>
           {data.sales_stages.map((stage) => (
@@ -451,7 +451,7 @@ const { t: tRoutes } = useTranslation("routes");
         </div>
       </SectionCard>
 
-      <SectionCard title={t("crm.setup.territoriesTitle")} description={t("crm.setup.territoriesDescription")}>
+      <SectionCard title={t("setup.territoriesTitle")} description={t("setup.territoriesDescription")}>
         <div className="space-y-3">
           <div className="grid gap-3 rounded-xl border border-dashed border-border/70 bg-muted/20 p-4 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_100px_auto_auto_auto] md:items-end">
             <Field>
@@ -480,7 +480,7 @@ const { t: tRoutes } = useTranslation("routes");
               Active
             </label>
             <Button type="button" variant="outline" onClick={createTerritory} disabled={!isAdmin || savingKey === "new-territory"}>
-              {savingKey === "new-territory" ? t("crm.setup.saving") : t("crm.setup.addMaster")}
+              {savingKey === "new-territory" ? t("setup.saving") : t("setup.addMaster")}
             </Button>
           </div>
           {data.territories.map((territory) => (
@@ -496,7 +496,7 @@ const { t: tRoutes } = useTranslation("routes");
         </div>
       </SectionCard>
 
-      <SectionCard title={t("crm.setup.customerGroupsTitle")} description={t("crm.setup.customerGroupsDescription")}>
+      <SectionCard title={t("setup.customerGroupsTitle")} description={t("setup.customerGroupsDescription")}>
         <div className="space-y-3">
           <div className="grid gap-3 rounded-xl border border-dashed border-border/70 bg-muted/20 p-4 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_100px_auto_auto_auto] md:items-end">
             <Field>
@@ -525,7 +525,7 @@ const { t: tRoutes } = useTranslation("routes");
               Active
             </label>
             <Button type="button" variant="outline" onClick={createCustomerGroup} disabled={!isAdmin || savingKey === "new-customer-group"}>
-              {savingKey === "new-customer-group" ? t("crm.setup.saving") : t("crm.setup.addMaster")}
+              {savingKey === "new-customer-group" ? t("setup.saving") : t("setup.addMaster")}
             </Button>
           </div>
           {data.customer_groups.map((customerGroup) => (
@@ -541,7 +541,7 @@ const { t: tRoutes } = useTranslation("routes");
         </div>
       </SectionCard>
 
-      {loading ? <SurfaceMessage>{t("crm.setup.loading")}</SurfaceMessage> : null}
+      {loading ? <SurfaceMessage>{t("setup.loading")}</SurfaceMessage> : null}
     </div>
   );
 }

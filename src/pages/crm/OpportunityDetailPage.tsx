@@ -46,7 +46,7 @@ interface OpportunityDetailPageProps {
 export function OpportunityDetailPage({ onBack }: OpportunityDetailPageProps) {
   const { opportunityId } = useParams<{ opportunityId: string }>();
   const navigate = useNavigate();
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("crm");
 const { t: tRoutes } = useTranslation("routes");
   const { canWrite } = usePermissions();
   const { error: showErrorToast, success: showSuccessToast } = useToast();
@@ -65,7 +65,7 @@ const { t: tRoutes } = useTranslation("routes");
 
   useEffect(() => {
     if (!opportunityId) {
-      setError(t("crm.opportunities.detailPage.notFound"));
+      setError(t("opportunities.detailPage.notFound"));
       setLoading(false);
       return;
     }
@@ -80,7 +80,7 @@ const { t: tRoutes } = useTranslation("routes");
         }
         if (!data) {
           setOpportunity(null);
-          setError(t("crm.opportunities.detailPage.notFound"));
+          setError(t("opportunities.detailPage.notFound"));
           setLoading(false);
           return;
         }
@@ -94,7 +94,7 @@ const { t: tRoutes } = useTranslation("routes");
       .catch((loadError: unknown) => {
         if (!cancelled) {
           setOpportunity(null);
-          setError(loadError instanceof Error ? loadError.message : t("crm.opportunities.listPage.loadError"));
+          setError(loadError instanceof Error ? loadError.message : t("opportunities.listPage.loadError"));
           setLoading(false);
         }
       });
@@ -164,8 +164,8 @@ const { t: tRoutes } = useTranslation("routes");
       if (result.ok) {
         setOpportunity(result.data);
         showSuccessToast(
-          t("crm.opportunities.detailPage.toast.updateSuccessTitle"),
-          t("crm.opportunities.detailPage.toast.updateSuccessDescription", { name: result.data.opportunity_title }),
+          t("opportunities.detailPage.toast.updateSuccessTitle"),
+          t("opportunities.detailPage.toast.updateSuccessDescription", { name: result.data.opportunity_title }),
         );
         return;
       }
@@ -175,13 +175,13 @@ const { t: tRoutes } = useTranslation("routes");
           setOpportunity(latest);
         }
         setServerErrors([{ field: "", message: VERSION_CONFLICT_MESSAGE }]);
-        showErrorToast(t("crm.opportunities.detailPage.toast.updateErrorTitle"), VERSION_CONFLICT_MESSAGE);
+        showErrorToast(t("opportunities.detailPage.toast.updateErrorTitle"), VERSION_CONFLICT_MESSAGE);
         return;
       }
       setServerErrors(result.errors);
       showErrorToast(
-        t("crm.opportunities.detailPage.toast.updateErrorTitle"),
-        result.errors[0]?.message ?? t("crm.opportunities.detailPage.toast.updateErrorDescription"),
+        t("opportunities.detailPage.toast.updateErrorTitle"),
+        result.errors[0]?.message ?? t("opportunities.detailPage.toast.updateErrorDescription"),
       );
     } finally {
       setUpdating(false);
@@ -209,16 +209,16 @@ const { t: tRoutes } = useTranslation("routes");
         setCompetitorName(result.data.competitor_name);
         setLossNotes(result.data.loss_notes);
         showSuccessToast(
-          t("crm.opportunities.detailPage.transitionSuccessTitle"),
-          t("crm.opportunities.detailPage.transitionSuccessDescription", {
+          t("opportunities.detailPage.transitionSuccessTitle"),
+          t("opportunities.detailPage.transitionSuccessDescription", {
             status: t(`crm.opportunities.statusValues.${result.data.status}`),
           }),
         );
         return;
       }
       showErrorToast(
-        t("crm.opportunities.detailPage.transitionErrorTitle"),
-        result.errors[0]?.message ?? t("crm.opportunities.detailPage.transitionErrorDescription"),
+        t("opportunities.detailPage.transitionErrorTitle"),
+        result.errors[0]?.message ?? t("opportunities.detailPage.transitionErrorDescription"),
       );
     } finally {
       setTransitioning(false);
@@ -236,14 +236,14 @@ const { t: tRoutes } = useTranslation("routes");
         setHandoffPreview(result.data);
         setOpportunity({ ...opportunity, status: "quotation" });
         showSuccessToast(
-          t("crm.opportunities.detailPage.handoffSuccessTitle"),
-          t("crm.opportunities.detailPage.handoffSuccessDescription", { name: result.data.opportunity_title }),
+          t("opportunities.detailPage.handoffSuccessTitle"),
+          t("opportunities.detailPage.handoffSuccessDescription", { name: result.data.opportunity_title }),
         );
         return;
       }
       showErrorToast(
-        t("crm.opportunities.detailPage.handoffErrorTitle"),
-        result.errors[0]?.message ?? t("crm.opportunities.detailPage.handoffErrorDescription"),
+        t("opportunities.detailPage.handoffErrorTitle"),
+        result.errors[0]?.message ?? t("opportunities.detailPage.handoffErrorDescription"),
       );
     } finally {
       setHandoffing(false);
@@ -251,17 +251,17 @@ const { t: tRoutes } = useTranslation("routes");
   }
 
   if (loading) {
-    return <p>{t("crm.opportunities.detailPage.loading")}</p>;
+    return <p>{t("opportunities.detailPage.loading")}</p>;
   }
 
   if (error || !opportunity) {
     return (
       <div className="space-y-6">
         <Button type="button" variant="outline" onClick={() => (onBack ? onBack() : navigate(CRM_OPPORTUNITIES_ROUTE))}>
-          {t("crm.opportunities.detailPage.backToList")}
+          {t("opportunities.detailPage.backToList")}
         </Button>
         <div className="rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert">
-          {error ?? t("crm.opportunities.detailPage.notFound")}
+          {error ?? t("opportunities.detailPage.notFound")}
         </div>
       </div>
     );
@@ -276,12 +276,12 @@ const { t: tRoutes } = useTranslation("routes");
           { label: tRoutes("crmOpportunities.label"), href: CRM_OPPORTUNITIES_ROUTE },
           { label: opportunity.opportunity_title },
         ]}
-        eyebrow={t("crm.opportunities.detailPage.eyebrow")}
+        eyebrow={t("opportunities.detailPage.eyebrow")}
         title={opportunity.opportunity_title}
         description={`${opportunity.party_label} · ${t(`crm.opportunities.statusValues.${opportunity.status}`)}`}
       />
 
-      <SectionCard title={t("crm.opportunities.detailPage.profileTitle")} description={t("crm.opportunities.detailPage.profileDescription")}>
+      <SectionCard title={t("opportunities.detailPage.profileTitle")} description={t("opportunities.detailPage.profileDescription")}>
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={STATUS_VARIANT[opportunity.status]} className="normal-case tracking-normal">
@@ -295,19 +295,19 @@ const { t: tRoutes } = useTranslation("routes");
             initialValues={initialFormValues}
             onSubmit={handleSave}
             serverErrors={serverErrors}
-            submitLabel={t("crm.opportunities.form.updateTitle")}
-            submittingLabel={t("crm.opportunities.form.updating")}
+            submitLabel={t("opportunities.form.updateTitle")}
+            submittingLabel={t("opportunities.form.updating")}
             submitting={updating}
             disabled={!canEditOpportunity}
           />
         </div>
       </SectionCard>
 
-      <SectionCard title={t("crm.opportunities.detailPage.lifecycleTitle")} description={t("crm.opportunities.detailPage.lifecycleDescription")}>
+      <SectionCard title={t("opportunities.detailPage.lifecycleTitle")} description={t("opportunities.detailPage.lifecycleDescription")}>
         <div className="space-y-4">
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <Field>
-              <FieldLabel htmlFor="opportunity-status-target">{t("crm.opportunities.detailPage.transitionStatus")}</FieldLabel>
+              <FieldLabel htmlFor="opportunity-status-target">{t("opportunities.detailPage.transitionStatus")}</FieldLabel>
               <select
                 id="opportunity-status-target"
                 className={SELECT_CLASS_NAME}
@@ -323,22 +323,22 @@ const { t: tRoutes } = useTranslation("routes");
               </select>
             </Field>
             <Button type="button" onClick={handleStatusTransition} disabled={!canEditOpportunity || transitioning || availableStatusOptions.length === 0}>
-              {transitioning ? t("crm.opportunities.detailPage.transitioning") : t("crm.opportunities.detailPage.transitionAction")}
+              {transitioning ? t("opportunities.detailPage.transitioning") : t("opportunities.detailPage.transitionAction")}
             </Button>
           </div>
 
           {statusTarget === "lost" ? (
             <div className="grid gap-4 sm:grid-cols-2">
               <Field>
-                <FieldLabel htmlFor="lost_reason">{t("crm.opportunities.detailPage.lostReason")}</FieldLabel>
+                <FieldLabel htmlFor="lost_reason">{t("opportunities.detailPage.lostReason")}</FieldLabel>
                 <Input id="lost_reason" value={lostReason} onChange={(event) => setLostReason(event.target.value)} />
               </Field>
               <Field>
-                <FieldLabel htmlFor="competitor_name">{t("crm.opportunities.detailPage.competitor")}</FieldLabel>
+                <FieldLabel htmlFor="competitor_name">{t("opportunities.detailPage.competitor")}</FieldLabel>
                 <Input id="competitor_name" value={competitorName} onChange={(event) => setCompetitorName(event.target.value)} />
               </Field>
               <Field className="sm:col-span-2">
-                <FieldLabel htmlFor="loss_notes">{t("crm.opportunities.detailPage.lossNotes")}</FieldLabel>
+                <FieldLabel htmlFor="loss_notes">{t("opportunities.detailPage.lossNotes")}</FieldLabel>
                 <Input id="loss_notes" value={lossNotes} onChange={(event) => setLossNotes(event.target.value)} />
               </Field>
             </div>
@@ -346,30 +346,30 @@ const { t: tRoutes } = useTranslation("routes");
         </div>
       </SectionCard>
 
-      <SectionCard title={t("crm.opportunities.detailPage.handoffTitle")} description={t("crm.opportunities.detailPage.handoffDescription")}>
+      <SectionCard title={t("opportunities.detailPage.handoffTitle")} description={t("opportunities.detailPage.handoffDescription")}>
         <div className="space-y-4">
           <Button type="button" onClick={handleQuotationHandoff} disabled={!canEditOpportunity || handoffing}>
-            {handoffing ? t("crm.opportunities.detailPage.handoffing") : t("crm.opportunities.detailPage.handoffAction")}
+            {handoffing ? t("opportunities.detailPage.handoffing") : t("opportunities.detailPage.handoffAction")}
           </Button>
           {handoffPreview ? (
             <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-4 text-sm">
-              <h3 className="font-semibold">{t("crm.opportunities.detailPage.handoffPreviewTitle")}</h3>
-              <p className="mt-1 text-muted-foreground">{t("crm.opportunities.detailPage.handoffPreviewDescription")}</p>
+              <h3 className="font-semibold">{t("opportunities.detailPage.handoffPreviewTitle")}</h3>
+              <p className="mt-1 text-muted-foreground">{t("opportunities.detailPage.handoffPreviewDescription")}</p>
               <dl className="mt-3 grid gap-3 sm:grid-cols-2">
                 <div>
-                  <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.opportunities.form.partyName")}</dt>
+                  <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("opportunities.form.partyName")}</dt>
                   <dd className="mt-1">{handoffPreview.party_label}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.opportunities.form.currency")}</dt>
+                  <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("opportunities.form.currency")}</dt>
                   <dd className="mt-1">{handoffPreview.currency}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.opportunities.form.amount")}</dt>
+                  <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("opportunities.form.amount")}</dt>
                   <dd className="mt-1">{handoffPreview.opportunity_amount ?? "-"}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.opportunities.form.contactPerson")}</dt>
+                  <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("opportunities.form.contactPerson")}</dt>
                   <dd className="mt-1">{handoffPreview.contact_person || "-"}</dd>
                 </div>
               </dl>
@@ -379,7 +379,7 @@ const { t: tRoutes } = useTranslation("routes");
                   variant="outline"
                   onClick={() => navigate(CRM_QUOTATION_CREATE_ROUTE, { state: { handoff: handoffPreview } })}
                 >
-                  {t("crm.opportunities.detailPage.createQuotation")}
+                  {t("opportunities.detailPage.createQuotation")}
                 </Button>
               </div>
             </div>

@@ -86,9 +86,9 @@ export function OpportunityForm({
   submitLabel,
   submittingLabel,
 }: OpportunityFormProps) {
-  const { t } = useTranslation("common");
-  const resolvedSubmitLabel = submitLabel ?? t("crm.opportunities.form.createTitle");
-  const resolvedSubmittingLabel = submittingLabel ?? t("crm.opportunities.form.creating");
+  const { t } = useTranslation("crm");
+  const resolvedSubmitLabel = submitLabel ?? t("opportunities.form.createTitle");
+  const resolvedSubmittingLabel = submittingLabel ?? t("opportunities.form.creating");
   const [leadOptions, setLeadOptions] = useState<LeadSummary[]>([]);
   const [customerOptions, setCustomerOptions] = useState<CustomerSummary[]>([]);
   const { salesStageOptions, territoryOptions, customerGroupOptions } = useCRMSetupBundle();
@@ -188,28 +188,28 @@ export function OpportunityForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field>
-          <FieldLabel htmlFor="opportunity_title">{t("crm.opportunities.form.title")} *</FieldLabel>
+          <FieldLabel htmlFor="opportunity_title">{t("opportunities.form.title")} *</FieldLabel>
           <Input id="opportunity_title" {...register("opportunity_title")} maxLength={200} aria-invalid={!!errors.opportunity_title} />
           <FieldError errors={errors.opportunity_title ? [{ message: t(errors.opportunity_title.message!) }] : []} />
         </Field>
         <Field>
-          <FieldLabel htmlFor="opportunity_from">{t("crm.opportunities.form.partyType")}</FieldLabel>
+          <FieldLabel htmlFor="opportunity_from">{t("opportunities.form.partyType")}</FieldLabel>
           <select id="opportunity_from" {...register("opportunity_from")} className={SELECT_CLASS_NAME}>
-            <option value="lead">{t("crm.opportunities.partyValues.lead")}</option>
-            <option value="customer">{t("crm.opportunities.partyValues.customer")}</option>
-            <option value="prospect">{t("crm.opportunities.partyValues.prospect")}</option>
+            <option value="lead">{t("opportunities.partyValues.lead")}</option>
+            <option value="customer">{t("opportunities.partyValues.customer")}</option>
+            <option value="prospect">{t("opportunities.partyValues.prospect")}</option>
           </select>
         </Field>
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field>
-          <FieldLabel htmlFor="party_name">{t("crm.opportunities.form.partyName")}</FieldLabel>
+          <FieldLabel htmlFor="party_name">{t("opportunities.form.partyName")}</FieldLabel>
           {currentPartyType === "prospect" ? (
             <Input id="party_name" {...register("party_name")} maxLength={200} aria-invalid={!!errors.party_name} />
           ) : (
             <select id="party_name" {...register("party_name")} className={SELECT_CLASS_NAME}>
-              <option value="">{t("crm.opportunities.form.selectParty")}</option>
+              <option value="">{t("opportunities.form.selectParty")}</option>
               {currentPartyValue && !partyOptions.some((option) => option.value === currentPartyValue) ? (
                 <option value={currentPartyValue}>{currentPartyLabel}</option>
               ) : null}
@@ -221,7 +221,7 @@ export function OpportunityForm({
           <FieldError errors={errors.party_name ? [{ message: t(errors.party_name.message!) }] : []} />
         </Field>
         <Field>
-          <FieldLabel htmlFor="sales_stage">{t("crm.opportunities.form.salesStage")}</FieldLabel>
+          <FieldLabel htmlFor="sales_stage">{t("opportunities.form.salesStage")}</FieldLabel>
           <select id="sales_stage" {...register("sales_stage")} className={SELECT_CLASS_NAME} aria-invalid={!!errors.sales_stage}>
             {currentSalesStage && !salesStageOptions.some((option) => option.name === currentSalesStage) ? (
               <option value={currentSalesStage}>{currentSalesStage}</option>
@@ -236,22 +236,22 @@ export function OpportunityForm({
 
       <div className="grid gap-5 sm:grid-cols-4">
         <Field>
-          <FieldLabel htmlFor="probability">{t("crm.opportunities.form.probability")}</FieldLabel>
+          <FieldLabel htmlFor="probability">{t("opportunities.form.probability")}</FieldLabel>
           <Input id="probability" type="number" min="0" max="100" step="1" {...register("probability")} aria-invalid={!!errors.probability} />
           <FieldError errors={errors.probability ? [{ message: t(errors.probability.message!) }] : []} />
         </Field>
         <Field>
-          <FieldLabel htmlFor="expected_closing">{t("crm.opportunities.form.expectedClosing")}</FieldLabel>
+          <FieldLabel htmlFor="expected_closing">{t("opportunities.form.expectedClosing")}</FieldLabel>
           <Input id="expected_closing" type="date" {...register("expected_closing")} aria-invalid={!!errors.expected_closing} />
           <FieldError errors={errors.expected_closing ? [{ message: t(errors.expected_closing.message!) }] : []} />
         </Field>
         <Field>
-          <FieldLabel htmlFor="currency">{t("crm.opportunities.form.currency")}</FieldLabel>
+          <FieldLabel htmlFor="currency">{t("opportunities.form.currency")}</FieldLabel>
           <Input id="currency" {...register("currency")} maxLength={3} aria-invalid={!!errors.currency} />
           <FieldError errors={errors.currency ? [{ message: t(errors.currency.message!) }] : []} />
         </Field>
         <Field>
-          <FieldLabel htmlFor="opportunity_amount">{t("crm.opportunities.form.amount")}</FieldLabel>
+          <FieldLabel htmlFor="opportunity_amount">{t("opportunities.form.amount")}</FieldLabel>
           <Input id="opportunity_amount" type="number" min="0" step="0.01" {...register("opportunity_amount")} aria-invalid={!!errors.opportunity_amount} />
           <FieldError errors={errors.opportunity_amount ? [{ message: t(errors.opportunity_amount.message!) }] : []} />
         </Field>
@@ -259,14 +259,14 @@ export function OpportunityForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field>
-          <FieldLabel htmlFor="opportunity_owner">{t("crm.opportunities.form.owner")}</FieldLabel>
+          <FieldLabel htmlFor="opportunity_owner">{t("opportunities.form.owner")}</FieldLabel>
           <Input id="opportunity_owner" {...register("opportunity_owner")} maxLength={120} aria-invalid={!!errors.opportunity_owner} />
           <FieldError errors={errors.opportunity_owner ? [{ message: t(errors.opportunity_owner.message!) }] : []} />
         </Field>
         <Field>
-          <FieldLabel htmlFor="territory">{t("crm.opportunities.form.territory")}</FieldLabel>
+          <FieldLabel htmlFor="territory">{t("opportunities.form.territory")}</FieldLabel>
           <select id="territory" {...register("territory")} className={SELECT_CLASS_NAME} aria-invalid={!!errors.territory}>
-            <option value="">{t("crm.setup.selectPlaceholder")}</option>
+            <option value="">{t("setup.selectPlaceholder")}</option>
             {currentTerritory && !territoryOptions.some((option) => option.name === currentTerritory) ? (
               <option value={currentTerritory}>{currentTerritory}</option>
             ) : null}
@@ -280,9 +280,9 @@ export function OpportunityForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field>
-          <FieldLabel htmlFor="customer_group">{t("crm.opportunities.form.customerGroup")}</FieldLabel>
+          <FieldLabel htmlFor="customer_group">{t("opportunities.form.customerGroup")}</FieldLabel>
           <select id="customer_group" {...register("customer_group")} className={SELECT_CLASS_NAME} aria-invalid={!!errors.customer_group}>
-            <option value="">{t("crm.setup.selectPlaceholder")}</option>
+            <option value="">{t("setup.selectPlaceholder")}</option>
             {currentCustomerGroup && !customerGroupOptions.some((option) => option.name === currentCustomerGroup) ? (
               <option value={currentCustomerGroup}>{currentCustomerGroup}</option>
             ) : null}
@@ -293,7 +293,7 @@ export function OpportunityForm({
           <FieldError errors={errors.customer_group ? [{ message: t(errors.customer_group.message!) }] : []} />
         </Field>
         <Field>
-          <FieldLabel htmlFor="job_title">{t("crm.opportunities.form.jobTitle")}</FieldLabel>
+          <FieldLabel htmlFor="job_title">{t("opportunities.form.jobTitle")}</FieldLabel>
           <Input id="job_title" {...register("job_title")} maxLength={120} aria-invalid={!!errors.job_title} />
           <FieldError errors={errors.job_title ? [{ message: t(errors.job_title.message!) }] : []} />
         </Field>
@@ -301,17 +301,17 @@ export function OpportunityForm({
 
       <div className="grid gap-5 sm:grid-cols-3">
         <Field>
-          <FieldLabel htmlFor="contact_person">{t("crm.opportunities.form.contactPerson")}</FieldLabel>
+          <FieldLabel htmlFor="contact_person">{t("opportunities.form.contactPerson")}</FieldLabel>
           <Input id="contact_person" {...register("contact_person")} maxLength={120} aria-invalid={!!errors.contact_person} />
           <FieldError errors={errors.contact_person ? [{ message: t(errors.contact_person.message!) }] : []} />
         </Field>
         <Field>
-          <FieldLabel htmlFor="contact_email">{t("crm.opportunities.form.contactEmail")}</FieldLabel>
+          <FieldLabel htmlFor="contact_email">{t("opportunities.form.contactEmail")}</FieldLabel>
           <Input id="contact_email" type="email" {...register("contact_email")} maxLength={254} aria-invalid={!!errors.contact_email} />
           <FieldError errors={errors.contact_email ? [{ message: t(errors.contact_email.message!) }] : []} />
         </Field>
         <Field>
-          <FieldLabel htmlFor="contact_mobile">{t("crm.opportunities.form.contactMobile")}</FieldLabel>
+          <FieldLabel htmlFor="contact_mobile">{t("opportunities.form.contactMobile")}</FieldLabel>
           <Input id="contact_mobile" {...register("contact_mobile")} maxLength={30} aria-invalid={!!errors.contact_mobile} />
           <FieldError errors={errors.contact_mobile ? [{ message: t(errors.contact_mobile.message!) }] : []} />
         </Field>
@@ -319,12 +319,12 @@ export function OpportunityForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field>
-          <FieldLabel htmlFor="utm_source">{t("crm.opportunities.form.utmSource")}</FieldLabel>
+          <FieldLabel htmlFor="utm_source">{t("opportunities.form.utmSource")}</FieldLabel>
           <Input id="utm_source" {...register("utm_source")} maxLength={120} aria-invalid={!!errors.utm_source} />
           <FieldError errors={errors.utm_source ? [{ message: t(errors.utm_source.message!) }] : []} />
         </Field>
         <Field>
-          <FieldLabel htmlFor="utm_medium">{t("crm.opportunities.form.utmMedium")}</FieldLabel>
+          <FieldLabel htmlFor="utm_medium">{t("opportunities.form.utmMedium")}</FieldLabel>
           <Input id="utm_medium" {...register("utm_medium")} maxLength={120} aria-invalid={!!errors.utm_medium} />
           <FieldError errors={errors.utm_medium ? [{ message: t(errors.utm_medium.message!) }] : []} />
         </Field>
@@ -332,12 +332,12 @@ export function OpportunityForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field>
-          <FieldLabel htmlFor="utm_campaign">{t("crm.opportunities.form.utmCampaign")}</FieldLabel>
+          <FieldLabel htmlFor="utm_campaign">{t("opportunities.form.utmCampaign")}</FieldLabel>
           <Input id="utm_campaign" {...register("utm_campaign")} maxLength={120} aria-invalid={!!errors.utm_campaign} />
           <FieldError errors={errors.utm_campaign ? [{ message: t(errors.utm_campaign.message!) }] : []} />
         </Field>
         <Field>
-          <FieldLabel htmlFor="utm_content">{t("crm.opportunities.form.utmContent")}</FieldLabel>
+          <FieldLabel htmlFor="utm_content">{t("opportunities.form.utmContent")}</FieldLabel>
           <Input id="utm_content" {...register("utm_content")} maxLength={200} aria-invalid={!!errors.utm_content} />
           <FieldError errors={errors.utm_content ? [{ message: t(errors.utm_content.message!) }] : []} />
         </Field>
@@ -346,8 +346,8 @@ export function OpportunityForm({
       <div className="space-y-4 rounded-xl border border-border/70 bg-muted/20 p-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h3 className="text-base font-semibold">{t("crm.opportunities.form.itemsTitle")}</h3>
-            <p className="text-sm text-muted-foreground">{t("crm.opportunities.form.itemsDescription")}</p>
+            <h3 className="text-base font-semibold">{t("opportunities.form.itemsTitle")}</h3>
+            <p className="text-sm text-muted-foreground">{t("opportunities.form.itemsDescription")}</p>
           </div>
           <Button
             type="button"
@@ -355,29 +355,29 @@ export function OpportunityForm({
             size="sm"
             onClick={() => append({ item_name: "", item_code: "", description: "", quantity: "1", unit_price: "0.00" })}
           >
-            {t("crm.opportunities.form.addItem")}
+            {t("opportunities.form.addItem")}
           </Button>
         </div>
 
         {fields.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("crm.opportunities.form.itemsEmpty")}</p>
+          <p className="text-sm text-muted-foreground">{t("opportunities.form.itemsEmpty")}</p>
         ) : null}
 
         {fields.map((field, index) => (
           <div key={field.id} className="space-y-4 rounded-xl border border-border/70 bg-background px-4 py-4">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Field className="lg:col-span-2">
-                <FieldLabel htmlFor={`items.${index}.item_name`}>{t("crm.opportunities.form.itemName")}</FieldLabel>
+                <FieldLabel htmlFor={`items.${index}.item_name`}>{t("opportunities.form.itemName")}</FieldLabel>
                 <Input id={`items.${index}.item_name`} {...register(`items.${index}.item_name`)} aria-invalid={!!errors.items?.[index]?.item_name} />
                 <FieldError errors={errors.items?.[index]?.item_name ? [{ message: t(errors.items[index]!.item_name!.message!) }] : []} />
               </Field>
               <Field>
-                <FieldLabel htmlFor={`items.${index}.quantity`}>{t("crm.opportunities.form.quantity")}</FieldLabel>
+                <FieldLabel htmlFor={`items.${index}.quantity`}>{t("opportunities.form.quantity")}</FieldLabel>
                 <Input id={`items.${index}.quantity`} type="number" min="0.01" step="0.01" {...register(`items.${index}.quantity`)} aria-invalid={!!errors.items?.[index]?.quantity} />
                 <FieldError errors={errors.items?.[index]?.quantity ? [{ message: t(errors.items[index]!.quantity!.message!) }] : []} />
               </Field>
               <Field>
-                <FieldLabel htmlFor={`items.${index}.unit_price`}>{t("crm.opportunities.form.unitPrice")}</FieldLabel>
+                <FieldLabel htmlFor={`items.${index}.unit_price`}>{t("opportunities.form.unitPrice")}</FieldLabel>
                 <Input id={`items.${index}.unit_price`} type="number" min="0" step="0.01" {...register(`items.${index}.unit_price`)} aria-invalid={!!errors.items?.[index]?.unit_price} />
                 <FieldError errors={errors.items?.[index]?.unit_price ? [{ message: t(errors.items[index]!.unit_price!.message!) }] : []} />
               </Field>
@@ -385,12 +385,12 @@ export function OpportunityForm({
 
             <div className="grid gap-4 sm:grid-cols-2">
               <Field>
-                <FieldLabel htmlFor={`items.${index}.item_code`}>{t("crm.opportunities.form.itemCode")}</FieldLabel>
+                <FieldLabel htmlFor={`items.${index}.item_code`}>{t("opportunities.form.itemCode")}</FieldLabel>
                 <Input id={`items.${index}.item_code`} {...register(`items.${index}.item_code`)} aria-invalid={!!errors.items?.[index]?.item_code} />
                 <FieldError errors={errors.items?.[index]?.item_code ? [{ message: t(errors.items[index]!.item_code!.message!) }] : []} />
               </Field>
               <Field>
-                <FieldLabel htmlFor={`items.${index}.description`}>{t("crm.opportunities.form.itemDescription")}</FieldLabel>
+                <FieldLabel htmlFor={`items.${index}.description`}>{t("opportunities.form.itemDescription")}</FieldLabel>
                 <Input id={`items.${index}.description`} {...register(`items.${index}.description`)} aria-invalid={!!errors.items?.[index]?.description} />
                 <FieldError errors={errors.items?.[index]?.description ? [{ message: t(errors.items[index]!.description!.message!) }] : []} />
               </Field>
@@ -398,7 +398,7 @@ export function OpportunityForm({
 
             <div className="flex justify-end">
               <Button type="button" variant="ghost" size="sm" onClick={() => remove(index)}>
-                {t("crm.opportunities.form.removeItem")}
+                {t("opportunities.form.removeItem")}
               </Button>
             </div>
           </div>
@@ -406,7 +406,7 @@ export function OpportunityForm({
       </div>
 
       <Field>
-        <FieldLabel htmlFor="notes">{t("crm.opportunities.form.notes")}</FieldLabel>
+        <FieldLabel htmlFor="notes">{t("opportunities.form.notes")}</FieldLabel>
         <Textarea id="notes" {...register("notes")} maxLength={4000} aria-invalid={!!errors.notes} />
         <FieldError errors={errors.notes ? [{ message: t(errors.notes.message!) }] : []} />
       </Field>

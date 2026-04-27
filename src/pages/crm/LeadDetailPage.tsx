@@ -102,7 +102,7 @@ function defaultConversionPlan(): ConversionPlanState {
 export function LeadDetailPage({ onBack }: LeadDetailPageProps) {
   const { leadId } = useParams<{ leadId: string }>();
   const navigate = useNavigate();
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("crm");
 const { t: tRoutes } = useTranslation("routes");
   const { canWrite } = usePermissions();
   const { error: showErrorToast, success: showSuccessToast } = useToast();
@@ -130,7 +130,7 @@ const { t: tRoutes } = useTranslation("routes");
 
   useEffect(() => {
     if (!leadId) {
-      setError(t("crm.detailPage.notFound"));
+      setError(t("detailPage.notFound"));
       setLoading(false);
       return;
     }
@@ -145,7 +145,7 @@ const { t: tRoutes } = useTranslation("routes");
         }
         if (!data) {
           setLead(null);
-          setError(t("crm.detailPage.notFound"));
+          setError(t("detailPage.notFound"));
           setLoading(false);
           return;
         }
@@ -165,7 +165,7 @@ const { t: tRoutes } = useTranslation("routes");
       .catch((loadError: unknown) => {
         if (!cancelled) {
           setLead(null);
-          setError(loadError instanceof Error ? loadError.message : t("crm.listPage.loadError"));
+          setError(loadError instanceof Error ? loadError.message : t("listPage.loadError"));
           setLoading(false);
         }
       });
@@ -234,8 +234,8 @@ const { t: tRoutes } = useTranslation("routes");
       if (result.ok) {
         setLead(result.data);
         showSuccessToast(
-          t("crm.detailPage.toast.updateSuccessTitle"),
-          t("crm.detailPage.toast.updateSuccessDescription", { name: result.data.lead_name }),
+          t("detailPage.toast.updateSuccessTitle"),
+          t("detailPage.toast.updateSuccessDescription", { name: result.data.lead_name }),
         );
         return;
       }
@@ -251,14 +251,14 @@ const { t: tRoutes } = useTranslation("routes");
           setLead(latest);
         }
         setServerErrors([{ field: "", message: VERSION_CONFLICT_MESSAGE }]);
-        showErrorToast(t("crm.detailPage.toast.updateErrorTitle"), VERSION_CONFLICT_MESSAGE);
+        showErrorToast(t("detailPage.toast.updateErrorTitle"), VERSION_CONFLICT_MESSAGE);
         return;
       }
 
       setServerErrors(result.errors);
       showErrorToast(
-        t("crm.detailPage.toast.updateErrorTitle"),
-        result.errors[0]?.message ?? t("crm.detailPage.toast.updateErrorDescription"),
+        t("detailPage.toast.updateErrorTitle"),
+        result.errors[0]?.message ?? t("detailPage.toast.updateErrorDescription"),
       );
     } finally {
       setUpdating(false);
@@ -275,16 +275,16 @@ const { t: tRoutes } = useTranslation("routes");
       if (result.ok) {
         setLead(result.data);
         showSuccessToast(
-          t("crm.detailPage.transitionSuccessTitle"),
-          t("crm.detailPage.transitionSuccessDescription", {
+          t("detailPage.transitionSuccessTitle"),
+          t("detailPage.transitionSuccessDescription", {
             status: t(`crm.statusValues.${result.data.status}`),
           }),
         );
         return;
       }
       showErrorToast(
-        t("crm.detailPage.transitionErrorTitle"),
-        result.errors[0]?.message ?? t("crm.detailPage.transitionErrorDescription"),
+        t("detailPage.transitionErrorTitle"),
+        result.errors[0]?.message ?? t("detailPage.transitionErrorDescription"),
       );
     } finally {
       setTransitioning(false);
@@ -302,14 +302,14 @@ const { t: tRoutes } = useTranslation("routes");
         setHandoffPreview(result.data);
         setLead({ ...lead, status: "opportunity" });
         showSuccessToast(
-          t("crm.detailPage.handoffSuccessTitle"),
-          t("crm.detailPage.handoffSuccessDescription", { name: result.data.lead_name }),
+          t("detailPage.handoffSuccessTitle"),
+          t("detailPage.handoffSuccessDescription", { name: result.data.lead_name }),
         );
         return;
       }
       showErrorToast(
-        t("crm.detailPage.handoffErrorTitle"),
-        result.errors[0]?.message ?? t("crm.detailPage.handoffErrorDescription"),
+        t("detailPage.handoffErrorTitle"),
+        result.errors[0]?.message ?? t("detailPage.handoffErrorDescription"),
       );
     } finally {
       setHandoffing(false);
@@ -352,14 +352,14 @@ const { t: tRoutes } = useTranslation("routes");
           },
         ]);
         showSuccessToast(
-          t("crm.detailPage.convertSuccessTitle"),
-          t("crm.detailPage.convertSuccessDescription", { customerId: result.data.customer_id }),
+          t("detailPage.convertSuccessTitle"),
+          t("detailPage.convertSuccessDescription", { customerId: result.data.customer_id }),
         );
         return;
       }
       showErrorToast(
-        t("crm.detailPage.convertErrorTitle"),
-        result.errors[0]?.message ?? t("crm.detailPage.convertErrorDescription"),
+        t("detailPage.convertErrorTitle"),
+        result.errors[0]?.message ?? t("detailPage.convertErrorDescription"),
       );
     } finally {
       setConverting(false);
@@ -410,8 +410,8 @@ const { t: tRoutes } = useTranslation("routes");
     const hasImmediateTargets = conversionPlan.customer || conversionPlan.opportunity;
     if (!hasImmediateTargets && !conversionPlan.quotation) {
       showErrorToast(
-        t("crm.detailPage.planErrorTitle"),
-        t("crm.detailPage.planSelectTargetError"),
+        t("detailPage.planErrorTitle"),
+        t("detailPage.planSelectTargetError"),
       );
       return;
     }
@@ -443,8 +443,8 @@ const { t: tRoutes } = useTranslation("routes");
       const result = await convertLead(lead.id, payload);
       if (!result.ok) {
         showErrorToast(
-          t("crm.detailPage.planErrorTitle"),
-          result.errors[0]?.message ?? t("crm.detailPage.planErrorDescription"),
+          t("detailPage.planErrorTitle"),
+          result.errors[0]?.message ?? t("detailPage.planErrorDescription"),
         );
         return;
       }
@@ -465,15 +465,15 @@ const { t: tRoutes } = useTranslation("routes");
       const failedStep = result.data.steps.find((step) => step.outcome === "failed");
       if (failedStep) {
         showErrorToast(
-          t("crm.detailPage.planPartialTitle"),
-          failedStep.errors[0]?.message ?? t("crm.detailPage.planPartialDescription"),
+          t("detailPage.planPartialTitle"),
+          failedStep.errors[0]?.message ?? t("detailPage.planPartialDescription"),
         );
         return;
       }
 
       showSuccessToast(
-        t("crm.detailPage.planSuccessTitle"),
-        t("crm.detailPage.planSuccessDescription"),
+        t("detailPage.planSuccessTitle"),
+        t("detailPage.planSuccessDescription"),
       );
       if (conversionPlan.quotation) {
         navigate(createQuotationPath);
@@ -484,17 +484,17 @@ const { t: tRoutes } = useTranslation("routes");
   }
 
   if (loading) {
-    return <p>{t("crm.detailPage.loading")}</p>;
+    return <p>{t("detailPage.loading")}</p>;
   }
 
   if (error || !lead) {
     return (
       <div className="space-y-6">
         <Button type="button" variant="outline" onClick={() => (onBack ? onBack() : navigate(CRM_LEADS_ROUTE))}>
-          {t("crm.detailPage.backToList")}
+          {t("detailPage.backToList")}
         </Button>
         <div className="rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert">
-          {error ?? t("crm.detailPage.notFound")}
+          {error ?? t("detailPage.notFound")}
         </div>
       </div>
     );
@@ -519,12 +519,12 @@ const { t: tRoutes } = useTranslation("routes");
           { label: tRoutes("crmLeads.label"), href: CRM_LEADS_ROUTE },
           { label: lead.company_name || lead.lead_name },
         ]}
-        eyebrow={t("crm.detailPage.eyebrow")}
+        eyebrow={t("detailPage.eyebrow")}
         title={lead.company_name || lead.lead_name}
         description={`${t(`crm.statusValues.${lead.status}`)} · ${t(`crm.qualificationValues.${lead.qualification_status}`)}`}
       />
 
-      <SectionCard title={t("crm.detailPage.profileTitle")} description={t("crm.detailPage.profileDescription")}>
+      <SectionCard title={t("detailPage.profileTitle")} description={t("detailPage.profileDescription")}>
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={STATUS_VARIANT[lead.status]} className="normal-case tracking-normal">
@@ -545,18 +545,18 @@ const { t: tRoutes } = useTranslation("routes");
             initialValues={initialFormValues}
             onSubmit={handleSave}
             serverErrors={serverErrors}
-            submitLabel={t("crm.form.updateTitle")}
-            submittingLabel={t("crm.form.updating")}
+            submitLabel={t("form.updateTitle")}
+            submittingLabel={t("form.updating")}
             submitting={updating}
             disabled={!canEditLead}
           />
         </div>
       </SectionCard>
 
-      <SectionCard title={t("crm.detailPage.lifecycleTitle")} description={t("crm.detailPage.lifecycleDescription")}>
+      <SectionCard title={t("detailPage.lifecycleTitle")} description={t("detailPage.lifecycleDescription")}>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <Field>
-            <FieldLabel htmlFor="lead-status-target">{t("crm.detailPage.transitionStatus")}</FieldLabel>
+            <FieldLabel htmlFor="lead-status-target">{t("detailPage.transitionStatus")}</FieldLabel>
             <select
               id="lead-status-target"
               className={SELECT_CLASS_NAME}
@@ -572,43 +572,43 @@ const { t: tRoutes } = useTranslation("routes");
             </select>
           </Field>
           <Button type="button" onClick={handleStatusTransition} disabled={!canEditLead || transitioning || availableStatusOptions.length === 0}>
-            {transitioning ? t("crm.detailPage.transitioning") : t("crm.detailPage.transitionAction")}
+            {transitioning ? t("detailPage.transitioning") : t("detailPage.transitionAction")}
           </Button>
         </div>
       </SectionCard>
 
-      <SectionCard title={t("crm.detailPage.handoffTitle")} description={t("crm.detailPage.handoffDescription")}>
+      <SectionCard title={t("detailPage.handoffTitle")} description={t("detailPage.handoffDescription")}>
         <div className="space-y-4">
           <div className="flex flex-wrap gap-3">
             <Button type="button" onClick={handleOpportunityHandoff} disabled={!canUseOpportunityHandoff || handoffing}>
-              {handoffing ? t("crm.detailPage.handoffing") : t("crm.detailPage.handoffAction")}
+              {handoffing ? t("detailPage.handoffing") : t("detailPage.handoffAction")}
             </Button>
             <Button type="button" variant="outline" onClick={() => navigate(createOpportunityPath)} disabled={!canAdvanceLead}>
-              {t("crm.detailPage.createOpportunity")}
+              {t("detailPage.createOpportunity")}
             </Button>
             <Button type="button" variant="outline" onClick={() => navigate(createQuotationPath)} disabled={!canAdvanceLead}>
-              {t("crm.detailPage.createQuotation")}
+              {t("detailPage.createQuotation")}
             </Button>
           </div>
           {handoffPreview ? (
             <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-4 text-sm">
-              <h3 className="font-semibold">{t("crm.detailPage.handoffPreviewTitle")}</h3>
-              <p className="mt-1 text-muted-foreground">{t("crm.detailPage.handoffPreviewDescription")}</p>
+              <h3 className="font-semibold">{t("detailPage.handoffPreviewTitle")}</h3>
+              <p className="mt-1 text-muted-foreground">{t("detailPage.handoffPreviewDescription")}</p>
               <dl className="mt-3 grid gap-3 sm:grid-cols-2">
                 <div>
-                  <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.form.owner")}</dt>
+                  <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("form.owner")}</dt>
                   <dd className="mt-1">{handoffPreview.lead_owner || "-"}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.form.territory")}</dt>
+                  <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("form.territory")}</dt>
                   <dd className="mt-1">{handoffPreview.territory || "-"}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.form.utmCampaign")}</dt>
+                  <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("form.utmCampaign")}</dt>
                   <dd className="mt-1">{handoffPreview.utm_campaign || "-"}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.form.source")}</dt>
+                  <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("form.source")}</dt>
                   <dd className="mt-1">{handoffPreview.source || "-"}</dd>
                 </div>
               </dl>
@@ -617,10 +617,10 @@ const { t: tRoutes } = useTranslation("routes");
         </div>
       </SectionCard>
 
-      <SectionCard title={t("crm.detailPage.convertTitle")} description={t("crm.detailPage.convertDescription")}>
+      <SectionCard title={t("detailPage.convertTitle")} description={t("detailPage.convertDescription")}>
         <div className="mb-5 rounded-xl border border-border/70 bg-background/40 p-4">
-          <h3 className="font-semibold text-foreground">{t("crm.detailPage.planTitle")}</h3>
-          <p className="mt-1 text-sm text-muted-foreground">{t("crm.detailPage.planDescription")}</p>
+          <h3 className="font-semibold text-foreground">{t("detailPage.planTitle")}</h3>
+          <p className="mt-1 text-sm text-muted-foreground">{t("detailPage.planDescription")}</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             {(["customer", "opportunity", "quotation"] as Array<keyof ConversionPlanState>).map((target) => (
               <label key={target} className="flex items-start gap-3 rounded-xl border border-border/70 bg-background/50 px-3 py-3 text-sm">
@@ -639,12 +639,12 @@ const { t: tRoutes } = useTranslation("routes");
           </div>
           <div className="mt-4 flex flex-wrap gap-3">
             <Button type="button" variant="outline" onClick={handleRunConversionPlan} disabled={!canAdvanceLead || runningPlan}>
-              {runningPlan ? t("crm.detailPage.planRunning") : t("crm.detailPage.planAction")}
+              {runningPlan ? t("detailPage.planRunning") : t("detailPage.planAction")}
             </Button>
           </div>
           {conversionPlanSteps.length ? (
             <div className="mt-4 space-y-3 rounded-xl border border-border/70 bg-muted/20 p-4 text-sm">
-              <h4 className="font-semibold text-foreground">{t("crm.detailPage.planResultsTitle")}</h4>
+              <h4 className="font-semibold text-foreground">{t("detailPage.planResultsTitle")}</h4>
               {conversionPlanSteps.map((step) => (
                 <div key={`${step.target}-${step.record_id ?? step.outcome}`} className="rounded-lg border border-border/60 bg-background/50 px-3 py-3">
                   <p className="font-medium text-foreground">
@@ -663,7 +663,7 @@ const { t: tRoutes } = useTranslation("routes");
         </div>
         <div className="grid gap-5 sm:grid-cols-2">
           <Field>
-            <FieldLabel htmlFor="convert-business-number">{t("crm.detailPage.convertBusinessNumber")}</FieldLabel>
+            <FieldLabel htmlFor="convert-business-number">{t("detailPage.convertBusinessNumber")}</FieldLabel>
             <Input
               id="convert-business-number"
               value={conversionForm.business_number}
@@ -671,7 +671,7 @@ const { t: tRoutes } = useTranslation("routes");
             />
           </Field>
           <Field>
-            <FieldLabel htmlFor="convert-contact-name">{t("crm.detailPage.convertContactName")}</FieldLabel>
+            <FieldLabel htmlFor="convert-contact-name">{t("detailPage.convertContactName")}</FieldLabel>
             <Input
               id="convert-contact-name"
               value={conversionForm.contact_name}
@@ -679,7 +679,7 @@ const { t: tRoutes } = useTranslation("routes");
             />
           </Field>
           <Field>
-            <FieldLabel htmlFor="convert-contact-phone">{t("crm.detailPage.convertContactPhone")}</FieldLabel>
+            <FieldLabel htmlFor="convert-contact-phone">{t("detailPage.convertContactPhone")}</FieldLabel>
             <Input
               id="convert-contact-phone"
               value={conversionForm.contact_phone}
@@ -687,7 +687,7 @@ const { t: tRoutes } = useTranslation("routes");
             />
           </Field>
           <Field>
-            <FieldLabel htmlFor="convert-contact-email">{t("crm.detailPage.convertContactEmail")}</FieldLabel>
+            <FieldLabel htmlFor="convert-contact-email">{t("detailPage.convertContactEmail")}</FieldLabel>
             <Input
               id="convert-contact-email"
               value={conversionForm.contact_email}
@@ -695,7 +695,7 @@ const { t: tRoutes } = useTranslation("routes");
             />
           </Field>
           <Field className="sm:col-span-2">
-            <FieldLabel htmlFor="convert-billing-address">{t("crm.detailPage.convertBillingAddress")}</FieldLabel>
+            <FieldLabel htmlFor="convert-billing-address">{t("detailPage.convertBillingAddress")}</FieldLabel>
             <Input
               id="convert-billing-address"
               value={conversionForm.billing_address}
@@ -705,45 +705,45 @@ const { t: tRoutes } = useTranslation("routes");
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <Button type="button" onClick={handleConvertToCustomer} disabled={!canAdvanceLead || converting}>
-            {converting ? t("crm.detailPage.converting") : t("crm.detailPage.convertAction")}
+            {converting ? t("detailPage.converting") : t("detailPage.convertAction")}
           </Button>
         </div>
         {(lead.converted_customer_id || lead.converted_opportunity_id || lead.converted_quotation_id || lead.converted_at) ? (
           <div className="mt-4 rounded-xl border border-border/70 bg-muted/20 px-4 py-4 text-sm">
-            <h3 className="font-semibold">{t("crm.detailPage.conversionSummaryTitle")}</h3>
-            <p className="mt-1 text-muted-foreground">{t("crm.detailPage.conversionSummaryDescription")}</p>
+            <h3 className="font-semibold">{t("detailPage.conversionSummaryTitle")}</h3>
+            <p className="mt-1 text-muted-foreground">{t("detailPage.conversionSummaryDescription")}</p>
             <dl className="mt-3 grid gap-3 sm:grid-cols-2">
               <div>
-                <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.detailPage.conversionState")}</dt>
+                <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detailPage.conversionState")}</dt>
                 <dd className="mt-1">{t(`crm.conversionStateValues.${lead.conversion_state}`)}</dd>
               </div>
               <div>
-                <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.detailPage.conversionPath")}</dt>
+                <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detailPage.conversionPath")}</dt>
                 <dd className="mt-1">{conversionPathLabel}</dd>
               </div>
               <div>
-                <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.detailPage.convertedAt")}</dt>
+                <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detailPage.convertedAt")}</dt>
                 <dd className="mt-1">{lead.converted_at ? new Date(lead.converted_at).toLocaleString() : "-"}</dd>
               </div>
               <div>
-                <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.detailPage.convertedBy")}</dt>
+                <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detailPage.convertedBy")}</dt>
                 <dd className="mt-1">{lead.converted_by || "-"}</dd>
               </div>
             </dl>
             <div className="mt-4 flex flex-wrap gap-3">
               {lead.converted_customer_id ? (
                 <Button type="button" variant="outline" onClick={() => navigate(buildCustomerDetailPath(lead.converted_customer_id!))}>
-                  {t("crm.detailPage.viewCustomer")}
+                  {t("detailPage.viewCustomer")}
                 </Button>
               ) : null}
               {lead.converted_opportunity_id ? (
                 <Button type="button" variant="outline" onClick={() => navigate(buildOpportunityDetailPath(lead.converted_opportunity_id!))}>
-                  {t("crm.detailPage.viewOpportunity")}
+                  {t("detailPage.viewOpportunity")}
                 </Button>
               ) : null}
               {lead.converted_quotation_id ? (
                 <Button type="button" variant="outline" onClick={() => navigate(buildQuotationDetailPath(lead.converted_quotation_id!))}>
-                  {t("crm.detailPage.viewQuotation")}
+                  {t("detailPage.viewQuotation")}
                 </Button>
               ) : null}
             </div>

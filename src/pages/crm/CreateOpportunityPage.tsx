@@ -48,7 +48,7 @@ export interface CreateOpportunityPageProps {
 }
 
 export default function CreateOpportunityPage({ onNavigate }: CreateOpportunityPageProps) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("crm");
 const { t: tRoutes } = useTranslation("routes");
   const location = useLocation();
   const { error: showErrorToast, success: showSuccessToast } = useToast();
@@ -66,15 +66,15 @@ const { t: tRoutes } = useTranslation("routes");
       if (result.ok) {
         setCreatedId(result.data.id);
         showSuccessToast(
-          t("crm.opportunities.createPage.toast.successTitle"),
-          t("crm.opportunities.createPage.toast.successDescription", { name: result.data.opportunity_title }),
+          t("opportunities.createPage.toast.successTitle"),
+          t("opportunities.createPage.toast.successDescription", { name: result.data.opportunity_title }),
         );
         return;
       }
       setServerErrors(result.errors);
       showErrorToast(
-        t("crm.opportunities.createPage.toast.errorTitle"),
-        result.errors[0]?.message ?? t("crm.opportunities.createPage.toast.errorDescription"),
+        t("opportunities.createPage.toast.errorTitle"),
+        result.errors[0]?.message ?? t("opportunities.createPage.toast.errorDescription"),
       );
     } finally {
       setSubmitting(false);
@@ -89,13 +89,13 @@ const { t: tRoutes } = useTranslation("routes");
             { label: tRoutes("crmOpportunities.label"), href: CRM_OPPORTUNITIES_ROUTE as AppRoute },
             { label: tRoutes("createOpportunity.label") },
           ]}
-          eyebrow={t("crm.opportunities.createPage.eyebrow")}
-          title={t("crm.opportunities.createPage.titleCreated")}
-          description={t("crm.opportunities.createPage.descriptionCreated")}
+          eyebrow={t("opportunities.createPage.eyebrow")}
+          title={t("opportunities.createPage.titleCreated")}
+          description={t("opportunities.createPage.descriptionCreated")}
         />
         <SectionCard
-          title={t("crm.opportunities.createPage.createdRecord")}
-          description={t("crm.opportunities.createPage.createdRecordDescription")}
+          title={t("opportunities.createPage.createdRecord")}
+          description={t("opportunities.createPage.createdRecordDescription")}
         >
           <div className="space-y-4 text-sm">
             <p>
@@ -108,11 +108,11 @@ const { t: tRoutes } = useTranslation("routes");
                 setServerErrors([]);
               }}
             >
-              {t("crm.opportunities.createPage.createAnother")}
+              {t("opportunities.createPage.createAnother")}
             </Button>
             {onNavigate ? (
               <Button type="button" variant="outline" onClick={() => onNavigate(CRM_OPPORTUNITIES_ROUTE)}>
-                {t("crm.opportunities.createPage.backToPipeline")}
+                {t("opportunities.createPage.backToPipeline")}
               </Button>
             ) : null}
           </div>
@@ -128,13 +128,13 @@ const { t: tRoutes } = useTranslation("routes");
           { label: tRoutes("crmOpportunities.label"), href: CRM_OPPORTUNITIES_ROUTE as AppRoute },
           { label: tRoutes("createOpportunity.label") },
         ]}
-        eyebrow={t("crm.opportunities.createPage.eyebrow")}
-        title={t("crm.opportunities.createPage.title")}
-        description={t("crm.opportunities.createPage.description")}
+        eyebrow={t("opportunities.createPage.eyebrow")}
+        title={t("opportunities.createPage.title")}
+        description={t("opportunities.createPage.description")}
       />
       <SectionCard
-        title={t("crm.opportunities.createPage.formTitle")}
-        description={t("crm.opportunities.createPage.formDescription")}
+        title={t("opportunities.createPage.formTitle")}
+        description={t("opportunities.createPage.formDescription")}
       >
         <OpportunityForm
           onSubmit={handleSubmit}

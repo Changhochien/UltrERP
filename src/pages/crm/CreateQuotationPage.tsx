@@ -122,7 +122,7 @@ export interface CreateQuotationPageProps {
 }
 
 export default function CreateQuotationPage({ onNavigate }: CreateQuotationPageProps) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("crm");
 const { t: tRoutes } = useTranslation("routes");
   const location = useLocation();
   const { error: showErrorToast, success: showSuccessToast } = useToast();
@@ -143,15 +143,15 @@ const { t: tRoutes } = useTranslation("routes");
       if (result.ok) {
         setCreatedId(result.data.id);
         showSuccessToast(
-          t("crm.quotations.createPage.toast.successTitle"),
-          t("crm.quotations.createPage.toast.successDescription", { name: result.data.party_label }),
+          t("quotations.createPage.toast.successTitle"),
+          t("quotations.createPage.toast.successDescription", { name: result.data.party_label }),
         );
         return;
       }
       setServerErrors(result.errors);
       showErrorToast(
-        t("crm.quotations.createPage.toast.errorTitle"),
-        result.errors[0]?.message ?? t("crm.quotations.createPage.toast.errorDescription"),
+        t("quotations.createPage.toast.errorTitle"),
+        result.errors[0]?.message ?? t("quotations.createPage.toast.errorDescription"),
       );
     } finally {
       setSubmitting(false);
@@ -166,13 +166,13 @@ const { t: tRoutes } = useTranslation("routes");
             { label: tRoutes("crmQuotations.label"), href: CRM_QUOTATIONS_ROUTE as AppRoute },
             { label: tRoutes("createQuotation.label") },
           ]}
-          eyebrow={t("crm.quotations.createPage.eyebrow")}
-          title={t("crm.quotations.createPage.titleCreated")}
-          description={t("crm.quotations.createPage.descriptionCreated")}
+          eyebrow={t("quotations.createPage.eyebrow")}
+          title={t("quotations.createPage.titleCreated")}
+          description={t("quotations.createPage.descriptionCreated")}
         />
         <SectionCard
-          title={t("crm.quotations.createPage.createdRecord")}
-          description={t("crm.quotations.createPage.createdRecordDescription")}
+          title={t("quotations.createPage.createdRecord")}
+          description={t("quotations.createPage.createdRecordDescription")}
         >
           <div className="space-y-4 text-sm">
             <p>
@@ -185,11 +185,11 @@ const { t: tRoutes } = useTranslation("routes");
                 setServerErrors([]);
               }}
             >
-              {t("crm.quotations.createPage.createAnother")}
+              {t("quotations.createPage.createAnother")}
             </Button>
             {onNavigate ? (
               <Button type="button" variant="outline" onClick={() => onNavigate(CRM_QUOTATIONS_ROUTE)}>
-                {t("crm.quotations.createPage.backToRegistry")}
+                {t("quotations.createPage.backToRegistry")}
               </Button>
             ) : null}
           </div>
@@ -205,13 +205,13 @@ const { t: tRoutes } = useTranslation("routes");
           { label: tRoutes("crmQuotations.label"), href: CRM_QUOTATIONS_ROUTE as AppRoute },
           { label: tRoutes("createQuotation.label") },
         ]}
-        eyebrow={t("crm.quotations.createPage.eyebrow")}
-        title={t("crm.quotations.createPage.title")}
-        description={t("crm.quotations.createPage.description")}
+        eyebrow={t("quotations.createPage.eyebrow")}
+        title={t("quotations.createPage.title")}
+        description={t("quotations.createPage.description")}
       />
       <SectionCard
-        title={t("crm.quotations.createPage.formTitle")}
-        description={t("crm.quotations.createPage.formDescription")}
+        title={t("quotations.createPage.formTitle")}
+        description={t("quotations.createPage.formDescription")}
       >
         <QuotationForm
           onSubmit={handleSubmit}

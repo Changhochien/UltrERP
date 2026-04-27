@@ -36,9 +36,9 @@ export function LeadForm({
   submitLabel,
   submittingLabel,
 }: LeadFormProps) {
-  const { t } = useTranslation("common");
-  const resolvedSubmitLabel = submitLabel ?? t("crm.form.createTitle");
-  const resolvedSubmittingLabel = submittingLabel ?? t("crm.form.creating");
+  const { t } = useTranslation("crm");
+  const resolvedSubmitLabel = submitLabel ?? t("form.createTitle");
+  const resolvedSubmittingLabel = submittingLabel ?? t("form.creating");
   const { territoryOptions } = useCRMSetupBundle();
 
   const buildDefaultValues = (): LeadFormValues => ({
@@ -115,12 +115,12 @@ export function LeadForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field>
-          <FieldLabel htmlFor="lead_name">{t("crm.form.leadName")} *</FieldLabel>
+          <FieldLabel htmlFor="lead_name">{t("form.leadName")} *</FieldLabel>
           <Input id="lead_name" {...register("lead_name")} maxLength={140} aria-invalid={!!errors.lead_name} />
           <FieldError errors={errors.lead_name ? [{ message: t(errors.lead_name.message!) }] : []} />
         </Field>
         <Field>
-          <FieldLabel htmlFor="company_name">{t("crm.form.companyName")}</FieldLabel>
+          <FieldLabel htmlFor="company_name">{t("form.companyName")}</FieldLabel>
           <Input id="company_name" {...register("company_name")} maxLength={200} aria-invalid={!!errors.company_name} />
           <FieldError errors={errors.company_name ? [{ message: t(errors.company_name.message!) }] : []} />
         </Field>
@@ -128,12 +128,12 @@ export function LeadForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field>
-          <FieldLabel htmlFor="email_id">{t("crm.form.email")}</FieldLabel>
+          <FieldLabel htmlFor="email_id">{t("form.email")}</FieldLabel>
           <Input id="email_id" type="email" {...register("email_id")} maxLength={254} aria-invalid={!!errors.email_id} />
           <FieldError errors={errors.email_id ? [{ message: t(errors.email_id.message!) }] : []} />
         </Field>
         <Field>
-          <FieldLabel htmlFor="lead_owner">{t("crm.form.owner")}</FieldLabel>
+          <FieldLabel htmlFor="lead_owner">{t("form.owner")}</FieldLabel>
           <Input id="lead_owner" {...register("lead_owner")} maxLength={120} aria-invalid={!!errors.lead_owner} />
           <FieldError errors={errors.lead_owner ? [{ message: t(errors.lead_owner.message!) }] : []} />
         </Field>
@@ -141,12 +141,12 @@ export function LeadForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field>
-          <FieldLabel htmlFor="phone">{t("crm.form.phone")}</FieldLabel>
+          <FieldLabel htmlFor="phone">{t("form.phone")}</FieldLabel>
           <Input id="phone" {...register("phone")} maxLength={30} aria-invalid={!!errors.phone} />
           <FieldError errors={errors.phone ? [{ message: t(errors.phone.message!) }] : []} />
         </Field>
         <Field>
-          <FieldLabel htmlFor="mobile_no">{t("crm.form.mobile")}</FieldLabel>
+          <FieldLabel htmlFor="mobile_no">{t("form.mobile")}</FieldLabel>
           <Input id="mobile_no" {...register("mobile_no")} maxLength={30} aria-invalid={!!errors.mobile_no} />
           <FieldError errors={errors.mobile_no ? [{ message: t(errors.mobile_no.message!) }] : []} />
         </Field>
@@ -154,9 +154,9 @@ export function LeadForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field>
-          <FieldLabel htmlFor="territory">{t("crm.form.territory")}</FieldLabel>
+          <FieldLabel htmlFor="territory">{t("form.territory")}</FieldLabel>
           <select id="territory" {...register("territory")} className={SELECT_CLASS_NAME} aria-invalid={!!errors.territory}>
-            <option value="">{t("crm.setup.selectPlaceholder")}</option>
+            <option value="">{t("setup.selectPlaceholder")}</option>
             {currentTerritory && !territoryOptions.some((option) => option.name === currentTerritory) ? (
               <option value={currentTerritory}>{currentTerritory}</option>
             ) : null}
@@ -167,7 +167,7 @@ export function LeadForm({
           <FieldError errors={errors.territory ? [{ message: t(errors.territory.message!) }] : []} />
         </Field>
         <Field>
-          <FieldLabel htmlFor="source">{t("crm.form.source")}</FieldLabel>
+          <FieldLabel htmlFor="source">{t("form.source")}</FieldLabel>
           <Input id="source" {...register("source")} maxLength={120} aria-invalid={!!errors.source} />
           <FieldError errors={errors.source ? [{ message: t(errors.source.message!) }] : []} />
         </Field>
@@ -175,15 +175,15 @@ export function LeadForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field>
-          <FieldLabel htmlFor="qualification_status">{t("crm.form.qualificationStatus")}</FieldLabel>
+          <FieldLabel htmlFor="qualification_status">{t("form.qualificationStatus")}</FieldLabel>
           <select id="qualification_status" {...register("qualification_status")} className={SELECT_CLASS_NAME}>
-            <option value="unqualified">{t("crm.qualificationValues.unqualified")}</option>
-            <option value="in_process">{t("crm.qualificationValues.in_process")}</option>
-            <option value="qualified">{t("crm.qualificationValues.qualified")}</option>
+            <option value="unqualified">{t("qualificationValues.unqualified")}</option>
+            <option value="in_process">{t("qualificationValues.in_process")}</option>
+            <option value="qualified">{t("qualificationValues.qualified")}</option>
           </select>
         </Field>
         <Field>
-          <FieldLabel htmlFor="qualified_by">{t("crm.form.qualifiedBy")}</FieldLabel>
+          <FieldLabel htmlFor="qualified_by">{t("form.qualifiedBy")}</FieldLabel>
           <Input id="qualified_by" {...register("qualified_by")} maxLength={120} aria-invalid={!!errors.qualified_by} />
           <FieldError errors={errors.qualified_by ? [{ message: t(errors.qualified_by.message!) }] : []} />
         </Field>
@@ -191,12 +191,12 @@ export function LeadForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field>
-          <FieldLabel htmlFor="annual_revenue">{t("crm.form.annualRevenue")}</FieldLabel>
+          <FieldLabel htmlFor="annual_revenue">{t("form.annualRevenue")}</FieldLabel>
           <Input id="annual_revenue" type="number" min="0" step="0.01" {...register("annual_revenue")} aria-invalid={!!errors.annual_revenue} />
           <FieldError errors={errors.annual_revenue ? [{ message: t(errors.annual_revenue.message!) }] : []} />
         </Field>
         <Field>
-          <FieldLabel htmlFor="no_of_employees">{t("crm.form.employeeCount")}</FieldLabel>
+          <FieldLabel htmlFor="no_of_employees">{t("form.employeeCount")}</FieldLabel>
           <Input id="no_of_employees" type="number" min="0" step="1" {...register("no_of_employees")} aria-invalid={!!errors.no_of_employees} />
           <FieldError errors={errors.no_of_employees ? [{ message: t(errors.no_of_employees.message!) }] : []} />
         </Field>
@@ -204,12 +204,12 @@ export function LeadForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field>
-          <FieldLabel htmlFor="industry">{t("crm.form.industry")}</FieldLabel>
+          <FieldLabel htmlFor="industry">{t("form.industry")}</FieldLabel>
           <Input id="industry" {...register("industry")} maxLength={120} aria-invalid={!!errors.industry} />
           <FieldError errors={errors.industry ? [{ message: t(errors.industry.message!) }] : []} />
         </Field>
         <Field>
-          <FieldLabel htmlFor="market_segment">{t("crm.form.marketSegment")}</FieldLabel>
+          <FieldLabel htmlFor="market_segment">{t("form.marketSegment")}</FieldLabel>
           <Input id="market_segment" {...register("market_segment")} maxLength={120} aria-invalid={!!errors.market_segment} />
           <FieldError errors={errors.market_segment ? [{ message: t(errors.market_segment.message!) }] : []} />
         </Field>
@@ -217,12 +217,12 @@ export function LeadForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field>
-          <FieldLabel htmlFor="utm_source">{t("crm.form.utmSource")}</FieldLabel>
+          <FieldLabel htmlFor="utm_source">{t("form.utmSource")}</FieldLabel>
           <Input id="utm_source" {...register("utm_source")} maxLength={120} aria-invalid={!!errors.utm_source} />
           <FieldError errors={errors.utm_source ? [{ message: t(errors.utm_source.message!) }] : []} />
         </Field>
         <Field>
-          <FieldLabel htmlFor="utm_medium">{t("crm.form.utmMedium")}</FieldLabel>
+          <FieldLabel htmlFor="utm_medium">{t("form.utmMedium")}</FieldLabel>
           <Input id="utm_medium" {...register("utm_medium")} maxLength={120} aria-invalid={!!errors.utm_medium} />
           <FieldError errors={errors.utm_medium ? [{ message: t(errors.utm_medium.message!) }] : []} />
         </Field>
@@ -230,19 +230,19 @@ export function LeadForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field>
-          <FieldLabel htmlFor="utm_campaign">{t("crm.form.utmCampaign")}</FieldLabel>
+          <FieldLabel htmlFor="utm_campaign">{t("form.utmCampaign")}</FieldLabel>
           <Input id="utm_campaign" {...register("utm_campaign")} maxLength={120} aria-invalid={!!errors.utm_campaign} />
           <FieldError errors={errors.utm_campaign ? [{ message: t(errors.utm_campaign.message!) }] : []} />
         </Field>
         <Field>
-          <FieldLabel htmlFor="utm_content">{t("crm.form.utmContent")}</FieldLabel>
+          <FieldLabel htmlFor="utm_content">{t("form.utmContent")}</FieldLabel>
           <Input id="utm_content" {...register("utm_content")} maxLength={200} aria-invalid={!!errors.utm_content} />
           <FieldError errors={errors.utm_content ? [{ message: t(errors.utm_content.message!) }] : []} />
         </Field>
       </div>
 
       <Field>
-        <FieldLabel htmlFor="notes">{t("crm.form.notes")}</FieldLabel>
+        <FieldLabel htmlFor="notes">{t("form.notes")}</FieldLabel>
         <Textarea id="notes" {...register("notes")} maxLength={4000} aria-invalid={!!errors.notes} />
         <FieldError errors={errors.notes ? [{ message: t(errors.notes.message!) }] : []} />
       </Field>

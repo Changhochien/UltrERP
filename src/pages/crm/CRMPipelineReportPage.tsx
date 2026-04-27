@@ -73,7 +73,7 @@ function SummaryCard({
 }
 
 function SegmentGroup({ title, items }: { title: string; items: CRMPipelineSegment[] }) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("crm");
   const showOrderedRevenue = items.some((segment) => Number(segment.ordered_revenue ?? 0) > 0);
 
   return (
@@ -87,26 +87,26 @@ function SegmentGroup({ title, items }: { title: string; items: CRMPipelineSegme
             >
               <div>
                 <p className="font-medium text-foreground">{segment.label}</p>
-                <p className="text-sm text-muted-foreground">{segment.record_type ?? t("crm.reporting.recordTypeAll")}</p>
+                <p className="text-sm text-muted-foreground">{segment.record_type ?? t("reporting.recordTypeAll")}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.count")}</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("reporting.count")}</p>
                 <p className="text-sm font-medium text-foreground">{segment.count}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.amount")}</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("reporting.amount")}</p>
                 <p className="text-sm font-medium text-foreground">{segment.amount}</p>
               </div>
               {showOrderedRevenue ? (
                 <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.orderedRevenue")}</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("reporting.orderedRevenue")}</p>
                   <p className="text-sm font-medium text-foreground">{segment.ordered_revenue ?? "0.00"}</p>
                 </div>
               ) : null}
             </div>
           ))
         ) : (
-          <SurfaceMessage>{t("crm.reporting.noMatches")}</SurfaceMessage>
+          <SurfaceMessage>{t("reporting.noMatches")}</SurfaceMessage>
         )}
       </div>
     </SectionCard>
@@ -114,7 +114,7 @@ function SegmentGroup({ title, items }: { title: string; items: CRMPipelineSegme
 }
 
 export default function CRMPipelineReportPage() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("crm");
   const { t: tRoutes } = useTranslation("routes");
   const { territoryOptions, customerGroupOptions, salesStageOptions } = useCRMSetupBundle();
   const [filters, setFilters] = useState<CRMPipelineReportParams>(DEFAULT_FILTERS);
@@ -136,7 +136,7 @@ export default function CRMPipelineReportPage() {
       })
       .catch((caughtError) => {
         if (!cancelled) {
-          setError(caughtError instanceof Error ? caughtError.message : t("crm.reporting.loadError"));
+          setError(caughtError instanceof Error ? caughtError.message : t("reporting.loadError"));
         }
       })
       .finally(() => {
@@ -206,10 +206,10 @@ export default function CRMPipelineReportPage() {
 
   const comparisonCards = report
     ? [
-        ["open_pipeline_value", t("crm.reporting.openPipelineValue")],
-        ["win_rate", t("crm.reporting.winRate")],
-        ["lead_conversion_rate", t("crm.reporting.leadConversionRate")],
-        ["converted_revenue", t("crm.reporting.convertedRevenue")],
+        ["open_pipeline_value", t("reporting.openPipelineValue")],
+        ["win_rate", t("reporting.winRate")],
+        ["lead_conversion_rate", t("reporting.leadConversionRate")],
+        ["converted_revenue", t("reporting.convertedRevenue")],
       ]
     : [];
 
@@ -217,15 +217,15 @@ export default function CRMPipelineReportPage() {
     <div className="space-y-6">
       <PageHeader
         breadcrumb={[{ label: tRoutes("crmReporting.label"), href: CRM_REPORTING_ROUTE as AppRoute }]}
-        eyebrow={t("crm.reporting.eyebrow")}
-        title={t("crm.reporting.title")}
-        description={t("crm.reporting.description")}
+        eyebrow={t("reporting.eyebrow")}
+        title={t("reporting.title")}
+        description={t("reporting.description")}
       />
 
-      <SectionCard title={t("crm.reporting.filtersTitle")} description={t("crm.reporting.filtersDescription")}>
+      <SectionCard title={t("reporting.filtersTitle")} description={t("reporting.filtersDescription")}>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Field>
-            <FieldLabel htmlFor="record_type">{t("crm.reporting.recordType")}</FieldLabel>
+            <FieldLabel htmlFor="record_type">{t("reporting.recordType")}</FieldLabel>
             <select
               id="record_type"
               className={SELECT_CLASS_NAME}
@@ -237,14 +237,14 @@ export default function CRMPipelineReportPage() {
                 }))
               }
             >
-              <option value="all">{t("crm.reporting.recordTypeAll")}</option>
-              <option value="lead">{t("crm.reporting.recordTypeLead")}</option>
-              <option value="opportunity">{t("crm.reporting.recordTypeOpportunity")}</option>
-              <option value="quotation">{t("crm.reporting.recordTypeQuotation")}</option>
+              <option value="all">{t("reporting.recordTypeAll")}</option>
+              <option value="lead">{t("reporting.recordTypeLead")}</option>
+              <option value="opportunity">{t("reporting.recordTypeOpportunity")}</option>
+              <option value="quotation">{t("reporting.recordTypeQuotation")}</option>
             </select>
           </Field>
           <Field>
-            <FieldLabel htmlFor="scope">{t("crm.reporting.scope")}</FieldLabel>
+            <FieldLabel htmlFor="scope">{t("reporting.scope")}</FieldLabel>
             <select
               id="scope"
               className={SELECT_CLASS_NAME}
@@ -256,150 +256,150 @@ export default function CRMPipelineReportPage() {
                 }))
               }
             >
-              <option value="open">{t("crm.reporting.scopeActive")}</option>
-              <option value="all">{t("crm.reporting.scopeAll")}</option>
-              <option value="terminal">{t("crm.reporting.scopeTerminal")}</option>
+              <option value="open">{t("reporting.scopeActive")}</option>
+              <option value="all">{t("reporting.scopeAll")}</option>
+              <option value="terminal">{t("reporting.scopeTerminal")}</option>
             </select>
           </Field>
           <Field>
-            <FieldLabel htmlFor="sales_stage">{t("crm.reporting.salesStage")}</FieldLabel>
+            <FieldLabel htmlFor="sales_stage">{t("reporting.salesStage")}</FieldLabel>
             <select
               id="sales_stage"
               className={SELECT_CLASS_NAME}
               value={filters.sales_stage ?? ""}
               onChange={(event) => setFilters((current) => ({ ...current, sales_stage: event.target.value }))}
             >
-              <option value="">{t("crm.setup.selectPlaceholder")}</option>
+              <option value="">{t("setup.selectPlaceholder")}</option>
               {salesStageOptions.map((option) => (
                 <option key={option.id} value={option.name}>{option.name}</option>
               ))}
             </select>
           </Field>
           <Field>
-            <FieldLabel htmlFor="territory">{t("crm.reporting.territory")}</FieldLabel>
+            <FieldLabel htmlFor="territory">{t("reporting.territory")}</FieldLabel>
             <select
               id="territory"
               className={SELECT_CLASS_NAME}
               value={filters.territory ?? ""}
               onChange={(event) => setFilters((current) => ({ ...current, territory: event.target.value }))}
             >
-              <option value="">{t("crm.setup.selectPlaceholder")}</option>
+              <option value="">{t("setup.selectPlaceholder")}</option>
               {territoryOptions.map((option) => (
                 <option key={option.id} value={option.name}>{option.name}</option>
               ))}
             </select>
           </Field>
           <Field>
-            <FieldLabel htmlFor="customer_group">{t("crm.reporting.customerGroup")}</FieldLabel>
+            <FieldLabel htmlFor="customer_group">{t("reporting.customerGroup")}</FieldLabel>
             <select
               id="customer_group"
               className={SELECT_CLASS_NAME}
               value={filters.customer_group ?? ""}
               onChange={(event) => setFilters((current) => ({ ...current, customer_group: event.target.value }))}
             >
-              <option value="">{t("crm.setup.selectPlaceholder")}</option>
+              <option value="">{t("setup.selectPlaceholder")}</option>
               {customerGroupOptions.map((option) => (
                 <option key={option.id} value={option.name}>{option.name}</option>
               ))}
             </select>
           </Field>
           <Field>
-            <FieldLabel htmlFor="start_date">{t("crm.reporting.periodStart")}</FieldLabel>
+            <FieldLabel htmlFor="start_date">{t("reporting.periodStart")}</FieldLabel>
             <Input id="start_date" type="date" value={filters.start_date ?? ""} onChange={(event) => setFilters((current) => ({ ...current, start_date: event.target.value }))} />
           </Field>
           <Field>
-            <FieldLabel htmlFor="end_date">{t("crm.reporting.periodEnd")}</FieldLabel>
+            <FieldLabel htmlFor="end_date">{t("reporting.periodEnd")}</FieldLabel>
             <Input id="end_date" type="date" value={filters.end_date ?? ""} onChange={(event) => setFilters((current) => ({ ...current, end_date: event.target.value }))} />
           </Field>
           <Field>
-            <FieldLabel htmlFor="compare_start_date">{t("crm.reporting.compareStart")}</FieldLabel>
+            <FieldLabel htmlFor="compare_start_date">{t("reporting.compareStart")}</FieldLabel>
             <Input id="compare_start_date" type="date" value={filters.compare_start_date ?? ""} onChange={(event) => setFilters((current) => ({ ...current, compare_start_date: event.target.value }))} />
           </Field>
           <Field>
-            <FieldLabel htmlFor="compare_end_date">{t("crm.reporting.compareEnd")}</FieldLabel>
+            <FieldLabel htmlFor="compare_end_date">{t("reporting.compareEnd")}</FieldLabel>
             <Input id="compare_end_date" type="date" value={filters.compare_end_date ?? ""} onChange={(event) => setFilters((current) => ({ ...current, compare_end_date: event.target.value }))} />
           </Field>
           <Field>
-            <FieldLabel htmlFor="status">{t("crm.reporting.status")}</FieldLabel>
+            <FieldLabel htmlFor="status">{t("reporting.status")}</FieldLabel>
             <Input id="status" value={filters.status ?? ""} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))} />
           </Field>
           <Field>
-            <FieldLabel htmlFor="owner">{t("crm.reporting.owner")}</FieldLabel>
+            <FieldLabel htmlFor="owner">{t("reporting.owner")}</FieldLabel>
             <Input id="owner" value={filters.owner ?? ""} onChange={(event) => setFilters((current) => ({ ...current, owner: event.target.value }))} />
           </Field>
           <Field>
-            <FieldLabel htmlFor="utm_source">{t("crm.reporting.utmSource")}</FieldLabel>
+            <FieldLabel htmlFor="utm_source">{t("reporting.utmSource")}</FieldLabel>
             <Input id="utm_source" value={filters.utm_source ?? ""} onChange={(event) => setFilters((current) => ({ ...current, utm_source: event.target.value }))} />
           </Field>
           <Field>
-            <FieldLabel htmlFor="utm_medium">{t("crm.reporting.utmMedium")}</FieldLabel>
+            <FieldLabel htmlFor="utm_medium">{t("reporting.utmMedium")}</FieldLabel>
             <Input id="utm_medium" value={filters.utm_medium ?? ""} onChange={(event) => setFilters((current) => ({ ...current, utm_medium: event.target.value }))} />
           </Field>
           <Field>
-            <FieldLabel htmlFor="utm_campaign">{t("crm.reporting.utmCampaign")}</FieldLabel>
+            <FieldLabel htmlFor="utm_campaign">{t("reporting.utmCampaign")}</FieldLabel>
             <Input id="utm_campaign" value={filters.utm_campaign ?? ""} onChange={(event) => setFilters((current) => ({ ...current, utm_campaign: event.target.value }))} />
           </Field>
           <Field>
-            <FieldLabel htmlFor="utm_content">{t("crm.reporting.utmContent")}</FieldLabel>
+            <FieldLabel htmlFor="utm_content">{t("reporting.utmContent")}</FieldLabel>
             <Input id="utm_content" value={filters.utm_content ?? ""} onChange={(event) => setFilters((current) => ({ ...current, utm_content: event.target.value }))} />
           </Field>
           <Field>
-            <FieldLabel htmlFor="lost_reason">{t("crm.reporting.lostReason")}</FieldLabel>
+            <FieldLabel htmlFor="lost_reason">{t("reporting.lostReason")}</FieldLabel>
             <Input id="lost_reason" value={filters.lost_reason ?? ""} onChange={(event) => setFilters((current) => ({ ...current, lost_reason: event.target.value }))} />
           </Field>
         </div>
         <div className="mt-4 flex justify-end">
           <Button type="button" variant="outline" onClick={() => setFilters(DEFAULT_FILTERS)}>
-            {t("crm.reporting.resetFilters")}
+            {t("reporting.resetFilters")}
           </Button>
         </div>
       </SectionCard>
 
       {error ? <SurfaceMessage tone="warning">{error}</SurfaceMessage> : null}
-      {loading ? <SurfaceMessage>{t("crm.reporting.loading")}</SurfaceMessage> : null}
+      {loading ? <SurfaceMessage>{t("reporting.loading")}</SurfaceMessage> : null}
 
       {report ? (
         <>
-          <SectionCard title={t("crm.reporting.analyticsTitle")} description={t("crm.reporting.analyticsDescription")}>
+          <SectionCard title={t("reporting.analyticsTitle")} description={t("reporting.analyticsDescription")}>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <SummaryCard
-                label={t("crm.reporting.openPipelineValue")}
+                label={t("reporting.openPipelineValue")}
                 value={report.analytics.kpis.open_pipeline_value}
                 onClick={() => setActiveDrilldown("open_pipeline")}
                 selected={activeDrilldown === "open_pipeline"}
               />
               <SummaryCard
-                label={t("crm.reporting.weightedPipelineValue")}
+                label={t("reporting.weightedPipelineValue")}
                 value={report.analytics.kpis.weighted_pipeline_value}
                 onClick={() => setActiveDrilldown("open_pipeline")}
                 selected={activeDrilldown === "open_pipeline"}
               />
               <SummaryCard
-                label={t("crm.reporting.winRate")}
+                label={t("reporting.winRate")}
                 value={`${report.analytics.kpis.win_rate}%`}
                 onClick={() => setActiveDrilldown("terminal_outcomes")}
                 selected={activeDrilldown === "terminal_outcomes"}
               />
               <SummaryCard
-                label={t("crm.reporting.leadConversionRate")}
+                label={t("reporting.leadConversionRate")}
                 value={`${report.analytics.kpis.lead_conversion_rate}%`}
                 onClick={() => setActiveDrilldown("qualified_leads")}
                 selected={activeDrilldown === "qualified_leads"}
               />
               <SummaryCard
-                label={t("crm.reporting.averageDealSize")}
+                label={t("reporting.averageDealSize")}
                 value={report.analytics.kpis.average_deal_size}
                 onClick={() => setActiveDrilldown("converted_orders")}
                 selected={activeDrilldown === "converted_orders"}
               />
               <SummaryCard
-                label={t("crm.reporting.convertedRevenue")}
+                label={t("reporting.convertedRevenue")}
                 value={report.analytics.kpis.converted_revenue}
                 onClick={() => setActiveDrilldown("converted_orders")}
                 selected={activeDrilldown === "converted_orders"}
               />
               <SummaryCard
-                label={t("crm.reporting.timeToConversion")}
+                label={t("reporting.timeToConversion")}
                 value={report.analytics.kpis.time_to_conversion}
                 onClick={() => setActiveDrilldown("qualified_leads")}
                 selected={activeDrilldown === "qualified_leads"}
@@ -407,7 +407,7 @@ export default function CRMPipelineReportPage() {
             </div>
           </SectionCard>
 
-          <SectionCard title={t("crm.reporting.comparisonTitle")} description={t("crm.reporting.comparisonDescription")}>
+          <SectionCard title={t("reporting.comparisonTitle")} description={t("reporting.comparisonDescription")}>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               {comparisonCards.map(([key, label]) => {
                 const metric = report.analytics.comparison[key] ?? { current_value: "0.00", previous_value: "0.00", delta: "0.00" };
@@ -415,9 +415,9 @@ export default function CRMPipelineReportPage() {
                   <div key={key} className="rounded-xl border border-border/70 bg-background/50 p-4">
                     <p className="text-sm font-medium text-foreground">{label}</p>
                     <div className="mt-3 space-y-2 text-sm text-muted-foreground">
-                      <p>{t("crm.reporting.currentPeriod")}: {metric.current_value}</p>
-                      <p>{t("crm.reporting.previousPeriod")}: {metric.previous_value}</p>
-                      <p>{t("crm.reporting.delta")}: {metric.delta}</p>
+                      <p>{t("reporting.currentPeriod")}: {metric.current_value}</p>
+                      <p>{t("reporting.previousPeriod")}: {metric.previous_value}</p>
+                      <p>{t("reporting.delta")}: {metric.delta}</p>
                     </div>
                   </div>
                 );
@@ -426,19 +426,19 @@ export default function CRMPipelineReportPage() {
           </SectionCard>
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <SummaryCard label={t("crm.reporting.leadCount")} value={report.totals.lead_count} />
-            <SummaryCard label={t("crm.reporting.opportunityCount")} value={report.totals.opportunity_count} />
-            <SummaryCard label={t("crm.reporting.quotationCount")} value={report.totals.quotation_count} />
-            <SummaryCard label={t("crm.reporting.openCount")} value={report.totals.open_count} />
-            <SummaryCard label={t("crm.reporting.terminalCount")} value={report.totals.terminal_count} />
-            <SummaryCard label={t("crm.reporting.openAmount")} value={report.totals.open_pipeline_amount} />
-            <SummaryCard label={t("crm.reporting.terminalAmount")} value={report.totals.terminal_pipeline_amount} />
-            <SummaryCard label={t("crm.reporting.orderedRevenue")} value={report.totals.ordered_revenue ?? "0.00"} />
-            <SummaryCard label={t("crm.reporting.conversionCount")} value={report.totals.conversion_count ?? 0} />
-            <SummaryCard label={t("crm.reporting.avgDaysToConversion")} value={report.totals.avg_days_to_conversion ?? "0.00"} />
+            <SummaryCard label={t("reporting.leadCount")} value={report.totals.lead_count} />
+            <SummaryCard label={t("reporting.opportunityCount")} value={report.totals.opportunity_count} />
+            <SummaryCard label={t("reporting.quotationCount")} value={report.totals.quotation_count} />
+            <SummaryCard label={t("reporting.openCount")} value={report.totals.open_count} />
+            <SummaryCard label={t("reporting.terminalCount")} value={report.totals.terminal_count} />
+            <SummaryCard label={t("reporting.openAmount")} value={report.totals.open_pipeline_amount} />
+            <SummaryCard label={t("reporting.terminalAmount")} value={report.totals.terminal_pipeline_amount} />
+            <SummaryCard label={t("reporting.orderedRevenue")} value={report.totals.ordered_revenue ?? "0.00"} />
+            <SummaryCard label={t("reporting.conversionCount")} value={report.totals.conversion_count ?? 0} />
+            <SummaryCard label={t("reporting.avgDaysToConversion")} value={report.totals.avg_days_to_conversion ?? "0.00"} />
           </div>
 
-          <SectionCard title={t("crm.reporting.funnelTitle")} description={t("crm.reporting.funnelDescription")}>
+          <SectionCard title={t("reporting.funnelTitle")} description={t("reporting.funnelDescription")}>
             <div className="space-y-3">
               {report.analytics.funnel.map((stage) => {
                 const drilldownKey = stage.key === "converted" ? "converted_orders" : stage.key === "opportunity" ? "open_pipeline" : "qualified_leads";
@@ -453,15 +453,15 @@ export default function CRMPipelineReportPage() {
                       <p className="font-medium text-foreground">{t(`crm.reporting.funnelStage.${stage.key}`)}</p>
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.count")}</p>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("reporting.count")}</p>
                       <p className="text-sm font-medium text-foreground">{stage.count}</p>
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.dropoffCount")}</p>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("reporting.dropoffCount")}</p>
                       <p className="text-sm font-medium text-foreground">{stage.dropoff_count}</p>
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.conversionRate")}</p>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("reporting.conversionRate")}</p>
                       <p className="text-sm font-medium text-foreground">{stage.conversion_rate}%</p>
                     </div>
                   </button>
@@ -470,24 +470,24 @@ export default function CRMPipelineReportPage() {
             </div>
           </SectionCard>
 
-          <SectionCard title={t("crm.reporting.dropOffTitle")} description={t("crm.reporting.dropOffDescription")}>
+          <SectionCard title={t("reporting.dropOffTitle")} description={t("reporting.dropOffDescription")}>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <SummaryCard label={t("crm.reporting.dropOffLeadOnly")} value={report.dropoff.lead_only_count} />
-              <SummaryCard label={t("crm.reporting.dropOffOpportunityWithoutQuotation")} value={report.dropoff.opportunity_without_quotation_count} />
-              <SummaryCard label={t("crm.reporting.dropOffQuotationWithoutOrder")} value={report.dropoff.quotation_without_order_count} />
-              <SummaryCard label={t("crm.reporting.dropOffQuotationWithOrder")} value={report.dropoff.quotation_with_order_count} />
+              <SummaryCard label={t("reporting.dropOffLeadOnly")} value={report.dropoff.lead_only_count} />
+              <SummaryCard label={t("reporting.dropOffOpportunityWithoutQuotation")} value={report.dropoff.opportunity_without_quotation_count} />
+              <SummaryCard label={t("reporting.dropOffQuotationWithoutOrder")} value={report.dropoff.quotation_without_order_count} />
+              <SummaryCard label={t("reporting.dropOffQuotationWithOrder")} value={report.dropoff.quotation_with_order_count} />
             </div>
           </SectionCard>
 
-          <SectionCard title={t("crm.reporting.terminalAnalysisTitle")} description={t("crm.reporting.terminalAnalysisDescription")}>
+          <SectionCard title={t("reporting.terminalAnalysisTitle")} description={t("reporting.terminalAnalysisDescription")}>
             <div className="grid gap-6 xl:grid-cols-3">
-              <SegmentGroup title={t("crm.reporting.byStatusTitle")} items={report.analytics.terminal_by_status} />
-              <SegmentGroup title={t("crm.reporting.byLostReasonTitle")} items={report.analytics.terminal_by_lost_reason} />
-              <SegmentGroup title={t("crm.reporting.byCompetitorTitle")} items={report.analytics.terminal_by_competitor} />
+              <SegmentGroup title={t("reporting.byStatusTitle")} items={report.analytics.terminal_by_status} />
+              <SegmentGroup title={t("reporting.byLostReasonTitle")} items={report.analytics.terminal_by_lost_reason} />
+              <SegmentGroup title={t("reporting.byCompetitorTitle")} items={report.analytics.terminal_by_competitor} />
             </div>
           </SectionCard>
 
-          <SectionCard title={t("crm.reporting.repPerformanceTitle")} description={t("crm.reporting.repPerformanceDescription")}>
+          <SectionCard title={t("reporting.repPerformanceTitle")} description={t("reporting.repPerformanceDescription")}>
             <div className="space-y-3">
               {report.analytics.owner_scorecards.length ? (
                 report.analytics.owner_scorecards.map((scorecard) => (
@@ -496,38 +496,38 @@ export default function CRMPipelineReportPage() {
                       <p className="font-medium text-foreground">{scorecard.owner}</p>
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.assignedLeads")}</p>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("reporting.assignedLeads")}</p>
                       <p className="text-sm font-medium text-foreground">{scorecard.assigned_leads}</p>
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.ownedOpportunities")}</p>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("reporting.ownedOpportunities")}</p>
                       <p className="text-sm font-medium text-foreground">{scorecard.owned_opportunities}</p>
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.openPipelineValue")}</p>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("reporting.openPipelineValue")}</p>
                       <p className="text-sm font-medium text-foreground">{scorecard.open_pipeline_value}</p>
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.weightedForecast")}</p>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("reporting.weightedForecast")}</p>
                       <p className="text-sm font-medium text-foreground">{scorecard.weighted_pipeline_value}</p>
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.convertedRevenue")}</p>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("reporting.convertedRevenue")}</p>
                       <p className="text-sm font-medium text-foreground">{scorecard.converted_revenue}</p>
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.timeToConversion")}</p>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("reporting.timeToConversion")}</p>
                       <p className="text-sm font-medium text-foreground">{scorecard.time_to_conversion}</p>
                     </div>
                   </div>
                 ))
               ) : (
-                <SurfaceMessage>{t("crm.reporting.noMatches")}</SurfaceMessage>
+                <SurfaceMessage>{t("reporting.noMatches")}</SurfaceMessage>
               )}
             </div>
           </SectionCard>
 
-          <SectionCard title={t("crm.reporting.drilldownTitle")} description={t("crm.reporting.drilldownDescription")}>
+          <SectionCard title={t("reporting.drilldownTitle")} description={t("reporting.drilldownDescription")}>
             {activeDrilldownGroup ? (
               <div className="space-y-3">
                 <p className="text-sm font-medium text-foreground">{activeDrilldownGroup.label}</p>
@@ -539,44 +539,44 @@ export default function CRMPipelineReportPage() {
                         <p className="text-sm text-muted-foreground">{record.record_id}</p>
                       </div>
                       <div>
-                        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.drilldownRecordType")}</p>
+                        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("reporting.drilldownRecordType")}</p>
                         <p className="text-sm font-medium text-foreground">{record.record_type}</p>
                       </div>
                       <div>
-                        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.drilldownStatus")}</p>
+                        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("reporting.drilldownStatus")}</p>
                         <p className="text-sm font-medium text-foreground">{record.status}</p>
                       </div>
                       <div>
-                        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.drilldownOwner")}</p>
+                        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("reporting.drilldownOwner")}</p>
                         <p className="text-sm font-medium text-foreground">{record.owner || "-"}</p>
                       </div>
                       <div>
-                        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("crm.reporting.drilldownAmount")}</p>
+                        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("reporting.drilldownAmount")}</p>
                         <p className="text-sm font-medium text-foreground">{record.amount}</p>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <SurfaceMessage>{t("crm.reporting.drilldownEmpty")}</SurfaceMessage>
+                  <SurfaceMessage>{t("reporting.drilldownEmpty")}</SurfaceMessage>
                 )}
               </div>
             ) : (
-              <SurfaceMessage>{t("crm.reporting.drilldownEmpty")}</SurfaceMessage>
+              <SurfaceMessage>{t("reporting.drilldownEmpty")}</SurfaceMessage>
             )}
           </SectionCard>
 
-          <SegmentGroup title={t("crm.reporting.byStatusTitle")} items={groups.status} />
-          <SegmentGroup title={t("crm.reporting.bySalesStageTitle")} items={groups.salesStage} />
-          <SegmentGroup title={t("crm.reporting.byTerritoryTitle")} items={groups.territory} />
-          <SegmentGroup title={t("crm.reporting.byCustomerGroupTitle")} items={groups.customerGroup} />
-          <SegmentGroup title={t("crm.reporting.byOwnerTitle")} items={groups.owner} />
-          <SegmentGroup title={t("crm.reporting.byLostReasonTitle")} items={groups.lostReason} />
-          <SegmentGroup title={t("crm.reporting.byUtmSourceTitle")} items={groups.utmSource} />
-          <SegmentGroup title={t("crm.reporting.byUtmMediumTitle")} items={groups.utmMedium} />
-          <SegmentGroup title={t("crm.reporting.byUtmCampaignTitle")} items={groups.utmCampaign} />
-          <SegmentGroup title={t("crm.reporting.byUtmContentTitle")} items={groups.utmContent} />
-          <SegmentGroup title={t("crm.reporting.byConversionPathTitle")} items={groups.conversionPath} />
-          <SegmentGroup title={t("crm.reporting.byConversionSourceTitle")} items={groups.conversionSource} />
+          <SegmentGroup title={t("reporting.byStatusTitle")} items={groups.status} />
+          <SegmentGroup title={t("reporting.bySalesStageTitle")} items={groups.salesStage} />
+          <SegmentGroup title={t("reporting.byTerritoryTitle")} items={groups.territory} />
+          <SegmentGroup title={t("reporting.byCustomerGroupTitle")} items={groups.customerGroup} />
+          <SegmentGroup title={t("reporting.byOwnerTitle")} items={groups.owner} />
+          <SegmentGroup title={t("reporting.byLostReasonTitle")} items={groups.lostReason} />
+          <SegmentGroup title={t("reporting.byUtmSourceTitle")} items={groups.utmSource} />
+          <SegmentGroup title={t("reporting.byUtmMediumTitle")} items={groups.utmMedium} />
+          <SegmentGroup title={t("reporting.byUtmCampaignTitle")} items={groups.utmCampaign} />
+          <SegmentGroup title={t("reporting.byUtmContentTitle")} items={groups.utmContent} />
+          <SegmentGroup title={t("reporting.byConversionPathTitle")} items={groups.conversionPath} />
+          <SegmentGroup title={t("reporting.byConversionSourceTitle")} items={groups.conversionSource} />
         </>
       ) : null}
     </div>

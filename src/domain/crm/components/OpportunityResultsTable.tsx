@@ -33,14 +33,14 @@ export function OpportunityResultsTable({
   onPageChange,
   onSelect,
 }: OpportunityResultsTableProps) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("crm");
 
   return (
     <DataTable
       columns={[
         {
           id: "opportunity_title",
-          header: t("crm.opportunities.table.opportunity"),
+          header: t("opportunities.table.opportunity"),
           sortable: true,
           getSortValue: (opportunity) => opportunity.opportunity_title,
           cell: (opportunity) => (
@@ -52,21 +52,21 @@ export function OpportunityResultsTable({
         },
         {
           id: "sales_stage",
-          header: t("crm.opportunities.table.stage"),
+          header: t("opportunities.table.stage"),
           sortable: true,
           getSortValue: (opportunity) => opportunity.sales_stage,
           cell: (opportunity) => opportunity.sales_stage || "-",
         },
         {
           id: "probability",
-          header: t("crm.opportunities.table.probability"),
+          header: t("opportunities.table.probability"),
           sortable: true,
           getSortValue: (opportunity) => opportunity.probability,
           cell: (opportunity) => `${opportunity.probability}%`,
         },
         {
           id: "status",
-          header: t("crm.opportunities.table.status"),
+          header: t("opportunities.table.status"),
           sortable: true,
           getSortValue: (opportunity) => opportunity.status,
           cell: (opportunity) => (
@@ -77,8 +77,8 @@ export function OpportunityResultsTable({
         },
       ]}
       data={items}
-      emptyTitle={t("crm.opportunities.table.emptyTitle")}
-      emptyDescription={t("crm.opportunities.table.emptyDescription")}
+      emptyTitle={t("opportunities.table.emptyTitle")}
+      emptyDescription={t("opportunities.table.emptyDescription")}
       page={page}
       pageSize={pageSize}
       totalItems={totalCount}

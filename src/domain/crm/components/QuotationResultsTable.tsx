@@ -34,14 +34,14 @@ export function QuotationResultsTable({
   onPageChange,
   onSelect,
 }: QuotationResultsTableProps) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("crm");
 
   return (
     <DataTable
       columns={[
         {
           id: "party_label",
-          header: t("crm.quotations.table.party"),
+          header: t("quotations.table.party"),
           sortable: true,
           getSortValue: (quotation) => quotation.party_label,
           cell: (quotation) => (
@@ -53,32 +53,32 @@ export function QuotationResultsTable({
         },
         {
           id: "valid_till",
-          header: t("crm.quotations.table.validTill"),
+          header: t("quotations.table.validTill"),
           sortable: true,
           getSortValue: (quotation) => quotation.valid_till,
           cell: (quotation) => quotation.valid_till,
         },
         {
           id: "grand_total",
-          header: t("crm.quotations.table.total"),
+          header: t("quotations.table.total"),
           sortable: true,
           getSortValue: (quotation) => quotation.grand_total,
           cell: (quotation) => quotation.grand_total,
         },
         {
           id: "conversion",
-          header: t("crm.quotations.table.conversion"),
+          header: t("quotations.table.conversion"),
           sortable: true,
           getSortValue: (quotation) => quotation.order_count ?? 0,
           cell: (quotation) => (
             <div className="space-y-0.5 text-sm">
               <p className="font-medium text-foreground">
                 {(quotation.order_count ?? 0) > 0
-                  ? t("crm.quotations.table.orderCount", { count: quotation.order_count ?? 0 })
-                  : t("crm.quotations.table.notConverted")}
+                  ? t("quotations.table.orderCount", { count: quotation.order_count ?? 0 })
+                  : t("quotations.table.notConverted")}
               </p>
               <p className="text-xs text-muted-foreground">
-                {t("crm.quotations.table.convertedAmount", {
+                {t("quotations.table.convertedAmount", {
                   amount: quotation.ordered_amount ?? "0.00",
                 })}
               </p>
@@ -87,7 +87,7 @@ export function QuotationResultsTable({
         },
         {
           id: "status",
-          header: t("crm.quotations.table.status"),
+          header: t("quotations.table.status"),
           sortable: true,
           getSortValue: (quotation) => quotation.status,
           cell: (quotation) => (
@@ -98,15 +98,15 @@ export function QuotationResultsTable({
         },
         {
           id: "revision_no",
-          header: t("crm.quotations.table.revision"),
+          header: t("quotations.table.revision"),
           sortable: true,
           getSortValue: (quotation) => quotation.revision_no,
           cell: (quotation) => quotation.revision_no,
         },
       ]}
       data={items}
-      emptyTitle={t("crm.quotations.table.emptyTitle")}
-      emptyDescription={t("crm.quotations.table.emptyDescription")}
+      emptyTitle={t("quotations.table.emptyTitle")}
+      emptyDescription={t("quotations.table.emptyDescription")}
       page={page}
       pageSize={pageSize}
       totalItems={totalCount}

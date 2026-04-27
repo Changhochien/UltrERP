@@ -31,7 +31,7 @@ const STATUS_OPTIONS: QuotationStatus[] = [
 export function QuotationListPage() {
   const { quotationId } = useParams<{ quotationId: string }>();
   const navigate = useNavigate();
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("crm");
 const { t: tRoutes } = useTranslation("routes");
   const { canWrite } = usePermissions();
   const [query, setQuery] = useState("");
@@ -58,7 +58,7 @@ const { t: tRoutes } = useTranslation("routes");
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : t("crm.quotations.listPage.loadError"));
+          setError(err instanceof Error ? err.message : t("quotations.listPage.loadError"));
           setData({
             items: [],
             page,
@@ -91,35 +91,35 @@ const { t: tRoutes } = useTranslation("routes");
     <div className="space-y-6">
       <PageHeader
         breadcrumb={[{ label: tRoutes("crmQuotations.label") }]}
-        eyebrow={t("crm.quotations.listPage.eyebrow")}
-        title={t("crm.quotations.listPage.title")}
-        description={t("crm.quotations.listPage.description")}
+        eyebrow={t("quotations.listPage.eyebrow")}
+        title={t("quotations.listPage.title")}
+        description={t("quotations.listPage.description")}
         actions={canWrite("crm") ? (
           <Button type="button" onClick={() => navigate(CRM_QUOTATION_CREATE_ROUTE)}>
-            {t("crm.quotations.listPage.createQuotation")}
+            {t("quotations.listPage.createQuotation")}
           </Button>
         ) : null}
       />
 
-      <SectionCard title={t("crm.quotations.listPage.registryTitle")} description={t("crm.quotations.listPage.registryDescription")}>
+      <SectionCard title={t("quotations.listPage.registryTitle")} description={t("quotations.listPage.registryDescription")}>
         <div className="space-y-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <label className="flex flex-col gap-2 text-sm font-medium text-foreground">
-              <span>{t("crm.quotations.listPage.searchLabel")}</span>
+              <span>{t("quotations.listPage.searchLabel")}</span>
               <Input
-                aria-label={t("crm.quotations.listPage.searchLabel")}
+                aria-label={t("quotations.listPage.searchLabel")}
                 value={query}
                 onChange={(event) => {
                   setQuery(event.target.value);
                   setPage(1);
                 }}
-                placeholder={t("crm.quotations.listPage.searchPlaceholder")}
+                placeholder={t("quotations.listPage.searchPlaceholder")}
               />
             </label>
             <label className="flex flex-col gap-2 text-sm font-medium text-foreground">
-              <span>{t("crm.quotations.listPage.statusLabel")}</span>
+              <span>{t("quotations.listPage.statusLabel")}</span>
               <select
-                aria-label={t("crm.quotations.listPage.statusLabel")}
+                aria-label={t("quotations.listPage.statusLabel")}
                 className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 lg:w-52"
                 value={statusFilter}
                 onChange={(event) => {
@@ -127,7 +127,7 @@ const { t: tRoutes } = useTranslation("routes");
                   setPage(1);
                 }}
               >
-                <option value="">{t("crm.quotations.listPage.allStatuses")}</option>
+                <option value="">{t("quotations.listPage.allStatuses")}</option>
                 {STATUS_OPTIONS.map((status) => (
                   <option key={status} value={status}>{t(`crm.quotations.statusValues.${status}`)}</option>
                 ))}
@@ -139,11 +139,11 @@ const { t: tRoutes } = useTranslation("routes");
             <div className="flex flex-col gap-3 rounded-xl border border-border/70 bg-muted/20 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm text-muted-foreground">
-                  {t("crm.quotations.listPage.activeFilters", { count: activeFilterCount })}
+                  {t("quotations.listPage.activeFilters", { count: activeFilterCount })}
                 </span>
-                {query ? <Badge variant="outline">{t("crm.quotations.listPage.searchBadge", { query })}</Badge> : null}
+                {query ? <Badge variant="outline">{t("quotations.listPage.searchBadge", { query })}</Badge> : null}
                 {statusFilter ? (
-                  <Badge variant="outline">{t("crm.quotations.listPage.statusBadge", { status: t(`crm.quotations.statusValues.${statusFilter}`) })}</Badge>
+                  <Badge variant="outline">{t("quotations.listPage.statusBadge", { status: t(`crm.quotations.statusValues.${statusFilter}`) })}</Badge>
                 ) : null}
               </div>
               <Button
@@ -156,7 +156,7 @@ const { t: tRoutes } = useTranslation("routes");
                   setPage(1);
                 }}
               >
-                {t("crm.quotations.listPage.clearFilters")}
+                {t("quotations.listPage.clearFilters")}
               </Button>
             </div>
           ) : null}
@@ -172,7 +172,7 @@ const { t: tRoutes } = useTranslation("routes");
             />
           ) : null}
 
-          {loading && !data ? <p>{t("crm.quotations.listPage.loading")}</p> : null}
+          {loading && !data ? <p>{t("quotations.listPage.loading")}</p> : null}
           {error && !loading ? <p className="text-sm text-muted-foreground">{error}</p> : null}
         </div>
       </SectionCard>
