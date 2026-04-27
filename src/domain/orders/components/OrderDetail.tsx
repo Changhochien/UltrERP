@@ -510,10 +510,10 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
             ) : null}
             <div className="flex gap-3">
               <Button type="button" onClick={() => handleStatusChange(activeAction.targetStatus)} disabled={updating}>
-                {updating ? t("orders.detail.updating") : `${t("common.yes")}, ${t(activeAction.labelKey)}`}
+                {updating ? t("orders.detail.updating") : `${t("yes")}, ${t(activeAction.labelKey)}`}
               </Button>
               <Button type="button" variant="outline" onClick={() => { setActiveAction(null); setUpdateError(null); }}>
-                {t("common.cancel")}
+                {t("cancel")}
               </Button>
             </div>
           </div>
@@ -525,7 +525,7 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
           <div className="space-y-2 text-sm">
             <p>
               <span className="font-medium">{t("orders.list.readyToShip")}:</span>{" "}
-              {exec.ready_to_ship ? t("common.yes") : t("common.no")}
+              {exec.ready_to_ship ? t("yes") : t("no")}
             </p>
             {exec.has_backorder && (
               <p className="text-destructive">
@@ -539,7 +539,7 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
             )}
             <p>
               <span className="font-medium">{t("orders.list.stockReserved")}:</span>{" "}
-              {exec.reservation_status === "reserved" ? t("common.yes") : t("common.no")}
+              {exec.reservation_status === "reserved" ? t("yes") : t("no")}
             </p>
           </div>
         </SectionCard>

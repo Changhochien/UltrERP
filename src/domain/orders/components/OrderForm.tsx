@@ -368,7 +368,7 @@ export function OrderForm({
                         onClick={() => removeSalesTeamMember(idx)}
                         aria-label={`Remove commission rep ${idx + 1}`}
                       >
-                        {t("common.delete")}
+                        {t("delete")}
                       </Button>
                     </div>
                   </div>
@@ -492,7 +492,7 @@ export function OrderForm({
                   <TableCell>
                     {lineFields.length > 1 ? (
                       <Button type="button" variant="ghost" size="sm" onClick={() => removeLine(idx)} aria-label={`Remove line ${idx + 1}`}>
-                        {t("common.delete")}
+                        {t("delete")}
                       </Button>
                     ) : null}
                   </TableCell>
@@ -533,7 +533,7 @@ export function OrderForm({
             {submitting ? t("orders.form.creating") : t("orders.form.createOrder")}
           </Button>
           <Button type="button" variant="outline" onClick={onCancel}>
-            {t("common.cancel")}
+            {t("cancel")}
           </Button>
         </div>
       </form>
