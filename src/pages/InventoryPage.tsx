@@ -27,7 +27,7 @@ import { buildInventorySectionTabs, getInventorySectionRoute, type InventorySect
 
 function InventoryWorkspace() {
   const { t } = useTranslation("inventory");
-  const { t: tRoutes } = useTranslation("common");
+  const { t: tRoutes } = useTranslation("routes");
   const navigate = useNavigate();
   const { selectedWarehouse, setSelectedWarehouse } = useWarehouseContext();
   const { canWrite } = usePermissions();
@@ -41,7 +41,7 @@ function InventoryWorkspace() {
   const [createProductDialogKey, setCreateProductDialogKey] = useState(0);
   const [createdProductKey, setCreatedProductKey] = useState(0);
   const [productSearch, setProductSearch] = useState("");
-  const inventoryTabs = buildInventorySectionTabs(t);
+  const inventoryTabs = buildInventorySectionTabs(tRoutes);
 
   return (
     <div className="space-y-6">

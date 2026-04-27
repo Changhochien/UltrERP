@@ -43,7 +43,7 @@ Keep the first slice focused. Land goal setup, measurement capture, meeting reco
   - [ ] Add `QualityGoal`, `QualityGoalObjective`, `QualityGoalMeasurement`, `QualityMeeting`, agenda, minute, and action-item models under `backend/domains/quality/models.py`.
   - [ ] Store goal fields for owner, department or process scope, target, unit, frequency, status, and related procedure.
   - [ ] Store measurement history with measured value, measurement date, recorder, and optional comment.
-  - [ ] Store meeting status, attendees, agenda items, minutes, and action owners plus explicit optional references to `quality_goal_id`, `ncr_id`, and `capa_action_id` instead of a generic polymorphic link table in the first slice.
+  - [ ] Store meeting status and attendees on the header, then keep agenda, minute, and action-item rows separately so each row can carry explicit optional references to `quality_goal_id`, `ncr_id`, and `capa_action_id` instead of a generic polymorphic link table in the first slice.
   - [ ] Add the required Alembic migration under `migrations/versions/`.
 - [ ] Task 2: Implement goal progress, review, and meeting services. (AC: 1-4)
   - [ ] Add service methods to create and update goals, record measurements, evaluate missed-target status, create meetings, and close action items.

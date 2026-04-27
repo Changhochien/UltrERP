@@ -52,7 +52,7 @@ Keep the first slice operational. Land NCR lifecycle, action assignment, verific
   - [ ] Preserve supplier linkage and action outcomes in queryable fields so later supplier-quality scorecards can reuse them directly.
   - [ ] Keep inspection and issue linkage optional so the quality workflow remains usable before every upstream integration is complete.
 - [ ] Task 3: Add assignment and reminder delivery seams. (AC: 2-4)
-  - [ ] Emit due-date and assignment events through a thin quality-notification seam that can reuse existing fire-and-forget patterns.
+  - [ ] Emit due-date and assignment events through a thin quality-notification seam that can reuse the existing fire-and-forget patterns in `backend/domains/line/notification.py` and `src/lib/desktop/notifications.ts`.
   - [ ] Keep reminder delivery non-blocking and auditable; failures must not roll back NCR updates.
 - [ ] Task 4: Expose APIs and build the NCR workspace. (AC: 1-4)
   - [ ] Add `backend/domains/quality/routes.py` endpoints for NCR list, detail, action updates, verification, and closure.
@@ -111,9 +111,8 @@ Keep the first slice operational. Land NCR lifecycle, action assignment, verific
 
 ## Dependencies & Related Stories
 
-- **Depends on:** Story 28.7
 - **Blocks:** Story 28.8
-- **Related to:** Story 29.1 for inspection linkage, Story 29.8 for supplier-quality analytics
+- **Related to:** Story 28.7 for procedure context, Story 29.1 for inspection linkage, Story 29.8 for supplier-quality analytics
 
 ## References
 

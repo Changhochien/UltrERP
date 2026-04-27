@@ -33,7 +33,7 @@ Keep the first slice governed but narrow. Land procedure hierarchy, revision his
 ## Acceptance Criteria
 
 1. Given a quality manager creates a procedure, when it is saved, then title, owner, department, content, effective dates, and review schedule are stored on a dedicated procedure record.
-2. Given a procedure is revised, when a new active version is published, then prior revisions remain queryable and superseded without overwriting historical content.
+2. Given a procedure is revised, when a new active revision is published, then prior revisions remain queryable and superseded without overwriting historical content.
 3. Given a procedure has sub-procedures, when users browse the quality-procedure workspace, then the hierarchy is navigable in a tree view without losing the ability to open a single procedure detail record.
 4. Given employees acknowledge procedure training, when auditors review the procedure, then acknowledgments are timestamped and linked to the relevant revision.
 
@@ -106,8 +106,8 @@ Keep the first slice governed but narrow. Land procedure hierarchy, revision his
 
 ## Dependencies & Related Stories
 
-- **Blocks:** Story 28.6, Story 28.8
-- **Related to:** Story 29.1 for inspection references, Story 28.6 for NCR root-cause context
+- **Blocks:** Story 28.8
+- **Related to:** Story 28.6 for NCR root-cause context, Story 29.1 for inspection references
 
 ## References
 

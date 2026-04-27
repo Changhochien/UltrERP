@@ -42,7 +42,7 @@ Keep the first slice operational. Land manual issue creation, queue review, assi
 - [ ] Task 1: Add issue and SLA persistence. (AC: 1-4)
   - [ ] Add `Issue`, `ServiceLevelAgreement`, and child-rule models under `backend/domains/issues/models.py`.
   - [ ] Store issue fields for subject, description, customer, contact, status, priority, assignee, first-response timestamps, resolution timestamps, hold start, and accumulated hold duration.
-  - [ ] Store SLA fields for entity scope, a foreign key to the shared people-domain holiday list, explicit working-day window rows, default priority, pause-on statuses, and per-priority response and resolution rules.
+  - [ ] Store SLA fields for entity scope, a foreign key to the shared people-domain holiday list, and normalized `ServiceLevelWorkingWindow` rows keyed by weekday with start and end times, plus default priority, pause-on statuses, and per-priority response and resolution rules.
   - [ ] Add the required Alembic migration under `migrations/versions/`.
 - [ ] Task 2: Implement issue workflow and SLA calculation services. (AC: 1-4)
   - [ ] Add service methods to create, update, assign, transition, respond, resolve, close, and reopen issues.
@@ -75,6 +75,7 @@ Keep the first slice operational. Land manual issue creation, queue review, assi
 - Keep SLA calculation in deterministic service-layer functions so the frontend receives explicit countdown and state fields.
 - Use holiday list plus support-hour windows for working-calendar logic; do not build full employee-shift scheduling in this story.
 - Foreign-key the shared `HolidayList` model from the people domain rather than duplicating a second calendar master inside the issues domain.
+- Model support hours as SLA-owned weekday window rows; date-specific exclusions belong in the shared holiday list rather than in another override table for this first slice.
 
 ### Implementation Guidance
 

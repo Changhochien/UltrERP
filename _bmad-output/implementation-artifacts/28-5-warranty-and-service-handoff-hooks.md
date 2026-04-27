@@ -32,7 +32,7 @@ Keep the first slice narrow. Land structured warranty context and triage views w
 
 ## Acceptance Criteria
 
-1. Given a warranty-related issue is logged, when the record is saved, then the relevant customer, contact, product, serial or serial text, and warranty status or expiry context can be attached to the issue.
+1. Given a warranty-related issue is logged, when the record is saved, then the relevant customer, contact person, reporter or external requester, product, serial or serial text, and warranty status or expiry context can be attached to the issue.
 2. Given service later extends into asset repair or maintenance, when those stories reuse the issue record, then the existing warranty context remains structured and reusable rather than trapped in freeform notes.
 3. Given current users work only with issues, when the issue queue is viewed, then warranty hooks add clear optional context and filters without complicating the core non-warranty workflow.
 4. Given a serial or asset master is not yet available, when service staff still need to log a warranty case, then the issue can preserve structured text context that can later be reconciled to typed masters.
@@ -41,7 +41,7 @@ Keep the first slice narrow. Land structured warranty context and triage views w
 
 - [ ] Task 1: Extend issue persistence with warranty context. (AC: 1-4)
   - [ ] Add a one-to-one `IssueWarrantyContext` subordinate model under `backend/domains/issues/models.py` rather than scattering more nullable fields across the core issue row.
-  - [ ] Store product, customer, contact, serial reference or serial text, warranty status, warranty expiry, service address, and raised-by context.
+  - [ ] Store product, customer, contact, serial reference or serial text, warranty status, warranty expiry, service address, and optional external requester name/email fields when the issue reporter differs from the linked customer contact or linked customer account.
   - [ ] Add the required Alembic migration under `migrations/versions/`.
 - [ ] Task 2: Implement warranty-context services and filters. (AC: 1-4)
   - [ ] Add service logic to create and update warranty context alongside issues.
