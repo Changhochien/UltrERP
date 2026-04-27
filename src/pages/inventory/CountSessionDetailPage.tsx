@@ -30,7 +30,7 @@ function buildDrafts(session: PhysicalCountSession): DraftMap {
 
 export function CountSessionDetailPage() {
   const { t } = useTranslation("common");
-const { t: tRoutes } = useTranslation("routes");
+  const { t: tRoutes } = useTranslation("routes");
   const navigate = useNavigate();
   const params = useParams<{ sessionId: string }>();
   const sessionId = params.sessionId ?? "";

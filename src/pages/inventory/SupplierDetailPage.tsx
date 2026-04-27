@@ -24,7 +24,7 @@ function toFieldErrors(
 
 export function SupplierDetailPage() {
   const { t } = useTranslation("common");
-const { t: tRoutes } = useTranslation("routes");
+  const { t: tRoutes } = useTranslation("routes");
   const navigate = useNavigate();
   const { supplierId } = useParams<{ supplierId: string }>();
   const { canWrite } = usePermissions();

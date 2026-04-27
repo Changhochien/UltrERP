@@ -69,7 +69,7 @@ function CreatedOrdersSummary({
 
 function ReorderSuggestionsWorkspace() {
   const { t } = useTranslation("common");
-const { t: tRoutes } = useTranslation("routes");
+  const { t: tRoutes } = useTranslation("routes");
   const navigate = useNavigate();
   const { selectedWarehouse, setSelectedWarehouse } = useWarehouseContext();
   const { canWrite } = usePermissions();

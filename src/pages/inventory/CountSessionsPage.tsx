@@ -19,7 +19,7 @@ import { buildInventorySectionTabs, getInventorySectionRoute, type InventorySect
 
 export function CountSessionsPage() {
   const { t } = useTranslation("common");
-const { t: tRoutes } = useTranslation("routes");
+  const { t: tRoutes } = useTranslation("routes");
   const navigate = useNavigate();
   const { warehouses, loading: warehousesLoading } = useWarehouses();
   const inventoryTabs = buildInventorySectionTabs(tRoutes);

@@ -13,7 +13,7 @@ import { buildInventorySectionTabs, getInventorySectionRoute, type InventorySect
 
 function BelowReorderReportWorkspace() {
   const { t } = useTranslation("common");
-const { t: tRoutes } = useTranslation("routes");
+  const { t: tRoutes } = useTranslation("routes");
   const navigate = useNavigate();
   const { selectedWarehouse, setSelectedWarehouse } = useWarehouseContext();
   const inventoryTabs = buildInventorySectionTabs(tRoutes);
