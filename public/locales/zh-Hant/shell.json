@@ -41,7 +41,19 @@
     "suppliers": "供應商",
     "procurement": "採購尋源",
     "createRFQ": "建立詢價",
-    "purchaseOrders": "採購單"
+    "purchaseOrders": "採購單",
+    "accounting": "會計",
+    "chartOfAccounts": "帳戶圖表",
+    "fiscalYears": "會計年度",
+    "journalEntries": "日記帳分錄",
+    "profitAndLoss": "損益表",
+    "balanceSheet": "資產負債表",
+    "trialBalance": "試算表",
+    "banking": "銀行業務",
+    "bankReconciliation": "銀行對帳",
+    "collections": "催收款",
+    "budgets": "預算",
+    "budgetVariance": "預算差異"
   },
   "app": {
     "openShortcuts": "開啟快捷鍵",

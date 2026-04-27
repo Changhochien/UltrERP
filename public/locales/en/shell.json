@@ -38,7 +38,19 @@
     "suppliers": "Suppliers",
     "procurement": "Sourcing",
     "createRFQ": "Create RFQ",
-    "purchaseOrders": "Purchase Orders"
+    "purchaseOrders": "Purchase Orders",
+    "accounting": "Accounting",
+    "chartOfAccounts": "Chart of Accounts",
+    "fiscalYears": "Fiscal Years",
+    "journalEntries": "Journal Entries",
+    "profitAndLoss": "Profit & Loss",
+    "balanceSheet": "Balance Sheet",
+    "trialBalance": "Trial Balance",
+    "banking": "Banking",
+    "bankReconciliation": "Bank Reconciliation",
+    "collections": "Collections",
+    "budgets": "Budgets",
+    "budgetVariance": "Budget Variance"
   },
   "app": {
     "openShortcuts": "Open shortcuts",
