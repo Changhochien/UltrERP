@@ -398,10 +398,10 @@ export function JournalEntryForm({
       {/* Actions */}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel}>
-          {t("common.cancel")}
+          {t("cancel")}
         </Button>
         <Button onClick={handleSubmit} disabled={isSubmitting}>
-          {isSubmitting ? t("common.submitting") : t("accounting.createSubmit")}
+          {isSubmitting ? t("submitting") : t("accounting.createSubmit")}
         </Button>
       </div>
     </div>

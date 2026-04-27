@@ -262,7 +262,7 @@ export function FiscalYearsPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleEdit(fy)}>
                           <Edit className="mr-2 h-4 w-4" />
-                          {t("common.edit")}
+                          {t("edit")}
                         </DropdownMenuItem>
                         {fy.status === "Open" && (
                           <>
@@ -325,7 +325,7 @@ export function FiscalYearsPage() {
               onClick={() => setPage(page - 1)}
               disabled={page === 1}
             >
-              {t("common.previous")}
+              {t("previous")}
             </Button>
             <Button
               variant="outline"
@@ -333,7 +333,7 @@ export function FiscalYearsPage() {
               onClick={() => setPage(page + 1)}
               disabled={page * fiscalYears.page_size >= fiscalYears.total}
             >
-              {t("common.next")}
+              {t("next")}
             </Button>
           </div>
         </div>
@@ -392,11 +392,11 @@ export function FiscalYearsPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-              {t("common.cancel")}
+              {t("cancel")}
             </Button>
             <Button onClick={handleSaveCreate} disabled={isWorking}>
               {isCreating && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
-              {t("common.save")}
+              {t("save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -453,11 +453,11 @@ export function FiscalYearsPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              {t("common.cancel")}
+              {t("cancel")}
             </Button>
             <Button onClick={handleSaveEdit} disabled={isWorking}>
               {isUpdating && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
-              {t("common.save")}
+              {t("save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -492,7 +492,7 @@ export function FiscalYearsPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCloseDialogOpen(false)}>
-              {t("common.cancel")}
+              {t("cancel")}
             </Button>
             <Button variant="destructive" onClick={handleSaveClose} disabled={isWorking}>
               {isClosing && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}

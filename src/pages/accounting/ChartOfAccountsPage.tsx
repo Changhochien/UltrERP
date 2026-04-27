@@ -353,7 +353,7 @@ export function ChartOfAccountsPage() {
               <div>{selectedAccount.report_type}</div>
 
               <div className="text-muted-foreground">{t("accounting.isGroup")}</div>
-              <div>{selectedAccount.is_group ? t("common.yes") : t("common.no")}</div>
+              <div>{selectedAccount.is_group ? t("yes") : t("no")}</div>
 
               <div className="text-muted-foreground">{t("accounting.isFrozen")}</div>
               <div>
@@ -362,7 +362,7 @@ export function ChartOfAccountsPage() {
                     <Snowflake className="h-4 w-4" /> {t("accounting.frozen")}
                   </span>
                 ) : (
-                  t("common.no")
+                  t("no")
                 )}
               </div>
 
@@ -373,7 +373,7 @@ export function ChartOfAccountsPage() {
                     <X className="h-4 w-4" /> {t("accounting.disabled")}
                   </span>
                 ) : (
-                  t("common.no")
+                  t("no")
                 )}
               </div>
             </div>
@@ -396,7 +396,7 @@ export function ChartOfAccountsPage() {
                 className="w-full"
                 onClick={() => handleEdit(selectedAccount)}
               >
-                {t("common.edit")}
+                {t("edit")}
               </Button>
             </div>
           </div>
@@ -486,11 +486,11 @@ export function ChartOfAccountsPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-              {t("common.cancel")}
+              {t("cancel")}
             </Button>
             <Button onClick={handleSaveCreate} disabled={isWorking}>
               {isCreating && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
-              {t("common.save")}
+              {t("save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -553,11 +553,11 @@ export function ChartOfAccountsPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              {t("common.cancel")}
+              {t("cancel")}
             </Button>
             <Button onClick={handleSaveEdit} disabled={isWorking}>
               {isUpdating && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
-              {t("common.save")}
+              {t("save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -587,11 +587,11 @@ export function ChartOfAccountsPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-              {t("common.cancel")}
+              {t("cancel")}
             </Button>
             <Button variant="destructive" onClick={handleSaveDelete} disabled={isWorking}>
               {isDeleting && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
-              {t("common.delete")}
+              {t("delete")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -622,7 +622,7 @@ export function ChartOfAccountsPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsSeedDialogOpen(false)}>
-              {t("common.cancel")}
+              {t("cancel")}
             </Button>
             <Button onClick={handleSeed} disabled={isWorking}>
               {isSeeding && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}

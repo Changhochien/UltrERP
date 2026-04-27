@@ -201,7 +201,7 @@ export function JournalEntriesPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8">{t("common.loading")}</div>
+            <div className="text-center py-8">{t("loading")}</div>
           ) : entries.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               {t("accounting.noJournalEntries")}
@@ -278,7 +278,7 @@ export function JournalEntriesPage() {
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={page === 1}
                     >
-                      {t("common.previous")}
+                      {t("previous")}
                     </Button>
                     <Button
                       variant="outline"
@@ -286,7 +286,7 @@ export function JournalEntriesPage() {
                       onClick={() => setPage((p) => p + 1)}
                       disabled={page * pageSize >= total}
                     >
-                      {t("common.next")}
+                      {t("next")}
                     </Button>
                   </div>
                 </div>

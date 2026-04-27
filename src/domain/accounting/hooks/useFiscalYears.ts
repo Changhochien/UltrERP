@@ -129,7 +129,7 @@ export function useCreateFiscalYear() {
         const error = err as ApiError;
         const message = typeof error.detail === "string"
           ? error.detail
-          : error.detail?.errors?.[0]?.message ?? t("common.error");
+          : error.detail?.errors?.[0]?.message ?? t("error");
         toastError(message);
         throw err;
       } finally {
@@ -172,7 +172,7 @@ export function useUpdateFiscalYear() {
         const error = err as ApiError;
         const message = typeof error.detail === "string"
           ? error.detail
-          : error.detail?.errors?.[0]?.message ?? t("common.error");
+          : error.detail?.errors?.[0]?.message ?? t("error");
         toastError(message);
         throw err;
       } finally {
@@ -215,7 +215,7 @@ export function useCloseFiscalYear() {
         const error = err as ApiError;
         const message = typeof error.detail === "string"
           ? error.detail
-          : error.detail?.errors?.[0]?.message ?? t("common.error");
+          : error.detail?.errors?.[0]?.message ?? t("error");
         toastError(message);
         throw err;
       } finally {
@@ -255,7 +255,7 @@ export function useReopenFiscalYear() {
         const error = err as ApiError;
         const message = typeof error.detail === "string"
           ? error.detail
-          : error.detail?.errors?.[0]?.message ?? t("common.error");
+          : error.detail?.errors?.[0]?.message ?? t("error");
         toastError(message);
         throw err;
       } finally {

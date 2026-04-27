@@ -122,7 +122,7 @@ export function BankReconciliationPage() {
         </div>
         <Button onClick={loadAccounts} variant="outline" size="sm">
           <RefreshCw className="mr-2 h-4 w-4" />
-          {t("common.refresh", { defaultValue: "Refresh" })}
+          {t("refresh", { defaultValue: "Refresh" })}
         </Button>
       </div>
 

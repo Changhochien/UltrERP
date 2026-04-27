@@ -132,7 +132,7 @@ export function JournalEntryDetailPage() {
   if (isLoading) {
     return (
       <div className="container mx-auto p-6">
-        <div className="text-center py-8">{t("common.loading")}</div>
+        <div className="text-center py-8">{t("loading")}</div>
       </div>
     );
   }
@@ -189,7 +189,7 @@ export function JournalEntryDetailPage() {
         <div className="flex gap-2">
           {isDraft && (
             <Button onClick={handleSubmit} disabled={isSubmitting}>
-              {isSubmitting ? t("common.submitting") : t("accounting.submitEntry")}
+              {isSubmitting ? t("submitting") : t("accounting.submitEntry")}
             </Button>
           )}
           {isSubmitted && (
@@ -225,7 +225,7 @@ export function JournalEntryDetailPage() {
                       variant="outline"
                       onClick={() => setReverseOpen(false)}
                     >
-                      {t("common.cancel")}
+                      {t("cancel")}
                     </Button>
                     <Button
                       variant="destructive"
@@ -233,7 +233,7 @@ export function JournalEntryDetailPage() {
                       disabled={isReversing}
                     >
                       {isReversing
-                        ? t("common.reversing")
+                        ? t("reversing")
                         : t("accounting.confirmReverse")}
                     </Button>
                   </div>

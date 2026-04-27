@@ -65,7 +65,7 @@ export function LedgerTable({
   if (accountId && !ledger) {
     return (
       <div className="text-center py-4">
-        <div className="text-muted-foreground">{t("common.loading")}</div>
+        <div className="text-muted-foreground">{t("loading")}</div>
       </div>
     );
   }
@@ -97,7 +97,7 @@ export function LedgerTable({
             />
           </div>
           <Button variant="outline" onClick={() => refetch()}>
-            {t("common.filter")}
+            {t("filter")}
           </Button>
         </div>
       )}
