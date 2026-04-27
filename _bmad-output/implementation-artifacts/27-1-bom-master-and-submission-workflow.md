@@ -43,6 +43,8 @@ so that work orders and planning use an explicit approved recipe instead of info
 - 2026-04-26: Implemented complete BOM foundation with submission workflow, revision tracking, and active BOM management
 - 2026-04-27: Fixed HIGH severity issues - typo (proced_quantity → produced_quantity), race condition (SELECT FOR UPDATE), missing unique constraint (partial index)
 - 2026-04-27: Fixed import paths (relative imports), SQLAlchemy JSON types, Order/OrderLine naming
+- 2026-04-27: Quality review aligned the ORM BOM uniqueness metadata with the migration's partial active-BOM index so historical revisions can coexist.
+- 2026-04-27: Added a BOM detail route/page in the frontend so planners can inspect submitted materials and revision history in-app.
 
 ### Issues Fixed
 
@@ -102,3 +104,4 @@ so that work orders and planning use an explicit approved recipe instead of info
 - ✅ Python files compile without errors
 - ✅ Manufacturing module imports correctly
 - ✅ Tests pass (85 API tests, 317 domain tests)
+- ✅ Added focused manufacturing metadata regression coverage for the active-BOM uniqueness model.

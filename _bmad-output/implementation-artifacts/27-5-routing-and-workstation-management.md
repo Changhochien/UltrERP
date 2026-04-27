@@ -42,6 +42,8 @@ so that work orders can calculate planned time and cost based on the production 
 
 - 2026-04-26: Implemented workstation and routing with operation sequences
 - 2026-04-27: Verified implementation completeness
+- 2026-04-27: Quality review fixed routing cost estimation to use workstation hourly rates instead of defaulting every operation to zero cost.
+- 2026-04-27: Added routing and workstation detail pages, including an in-app routing calculation surface for planned time and labor cost.
 
 ### File List
 
@@ -70,6 +72,7 @@ so that work orders can calculate planned time and cost based on the production 
 - ✅ Python files compile without errors
 - ✅ Manufacturing module imports correctly
 - ✅ Tests pass (85 API tests, 317 domain tests)
+- ✅ Added focused unit coverage for routing time and workstation-rate cost calculation.
 
 ### TypeScript Fixes (2026-04-27)
 - Fixed `.map()` callback type annotations in RoutingList, WorkstationList

@@ -42,6 +42,8 @@ so that manufacturing capacity is planned against aggregated demand with clear s
 
 - 2026-04-26: Implemented production plan with demand aggregation and work order creation
 - 2026-04-27: Fixed race condition in firm_production_plan
+- 2026-04-27: Quality review populated production-plan line demand, stock, open-work-order, shortage, and capacity fields instead of leaving them empty.
+- 2026-04-27: Added a production-plan detail page so planners can inspect aggregated demand and firm plans from the frontend.
 
 ### Issues Fixed
 
@@ -76,6 +78,7 @@ so that manufacturing capacity is planned against aggregated demand with clear s
 - ✅ Python files compile without errors
 - ✅ Manufacturing module imports correctly
 - ✅ Tests pass (85 API tests, 317 domain tests)
+- ✅ Added focused unit coverage for production-plan demand aggregation defaults and computed proposed quantity.
 
 ### TypeScript Fixes (2026-04-27)
 - Fixed `.map()` callback type annotations in ProductionPlanList

@@ -42,6 +42,8 @@ so that manufacturing updates stock deterministically and exposes shortages befo
 
 - 2026-04-26: Implemented material reservation, shortage detection, and work order completion
 - 2026-04-27: Enhanced with actual stock mutations via `inventory.transfer_stock()` and finished goods receipt
+- 2026-04-27: Quality review corrected the reserve-service contract to use the dedicated reserve payload instead of the transfer schema.
+- 2026-04-27: Added a work-order detail execution surface so reserve, transfer, and completion actions are reachable from the frontend.
 
 ### Issues Fixed
 
@@ -90,3 +92,4 @@ fg_stock.quantity += payload.produced_quantity
 - ✅ Python files compile without errors
 - ✅ Manufacturing module imports correctly
 - ✅ Tests pass (85 API tests, 317 domain tests)
+- ✅ Frontend build validates the reserve/transfer/complete work-order execution surface.

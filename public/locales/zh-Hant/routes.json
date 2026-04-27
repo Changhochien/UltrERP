@@ -71,6 +71,58 @@
     "description": "管理庫存水位與倉儲作業。",
     "label": "庫存"
   },
+  "manufacturing": {
+    "description": "規劃生產、管理物料清單，並追蹤製造執行狀態。",
+    "label": "製造"
+  },
+  "boms": {
+    "description": "檢視製造品的草稿與已提交物料清單。",
+    "label": "物料清單"
+  },
+  "bomDetail": {
+    "description": "檢視單一 BOM 版本、材料明細與提交狀態。",
+    "label": "BOM 詳情"
+  },
+  "workOrders": {
+    "description": "追蹤製造執行、材料備料與完工進度。",
+    "label": "工單"
+  },
+  "workOrderDetail": {
+    "description": "檢視單一工單，執行預留、轉料與完工回報。",
+    "label": "工單詳情"
+  },
+  "workstations": {
+    "description": "管理工作站產能、工時費率與工作時間設定。",
+    "label": "工作站"
+  },
+  "workstationDetail": {
+    "description": "檢視單一工作站的費率、產能與可用時段。",
+    "label": "工作站詳情"
+  },
+  "routings": {
+    "description": "定義作業順序並估算生產時間與人工成本。",
+    "label": "製程路線"
+  },
+  "routingDetail": {
+    "description": "檢視單一製程路線範本並計算計畫時間與成本。",
+    "label": "製程路線詳情"
+  },
+  "productionPlanning": {
+    "description": "依需求訊號產生並複核製造提案。",
+    "label": "生產規劃"
+  },
+  "productionPlans": {
+    "description": "彙總需求為生產計畫並確認工單建立。",
+    "label": "生產計畫"
+  },
+  "productionPlanDetail": {
+    "description": "檢視單一生產計畫的需求、短缺、產能與確認狀態。",
+    "label": "生產計畫詳情"
+  },
+  "oee": {
+    "description": "監控工作站停機趨勢與 OEE 績效。",
+    "label": "OEE 儀表板"
+  },
   "inventoryCategories": {
     "description": "管理商品表單與搜尋篩選所使用的類別主檔。",
     "label": "產品類別"

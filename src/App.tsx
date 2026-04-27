@@ -21,6 +21,8 @@ import {
   ACCOUNTING_ROUTE,
   ADMIN_ROUTE,
   BALANCE_SHEET_ROUTE,
+  BOM_DETAIL_ROUTE,
+  BOM_LIST_ROUTE,
   BANK_RECONCILIATION_ROUTE,
   BUDGET_VARIANCE_ROUTE,
   BUDGETS_ROUTE,
@@ -59,12 +61,17 @@ import {
   INVOICES_ROUTE,
   INVOICE_CREATE_ROUTE,
   INVOICE_DETAIL_ROUTE,
+  MANUFACTURING_ROUTE,
   LOGIN_ROUTE,
+  OEE_DASHBOARD_ROUTE,
   ORDERS_ROUTE,
   ORDER_CREATE_ROUTE,
   ORDER_DETAIL_ROUTE,
   OWNER_DASHBOARD_ROUTE,
   PAYMENTS_ROUTE,
+  PRODUCTION_PLANNING_ROUTE,
+  PRODUCTION_PLANS_ROUTE,
+  PRODUCTION_PLAN_DETAIL_ROUTE,
   PROCUREMENT_ROUTE,
   PROCUREMENT_PURCHASE_ORDERS_ROUTE,
   PROCUREMENT_PURCHASE_ORDER_CREATE_ROUTE,
@@ -76,9 +83,16 @@ import {
   PROCUREMENT_CREATE_GOODS_RECEIPT_ROUTE,
   PROFIT_AND_LOSS_ROUTE,
   PURCHASES_ROUTE,
+  ROUTINGS_ROUTE,
+  ROUTING_DETAIL_ROUTE,
   SETTINGS_ROUTE,
   SUPPLIER_DETAIL_ROUTE,
   TRIAL_BALANCE_ROUTE,
+  WORK_ORDERS_ROUTE,
+  WORK_ORDER_CREATE_ROUTE,
+  WORK_ORDER_DETAIL_ROUTE,
+  WORKSTATIONS_ROUTE,
+  WORKSTATION_DETAIL_ROUTE,
 } from "./lib/routes";
 import { AdminPage } from "./pages/AdminPage";
 import CreateLeadPage from "./pages/crm/CreateLeadPage";
@@ -133,6 +147,19 @@ import { BankReconciliationPage } from "./pages/accounting/BankReconciliationPag
 import { CollectionsPage } from "./pages/accounting/CollectionsPage";
 import { BudgetsPage } from "./pages/accounting/BudgetsPage";
 import { BudgetVariancePage } from "./pages/accounting/BudgetVariancePage";
+import { BomDetailPage } from "./pages/manufacturing/BomDetailPage";
+import { BomListPage } from "./pages/manufacturing/BomListPage";
+import { CreateWorkOrderPage } from "./pages/manufacturing/CreateWorkOrderPage";
+import { OeeDashboardPage } from "./pages/manufacturing/OeeDashboardPage";
+import { ProductionPlanDetailPage } from "./pages/manufacturing/ProductionPlanDetailPage";
+import { ProductionPlanningPage } from "./pages/manufacturing/ProductionPlanningPage";
+import { ProductionPlansPage } from "./pages/manufacturing/ProductionPlansPage";
+import { RoutingDetailPage } from "./pages/manufacturing/RoutingDetailPage";
+import { RoutingsPage } from "./pages/manufacturing/RoutingsPage";
+import { WorkOrderDetailPage } from "./pages/manufacturing/WorkOrderDetailPage";
+import { WorkOrdersPage } from "./pages/manufacturing/WorkOrdersPage";
+import { WorkstationDetailPage } from "./pages/manufacturing/WorkstationDetailPage";
+import { WorkstationsPage } from "./pages/manufacturing/WorkstationsPage";
 
 export const APP_TITLE = "UltrERP";
 
@@ -722,6 +749,146 @@ export default function App() {
               <ProtectedAppRoute requiredFeature="procurement" requiredWrite>
                 <RoutedPage>
                   <CreateGoodsReceiptPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={MANUFACTURING_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="manufacturing">
+                <RoutedPage>
+                  <BomListPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={BOM_LIST_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="manufacturing">
+                <RoutedPage>
+                  <BomListPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={BOM_DETAIL_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="manufacturing">
+                <RoutedPage>
+                  <BomDetailPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={WORK_ORDERS_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="manufacturing">
+                <RoutedPage>
+                  <WorkOrdersPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={WORK_ORDER_CREATE_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="manufacturing" requiredWrite>
+                <RoutedPage>
+                  <CreateWorkOrderPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={WORK_ORDER_DETAIL_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="manufacturing">
+                <RoutedPage>
+                  <WorkOrderDetailPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={WORKSTATIONS_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="manufacturing">
+                <RoutedPage>
+                  <WorkstationsPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={WORKSTATION_DETAIL_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="manufacturing">
+                <RoutedPage>
+                  <WorkstationDetailPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={ROUTINGS_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="manufacturing">
+                <RoutedPage>
+                  <RoutingsPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={ROUTING_DETAIL_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="manufacturing">
+                <RoutedPage>
+                  <RoutingDetailPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={PRODUCTION_PLANNING_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="manufacturing">
+                <RoutedPage>
+                  <ProductionPlanningPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={PRODUCTION_PLANS_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="manufacturing">
+                <RoutedPage>
+                  <ProductionPlansPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={PRODUCTION_PLAN_DETAIL_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="manufacturing">
+                <RoutedPage>
+                  <ProductionPlanDetailPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={OEE_DASHBOARD_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="manufacturing">
+                <RoutedPage>
+                  <OeeDashboardPage />
                 </RoutedPage>
               </ProtectedAppRoute>
             }

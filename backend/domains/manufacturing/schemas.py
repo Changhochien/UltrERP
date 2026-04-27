@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
@@ -469,7 +469,7 @@ class ManufacturingProposalResponse(BaseModel):
 	decided_by: UUID | None
 	decided_at: datetime | None
 	work_order_id: UUID | None
-	shortages: dict | None
+	shortages: list[dict[str, Any]] | None
 	notes: str | None
 	created_at: datetime
 	updated_at: datetime
@@ -676,9 +676,3 @@ class DowntimeParetoResponse(BaseModel):
 	percentage: float
 
 
-# ---------------------------------------------------------------------------
-# Utility imports
-# ---------------------------------------------------------------------------
-
-
-from typing import Literal

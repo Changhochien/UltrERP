@@ -42,6 +42,8 @@ so that I can evaluate material shortages and make informed build-vs-buy decisio
 
 - 2026-04-26: Implemented proposal generation from sales order demand signals
 - 2026-04-27: Fixed race condition in production planning services
+- 2026-04-27: Quality review fixed proposal generation to use the repo's confirmed `OrderLine` demand model instead of non-existent sales-order fields.
+- 2026-04-27: Quality review now marks prior proposed rows as stale and returns typed shortage arrays for the UI.
 
 ### Issues Fixed
 
@@ -69,6 +71,7 @@ so that I can evaluate material shortages and make informed build-vs-buy decisio
 - ✅ Python files compile without errors
 - ✅ Manufacturing module imports correctly
 - ✅ Tests pass (85 API tests, 317 domain tests)
+- ✅ Added focused unit coverage for confirmed-demand proposal generation and stale proposal rollover.
 
 ### TypeScript Fixes (2026-04-27)
 - Added `swr` package to dependencies

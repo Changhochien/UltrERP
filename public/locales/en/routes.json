@@ -59,6 +59,58 @@
     "description": "Manage stock levels and warehouse activity.",
     "label": "Inventory"
   },
+  "manufacturing": {
+    "description": "Plan production, manage BOMs, and track shop-floor execution.",
+    "label": "Manufacturing"
+  },
+  "boms": {
+    "description": "Review submitted and draft bills of materials for manufactured products.",
+    "label": "Bills of Materials"
+  },
+  "bomDetail": {
+    "description": "Inspect one BOM revision, its materials, and submission status.",
+    "label": "BOM Detail"
+  },
+  "workOrders": {
+    "description": "Track manufacturing execution, material staging, and completion progress.",
+    "label": "Work Orders"
+  },
+  "workOrderDetail": {
+    "description": "Review one work order, reserve materials, transfer stock, and complete output.",
+    "label": "Work Order Detail"
+  },
+  "workstations": {
+    "description": "Manage workstation capacity, hourly rates, and working-hour calendars.",
+    "label": "Workstations"
+  },
+  "workstationDetail": {
+    "description": "Inspect one workstation's rate, capacity, and configured availability.",
+    "label": "Workstation Detail"
+  },
+  "routings": {
+    "description": "Define operation sequences and estimate production time and labor cost.",
+    "label": "Routings"
+  },
+  "routingDetail": {
+    "description": "Inspect one routing template and calculate planned time and cost.",
+    "label": "Routing Detail"
+  },
+  "productionPlanning": {
+    "description": "Generate and review manufacturing proposals from demand signals.",
+    "label": "Production Planning"
+  },
+  "productionPlans": {
+    "description": "Aggregate demand into production plans and firm work-order creation.",
+    "label": "Production Plans"
+  },
+  "productionPlanDetail": {
+    "description": "Review one production plan's demand, shortages, capacity, and firming status.",
+    "label": "Production Plan Detail"
+  },
+  "oee": {
+    "description": "Monitor downtime trends and OEE performance for manufacturing workstations.",
+    "label": "OEE Dashboard"
+  },
   "inventoryCategories": {
     "description": "Standardize product category master data used in forms and search filters.",
     "label": "Product Categories"

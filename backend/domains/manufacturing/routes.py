@@ -468,7 +468,12 @@ async def calculate_routing(
 	routing = await mservice.get_routing_by_id(db, tenant_id, routing_id)
 	if not routing:
 		raise HTTPException(status_code=404, detail="Routing not found")
-	return mservice.calculate_routing_cost_and_time(routing, Decimal(str(quantity)))
+	workstation_costs = await mservice.get_workstation_costs_for_routing(db, tenant_id, routing)
+	return mservice.calculate_routing_cost_and_time(
+		routing,
+		Decimal(str(quantity)),
+		workstation_costs,
+	)
 
 
 # ============================================================================

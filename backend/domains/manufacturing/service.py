@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import and_, func, or_, select
@@ -67,6 +67,7 @@ from .schemas import (
 	WorkOrderComplete,
 	WorkOrderCreate,
 	WorkOrderListResponse,
+	WorkOrderMaterialReserve,
 	WorkOrderMaterialLineResponse,
 	WorkOrderResponse,
 	WorkOrderStatusTransition,
@@ -929,7 +930,7 @@ async def reserve_work_order_materials(
 	db: AsyncSession,
 	tenant_id: uuid.UUID,
 	work_order_id: uuid.UUID,
-	payload: WorkOrderTransfer,
+	payload: WorkOrderMaterialReserve,
 ) -> WorkOrderResponse:
 	"""Reserve or release materials for a work order."""
 	stmt = (
@@ -989,6 +990,175 @@ async def reserve_work_order_materials(
 		raise ValueError(f"Material shortages: {shortages}")
 	
 	return await get_work_order_by_id(db, tenant_id, work_order_id)
+
+
+def _decimal_or_zero(value: Decimal | int | float | None) -> Decimal:
+	if isinstance(value, Decimal):
+		return value
+	if value is None:
+		return Decimal("0")
+	return Decimal(str(value))
+
+
+async def _get_bom_model_by_id(
+	db: AsyncSession,
+	tenant_id: uuid.UUID,
+	bom_id: uuid.UUID,
+) -> BillOfMaterials | None:
+	stmt = (
+		select(BillOfMaterials)
+		.where(
+			and_(
+				BillOfMaterials.id == bom_id,
+				BillOfMaterials.tenant_id == tenant_id,
+			)
+		)
+		.options(selectinload(BillOfMaterials.items))
+	)
+	result = await db.execute(stmt)
+	return result.scalar_one_or_none()
+
+
+async def _get_confirmed_order_demand(
+	db: AsyncSession,
+	tenant_id: uuid.UUID,
+	product_id: uuid.UUID,
+	start_date: datetime | None = None,
+	end_date: datetime | None = None,
+) -> Decimal:
+	conditions = [
+		Order.tenant_id == tenant_id,
+		OrderLine.product_id == product_id,
+		Order.status == "confirmed",
+		OrderLine.quantity > 0,
+	]
+	confirmed_at_expr = func.coalesce(Order.confirmed_at, Order.created_at)
+	if start_date:
+		conditions.append(confirmed_at_expr >= start_date)
+	if end_date:
+		conditions.append(confirmed_at_expr <= end_date)
+
+	stmt = (
+		select(func.sum(OrderLine.quantity))
+		.join(Order, OrderLine.order_id == Order.id)
+		.where(and_(*conditions))
+	)
+	result = await db.execute(stmt)
+	return _decimal_or_zero(result.scalar())
+
+
+async def _get_available_stock_qty(
+	db: AsyncSession,
+	tenant_id: uuid.UUID,
+	product_id: uuid.UUID,
+) -> Decimal:
+	stmt = select(func.sum(InventoryStock.quantity)).where(
+		and_(
+			InventoryStock.tenant_id == tenant_id,
+			InventoryStock.product_id == product_id,
+		)
+	)
+	result = await db.execute(stmt)
+	return _decimal_or_zero(result.scalar())
+
+
+async def _get_open_work_order_supply_qty(
+	db: AsyncSession,
+	tenant_id: uuid.UUID,
+	product_id: uuid.UUID,
+) -> Decimal:
+	stmt = select(func.sum(WorkOrder.quantity - WorkOrder.produced_quantity)).where(
+		and_(
+			WorkOrder.tenant_id == tenant_id,
+			WorkOrder.product_id == product_id,
+			WorkOrder.status.in_([
+				WorkOrderStatus.SUBMITTED,
+				WorkOrderStatus.NOT_STARTED,
+				WorkOrderStatus.IN_PROGRESS,
+			]),
+		)
+	)
+	result = await db.execute(stmt)
+	return _decimal_or_zero(result.scalar())
+
+
+async def _build_material_shortages(
+	db: AsyncSession,
+	tenant_id: uuid.UUID,
+	bom: BillOfMaterials,
+	planned_quantity: Decimal,
+) -> list[dict[str, Any]]:
+	if planned_quantity <= 0:
+		return []
+
+	shortages: list[dict[str, Any]] = []
+	for item in bom.items:
+		item_demand = planned_quantity * item.required_quantity / bom.bom_quantity
+		item_stock_stmt = select(func.sum(InventoryStock.quantity)).where(
+			and_(
+				InventoryStock.tenant_id == tenant_id,
+				InventoryStock.product_id == item.item_id,
+				InventoryStock.warehouse_id == item.source_warehouse_id if item.source_warehouse_id else True,
+			)
+		)
+		item_stock_result = await db.execute(item_stock_stmt)
+		item_stock = _decimal_or_zero(item_stock_result.scalar())
+
+		if item_stock < item_demand:
+			shortages.append(
+				{
+					"item_code": item.item_code,
+					"item_name": item.item_name,
+					"required": float(item_demand),
+					"available": float(item_stock),
+					"shortage": float(item_demand - item_stock),
+				}
+			)
+
+	return shortages
+
+
+async def get_workstation_costs_for_routing(
+	db: AsyncSession,
+	tenant_id: uuid.UUID,
+	routing: RoutingResponse,
+) -> dict[uuid.UUID, Decimal]:
+	workstation_ids = [op.workstation_id for op in routing.operations if op.workstation_id]
+	if not workstation_ids:
+		return {}
+
+	stmt = select(Workstation.id, Workstation.hourly_cost).where(
+		and_(
+			Workstation.tenant_id == tenant_id,
+			Workstation.id.in_(workstation_ids),
+		)
+	)
+	result = await db.execute(stmt)
+	return {
+		workstation_id: hourly_cost
+		for workstation_id, hourly_cost in result.all()
+	}
+
+
+async def _build_capacity_summary(
+	db: AsyncSession,
+	tenant_id: uuid.UUID,
+	routing_id: uuid.UUID,
+	planned_quantity: Decimal,
+) -> dict[str, Any] | None:
+	routing = await get_routing_by_id(db, tenant_id, routing_id)
+	if not routing:
+		return None
+
+	workstation_costs = await get_workstation_costs_for_routing(db, tenant_id, routing)
+	calculation = calculate_routing_cost_and_time(routing, planned_quantity, workstation_costs)
+	return {
+		"total_minutes": calculation["total_minutes"],
+		"total_hours": calculation["total_hours"],
+		"total_cost": str(calculation["total_cost"]),
+		"operation_count": calculation["operation_count"],
+		"workstation_count": len(workstation_costs),
+	}
 
 
 async def transfer_work_order_materials(
@@ -1422,28 +1592,20 @@ async def update_routing(
 def calculate_routing_cost_and_time(
 	routing: RoutingResponse,
 	quantity: Decimal,
+	workstation_costs: dict[uuid.UUID, Decimal] | None = None,
 ) -> dict[str, Any]:
 	"""Calculate total planned time and cost for a routing."""
 	total_minutes = 0
 	total_cost = Decimal("0")
-	
-	workstations = {}  # Cache workstation costs
+	workstation_costs = workstation_costs or {}
 	
 	for op in routing.operations:
-		# Get workstation cost
-		ws_cost = workstations.get(op.workstation_id, Decimal("0"))
-		if op.workstation_id:
-			workstations[op.workstation_id] = ws_cost
-		
-		# Calculate operation time
-		setup = op.setup_minutes
-		fixed_run = op.fixed_run_minutes
-		variable_run = int(op.variable_run_minutes_per_unit * quantity)
-		
-		op_minutes = setup + fixed_run + variable_run
+		ws_cost = workstation_costs.get(op.workstation_id, Decimal("0"))
+		variable_run = (op.variable_run_minutes_per_unit * quantity).to_integral_value(
+			rounding=ROUND_HALF_UP,
+		)
+		op_minutes = op.setup_minutes + op.fixed_run_minutes + int(variable_run)
 		total_minutes += op_minutes
-		
-		# Calculate cost
 		op_cost = (Decimal(op_minutes) / 60) * ws_cost
 		total_cost += op_cost
 	
@@ -1486,82 +1648,34 @@ async def generate_proposals(
 	# Filter by product_ids if provided
 	if payload and payload.product_ids:
 		active_boms = {k: v for k, v in active_boms.items() if k in payload.product_ids}
+
+	if not active_boms:
+		return []
+
+	stale_stmt = select(ManufacturingProposal).where(
+		and_(
+			ManufacturingProposal.tenant_id == tenant_id,
+			ManufacturingProposal.product_id.in_(list(active_boms.keys())),
+			ManufacturingProposal.status == ManufacturingProposalStatus.PROPOSED,
+		)
+	)
+	stale_result = await db.execute(stale_stmt)
+	for stale_proposal in stale_result.scalars().all():
+		stale_proposal.status = ManufacturingProposalStatus.STALE
 	
 	for product_id, bom in active_boms.items():
-		# Get open sales order demand for this product
-		demand_stmt = (
-			select(
-				SalesOrderLine.product_id,
-				func.sum(SalesOrderLine.quantity - SalesOrderLine.delivered_quantity).label("demand"),
-			)
-			.join(Order, OrderLine.order_id == Order.id)
-			.where(
-				and_(
-					Order.tenant_id == tenant_id,
-					SalesOrderLine.product_id == product_id,
-					Order.status == "confirmed",
-					SalesOrderLine.quantity - SalesOrderLine.delivered_quantity > 0,
-				)
-			)
-			.group_by(SalesOrderLine.product_id)
-		)
-		demand_result = await db.execute(demand_stmt)
-		demand_row = demand_result.one_or_none()
-		demand_qty = demand_row.demand if demand_row else Decimal("0")
+		demand_qty = await _get_confirmed_order_demand(db, tenant_id, product_id)
 		
 		if demand_qty <= 0:
 			continue
-		
-		# Get current stock
-		stock_stmt = select(func.sum(InventoryStock.quantity)).where(
-			and_(
-				InventoryStock.tenant_id == tenant_id,
-				InventoryStock.product_id == product_id,
-			)
-		)
-		stock_result = await db.execute(stock_stmt)
-		current_stock = stock_result.scalar() or 0
-		
-		# Get open work order supply
-		wo_stmt = select(func.sum(WorkOrder.quantity - WorkOrder.produced_quantity)).where(
-			and_(
-				WorkOrder.tenant_id == tenant_id,
-				WorkOrder.product_id == product_id,
-				WorkOrder.status.in_([
-					WorkOrderStatus.SUBMITTED,
-					WorkOrderStatus.NOT_STARTED,
-					WorkOrderStatus.IN_PROGRESS,
-				]),
-			)
-		)
-		wo_result = await db.execute(wo_stmt)
-		open_wo_qty = wo_result.scalar() or 0
+
+		current_stock = await _get_available_stock_qty(db, tenant_id, product_id)
+		open_wo_qty = await _get_open_work_order_supply_qty(db, tenant_id, product_id)
 		
 		available_qty = current_stock + open_wo_qty
 		proposed_qty = max(Decimal("0"), demand_qty - available_qty)
-		
-		# Check material availability
-		shortages = []
-		for item in bom.items:
-			item_demand = proposed_qty * item.required_quantity / bom.bom_quantity
-			item_stock_stmt = select(func.sum(InventoryStock.quantity)).where(
-				and_(
-					InventoryStock.tenant_id == tenant_id,
-					InventoryStock.product_id == item.item_id,
-					InventoryStock.warehouse_id == item.source_warehouse_id if item.source_warehouse_id else True,
-				)
-			)
-			item_stock_result = await db.execute(item_stock_stmt)
-			item_stock = item_stock_result.scalar() or 0
-			
-			if item_stock < item_demand:
-				shortages.append({
-					"item_code": item.item_code,
-					"item_name": item.item_name,
-					"required": float(item_demand),
-					"available": float(item_stock),
-					"shortage": float(item_demand - item_stock),
-				})
+
+		shortages = await _build_material_shortages(db, tenant_id, bom, proposed_qty)
 		
 		proposal = ManufacturingProposal(
 			tenant_id=tenant_id,
@@ -1752,14 +1866,66 @@ async def create_production_plan(
 	await db.flush()
 	
 	for i, line in enumerate(payload.lines):
+		bom = None
+		if line.bom_id:
+			bom = await _get_bom_model_by_id(db, tenant_id, line.bom_id)
+			if bom is None:
+				raise ValueError(f"BOM not found for production plan line: {line.bom_id}")
+		else:
+			bom = await get_active_bom_for_product(db, tenant_id, line.product_id)
+
+		sales_order_demand = await _get_confirmed_order_demand(
+			db,
+			tenant_id,
+			line.product_id,
+			payload.start_date,
+			payload.end_date,
+		)
+		forecast_demand = line.forecast_demand or Decimal("0")
+		total_demand = sales_order_demand + forecast_demand
+		available_stock = await _get_available_stock_qty(db, tenant_id, line.product_id)
+		open_work_order_qty = await _get_open_work_order_supply_qty(db, tenant_id, line.product_id)
+		computed_proposed_qty = max(
+			Decimal("0"),
+			total_demand - available_stock - open_work_order_qty,
+		)
+		proposed_qty = line.proposed_qty if line.proposed_qty > 0 else computed_proposed_qty
+		resolved_routing_id = line.routing_id or (bom.routing_id if bom else None)
+
+		shortage_summary = None
+		if bom and proposed_qty > 0:
+			shortage_items = await _build_material_shortages(db, tenant_id, bom, proposed_qty)
+			if shortage_items:
+				shortage_summary = {
+					"item_count": len(shortage_items),
+					"items": shortage_items,
+				}
+
+		capacity_summary = None
+		if resolved_routing_id and proposed_qty > 0:
+			capacity_summary = await _build_capacity_summary(
+				db,
+				tenant_id,
+				resolved_routing_id,
+				proposed_qty,
+			)
+
 		plan_line = ProductionPlanLine(
 			tenant_id=tenant_id,
 			plan_id=plan.id,
 			product_id=line.product_id,
-			bom_id=line.bom_id,
-			routing_id=line.routing_id,
-			forecast_demand=line.forecast_demand,
-			proposed_qty=line.proposed_qty,
+			bom_id=line.bom_id or (bom.id if bom else None),
+			routing_id=resolved_routing_id,
+			sales_order_demand=sales_order_demand,
+			forecast_demand=forecast_demand,
+			total_demand=total_demand,
+			open_work_order_qty=open_work_order_qty,
+			available_stock=available_stock,
+			proposed_qty=proposed_qty,
+			firmed_qty=Decimal("0"),
+			completed_qty=Decimal("0"),
+			shortage_summary=shortage_summary,
+			capacity_summary=capacity_summary,
 			idx=line.idx if line.idx else i,
 			notes=line.notes,
 		)

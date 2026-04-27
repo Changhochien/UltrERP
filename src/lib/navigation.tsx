@@ -32,6 +32,7 @@ import {
   ADMIN_ROUTE,
   BALANCE_SHEET_ROUTE,
   BANK_RECONCILIATION_ROUTE,
+  BOM_LIST_ROUTE,
   BUDGETS_ROUTE,
   BUDGET_VARIANCE_ROUTE,
   CHART_OF_ACCOUNTS_ROUTE,
@@ -63,10 +64,14 @@ import {
   JOURNAL_ENTRIES_ROUTE,
   JOURNAL_ENTRY_DETAIL_ROUTE,
   LOGIN_ROUTE,
+  MANUFACTURING_ROUTE,
+  OEE_DASHBOARD_ROUTE,
   ORDERS_ROUTE,
   ORDER_CREATE_ROUTE,
   OWNER_DASHBOARD_ROUTE,
   PAYMENTS_ROUTE,
+  PRODUCTION_PLANNING_ROUTE,
+  PRODUCTION_PLANS_ROUTE,
   PROFIT_AND_LOSS_ROUTE,
   PURCHASES_ROUTE,
   PROCUREMENT_ROUTE,
@@ -74,8 +79,11 @@ import {
   PROCUREMENT_PURCHASE_ORDER_CREATE_ROUTE,
   PROCUREMENT_RFQ_CREATE_ROUTE,
   PROCUREMENT_RFQ_DETAIL_ROUTE,
+  ROUTINGS_ROUTE,
   SETTINGS_ROUTE,
   TRIAL_BALANCE_ROUTE,
+  WORK_ORDERS_ROUTE,
+  WORKSTATIONS_ROUTE,
 } from "./routes";
 
 // Navigation section types for organizing items
@@ -449,6 +457,72 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
       },
     ],
   },
+  {
+    label: "nav.manufacturing",
+    sections: [
+      {
+        type: 'standard',
+        label: null,
+        items: [
+          {
+            feature: "manufacturing",
+            label: "nav.boms",
+            to: BOM_LIST_ROUTE,
+            description: "routes.boms.description",
+            icon: Package,
+          },
+          {
+            feature: "manufacturing",
+            label: "nav.workOrders",
+            to: WORK_ORDERS_ROUTE,
+            description: "routes.workOrders.description",
+            icon: FileText,
+          },
+          {
+            feature: "manufacturing",
+            label: "nav.productionPlanning",
+            to: PRODUCTION_PLANNING_ROUTE,
+            description: "routes.productionPlanning.description",
+            icon: Calendar,
+          },
+          {
+            feature: "manufacturing",
+            label: "nav.productionPlans",
+            to: PRODUCTION_PLANS_ROUTE,
+            description: "routes.productionPlans.description",
+            icon: FileSpreadsheet,
+          },
+          {
+            feature: "manufacturing",
+            label: "nav.workstations",
+            to: WORKSTATIONS_ROUTE,
+            description: "routes.workstations.description",
+            icon: Settings,
+          },
+          {
+            feature: "manufacturing",
+            label: "nav.routings",
+            to: ROUTINGS_ROUTE,
+            description: "routes.routings.description",
+            icon: Boxes,
+          },
+        ],
+      },
+      {
+        type: 'reports',
+        label: "nav.reports",
+        items: [
+          {
+            feature: "manufacturing",
+            label: "nav.oee",
+            to: OEE_DASHBOARD_ROUTE,
+            description: "routes.oee.description",
+            icon: FileBarChart,
+          },
+        ],
+      },
+    ],
+  },
 ];
 
 // i18n keys for route contexts — resolved by callers via useTranslation
@@ -502,6 +576,14 @@ export const ROUTE_CONTEXT_KEYS = [
   { match: COLLECTIONS_ROUTE, labelKey: "routes.collections.label", descriptionKey: "routes.collections.description" },
   { match: BUDGETS_ROUTE, labelKey: "routes.budgets.label", descriptionKey: "routes.budgets.description" },
   { match: BUDGET_VARIANCE_ROUTE, labelKey: "routes.budgetVariance.label", descriptionKey: "routes.budgetVariance.description" },
+  { match: MANUFACTURING_ROUTE, labelKey: "routes.manufacturing.label", descriptionKey: "routes.manufacturing.description" },
+  { match: BOM_LIST_ROUTE, labelKey: "routes.boms.label", descriptionKey: "routes.boms.description" },
+  { match: WORK_ORDERS_ROUTE, labelKey: "routes.workOrders.label", descriptionKey: "routes.workOrders.description" },
+  { match: WORKSTATIONS_ROUTE, labelKey: "routes.workstations.label", descriptionKey: "routes.workstations.description" },
+  { match: ROUTINGS_ROUTE, labelKey: "routes.routings.label", descriptionKey: "routes.routings.description" },
+  { match: PRODUCTION_PLANNING_ROUTE, labelKey: "routes.productionPlanning.label", descriptionKey: "routes.productionPlanning.description" },
+  { match: PRODUCTION_PLANS_ROUTE, labelKey: "routes.productionPlans.label", descriptionKey: "routes.productionPlans.description" },
+  { match: OEE_DASHBOARD_ROUTE, labelKey: "routes.oee.label", descriptionKey: "routes.oee.description" },
 ] as const;
 
 // Lookup table for exact route matches - single route detail pages
@@ -517,6 +599,14 @@ const EXACT_ROUTE_CONTEXT: Record<string, { labelKey: string; descriptionKey: st
   [PROCUREMENT_PURCHASE_ORDERS_ROUTE]: { labelKey: "routes.procurementPurchaseOrders.label", descriptionKey: "routes.procurementPurchaseOrders.description", sectionKey: "nav.operations" },
   [PROCUREMENT_PURCHASE_ORDER_CREATE_ROUTE]: { labelKey: "routes.procurementPurchaseOrderCreate.label", descriptionKey: "routes.procurementPurchaseOrderCreate.description", sectionKey: "nav.operations" },
   [PROCUREMENT_RFQ_CREATE_ROUTE]: { labelKey: "routes.procurementRFQCreate.label", descriptionKey: "routes.procurementRFQCreate.description", sectionKey: "nav.operations" },
+  [MANUFACTURING_ROUTE]: { labelKey: "routes.manufacturing.label", descriptionKey: "routes.manufacturing.description", sectionKey: "nav.manufacturing" },
+  [BOM_LIST_ROUTE]: { labelKey: "routes.boms.label", descriptionKey: "routes.boms.description", sectionKey: "nav.manufacturing" },
+  [WORK_ORDERS_ROUTE]: { labelKey: "routes.workOrders.label", descriptionKey: "routes.workOrders.description", sectionKey: "nav.manufacturing" },
+  [WORKSTATIONS_ROUTE]: { labelKey: "routes.workstations.label", descriptionKey: "routes.workstations.description", sectionKey: "nav.manufacturing" },
+  [ROUTINGS_ROUTE]: { labelKey: "routes.routings.label", descriptionKey: "routes.routings.description", sectionKey: "nav.manufacturing" },
+  [PRODUCTION_PLANNING_ROUTE]: { labelKey: "routes.productionPlanning.label", descriptionKey: "routes.productionPlanning.description", sectionKey: "nav.manufacturing" },
+  [PRODUCTION_PLANS_ROUTE]: { labelKey: "routes.productionPlans.label", descriptionKey: "routes.productionPlans.description", sectionKey: "nav.manufacturing" },
+  [OEE_DASHBOARD_ROUTE]: { labelKey: "routes.oee.label", descriptionKey: "routes.oee.description", sectionKey: "nav.manufacturing" },
 } as const;
 
 // Lookup table for prefix route matches (nested routes like /suppliers/:id)
@@ -526,6 +616,11 @@ const PREFIX_ROUTE_CONTEXT: ReadonlyArray<{ prefix: string; labelKey: string; de
   { prefix: "/procurement/rfq/", labelKey: "routes.procurementRFQDetail.label", descriptionKey: "routes.procurementRFQDetail.description", sectionKey: "nav.operations" },
   { prefix: `${PROCUREMENT_PURCHASE_ORDERS_ROUTE}/`, labelKey: "routes.procurementPurchaseOrderDetail.label", descriptionKey: "routes.procurementPurchaseOrderDetail.description", sectionKey: "nav.operations" },
   { prefix: "/procurement/goods-receipts/", labelKey: "routes.procurementGoodsReceiptDetail.label", descriptionKey: "routes.procurementGoodsReceiptDetail.description", sectionKey: "nav.operations" },
+  { prefix: "/manufacturing/boms/", labelKey: "routes.bomDetail.label", descriptionKey: "routes.bomDetail.description", sectionKey: "nav.manufacturing" },
+  { prefix: "/manufacturing/work-orders/", labelKey: "routes.workOrderDetail.label", descriptionKey: "routes.workOrderDetail.description", sectionKey: "nav.manufacturing" },
+  { prefix: "/manufacturing/workstations/", labelKey: "routes.workstationDetail.label", descriptionKey: "routes.workstationDetail.description", sectionKey: "nav.manufacturing" },
+  { prefix: "/manufacturing/routings/", labelKey: "routes.routingDetail.label", descriptionKey: "routes.routingDetail.description", sectionKey: "nav.manufacturing" },
+  { prefix: "/manufacturing/production-plans/", labelKey: "routes.productionPlanDetail.label", descriptionKey: "routes.productionPlanDetail.description", sectionKey: "nav.manufacturing" },
 ];
 
 // Conditional detail routes requiring additional path logic

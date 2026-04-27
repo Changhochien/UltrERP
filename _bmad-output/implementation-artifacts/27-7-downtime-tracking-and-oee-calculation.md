@@ -42,6 +42,7 @@ so that I can identify losses and improve equipment effectiveness.
 
 - 2026-04-26: Implemented downtime tracking and OEE calculation
 - 2026-04-27: Verified implementation completeness
+- 2026-04-27: Quality review mounted manufacturing navigation and app-shell routes so the OEE dashboard is reachable alongside the rest of the manufacturing workspace.
 
 ### File List
 
@@ -78,6 +79,7 @@ OEE = Availability × Performance × Quality
 - ✅ Python files compile without errors
 - ✅ Manufacturing module imports correctly
 - ✅ Tests pass (85 API tests, 317 domain tests)
+- ✅ Frontend build and locale parity checks validate the mounted OEE/manufacturing navigation surface.
 
 ### TypeScript Fixes (2026-04-27)
 - Fixed `.map()` callback type annotations in OeeDashboard, BomList

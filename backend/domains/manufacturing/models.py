@@ -20,6 +20,7 @@ from sqlalchemy import (
 	Numeric,
 	String,
 	Text,
+	text,
 	func,
 )
 from sqlalchemy.dialects.postgresql import UUID
@@ -104,7 +105,13 @@ class BillOfMaterials(Base):
 	__table_args__ = (
 		Index("ix_bom_tenant_product", "tenant_id", "product_id"),
 		Index("ix_bom_tenant_status", "tenant_id", "status"),
-		Index("uq_bom_tenant_product_active", "tenant_id", "product_id", unique=True),
+		Index(
+			"uq_bom_tenant_product_active",
+			"tenant_id",
+			"product_id",
+			unique=True,
+			postgresql_where=text("is_active = true"),
+		),
 	)
 
 	id: Mapped[uuid.UUID] = mapped_column(
@@ -477,7 +484,7 @@ class ManufacturingProposal(Base):
 	work_order_id: Mapped[uuid.UUID | None] = mapped_column(
 		UUID(as_uuid=True), ForeignKey("work_order.id"), nullable=True,
 	)
-	shortages: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+	shortages: Mapped[list[dict[str, object]] | None] = mapped_column(JSON, nullable=True)
 	notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 	created_at: Mapped[datetime] = mapped_column(
 		DateTime(timezone=True), server_default=func.now(), nullable=False,

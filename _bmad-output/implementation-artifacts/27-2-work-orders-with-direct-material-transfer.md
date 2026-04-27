@@ -42,6 +42,8 @@ so that in-house production has an explicit execution record with a controlled l
 
 - 2026-04-26: Implemented work order creation, status machine, and material line snapshot from BOM
 - 2026-04-27: Fixed HIGH severity issues - race condition (SELECT FOR UPDATE), stop/cancel reason validation
+- 2026-04-27: Quality review mounted the manufacturing work-order routes in the app shell and added a detail workspace for lifecycle actions.
+- 2026-04-27: Added review-driven work-order detail controls for submit, start, stop, cancel, reserve, transfer, and completion flows.
 
 ### Issues Fixed
 
@@ -85,3 +87,4 @@ so that in-house production has an explicit execution record with a controlled l
 - ✅ Python files compile without errors
 - ✅ Manufacturing module imports correctly
 - ✅ Tests pass (85 API tests, 317 domain tests)
+- ✅ Frontend build validates the mounted work-order workspace and detail execution surface.

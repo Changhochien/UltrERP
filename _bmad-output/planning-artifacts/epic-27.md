@@ -55,6 +55,16 @@ Add the minimally viable manufacturing foundation needed to define product recip
 - Quality hooks should be designed to connect cleanly to Epic 29 rather than embedded prematurely.
 - Routing and workstation work extends Epic 27 beyond direct-transfer mode.
 
+## 2026-04-27 Quality Review Summary
+
+1. Story 27.1 review fixed the BOM active-version metadata mismatch so the ORM now matches the migration's partial unique index and preserves historical revisions.
+2. Stories 27.2 and 27.3 review mounted the manufacturing work-order surface in the app shell and added a detail workspace for lifecycle, reservation, transfer, and completion actions.
+3. Story 27.4 review fixed proposal generation to use the real confirmed-order demand model, stale superseded proposals, and return typed shortage payloads.
+4. Story 27.5 review fixed routing labor-cost calculation to use workstation hourly rates and exposed a routing detail calculator in the frontend.
+5. Story 27.6 review populated production-plan demand, stock, open-work-order, shortage, and capacity fields instead of relying on empty defaults.
+6. Story 27.7 review mounted the OEE dashboard and manufacturing navigation so the dashboard is reachable in the protected app shell.
+7. Focused validation now covers reviewed backend slices with manufacturing unit tests, frontend build, and locale parity checks.
+
 ## Dependency and Phase Order
 
 1. BOM lands before Work Orders and Routing.
