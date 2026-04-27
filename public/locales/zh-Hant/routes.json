@@ -176,5 +176,21 @@
   "ownerDashboard": {
     "label": "經營者儀表板",
     "description": "業主專屬的經營總覽與關鍵指標。"
+  },
+  "budgetVariance": {
+    "label": "預算差異",
+    "description": "比較實際支出與預算"
+  },
+  "budgets": {
+    "label": "預算",
+    "description": "建立和管理具有期間分配的預算"
+  },
+  "collections": {
+    "label": "催收款",
+    "description": "追蹤逾期發票和催款通知"
+  },
+  "bankReconciliation": {
+    "label": "銀行對帳",
+    "description": "匯入銀行對帳單並與分類帳核對"
   }
 }

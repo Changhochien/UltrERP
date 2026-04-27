@@ -96,10 +96,10 @@ export function CollectionsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            {t("routes.collections.label", "Collections")}
+            {t("routes.collections.label", { defaultValue: "Collections" })}
           </h1>
           <p className="text-muted-foreground">
-            {t("routes.collections.description", "Track overdue invoices and dunning notices")}
+            {t("routes.collections.description", { defaultValue: "Track overdue invoices and dunning notices" })}
           </p>
         </div>
         <Button onClick={loadNotices} variant="outline" size="sm">

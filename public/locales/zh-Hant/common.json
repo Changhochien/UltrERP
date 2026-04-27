@@ -8,7 +8,8 @@
     "reset": "重設",
     "save": "儲存",
     "yes": "是",
-    "retry": "重試"
+    "retry": "重試",
+    "refresh": "刷新"
   },
   "datePicker": {
     "clear": "清除",
@@ -429,6 +430,18 @@
   },
   "accounting": {
     "allVoucherTypes": "Accounting Allvouchertypes",
+    "balanceSheet": {
+      "title": "資產負債表",
+      "description": "特定日期的資產、負債和淨值"
+    },
+    "trialBalance": {
+      "title": "試算表",
+      "description": "檢視所有帳戶的借方和貸方餘額"
+    },
+    "profitAndLoss": {
+      "title": "損益表",
+      "description": "檢視期間的收入和支出"
+    },
     "total": "Accounting Total",
     "journalEntryNotFound": "Accounting Journalentrynotfound",
     "journalEntriesDescription": "Accounting Journalentriesdescription",
@@ -886,6 +899,30 @@
     "missing": "Costsource Missing"
   },
   "monthlyDemand": {
-    "title": "Monthlydemand Title"
+    "title": "月需求量"
+  },
+  "customer": {
+    "detail": {
+      "analytics": {
+        "totalRevenue": "總營收（12個月）",
+        "revenueDescription": "滾動12個月的營收",
+        "invoiceCount": "發票數量",
+        "invoiceCountDesc": "過去12個月發出的發票",
+        "avgInvoiceValue": "平均發票金額",
+        "avgInvoiceDesc": "每張發票的平均金額",
+        "outstandingBalance": "應收帳款餘額",
+        "creditUtilization": "信用額度使用率",
+        "revenueTrend": "營收趨勢",
+        "revenueTrendDesc": "過去12個完整月份的每月營收",
+        "emptyTitle": "尚無營收活動",
+        "emptyDescription": "此客戶過去12個月無發票營收。",
+        "avgDaysToPay": "平均付款天數",
+        "avgDaysDesc": "從發票日期到付款日期的測量",
+        "daysOverdueAvg": "平均逾期天數",
+        "daysOverdueDesc": "超過期限的平均延遲天數",
+        "creditLimit": "信用額度",
+        "creditLimitDesc": "已設定的客戶信用額度"
+      }
+    }
   }
 }

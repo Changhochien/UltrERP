@@ -124,10 +124,10 @@ export function ProfitAndLossPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            {t("Profit and Loss Statement")}
+            {t("accounting.profitAndLoss.title", { defaultValue: "Profit and Loss Statement" })}
           </h1>
           <p className="text-muted-foreground">
-            {t("View income and expenses for a period")}
+            {t("accounting.profitAndLoss.description", { defaultValue: "View income and expenses for a period" })}
           </p>
         </div>
       </div>

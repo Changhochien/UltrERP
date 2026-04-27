@@ -137,10 +137,10 @@ export function BudgetsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            {t("routes.budgets.label", "Budgets")}
+            {t("routes.budgets.label", { defaultValue: "Budgets" })}
           </h1>
           <p className="text-muted-foreground">
-            {t("routes.budgets.description", "Create and manage budgets with period allocation")}
+            {t("routes.budgets.description", { defaultValue: "Create and manage budgets with period allocation" })}
           </p>
         </div>
         <div className="flex gap-2">

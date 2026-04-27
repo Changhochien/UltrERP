@@ -146,10 +146,10 @@ export function BudgetVariancePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            {t("routes.budgetVariance.label", "Budget Variance")}
+            {t("routes.budgetVariance.label", { defaultValue: "Budget Variance" })}
           </h1>
           <p className="text-muted-foreground">
-            {t("routes.budgetVariance.description", "Compare actual spending against budget")}
+            {t("routes.budgetVariance.description", { defaultValue: "Compare actual spending against budget" })}
           </p>
         </div>
         {report && (

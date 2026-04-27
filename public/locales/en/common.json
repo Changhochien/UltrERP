@@ -8,7 +8,8 @@
     "reset": "Reset",
     "save": "Save",
     "yes": "Yes",
-    "retry": "Retry"
+    "retry": "Retry",
+    "refresh": "Refresh"
   },
   "datePicker": {
     "clear": "Clear",
@@ -429,6 +430,18 @@
   },
   "accounting": {
     "allVoucherTypes": "Accounting Allvouchertypes",
+    "balanceSheet": {
+      "title": "Balance Sheet",
+      "description": "Assets, liabilities, and equity as of a specific date"
+    },
+    "trialBalance": {
+      "title": "Trial Balance",
+      "description": "View all accounts with debit and credit balances"
+    },
+    "profitAndLoss": {
+      "title": "Profit and Loss Statement",
+      "description": "View income and expenses for a period"
+    },
     "total": "Accounting Total",
     "journalEntryNotFound": "Accounting Journalentrynotfound",
     "journalEntriesDescription": "Accounting Journalentriesdescription",
@@ -886,6 +899,30 @@
     "missing": "Costsource Missing"
   },
   "monthlyDemand": {
-    "title": "Monthlydemand Title"
+    "title": "Monthly Demand"
+  },
+  "customer": {
+    "detail": {
+      "analytics": {
+        "totalRevenue": "Total Revenue (12 months)",
+        "revenueDescription": "Rolling 12-month revenue",
+        "invoiceCount": "Invoice Count",
+        "invoiceCountDesc": "Invoices issued in the last 12 months",
+        "avgInvoiceValue": "Average Invoice Value",
+        "avgInvoiceDesc": "Average value per invoice",
+        "outstandingBalance": "Outstanding Balance",
+        "creditUtilization": "Credit utilization",
+        "revenueTrend": "Revenue Trend",
+        "revenueTrendDesc": "Monthly revenue across the last 12 complete months",
+        "emptyTitle": "No revenue activity yet",
+        "emptyDescription": "This customer has no invoice revenue in the last 12 months.",
+        "avgDaysToPay": "Average Days to Pay",
+        "avgDaysDesc": "Measured from invoice date to payment date",
+        "daysOverdueAvg": "Average Days Overdue",
+        "daysOverdueDesc": "Average lateness beyond terms",
+        "creditLimit": "Credit Limit",
+        "creditLimitDesc": "Configured customer credit line"
+      }
+    }
   }
 }

@@ -184,5 +184,21 @@
   "ownerDashboard": {
     "label": "Owner Dashboard",
     "description": "Business overview and KPIs for owners."
+  },
+  "budgetVariance": {
+    "label": "Budget Variance",
+    "description": "Compare actual spending against budget"
+  },
+  "budgets": {
+    "label": "Budgets",
+    "description": "Create and manage budgets with period allocation"
+  },
+  "collections": {
+    "label": "Collections",
+    "description": "Track overdue invoices and dunning notices"
+  },
+  "bankReconciliation": {
+    "label": "Bank Reconciliation",
+    "description": "Import bank statements and reconcile with ledger"
   }
 }

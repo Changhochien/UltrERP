@@ -114,15 +114,15 @@ export function BankReconciliationPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            {t("routes.bankReconciliation.label", "Bank Reconciliation")}
+            {t("routes.bankReconciliation.label", { defaultValue: "Bank Reconciliation" })}
           </h1>
           <p className="text-muted-foreground">
-            {t("routes.bankReconciliation.description", "Import bank statements and reconcile with ledger")}
+            {t("routes.bankReconciliation.description", { defaultValue: "Import bank statements and reconcile with ledger" })}
           </p>
         </div>
         <Button onClick={loadAccounts} variant="outline" size="sm">
           <RefreshCw className="mr-2 h-4 w-4" />
-          {t("common.refresh", "Refresh")}
+          {t("common.refresh", { defaultValue: "Refresh" })}
         </Button>
       </div>
 

@@ -142,10 +142,10 @@ export function TrialBalancePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            {t("Trial Balance")}
+            {t("accounting.trialBalance.title", { defaultValue: "Trial Balance" })}
           </h1>
           <p className="text-muted-foreground">
-            {t("View all accounts with debit and credit balances")}
+            {t("accounting.trialBalance.description", { defaultValue: "View all accounts with debit and credit balances" })}
           </p>
         </div>
       </div>

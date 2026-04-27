@@ -106,10 +106,10 @@ export function BalanceSheetPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            {t("Balance Sheet")}
+            {t("accounting.balanceSheet.title", { defaultValue: "Balance Sheet" })}
           </h1>
           <p className="text-muted-foreground">
-            {t("Assets, liabilities, and equity as of a specific date")}
+            {t("accounting.balanceSheet.description", { defaultValue: "Assets, liabilities, and equity as of a specific date" })}
           </p>
         </div>
       </div>
