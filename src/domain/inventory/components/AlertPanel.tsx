@@ -23,7 +23,7 @@ function formatDate(dateStr: string): string {
 }
 
 export function AlertPanel() {
-  const { t } = useTranslation("inventory");
+  const { t } = useTranslation("inventory", { keyPrefix: "alertPanel" });
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState("");
   const { selectedWarehouse } = useWarehouseContext();

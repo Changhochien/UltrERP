@@ -48,7 +48,7 @@ function parseOptionalInteger(value: string): number | undefined {
 }
 
 export function ProductSuppliersPanel({ productId }: ProductSuppliersPanelProps) {
-  const { t } = useTranslation("inventory");
+  const { t } = useTranslation("inventory", { keyPrefix: "productDetail.suppliersPanel" });
   const { suppliers, loading: suppliersLoading } = useSuppliers({ activeOnly: true });
 
   const [associations, setAssociations] = useState<ProductSupplierAssociation[]>([]);

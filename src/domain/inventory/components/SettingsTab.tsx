@@ -69,7 +69,7 @@ function WarehouseSettingsCard({
   updateSettings,
   onSave,
 }: WarehouseSettingsCardProps) {
-  const { t } = useTranslation("inventory");
+  const { t } = useTranslation("inventory", { keyPrefix: "productDetail.settingsTab" });
   const { avgDailyUsage } = useStockHistory(warehouse.stock_id);
   const preview = computePreview(avgDailyUsage, settings, warehouse.current_stock);
 
@@ -199,7 +199,7 @@ function WarehouseSettingsCard({
 }
 
 export function SettingsTab({ productId, warehouseFilterId, onSaveSuccess }: SettingsTabProps) {
-  const { t } = useTranslation("inventory");
+  const { t } = useTranslation("inventory", { keyPrefix: "productDetail.settingsTab" });
   const { product, loading: productLoading, reload } = useProductDetail(productId);
   const { update, submitting: saving } = useUpdateStockSettings();
 

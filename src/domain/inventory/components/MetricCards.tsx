@@ -12,7 +12,7 @@ interface MetricCardsProps {
 }
 
 export function MetricCards({ warehouseId }: MetricCardsProps) {
-  const { t } = useTranslation("inventory");
+  const { t } = useTranslation("inventory", { keyPrefix: "metricCards" });
   const { total: allTotal, loading: productsLoading, search: searchAll } = useProductSearch();
   const {
     alerts,

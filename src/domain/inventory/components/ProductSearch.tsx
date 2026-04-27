@@ -18,7 +18,7 @@ interface ProductSearchProps {
 }
 
 export function ProductSearch({ onProductClick }: ProductSearchProps) {
-  const { t } = useTranslation("inventory");
+  const { t } = useTranslation("inventory", { keyPrefix: "productGrid" });
   const { query, results, loading, error, includeInactive, categoryId, categoryLabel, search } = useProductSearch();
   const { selectedWarehouse } = useWarehouseContext();
   const trimmedQuery = query.trim();
