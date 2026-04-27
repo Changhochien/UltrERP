@@ -11,6 +11,7 @@ export const I18N_NAMESPACES = [
   'shell',
   'routes',
   'auth',
+  'accounting',
   'dashboard',
   'admin',
   'intelligence',

@@ -162,8 +162,8 @@ export function BudgetVariancePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Report Parameters</CardTitle>
-          <CardDescription>Select budget and date range</CardDescription>
+          <CardTitle>{t("budgetVariance.reportParameters")}</CardTitle>
+          <CardDescription>{t("budgetVariance.selectBudgetDateRange")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-4">
@@ -176,7 +176,7 @@ export function BudgetVariancePage() {
                 onChange={(e) => setSelectedBudgetId(e.target.value)}
                 onClick={loadBudgets}
               >
-                <option value="">Select budget...</option>
+                <option value="">{t("budgetVariance.selectBudget")}</option>
                 {budgets.map((budget) => (
                   <option key={budget.id} value={budget.id}>
                     {budget.budget_name} ({budget.fiscal_year})

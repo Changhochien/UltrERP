@@ -153,7 +153,7 @@ export function TrialBalancePage() {
       {/* Filters */}
       <Card>
         <CardHeader className="pb-4">
-          <CardTitle className="text-lg">Report Parameters</CardTitle>
+          <CardTitle className="text-lg">{t("budgetVariance.reportParameters")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-4 items-end">

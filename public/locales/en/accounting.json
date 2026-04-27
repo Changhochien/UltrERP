@@ -1,0 +1,52 @@
+{
+  "budgetVariance": {
+    "pageTitle": "Budget Variance",
+    "pageDescription": "Compare actual spending against budget",
+    "reportParameters": "Report Parameters",
+    "selectBudgetDateRange": "Select budget and date range",
+    "selectBudget": "Select budget...",
+    "selectDateRange": "Select date range...",
+    "generateReport": "Generate Report",
+    "summaryTitle": "Variance Summary",
+    "summaryDescription": "Compare budget vs actual spending by cost center.",
+    "varianceColumn": "Variance",
+    "variancePercentColumn": "Variance %",
+    "overBudget": "Over Budget",
+    "underBudget": "Under Budget",
+    "noVariance": "No Variance",
+    "totalBudgeted": "Total Budgeted",
+    "totalActual": "Total Actual",
+    "totalVariance": "Total Variance",
+    "byCostCenter": "By Cost Center",
+    "byCategory": "By Category",
+    "noData": "No variance data",
+    "noDataDescription": "Select a budget and date range to generate a variance report"
+  },
+  "balanceSheet": {
+    "pageTitle": "Balance Sheet",
+    "reportParameters": "Report Parameters",
+    "asOfDate": "As of Date",
+    "selectDate": "Select date...",
+    "generateReport": "Generate Report"
+  },
+  "trialBalance": {
+    "pageTitle": "Trial Balance",
+    "reportParameters": "Report Parameters",
+    "asOfDate": "As of Date",
+    "selectDate": "Select date...",
+    "accountCode": "Account Code",
+    "accountName": "Account Name",
+    "debit": "Debit",
+    "credit": "Credit",
+    "total": "Total"
+  },
+  "profitAndLoss": {
+    "pageTitle": "Profit and Loss",
+    "pageDescription": "View revenue and expenses",
+    "reportParameters": "Report Parameters",
+    "selectPeriod": "Select period...",
+    "revenue": "Revenue",
+    "expenses": "Expenses",
+    "netIncome": "Net Income"
+  }
+}

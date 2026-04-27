@@ -7,7 +7,6 @@
  * Generates TypeScript types from locale JSON files for type-safe translations.
  */
 
-import { I18N_NAMESPACES } from './i18n-namespaces';
 
 // =============================================================================
 // ENGLISH TRANSLATIONS - Source of Truth for Keys

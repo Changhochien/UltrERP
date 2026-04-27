@@ -1,0 +1,52 @@
+{
+  "budgetVariance": {
+    "pageTitle": "預算差異",
+    "pageDescription": "比較實際支出與預算",
+    "reportParameters": "報表參數",
+    "selectBudgetDateRange": "選擇預算與日期範圍",
+    "selectBudget": "選擇預算…",
+    "selectDateRange": "選擇日期範圍…",
+    "generateReport": "產生報表",
+    "summaryTitle": "差異摘要",
+    "summaryDescription": "檢視每個成本中心的預算與實際支出比較。",
+    "varianceColumn": "差異",
+    "variancePercentColumn": "差異%",
+    "overBudget": "超出預算",
+    "underBudget": "低於預算",
+    "noVariance": "無差異",
+    "totalBudgeted": "預算總計",
+    "totalActual": "實際總計",
+    "totalVariance": "差異總計",
+    "byCostCenter": "按成本中心",
+    "byCategory": "按類別",
+    "noData": "目前沒有差異資料",
+    "noDataDescription": "選擇預算與日期範圍以產生差異報表"
+  },
+  "balanceSheet": {
+    "pageTitle": "資產負債表",
+    "reportParameters": "報表參數",
+    "asOfDate": "截止日期",
+    "selectDate": "選擇日期…",
+    "generateReport": "產生報表"
+  },
+  "trialBalance": {
+    "pageTitle": "試算表",
+    "reportParameters": "報表參數",
+    "asOfDate": "截止日期",
+    "selectDate": "選擇日期…",
+    "accountCode": "科目代碼",
+    "accountName": "科目名稱",
+    "debit": "借方",
+    "credit": "貸方",
+    "total": "合計"
+  },
+  "profitAndLoss": {
+    "pageTitle": "損益表",
+    "pageDescription": "檢視收入與支出",
+    "reportParameters": "報表參數",
+    "selectPeriod": "選擇期間…",
+    "revenue": "收入",
+    "expenses": "支出",
+    "netIncome": "淨收入"
+  }
+}
