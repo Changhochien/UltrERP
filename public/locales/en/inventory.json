@@ -954,5 +954,17 @@
   "cancel": "Cancel",
   "success": "Successfully transferred \"{{product}}\": {{quantity}} units from \"{{fromWarehouse}}\" to \"{{toWarehouse}}\"",
   "networkError": "Network error, please retry",
-  "submit": "Submit Transfer"
+  "submit": "Submit Transfer",
+  "supplierForm": {
+    "supplierName": "Supplier Name",
+    "contactEmail": "Contact Email",
+    "phone": "Phone",
+    "address": "Address",
+    "defaultLeadTimeDays": "Default Lead Time (days)",
+    "commercialDefaults": "Commercial Defaults",
+    "defaultCurrency": "Default Currency",
+    "paymentTerms": "Payment Terms",
+    "tenantDefault": "Tenant default",
+    "required": "Required"
+  }
 }

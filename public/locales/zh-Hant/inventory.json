@@ -954,5 +954,17 @@
   "cancel": "取消",
   "success": "成功調撥「{{product}}」：{{quantity}} 單位從「{{fromWarehouse}}」至「{{toWarehouse}}」",
   "networkError": "網路錯誤，請重試",
-  "submit": "提交調撥"
+  "submit": "提交調撥",
+  "supplierForm": {
+    "supplierName": "供應商名稱",
+    "contactEmail": "聯絡電子郵件",
+    "phone": "電話",
+    "address": "地址",
+    "defaultLeadTimeDays": "預設前置時間（天）",
+    "commercialDefaults": "商業預設值",
+    "defaultCurrency": "預設貨幣",
+    "paymentTerms": "付款條件",
+    "tenantDefault": "租戶預設值",
+    "required": "必填"
+  }
 }

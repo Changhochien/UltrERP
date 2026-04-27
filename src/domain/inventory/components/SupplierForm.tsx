@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
@@ -63,6 +64,7 @@ export function SupplierForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { t } = useTranslation("inventory");
   const commercialOptions = useCommercialDefaultsOptions();
 
   useEffect(() => {
@@ -133,7 +135,7 @@ export function SupplierForm({
 
       <div>
         <label htmlFor="supplier-name" className="block text-sm font-medium">
-          Supplier Name <span className="text-destructive">*</span>
+          {t("supplierForm.supplierName")} <span className="text-destructive">*</span>
         </label>
         <Input
           id="supplier-name"
@@ -148,7 +150,7 @@ export function SupplierForm({
 
       <div>
         <label htmlFor="supplier-contact-email" className="block text-sm font-medium">
-          Contact Email
+          t("supplierForm.contactEmail")
         </label>
         <Input
           id="supplier-contact-email"
@@ -163,7 +165,7 @@ export function SupplierForm({
 
       <div>
         <label htmlFor="supplier-phone" className="block text-sm font-medium">
-          Phone
+          {t("supplierForm.phone")}
         </label>
         <Input
           id="supplier-phone"
@@ -176,7 +178,7 @@ export function SupplierForm({
 
       <div>
         <label htmlFor="supplier-address" className="block text-sm font-medium">
-          Address
+          {t("supplierForm.address")}
         </label>
         <Textarea
           id="supplier-address"
@@ -189,7 +191,7 @@ export function SupplierForm({
 
       <div>
         <label htmlFor="supplier-default-lead-time" className="block text-sm font-medium">
-          Default Lead Time (days)
+          {t("supplierForm.defaultLeadTimeDays")}
         </label>
         <Input
           id="supplier-default-lead-time"
@@ -208,11 +210,11 @@ export function SupplierForm({
       </div>
 
       <fieldset className="space-y-3 rounded-lg border border-border/70 p-4">
-        <legend className="px-1 text-sm font-semibold">Commercial Defaults</legend>
+        <legend className="px-1 text-sm font-semibold">{t("supplierForm.commercialDefaults")}</legend>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="supplier-default-currency" className="block text-sm font-medium">
-              Default Currency
+              {t("supplierForm.defaultCurrency")}
             </label>
             <select
               id="supplier-default-currency"
@@ -221,7 +223,7 @@ export function SupplierForm({
               onChange={(event) => setFormData((current) => ({ ...current, default_currency_code: event.target.value }))}
               disabled={isSubmitting || commercialOptions.loading}
             >
-              <option value="">Tenant default</option>
+              <option value="">{t("supplierForm.tenantDefault")}</option>
               {initialValues?.default_currency_code && !commercialOptions.currencies.some((currency) => currency.code === initialValues.default_currency_code) ? (
                 <option value={initialValues.default_currency_code}>{initialValues.default_currency_code}</option>
               ) : null}
@@ -236,7 +238,7 @@ export function SupplierForm({
 
           <div>
             <label htmlFor="supplier-payment-terms" className="block text-sm font-medium">
-              Payment Terms
+              {t("supplierForm.paymentTerms")}
             </label>
             <select
               id="supplier-payment-terms"
@@ -245,7 +247,7 @@ export function SupplierForm({
               onChange={(event) => setFormData((current) => ({ ...current, payment_terms_template_id: event.target.value }))}
               disabled={isSubmitting || commercialOptions.loading}
             >
-              <option value="">Tenant default</option>
+              <option value="">{t("supplierForm.tenantDefault")}</option>
               {initialValues?.payment_terms_template_id && !commercialOptions.paymentTerms.some((template) => template.id === initialValues.payment_terms_template_id) ? (
                 <option value={initialValues.payment_terms_template_id}>{initialValues.payment_terms_template_id}</option>
               ) : null}
