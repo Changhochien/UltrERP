@@ -46,7 +46,7 @@ vi.mock("../../domain/inventory/hooks/useWarehouses", () => ({
   }),
 }));
 
-vi.mock("@/components/products/ProductCombobox", () => ({
+vi.mock("@/domain/inventory/components/ProductCombobox", () => ({
   ProductCombobox: ({ value }: { value: string }) => <div>{value || "product-filter"}</div>,
 }));
 

@@ -6,7 +6,7 @@ const fetchProductLookupMock = vi.fn();
 const searchProductsMock = vi.fn();
 const submitMock = vi.fn();
 
-vi.mock("../../../components/products/ProductCombobox", () => ({
+vi.mock("@/domain/inventory/components/ProductCombobox", () => ({
   ProductCombobox: ({
     value,
     onChange,

@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ProductCombobox } from "../../components/products/ProductCombobox";
+import { ProductCombobox } from "@/domain/inventory/components/ProductCombobox";
 import { createProduct, fetchProductDetail, searchProducts } from "../../lib/api/inventory";
 import { ToastProvider } from "../../providers/ToastProvider";
 

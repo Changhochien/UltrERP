@@ -3,19 +3,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Search } from "lucide-react";
 
-import { ProductForm, type ProductFormSubmitResult } from "../../domain/inventory/components/ProductForm";
-import type { ProductResponse, ProductSearchResult, ProductUpdate } from "../../domain/inventory/types";
-import { useToast } from "../../hooks/useToast";
-import { createProduct, fetchProductDetail, searchProducts } from "../../lib/api/inventory";
-import { cn } from "../../lib/utils";
-import { Button } from "../ui/button";
-import { QuickEntryDialog } from "../ui/QuickEntryDialog";
-import { Spinner } from "../ui/Spinner";
+import { ProductForm, type ProductFormSubmitResult } from "@/domain/inventory/components/ProductForm";
+import type { ProductResponse, ProductSearchResult, ProductUpdate } from "@/domain/inventory/types";
+import { useToast } from "@/hooks/useToast";
+import { createProduct, fetchProductDetail, searchProducts } from "@/lib/api/inventory";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { QuickEntryDialog } from "@/components/ui/QuickEntryDialog";
+import { Spinner } from "@/components/ui/Spinner";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "../ui/popover";
+} from "@/components/ui/popover";
 import {
   Command,
   CommandEmpty,
@@ -23,7 +23,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "../ui/command";
+} from "@/components/ui/command";
 
 interface ProductComboboxProps {
   value: string;

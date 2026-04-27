@@ -31,7 +31,7 @@ vi.mock("../hooks/useWarehouses", () => ({
   }),
 }));
 
-vi.mock("../../../components/products/ProductCombobox", () => ({
+vi.mock("@/domain/inventory/components/ProductCombobox", () => ({
   ProductCombobox: ({ value, onChange, ariaLabel }: { value: string; onChange: (value: string) => void; ariaLabel?: string }) => (
     <input aria-label={ariaLabel ?? "Product"} value={value} onChange={(event) => onChange(event.target.value)} />
   ),

@@ -6,7 +6,7 @@ import { setAppTimeGetter } from "../../lib/time";
 
 const createMock = vi.fn();
 
-vi.mock("../../components/products/ProductCombobox", () => ({
+vi.mock("@/domain/inventory/components/ProductCombobox", () => ({
   ProductCombobox: () => <div data-testid="product-combobox" />,
 }));
 

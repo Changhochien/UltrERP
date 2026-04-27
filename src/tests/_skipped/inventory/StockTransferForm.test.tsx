@@ -33,7 +33,7 @@ vi.mock("@/domain/inventory/hooks/useWarehouses", () => ({
   }),
 }));
 
-vi.mock("@/components/products/ProductCombobox", () => ({
+vi.mock("@/domain/inventory/components/ProductCombobox", () => ({
   ProductCombobox: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
     <button type="button" onClick={() => onChange("product-1")}>
       {value || "pick-product"}

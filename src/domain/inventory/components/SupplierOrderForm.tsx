@@ -11,7 +11,7 @@ import {
 } from "../../../components/ui/date-picker-utils";
 import { Input } from "../../../components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table";
-import { ProductCombobox } from "../../../components/products/ProductCombobox";
+import { ProductCombobox } from "@/domain/inventory/components/ProductCombobox";
 import { fetchProductSupplier } from "../../../lib/api/inventory";
 import { collectIssueMessages } from "../../../lib/collectFormErrorMessages";
 import {

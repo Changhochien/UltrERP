@@ -10,7 +10,7 @@ import { Button } from "../../../components/ui/button";
 import { FieldError } from "../../../components/ui/field";
 import { Input } from "../../../components/ui/input";
 import { CustomerCombobox } from "@/domain/customers/components/CustomerCombobox";
-import { ProductCombobox } from "../../../components/products/ProductCombobox";
+import { ProductCombobox } from "@/domain/inventory/components/ProductCombobox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table";
 import { usePaymentTerms, useCreateOrder } from "../hooks/useOrders";
 import { trackEvent, AnalyticsEvents } from "../../../lib/analytics";

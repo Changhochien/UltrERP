@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { ProductCombobox } from "@/components/products/ProductCombobox";
+import { ProductCombobox } from "@/domain/inventory/components/ProductCombobox";
 import { PageHeader, PageTabs, SectionCard } from "@/components/layout/PageLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

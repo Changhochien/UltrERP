@@ -32,7 +32,7 @@ vi.mock("@/domain/customers/components/CustomerCombobox", () => ({
   ),
 }));
 
-vi.mock("../../components/products/ProductCombobox", () => ({
+vi.mock("@/domain/inventory/components/ProductCombobox", () => ({
   ProductCombobox: ({ value, onChange, onProductSelected }: { value: string; onChange: (value: string) => void; onProductSelected?: (product: { name: string }) => void }) => (
     <input
       aria-label="Line 1 product"

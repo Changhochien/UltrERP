@@ -7,7 +7,7 @@ import { INVOICE_TAX_POLICY_OPTIONS } from "../../domain/invoices/types";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { ProductCombobox } from "../products/ProductCombobox";
+import { ProductCombobox } from "@/domain/inventory/components/ProductCombobox";
 import {
   Select,
   SelectContent,

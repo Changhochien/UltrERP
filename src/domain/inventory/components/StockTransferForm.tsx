@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ProductCombobox } from "@/components/products/ProductCombobox";
+import { ProductCombobox } from "@/domain/inventory/components/ProductCombobox";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
