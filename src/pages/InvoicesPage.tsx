@@ -9,7 +9,7 @@ import { usePermissions } from "../hooks/usePermissions";
 import { INVOICE_CREATE_ROUTE, INVOICES_ROUTE } from "../lib/routes";
 
 export function InvoicesPage() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("invoice");
   const navigate = useNavigate();
   const { invoiceId } = useParams<{ invoiceId: string }>();
   const { canWrite } = usePermissions();
@@ -24,14 +24,14 @@ export function InvoicesPage() {
     <div className="space-y-6">
       <PageHeader
         breadcrumb={[{ label: t("invoices.label") }]}
-        eyebrow={t("invoice.listPage.eyebrow")}
-        title={t("invoice.listPage.title")}
-        description={t("invoice.listPage.description")}
+        eyebrow={t("listPage.eyebrow")}
+        title={t("listPage.title")}
+        description={t("listPage.description")}
         actions={(
           <div className="flex flex-wrap gap-3">
             {canWrite("invoices") ? (
               <Button type="button" onClick={() => navigate(INVOICE_CREATE_ROUTE)}>
-                {t("invoice.listPage.createInvoice")}
+                {t("listPage.createInvoice")}
               </Button>
             ) : null}
           </div>
@@ -39,8 +39,8 @@ export function InvoicesPage() {
       />
 
       <SectionCard
-        title={t("invoice.listPage.invoiceWorkspace")}
-        description={t("invoice.listPage.invoiceWorkspaceDescription")}
+        title={t("listPage.invoiceWorkspace")}
+        description={t("listPage.invoiceWorkspaceDescription")}
       >
         <InvoiceList onSelect={(id) => navigate(`/invoices/${id}`)} />
       </SectionCard>

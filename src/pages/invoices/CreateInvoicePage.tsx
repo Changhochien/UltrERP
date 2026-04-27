@@ -73,7 +73,7 @@ function buildLinePreview(line: InvoiceDraftLine) {
 }
 
 export default function CreateInvoicePage() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("invoice");
 const { t: tRoutes } = useTranslation("routes");
   const { error: showErrorToast, success: showSuccessToast } = useToast();
   const [customers, setCustomers] = useState<CustomerSummary[]>([]);
@@ -185,16 +185,16 @@ const { t: tRoutes } = useTranslation("routes");
       const result = await createInvoice(payload);
       if (result.ok) {
         showSuccessToast(
-          t("invoice.createPage.toast.successTitle"),
-          t("invoice.createPage.toast.successDescription", { invoiceNumber: result.data.invoice_number }),
+          t("createPage.toast.successTitle"),
+          t("createPage.toast.successDescription", { invoiceNumber: result.data.invoice_number }),
         );
         setCreated(result.data);
         return;
       }
       setServerErrors(result.errors);
       showErrorToast(
-        t("invoice.createPage.toast.errorTitle"),
-        result.errors[0]?.message ?? t("invoice.createPage.toast.errorDescription"),
+        t("createPage.toast.errorTitle"),
+        result.errors[0]?.message ?? t("createPage.toast.errorDescription"),
       );
     } finally {
       setSubmitting(false);
@@ -209,13 +209,13 @@ const { t: tRoutes } = useTranslation("routes");
             { label: tRoutes("invoices.label"), href: INVOICES_ROUTE },
             { label: tRoutes("createInvoice.label") },
           ]}
-          eyebrow={t("invoice.createPage.eyebrow")}
-          title={t("invoice.createPage.titleCreated")}
-          description={t("invoice.createPage.descriptionCreated")}
+          eyebrow={t("createPage.eyebrow")}
+          title={t("createPage.titleCreated")}
+          description={t("createPage.descriptionCreated")}
         />
         <SectionCard
-          title={t("invoice.createPage.createdRecord")}
-          description={t("invoice.createPage.createdRecordDescription")}
+          title={t("createPage.createdRecord")}
+          description={t("createPage.createdRecordDescription")}
         >
           <div className="space-y-4 text-sm">
             <p>
@@ -233,7 +233,7 @@ const { t: tRoutes } = useTranslation("routes");
                 setNextLineId(2);
               }}
             >
-              {t("invoice.createPage.createAnotherInvoice")}
+              {t("createPage.createAnotherInvoice")}
             </Button>
           </div>
         </SectionCard>
@@ -248,13 +248,13 @@ const { t: tRoutes } = useTranslation("routes");
           { label: tRoutes("invoices.label"), href: INVOICES_ROUTE },
           { label: tRoutes("createInvoice.label") },
         ]}
-        eyebrow={t("invoice.createPage.eyebrow")}
-        title={t("invoice.createPage.title")}
-        description={t("invoice.createPage.description")}
+        eyebrow={t("createPage.eyebrow")}
+        title={t("createPage.title")}
+        description={t("createPage.description")}
       />
       <SectionCard
-        title={t("invoice.createPage.draftTitle")}
-        description={t("invoice.createPage.draftDescription")}
+        title={t("createPage.draftTitle")}
+        description={t("createPage.draftDescription")}
       >
         <form onSubmit={handleSubmit} className="grid gap-6">
           {serverErrors.length > 0 ? (
@@ -267,7 +267,7 @@ const { t: tRoutes } = useTranslation("routes");
 
           <div className="space-y-1.5">
             <label htmlFor="customer-combobox" className="text-sm font-medium">
-              {t("invoice.createPage.customer")}
+              {t("createPage.customer")}
             </label>
             <CustomerCombobox
               value={customerId}
@@ -279,7 +279,7 @@ const { t: tRoutes } = useTranslation("routes");
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <div className="space-y-1.5">
               <label htmlFor="buyer-type" className="text-sm font-medium">
-                {t("invoice.createPage.buyerType")}
+                {t("createPage.buyerType")}
               </label>
               <Select
                 value={buyerType}
@@ -290,29 +290,29 @@ const { t: tRoutes } = useTranslation("routes");
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="b2b">{t("invoice.createPage.b2b")}</SelectItem>
-                  <SelectItem value="b2c">{t("invoice.createPage.b2c")}</SelectItem>
+                  <SelectItem value="b2b">{t("createPage.b2b")}</SelectItem>
+                  <SelectItem value="b2c">{t("createPage.b2c")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-1.5">
               <label htmlFor="buyer-identifier" className="text-sm font-medium">
-                {t("invoice.createPage.buyerIdentifier")}
+                {t("createPage.buyerIdentifier")}
               </label>
               <Input
                 id="buyer-identifier"
                 type="text"
-                value={buyerType === "b2c" ? t("invoice.createPage.b2cPlaceholder") : buyerIdentifier}
+                value={buyerType === "b2c" ? t("createPage.b2cPlaceholder") : buyerIdentifier}
                 onChange={(e) => setBuyerIdentifier(e.target.value)}
                 disabled={buyerType === "b2c" || submitting}
-                placeholder={buyerType === "b2c" ? t("invoice.createPage.b2cPlaceholder") : t("invoice.createPage.b2bPlaceholder")}
+                placeholder={buyerType === "b2c" ? t("createPage.b2cPlaceholder") : t("createPage.b2bPlaceholder")}
               />
             </div>
 
             <div className="space-y-1.5">
               <label htmlFor="invoice-date" className="text-sm font-medium">
-                {t("invoice.createPage.invoiceDate")}
+                {t("createPage.invoiceDate")}
               </label>
               <DatePicker
                 id="invoice-date"
@@ -326,15 +326,15 @@ const { t: tRoutes } = useTranslation("routes");
 
           {buyerType === "b2c" ? (
             <SurfaceMessage tone="warning">
-              {t("invoice.createPage.b2cWarning")}
+              {t("createPage.b2cWarning")}
             </SurfaceMessage>
           ) : null}
 
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-4">
-              <h3 className="text-base font-semibold tracking-tight">{t("invoice.createPage.invoiceLines")}</h3>
+              <h3 className="text-base font-semibold tracking-tight">{t("createPage.invoiceLines")}</h3>
               <Button type="button" variant="outline" onClick={addLine}>
-                {t("invoice.createPage.addLine")}
+                {t("createPage.addLine")}
               </Button>
             </div>
             {lines.map((line, index) => (
@@ -361,13 +361,13 @@ const { t: tRoutes } = useTranslation("routes");
 
           {customers.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              {t("invoice.createPage.noActiveCustomers")}
+              {t("createPage.noActiveCustomers")}
             </p>
           ) : null}
 
           <div className="flex gap-3">
             <Button type="submit" disabled={!isValid || submitting || customers.length === 0}>
-              {submitting ? t("invoice.createPage.creating") : t("invoice.createPage.createInvoice")}
+              {submitting ? t("createPage.creating") : t("createPage.createInvoice")}
             </Button>
           </div>
         </form>
