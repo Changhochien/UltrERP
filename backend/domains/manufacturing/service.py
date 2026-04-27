@@ -2096,6 +2096,30 @@ async def firm_production_plan(
 # ============================================================================
 
 
+def _validate_downtime_payload(payload: DowntimeCreate) -> None:
+	if payload.end_time and payload.end_time <= payload.start_time:
+		raise ValueError("Downtime end time must be after start time")
+
+
+def _validate_oee_payload(payload: OeeRecordCreate) -> None:
+	if payload.stop_time < 0:
+		raise ValueError("Stop time cannot be negative")
+	if payload.total_count < 0:
+		raise ValueError("Total count cannot be negative")
+	if payload.good_count < 0:
+		raise ValueError("Good count cannot be negative")
+	if payload.reject_count < 0:
+		raise ValueError("Reject count cannot be negative")
+	if payload.stop_time > payload.planned_production_time:
+		raise ValueError("Stop time cannot exceed planned production time")
+	if payload.good_count > payload.total_count:
+		raise ValueError("Good count cannot exceed total count")
+	if payload.reject_count > payload.total_count:
+		raise ValueError("Reject count cannot exceed total count")
+	if payload.good_count + payload.reject_count > payload.total_count:
+		raise ValueError("Good count and reject count cannot exceed total count")
+
+
 async def create_downtime(
 	db: AsyncSession,
 	tenant_id: uuid.UUID,
@@ -2103,6 +2127,7 @@ async def create_downtime(
 	payload: DowntimeCreate,
 ) -> DowntimeResponse:
 	"""Create a downtime entry."""
+	_validate_downtime_payload(payload)
 	duration = None
 	if payload.end_time:
 		duration = int((payload.end_time - payload.start_time).total_seconds() / 60)
@@ -2241,6 +2266,7 @@ async def create_oee_record(
 	payload: OeeRecordCreate,
 ) -> OeeRecordResponse:
 	"""Create an OEE record with calculated factors."""
+	_validate_oee_payload(payload)
 	run_time = payload.planned_production_time - payload.stop_time
 	
 	# Calculate OEE factors

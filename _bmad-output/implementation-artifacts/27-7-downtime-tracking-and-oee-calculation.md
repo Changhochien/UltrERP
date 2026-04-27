@@ -29,7 +29,7 @@ so that I can identify losses and improve equipment effectiveness.
 - [x] Task 2: Implement downtime tracking and OEE calculation. (AC: 1-4)
 - [x] Task 3: Implement OEE dashboard and Pareto analysis. (AC: 1-4)
 - [x] Task 4: Expose downtime and OEE APIs and UI. (AC: 1-4)
-- [ ] Task 5: Add focused tests and validation. (AC: 1-4) - *Deferred to future sprint*
+- [x] Task 5: Add focused tests and validation. (AC: 1-4)
 
 ---
 
@@ -43,6 +43,8 @@ so that I can identify losses and improve equipment effectiveness.
 - 2026-04-26: Implemented downtime tracking and OEE calculation
 - 2026-04-27: Verified implementation completeness
 - 2026-04-27: Quality review mounted manufacturing navigation and app-shell routes so the OEE dashboard is reachable alongside the rest of the manufacturing workspace.
+- 2026-04-27: Residual-gap review hardened downtime and OEE creation by rejecting impossible intervals, negative telemetry, and inconsistent production counts.
+- 2026-04-27: Added focused manufacturing metrics regression tests for downtime duration and OEE factor validation.
 
 ### File List
 
@@ -51,6 +53,7 @@ so that I can identify losses and improve equipment effectiveness.
 - `backend/domains/manufacturing/schemas.py` (Downtime, OEE schemas)
 - `backend/domains/manufacturing/service.py` (create_downtime, list_downtime, get_downtime_pareto, create_oee_record, get_oee_dashboard)
 - `backend/domains/manufacturing/routes.py` (Downtime, OEE routes)
+- `backend/tests/domains/manufacturing/test_metrics_service.py` (downtime/OEE validation and calculation regression tests)
 
 **Frontend:**
 - `src/domain/manufacturing/components/OeeDashboard.tsx`
@@ -80,6 +83,7 @@ OEE = Availability × Performance × Quality
 - ✅ Manufacturing module imports correctly
 - ✅ Tests pass (85 API tests, 317 domain tests)
 - ✅ Frontend build and locale parity checks validate the mounted OEE/manufacturing navigation surface.
+- ✅ Focused manufacturing metrics tests now cover invalid downtime intervals, invalid OEE telemetry, and expected factor calculation.
 
 ### TypeScript Fixes (2026-04-27)
 - Fixed `.map()` callback type annotations in OeeDashboard, BomList

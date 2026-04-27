@@ -606,7 +606,10 @@ async def create_downtime(
 	"""Create a downtime entry."""
 	from common.auth import get_tenant_id_from_request
 	tenant_id = await get_tenant_id_from_request(user_id)
-	return await mservice.create_downtime(db, tenant_id, user_id, payload)
+	try:
+		return await mservice.create_downtime(db, tenant_id, user_id, payload)
+	except ValueError as e:
+		raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/downtime", response_model=dict[str, Any])
@@ -654,7 +657,10 @@ async def create_oee_record(
 	"""Create an OEE record with calculated factors."""
 	from common.auth import get_tenant_id_from_request
 	tenant_id = await get_tenant_id_from_request(user_id)
-	return await mservice.create_oee_record(db, tenant_id, payload)
+	try:
+		return await mservice.create_oee_record(db, tenant_id, payload)
+	except ValueError as e:
+		raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/oee/dashboard", response_model=mschemas.OeeDashboardResponse)

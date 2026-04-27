@@ -63,7 +63,8 @@ Add the minimally viable manufacturing foundation needed to define product recip
 4. Story 27.5 review fixed routing labor-cost calculation to use workstation hourly rates and exposed a routing detail calculator in the frontend.
 5. Story 27.6 review populated production-plan demand, stock, open-work-order, shortage, and capacity fields instead of relying on empty defaults.
 6. Story 27.7 review mounted the OEE dashboard and manufacturing navigation so the dashboard is reachable in the protected app shell.
-7. Focused validation now covers reviewed backend slices with manufacturing unit tests, frontend build, and locale parity checks.
+7. Residual-gap review for Story 27.7 added downtime/OEE payload validation so impossible intervals, counts, and negative runtime telemetry are rejected before persistence.
+8. Focused validation now covers reviewed backend slices with manufacturing unit tests, frontend build, and locale parity checks.
 
 ## Dependency and Phase Order
 
