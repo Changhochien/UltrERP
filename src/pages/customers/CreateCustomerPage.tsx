@@ -18,7 +18,7 @@ export interface CreateCustomerPageProps {
 }
 
 export default function CreateCustomerPage({ onNavigate }: CreateCustomerPageProps) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("customer");
 const { t: tRoutes } = useTranslation("routes");
   const { error: showErrorToast, success: showSuccessToast } = useToast();
   const [submitting, setSubmitting] = useState(false);
@@ -35,8 +35,8 @@ const { t: tRoutes } = useTranslation("routes");
       if (result.ok) {
         trackEvent(AnalyticsEvents.CUSTOMER_CREATED, { source_page: "/customers" });
         showSuccessToast(
-          t("customer.createPage.toast.successTitle"),
-          t("customer.createPage.toast.successDescription", { name: result.data.company_name }),
+          t("createPage.toast.successTitle"),
+          t("createPage.toast.successDescription", { name: result.data.company_name }),
         );
         setCreated(result.data);
       } else if (result.duplicate) {
@@ -44,8 +44,8 @@ const { t: tRoutes } = useTranslation("routes");
       } else {
         setServerErrors(result.errors);
         showErrorToast(
-          t("customer.createPage.toast.errorTitle"),
-          result.errors[0]?.message ?? t("customer.createPage.toast.errorDescription"),
+          t("createPage.toast.errorTitle"),
+          result.errors[0]?.message ?? t("createPage.toast.errorDescription"),
         );
       }
     } finally {
@@ -61,13 +61,13 @@ const { t: tRoutes } = useTranslation("routes");
             { label: tRoutes("customers.label"), href: CUSTOMERS_ROUTE },
             { label: tRoutes("createCustomer.label") },
           ]}
-          eyebrow={t("customer.createPage.eyebrow")}
-          title={t("customer.createPage.titleCreated")}
-          description={t("customer.createPage.descriptionCreated")}
+          eyebrow={t("createPage.eyebrow")}
+          title={t("createPage.titleCreated")}
+          description={t("createPage.descriptionCreated")}
         />
         <SectionCard
-          title={t("customer.createPage.createdRecord")}
-          description={t("customer.createPage.createdRecordDescription")}
+          title={t("createPage.createdRecord")}
+          description={t("createPage.createdRecordDescription")}
         >
           <div className="space-y-4 text-sm">
             <p>
@@ -75,7 +75,7 @@ const { t: tRoutes } = useTranslation("routes");
               created with ID <code>{created.id}</code>.
             </p>
             <Button type="button" onClick={() => setCreated(null)}>
-              {t("customer.createPage.createAnother")}
+              {t("createPage.createAnother")}
             </Button>
           </div>
         </SectionCard>
@@ -90,13 +90,13 @@ const { t: tRoutes } = useTranslation("routes");
           { label: tRoutes("customers.label"), href: CUSTOMERS_ROUTE },
           { label: tRoutes("createCustomer.label") },
         ]}
-        eyebrow={t("customer.createPage.eyebrow")}
-        title={t("customer.createPage.title")}
-        description={t("customer.createPage.description")}
+        eyebrow={t("createPage.eyebrow")}
+        title={t("createPage.title")}
+        description={t("createPage.description")}
       />
       <SectionCard
-        title={t("customer.createPage.formTitle")}
-        description={t("customer.createPage.formDescription")}
+        title={t("createPage.formTitle")}
+        description={t("createPage.formDescription")}
       >
         {duplicate ? (
           <DuplicateCustomerWarning

@@ -25,7 +25,7 @@ const CUSTOMER_STATUS_OPTIONS = [
 
 export function CustomerListPage() {
   const { customerId } = useParams<{ customerId: string }>();
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("customer");
 const { t: tRoutes } = useTranslation("routes");
   const { canWrite } = usePermissions();
   const navigate = useNavigate();
@@ -108,25 +108,25 @@ const { t: tRoutes } = useTranslation("routes");
     <div className="space-y-6">
       <PageHeader
         breadcrumb={[{ label: tRoutes("customers.label") }]}
-        eyebrow={t("customer.listPage.eyebrow")}
-        title={t("customer.listPage.title")}
-        description={t("customer.listPage.description")}
+        eyebrow={t("listPage.eyebrow")}
+        title={t("listPage.title")}
+        description={t("listPage.description")}
         actions={canWrite("customers") ? (
           <Button type="button" onClick={handleCreateCustomer}>
-            {t("customer.listPage.createCustomer")}
+            {t("listPage.createCustomer")}
           </Button>
         ) : null}
       />
 
       <SectionCard
-        title={t("customer.listPage.customerRegistry")}
-        description={t("customer.listPage.customerRegistryDescription")}
+        title={t("listPage.customerRegistry")}
+        description={t("listPage.customerRegistryDescription")}
       >
         <div className="space-y-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <CustomerSearchBar onSearch={handleSearch} resetSignal={filterResetKey} />
             <label className="flex flex-col items-start gap-2 text-sm font-medium text-foreground sm:flex-row sm:items-center sm:gap-3">
-              <span>{t("customer.listPage.status")}</span>
+              <span>{t("listPage.status")}</span>
               <select
                 value={statusFilter}
                 onChange={(e) => {
@@ -136,7 +136,7 @@ const { t: tRoutes } = useTranslation("routes");
                 aria-label="Filter by status"
                 className="w-full sm:w-44"
               >
-                <option value="">{t("customer.listPage.allStatuses")}</option>
+                <option value="">{t("listPage.allStatuses")}</option>
                 {CUSTOMER_STATUS_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
                 ))}
@@ -149,16 +149,16 @@ const { t: tRoutes } = useTranslation("routes");
               <div className="flex flex-wrap items-center gap-2">
                 {hasActiveFilters ? (
                   <span className="text-sm text-muted-foreground">
-                    {t("customer.listPage.activeFilters", { count: activeFilterCount })}
+                    {t("listPage.activeFilters", { count: activeFilterCount })}
                   </span>
                 ) : null}
-                {query ? <Badge variant="outline">{t("customer.listPage.search", { query })}</Badge> : null}
-                {activeStatusLabel ? <Badge variant="outline">{t("customer.listPage.statusFilter", { status: t(activeStatusLabel) })}</Badge> : null}
-                {loading && data ? <span className="text-sm text-muted-foreground">{t("customer.listPage.updating")}</span> : null}
+                {query ? <Badge variant="outline">{t("listPage.search", { query })}</Badge> : null}
+                {activeStatusLabel ? <Badge variant="outline">{t("listPage.statusFilter", { status: t(activeStatusLabel) })}</Badge> : null}
+                {loading && data ? <span className="text-sm text-muted-foreground">{t("listPage.updating")}</span> : null}
               </div>
               {hasActiveFilters ? (
                 <Button type="button" variant="ghost" size="sm" onClick={handleClearFilters}>
-                  {t("customer.listPage.clearFilters")}
+                  {t("listPage.clearFilters")}
                 </Button>
               ) : null}
             </div>
@@ -175,7 +175,7 @@ const { t: tRoutes } = useTranslation("routes");
             />
           ) : null}
 
-          {loading && !data ? <p>{t("customer.listPage.loading")}</p> : null}
+          {loading && !data ? <p>{t("listPage.loading")}</p> : null}
           {error && !loading ? <p className="text-sm text-muted-foreground">{error}</p> : null}
         </div>
       </SectionCard>
