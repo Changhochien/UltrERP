@@ -225,7 +225,7 @@ export function CashFlowCard({ data, isLoading, error, onRetry }: CashFlowCardPr
           <div data-testid="cash-flow-error" className="flex flex-col gap-3">
             <p className="text-sm text-destructive">{error}</p>
             <Button variant="outline" size="sm" onClick={onRetry}>
-              {t("common.retry")}
+              {t("retry")}
             </Button>
           </div>
         </CardContent>

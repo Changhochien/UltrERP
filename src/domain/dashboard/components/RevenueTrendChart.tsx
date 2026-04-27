@@ -59,7 +59,7 @@ export function RevenueTrendChart(props: RevenueTrendChartProps) {
 
   const loadMoreContent = (): React.ReactNode => {
     if (!hasMore) return null;
-    const label = isLoadingMore ? t("common.loading") : t("dashboard.revenueTrend.loadMore");
+    const label = isLoadingMore ? t("loading") : t("dashboard.revenueTrend.loadMore");
     return (
       <div className="mt-3 flex justify-center">
         <Button variant="outline" size="sm" onClick={onLoadMore} disabled={isLoadingMore}>
@@ -89,7 +89,7 @@ export function RevenueTrendChart(props: RevenueTrendChartProps) {
         <>
           <SurfaceMessage tone="danger">{error}</SurfaceMessage>
           <Button variant="outline" onClick={onRetry} className="mt-2">
-            {t("common.retry")}
+            {t("retry")}
           </Button>
         </>
       ) : (

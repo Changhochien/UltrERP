@@ -43,7 +43,7 @@ export function KPISummaryCard({ data, isLoading, error, onRetry }: KPISummaryCa
       <SectionCard title={t("dashboard.kpi.title")} description={t("dashboard.kpi.description")}>
         <SurfaceMessage tone="danger">{error}</SurfaceMessage>
         <Button variant="outline" onClick={onRetry} className="mt-2">
-          {t("common.retry")}
+          {t("retry")}
         </Button>
       </SectionCard>
     );

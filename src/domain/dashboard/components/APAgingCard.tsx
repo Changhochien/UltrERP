@@ -65,7 +65,7 @@ export function APAgingCard({ data, isLoading, error, onRetry }: APAgingCardProp
           <div data-testid="ap-aging-error" className="flex flex-col gap-3">
             <p className="text-sm text-destructive">{error}</p>
             <Button variant="outline" size="sm" onClick={onRetry}>
-              {t("common.retry")}
+              {t("retry")}
             </Button>
           </div>
         </CardContent>

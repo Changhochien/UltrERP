@@ -53,7 +53,7 @@ export function TopCustomersCard() {
       <SectionCard title={t("dashboard.topCustomers.title")} description={t("dashboard.topCustomers.description")}>
         <SurfaceMessage tone="danger">{error}</SurfaceMessage>
         <button onClick={refetch} className="mt-2 text-sm text-primary hover:underline">
-          {t("common.retry")}
+          {t("retry")}
         </button>
       </SectionCard>
     );
