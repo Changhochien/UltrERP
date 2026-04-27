@@ -45,6 +45,8 @@ so that I can identify losses and improve equipment effectiveness.
 - 2026-04-27: Quality review mounted manufacturing navigation and app-shell routes so the OEE dashboard is reachable alongside the rest of the manufacturing workspace.
 - 2026-04-27: Residual-gap review hardened downtime and OEE creation by rejecting impossible intervals, negative telemetry, and inconsistent production counts.
 - 2026-04-27: Added focused manufacturing metrics regression tests for downtime duration and OEE factor validation.
+- 2026-04-27: Residual-gap review added in-dashboard forms to log downtime events and OEE production snapshots with workstation and work-order context.
+- 2026-04-27: Added focused frontend coverage for the dashboard submit flows and verified the manufacturing build after the UI update.
 
 ### File List
 
@@ -57,11 +59,13 @@ so that I can identify losses and improve equipment effectiveness.
 
 **Frontend:**
 - `src/domain/manufacturing/components/OeeDashboard.tsx`
+- `src/domain/manufacturing/components/OeeDashboard.test.tsx`
 - `src/pages/manufacturing/OeeDashboardPage.tsx`
 
 ### Key Features
 
 - Downtime entry with reason categorization (planned maintenance, unplanned breakdown, changeover, material shortage, quality hold)
+- Operator-facing dashboard forms for logging downtime events and OEE records without leaving manufacturing reporting
 - OEE calculation: Availability = run_time / planned_time, Performance = ideal_cycle * count / run_time, Quality = good / total
 - OEE = Availability × Performance × Quality
 - Downtime Pareto analysis by reason (frequency and duration)
@@ -84,6 +88,7 @@ OEE = Availability × Performance × Quality
 - ✅ Tests pass (85 API tests, 317 domain tests)
 - ✅ Frontend build and locale parity checks validate the mounted OEE/manufacturing navigation surface.
 - ✅ Focused manufacturing metrics tests now cover invalid downtime intervals, invalid OEE telemetry, and expected factor calculation.
+- ✅ Focused frontend tests now cover downtime and OEE submissions from the dashboard.
 
 ### TypeScript Fixes (2026-04-27)
 - Fixed `.map()` callback type annotations in OeeDashboard, BomList
