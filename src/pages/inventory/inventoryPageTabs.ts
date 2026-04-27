@@ -24,17 +24,17 @@ export type InventorySectionTabValue =
   | "categories"
   | "suppliers";
 
-export function buildInventorySectionTabs(tRoutes: TFunction): PageTabItem[] {
+export function buildInventorySectionTabs(t: TFunction): PageTabItem[] {
   return [
-    { value: "overview", label: tRoutes("inventory.label") },
-    { value: "below-reorder", label: tRoutes("belowReorderReport.label") },
-    { value: "valuation", label: tRoutes("inventoryValuation.label") },
-    { value: "reorder-suggestions", label: tRoutes("reorderSuggestions.label") },
-    { value: "count-sessions", label: tRoutes("inventoryCountSessions.label") },
-    { value: "transfers", label: tRoutes("inventoryTransfers.label") },
-    { value: "units", label: tRoutes("inventoryUnits.label") },
-    { value: "categories", label: tRoutes("inventoryCategories.label") },
-    { value: "suppliers", label: tRoutes("inventorySuppliers.label") },
+    { value: "overview", label: t("routes.inventory.label") },
+    { value: "below-reorder", label: t("routes.belowReorderReport.label") },
+    { value: "valuation", label: t("routes.inventoryValuation.label") },
+    { value: "reorder-suggestions", label: t("routes.reorderSuggestions.label") },
+    { value: "count-sessions", label: t("routes.inventoryCountSessions.label") },
+    { value: "transfers", label: t("routes.inventoryTransfers.label") },
+    { value: "units", label: t("routes.inventoryUnits.label") },
+    { value: "categories", label: t("routes.inventoryCategories.label") },
+    { value: "suppliers", label: t("routes.inventorySuppliers.label") },
   ];
 }
 
