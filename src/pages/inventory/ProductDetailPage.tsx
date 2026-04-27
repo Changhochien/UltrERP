@@ -44,7 +44,7 @@ function StockHealthBar({ warehouses }: { warehouses: WarehouseStockInfo[] }) {
         <div className="stock-health-legend">
           <div className="stock-health-legend-item">
             <div className="stock-health-dot critical" />
-            <span>{t("outOfStock")}</span>
+            <span>{t("inventory.productDetail.outOfStock")}</span>
           </div>
         </div>
       </div>
@@ -88,19 +88,19 @@ function StockHealthBar({ warehouses }: { warehouses: WarehouseStockInfo[] }) {
         {critical > 0 && (
           <div className="stock-health-legend-item">
             <div className="stock-health-dot critical" />
-            <span>{t("critical")} {pct(critical)}</span>
+            <span>{t("inventory.productDetail.critical")} {pct(critical)}</span>
           </div>
         )}
         {warning > 0 && (
           <div className="stock-health-legend-item">
             <div className="stock-health-dot warning" />
-            <span>{t("low")} {pct(warning)}</span>
+            <span>{t("inventory.productDetail.low")} {pct(warning)}</span>
           </div>
         )}
         {healthy > 0 && (
           <div className="stock-health-legend-item">
             <div className="stock-health-dot healthy" />
-            <span>{t("healthy")} {pct(healthy)}</span>
+            <span>{t("inventory.productDetail.healthy")} {pct(healthy)}</span>
           </div>
         )}
       </div>
@@ -121,7 +121,7 @@ function AuditLogTabContent({ productId }: { productId: string }) {
   const end = Math.min(offset + PAGE_SIZE, total);
 
   return (
-    <SectionCard title={t("auditLog")}>
+    <SectionCard title={t("inventory.productDetail.auditLog")}>
       {error && <div className="mb-3 text-sm text-destructive">{error}</div>}
       <AuditLogTable items={items} loading={loading} error={error} />
       {total > 0 && (
@@ -136,7 +136,7 @@ function AuditLogTabContent({ productId }: { productId: string }) {
               disabled={offset === 0}
               onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
             >
-              {t("auditPagination.previous")}
+              {t("inventory.productDetail.auditPagination.previous")}
             </Button>
             <Button
               variant="outline"
@@ -144,7 +144,7 @@ function AuditLogTabContent({ productId }: { productId: string }) {
               disabled={end >= total}
               onClick={() => setOffset(offset + PAGE_SIZE)}
             >
-              {t("auditPagination.next")}
+              {t("inventory.productDetail.auditPagination.next")}
             </Button>
           </div>
         </div>
@@ -154,8 +154,7 @@ function AuditLogTabContent({ productId }: { productId: string }) {
 }
 
 function ProductDetailContent({ productId }: { productId: string }) {
-  const { t } = useTranslation("inventory");
-  const { t: tCommon } = useTranslation("common");
+  const { t } = useTranslation("common");
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -164,17 +163,17 @@ function ProductDetailContent({ productId }: { productId: string }) {
   const [statusSubmitting, setStatusSubmitting] = useState(false);
   const { product, loading, error, reload, applyLocalUpdate } = useProductDetail(productId);
   const { selectedWarehouse } = useWarehouseContext();
-  const requestedTab = searchParams.get("tab");
+  const requestedTab = searchParams.get("inventory.productDetail.tab");
   const activeTab = requestedTab === "analytics"
     || requestedTab === "settings"
     || requestedTab === "audit"
     ? requestedTab
     : "overview";
   const detailTabs = [
-    { value: "overview", label: t("overview") },
-    { value: "analytics", label: t("analytics") },
-    { value: "settings", label: t("settings") },
-    { value: "audit", label: t("auditLog") },
+    { value: "overview", label: t("inventory.productDetail.overview") },
+    { value: "analytics", label: t("inventory.productDetail.analytics") },
+    { value: "settings", label: t("inventory.productDetail.settings") },
+    { value: "audit", label: t("inventory.productDetail.auditLog") },
   ];
 
   const stockId = selectedWarehouse?.id
@@ -228,7 +227,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
           {product ? (
             <Breadcrumb
               items={[
-                { label: tCommon("routes.inventory.label"), href: INVENTORY_ROUTE },
+                { label: t("routes.inventory.label"), href: INVENTORY_ROUTE },
                 { label: product.name },
               ]}
             />
@@ -306,7 +305,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
                 >
                   {product.standard_cost
                     ? t("standardCost", { amount: product.standard_cost })
-                    : t("missingStandardCost")}
+                    : t("inventory.productDetail.missingStandardCost")}
                 </Badge>
               </div>
               {product.description && (
@@ -325,7 +324,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
               onClick={() => setShowEditDialog(true)}
               disabled={statusSubmitting}
             >
-              {t("edit")}
+              {t("inventory.productDetail.edit")}
             </Button>
             {product.status === "active" ? (
               <Button
@@ -337,7 +336,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
                 }}
                 disabled={statusSubmitting}
               >
-                {t("deactivate")}
+                {t("inventory.productDetail.deactivate")}
               </Button>
             ) : (
               <Button
@@ -346,7 +345,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
                 onClick={() => void handleStatusChange("active")}
                 disabled={statusSubmitting}
               >
-                {t("activate")}
+                {t("inventory.productDetail.activate")}
               </Button>
             )}
           </div>
@@ -371,7 +370,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
           {!loading && product && (
             <div className="space-y-6">
               {/* Stock Health */}
-              <SectionCard title={t("stockHealth")}>
+              <SectionCard title={t("inventory.productDetail.stockHealth")}>
                 <div
                   style={{
                     fontFamily: "var(--inv-font-mono)",
@@ -382,31 +381,31 @@ function ProductDetailContent({ productId }: { productId: string }) {
                 >
                   {product.total_stock.toLocaleString()}{" "}
                   <span style={{ fontSize: 14, color: "var(--inv-muted)", fontWeight: 400 }}>
-                    {t("totalUnits")}
+                    {t("inventory.productDetail.totalUnits")}
                   </span>
                 </div>
                 <StockHealthBar warehouses={product.warehouses} />
               </SectionCard>
 
-              <SectionCard title={t("masterData")}>
+              <SectionCard title={t("inventory.productDetail.masterData")}>
                 <dl className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      {t("unitLabel")}
+                      {t("inventory.productDetail.unitLabel")}
                     </dt>
                     <dd className="mt-1 text-sm font-medium text-foreground">{product.unit}</dd>
                   </div>
                   <div>
                     <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      {t("standardCostLabel")}
+                      {t("inventory.productDetail.standardCostLabel")}
                     </dt>
                     <dd className="mt-1 text-sm font-medium text-foreground">
-                      {product.standard_cost ?? t("missingStandardCost")}
+                      {product.standard_cost ?? t("inventory.productDetail.missingStandardCost")}
                     </dd>
                   </div>
                   <div className="sm:col-span-2">
                     <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      {t("productDescription")}
+                      {t("inventory.productDetail.productDescription")}
                     </dt>
                     <dd className="mt-1 text-sm text-foreground">{product.description || "—"}</dd>
                   </div>
@@ -414,10 +413,10 @@ function ProductDetailContent({ productId }: { productId: string }) {
               </SectionCard>
 
               {/* By Warehouse */}
-              <SectionCard title={t("byWarehouse")}>
+              <SectionCard title={t("inventory.productDetail.byWarehouse")}>
                 {product.warehouses.length === 0 ? (
                   <p style={{ fontSize: 13, color: "var(--inv-muted)" }}>
-                    {t("stockByWarehouse.noRecords")}
+                    {t("inventory.productDetail.stockByWarehouse.noRecords")}
                   </p>
                 ) : (
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -439,14 +438,14 @@ function ProductDetailContent({ productId }: { productId: string }) {
                           </div>
                           <div className="warehouse-card-meta">
                             <span>
-                              {t("reorder")}:{" "}
+                              {t("inventory.productDetail.reorder")}:{" "}
                               <strong style={{ color: "var(--inv-text)" }}>
                                 {wh.reorder_point}
                               </strong>
                             </span>
                             {wh.last_adjusted && (
                               <span>
-                                {t("updated")}:{" "}
+                                {t("inventory.productDetail.updated")}:{" "}
                                 <strong style={{ color: "var(--inv-text)" }}>
                                   {parseBackendDate(wh.last_adjusted).toLocaleDateString()}
                                 </strong>
@@ -462,7 +461,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
 
               {/* Stock Trend Chart */}
               {(stockId || chartLoading) && (
-                <SectionCard title={t("stockTrend")}>
+                <SectionCard title={t("inventory.productDetail.stockTrend")}>
                   {chartLoading ? (
                     <div
                       style={{
@@ -473,7 +472,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
                       }}
                     >
                       <span style={{ color: "var(--inv-muted)", fontSize: 13 }}>
-                        {t("loading")}
+                        {t("inventory.productDetail.loading")}
                       </span>
                     </div>
                   ) : chartError ? (
@@ -490,7 +489,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
               )}
 
               {/* Recent Adjustments */}
-              <SectionCard title={t("recentAdjustments")}>
+              <SectionCard title={t("inventory.productDetail.recentAdjustments")}>
                 <AdjustmentTimeline history={product.adjustment_history} />
               </SectionCard>
 
@@ -499,7 +498,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
                 <div className="flex flex-wrap gap-3">
                   <Button variant="default" size="sm">
                     <SlidersHorizontal size={14} />
-                    {t("adjustStock")}
+                    {t("inventory.productDetail.adjustStock")}
                   </Button>
                   <Button
                     variant="outline"
@@ -512,11 +511,11 @@ function ProductDetailContent({ productId }: { productId: string }) {
                     )}
                   >
                     <ArrowRightLeft size={14} />
-                    {t("transfer")}
+                    {t("inventory.productDetail.transfer")}
                   </Button>
                   <Button variant="outline" size="sm">
                     <ShoppingCart size={14} />
-                    {t("order")}
+                    {t("inventory.productDetail.order")}
                   </Button>
                 </div>
               )}
@@ -540,10 +539,10 @@ function ProductDetailContent({ productId }: { productId: string }) {
       </Tabs>
 
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent aria-label={t("edit")} className="sm:max-w-lg">
+        <DialogContent aria-label={t("inventory.productDetail.edit")} className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{t("edit")}</DialogTitle>
-            <DialogDescription>{t("editDescription")}</DialogDescription>
+            <DialogTitle>{t("inventory.productDetail.edit")}</DialogTitle>
+            <DialogDescription>{t("inventory.productDetail.editDescription")}</DialogDescription>
           </DialogHeader>
           {product && (
             <EditProductForm
@@ -560,10 +559,10 @@ function ProductDetailContent({ productId }: { productId: string }) {
       </Dialog>
 
       <Dialog open={showDeactivateDialog} onOpenChange={setShowDeactivateDialog}>
-        <DialogContent aria-label={t("deactivate")} className="sm:max-w-lg">
+        <DialogContent aria-label={t("inventory.productDetail.deactivate")} className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{t("deactivate")}</DialogTitle>
-            <DialogDescription>{t("deactivateDescription")}</DialogDescription>
+            <DialogTitle>{t("inventory.productDetail.deactivate")}</DialogTitle>
+            <DialogDescription>{t("inventory.productDetail.deactivateDescription")}</DialogDescription>
           </DialogHeader>
           <div className="flex gap-2">
             <Button
@@ -572,7 +571,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
               onClick={() => setShowDeactivateDialog(false)}
               disabled={statusSubmitting}
             >
-              {t("cancel")}
+              {t("inventory.productDetail.cancel")}
             </Button>
             <Button
               type="button"
@@ -580,7 +579,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
               onClick={() => void handleStatusChange("inactive")}
               disabled={statusSubmitting}
             >
-              {t("confirmDeactivate")}
+              {t("inventory.productDetail.confirmDeactivate")}
             </Button>
           </div>
         </DialogContent>

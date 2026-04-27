@@ -25,11 +25,10 @@ function CostSourceBadge({ source }: { source: InventoryValuationItem["cost_sour
 }
 
 function InventoryValuationWorkspace() {
-  const { t } = useTranslation("inventory");
-  const { t: tCommon } = useTranslation("common");
+  const { t } = useTranslation("common");
   const navigate = useNavigate();
   const { selectedWarehouse, setSelectedWarehouse } = useWarehouseContext();
-  const inventoryTabs = buildInventorySectionTabs(tCommon);
+  const inventoryTabs = buildInventorySectionTabs(t);
   const {
     items,
     warehouseTotals,
@@ -45,10 +44,10 @@ function InventoryValuationWorkspace() {
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumb={[{ label: tCommon("routes.inventoryValuation.label") }]}
-        eyebrow={t("eyebrow")}
-        title={t("title")}
-        description={t("description")}
+        breadcrumb={[{ label: t("routes.inventoryValuation.label") }]}
+        eyebrow={t("inventory.inventoryValuationPage.eyebrow")}
+        title={t("inventory.inventoryValuationPage.title")}
+        description={t("inventory.inventoryValuationPage.description")}
         actions={(
           <div className="flex flex-wrap items-center gap-2">
             <WarehouseSelector value={selectedWarehouse} onChange={setSelectedWarehouse} />
@@ -58,7 +57,7 @@ function InventoryValuationWorkspace() {
           <PageTabs
             items={inventoryTabs}
             value="valuation"
-            ariaLabel={tCommon("inventory.page.title")}
+            ariaLabel={t("inventory.page.title")}
             onValueChange={(next) => navigate(getInventorySectionRoute(next as InventorySectionTabValue))}
           />
         )}
@@ -67,8 +66,8 @@ function InventoryValuationWorkspace() {
       {error ? <SurfaceMessage tone="danger">{error}</SurfaceMessage> : null}
 
       <SectionCard
-        title={t("summaryTitle")}
-        description={t("summaryDescription")}
+        title={t("inventory.inventoryValuationPage.summaryTitle")}
+        description={t("inventory.inventoryValuationPage.summaryDescription")}
         actions={(
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline" className="normal-case tracking-normal">
@@ -84,29 +83,29 @@ function InventoryValuationWorkspace() {
         )}
       >
         {loading ? (
-          <p className="text-sm text-muted-foreground">{t("loading")}</p>
+          <p className="text-sm text-muted-foreground">{t("inventory.inventoryValuationPage.loading")}</p>
         ) : totalRows === 0 ? (
           <div className="rounded-xl border border-dashed border-border/80 px-4 py-8 text-center">
-            <p className="font-medium">{t("empty")}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{t("emptyDescription")}</p>
+            <p className="font-medium">{t("inventory.inventoryValuationPage.empty")}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t("inventory.inventoryValuationPage.emptyDescription")}</p>
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-3">
             <div className="rounded-xl border border-border/70 bg-card/60 p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                {t("grandTotalValueLabel")}
+                {t("inventory.inventoryValuationPage.grandTotalValueLabel")}
               </p>
               <p className="mt-2 text-2xl font-semibold">{grandTotalValue}</p>
             </div>
             <div className="rounded-xl border border-border/70 bg-card/60 p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                {t("grandTotalQuantityLabel")}
+                {t("inventory.inventoryValuationPage.grandTotalQuantityLabel")}
               </p>
               <p className="mt-2 text-2xl font-semibold">{grandTotalQuantity}</p>
             </div>
             <div className="rounded-xl border border-border/70 bg-card/60 p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                {t("rowCountLabel")}
+                {t("inventory.inventoryValuationPage.rowCountLabel")}
               </p>
               <p className="mt-2 text-2xl font-semibold">{totalRows}</p>
             </div>
@@ -115,7 +114,7 @@ function InventoryValuationWorkspace() {
       </SectionCard>
 
       {!loading && totalRows > 0 ? (
-        <SectionCard title={t("warehouseTotalsTitle")} description={t("warehouseTotalsDescription")}>
+        <SectionCard title={t("inventory.inventoryValuationPage.warehouseTotalsTitle")} description={t("inventory.inventoryValuationPage.warehouseTotalsDescription")}>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {warehouseTotals.map((warehouseTotal) => (
               <div key={warehouseTotal.warehouse_id} className="rounded-xl border border-border/70 bg-card/60 p-4">
@@ -134,19 +133,19 @@ function InventoryValuationWorkspace() {
       ) : null}
 
       {!loading && totalRows > 0 ? (
-        <SectionCard title={t("tableTitle")} description={t("tableDescription")}>
+        <SectionCard title={t("inventory.inventoryValuationPage.tableTitle")} description={t("inventory.inventoryValuationPage.tableDescription")}>
           <div className="overflow-x-auto rounded-xl border border-border/70">
             <table className="min-w-full divide-y divide-border/70 text-sm">
               <thead className="bg-muted/30 text-left text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-3 font-medium">{t("col.productCode")}</th>
-                  <th className="px-4 py-3 font-medium">{t("col.productName")}</th>
-                  <th className="px-4 py-3 font-medium">{t("col.category")}</th>
-                  <th className="px-4 py-3 font-medium">{t("col.warehouse")}</th>
-                  <th className="px-4 py-3 font-medium">{t("col.quantity")}</th>
-                  <th className="px-4 py-3 font-medium">{t("col.unitCost")}</th>
-                  <th className="px-4 py-3 font-medium">{t("col.extendedValue")}</th>
-                  <th className="px-4 py-3 font-medium">{t("col.costSource")}</th>
+                  <th className="px-4 py-3 font-medium">{t("inventory.inventoryValuationPage.col.productCode")}</th>
+                  <th className="px-4 py-3 font-medium">{t("inventory.inventoryValuationPage.col.productName")}</th>
+                  <th className="px-4 py-3 font-medium">{t("inventory.inventoryValuationPage.col.category")}</th>
+                  <th className="px-4 py-3 font-medium">{t("inventory.inventoryValuationPage.col.warehouse")}</th>
+                  <th className="px-4 py-3 font-medium">{t("inventory.inventoryValuationPage.col.quantity")}</th>
+                  <th className="px-4 py-3 font-medium">{t("inventory.inventoryValuationPage.col.unitCost")}</th>
+                  <th className="px-4 py-3 font-medium">{t("inventory.inventoryValuationPage.col.extendedValue")}</th>
+                  <th className="px-4 py-3 font-medium">{t("inventory.inventoryValuationPage.col.costSource")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">

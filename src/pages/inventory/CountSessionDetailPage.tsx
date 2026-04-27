@@ -29,12 +29,11 @@ function buildDrafts(session: PhysicalCountSession): DraftMap {
 }
 
 export function CountSessionDetailPage() {
-  const { t } = useTranslation("inventory");
-  const { t: tCommon } = useTranslation("common");
+  const { t } = useTranslation("common");
   const navigate = useNavigate();
   const params = useParams<{ sessionId: string }>();
   const sessionId = params.sessionId ?? "";
-  const inventoryTabs = buildInventorySectionTabs(tCommon);
+  const inventoryTabs = buildInventorySectionTabs(t);
 
   const [session, setSession] = useState<PhysicalCountSession | null>(null);
   const [drafts, setDrafts] = useState<DraftMap>({});
@@ -64,7 +63,7 @@ export function CountSessionDetailPage() {
       .catch((loadError) => {
         if (!cancelled) {
           setSession(null);
-          setError(loadError instanceof Error ? loadError.message : t("loadError"));
+          setError(loadError instanceof Error ? loadError.message : t("inventory.countSessionDetailPage.loadError"));
         }
       })
       .finally(() => {
@@ -88,7 +87,7 @@ export function CountSessionDetailPage() {
     }
     return [
       { label: t("summary.status"), value: t(`status.${session.status}`) },
-      { label: t("summary.warehouse"), value: session.warehouse_name ?? t("unknownWarehouse") },
+      { label: t("summary.warehouse"), value: session.warehouse_name ?? t("inventory.countSessionDetailPage.unknownWarehouse") },
       { label: t("summary.countedLines"), value: t("countedProgress", { counted: session.counted_lines, total: session.total_lines }) },
       { label: t("summary.varianceTotal"), value: String(session.variance_total) },
     ];
@@ -98,13 +97,13 @@ export function CountSessionDetailPage() {
     const draft = drafts[lineId];
     const normalizedCountedQty = draft?.countedQty?.trim() ?? "";
     if (normalizedCountedQty === "") {
-      setError(t("invalidQuantity"));
+      setError(t("inventory.countSessionDetailPage.invalidQuantity"));
       return;
     }
 
     const countedQty = Number(normalizedCountedQty);
     if (!Number.isInteger(countedQty) || countedQty < 0) {
-      setError(t("invalidQuantity"));
+      setError(t("inventory.countSessionDetailPage.invalidQuantity"));
       return;
     }
 
@@ -155,16 +154,16 @@ export function CountSessionDetailPage() {
     <div className="space-y-6">
       <PageHeader
         breadcrumb={[
-          { label: tCommon("routes.inventoryCountSessions.label"), href: INVENTORY_COUNT_SESSIONS_ROUTE },
-          { label: session ? t("title", { id: session.id.slice(0, 8) }) : t("titleLoading") },
+          { label: t("routes.inventoryCountSessions.label"), href: INVENTORY_COUNT_SESSIONS_ROUTE },
+          { label: session ? t("title", { id: session.id.slice(0, 8) }) : t("inventory.countSessionDetailPage.titleLoading") },
         ]}
-        eyebrow={t("eyebrow")}
-        title={session ? t("title", { id: session.id.slice(0, 8) }) : t("titleLoading")}
-        description={t("description")}
+        eyebrow={t("inventory.countSessionDetailPage.eyebrow")}
+        title={session ? t("title", { id: session.id.slice(0, 8) }) : t("inventory.countSessionDetailPage.titleLoading")}
+        description={t("inventory.countSessionDetailPage.description")}
         actions={(
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" variant="outline" onClick={() => navigate(INVENTORY_COUNT_SESSIONS_ROUTE)}>
-              {t("backToList")}
+              {t("inventory.countSessionDetailPage.backToList")}
             </Button>
           </div>
         )}
@@ -172,7 +171,7 @@ export function CountSessionDetailPage() {
           <PageTabs
             items={inventoryTabs}
             value="count-sessions"
-            ariaLabel={tCommon("inventory.page.title")}
+            ariaLabel={t("inventory.page.title")}
             onValueChange={(next) => navigate(getInventorySectionRoute(next as InventorySectionTabValue))}
           />
         )}
@@ -181,14 +180,14 @@ export function CountSessionDetailPage() {
       {error ? <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div> : null}
 
       {loading ? (
-        <SectionCard title={t("loadingTitle")} description={t("loading")}>
-          <p className="text-sm text-muted-foreground">{t("loading")}</p>
+        <SectionCard title={t("inventory.countSessionDetailPage.loadingTitle")} description={t("inventory.countSessionDetailPage.loading")}>
+          <p className="text-sm text-muted-foreground">{t("inventory.countSessionDetailPage.loading")}</p>
         </SectionCard>
       ) : session == null ? (
-        <SectionCard title={t("missingTitle")} description={t("missingDescription")} />
+        <SectionCard title={t("inventory.countSessionDetailPage.missingTitle")} description={t("inventory.countSessionDetailPage.missingDescription")} />
       ) : (
         <>
-          <SectionCard title={t("summaryTitle")} description={t("summaryDescription")}>
+          <SectionCard title={t("inventory.countSessionDetailPage.summaryTitle")} description={t("inventory.countSessionDetailPage.summaryDescription")}>
             <div className="grid gap-4 md:grid-cols-4">
               {summaryItems.map((item) => (
                 <div key={item.label} className="rounded-xl border border-border/70 bg-muted/20 px-4 py-3">
@@ -200,15 +199,15 @@ export function CountSessionDetailPage() {
           </SectionCard>
 
           <SectionCard
-            title={t("linesTitle")}
-            description={isEditable ? t("linesDescriptionEditable") : t("linesDescriptionReadonly")}
+            title={t("inventory.countSessionDetailPage.linesTitle")}
+            description={isEditable ? t("inventory.countSessionDetailPage.linesDescriptionEditable") : t("inventory.countSessionDetailPage.linesDescriptionReadonly")}
             actions={(
               <div className="flex flex-wrap items-center gap-2">
                 <Button type="button" onClick={() => void handleSubmitSession()} disabled={!canSubmit || sessionAction !== null}>
-                  {sessionAction === "submit" ? t("submitting") : t("submit")}
+                  {sessionAction === "submit" ? t("inventory.countSessionDetailPage.submitting") : t("inventory.countSessionDetailPage.submit")}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => void handleApproveSession()} disabled={!canApprove || sessionAction !== null}>
-                  {sessionAction === "approve" ? t("approving") : t("approve")}
+                  {sessionAction === "approve" ? t("inventory.countSessionDetailPage.approving") : t("inventory.countSessionDetailPage.approve")}
                 </Button>
               </div>
             )}
@@ -217,12 +216,12 @@ export function CountSessionDetailPage() {
               <table className="min-w-full divide-y divide-border/70 text-sm">
                 <thead className="bg-muted/30 text-left text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3 font-medium">{t("columns.product")}</th>
-                    <th className="px-4 py-3 font-medium">{t("columns.snapshot")}</th>
-                    <th className="px-4 py-3 font-medium">{t("columns.counted")}</th>
+                    <th className="px-4 py-3 font-medium">{t("inventory.countSessionDetailPage.columns.product")}</th>
+                    <th className="px-4 py-3 font-medium">{t("inventory.countSessionDetailPage.columns.snapshot")}</th>
+                    <th className="px-4 py-3 font-medium">{t("inventory.countSessionDetailPage.columns.counted")}</th>
                     <th className="px-4 py-3 font-medium">{t("columns.variance")}</th>
-                    <th className="px-4 py-3 font-medium">{t("columns.notes")}</th>
-                    <th className="px-4 py-3 font-medium">{t("columns.actions")}</th>
+                    <th className="px-4 py-3 font-medium">{t("inventory.countSessionDetailPage.columns.notes")}</th>
+                    <th className="px-4 py-3 font-medium">{t("inventory.countSessionDetailPage.columns.actions")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
@@ -281,10 +280,10 @@ export function CountSessionDetailPage() {
                               onClick={() => void handleSaveLine(line.id)}
                               disabled={savingLineId === line.id}
                             >
-                              {savingLineId === line.id ? t("savingLine") : t("saveLine")}
+                              {savingLineId === line.id ? t("inventory.countSessionDetailPage.savingLine") : t("inventory.countSessionDetailPage.saveLine")}
                             </Button>
                           ) : (
-                            <span className="text-sm text-muted-foreground">{t("readonly")}</span>
+                            <span className="text-sm text-muted-foreground">{t("inventory.countSessionDetailPage.readonly")}</span>
                           )}
                         </td>
                       </tr>

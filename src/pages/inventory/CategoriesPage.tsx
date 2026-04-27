@@ -21,11 +21,10 @@ function toFieldError(errors?: Array<{ field: string; message: string }>) {
 }
 
 export function CategoriesPage() {
-  const { t } = useTranslation("inventory");
-  const { t: tCommon } = useTranslation("common");
+  const { t } = useTranslation("common");
   const navigate = useNavigate();
   const { canWrite } = usePermissions();
-  const inventoryTabs = buildInventorySectionTabs(tCommon);
+  const inventoryTabs = buildInventorySectionTabs(t);
   const [query, setQuery] = useState("");
   const [showInactive, setShowInactive] = useState(false);
   const [items, setItems] = useState<Category[]>([]);
@@ -58,7 +57,7 @@ export function CategoriesPage() {
       .catch((err) => {
         if (!cancelled) {
           setItems([]);
-          setError(err instanceof Error ? err.message : t("loadError"));
+          setError(err instanceof Error ? err.message : t("inventory.categoriesPage.loadError"));
         }
       })
       .finally(() => {
@@ -73,7 +72,7 @@ export function CategoriesPage() {
   }, [query, refreshKey, showInactive, t]);
 
   const isEditing = editingCategoryId !== null;
-  const totalLabel = useMemo(() => t("categories", { count: items.length }), [items.length, t]);
+  const totalLabel = useMemo(() => t("inventory.categoriesPage.categories", { count: items.length }), [items.length, t]);
 
   function resetForm() {
     setEditingCategoryId(null);
@@ -115,7 +114,7 @@ export function CategoriesPage() {
     setStatusPendingId(null);
 
     if (!result.ok) {
-      setFormError(result.error || t("statusError"));
+      setFormError(result.error || t("inventory.categoriesPage.statusError"));
       return;
     }
 
@@ -129,15 +128,15 @@ export function CategoriesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumb={[{ label: tCommon("routes.inventoryCategories.label") }]}
-        eyebrow={t("eyebrow")}
-        title={t("title")}
-        description={t("description")}
+        breadcrumb={[{ label: t("routes.inventoryCategories.label") }]}
+        eyebrow={t("inventory.categoriesPage.eyebrow")}
+        title={t("inventory.categoriesPage.title")}
+        description={t("inventory.categoriesPage.description")}
         tabs={(
           <PageTabs
             items={inventoryTabs}
             value="categories"
-            ariaLabel={tCommon("inventory.page.title")}
+            ariaLabel={t("inventory.page.title")}
             onValueChange={(next) => navigate(getInventorySectionRoute(next as InventorySectionTabValue))}
           />
         )}
@@ -145,19 +144,19 @@ export function CategoriesPage() {
 
       {canWrite("inventory") ? (
         <SectionCard
-          title={isEditing ? t("editTitle") : t("createTitle")}
-          description={t("formDescription")}
+          title={isEditing ? t("inventory.categoriesPage.editTitle") : t("inventory.categoriesPage.createTitle")}
+          description={t("inventory.categoriesPage.formDescription")}
         >
           <div className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="category-name" className="block text-sm font-medium">
-                {t("nameLabel")}
+                {t("inventory.categoriesPage.nameLabel")}
               </label>
               <Input
                 id="category-name"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                placeholder={t("namePlaceholder")}
+                placeholder={t("inventory.categoriesPage.namePlaceholder")}
                 disabled={saving}
               />
               {nameError ? <p className="text-sm text-destructive">{nameError}</p> : null}
@@ -165,23 +164,23 @@ export function CategoriesPage() {
             {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
             <div className="flex flex-wrap gap-2">
               <Button type="button" onClick={handleSaveCategory} disabled={saving}>
-                {saving ? t("saving") : isEditing ? t("update") : t("save")}
+                {saving ? t("inventory.categoriesPage.saving") : isEditing ? t("inventory.categoriesPage.update") : t("inventory.categoriesPage.save")}
               </Button>
               {isEditing ? (
                 <Button type="button" variant="outline" onClick={resetForm} disabled={saving}>
-                  {t("cancelEdit")}
+                  {t("inventory.categoriesPage.cancelEdit")}
                 </Button>
               ) : null}
             </div>
           </div>
         </SectionCard>
       ) : (
-        <SectionCard title={t("createTitle")} description={t("readOnly")} />
+        <SectionCard title={t("inventory.categoriesPage.createTitle")} description={t("inventory.categoriesPage.readOnly")} />
       )}
 
       <SectionCard
-        title={t("directoryTitle")}
-        description={t("directoryDescription")}
+        title={t("inventory.categoriesPage.directoryTitle")}
+        description={t("inventory.categoriesPage.directoryDescription")}
         actions={<div className="text-sm text-muted-foreground">{totalLabel}</div>}
       >
         <div className="space-y-4">
@@ -190,8 +189,8 @@ export function CategoriesPage() {
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder={t("searchPlaceholder")}
-                aria-label={t("searchPlaceholder")}
+                placeholder={t("inventory.categoriesPage.searchPlaceholder")}
+                aria-label={t("inventory.categoriesPage.searchPlaceholder")}
               />
             </div>
             <Button
@@ -200,7 +199,7 @@ export function CategoriesPage() {
               onClick={() => setShowInactive((value) => !value)}
               aria-pressed={showInactive}
             >
-              {t("showInactive")}
+              {t("inventory.categoriesPage.showInactive")}
             </Button>
           </div>
 
@@ -208,21 +207,21 @@ export function CategoriesPage() {
           {formError && !canWrite("inventory") ? <p className="text-sm text-destructive">{formError}</p> : null}
 
           {loading ? (
-            <p className="text-sm text-muted-foreground">{t("loading")}</p>
+            <p className="text-sm text-muted-foreground">{t("inventory.categoriesPage.loading")}</p>
           ) : items.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border/80 px-4 py-8 text-center">
-              <p className="font-medium">{t("empty")}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{t("emptyDescription")}</p>
+              <p className="font-medium">{t("inventory.categoriesPage.empty")}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{t("inventory.categoriesPage.emptyDescription")}</p>
             </div>
           ) : (
             <div className="overflow-x-auto rounded-xl border border-border/70">
               <table className="min-w-full divide-y divide-border/70 text-sm">
                 <thead className="bg-muted/30 text-left text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3 font-medium">{t("nameLabel")}</th>
-                    <th className="px-4 py-3 font-medium">{t("status")}</th>
-                    <th className="px-4 py-3 font-medium">{t("updated")}</th>
-                    <th className="px-4 py-3 font-medium">{t("actions")}</th>
+                    <th className="px-4 py-3 font-medium">{t("inventory.categoriesPage.nameLabel")}</th>
+                    <th className="px-4 py-3 font-medium">{t("inventory.categoriesPage.status")}</th>
+                    <th className="px-4 py-3 font-medium">{t("inventory.categoriesPage.updated")}</th>
+                    <th className="px-4 py-3 font-medium">{t("inventory.categoriesPage.actions")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
@@ -231,7 +230,7 @@ export function CategoriesPage() {
                       <td className="px-4 py-3 font-medium">{category.name}</td>
                       <td className="px-4 py-3">
                         <Badge variant={category.is_active ? "success" : "outline"} className="normal-case tracking-normal">
-                          {category.is_active ? t("active") : t("inactive")}
+                          {category.is_active ? t("inventory.categoriesPage.active") : t("inventory.categoriesPage.inactive")}
                         </Badge>
                       </td>
                       <td className="px-4 py-3">{category.updated_at.slice(0, 10)}</td>
@@ -250,7 +249,7 @@ export function CategoriesPage() {
                                   setFormError(null);
                                 }}
                               >
-                                {t("edit")}
+                                {t("inventory.categoriesPage.edit")}
                               </Button>
                               <Button
                                 type="button"
@@ -259,7 +258,7 @@ export function CategoriesPage() {
                                 onClick={() => handleToggleStatus(category)}
                                 disabled={statusPendingId === category.id}
                               >
-                                {category.is_active ? t("deactivate") : t("activate")}
+                                {category.is_active ? t("inventory.categoriesPage.deactivate") : t("inventory.categoriesPage.activate")}
                               </Button>
                             </>
                           ) : null}

@@ -25,11 +25,10 @@ function toFieldErrors(
 }
 
 export function SuppliersPage() {
-  const { t } = useTranslation("inventory");
-  const { t: tCommon } = useTranslation("common");
+  const { t } = useTranslation("common");
   const navigate = useNavigate();
   const { canWrite } = usePermissions();
-  const inventoryTabs = buildInventorySectionTabs(tCommon);
+  const inventoryTabs = buildInventorySectionTabs(t);
   const [query, setQuery] = useState("");
   const [showInactive, setShowInactive] = useState(false);
   const [formKey, setFormKey] = useState(0);
@@ -59,26 +58,26 @@ export function SuppliersPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumb={[{ label: tCommon("routes.inventorySuppliers.label") }]}
-        eyebrow={t("eyebrow")}
-        title={t("title")}
-        description={t("description")}
+        breadcrumb={[{ label: t("routes.inventorySuppliers.label") }]}
+        eyebrow={t("inventory.suppliersPage.eyebrow")}
+        title={t("inventory.suppliersPage.title")}
+        description={t("inventory.suppliersPage.description")}
         tabs={(
           <PageTabs
             items={inventoryTabs}
             value="suppliers"
-            ariaLabel={tCommon("inventory.page.title")}
+            ariaLabel={t("inventory.page.title")}
             onValueChange={(next) => navigate(getInventorySectionRoute(next as InventorySectionTabValue))}
           />
         )}
       />
 
       {canWrite("inventory") ? (
-        <SectionCard title={t("createTitle")} description={t("formDescription")}>
+        <SectionCard title={t("inventory.suppliersPage.createTitle")} description={t("inventory.suppliersPage.formDescription")}>
           <SupplierForm
             key={formKey}
-            submitLabel={t("save")}
-            submittingLabel={t("saving")}
+            submitLabel={t("inventory.suppliersPage.save")}
+            submittingLabel={t("inventory.suppliersPage.saving")}
             onSubmit={async (values) => {
               const result = await createSupplier(values);
               if (result.ok) {
@@ -97,12 +96,12 @@ export function SuppliersPage() {
           />
         </SectionCard>
       ) : (
-        <SectionCard title={t("createTitle")} description={t("readOnly")} />
+        <SectionCard title={t("inventory.suppliersPage.createTitle")} description={t("inventory.suppliersPage.readOnly")} />
       )}
 
       <SectionCard
-        title={t("directoryTitle")}
-        description={t("directoryDescription")}
+        title={t("inventory.suppliersPage.directoryTitle")}
+        description={t("inventory.suppliersPage.directoryDescription")}
         actions={<div className="text-sm text-muted-foreground">{t("total", { count: total })}</div>}
       >
         <div className="space-y-4">
@@ -111,8 +110,8 @@ export function SuppliersPage() {
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder={t("searchPlaceholder")}
-                aria-label={t("searchPlaceholder")}
+                placeholder={t("inventory.suppliersPage.searchPlaceholder")}
+                aria-label={t("inventory.suppliersPage.searchPlaceholder")}
               />
             </div>
             <Button
@@ -121,7 +120,7 @@ export function SuppliersPage() {
               onClick={() => setShowInactive((current) => !current)}
               aria-pressed={showInactive}
             >
-              {t("showInactive")}
+              {t("inventory.suppliersPage.showInactive")}
             </Button>
           </div>
 
@@ -129,22 +128,22 @@ export function SuppliersPage() {
           {statusError ? <p className="text-sm text-destructive">{statusError}</p> : null}
 
           {loading ? (
-            <p className="text-sm text-muted-foreground">{t("loading")}</p>
+            <p className="text-sm text-muted-foreground">{t("inventory.suppliersPage.loading")}</p>
           ) : suppliers.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border/80 px-4 py-8 text-center">
-              <p className="font-medium">{t("empty")}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{t("emptyDescription")}</p>
+              <p className="font-medium">{t("inventory.suppliersPage.empty")}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{t("inventory.suppliersPage.emptyDescription")}</p>
             </div>
           ) : (
             <div className="overflow-x-auto rounded-xl border border-border/70">
               <table className="min-w-full divide-y divide-border/70 text-sm">
                 <thead className="bg-muted/30 text-left text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3 font-medium">{t("name")}</th>
-                    <th className="px-4 py-3 font-medium">{t("contact")}</th>
-                    <th className="px-4 py-3 font-medium">{t("leadTime")}</th>
-                    <th className="px-4 py-3 font-medium">{t("status")}</th>
-                    <th className="px-4 py-3 font-medium">{t("actions")}</th>
+                    <th className="px-4 py-3 font-medium">{t("inventory.suppliersPage.name")}</th>
+                    <th className="px-4 py-3 font-medium">{t("inventory.suppliersPage.contact")}</th>
+                    <th className="px-4 py-3 font-medium">{t("inventory.suppliersPage.leadTime")}</th>
+                    <th className="px-4 py-3 font-medium">{t("inventory.suppliersPage.status")}</th>
+                    <th className="px-4 py-3 font-medium">{t("inventory.suppliersPage.actions")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
@@ -152,14 +151,14 @@ export function SuppliersPage() {
                     <tr key={supplier.id} className={!supplier.is_active ? "bg-muted/20 text-muted-foreground" : undefined}>
                       <td className="px-4 py-3 font-medium">{supplier.name}</td>
                       <td className="px-4 py-3">
-                        {supplier.contact_email ?? supplier.phone ?? t("noContact")}
+                        {supplier.contact_email ?? supplier.phone ?? t("inventory.suppliersPage.noContact")}
                       </td>
                       <td className="px-4 py-3">
-                        {supplier.default_lead_time_days == null ? t("notSet") : supplier.default_lead_time_days}
+                        {supplier.default_lead_time_days == null ? t("inventory.suppliersPage.notSet") : supplier.default_lead_time_days}
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant={supplier.is_active ? "success" : "outline"} className="normal-case tracking-normal">
-                          {supplier.is_active ? t("active") : t("inactive")}
+                          {supplier.is_active ? t("inventory.suppliersPage.active") : t("inventory.suppliersPage.inactive")}
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
@@ -170,7 +169,7 @@ export function SuppliersPage() {
                             variant="outline"
                             onClick={() => navigate(buildSupplierDetailPath(supplier.id))}
                           >
-                            {t("view")}
+                            {t("inventory.suppliersPage.view")}
                           </Button>
                           {canWrite("inventory") ? (
                             <Button
@@ -180,7 +179,7 @@ export function SuppliersPage() {
                               onClick={() => void handleToggleStatus(supplier.id, supplier.is_active)}
                               disabled={statusPendingId === supplier.id}
                             >
-                              {supplier.is_active ? t("deactivate") : t("activate")}
+                              {supplier.is_active ? t("inventory.suppliersPage.deactivate") : t("inventory.suppliersPage.activate")}
                             </Button>
                           ) : null}
                         </div>

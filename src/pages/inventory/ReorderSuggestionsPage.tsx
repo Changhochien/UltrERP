@@ -68,12 +68,11 @@ function CreatedOrdersSummary({
 }
 
 function ReorderSuggestionsWorkspace() {
-  const { t } = useTranslation("inventory");
-  const { t: tCommon } = useTranslation("common");
+  const { t } = useTranslation("common");
   const navigate = useNavigate();
   const { selectedWarehouse, setSelectedWarehouse } = useWarehouseContext();
   const { canWrite } = usePermissions();
-  const inventoryTabs = buildInventorySectionTabs(tCommon);
+  const inventoryTabs = buildInventorySectionTabs(t);
   const { suggestions, total, loading, error, reload } = useReorderSuggestions({
     warehouseId: selectedWarehouse?.id,
   });
@@ -144,10 +143,10 @@ function ReorderSuggestionsWorkspace() {
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumb={[{ label: tCommon("routes.reorderSuggestions.label") }]}
-        eyebrow={t("eyebrow")}
-        title={t("title")}
-        description={t("description")}
+        breadcrumb={[{ label: t("routes.reorderSuggestions.label") }]}
+        eyebrow={t("inventory.reorderSuggestionsPage.eyebrow")}
+        title={t("inventory.reorderSuggestionsPage.title")}
+        description={t("inventory.reorderSuggestionsPage.description")}
         actions={(
           <div className="flex flex-wrap items-center gap-2">
             <WarehouseSelector value={selectedWarehouse} onChange={setSelectedWarehouse} />
@@ -157,7 +156,7 @@ function ReorderSuggestionsWorkspace() {
           <PageTabs
             items={inventoryTabs}
             value="reorder-suggestions"
-            ariaLabel={tCommon("inventory.page.title")}
+            ariaLabel={t("inventory.page.title")}
             onValueChange={(next) => navigate(getInventorySectionRoute(next as InventorySectionTabValue))}
           />
         )}
@@ -168,8 +167,8 @@ function ReorderSuggestionsWorkspace() {
       <CreatedOrdersSummary orders={createdOrders} />
 
       <SectionCard
-        title={t("listTitle")}
-        description={t("listDescription")}
+        title={t("inventory.reorderSuggestionsPage.listTitle")}
+        description={t("inventory.reorderSuggestionsPage.listDescription")}
         actions={(
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline" className="normal-case tracking-normal">
@@ -186,7 +185,7 @@ function ReorderSuggestionsWorkspace() {
                   onClick={() => void submitRows(selectedRows)}
                   disabled={selectedRows.length === 0 || submitting}
                 >
-                  {submitting ? t("creating") : t("createSelected")}
+                  {submitting ? t("inventory.reorderSuggestionsPage.creating") : t("inventory.reorderSuggestionsPage.createSelected")}
                 </Button>
               </>
             ) : null}
@@ -194,11 +193,11 @@ function ReorderSuggestionsWorkspace() {
         )}
       >
         {loading ? (
-          <p className="text-sm text-muted-foreground">{t("loading")}</p>
+          <p className="text-sm text-muted-foreground">{t("inventory.reorderSuggestionsPage.loading")}</p>
         ) : suggestions.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border/80 px-4 py-8 text-center">
-            <p className="font-medium">{t("empty")}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{t("emptyDescription")}</p>
+            <p className="font-medium">{t("inventory.reorderSuggestionsPage.empty")}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t("inventory.reorderSuggestionsPage.emptyDescription")}</p>
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-border/70">
@@ -208,7 +207,7 @@ function ReorderSuggestionsWorkspace() {
                   <th className="w-12 px-4 py-3">
                     <input
                       type="checkbox"
-                      aria-label={t("selectAll")}
+                      aria-label={t("inventory.reorderSuggestionsPage.selectAll")}
                       checked={allSelected}
                       onChange={(event) => {
                         setSelectedKeys(
@@ -219,15 +218,15 @@ function ReorderSuggestionsWorkspace() {
                       }}
                     />
                   </th>
-                  <th className="px-4 py-3 font-medium">{t("col.product")}</th>
-                  <th className="px-4 py-3 font-medium">{t("col.warehouse")}</th>
-                  <th className="px-4 py-3 font-medium">{t("col.currentStock")}</th>
-                  <th className="px-4 py-3 font-medium">{t("col.inventoryPosition")}</th>
-                  <th className="px-4 py-3 font-medium">{t("col.reorderPoint")}</th>
-                  <th className="px-4 py-3 font-medium">{t("col.targetStock")}</th>
-                  <th className="px-4 py-3 font-medium">{t("col.suggestedQty")}</th>
-                  <th className="px-4 py-3 font-medium">{t("col.supplier")}</th>
-                  <th className="px-4 py-3 font-medium">{t("col.actions")}</th>
+                  <th className="px-4 py-3 font-medium">{t("inventory.reorderSuggestionsPage.col.product")}</th>
+                  <th className="px-4 py-3 font-medium">{t("inventory.reorderSuggestionsPage.col.warehouse")}</th>
+                  <th className="px-4 py-3 font-medium">{t("inventory.reorderSuggestionsPage.col.currentStock")}</th>
+                  <th className="px-4 py-3 font-medium">{t("inventory.reorderSuggestionsPage.col.inventoryPosition")}</th>
+                  <th className="px-4 py-3 font-medium">{t("inventory.reorderSuggestionsPage.col.reorderPoint")}</th>
+                  <th className="px-4 py-3 font-medium">{t("inventory.reorderSuggestionsPage.col.targetStock")}</th>
+                  <th className="px-4 py-3 font-medium">{t("inventory.reorderSuggestionsPage.col.suggestedQty")}</th>
+                  <th className="px-4 py-3 font-medium">{t("inventory.reorderSuggestionsPage.col.supplier")}</th>
+                  <th className="px-4 py-3 font-medium">{t("inventory.reorderSuggestionsPage.col.actions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
@@ -278,7 +277,7 @@ function ReorderSuggestionsWorkspace() {
                           </div>
                         ) : (
                           <Badge variant="outline" className="normal-case tracking-normal">
-                            {t("supplierMissing")}
+                            {t("inventory.reorderSuggestionsPage.supplierMissing")}
                           </Badge>
                         )}
                       </td>
@@ -290,7 +289,7 @@ function ReorderSuggestionsWorkspace() {
                           disabled={rowDisabled || submitting}
                           onClick={() => void submitRows([item], { openManualDraft: true })}
                         >
-                          {t("createDraft")}
+                          {t("inventory.reorderSuggestionsPage.createDraft")}
                         </Button>
                       </td>
                     </tr>
@@ -304,11 +303,11 @@ function ReorderSuggestionsWorkspace() {
 
       {unresolvedRows.length > 0 ? (
         <SectionCard
-          title={t("unresolvedTitle")}
-          description={t("unresolvedDescription")}
+          title={t("inventory.reorderSuggestionsPage.unresolvedTitle")}
+          description={t("inventory.reorderSuggestionsPage.unresolvedDescription")}
           actions={(
             <Button type="button" variant="outline" onClick={() => setManualDraftRows(unresolvedRows)}>
-              {t("openManualDraft")}
+              {t("inventory.reorderSuggestionsPage.openManualDraft")}
             </Button>
           )}
         >
@@ -316,9 +315,9 @@ function ReorderSuggestionsWorkspace() {
             <table className="min-w-full divide-y divide-border/70 text-sm">
               <thead className="bg-muted/30 text-left text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-3 font-medium">{t("col.product")}</th>
-                  <th className="px-4 py-3 font-medium">{t("col.warehouse")}</th>
-                  <th className="px-4 py-3 font-medium">{t("col.suggestedQty")}</th>
+                  <th className="px-4 py-3 font-medium">{t("inventory.reorderSuggestionsPage.col.product")}</th>
+                  <th className="px-4 py-3 font-medium">{t("inventory.reorderSuggestionsPage.col.warehouse")}</th>
+                  <th className="px-4 py-3 font-medium">{t("inventory.reorderSuggestionsPage.col.suggestedQty")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
@@ -338,7 +337,7 @@ function ReorderSuggestionsWorkspace() {
       {manualDraftRows ? (
         <div className="rounded-2xl border border-border/80 bg-background p-6 shadow-sm">
           <SurfaceMessage className="mb-4">
-            {t("manualDraftDescription")}
+            {t("inventory.reorderSuggestionsPage.manualDraftDescription")}
           </SurfaceMessage>
           <SupplierOrderForm
             initialLines={toDraftLines(manualDraftRows)}
