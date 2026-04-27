@@ -32,10 +32,10 @@ const { t: tRoutes } = useTranslation("routes");
   const commercialOptions = useCommercialDefaultsOptions();
   const [statusPending, setStatusPending] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
-  const inventoryTabs = buildInventorySectionTabs(t);
+  const inventoryTabs = buildInventorySectionTabs(tRoutes);
 
   if (!supplierId) {
-    return <p className="text-sm text-destructive">{t("inventory.supplierDetail.loadError")}</p>;
+    return <p className="text-sm text-destructive">{t("supplierDetail.loadError")}</p>;
   }
 
   async function handleToggleStatus() {
@@ -59,40 +59,40 @@ const { t: tRoutes } = useTranslation("routes");
   const paymentTermsName = supplier?.payment_terms_template_id
     ? commercialOptions.paymentTerms.find((template) => template.id === supplier.payment_terms_template_id)?.template_name
       ?? supplier.payment_terms_template_id
-    : t("inventory.supplierDetail.notSet");
+    : t("supplierDetail.notSet");
 
   return (
     <div className="space-y-6">
       <PageHeader
         breadcrumb={[
           { label: tRoutes("inventorySuppliers.label"), href: INVENTORY_SUPPLIERS_ROUTE },
-          { label: supplier?.name ?? t("inventory.supplierDetail.title") },
+          { label: supplier?.name ?? t("supplierDetail.title") },
         ]}
-        eyebrow={t("inventory.supplierDetail.eyebrow")}
-        title={supplier?.name ?? t("inventory.supplierDetail.title")}
-        description={t("inventory.supplierDetail.description")}
+        eyebrow={t("supplierDetail.eyebrow")}
+        title={supplier?.name ?? t("supplierDetail.title")}
+        description={t("supplierDetail.description")}
         actions={(
           <Button type="button" variant="outline" onClick={() => navigate(INVENTORY_SUPPLIERS_ROUTE)}>
-            {t("inventory.supplierDetail.backToSuppliers")}
+            {t("supplierDetail.backToSuppliers")}
           </Button>
         )}
         tabs={(
           <PageTabs
             items={inventoryTabs}
             value="suppliers"
-            ariaLabel={t("inventory.page.title")}
+            ariaLabel={t("page.title")}
             onValueChange={(next) => navigate(getInventorySectionRoute(next as InventorySectionTabValue))}
           />
         )}
       />
 
-      {loading ? <p className="text-sm text-muted-foreground">{t("inventory.supplierDetail.loading")}</p> : null}
+      {loading ? <p className="text-sm text-muted-foreground">{t("supplierDetail.loading")}</p> : null}
       {!loading && error ? (
-        <SectionCard title={t("inventory.supplierDetail.title")} description={t("inventory.supplierDetail.description")}>
+        <SectionCard title={t("supplierDetail.title")} description={t("supplierDetail.description")}>
           <div className="space-y-3">
             <p className="text-sm text-destructive">{error}</p>
             <Button type="button" variant="outline" onClick={() => void reload()}>
-              {t("inventory.supplierDetail.retry")}
+              {t("supplierDetail.retry")}
             </Button>
           </div>
         </SectionCard>
@@ -101,53 +101,53 @@ const { t: tRoutes } = useTranslation("routes");
       {!loading && supplier ? (
         <>
           <SectionCard
-            title={t("inventory.supplierDetail.summaryTitle")}
-            description={t("inventory.supplierDetail.summaryDescription")}
+            title={t("supplierDetail.summaryTitle")}
+            description={t("supplierDetail.summaryDescription")}
             actions={(
               canWrite("inventory") ? (
                 <Button type="button" variant={supplier.is_active ? "outline" : "default"} onClick={() => void handleToggleStatus()} disabled={statusPending}>
-                  {supplier.is_active ? t("inventory.supplierDetail.deactivate") : t("inventory.supplierDetail.activate")}
+                  {supplier.is_active ? t("supplierDetail.deactivate") : t("supplierDetail.activate")}
                 </Button>
               ) : undefined
             )}
           >
             <dl className="grid gap-4 md:grid-cols-2">
               <div>
-                <dt className="text-sm font-medium text-muted-foreground">{t("inventory.supplierDetail.status")}</dt>
+                <dt className="text-sm font-medium text-muted-foreground">{t("supplierDetail.status")}</dt>
                 <dd className="mt-1">
                   <Badge variant={supplier.is_active ? "success" : "outline"} className="normal-case tracking-normal">
-                    {supplier.is_active ? t("inventory.supplierDetail.active") : t("inventory.supplierDetail.inactive")}
+                    {supplier.is_active ? t("supplierDetail.active") : t("supplierDetail.inactive")}
                   </Badge>
                 </dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-muted-foreground">{t("inventory.supplierDetail.leadTime")}</dt>
+                <dt className="text-sm font-medium text-muted-foreground">{t("supplierDetail.leadTime")}</dt>
                 <dd className="mt-1">
-                  {supplier.default_lead_time_days == null ? t("inventory.supplierDetail.notSet") : supplier.default_lead_time_days}
+                  {supplier.default_lead_time_days == null ? t("supplierDetail.notSet") : supplier.default_lead_time_days}
                 </dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-muted-foreground">{t("inventory.supplierDetail.defaultCurrency")}</dt>
-                <dd className="mt-1">{supplier.default_currency_code ?? t("inventory.supplierDetail.notSet")}</dd>
+                <dt className="text-sm font-medium text-muted-foreground">{t("supplierDetail.defaultCurrency")}</dt>
+                <dd className="mt-1">{supplier.default_currency_code ?? t("supplierDetail.notSet")}</dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-muted-foreground">{t("inventory.supplierDetail.paymentTerms")}</dt>
+                <dt className="text-sm font-medium text-muted-foreground">{t("supplierDetail.paymentTerms")}</dt>
                 <dd className="mt-1">{paymentTermsName}</dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-muted-foreground">{t("inventory.supplierDetail.contactEmail")}</dt>
-                <dd className="mt-1">{supplier.contact_email ?? t("inventory.supplierDetail.notSet")}</dd>
+                <dt className="text-sm font-medium text-muted-foreground">{t("supplierDetail.contactEmail")}</dt>
+                <dd className="mt-1">{supplier.contact_email ?? t("supplierDetail.notSet")}</dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-muted-foreground">{t("inventory.supplierDetail.phone")}</dt>
-                <dd className="mt-1">{supplier.phone ?? t("inventory.supplierDetail.notSet")}</dd>
+                <dt className="text-sm font-medium text-muted-foreground">{t("supplierDetail.phone")}</dt>
+                <dd className="mt-1">{supplier.phone ?? t("supplierDetail.notSet")}</dd>
               </div>
               <div className="md:col-span-2">
-                <dt className="text-sm font-medium text-muted-foreground">{t("inventory.supplierDetail.address")}</dt>
-                <dd className="mt-1 whitespace-pre-wrap">{supplier.address ?? t("inventory.supplierDetail.notSet")}</dd>
+                <dt className="text-sm font-medium text-muted-foreground">{t("supplierDetail.address")}</dt>
+                <dd className="mt-1 whitespace-pre-wrap">{supplier.address ?? t("supplierDetail.notSet")}</dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-muted-foreground">{t("inventory.supplierDetail.createdAt")}</dt>
+                <dt className="text-sm font-medium text-muted-foreground">{t("supplierDetail.createdAt")}</dt>
                 <dd className="mt-1">{supplier.created_at.slice(0, 10)}</dd>
               </div>
             </dl>
@@ -155,7 +155,7 @@ const { t: tRoutes } = useTranslation("routes");
           </SectionCard>
 
           {canWrite("inventory") ? (
-            <SectionCard title={t("inventory.supplierDetail.editTitle")} description={t("inventory.supplierDetail.editDescription")}>
+            <SectionCard title={t("supplierDetail.editTitle")} description={t("supplierDetail.editDescription")}>
               <SupplierForm
                 initialValues={{
                   name: supplier.name,
@@ -169,8 +169,8 @@ const { t: tRoutes } = useTranslation("routes");
                   default_currency_code: supplier.default_currency_code ?? "",
                   payment_terms_template_id: supplier.payment_terms_template_id ?? "",
                 }}
-                submitLabel={t("inventory.supplierDetail.save")}
-                submittingLabel={t("inventory.supplierDetail.saving")}
+                submitLabel={t("supplierDetail.save")}
+                submittingLabel={t("supplierDetail.saving")}
                 onSubmit={async (values) => {
                   const result = await updateSupplier(supplier.id, values);
                   if (result.ok) {

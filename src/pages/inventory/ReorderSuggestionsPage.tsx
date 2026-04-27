@@ -73,7 +73,7 @@ const { t: tRoutes } = useTranslation("routes");
   const navigate = useNavigate();
   const { selectedWarehouse, setSelectedWarehouse } = useWarehouseContext();
   const { canWrite } = usePermissions();
-  const inventoryTabs = buildInventorySectionTabs(t);
+  const inventoryTabs = buildInventorySectionTabs(tRoutes);
   const { suggestions, total, loading, error, reload } = useReorderSuggestions({
     warehouseId: selectedWarehouse?.id,
   });
@@ -145,9 +145,9 @@ const { t: tRoutes } = useTranslation("routes");
     <div className="space-y-6">
       <PageHeader
         breadcrumb={[{ label: tRoutes("reorderSuggestions.label") }]}
-        eyebrow={t("inventory.reorderSuggestionsPage.eyebrow")}
-        title={t("inventory.reorderSuggestionsPage.title")}
-        description={t("inventory.reorderSuggestionsPage.description")}
+        eyebrow={t("reorderSuggestionsPage.eyebrow")}
+        title={t("reorderSuggestionsPage.title")}
+        description={t("reorderSuggestionsPage.description")}
         actions={(
           <div className="flex flex-wrap items-center gap-2">
             <WarehouseSelector value={selectedWarehouse} onChange={setSelectedWarehouse} />
@@ -157,7 +157,7 @@ const { t: tRoutes } = useTranslation("routes");
           <PageTabs
             items={inventoryTabs}
             value="reorder-suggestions"
-            ariaLabel={t("inventory.page.title")}
+            ariaLabel={t("page.title")}
             onValueChange={(next) => navigate(getInventorySectionRoute(next as InventorySectionTabValue))}
           />
         )}
@@ -168,8 +168,8 @@ const { t: tRoutes } = useTranslation("routes");
       <CreatedOrdersSummary orders={createdOrders} />
 
       <SectionCard
-        title={t("inventory.reorderSuggestionsPage.listTitle")}
-        description={t("inventory.reorderSuggestionsPage.listDescription")}
+        title={t("reorderSuggestionsPage.listTitle")}
+        description={t("reorderSuggestionsPage.listDescription")}
         actions={(
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline" className="normal-case tracking-normal">
@@ -186,7 +186,7 @@ const { t: tRoutes } = useTranslation("routes");
                   onClick={() => void submitRows(selectedRows)}
                   disabled={selectedRows.length === 0 || submitting}
                 >
-                  {submitting ? t("inventory.reorderSuggestionsPage.creating") : t("inventory.reorderSuggestionsPage.createSelected")}
+                  {submitting ? t("reorderSuggestionsPage.creating") : t("reorderSuggestionsPage.createSelected")}
                 </Button>
               </>
             ) : null}
@@ -194,11 +194,11 @@ const { t: tRoutes } = useTranslation("routes");
         )}
       >
         {loading ? (
-          <p className="text-sm text-muted-foreground">{t("inventory.reorderSuggestionsPage.loading")}</p>
+          <p className="text-sm text-muted-foreground">{t("reorderSuggestionsPage.loading")}</p>
         ) : suggestions.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border/80 px-4 py-8 text-center">
-            <p className="font-medium">{t("inventory.reorderSuggestionsPage.empty")}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{t("inventory.reorderSuggestionsPage.emptyDescription")}</p>
+            <p className="font-medium">{t("reorderSuggestionsPage.empty")}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t("reorderSuggestionsPage.emptyDescription")}</p>
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-border/70">
@@ -208,7 +208,7 @@ const { t: tRoutes } = useTranslation("routes");
                   <th className="w-12 px-4 py-3">
                     <input
                       type="checkbox"
-                      aria-label={t("inventory.reorderSuggestionsPage.selectAll")}
+                      aria-label={t("reorderSuggestionsPage.selectAll")}
                       checked={allSelected}
                       onChange={(event) => {
                         setSelectedKeys(
@@ -219,15 +219,15 @@ const { t: tRoutes } = useTranslation("routes");
                       }}
                     />
                   </th>
-                  <th className="px-4 py-3 font-medium">{t("inventory.reorderSuggestionsPage.col.product")}</th>
-                  <th className="px-4 py-3 font-medium">{t("inventory.reorderSuggestionsPage.col.warehouse")}</th>
-                  <th className="px-4 py-3 font-medium">{t("inventory.reorderSuggestionsPage.col.currentStock")}</th>
-                  <th className="px-4 py-3 font-medium">{t("inventory.reorderSuggestionsPage.col.inventoryPosition")}</th>
-                  <th className="px-4 py-3 font-medium">{t("inventory.reorderSuggestionsPage.col.reorderPoint")}</th>
-                  <th className="px-4 py-3 font-medium">{t("inventory.reorderSuggestionsPage.col.targetStock")}</th>
-                  <th className="px-4 py-3 font-medium">{t("inventory.reorderSuggestionsPage.col.suggestedQty")}</th>
-                  <th className="px-4 py-3 font-medium">{t("inventory.reorderSuggestionsPage.col.supplier")}</th>
-                  <th className="px-4 py-3 font-medium">{t("inventory.reorderSuggestionsPage.col.actions")}</th>
+                  <th className="px-4 py-3 font-medium">{t("reorderSuggestionsPage.col.product")}</th>
+                  <th className="px-4 py-3 font-medium">{t("reorderSuggestionsPage.col.warehouse")}</th>
+                  <th className="px-4 py-3 font-medium">{t("reorderSuggestionsPage.col.currentStock")}</th>
+                  <th className="px-4 py-3 font-medium">{t("reorderSuggestionsPage.col.inventoryPosition")}</th>
+                  <th className="px-4 py-3 font-medium">{t("reorderSuggestionsPage.col.reorderPoint")}</th>
+                  <th className="px-4 py-3 font-medium">{t("reorderSuggestionsPage.col.targetStock")}</th>
+                  <th className="px-4 py-3 font-medium">{t("reorderSuggestionsPage.col.suggestedQty")}</th>
+                  <th className="px-4 py-3 font-medium">{t("reorderSuggestionsPage.col.supplier")}</th>
+                  <th className="px-4 py-3 font-medium">{t("reorderSuggestionsPage.col.actions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
@@ -278,7 +278,7 @@ const { t: tRoutes } = useTranslation("routes");
                           </div>
                         ) : (
                           <Badge variant="outline" className="normal-case tracking-normal">
-                            {t("inventory.reorderSuggestionsPage.supplierMissing")}
+                            {t("reorderSuggestionsPage.supplierMissing")}
                           </Badge>
                         )}
                       </td>
@@ -290,7 +290,7 @@ const { t: tRoutes } = useTranslation("routes");
                           disabled={rowDisabled || submitting}
                           onClick={() => void submitRows([item], { openManualDraft: true })}
                         >
-                          {t("inventory.reorderSuggestionsPage.createDraft")}
+                          {t("reorderSuggestionsPage.createDraft")}
                         </Button>
                       </td>
                     </tr>
@@ -304,11 +304,11 @@ const { t: tRoutes } = useTranslation("routes");
 
       {unresolvedRows.length > 0 ? (
         <SectionCard
-          title={t("inventory.reorderSuggestionsPage.unresolvedTitle")}
-          description={t("inventory.reorderSuggestionsPage.unresolvedDescription")}
+          title={t("reorderSuggestionsPage.unresolvedTitle")}
+          description={t("reorderSuggestionsPage.unresolvedDescription")}
           actions={(
             <Button type="button" variant="outline" onClick={() => setManualDraftRows(unresolvedRows)}>
-              {t("inventory.reorderSuggestionsPage.openManualDraft")}
+              {t("reorderSuggestionsPage.openManualDraft")}
             </Button>
           )}
         >
@@ -316,9 +316,9 @@ const { t: tRoutes } = useTranslation("routes");
             <table className="min-w-full divide-y divide-border/70 text-sm">
               <thead className="bg-muted/30 text-left text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-3 font-medium">{t("inventory.reorderSuggestionsPage.col.product")}</th>
-                  <th className="px-4 py-3 font-medium">{t("inventory.reorderSuggestionsPage.col.warehouse")}</th>
-                  <th className="px-4 py-3 font-medium">{t("inventory.reorderSuggestionsPage.col.suggestedQty")}</th>
+                  <th className="px-4 py-3 font-medium">{t("reorderSuggestionsPage.col.product")}</th>
+                  <th className="px-4 py-3 font-medium">{t("reorderSuggestionsPage.col.warehouse")}</th>
+                  <th className="px-4 py-3 font-medium">{t("reorderSuggestionsPage.col.suggestedQty")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
@@ -338,7 +338,7 @@ const { t: tRoutes } = useTranslation("routes");
       {manualDraftRows ? (
         <div className="rounded-2xl border border-border/80 bg-background p-6 shadow-sm">
           <SurfaceMessage className="mb-4">
-            {t("inventory.reorderSuggestionsPage.manualDraftDescription")}
+            {t("reorderSuggestionsPage.manualDraftDescription")}
           </SurfaceMessage>
           <SupplierOrderForm
             initialLines={toDraftLines(manualDraftRows)}

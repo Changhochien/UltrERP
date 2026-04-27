@@ -44,7 +44,7 @@ const { t: tRoutes } = useTranslation("routes");
   const [searchParams, setSearchParams] = useSearchParams();
   const { canWrite } = usePermissions();
   const { warehouses, loading: warehousesLoading } = useWarehouses();
-  const inventoryTabs = buildInventorySectionTabs(t);
+  const inventoryTabs = buildInventorySectionTabs(tRoutes);
 
   const [productId, setProductId] = useState(searchParams.get("productId") ?? "");
   const [warehouseId, setWarehouseId] = useState(searchParams.get("warehouseId") ?? "");
@@ -159,21 +159,21 @@ const { t: tRoutes } = useTranslation("routes");
     <div className="space-y-6">
       <PageHeader
         breadcrumb={[{ label: tRoutes("inventoryTransfers.label") }]}
-        eyebrow={t("inventory.transfersPage.eyebrow")}
-        title={t("inventory.transfersPage.title")}
-        description={t("inventory.transfersPage.description")}
+        eyebrow={t("transfersPage.eyebrow")}
+        title={t("transfersPage.title")}
+        description={t("transfersPage.description")}
         tabs={(
           <PageTabs
             items={inventoryTabs}
             value="transfers"
-            ariaLabel={t("inventory.page.title")}
+            ariaLabel={t("page.title")}
             onValueChange={(next) => navigate(getInventorySectionRoute(next as InventorySectionTabValue))}
           />
         )}
       />
 
       {canWrite("inventory") ? (
-        <SectionCard title={t("inventory.transfersPage.formTitle")} description={t("inventory.transfersPage.formDescription")}>
+        <SectionCard title={t("transfersPage.formTitle")} description={t("transfersPage.formDescription")}>
           <StockTransferForm
             defaultProductId={productId}
             defaultFromWarehouseId={warehouseId}
@@ -184,12 +184,12 @@ const { t: tRoutes } = useTranslation("routes");
           />
         </SectionCard>
       ) : (
-        <SectionCard title={t("inventory.transfersPage.formTitle")} description={t("readOnly")} />
+        <SectionCard title={t("transfersPage.formTitle")} description={t("readOnly")} />
       )}
 
       <SectionCard
-        title={t("inventory.transfersPage.historyTitle")}
-        description={t("inventory.transfersPage.historyDescription")}
+        title={t("transfersPage.historyTitle")}
+        description={t("transfersPage.historyDescription")}
         actions={<div className="text-sm text-muted-foreground">{historyCountLabel}</div>}
       >
         <div className="space-y-4">
@@ -245,24 +245,24 @@ const { t: tRoutes } = useTranslation("routes");
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
           {loading ? (
-            <p className="text-sm text-muted-foreground">{t("inventory.transfersPage.loading")}</p>
+            <p className="text-sm text-muted-foreground">{t("transfersPage.loading")}</p>
           ) : items.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border/80 px-4 py-8 text-center">
-              <p className="font-medium">{t("inventory.transfersPage.empty")}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{t("inventory.transfersPage.emptyDescription")}</p>
+              <p className="font-medium">{t("transfersPage.empty")}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{t("transfersPage.emptyDescription")}</p>
             </div>
           ) : (
             <div className="overflow-x-auto rounded-xl border border-border/70">
               <table className="min-w-full divide-y divide-border/70 text-sm">
                 <thead className="bg-muted/30 text-left text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3 font-medium">{t("inventory.transfersPage.columns.product")}</th>
-                    <th className="px-4 py-3 font-medium">{t("inventory.transfersPage.columns.route")}</th>
-                    <th className="px-4 py-3 font-medium">{t("inventory.transfersPage.columns.quantity")}</th>
-                    <th className="px-4 py-3 font-medium">{t("inventory.transfersPage.columns.actor")}</th>
-                    <th className="px-4 py-3 font-medium">{t("inventory.transfersPage.columns.notes")}</th>
-                    <th className="px-4 py-3 font-medium">{t("inventory.transfersPage.columns.createdAt")}</th>
-                    <th className="px-4 py-3 font-medium">{t("inventory.transfersPage.columns.actions")}</th>
+                    <th className="px-4 py-3 font-medium">{t("transfersPage.columns.product")}</th>
+                    <th className="px-4 py-3 font-medium">{t("transfersPage.columns.route")}</th>
+                    <th className="px-4 py-3 font-medium">{t("transfersPage.columns.quantity")}</th>
+                    <th className="px-4 py-3 font-medium">{t("transfersPage.columns.actor")}</th>
+                    <th className="px-4 py-3 font-medium">{t("transfersPage.columns.notes")}</th>
+                    <th className="px-4 py-3 font-medium">{t("transfersPage.columns.createdAt")}</th>
+                    <th className="px-4 py-3 font-medium">{t("transfersPage.columns.actions")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
@@ -284,7 +284,7 @@ const { t: tRoutes } = useTranslation("routes");
                         </Badge>
                       </td>
                       <td className="px-4 py-3">{item.actor_id}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{item.notes || t("inventory.transfersPage.emptyNote")}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{item.notes || t("transfersPage.emptyNote")}</td>
                       <td className="px-4 py-3">{formatForDisplayWithTime(item.created_at)}</td>
                       <td className="px-4 py-3">
                         <Button
@@ -313,7 +313,7 @@ const { t: tRoutes } = useTranslation("routes");
         <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-xl">
           <SheetHeader>
             <SheetTitle>{t("detail.title")}</SheetTitle>
-            <SheetDescription>{t("inventory.transfersPage.detail.description")}</SheetDescription>
+            <SheetDescription>{t("transfersPage.detail.description")}</SheetDescription>
           </SheetHeader>
 
           <div className="mt-6 space-y-4">
@@ -324,22 +324,22 @@ const { t: tRoutes } = useTranslation("routes");
               <div className="grid gap-3">
                 <TransferMetadataRow label={t("detail.fields.transferId")} value={selectedTransfer.id} />
                 <TransferMetadataRow
-                  label={t("inventory.transfersPage.detail.fields.product")}
+                  label={t("transfersPage.detail.fields.product")}
                   value={`${selectedTransfer.product_name} (${selectedTransfer.product_code})`}
                 />
                 <TransferMetadataRow
-                  label={t("inventory.transfersPage.detail.fields.fromWarehouse")}
+                  label={t("transfersPage.detail.fields.fromWarehouse")}
                   value={`${selectedTransfer.from_warehouse_name} (${selectedTransfer.from_warehouse_code})`}
                 />
                 <TransferMetadataRow
-                  label={t("inventory.transfersPage.detail.fields.toWarehouse")}
+                  label={t("transfersPage.detail.fields.toWarehouse")}
                   value={`${selectedTransfer.to_warehouse_name} (${selectedTransfer.to_warehouse_code})`}
                 />
-                <TransferMetadataRow label={t("inventory.transfersPage.detail.fields.quantity")} value={selectedTransfer.quantity} />
-                <TransferMetadataRow label={t("inventory.transfersPage.detail.fields.actor")} value={selectedTransfer.actor_id} />
-                <TransferMetadataRow label={t("inventory.transfersPage.detail.fields.notes")} value={selectedTransfer.notes || t("inventory.transfersPage.emptyNote")} />
+                <TransferMetadataRow label={t("transfersPage.detail.fields.quantity")} value={selectedTransfer.quantity} />
+                <TransferMetadataRow label={t("transfersPage.detail.fields.actor")} value={selectedTransfer.actor_id} />
+                <TransferMetadataRow label={t("transfersPage.detail.fields.notes")} value={selectedTransfer.notes || t("transfersPage.emptyNote")} />
                 <TransferMetadataRow
-                  label={t("inventory.transfersPage.detail.fields.createdAt")}
+                  label={t("transfersPage.detail.fields.createdAt")}
                   value={formatForDisplayWithTime(selectedTransfer.created_at)}
                 />
               </div>

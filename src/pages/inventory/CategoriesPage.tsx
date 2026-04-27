@@ -25,7 +25,7 @@ export function CategoriesPage() {
 const { t: tRoutes } = useTranslation("routes");
   const navigate = useNavigate();
   const { canWrite } = usePermissions();
-  const inventoryTabs = buildInventorySectionTabs(t);
+  const inventoryTabs = buildInventorySectionTabs(tRoutes);
   const [query, setQuery] = useState("");
   const [showInactive, setShowInactive] = useState(false);
   const [items, setItems] = useState<Category[]>([]);
@@ -58,7 +58,7 @@ const { t: tRoutes } = useTranslation("routes");
       .catch((err) => {
         if (!cancelled) {
           setItems([]);
-          setError(err instanceof Error ? err.message : t("inventory.categoriesPage.loadError"));
+          setError(err instanceof Error ? err.message : t("categoriesPage.loadError"));
         }
       })
       .finally(() => {
@@ -73,7 +73,7 @@ const { t: tRoutes } = useTranslation("routes");
   }, [query, refreshKey, showInactive, t]);
 
   const isEditing = editingCategoryId !== null;
-  const totalLabel = useMemo(() => t("inventory.categoriesPage.categories", { count: items.length }), [items.length, t]);
+  const totalLabel = useMemo(() => t("categoriesPage.categories", { count: items.length }), [items.length, t]);
 
   function resetForm() {
     setEditingCategoryId(null);
@@ -115,7 +115,7 @@ const { t: tRoutes } = useTranslation("routes");
     setStatusPendingId(null);
 
     if (!result.ok) {
-      setFormError(result.error || t("inventory.categoriesPage.statusError"));
+      setFormError(result.error || t("categoriesPage.statusError"));
       return;
     }
 
@@ -130,14 +130,14 @@ const { t: tRoutes } = useTranslation("routes");
     <div className="space-y-6">
       <PageHeader
         breadcrumb={[{ label: tRoutes("inventoryCategories.label") }]}
-        eyebrow={t("inventory.categoriesPage.eyebrow")}
-        title={t("inventory.categoriesPage.title")}
-        description={t("inventory.categoriesPage.description")}
+        eyebrow={t("categoriesPage.eyebrow")}
+        title={t("categoriesPage.title")}
+        description={t("categoriesPage.description")}
         tabs={(
           <PageTabs
             items={inventoryTabs}
             value="categories"
-            ariaLabel={t("inventory.page.title")}
+            ariaLabel={t("page.title")}
             onValueChange={(next) => navigate(getInventorySectionRoute(next as InventorySectionTabValue))}
           />
         )}
@@ -145,19 +145,19 @@ const { t: tRoutes } = useTranslation("routes");
 
       {canWrite("inventory") ? (
         <SectionCard
-          title={isEditing ? t("inventory.categoriesPage.editTitle") : t("inventory.categoriesPage.createTitle")}
-          description={t("inventory.categoriesPage.formDescription")}
+          title={isEditing ? t("categoriesPage.editTitle") : t("categoriesPage.createTitle")}
+          description={t("categoriesPage.formDescription")}
         >
           <div className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="category-name" className="block text-sm font-medium">
-                {t("inventory.categoriesPage.nameLabel")}
+                {t("categoriesPage.nameLabel")}
               </label>
               <Input
                 id="category-name"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                placeholder={t("inventory.categoriesPage.namePlaceholder")}
+                placeholder={t("categoriesPage.namePlaceholder")}
                 disabled={saving}
               />
               {nameError ? <p className="text-sm text-destructive">{nameError}</p> : null}
@@ -165,23 +165,23 @@ const { t: tRoutes } = useTranslation("routes");
             {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
             <div className="flex flex-wrap gap-2">
               <Button type="button" onClick={handleSaveCategory} disabled={saving}>
-                {saving ? t("inventory.categoriesPage.saving") : isEditing ? t("inventory.categoriesPage.update") : t("inventory.categoriesPage.save")}
+                {saving ? t("categoriesPage.saving") : isEditing ? t("categoriesPage.update") : t("categoriesPage.save")}
               </Button>
               {isEditing ? (
                 <Button type="button" variant="outline" onClick={resetForm} disabled={saving}>
-                  {t("inventory.categoriesPage.cancelEdit")}
+                  {t("categoriesPage.cancelEdit")}
                 </Button>
               ) : null}
             </div>
           </div>
         </SectionCard>
       ) : (
-        <SectionCard title={t("inventory.categoriesPage.createTitle")} description={t("inventory.categoriesPage.readOnly")} />
+        <SectionCard title={t("categoriesPage.createTitle")} description={t("categoriesPage.readOnly")} />
       )}
 
       <SectionCard
-        title={t("inventory.categoriesPage.directoryTitle")}
-        description={t("inventory.categoriesPage.directoryDescription")}
+        title={t("categoriesPage.directoryTitle")}
+        description={t("categoriesPage.directoryDescription")}
         actions={<div className="text-sm text-muted-foreground">{totalLabel}</div>}
       >
         <div className="space-y-4">
@@ -190,8 +190,8 @@ const { t: tRoutes } = useTranslation("routes");
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder={t("inventory.categoriesPage.searchPlaceholder")}
-                aria-label={t("inventory.categoriesPage.searchPlaceholder")}
+                placeholder={t("categoriesPage.searchPlaceholder")}
+                aria-label={t("categoriesPage.searchPlaceholder")}
               />
             </div>
             <Button
@@ -200,7 +200,7 @@ const { t: tRoutes } = useTranslation("routes");
               onClick={() => setShowInactive((value) => !value)}
               aria-pressed={showInactive}
             >
-              {t("inventory.categoriesPage.showInactive")}
+              {t("categoriesPage.showInactive")}
             </Button>
           </div>
 
@@ -208,21 +208,21 @@ const { t: tRoutes } = useTranslation("routes");
           {formError && !canWrite("inventory") ? <p className="text-sm text-destructive">{formError}</p> : null}
 
           {loading ? (
-            <p className="text-sm text-muted-foreground">{t("inventory.categoriesPage.loading")}</p>
+            <p className="text-sm text-muted-foreground">{t("categoriesPage.loading")}</p>
           ) : items.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border/80 px-4 py-8 text-center">
-              <p className="font-medium">{t("inventory.categoriesPage.empty")}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{t("inventory.categoriesPage.emptyDescription")}</p>
+              <p className="font-medium">{t("categoriesPage.empty")}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{t("categoriesPage.emptyDescription")}</p>
             </div>
           ) : (
             <div className="overflow-x-auto rounded-xl border border-border/70">
               <table className="min-w-full divide-y divide-border/70 text-sm">
                 <thead className="bg-muted/30 text-left text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3 font-medium">{t("inventory.categoriesPage.nameLabel")}</th>
-                    <th className="px-4 py-3 font-medium">{t("inventory.categoriesPage.status")}</th>
-                    <th className="px-4 py-3 font-medium">{t("inventory.categoriesPage.updated")}</th>
-                    <th className="px-4 py-3 font-medium">{t("inventory.categoriesPage.actions")}</th>
+                    <th className="px-4 py-3 font-medium">{t("categoriesPage.nameLabel")}</th>
+                    <th className="px-4 py-3 font-medium">{t("categoriesPage.status")}</th>
+                    <th className="px-4 py-3 font-medium">{t("categoriesPage.updated")}</th>
+                    <th className="px-4 py-3 font-medium">{t("categoriesPage.actions")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
@@ -231,7 +231,7 @@ const { t: tRoutes } = useTranslation("routes");
                       <td className="px-4 py-3 font-medium">{category.name}</td>
                       <td className="px-4 py-3">
                         <Badge variant={category.is_active ? "success" : "outline"} className="normal-case tracking-normal">
-                          {category.is_active ? t("inventory.categoriesPage.active") : t("inventory.categoriesPage.inactive")}
+                          {category.is_active ? t("categoriesPage.active") : t("categoriesPage.inactive")}
                         </Badge>
                       </td>
                       <td className="px-4 py-3">{category.updated_at.slice(0, 10)}</td>
@@ -250,7 +250,7 @@ const { t: tRoutes } = useTranslation("routes");
                                   setFormError(null);
                                 }}
                               >
-                                {t("inventory.categoriesPage.edit")}
+                                {t("categoriesPage.edit")}
                               </Button>
                               <Button
                                 type="button"
@@ -259,7 +259,7 @@ const { t: tRoutes } = useTranslation("routes");
                                 onClick={() => handleToggleStatus(category)}
                                 disabled={statusPendingId === category.id}
                               >
-                                {category.is_active ? t("inventory.categoriesPage.deactivate") : t("inventory.categoriesPage.activate")}
+                                {category.is_active ? t("categoriesPage.deactivate") : t("categoriesPage.activate")}
                               </Button>
                             </>
                           ) : null}

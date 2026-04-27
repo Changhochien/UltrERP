@@ -34,7 +34,7 @@ const { t: tRoutes } = useTranslation("routes");
   const navigate = useNavigate();
   const params = useParams<{ sessionId: string }>();
   const sessionId = params.sessionId ?? "";
-  const inventoryTabs = buildInventorySectionTabs(t);
+  const inventoryTabs = buildInventorySectionTabs(tRoutes);
 
   const [session, setSession] = useState<PhysicalCountSession | null>(null);
   const [drafts, setDrafts] = useState<DraftMap>({});
@@ -64,7 +64,7 @@ const { t: tRoutes } = useTranslation("routes");
       .catch((loadError) => {
         if (!cancelled) {
           setSession(null);
-          setError(loadError instanceof Error ? loadError.message : t("inventory.countSessionDetailPage.loadError"));
+          setError(loadError instanceof Error ? loadError.message : t("countSessionDetailPage.loadError"));
         }
       })
       .finally(() => {
@@ -88,7 +88,7 @@ const { t: tRoutes } = useTranslation("routes");
     }
     return [
       { label: t("summary.status"), value: t(`status.${session.status}`) },
-      { label: t("summary.warehouse"), value: session.warehouse_name ?? t("inventory.countSessionDetailPage.unknownWarehouse") },
+      { label: t("summary.warehouse"), value: session.warehouse_name ?? t("countSessionDetailPage.unknownWarehouse") },
       { label: t("summary.countedLines"), value: t("countedProgress", { counted: session.counted_lines, total: session.total_lines }) },
       { label: t("summary.varianceTotal"), value: String(session.variance_total) },
     ];
@@ -98,13 +98,13 @@ const { t: tRoutes } = useTranslation("routes");
     const draft = drafts[lineId];
     const normalizedCountedQty = draft?.countedQty?.trim() ?? "";
     if (normalizedCountedQty === "") {
-      setError(t("inventory.countSessionDetailPage.invalidQuantity"));
+      setError(t("countSessionDetailPage.invalidQuantity"));
       return;
     }
 
     const countedQty = Number(normalizedCountedQty);
     if (!Number.isInteger(countedQty) || countedQty < 0) {
-      setError(t("inventory.countSessionDetailPage.invalidQuantity"));
+      setError(t("countSessionDetailPage.invalidQuantity"));
       return;
     }
 
@@ -156,15 +156,15 @@ const { t: tRoutes } = useTranslation("routes");
       <PageHeader
         breadcrumb={[
           { label: tRoutes("inventoryCountSessions.label"), href: INVENTORY_COUNT_SESSIONS_ROUTE },
-          { label: session ? t("title", { id: session.id.slice(0, 8) }) : t("inventory.countSessionDetailPage.titleLoading") },
+          { label: session ? t("title", { id: session.id.slice(0, 8) }) : t("countSessionDetailPage.titleLoading") },
         ]}
-        eyebrow={t("inventory.countSessionDetailPage.eyebrow")}
-        title={session ? t("title", { id: session.id.slice(0, 8) }) : t("inventory.countSessionDetailPage.titleLoading")}
-        description={t("inventory.countSessionDetailPage.description")}
+        eyebrow={t("countSessionDetailPage.eyebrow")}
+        title={session ? t("title", { id: session.id.slice(0, 8) }) : t("countSessionDetailPage.titleLoading")}
+        description={t("countSessionDetailPage.description")}
         actions={(
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" variant="outline" onClick={() => navigate(INVENTORY_COUNT_SESSIONS_ROUTE)}>
-              {t("inventory.countSessionDetailPage.backToList")}
+              {t("countSessionDetailPage.backToList")}
             </Button>
           </div>
         )}
@@ -172,7 +172,7 @@ const { t: tRoutes } = useTranslation("routes");
           <PageTabs
             items={inventoryTabs}
             value="count-sessions"
-            ariaLabel={t("inventory.page.title")}
+            ariaLabel={t("page.title")}
             onValueChange={(next) => navigate(getInventorySectionRoute(next as InventorySectionTabValue))}
           />
         )}
@@ -181,14 +181,14 @@ const { t: tRoutes } = useTranslation("routes");
       {error ? <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div> : null}
 
       {loading ? (
-        <SectionCard title={t("inventory.countSessionDetailPage.loadingTitle")} description={t("inventory.countSessionDetailPage.loading")}>
-          <p className="text-sm text-muted-foreground">{t("inventory.countSessionDetailPage.loading")}</p>
+        <SectionCard title={t("countSessionDetailPage.loadingTitle")} description={t("countSessionDetailPage.loading")}>
+          <p className="text-sm text-muted-foreground">{t("countSessionDetailPage.loading")}</p>
         </SectionCard>
       ) : session == null ? (
-        <SectionCard title={t("inventory.countSessionDetailPage.missingTitle")} description={t("inventory.countSessionDetailPage.missingDescription")} />
+        <SectionCard title={t("countSessionDetailPage.missingTitle")} description={t("countSessionDetailPage.missingDescription")} />
       ) : (
         <>
-          <SectionCard title={t("inventory.countSessionDetailPage.summaryTitle")} description={t("inventory.countSessionDetailPage.summaryDescription")}>
+          <SectionCard title={t("countSessionDetailPage.summaryTitle")} description={t("countSessionDetailPage.summaryDescription")}>
             <div className="grid gap-4 md:grid-cols-4">
               {summaryItems.map((item) => (
                 <div key={item.label} className="rounded-xl border border-border/70 bg-muted/20 px-4 py-3">
@@ -200,15 +200,15 @@ const { t: tRoutes } = useTranslation("routes");
           </SectionCard>
 
           <SectionCard
-            title={t("inventory.countSessionDetailPage.linesTitle")}
-            description={isEditable ? t("inventory.countSessionDetailPage.linesDescriptionEditable") : t("inventory.countSessionDetailPage.linesDescriptionReadonly")}
+            title={t("countSessionDetailPage.linesTitle")}
+            description={isEditable ? t("countSessionDetailPage.linesDescriptionEditable") : t("countSessionDetailPage.linesDescriptionReadonly")}
             actions={(
               <div className="flex flex-wrap items-center gap-2">
                 <Button type="button" onClick={() => void handleSubmitSession()} disabled={!canSubmit || sessionAction !== null}>
-                  {sessionAction === "submit" ? t("inventory.countSessionDetailPage.submitting") : t("inventory.countSessionDetailPage.submit")}
+                  {sessionAction === "submit" ? t("countSessionDetailPage.submitting") : t("countSessionDetailPage.submit")}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => void handleApproveSession()} disabled={!canApprove || sessionAction !== null}>
-                  {sessionAction === "approve" ? t("inventory.countSessionDetailPage.approving") : t("inventory.countSessionDetailPage.approve")}
+                  {sessionAction === "approve" ? t("countSessionDetailPage.approving") : t("countSessionDetailPage.approve")}
                 </Button>
               </div>
             )}
@@ -217,12 +217,12 @@ const { t: tRoutes } = useTranslation("routes");
               <table className="min-w-full divide-y divide-border/70 text-sm">
                 <thead className="bg-muted/30 text-left text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3 font-medium">{t("inventory.countSessionDetailPage.columns.product")}</th>
-                    <th className="px-4 py-3 font-medium">{t("inventory.countSessionDetailPage.columns.snapshot")}</th>
-                    <th className="px-4 py-3 font-medium">{t("inventory.countSessionDetailPage.columns.counted")}</th>
+                    <th className="px-4 py-3 font-medium">{t("countSessionDetailPage.columns.product")}</th>
+                    <th className="px-4 py-3 font-medium">{t("countSessionDetailPage.columns.snapshot")}</th>
+                    <th className="px-4 py-3 font-medium">{t("countSessionDetailPage.columns.counted")}</th>
                     <th className="px-4 py-3 font-medium">{t("columns.variance")}</th>
-                    <th className="px-4 py-3 font-medium">{t("inventory.countSessionDetailPage.columns.notes")}</th>
-                    <th className="px-4 py-3 font-medium">{t("inventory.countSessionDetailPage.columns.actions")}</th>
+                    <th className="px-4 py-3 font-medium">{t("countSessionDetailPage.columns.notes")}</th>
+                    <th className="px-4 py-3 font-medium">{t("countSessionDetailPage.columns.actions")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
@@ -281,10 +281,10 @@ const { t: tRoutes } = useTranslation("routes");
                               onClick={() => void handleSaveLine(line.id)}
                               disabled={savingLineId === line.id}
                             >
-                              {savingLineId === line.id ? t("inventory.countSessionDetailPage.savingLine") : t("inventory.countSessionDetailPage.saveLine")}
+                              {savingLineId === line.id ? t("countSessionDetailPage.savingLine") : t("countSessionDetailPage.saveLine")}
                             </Button>
                           ) : (
-                            <span className="text-sm text-muted-foreground">{t("inventory.countSessionDetailPage.readonly")}</span>
+                            <span className="text-sm text-muted-foreground">{t("countSessionDetailPage.readonly")}</span>
                           )}
                         </td>
                       </tr>

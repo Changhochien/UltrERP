@@ -25,7 +25,7 @@ export function UnitsPage() {
 const { t: tRoutes } = useTranslation("routes");
   const navigate = useNavigate();
   const { canWrite } = usePermissions();
-  const inventoryTabs = buildInventorySectionTabs(t);
+  const inventoryTabs = buildInventorySectionTabs(tRoutes);
   const [query, setQuery] = useState("");
   const [showInactive, setShowInactive] = useState(false);
   const [items, setItems] = useState<UnitOfMeasure[]>([]);
@@ -62,7 +62,7 @@ const { t: tRoutes } = useTranslation("routes");
       .catch((err) => {
         if (!cancelled) {
           setItems([]);
-          setError(err instanceof Error ? err.message : t("inventory.unitsPage.loadError"));
+          setError(err instanceof Error ? err.message : t("unitsPage.loadError"));
         }
       })
       .finally(() => {
@@ -97,16 +97,16 @@ const { t: tRoutes } = useTranslation("routes");
     setDecimalPlacesError(null);
 
     if (!code.trim()) {
-      setCodeError(t("inventory.unitsPage.codeRequired"));
+      setCodeError(t("unitsPage.codeRequired"));
       valid = false;
     }
     if (!name.trim()) {
-      setNameError(t("inventory.unitsPage.nameRequired"));
+      setNameError(t("unitsPage.nameRequired"));
       valid = false;
     }
     const parsedDecimalPlaces = Number(decimalPlaces);
     if (!Number.isInteger(parsedDecimalPlaces) || parsedDecimalPlaces < 0 || parsedDecimalPlaces > 6) {
-      setDecimalPlacesError(t("inventory.unitsPage.decimalPlacesInvalid"));
+      setDecimalPlacesError(t("unitsPage.decimalPlacesInvalid"));
       valid = false;
     }
 
@@ -151,7 +151,7 @@ const { t: tRoutes } = useTranslation("routes");
     setStatusPendingId(null);
 
     if (!result.ok) {
-      setFormError(result.error || t("inventory.unitsPage.statusError"));
+      setFormError(result.error || t("unitsPage.statusError"));
       return;
     }
 
@@ -166,14 +166,14 @@ const { t: tRoutes } = useTranslation("routes");
     <div className="space-y-6">
       <PageHeader
         breadcrumb={[{ label: tRoutes("inventoryUnits.label") }]}
-        eyebrow={t("inventory.unitsPage.eyebrow")}
-        title={t("inventory.unitsPage.title")}
-        description={t("inventory.unitsPage.description")}
+        eyebrow={t("unitsPage.eyebrow")}
+        title={t("unitsPage.title")}
+        description={t("unitsPage.description")}
         tabs={(
           <PageTabs
             items={inventoryTabs}
             value="units"
-            ariaLabel={t("inventory.page.title")}
+            ariaLabel={t("page.title")}
             onValueChange={(next) => navigate(getInventorySectionRoute(next as InventorySectionTabValue))}
           />
         )}
@@ -181,33 +181,33 @@ const { t: tRoutes } = useTranslation("routes");
 
       {canWrite("inventory") ? (
         <SectionCard
-          title={isEditing ? t("inventory.unitsPage.editTitle") : t("inventory.unitsPage.createTitle")}
-          description={t("inventory.unitsPage.formDescription")}
+          title={isEditing ? t("unitsPage.editTitle") : t("unitsPage.createTitle")}
+          description={t("unitsPage.formDescription")}
         >
           <div className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <label htmlFor="unit-code" className="block text-sm font-medium">
-                  {t("inventory.unitsPage.codeLabel")}
+                  {t("unitsPage.codeLabel")}
                 </label>
                 <Input
                   id="unit-code"
                   value={code}
                   onChange={(event) => setCode(event.target.value)}
-                  placeholder={t("inventory.unitsPage.codePlaceholder")}
+                  placeholder={t("unitsPage.codePlaceholder")}
                   disabled={saving}
                 />
                 {codeError ? <p className="text-sm text-destructive">{codeError}</p> : null}
               </div>
               <div className="space-y-2">
                 <label htmlFor="unit-name" className="block text-sm font-medium">
-                  {t("inventory.unitsPage.nameLabel")}
+                  {t("unitsPage.nameLabel")}
                 </label>
                 <Input
                   id="unit-name"
                   value={name}
                   onChange={(event) => setName(event.target.value)}
-                  placeholder={t("inventory.unitsPage.namePlaceholder")}
+                  placeholder={t("unitsPage.namePlaceholder")}
                   disabled={saving}
                 />
                 {nameError ? <p className="text-sm text-destructive">{nameError}</p> : null}
@@ -216,7 +216,7 @@ const { t: tRoutes } = useTranslation("routes");
 
             <div className="space-y-2">
               <label htmlFor="unit-decimal-places" className="block text-sm font-medium">
-                {t("inventory.unitsPage.decimalPlacesLabel")}
+                {t("unitsPage.decimalPlacesLabel")}
               </label>
               <Input
                 id="unit-decimal-places"
@@ -234,23 +234,23 @@ const { t: tRoutes } = useTranslation("routes");
             {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
             <div className="flex flex-wrap gap-2">
               <Button type="button" onClick={handleSaveUnit} disabled={saving}>
-                {saving ? t("inventory.unitsPage.saving") : isEditing ? t("inventory.unitsPage.update") : t("inventory.unitsPage.save")}
+                {saving ? t("unitsPage.saving") : isEditing ? t("unitsPage.update") : t("unitsPage.save")}
               </Button>
               {isEditing ? (
                 <Button type="button" variant="outline" onClick={resetForm} disabled={saving}>
-                  {t("inventory.unitsPage.cancelEdit")}
+                  {t("unitsPage.cancelEdit")}
                 </Button>
               ) : null}
             </div>
           </div>
         </SectionCard>
       ) : (
-        <SectionCard title={t("inventory.unitsPage.createTitle")} description={t("inventory.unitsPage.readOnly")} />
+        <SectionCard title={t("unitsPage.createTitle")} description={t("unitsPage.readOnly")} />
       )}
 
       <SectionCard
-        title={t("inventory.unitsPage.directoryTitle")}
-        description={t("inventory.unitsPage.directoryDescription")}
+        title={t("unitsPage.directoryTitle")}
+        description={t("unitsPage.directoryDescription")}
         actions={<div className="text-sm text-muted-foreground">{totalLabel}</div>}
       >
         <div className="space-y-4">
@@ -259,8 +259,8 @@ const { t: tRoutes } = useTranslation("routes");
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder={t("inventory.unitsPage.searchPlaceholder")}
-                aria-label={t("inventory.unitsPage.searchPlaceholder")}
+                placeholder={t("unitsPage.searchPlaceholder")}
+                aria-label={t("unitsPage.searchPlaceholder")}
               />
             </div>
             <Button
@@ -269,7 +269,7 @@ const { t: tRoutes } = useTranslation("routes");
               onClick={() => setShowInactive((value) => !value)}
               aria-pressed={showInactive}
             >
-              {t("inventory.unitsPage.showInactive")}
+              {t("unitsPage.showInactive")}
             </Button>
           </div>
 
@@ -277,23 +277,23 @@ const { t: tRoutes } = useTranslation("routes");
           {formError && !canWrite("inventory") ? <p className="text-sm text-destructive">{formError}</p> : null}
 
           {loading ? (
-            <p className="text-sm text-muted-foreground">{t("inventory.unitsPage.loading")}</p>
+            <p className="text-sm text-muted-foreground">{t("unitsPage.loading")}</p>
           ) : items.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border/80 px-4 py-8 text-center">
-              <p className="font-medium">{t("inventory.unitsPage.empty")}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{t("inventory.unitsPage.emptyDescription")}</p>
+              <p className="font-medium">{t("unitsPage.empty")}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{t("unitsPage.emptyDescription")}</p>
             </div>
           ) : (
             <div className="overflow-x-auto rounded-xl border border-border/70">
               <table className="min-w-full divide-y divide-border/70 text-sm">
                 <thead className="bg-muted/30 text-left text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3 font-medium">{t("inventory.unitsPage.codeLabel")}</th>
-                    <th className="px-4 py-3 font-medium">{t("inventory.unitsPage.nameLabel")}</th>
-                    <th className="px-4 py-3 font-medium">{t("inventory.unitsPage.decimalPlacesLabel")}</th>
-                    <th className="px-4 py-3 font-medium">{t("inventory.unitsPage.status")}</th>
-                    <th className="px-4 py-3 font-medium">{t("inventory.unitsPage.updated")}</th>
-                    <th className="px-4 py-3 font-medium">{t("inventory.unitsPage.actions")}</th>
+                    <th className="px-4 py-3 font-medium">{t("unitsPage.codeLabel")}</th>
+                    <th className="px-4 py-3 font-medium">{t("unitsPage.nameLabel")}</th>
+                    <th className="px-4 py-3 font-medium">{t("unitsPage.decimalPlacesLabel")}</th>
+                    <th className="px-4 py-3 font-medium">{t("unitsPage.status")}</th>
+                    <th className="px-4 py-3 font-medium">{t("unitsPage.updated")}</th>
+                    <th className="px-4 py-3 font-medium">{t("unitsPage.actions")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
@@ -304,7 +304,7 @@ const { t: tRoutes } = useTranslation("routes");
                       <td className="px-4 py-3">{unit.decimal_places}</td>
                       <td className="px-4 py-3">
                         <Badge variant={unit.is_active ? "success" : "outline"} className="normal-case tracking-normal">
-                          {unit.is_active ? t("inventory.unitsPage.active") : t("inventory.unitsPage.inactive")}
+                          {unit.is_active ? t("unitsPage.active") : t("unitsPage.inactive")}
                         </Badge>
                       </td>
                       <td className="px-4 py-3">{unit.updated_at.slice(0, 10)}</td>
@@ -327,7 +327,7 @@ const { t: tRoutes } = useTranslation("routes");
                                   setFormError(null);
                                 }}
                               >
-                                {t("inventory.unitsPage.edit")}
+                                {t("unitsPage.edit")}
                               </Button>
                               <Button
                                 type="button"
@@ -336,7 +336,7 @@ const { t: tRoutes } = useTranslation("routes");
                                 onClick={() => handleToggleStatus(unit)}
                                 disabled={statusPendingId === unit.id}
                               >
-                                {unit.is_active ? t("inventory.unitsPage.deactivate") : t("inventory.unitsPage.activate")}
+                                {unit.is_active ? t("unitsPage.deactivate") : t("unitsPage.activate")}
                               </Button>
                             </>
                           ) : null}

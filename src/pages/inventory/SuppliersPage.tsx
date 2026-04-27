@@ -29,7 +29,7 @@ export function SuppliersPage() {
 const { t: tRoutes } = useTranslation("routes");
   const navigate = useNavigate();
   const { canWrite } = usePermissions();
-  const inventoryTabs = buildInventorySectionTabs(t);
+  const inventoryTabs = buildInventorySectionTabs(tRoutes);
   const [query, setQuery] = useState("");
   const [showInactive, setShowInactive] = useState(false);
   const [formKey, setFormKey] = useState(0);
@@ -60,25 +60,25 @@ const { t: tRoutes } = useTranslation("routes");
     <div className="space-y-6">
       <PageHeader
         breadcrumb={[{ label: tRoutes("inventorySuppliers.label") }]}
-        eyebrow={t("inventory.suppliersPage.eyebrow")}
-        title={t("inventory.suppliersPage.title")}
-        description={t("inventory.suppliersPage.description")}
+        eyebrow={t("suppliersPage.eyebrow")}
+        title={t("suppliersPage.title")}
+        description={t("suppliersPage.description")}
         tabs={(
           <PageTabs
             items={inventoryTabs}
             value="suppliers"
-            ariaLabel={t("inventory.page.title")}
+            ariaLabel={t("page.title")}
             onValueChange={(next) => navigate(getInventorySectionRoute(next as InventorySectionTabValue))}
           />
         )}
       />
 
       {canWrite("inventory") ? (
-        <SectionCard title={t("inventory.suppliersPage.createTitle")} description={t("inventory.suppliersPage.formDescription")}>
+        <SectionCard title={t("suppliersPage.createTitle")} description={t("suppliersPage.formDescription")}>
           <SupplierForm
             key={formKey}
-            submitLabel={t("inventory.suppliersPage.save")}
-            submittingLabel={t("inventory.suppliersPage.saving")}
+            submitLabel={t("suppliersPage.save")}
+            submittingLabel={t("suppliersPage.saving")}
             onSubmit={async (values) => {
               const result = await createSupplier(values);
               if (result.ok) {
@@ -97,12 +97,12 @@ const { t: tRoutes } = useTranslation("routes");
           />
         </SectionCard>
       ) : (
-        <SectionCard title={t("inventory.suppliersPage.createTitle")} description={t("inventory.suppliersPage.readOnly")} />
+        <SectionCard title={t("suppliersPage.createTitle")} description={t("suppliersPage.readOnly")} />
       )}
 
       <SectionCard
-        title={t("inventory.suppliersPage.directoryTitle")}
-        description={t("inventory.suppliersPage.directoryDescription")}
+        title={t("suppliersPage.directoryTitle")}
+        description={t("suppliersPage.directoryDescription")}
         actions={<div className="text-sm text-muted-foreground">{t("total", { count: total })}</div>}
       >
         <div className="space-y-4">
@@ -111,8 +111,8 @@ const { t: tRoutes } = useTranslation("routes");
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder={t("inventory.suppliersPage.searchPlaceholder")}
-                aria-label={t("inventory.suppliersPage.searchPlaceholder")}
+                placeholder={t("suppliersPage.searchPlaceholder")}
+                aria-label={t("suppliersPage.searchPlaceholder")}
               />
             </div>
             <Button
@@ -121,7 +121,7 @@ const { t: tRoutes } = useTranslation("routes");
               onClick={() => setShowInactive((current) => !current)}
               aria-pressed={showInactive}
             >
-              {t("inventory.suppliersPage.showInactive")}
+              {t("suppliersPage.showInactive")}
             </Button>
           </div>
 
@@ -129,22 +129,22 @@ const { t: tRoutes } = useTranslation("routes");
           {statusError ? <p className="text-sm text-destructive">{statusError}</p> : null}
 
           {loading ? (
-            <p className="text-sm text-muted-foreground">{t("inventory.suppliersPage.loading")}</p>
+            <p className="text-sm text-muted-foreground">{t("suppliersPage.loading")}</p>
           ) : suppliers.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border/80 px-4 py-8 text-center">
-              <p className="font-medium">{t("inventory.suppliersPage.empty")}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{t("inventory.suppliersPage.emptyDescription")}</p>
+              <p className="font-medium">{t("suppliersPage.empty")}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{t("suppliersPage.emptyDescription")}</p>
             </div>
           ) : (
             <div className="overflow-x-auto rounded-xl border border-border/70">
               <table className="min-w-full divide-y divide-border/70 text-sm">
                 <thead className="bg-muted/30 text-left text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3 font-medium">{t("inventory.suppliersPage.name")}</th>
-                    <th className="px-4 py-3 font-medium">{t("inventory.suppliersPage.contact")}</th>
-                    <th className="px-4 py-3 font-medium">{t("inventory.suppliersPage.leadTime")}</th>
-                    <th className="px-4 py-3 font-medium">{t("inventory.suppliersPage.status")}</th>
-                    <th className="px-4 py-3 font-medium">{t("inventory.suppliersPage.actions")}</th>
+                    <th className="px-4 py-3 font-medium">{t("suppliersPage.name")}</th>
+                    <th className="px-4 py-3 font-medium">{t("suppliersPage.contact")}</th>
+                    <th className="px-4 py-3 font-medium">{t("suppliersPage.leadTime")}</th>
+                    <th className="px-4 py-3 font-medium">{t("suppliersPage.status")}</th>
+                    <th className="px-4 py-3 font-medium">{t("suppliersPage.actions")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
@@ -152,14 +152,14 @@ const { t: tRoutes } = useTranslation("routes");
                     <tr key={supplier.id} className={!supplier.is_active ? "bg-muted/20 text-muted-foreground" : undefined}>
                       <td className="px-4 py-3 font-medium">{supplier.name}</td>
                       <td className="px-4 py-3">
-                        {supplier.contact_email ?? supplier.phone ?? t("inventory.suppliersPage.noContact")}
+                        {supplier.contact_email ?? supplier.phone ?? t("suppliersPage.noContact")}
                       </td>
                       <td className="px-4 py-3">
-                        {supplier.default_lead_time_days == null ? t("inventory.suppliersPage.notSet") : supplier.default_lead_time_days}
+                        {supplier.default_lead_time_days == null ? t("suppliersPage.notSet") : supplier.default_lead_time_days}
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant={supplier.is_active ? "success" : "outline"} className="normal-case tracking-normal">
-                          {supplier.is_active ? t("inventory.suppliersPage.active") : t("inventory.suppliersPage.inactive")}
+                          {supplier.is_active ? t("suppliersPage.active") : t("suppliersPage.inactive")}
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
@@ -170,7 +170,7 @@ const { t: tRoutes } = useTranslation("routes");
                             variant="outline"
                             onClick={() => navigate(buildSupplierDetailPath(supplier.id))}
                           >
-                            {t("inventory.suppliersPage.view")}
+                            {t("suppliersPage.view")}
                           </Button>
                           {canWrite("inventory") ? (
                             <Button
@@ -180,7 +180,7 @@ const { t: tRoutes } = useTranslation("routes");
                               onClick={() => void handleToggleStatus(supplier.id, supplier.is_active)}
                               disabled={statusPendingId === supplier.id}
                             >
-                              {supplier.is_active ? t("inventory.suppliersPage.deactivate") : t("inventory.suppliersPage.activate")}
+                              {supplier.is_active ? t("suppliersPage.deactivate") : t("suppliersPage.activate")}
                             </Button>
                           ) : null}
                         </div>
