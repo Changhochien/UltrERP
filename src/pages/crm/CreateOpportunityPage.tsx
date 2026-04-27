@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import OpportunityForm from "../../components/crm/OpportunityForm";
+import OpportunityForm from "@/domain/crm/components/OpportunityForm";
 import { PageHeader, SectionCard } from "../../components/layout/PageLayout";
 import { Button } from "../../components/ui/button";
 import type { OpportunityCreatePayload } from "../../domain/crm/types";

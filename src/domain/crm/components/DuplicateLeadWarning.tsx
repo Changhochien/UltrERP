@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 
-import type { DuplicateLeadCandidate, DuplicateLeadInfo } from "../../domain/crm/types";
-import { Button } from "../ui/button";
+import type { DuplicateLeadCandidate, DuplicateLeadInfo } from "@/domain/crm/types";
+import { Button } from "@/components/ui/button";
 
 export interface DuplicateLeadWarningProps {
   duplicate: DuplicateLeadInfo;

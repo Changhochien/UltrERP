@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import LeadDetailPage from "./LeadDetailPage";
-import { LeadResultsTable } from "../../components/crm/LeadResultsTable";
+import { LeadResultsTable } from "@/domain/crm/components/LeadResultsTable";
 import { PageHeader, SectionCard } from "../../components/layout/PageLayout";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";

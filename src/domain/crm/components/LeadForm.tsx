@@ -3,16 +3,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, type Resolver } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
-import { Button } from "../ui/button";
-import { Field, FieldError, FieldLabel } from "../ui/field";
-import { Input } from "../ui/input";
-import { Textarea } from "../ui/textarea";
-import { useCRMSetupBundle } from "../../domain/crm/hooks/useCRMSetupBundle";
+import { Button } from "@/components/ui/button";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useCRMSetupBundle } from "@/domain/crm/hooks/useCRMSetupBundle";
 import {
   leadFormSchema,
   type LeadFormValues,
   toLeadCreatePayload,
-} from "../../lib/schemas/lead.schema";
+} from "@/lib/schemas/lead.schema";
 
 const SELECT_CLASS_NAME =
   "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";

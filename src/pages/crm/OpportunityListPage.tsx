@@ -3,8 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import OpportunityDetailPage from "./OpportunityDetailPage";
-import OpportunityPipelineSummary from "../../components/crm/OpportunityPipelineSummary";
-import OpportunityResultsTable from "../../components/crm/OpportunityResultsTable";
+import OpportunityPipelineSummary from "@/domain/crm/components/OpportunityPipelineSummary";
+import OpportunityResultsTable from "@/domain/crm/components/OpportunityResultsTable";
 import { PageHeader, SectionCard } from "../../components/layout/PageLayout";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";

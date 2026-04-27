@@ -1,8 +1,8 @@
 import { useTranslation } from "react-i18next";
 
-import type { OpportunitySummary } from "../../domain/crm/types";
-import { DataTable } from "../layout/DataTable";
-import { Badge } from "../ui/badge";
+import type { OpportunitySummary } from "@/domain/crm/types";
+import { DataTable } from "@/components/layout/DataTable";
+import { Badge } from "@/components/ui/badge";
 
 interface OpportunityResultsTableProps {
   items: OpportunitySummary[];

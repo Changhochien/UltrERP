@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import QuotationForm from "../../components/crm/QuotationForm";
+import QuotationForm from "@/domain/crm/components/QuotationForm";
 import { PageHeader, SectionCard } from "../../components/layout/PageLayout";
 import { Button } from "../../components/ui/button";
 import type { OpportunityQuotationHandoff, QuotationCreatePayload } from "../../domain/crm/types";

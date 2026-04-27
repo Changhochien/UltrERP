@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { PageHeader, SectionCard } from "../../components/layout/PageLayout";
-import DuplicateLeadWarning from "../../components/crm/DuplicateLeadWarning";
-import LeadForm from "../../components/crm/LeadForm";
+import DuplicateLeadWarning from "@/domain/crm/components/DuplicateLeadWarning";
+import LeadForm from "@/domain/crm/components/LeadForm";
 import { Button } from "../../components/ui/button";
 import { useToast } from "../../hooks/useToast";
 import { createLead } from "../../lib/api/crm";

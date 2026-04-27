@@ -3,20 +3,20 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useFieldArray, useForm, type Resolver } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
-import type { CustomerSummary } from "../../domain/customers/types";
-import type { LeadSummary } from "../../domain/crm/types";
-import { useCRMSetupBundle } from "../../domain/crm/hooks/useCRMSetupBundle";
-import { listCustomers } from "../../lib/api/customers";
-import { listLeads } from "../../lib/api/crm";
+import type { CustomerSummary } from "@/domain/customers/types";
+import type { LeadSummary } from "@/domain/crm/types";
+import { useCRMSetupBundle } from "@/domain/crm/hooks/useCRMSetupBundle";
+import { listCustomers } from "@/lib/api/customers";
+import { listLeads } from "@/lib/api/crm";
 import {
   opportunityFormSchema,
   type OpportunityFormValues,
   toOpportunityCreatePayload,
-} from "../../lib/schemas/opportunity.schema";
-import { Button } from "../ui/button";
-import { Field, FieldError, FieldLabel } from "../ui/field";
-import { Input } from "../ui/input";
-import { Textarea } from "../ui/textarea";
+} from "@/lib/schemas/opportunity.schema";
+import { Button } from "@/components/ui/button";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 const SELECT_CLASS_NAME =
   "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";

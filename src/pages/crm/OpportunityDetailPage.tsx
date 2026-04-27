@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import OpportunityForm, { type OpportunityFormProps } from "../../components/crm/OpportunityForm";
+import OpportunityForm, { type OpportunityFormProps } from "@/domain/crm/components/OpportunityForm";
 import { PageHeader, SectionCard } from "../../components/layout/PageLayout";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import QuotationDetailPage from "./QuotationDetailPage";
-import QuotationResultsTable from "../../components/crm/QuotationResultsTable";
+import QuotationResultsTable from "@/domain/crm/components/QuotationResultsTable";
 import { PageHeader, SectionCard } from "../../components/layout/PageLayout";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";

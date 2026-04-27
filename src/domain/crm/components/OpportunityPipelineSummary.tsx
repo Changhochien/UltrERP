@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { OpportunityStatus, OpportunitySummary } from "../../domain/crm/types";
+import type { OpportunityStatus, OpportunitySummary } from "@/domain/crm/types";
 
 const STATUS_ORDER: OpportunityStatus[] = [
   "open",

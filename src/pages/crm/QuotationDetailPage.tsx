@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import QuotationForm, { type QuotationFormProps } from "../../components/crm/QuotationForm";
+import QuotationForm, { type QuotationFormProps } from "@/domain/crm/components/QuotationForm";
 import { PageHeader, SectionCard, SurfaceMessage } from "../../components/layout/PageLayout";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";

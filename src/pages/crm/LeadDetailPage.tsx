@@ -12,8 +12,8 @@ import type {
   LeadResponse,
   LeadStatus,
 } from "../../domain/crm/types";
-import DuplicateLeadWarning from "../../components/crm/DuplicateLeadWarning";
-import LeadForm from "../../components/crm/LeadForm";
+import DuplicateLeadWarning from "@/domain/crm/components/DuplicateLeadWarning";
+import LeadForm from "@/domain/crm/components/LeadForm";
 import { PageHeader, SectionCard } from "../../components/layout/PageLayout";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
