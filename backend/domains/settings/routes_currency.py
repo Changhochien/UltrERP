@@ -68,7 +68,7 @@ async def list_currencies_endpoint(
     db: DbSession,
     current_user: CurrentUser,
     page: Annotated[int, Query(ge=1)] = 1,
-    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+    page_size: Annotated[int, Query(ge=1, le=1000)] = 20,
     active_only: bool = False,
 ) -> CurrencyListResponse:
     """List currencies for the current tenant.
@@ -211,7 +211,7 @@ async def list_exchange_rates_endpoint(
     db: DbSession,
     current_user: CurrentUser,
     page: Annotated[int, Query(ge=1)] = 1,
-    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+    page_size: Annotated[int, Query(ge=1, le=1000)] = 20,
     source_currency: str | None = None,
     target_currency: str | None = None,
     active_only: bool = True,
