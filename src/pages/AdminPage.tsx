@@ -316,6 +316,7 @@ function validateForm(
 
 export function AdminPage() {
   const { t } = useTranslation("common");
+const { t: tRoutes } = useTranslation("routes");
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
@@ -353,7 +354,7 @@ export function AdminPage() {
 
   const roleLabel = (role: MatrixRole) => {
     if (role === "admin") {
-      return t("routes.admin.label");
+      return tRoutes("admin.label");
     }
     return t(`adminPage.users.roles.${role}`);
   };

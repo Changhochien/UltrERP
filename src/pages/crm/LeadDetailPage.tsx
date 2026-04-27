@@ -103,6 +103,7 @@ export function LeadDetailPage({ onBack }: LeadDetailPageProps) {
   const { leadId } = useParams<{ leadId: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation("common");
+const { t: tRoutes } = useTranslation("routes");
   const { canWrite } = usePermissions();
   const { error: showErrorToast, success: showSuccessToast } = useToast();
   const [lead, setLead] = useState<LeadResponse | null>(null);
@@ -515,7 +516,7 @@ export function LeadDetailPage({ onBack }: LeadDetailPageProps) {
     <div className="space-y-6">
       <PageHeader
         breadcrumb={[
-          { label: t("routes.crmLeads.label"), href: CRM_LEADS_ROUTE },
+          { label: tRoutes("crmLeads.label"), href: CRM_LEADS_ROUTE },
           { label: lead.company_name || lead.lead_name },
         ]}
         eyebrow={t("crm.detailPage.eyebrow")}

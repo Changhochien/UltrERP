@@ -115,6 +115,7 @@ function SegmentGroup({ title, items }: { title: string; items: CRMPipelineSegme
 
 export default function CRMPipelineReportPage() {
   const { t } = useTranslation("common");
+  const { t: tRoutes } = useTranslation("routes");
   const { territoryOptions, customerGroupOptions, salesStageOptions } = useCRMSetupBundle();
   const [filters, setFilters] = useState<CRMPipelineReportParams>(DEFAULT_FILTERS);
   const [report, setReport] = useState<CRMPipelineReport | null>(null);
@@ -215,7 +216,7 @@ export default function CRMPipelineReportPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumb={[{ label: t("routes.crmReporting.label"), href: CRM_REPORTING_ROUTE as AppRoute }]}
+        breadcrumb={[{ label: tRoutes("crmReporting.label"), href: CRM_REPORTING_ROUTE as AppRoute }]}
         eyebrow={t("crm.reporting.eyebrow")}
         title={t("crm.reporting.title")}
         description={t("crm.reporting.description")}

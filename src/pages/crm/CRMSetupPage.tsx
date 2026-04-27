@@ -195,6 +195,7 @@ function MasterNodeEditor({
 
 export default function CRMSetupPage() {
   const { t } = useTranslation("common");
+const { t: tRoutes } = useTranslation("routes");
   const { user } = useAuth();
   const { success: showSuccessToast, error: showErrorToast } = useToast();
   const { data, loading, error, reload } = useCRMSetupBundle();
@@ -345,7 +346,7 @@ export default function CRMSetupPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumb={[{ label: t("routes.crmSetup.label"), href: CRM_SETUP_ROUTE as AppRoute }]}
+        breadcrumb={[{ label: tRoutes("crmSetup.label"), href: CRM_SETUP_ROUTE as AppRoute }]}
         eyebrow={t("crm.setup.eyebrow")}
         title={t("crm.setup.title")}
         description={t("crm.setup.description")}

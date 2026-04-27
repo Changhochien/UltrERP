@@ -50,6 +50,7 @@ export interface CreateLeadPageProps {
 
 export default function CreateLeadPage({ onNavigate }: CreateLeadPageProps) {
   const { t } = useTranslation("common");
+const { t: tRoutes } = useTranslation("routes");
   const { error: showErrorToast, success: showSuccessToast } = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [serverErrors, setServerErrors] = useState<Array<{ field: string; message: string }>>([]);
@@ -100,8 +101,8 @@ export default function CreateLeadPage({ onNavigate }: CreateLeadPageProps) {
       <div className="space-y-6">
         <PageHeader
           breadcrumb={[
-            { label: t("routes.crmLeads.label"), href: CRM_LEADS_ROUTE as AppRoute },
-            { label: t("routes.createLead.label") },
+            { label: tRoutes("crmLeads.label"), href: CRM_LEADS_ROUTE as AppRoute },
+            { label: tRoutes("createLead.label") },
           ]}
           eyebrow={t("crm.createPage.eyebrow")}
           title={t("crm.createPage.titleCreated")}
@@ -136,8 +137,8 @@ export default function CreateLeadPage({ onNavigate }: CreateLeadPageProps) {
     <div className="space-y-6">
       <PageHeader
         breadcrumb={[
-          { label: t("routes.crmLeads.label"), href: CRM_LEADS_ROUTE as AppRoute },
-          { label: t("routes.createLead.label") },
+          { label: tRoutes("crmLeads.label"), href: CRM_LEADS_ROUTE as AppRoute },
+          { label: tRoutes("createLead.label") },
         ]}
         eyebrow={t("crm.createPage.eyebrow")}
         title={t("crm.createPage.title")}

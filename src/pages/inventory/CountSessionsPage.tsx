@@ -19,6 +19,7 @@ import { buildInventorySectionTabs, getInventorySectionRoute, type InventorySect
 
 export function CountSessionsPage() {
   const { t } = useTranslation("common");
+const { t: tRoutes } = useTranslation("routes");
   const navigate = useNavigate();
   const { warehouses, loading: warehousesLoading } = useWarehouses();
   const inventoryTabs = buildInventorySectionTabs(t);
@@ -94,7 +95,7 @@ export function CountSessionsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumb={[{ label: t("routes.inventoryCountSessions.label") }]}
+        breadcrumb={[{ label: tRoutes("inventoryCountSessions.label") }]}
         eyebrow={t("inventory.countSessionsPage.eyebrow")}
         title={t("inventory.countSessionsPage.title")}
         description={t("inventory.countSessionsPage.description")}

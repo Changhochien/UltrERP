@@ -123,6 +123,7 @@ export interface CreateQuotationPageProps {
 
 export default function CreateQuotationPage({ onNavigate }: CreateQuotationPageProps) {
   const { t } = useTranslation("common");
+const { t: tRoutes } = useTranslation("routes");
   const location = useLocation();
   const { error: showErrorToast, success: showSuccessToast } = useToast();
   const [submitting, setSubmitting] = useState(false);
@@ -162,8 +163,8 @@ export default function CreateQuotationPage({ onNavigate }: CreateQuotationPageP
       <div className="space-y-6">
         <PageHeader
           breadcrumb={[
-            { label: t("routes.crmQuotations.label"), href: CRM_QUOTATIONS_ROUTE as AppRoute },
-            { label: t("routes.createQuotation.label") },
+            { label: tRoutes("crmQuotations.label"), href: CRM_QUOTATIONS_ROUTE as AppRoute },
+            { label: tRoutes("createQuotation.label") },
           ]}
           eyebrow={t("crm.quotations.createPage.eyebrow")}
           title={t("crm.quotations.createPage.titleCreated")}
@@ -201,8 +202,8 @@ export default function CreateQuotationPage({ onNavigate }: CreateQuotationPageP
     <div className="space-y-6">
       <PageHeader
         breadcrumb={[
-          { label: t("routes.crmQuotations.label"), href: CRM_QUOTATIONS_ROUTE as AppRoute },
-          { label: t("routes.createQuotation.label") },
+          { label: tRoutes("crmQuotations.label"), href: CRM_QUOTATIONS_ROUTE as AppRoute },
+          { label: tRoutes("createQuotation.label") },
         ]}
         eyebrow={t("crm.quotations.createPage.eyebrow")}
         title={t("crm.quotations.createPage.title")}

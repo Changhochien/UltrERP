@@ -26,6 +26,7 @@ const CUSTOMER_STATUS_OPTIONS = [
 export function CustomerListPage() {
   const { customerId } = useParams<{ customerId: string }>();
   const { t } = useTranslation("common");
+const { t: tRoutes } = useTranslation("routes");
   const { canWrite } = usePermissions();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
@@ -106,7 +107,7 @@ export function CustomerListPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumb={[{ label: t("routes.customers.label") }]}
+        breadcrumb={[{ label: tRoutes("customers.label") }]}
         eyebrow={t("customer.listPage.eyebrow")}
         title={t("customer.listPage.title")}
         description={t("customer.listPage.description")}

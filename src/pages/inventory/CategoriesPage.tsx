@@ -22,6 +22,7 @@ function toFieldError(errors?: Array<{ field: string; message: string }>) {
 
 export function CategoriesPage() {
   const { t } = useTranslation("common");
+const { t: tRoutes } = useTranslation("routes");
   const navigate = useNavigate();
   const { canWrite } = usePermissions();
   const inventoryTabs = buildInventorySectionTabs(t);
@@ -128,7 +129,7 @@ export function CategoriesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumb={[{ label: t("routes.inventoryCategories.label") }]}
+        breadcrumb={[{ label: tRoutes("inventoryCategories.label") }]}
         eyebrow={t("inventory.categoriesPage.eyebrow")}
         title={t("inventory.categoriesPage.title")}
         description={t("inventory.categoriesPage.description")}

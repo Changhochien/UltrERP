@@ -39,6 +39,7 @@ function TransferMetadataRow({
 
 export function TransfersPage() {
   const { t } = useTranslation("common");
+const { t: tRoutes } = useTranslation("routes");
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { canWrite } = usePermissions();
@@ -157,7 +158,7 @@ export function TransfersPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumb={[{ label: t("routes.inventoryTransfers.label") }]}
+        breadcrumb={[{ label: tRoutes("inventoryTransfers.label") }]}
         eyebrow={t("inventory.transfersPage.eyebrow")}
         title={t("inventory.transfersPage.title")}
         description={t("inventory.transfersPage.description")}

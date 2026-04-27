@@ -33,6 +33,7 @@ export function LeadListPage() {
   const { leadId } = useParams<{ leadId: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation("common");
+const { t: tRoutes } = useTranslation("routes");
   const { canWrite } = usePermissions();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<LeadStatus | "">("");
@@ -89,7 +90,7 @@ export function LeadListPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumb={[{ label: t("routes.crmLeads.label") }]}
+        breadcrumb={[{ label: tRoutes("crmLeads.label") }]}
         eyebrow={t("crm.listPage.eyebrow")}
         title={t("crm.listPage.title")}
         description={t("crm.listPage.description")}

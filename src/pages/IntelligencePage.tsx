@@ -11,11 +11,12 @@ import { PageHeader, SectionCard, SurfaceMessage } from "../components/layout/Pa
 
 export function IntelligencePage() {
   const { t } = useTranslation("common");
+const { t: tRoutes } = useTranslation("routes");
 
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumb={[{ label: t("routes.intelligence.label") }]}
+        breadcrumb={[{ label: tRoutes("intelligence.label") }]}
         eyebrow={t("intelligence.page.eyebrow")}
         title={t("intelligence.page.title")}
         description={t("intelligence.page.description")}

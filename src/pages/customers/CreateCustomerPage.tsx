@@ -19,6 +19,7 @@ export interface CreateCustomerPageProps {
 
 export default function CreateCustomerPage({ onNavigate }: CreateCustomerPageProps) {
   const { t } = useTranslation("common");
+const { t: tRoutes } = useTranslation("routes");
   const { error: showErrorToast, success: showSuccessToast } = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [serverErrors, setServerErrors] = useState<Array<{ field: string; message: string }>>([]);
@@ -57,8 +58,8 @@ export default function CreateCustomerPage({ onNavigate }: CreateCustomerPagePro
       <div className="space-y-6">
         <PageHeader
           breadcrumb={[
-            { label: t("routes.customers.label"), href: CUSTOMERS_ROUTE },
-            { label: t("routes.createCustomer.label") },
+            { label: tRoutes("customers.label"), href: CUSTOMERS_ROUTE },
+            { label: tRoutes("createCustomer.label") },
           ]}
           eyebrow={t("customer.createPage.eyebrow")}
           title={t("customer.createPage.titleCreated")}
@@ -86,8 +87,8 @@ export default function CreateCustomerPage({ onNavigate }: CreateCustomerPagePro
     <div className="space-y-6">
       <PageHeader
         breadcrumb={[
-          { label: t("routes.customers.label"), href: CUSTOMERS_ROUTE },
-          { label: t("routes.createCustomer.label") },
+          { label: tRoutes("customers.label"), href: CUSTOMERS_ROUTE },
+          { label: tRoutes("createCustomer.label") },
         ]}
         eyebrow={t("customer.createPage.eyebrow")}
         title={t("customer.createPage.title")}

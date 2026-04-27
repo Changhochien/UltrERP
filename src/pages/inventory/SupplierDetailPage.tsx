@@ -24,6 +24,7 @@ function toFieldErrors(
 
 export function SupplierDetailPage() {
   const { t } = useTranslation("common");
+const { t: tRoutes } = useTranslation("routes");
   const navigate = useNavigate();
   const { supplierId } = useParams<{ supplierId: string }>();
   const { canWrite } = usePermissions();
@@ -64,7 +65,7 @@ export function SupplierDetailPage() {
     <div className="space-y-6">
       <PageHeader
         breadcrumb={[
-          { label: t("routes.inventorySuppliers.label"), href: INVENTORY_SUPPLIERS_ROUTE },
+          { label: tRoutes("inventorySuppliers.label"), href: INVENTORY_SUPPLIERS_ROUTE },
           { label: supplier?.name ?? t("inventory.supplierDetail.title") },
         ]}
         eyebrow={t("inventory.supplierDetail.eyebrow")}

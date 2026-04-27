@@ -45,6 +45,7 @@ const QA_KEYS: QAAction[] = [
 
 export function DashboardPage() {
   const { t } = useTranslation("common");
+const { t: tRoutes } = useTranslation("routes");
   const navigate = useNavigate();
   const { data, isLoading, error } = useRevenueSummary();
   const { canAccess, canWrite } = usePermissions();
@@ -60,8 +61,8 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumb={[{ label: t("routes.dashboard.label") }]}
-        eyebrow={t("routes.workspace.label")}
+        breadcrumb={[{ label: tRoutes("dashboard.label") }]}
+        eyebrow={tRoutes("workspace.label")}
         title={APP_TITLE}
         description={`${t("app.tagline")}. ${t("dashboard.pageDescription")}`}
         actions={(

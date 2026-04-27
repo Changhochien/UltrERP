@@ -22,6 +22,7 @@ function toFieldError(field: string, errors?: Array<{ field: string; message: st
 
 export function UnitsPage() {
   const { t } = useTranslation("common");
+const { t: tRoutes } = useTranslation("routes");
   const navigate = useNavigate();
   const { canWrite } = usePermissions();
   const inventoryTabs = buildInventorySectionTabs(t);
@@ -164,7 +165,7 @@ export function UnitsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumb={[{ label: t("routes.inventoryUnits.label") }]}
+        breadcrumb={[{ label: tRoutes("inventoryUnits.label") }]}
         eyebrow={t("inventory.unitsPage.eyebrow")}
         title={t("inventory.unitsPage.title")}
         description={t("inventory.unitsPage.description")}

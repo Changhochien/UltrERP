@@ -74,6 +74,7 @@ function buildLinePreview(line: InvoiceDraftLine) {
 
 export default function CreateInvoicePage() {
   const { t } = useTranslation("common");
+const { t: tRoutes } = useTranslation("routes");
   const { error: showErrorToast, success: showSuccessToast } = useToast();
   const [customers, setCustomers] = useState<CustomerSummary[]>([]);
   const [customerId, setCustomerId] = useState("");
@@ -205,8 +206,8 @@ export default function CreateInvoicePage() {
       <div className="space-y-6">
         <PageHeader
           breadcrumb={[
-            { label: t("routes.invoices.label"), href: INVOICES_ROUTE },
-            { label: t("routes.createInvoice.label") },
+            { label: tRoutes("invoices.label"), href: INVOICES_ROUTE },
+            { label: tRoutes("createInvoice.label") },
           ]}
           eyebrow={t("invoice.createPage.eyebrow")}
           title={t("invoice.createPage.titleCreated")}
@@ -244,8 +245,8 @@ export default function CreateInvoicePage() {
     <div className="space-y-6">
       <PageHeader
         breadcrumb={[
-          { label: t("routes.invoices.label"), href: INVOICES_ROUTE },
-          { label: t("routes.createInvoice.label") },
+          { label: tRoutes("invoices.label"), href: INVOICES_ROUTE },
+          { label: tRoutes("createInvoice.label") },
         ]}
         eyebrow={t("invoice.createPage.eyebrow")}
         title={t("invoice.createPage.title")}

@@ -32,6 +32,7 @@ export function QuotationListPage() {
   const { quotationId } = useParams<{ quotationId: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation("common");
+const { t: tRoutes } = useTranslation("routes");
   const { canWrite } = usePermissions();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<QuotationStatus | "">("");
@@ -89,7 +90,7 @@ export function QuotationListPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumb={[{ label: t("routes.crmQuotations.label") }]}
+        breadcrumb={[{ label: tRoutes("crmQuotations.label") }]}
         eyebrow={t("crm.quotations.listPage.eyebrow")}
         title={t("crm.quotations.listPage.title")}
         description={t("crm.quotations.listPage.description")}

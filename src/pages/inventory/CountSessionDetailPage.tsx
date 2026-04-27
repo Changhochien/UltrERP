@@ -30,6 +30,7 @@ function buildDrafts(session: PhysicalCountSession): DraftMap {
 
 export function CountSessionDetailPage() {
   const { t } = useTranslation("common");
+const { t: tRoutes } = useTranslation("routes");
   const navigate = useNavigate();
   const params = useParams<{ sessionId: string }>();
   const sessionId = params.sessionId ?? "";
@@ -154,7 +155,7 @@ export function CountSessionDetailPage() {
     <div className="space-y-6">
       <PageHeader
         breadcrumb={[
-          { label: t("routes.inventoryCountSessions.label"), href: INVENTORY_COUNT_SESSIONS_ROUTE },
+          { label: tRoutes("inventoryCountSessions.label"), href: INVENTORY_COUNT_SESSIONS_ROUTE },
           { label: session ? t("title", { id: session.id.slice(0, 8) }) : t("inventory.countSessionDetailPage.titleLoading") },
         ]}
         eyebrow={t("inventory.countSessionDetailPage.eyebrow")}

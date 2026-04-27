@@ -13,6 +13,7 @@ import { buildInventorySectionTabs, getInventorySectionRoute, type InventorySect
 
 function BelowReorderReportWorkspace() {
   const { t } = useTranslation("common");
+const { t: tRoutes } = useTranslation("routes");
   const navigate = useNavigate();
   const { selectedWarehouse, setSelectedWarehouse } = useWarehouseContext();
   const inventoryTabs = buildInventorySectionTabs(t);
@@ -40,7 +41,7 @@ function BelowReorderReportWorkspace() {
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumb={[{ label: t("routes.belowReorderReport.label") }]}
+        breadcrumb={[{ label: tRoutes("belowReorderReport.label") }]}
         eyebrow={t("inventory.belowReorderReportPage.eyebrow")}
         title={t("inventory.belowReorderReportPage.title")}
         description={t("inventory.belowReorderReportPage.description")}

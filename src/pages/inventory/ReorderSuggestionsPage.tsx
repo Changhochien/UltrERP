@@ -69,6 +69,7 @@ function CreatedOrdersSummary({
 
 function ReorderSuggestionsWorkspace() {
   const { t } = useTranslation("common");
+const { t: tRoutes } = useTranslation("routes");
   const navigate = useNavigate();
   const { selectedWarehouse, setSelectedWarehouse } = useWarehouseContext();
   const { canWrite } = usePermissions();
@@ -143,7 +144,7 @@ function ReorderSuggestionsWorkspace() {
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumb={[{ label: t("routes.reorderSuggestions.label") }]}
+        breadcrumb={[{ label: tRoutes("reorderSuggestions.label") }]}
         eyebrow={t("inventory.reorderSuggestionsPage.eyebrow")}
         title={t("inventory.reorderSuggestionsPage.title")}
         description={t("inventory.reorderSuggestionsPage.description")}

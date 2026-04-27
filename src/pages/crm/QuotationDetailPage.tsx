@@ -57,6 +57,7 @@ export function QuotationDetailPage({ onBack }: QuotationDetailPageProps) {
   const { quotationId } = useParams<{ quotationId: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation("common");
+const { t: tRoutes } = useTranslation("routes");
   const { canWrite } = usePermissions();
   const { error: showErrorToast, success: showSuccessToast } = useToast();
   const [quotation, setQuotation] = useState<QuotationResponse | null>(null);
@@ -342,7 +343,7 @@ export function QuotationDetailPage({ onBack }: QuotationDetailPageProps) {
     <div className="space-y-6">
       <PageHeader
         breadcrumb={[
-          { label: t("routes.crmQuotations.label"), href: CRM_QUOTATIONS_ROUTE },
+          { label: tRoutes("crmQuotations.label"), href: CRM_QUOTATIONS_ROUTE },
           { label: quotation.party_label },
         ]}
         eyebrow={t("crm.quotations.detailPage.eyebrow")}

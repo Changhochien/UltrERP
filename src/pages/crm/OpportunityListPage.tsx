@@ -31,6 +31,7 @@ export function OpportunityListPage() {
   const { opportunityId } = useParams<{ opportunityId: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation("common");
+const { t: tRoutes } = useTranslation("routes");
   const { canWrite } = usePermissions();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<OpportunityStatus | "">("");
@@ -88,7 +89,7 @@ export function OpportunityListPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumb={[{ label: t("routes.crmOpportunities.label") }]}
+        breadcrumb={[{ label: tRoutes("crmOpportunities.label") }]}
         eyebrow={t("crm.opportunities.listPage.eyebrow")}
         title={t("crm.opportunities.listPage.title")}
         description={t("crm.opportunities.listPage.description")}

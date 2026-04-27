@@ -47,6 +47,7 @@ export function OpportunityDetailPage({ onBack }: OpportunityDetailPageProps) {
   const { opportunityId } = useParams<{ opportunityId: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation("common");
+const { t: tRoutes } = useTranslation("routes");
   const { canWrite } = usePermissions();
   const { error: showErrorToast, success: showSuccessToast } = useToast();
   const [opportunity, setOpportunity] = useState<OpportunityResponse | null>(null);
@@ -272,7 +273,7 @@ export function OpportunityDetailPage({ onBack }: OpportunityDetailPageProps) {
     <div className="space-y-6">
       <PageHeader
         breadcrumb={[
-          { label: t("routes.crmOpportunities.label"), href: CRM_OPPORTUNITIES_ROUTE },
+          { label: tRoutes("crmOpportunities.label"), href: CRM_OPPORTUNITIES_ROUTE },
           { label: opportunity.opportunity_title },
         ]}
         eyebrow={t("crm.opportunities.detailPage.eyebrow")}

@@ -26,6 +26,7 @@ function toFieldErrors(
 
 export function SuppliersPage() {
   const { t } = useTranslation("common");
+const { t: tRoutes } = useTranslation("routes");
   const navigate = useNavigate();
   const { canWrite } = usePermissions();
   const inventoryTabs = buildInventorySectionTabs(t);
@@ -58,7 +59,7 @@ export function SuppliersPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumb={[{ label: t("routes.inventorySuppliers.label") }]}
+        breadcrumb={[{ label: tRoutes("inventorySuppliers.label") }]}
         eyebrow={t("inventory.suppliersPage.eyebrow")}
         title={t("inventory.suppliersPage.title")}
         description={t("inventory.suppliersPage.description")}

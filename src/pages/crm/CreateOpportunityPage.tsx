@@ -49,6 +49,7 @@ export interface CreateOpportunityPageProps {
 
 export default function CreateOpportunityPage({ onNavigate }: CreateOpportunityPageProps) {
   const { t } = useTranslation("common");
+const { t: tRoutes } = useTranslation("routes");
   const location = useLocation();
   const { error: showErrorToast, success: showSuccessToast } = useToast();
   const [submitting, setSubmitting] = useState(false);
@@ -85,8 +86,8 @@ export default function CreateOpportunityPage({ onNavigate }: CreateOpportunityP
       <div className="space-y-6">
         <PageHeader
           breadcrumb={[
-            { label: t("routes.crmOpportunities.label"), href: CRM_OPPORTUNITIES_ROUTE as AppRoute },
-            { label: t("routes.createOpportunity.label") },
+            { label: tRoutes("crmOpportunities.label"), href: CRM_OPPORTUNITIES_ROUTE as AppRoute },
+            { label: tRoutes("createOpportunity.label") },
           ]}
           eyebrow={t("crm.opportunities.createPage.eyebrow")}
           title={t("crm.opportunities.createPage.titleCreated")}
@@ -124,8 +125,8 @@ export default function CreateOpportunityPage({ onNavigate }: CreateOpportunityP
     <div className="space-y-6">
       <PageHeader
         breadcrumb={[
-          { label: t("routes.crmOpportunities.label"), href: CRM_OPPORTUNITIES_ROUTE as AppRoute },
-          { label: t("routes.createOpportunity.label") },
+          { label: tRoutes("crmOpportunities.label"), href: CRM_OPPORTUNITIES_ROUTE as AppRoute },
+          { label: tRoutes("createOpportunity.label") },
         ]}
         eyebrow={t("crm.opportunities.createPage.eyebrow")}
         title={t("crm.opportunities.createPage.title")}
