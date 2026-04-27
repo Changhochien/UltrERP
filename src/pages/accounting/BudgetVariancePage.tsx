@@ -344,7 +344,7 @@ export function BudgetVariancePage() {
       {!report && (
         <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
           <AlertCircle className="mx-auto h-8 w-8 mb-4 opacity-50" />
-          <p>Select a budget and date range to generate a variance report</p>
+          <p>{t("budgetVariance.noDataDescription")}</p>
         </div>
       )}
     </div>

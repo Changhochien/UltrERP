@@ -1,6 +1,6 @@
 # Story 15.12: Live Legacy DB Stage CLI
 
-Status: review
+Status: done
 
 ## Story
 

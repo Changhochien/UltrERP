@@ -360,7 +360,7 @@ export function BalanceSheetPage() {
         <Card>
           <CardContent className="pt-12 pb-12">
             <div className="text-center text-muted-foreground">
-              <p className="text-lg">Select a date and generate the report</p>
+              <p className="text-lg">{t("selectAndGenerate")}</p>
               <p className="text-sm mt-1">
                 The Balance Sheet will show your company's assets, liabilities, and
                 equity at a specific point in time.

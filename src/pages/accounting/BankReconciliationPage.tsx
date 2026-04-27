@@ -32,7 +32,7 @@ interface BankTransaction {
 }
 
 export function BankReconciliationPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation("accounting");
   const { success: toastSuccess, error: toastError } = useToast();
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
@@ -233,7 +233,7 @@ export function BankReconciliationPage() {
                   value={selectedAccount || ""}
                   onChange={(e) => setSelectedAccount(e.target.value)}
                 >
-                  <option value="">Select bank account...</option>
+                  <option value="">{t("bankReconciliation.selectBankAccount")}</option>
                   {accounts.map((acc) => (
                     <option key={acc.id} value={acc.id}>
                       {acc.account_name} - {acc.account_number}

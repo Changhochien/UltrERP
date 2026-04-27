@@ -351,7 +351,7 @@ export function TrialBalancePage() {
         <Card>
           <CardContent className="pt-12 pb-12">
             <div className="text-center text-muted-foreground">
-              <p className="text-lg">Select a date range and generate the report</p>
+              <p className="text-lg">{t("selectAndGenerate")}</p>
               <p className="text-sm mt-1">
                 The Trial Balance shows all accounts with their debit and credit
                 balances. Total debits should equal total credits.

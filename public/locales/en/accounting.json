@@ -20,14 +20,17 @@
     "byCostCenter": "By Cost Center",
     "byCategory": "By Category",
     "noData": "No variance data",
-    "noDataDescription": "Select a budget and date range to generate a variance report"
+    "noDataDescription": "Select a budget and date range to generate a variance report",
+    "selectAndGenerate": "Select a date range and generate the report"
   },
   "balanceSheet": {
     "pageTitle": "Balance Sheet",
     "reportParameters": "Report Parameters",
     "asOfDate": "As of Date",
     "selectDate": "Select date...",
-    "generateReport": "Generate Report"
+    "generateReport": "Generate Report",
+    "selectAndGenerate": "Select a date and generate the report",
+    "noDataDescription": "Select a date and generate the report"
   },
   "trialBalance": {
     "pageTitle": "Trial Balance",
@@ -38,7 +41,9 @@
     "accountName": "Account Name",
     "debit": "Debit",
     "credit": "Credit",
-    "total": "Total"
+    "total": "Total",
+    "selectAndGenerate": "Select a date and generate the report",
+    "noDataDescription": "Select a date and generate the report"
   },
   "profitAndLoss": {
     "pageTitle": "Profit and Loss",
@@ -47,6 +52,18 @@
     "selectPeriod": "Select period...",
     "revenue": "Revenue",
     "expenses": "Expenses",
-    "netIncome": "Net Income"
+    "netIncome": "Net Income",
+    "selectAndGenerate": "Select a date and generate the report",
+    "noDataDescription": "Select a date and generate the report"
+  },
+  "bankReconciliation": {
+    "pageTitle": "Bank Reconciliation",
+    "pageDescription": "Reconcile bank transactions with UltrERP records",
+    "reportParameters": "Report Parameters",
+    "selectBankAccount": "Select bank account...",
+    "selectDateRange": "Select date range...",
+    "generateReport": "Generate Report",
+    "noData": "No reconciliation data",
+    "noDataDescription": "Select a bank account and date range to generate a reconciliation report"
   }
 }

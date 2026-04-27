@@ -1,6 +1,6 @@
 # Story 15.13: AC4 Batch Rerun Idempotency — Prevent Duplicate Lineage Records
 
-Status: review
+Status: done
 
 ## Story
 

@@ -399,25 +399,28 @@ development_status:
         validation: "Validated on 2026-04-18 with focused staging/CLI coverage (`cd backend && uv run python -m pytest tests/domains/legacy_import/test_staging.py tests/domains/legacy_import/test_cli.py -q`, `41 passed`) plus targeted Ruff on the touched legacy-import files (`All checks passed`). The refactor now routes file and live sources through shared source adapters plus `run_stage_import_from_source()`, persists non-secret source descriptors such as `legacy-db:cao50001/public`, preserves file-stage backward compatibility, and adds adapter-neutral rerun/failure plus live-adapter shared-loader coverage. Review follow-up also records failed attempts and closes the source adapter when discovery fails before staging begins. Broader regression also passed with `cd backend && uv run python -m pytest tests/domains/legacy_import -q` (`112 passed`)."
         prerequisites: ["15.1", "15.10"]
       15-12-live-legacy-db-stage-cli:
-        status: "review"
+        status: "completed"
         story_id: "15.12"
         title: "Live Legacy DB Stage CLI"
         story_file: "15-12-live-legacy-db-stage-cli.md"
         validation: "Validated on 2026-04-18 with focused live-stage coverage (`cd backend && uv run pytest tests/domains/legacy_import/test_cli.py tests/domains/legacy_import/test_staging.py tests/test_legacy_import_skill.py -q`, `50 passed`) plus targeted Ruff on the Story 15.12 files (`All checks passed`), and a CLI help smoke check for `live-stage`. Review follow-up fixed deterministic live row ordering before `_source_row_number` assignment, aligned explicit `--table` scope with subset staging for both live and file discovery, and reclassified connect-time asyncpg server rejections as connection failures. The new command stages live `public` tables through the shared source adapter, preserves non-secret audit metadata, classifies connection/discovery/compatibility/load failures for operators, and documents the required `LEGACY_DB_*` settings in the legacy-import skill plus `.env.example`. Broader backend `uv run pytest -q` still fails on the pre-existing duplicate `test_service.py` collection conflict between `tests/domains/intelligence/` and `tests/domains/product_analytics/`, and repo-wide `uv run ruff check` still reports unrelated existing violations outside the Story 15.12 files."
+        last_updated: "2026-04-18"
         prerequisites: ["15.6", "15.10", "15.11"]
       15-13-ac4-batch-rerun-idempotency:
-        status: "review"
+        status: "completed"
         story_id: "15.13"
         title: "AC4 Batch Rerun Idempotency"
         story_file: "15-13-ac4-batch-rerun-idempotency.md"
-        validation: "All 120 legacy_import tests pass, 2 reset_batch tests pass. AC1/AC2 verified by test_run_canonical_import_batch_rerun_is_idempotent_at_lineage_layer."
+        validation: "Validated on 2026-04-24 with the focused rerun-idempotency regression in `tests/domains/legacy_import/test_canonical.py`, the full legacy-import backend slice (`120 passed`), and 2 reset-batch regressions. The lineage constraint and `ON CONFLICT` target are now batch-scoped, preserving one lineage row per source identity within a batch while still allowing separate lineage entries across different batches."
+        last_updated: "2026-04-24"
         prerequisites: ["15.1"]
       15-14-ac2-holding-lineage:
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "15.14"
         title: "AC2 Holding Path Lineage"
         story_file: "15-14-ac2-holding-lineage.md"
-        validation: "none"
+        validation: "Validated on 2026-04-24 with focused holding-path coverage in `tests/domains/legacy_import/test_canonical.py` and `tests/domains/legacy_import/test_ap_payment_import.py` (`34 passed`). Held rows now create immediate `__holding__` lineage records and later drain paths update that existing lineage entry instead of creating duplicates."
+        last_updated: "2026-04-24"
         prerequisites: ["15.1", "15.4"]
       15-15-legacy-refresh-orchestrator:
         status: "review"
@@ -490,39 +493,44 @@ development_status:
         last_updated: "2026-04-24"
         prerequisites: ["15.12", "15.15", "15.16", "15.19"]
       15-24-delta-discovery-and-manifest-contract:
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "15.24"
         title: "Delta Discovery And Manifest Contract"
         story_file: "15-24-delta-discovery-and-manifest-contract.md"
-        validation: "none"
+        validation: "Validated on 2026-04-24 with focused delta-discovery coverage (`cd backend && source .venv/bin/activate && python -m pytest tests/domains/legacy_import/test_delta_discovery.py -q`, `13 passed`). The incremental runner now writes append-only manifest artifacts, preserves separate `active_domains` and `no_op_domains`, and fails closed on malformed discovery rows instead of emitting ambiguous scope metadata."
+        last_updated: "2026-04-24"
         prerequisites: ["15.19", "15.23"]
       15-25-scoped-incremental-staging-and-normalization:
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "15.25"
         title: "Scoped Incremental Staging And Normalization"
         story_file: "15-25-scoped-incremental-staging-and-normalization.md"
-        validation: "none"
+        validation: "Validated on 2026-04-24 with focused scoped-normalization coverage: `tests/domains/legacy_import/test_incremental_normalization.py` (`15 passed`), `tests/test_run_incremental_legacy_refresh.py` (`13 passed`), and the backward-compatibility normalization slice `tests/domains/legacy_import/test_normalization.py` (`28 passed`). Incremental staging now honors manifest closure keys, normalization rejects silent full-batch fallback, and unchanged trusted rows carry forward from the last successful eligible batch ids."
+        last_updated: "2026-04-24"
         prerequisites: ["15.23", "15.24"]
       15-26-scoped-incremental-canonical-import:
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "15.26"
         title: "Scoped Incremental Canonical Import"
         story_file: "15-26-scoped-incremental-canonical-import.md"
-        validation: "none"
+        validation: "Validated on 2026-04-24 with focused scoped-canonical regressions (`cd backend && source .venv/bin/activate && python -m pytest tests/domains/legacy_import/test_canonical.py -q -k \"scoped_incremental_import_filters_sales_by_entity_scope or scoped_import_preserves_deterministic_ids_on_rerun or build_entity_scope_closure_keys_extracts_correctly\"`, `3 passed, 36 deselected`). Canonical import now consumes manifest-derived scope, preserves deterministic reruns, and keeps review-required surfacing bounded to in-scope issues."
+        last_updated: "2026-04-24"
         prerequisites: ["15.21", "15.24", "15.25"]
       15-27-incremental-validation-and-derived-refresh-scope:
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "15.27"
         title: "Incremental Validation And Derived Refresh Scope"
         story_file: "15-27-incremental-validation-and-derived-refresh-scope.md"
-        validation: "none"
+        validation: "Validated on 2026-04-24 with focused incremental-runner coverage (`cd backend && source .venv/bin/activate && python -m pytest tests/test_run_incremental_legacy_refresh.py -q`, `13 passed`). Incremental runs now publish durable lane-state artifacts with `batch_mode`, `affected_domains`, `summary_valid`, `watermark_advanced`, and `rebaseline_reason`, while scoped validation and derived refreshes stay bounded to the current manifest scope."
+        last_updated: "2026-04-24"
         prerequisites: ["15.18", "15.24", "15.25", "15.26"]
       15-28-admin-legacy-refresh-control-plane:
-        status: "ready-for-dev"
+        status: "completed"
         story_id: "15.28"
         title: "Admin Legacy Refresh Control Plane"
         story_file: "15-28-admin-legacy-refresh-control-plane.md"
-        validation: "none"
+        validation: "Validated on 2026-04-24 with focused control-plane coverage: `cd backend && source .venv/bin/activate && python -m pytest tests/test_legacy_refresh_control_plane.py -q` (`20 passed`) and `pnpm exec vitest run src/pages/AdminPage.test.tsx` (`2 passed`). The admin API and UI now expose lane state, batch pointers, affected domains, root-failure diagnostics, and polling-based trigger/status workflows on top of the durable refresh execution boundary."
+        last_updated: "2026-04-24"
         prerequisites: ["15.16", "15.17", "15.18", "15.23", "15.27"]
 
   # Epic 16 - Extended Legacy Import: Purchase Transactions and Payments

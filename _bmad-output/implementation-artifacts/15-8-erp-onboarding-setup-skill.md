@@ -1,6 +1,6 @@
 # Story 15.8: Interactive ERP Onboarding Setup Skill
 
-Status: done
+Status: todo
 
 ## Story
 
