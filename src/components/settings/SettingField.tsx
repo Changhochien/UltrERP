@@ -248,7 +248,7 @@ export function SettingField({
               disabled={saving}
               className="h-9 rounded-full px-4"
             >
-              {saving ? t("common.loading") : t("common.save")}
+              {saving ? t("loading") : t("save")}
             </Button>
           ) : null}
           <Button
@@ -260,7 +260,7 @@ export function SettingField({
             className="h-9 rounded-full px-3"
             title={item.is_null ? undefined : `${t("settingsPage.resetTitle")}: ${item.value}`}
           >
-            {resetting ? t("common.loading") : t("common.reset")}
+            {resetting ? t("loading") : t("reset")}
           </Button>
         </div>
       </div>

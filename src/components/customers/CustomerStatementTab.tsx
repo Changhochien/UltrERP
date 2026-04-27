@@ -82,6 +82,7 @@ function computeSummary(lines: StatementLine[]) {
 
 export function CustomerStatementTab({ customerId, customerName }: CustomerStatementTabProps) {
   const { t, i18n } = useTranslation("customer");
+  const { t: tCommon } = useTranslation("common");
   const language = i18n?.language || i18n?.resolvedLanguage || "en";
   const [fromDate, setFromDate] = useState(twelveMonthsAgo);
   const [toDate, setToDate] = useState(today);
@@ -218,7 +219,7 @@ export function CustomerStatementTab({ customerId, customerName }: CustomerState
       </div>
 
       {/* Table */}
-      {loading && <p>{t("common.loading")}</p>}
+      {loading && <p>{tCommon("loading")}</p>}
       {error && <SurfaceMessage tone="danger">{error}</SurfaceMessage>}
       {!loading && !error && data && (
         <>

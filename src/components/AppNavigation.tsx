@@ -35,6 +35,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 export function AppNavigation() {
   const { t } = useTranslation("shell");
+  const { t: tCommon } = useTranslation("common");
   const { user, logout } = useAuth();
   const { canAccess } = usePermissions();
   const { open, openMobile, isMobile, setOpenMobile, isSectionCollapsed, toggleSection, isGroupCollapsed, toggleGroup } = useSidebar();
@@ -216,12 +217,12 @@ export function AppNavigation() {
                 </Avatar>
                 {showLabel ? (
                   <div className="min-w-0 flex-1 space-y-1">
-                    <p className="truncate text-sm font-medium text-sidebar-foreground">{user?.sub ?? t("common.guest")}</p>
+                    <p className="truncate text-sm font-medium text-sidebar-foreground">{user?.sub ?? tCommon("guest")}</p>
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant="outline" className="border-sidebar-border/60 bg-transparent text-[10px] text-sidebar-muted">
-                        {user?.role ?? t("common.guest")}
+                        {user?.role ?? tCommon("guest")}
                       </Badge>
-                      <span className="truncate text-xs text-sidebar-muted/80">{user?.tenant_id ?? t("common.noTenant")}</span>
+                      <span className="truncate text-xs text-sidebar-muted/80">{user?.tenant_id ?? tCommon("noTenant")}</span>
                     </div>
                   </div>
                 ) : null}
