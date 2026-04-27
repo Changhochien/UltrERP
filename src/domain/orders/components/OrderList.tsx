@@ -45,7 +45,7 @@ function billingMeta(status: OrderBillingStatus | null | undefined) {
 }
 
 export function OrderList({ onSelect }: OrderListProps) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("orders");
   const [searchParams, setSearchParams] = useSearchParams();
   const [customerSummaries, setCustomerSummaries] = useState<CustomerSummary[]>([]);
 
@@ -191,14 +191,14 @@ export function OrderList({ onSelect }: OrderListProps) {
         columns={[
           {
             id: "order_number",
-            header: t("orders.list.orderNumber"),
+            header: t("list.orderNumber"),
             sortable: true,
             getSortValue: (item) => item.order_number,
             cell: (item) => <span className="font-medium">{item.order_number}</span>,
           },
           {
             id: "status",
-            header: t("orders.list.status"),
+            header: t("list.status"),
             sortable: true,
             getSortValue: (item) => item.status,
             cell: (item) => (
@@ -215,7 +215,7 @@ export function OrderList({ onSelect }: OrderListProps) {
           },
           {
             id: "fulfillment",
-            header: t("orders.list.fulfillment"),
+            header: t("list.fulfillment"),
             cell: (item) => (
               <div className="flex flex-wrap gap-2">
                 <Badge
@@ -245,13 +245,13 @@ export function OrderList({ onSelect }: OrderListProps) {
           },
           {
             id: "billing",
-            header: t("orders.list.billing"),
+            header: t("list.billing"),
             cell: (item) => {
               const paymentMeta = billingMeta(item.invoice_payment_status);
               return (
                 <div className="space-y-2">
                   <div className="text-sm font-medium text-foreground">
-                    {item.invoice_number ?? t("orders.list.invoiceOnConfirmation")}
+                    {item.invoice_number ?? t("list.invoiceOnConfirmation")}
                   </div>
                   <Badge variant={paymentMeta.variant} className="normal-case tracking-normal">
                     {t(paymentMeta.labelKey)}
@@ -262,18 +262,18 @@ export function OrderList({ onSelect }: OrderListProps) {
           },
           {
             id: "total_amount",
-            header: t("orders.list.total"),
+            header: t("list.total"),
             sortable: true,
             getSortValue: (item) => Number(item.total_amount),
             cell: (item) => `$${item.total_amount}`,
           },
           {
             id: "commission",
-            header: t("orders.list.commission"),
+            header: t("list.commission"),
             cell: (item) => {
               const salesTeam = item.sales_team ?? [];
               if (salesTeam.length === 0) {
-                return <span className="text-sm text-muted-foreground">{t("orders.list.noCommission")}</span>;
+                return <span className="text-sm text-muted-foreground">{t("list.noCommission")}</span>;
               }
 
               return (
@@ -295,7 +295,7 @@ export function OrderList({ onSelect }: OrderListProps) {
           },
           {
             id: "created_at",
-            header: t("orders.list.created"),
+            header: t("list.created"),
             sortable: true,
             getSortValue: (item) => new Date(item.created_at).getTime(),
             cell: (item) => new Date(item.created_at).toLocaleDateString(),
@@ -304,13 +304,13 @@ export function OrderList({ onSelect }: OrderListProps) {
         data={items}
         loading={loading}
         error={error}
-        emptyTitle={t("orders.list.noOrders")}
-        emptyDescription={t("orders.list.adjustFilter")}
+        emptyTitle={t("list.noOrders")}
+        emptyDescription={t("list.adjustFilter")}
         toolbar={(
           <DataTableToolbar className="items-start">
             <div className="space-y-1">
-              <h2 className="text-lg font-semibold tracking-tight">{t("orders.list.title")}</h2>
-              <p className="text-sm text-muted-foreground">{t("orders.list.description")}</p>
+              <h2 className="text-lg font-semibold tracking-tight">{t("list.title")}</h2>
+              <p className="text-sm text-muted-foreground">{t("list.description")}</p>
             </div>
             <div className="flex max-w-full flex-col gap-3 md:items-end">
               <div className="flex flex-wrap items-center gap-2">
@@ -319,7 +319,7 @@ export function OrderList({ onSelect }: OrderListProps) {
                   variant={workflowView ? "outline" : "secondary"}
                   onClick={() => setWorkflowView("")}
                 >
-                  {t("orders.list.allOrders")}
+                  {t("list.allOrders")}
                 </Button>
                 {VIEW_OPTIONS.map((option) => (
                   <Button

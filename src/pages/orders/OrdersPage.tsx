@@ -39,7 +39,7 @@ function toOrderInitialValues(handoff: QuotationOrderHandoff): Partial<OrderForm
 }
 
 export function OrdersPage() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("orders");
   const { canWrite } = usePermissions();
   const location = useLocation();
   const navigate = useNavigate();
@@ -86,12 +86,12 @@ export function OrdersPage() {
           return;
         }
         setQuotationHandoff(null);
-        setHandoffError(result.errors[0]?.message ?? t("orders.form.quotationLoadError"));
+        setHandoffError(result.errors[0]?.message ?? t("form.quotationLoadError"));
       })
       .catch((loadError: unknown) => {
         if (!cancelled) {
           setQuotationHandoff(null);
-          setHandoffError(loadError instanceof Error ? loadError.message : t("orders.form.quotationLoadError"));
+          setHandoffError(loadError instanceof Error ? loadError.message : t("form.quotationLoadError"));
         }
       })
       .finally(() => {
@@ -119,13 +119,13 @@ export function OrdersPage() {
       return (
         <div className="space-y-6">
           <SectionCard
-            title={t("orders.form.newOrderTitle")}
-            description={t("orders.form.newOrderDescription")}
+            title={t("form.newOrderTitle")}
+            description={t("form.newOrderDescription")}
           >
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">{t("orders.form.readOnly")}</p>
+              <p className="text-sm text-muted-foreground">{t("form.readOnly")}</p>
               <Button type="button" variant="outline" onClick={() => navigate(ORDERS_ROUTE)}>
-                {t("orders.detail.backToList")}
+                {t("detail.backToList")}
               </Button>
             </div>
           </SectionCard>
@@ -136,11 +136,11 @@ export function OrdersPage() {
     if (handoffLoading) {
       return (
         <SectionCard
-          title={t("orders.form.newOrderTitle")}
-          description={t("orders.form.quotationLoading")}
+          title={t("form.newOrderTitle")}
+          description={t("form.quotationLoading")}
         >
           <p aria-busy="true" className="text-sm text-muted-foreground">
-            {t("orders.form.loading")}
+            {t("form.loading")}
           </p>
         </SectionCard>
       );
@@ -149,13 +149,13 @@ export function OrdersPage() {
     if (handoffError) {
       return (
         <SectionCard
-          title={t("orders.form.newOrderTitle")}
-          description={t("orders.form.quotationLoadError")}
+          title={t("form.newOrderTitle")}
+          description={t("form.quotationLoadError")}
         >
           <div className="space-y-4">
             <p className="text-sm text-destructive">{handoffError}</p>
             <Button type="button" variant="outline" onClick={() => navigate(ORDERS_ROUTE)}>
-              {t("orders.detail.backToList")}
+              {t("detail.backToList")}
             </Button>
           </div>
         </SectionCard>

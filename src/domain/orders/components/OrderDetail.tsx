@@ -80,30 +80,30 @@ function buildStatusToastCopy(
 ) {
   if (targetStatus === "confirmed") {
     return {
-      title: t("orders.detail.toast.confirmedTitle"),
+      title: t("detail.toast.confirmedTitle"),
       description: invoiceNumber
-        ? t("orders.detail.toast.confirmedDescription", { invoiceNumber })
-        : t("orders.detail.toast.confirmedDescriptionFallback", { orderNumber }),
+        ? t("detail.toast.confirmedDescription", { invoiceNumber })
+        : t("detail.toast.confirmedDescriptionFallback", { orderNumber }),
     };
   }
 
   if (targetStatus === "shipped") {
     return {
-      title: t("orders.detail.toast.shippedTitle"),
-      description: t("orders.detail.toast.shippedDescription", { orderNumber }),
+      title: t("detail.toast.shippedTitle"),
+      description: t("detail.toast.shippedDescription", { orderNumber }),
     };
   }
 
   if (targetStatus === "fulfilled") {
     return {
-      title: t("orders.detail.toast.fulfilledTitle"),
-      description: t("orders.detail.toast.fulfilledDescription", { orderNumber }),
+      title: t("detail.toast.fulfilledTitle"),
+      description: t("detail.toast.fulfilledDescription", { orderNumber }),
     };
   }
 
   return {
-    title: t("orders.detail.toast.cancelledTitle"),
-    description: t("orders.detail.toast.cancelledDescription", { orderNumber }),
+    title: t("detail.toast.cancelledTitle"),
+    description: t("detail.toast.cancelledDescription", { orderNumber }),
   };
 }
 
@@ -112,7 +112,7 @@ function snapshotText(value: unknown): string | null {
 }
 
 export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("orders");
   const { canWrite } = usePermissions();
   const { error: showErrorToast, success: showSuccessToast } = useToast();
   const navigate = useNavigate();
@@ -152,13 +152,13 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
       reload();
     } else {
       setUpdateError(result.error);
-      showErrorToast(t("orders.detail.toast.errorTitle"), result.error);
+      showErrorToast(t("detail.toast.errorTitle"), result.error);
     }
   };
 
   if (loading) return <p aria-busy="true">{t("messages.loading")}</p>;
   if (error) return <div role="alert" className="text-sm text-destructive">{error}</div>;
-  if (!order) return <p>{t("orders.detail.notFound")}</p>;
+  if (!order) return <p>{t("detail.notFound")}</p>;
 
   const actions = STATUS_ACTIONS[order.status] ?? [];
   const salesTeam = order.sales_team ?? [];
@@ -187,31 +187,31 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
   const timelineSteps = [
     {
       key: "intake",
-      label: t("orders.detail.timeline.intake"),
+      label: t("detail.timeline.intake"),
       detail: new Date(order.created_at).toLocaleString(),
     },
     {
       key: "commit",
-      label: t("orders.detail.timeline.commit"),
+      label: t("detail.timeline.commit"),
       detail: order.invoice_number
-        ? t("orders.detail.timeline.invoiceLinked", { number: order.invoice_number })
-        : t("orders.list.invoiceOnConfirmation"),
+        ? t("detail.timeline.invoiceLinked", { number: order.invoice_number })
+        : t("list.invoiceOnConfirmation"),
     },
     {
       key: "ship",
-      label: t("orders.detail.timeline.ship"),
+      label: t("detail.timeline.ship"),
       detail: exec?.has_backorder
-        ? t("orders.list.backorderRisk")
+        ? t("list.backorderRisk")
         : exec?.ready_to_ship
-          ? t("orders.list.readyToShip")
-          : t("orders.workflow.fulfillment.notStarted"),
+          ? t("list.readyToShip")
+          : t("workflow.fulfillment.notStarted"),
     },
     {
       key: "fulfill",
-      label: t("orders.detail.timeline.fulfill"),
+      label: t("detail.timeline.fulfill"),
       detail: order.status === "fulfilled"
         ? new Date(order.updated_at).toLocaleString()
-        : t("orders.workflow.fulfillment.notStarted"),
+        : t("workflow.fulfillment.notStarted"),
     },
   ] as const;
 
@@ -220,25 +220,25 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
       <Breadcrumb
         items={[
           { label: t("routes.orders.label"), href: ORDERS_ROUTE },
-          { label: `${t("orders.detail.orderTitle")} ${order.order_number}` },
+          { label: `${t("detail.orderTitle")} ${order.order_number}` },
         ]}
       />
 
       <Button type="button" variant="outline" onClick={onBack}>
-        {t("orders.detail.backToList")}
+        {t("detail.backToList")}
       </Button>
 
       {showInvoiceSuccess ? (
-        <SectionCard title={t("orders.detail.confirmed")}>
+        <SectionCard title={t("detail.confirmed")}>
           <div className="space-y-3">
             <SurfaceMessage tone="success">
-              {t("orders.detail.invoiceCreated", { number: showInvoiceSuccess.invoiceNumber ?? "" })}
+              {t("detail.invoiceCreated", { number: showInvoiceSuccess.invoiceNumber ?? "" })}
             </SurfaceMessage>
             <Button
               type="button"
               onClick={() => navigate(`/invoices/${showInvoiceSuccess.invoiceId}`)}
             >
-              {t("orders.detail.viewInvoice", { number: showInvoiceSuccess.invoiceNumber ?? "" })}
+              {t("detail.viewInvoice", { number: showInvoiceSuccess.invoiceNumber ?? "" })}
             </Button>
           </div>
         </SectionCard>
@@ -246,25 +246,25 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
-          <h2 className="text-xl font-semibold tracking-tight">{t("orders.detail.orderTitle")} {order.order_number}</h2>
+          <h2 className="text-xl font-semibold tracking-tight">{t("detail.orderTitle")} {order.order_number}</h2>
           <StatusBadge status={order.status} label={statusLabel(order.status as OrderStatus)} />
         </div>
       </div>
 
       {order.source_quotation_id || crmContext ? (
         <SectionCard
-          title={t("orders.detail.crmContextTitle")}
-          description={t("orders.detail.crmContextDescription")}
+          title={t("detail.crmContextTitle")}
+          description={t("detail.crmContextDescription")}
         >
           <div className="space-y-4">
             <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-background/50 p-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-foreground">
-                  {sourcePartyLabel ?? t("orders.detail.crmContextFallback")}
+                  {sourcePartyLabel ?? t("detail.crmContextFallback")}
                 </p>
                 {order.source_quotation_id ? (
                   <p className="text-sm text-muted-foreground">
-                    {t("orders.detail.sourceQuotation", { quotationId: order.source_quotation_id })}
+                    {t("detail.sourceQuotation", { quotationId: order.source_quotation_id })}
                   </p>
                 ) : null}
               </div>
@@ -274,7 +274,7 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
                   variant="outline"
                   onClick={() => navigate(buildQuotationDetailPath(order.source_quotation_id as string))}
                 >
-                  {t("orders.detail.viewSourceQuotation")}
+                  {t("detail.viewSourceQuotation")}
                 </Button>
               ) : null}
             </div>
@@ -282,19 +282,19 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
             <div className="grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-3">
               {sourceTerritory ? (
                 <div className="rounded-xl border border-border/60 bg-background/40 px-4 py-3">
-                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("orders.detail.crmTerritory")}</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detail.crmTerritory")}</p>
                   <p className="mt-1 font-medium text-foreground">{sourceTerritory}</p>
                 </div>
               ) : null}
               {sourceCustomerGroup ? (
                 <div className="rounded-xl border border-border/60 bg-background/40 px-4 py-3">
-                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("orders.detail.crmCustomerGroup")}</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detail.crmCustomerGroup")}</p>
                   <p className="mt-1 font-medium text-foreground">{sourceCustomerGroup}</p>
                 </div>
               ) : null}
               {sourceContact ? (
                 <div className="rounded-xl border border-border/60 bg-background/40 px-4 py-3">
-                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("orders.detail.crmContact")}</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detail.crmContact")}</p>
                   <p className="mt-1 font-medium text-foreground">{sourceContact}</p>
                 </div>
               ) : null}
@@ -304,38 +304,38 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    {t("orders.detail.crmAttribution")}
+                    {t("detail.crmAttribution")}
                   </p>
                   {utmAttributionOrigin ? (
                     <Badge variant="outline" className="normal-case tracking-normal">
                       {utmAttributionOrigin === "manual_override"
-                        ? t("orders.detail.crmAttributionManualOverride")
-                        : t("orders.detail.crmAttributionSourceDocument")}
+                        ? t("detail.crmAttributionManualOverride")
+                        : t("detail.crmAttributionSourceDocument")}
                     </Badge>
                   ) : null}
                 </div>
                 <div className="grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
                   {utmSource ? (
                     <div className="rounded-xl border border-border/60 bg-background/40 px-4 py-3">
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("orders.detail.crmUtmSource")}</p>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detail.crmUtmSource")}</p>
                       <p className="mt-1 font-medium text-foreground">{utmSource}</p>
                     </div>
                   ) : null}
                   {utmMedium ? (
                     <div className="rounded-xl border border-border/60 bg-background/40 px-4 py-3">
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("orders.detail.crmUtmMedium")}</p>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detail.crmUtmMedium")}</p>
                       <p className="mt-1 font-medium text-foreground">{utmMedium}</p>
                     </div>
                   ) : null}
                   {utmCampaign ? (
                     <div className="rounded-xl border border-border/60 bg-background/40 px-4 py-3">
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("orders.detail.crmUtmCampaign")}</p>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detail.crmUtmCampaign")}</p>
                       <p className="mt-1 font-medium text-foreground">{utmCampaign}</p>
                     </div>
                   ) : null}
                   {utmContent ? (
                     <div className="rounded-xl border border-border/60 bg-background/40 px-4 py-3">
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("orders.detail.crmUtmContent")}</p>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detail.crmUtmContent")}</p>
                       <p className="mt-1 font-medium text-foreground">{utmContent}</p>
                     </div>
                   ) : null}
@@ -347,28 +347,28 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
               <div className="grid gap-3 text-sm md:grid-cols-2">
                 {sourceBillingAddress ? (
                   <div className="rounded-xl border border-border/60 bg-background/40 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("orders.detail.crmBillingAddress")}</p>
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detail.crmBillingAddress")}</p>
                     <p className="mt-1 whitespace-pre-wrap text-foreground">{sourceBillingAddress}</p>
                   </div>
                 ) : null}
                 {sourceShippingAddress ? (
                   <div className="rounded-xl border border-border/60 bg-background/40 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("orders.detail.crmShippingAddress")}</p>
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detail.crmShippingAddress")}</p>
                     <p className="mt-1 whitespace-pre-wrap text-foreground">{sourceShippingAddress}</p>
                   </div>
                 ) : null}
               </div>
             ) : null}
 
-            <SurfaceMessage>{t("orders.detail.crmContextNote")}</SurfaceMessage>
+            <SurfaceMessage>{t("detail.crmContextNote")}</SurfaceMessage>
           </div>
         </SectionCard>
       ) : null}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <SectionCard
-          title={t("orders.detail.workflowTimeline")}
-          description={t("orders.detail.workflowTimelineDescription")}
+          title={t("detail.workflowTimeline")}
+          description={t("detail.workflowTimelineDescription")}
         >
           <ol className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             {timelineSteps.map((step, index) => {
@@ -410,8 +410,8 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
         </SectionCard>
 
         <SectionCard
-          title={t("orders.detail.nextActions")}
-          description={t("orders.detail.nextActionsDescription")}
+          title={t("detail.nextActions")}
+          description={t("detail.nextActionsDescription")}
         >
           <div className="space-y-3">
             {exec?.has_backorder ? (
@@ -426,45 +426,45 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
             ) : null}
             {isConfirmed && exec && exec.reservation_status !== "reserved" ? (
               <SurfaceMessage tone="warning">
-                {t("orders.detail.reservationCallout")}
+                {t("detail.reservationCallout")}
               </SurfaceMessage>
             ) : null}
             {exec?.ready_to_ship ? (
               <SurfaceMessage tone="success">
-                {t("orders.detail.readyToShipCallout")}
+                {t("detail.readyToShipCallout")}
               </SurfaceMessage>
             ) : null}
 
             <div className="grid gap-4 lg:grid-cols-3">
               <ActionGroup
-                title={t("orders.detail.commercialActions")}
-                description={t("orders.detail.commercialActionsDescription")}
+                title={t("detail.commercialActions")}
+                description={t("detail.commercialActionsDescription")}
               >
                 {!canWriteOrders ? (
-                  <p className="text-sm text-muted-foreground">{t("orders.detail.readOnlyActions")}</p>
+                  <p className="text-sm text-muted-foreground">{t("detail.readOnlyActions")}</p>
                 ) : commercialActions.length > 0 ? commercialActions.map((action) => (
                   <Button key={action.targetStatus} type="button" onClick={() => setActiveAction(action)}>
                     {t(action.labelKey)}
                   </Button>
-                )) : <p className="text-sm text-muted-foreground">{t("orders.detail.noCommercialActions")}</p>}
+                )) : <p className="text-sm text-muted-foreground">{t("detail.noCommercialActions")}</p>}
               </ActionGroup>
 
               <ActionGroup
-                title={t("orders.detail.warehouseActions")}
-                description={t("orders.detail.warehouseActionsDescription")}
+                title={t("detail.warehouseActions")}
+                description={t("detail.warehouseActionsDescription")}
               >
                 {!canWriteOrders ? (
-                  <p className="text-sm text-muted-foreground">{t("orders.detail.readOnlyActions")}</p>
+                  <p className="text-sm text-muted-foreground">{t("detail.readOnlyActions")}</p>
                 ) : warehouseActions.length > 0 ? warehouseActions.map((action) => (
                   <Button key={action.targetStatus} type="button" onClick={() => setActiveAction(action)}>
                     {t(action.labelKey)}
                   </Button>
-                )) : <p className="text-sm text-muted-foreground">{t("orders.detail.noWarehouseActions")}</p>}
+                )) : <p className="text-sm text-muted-foreground">{t("detail.noWarehouseActions")}</p>}
               </ActionGroup>
 
               <ActionGroup
-                title={t("orders.detail.billingNavigation")}
-                description={t("orders.detail.billingNavigationDescription")}
+                title={t("detail.billingNavigation")}
+                description={t("detail.billingNavigationDescription")}
               >
                 {order.invoice_id ? (
                   <>
@@ -473,7 +473,7 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
                       variant="outline"
                       onClick={() => navigate(`/invoices/${order.invoice_id}`)}
                     >
-                      {t("orders.detail.viewInvoice", { number: order.invoice_number ?? "" })}
+                      {t("detail.viewInvoice", { number: order.invoice_number ?? "" })}
                     </Button>
                     {billingMeta ? (
                       <Badge variant={billingMeta.variant} className="w-fit normal-case tracking-normal">
@@ -482,7 +482,7 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
                     ) : null}
                   </>
                 ) : (
-                  <p className="text-sm text-muted-foreground">{t("orders.detail.billingPending")}</p>
+                  <p className="text-sm text-muted-foreground">{t("detail.billingPending")}</p>
                 )}
               </ActionGroup>
             </div>
@@ -491,26 +491,26 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
       </div>
 
       {activeAction && canWriteOrders ? (
-        <SectionCard title={t("orders.detail.confirmStatusChange")}>
+        <SectionCard title={t("detail.confirmStatusChange")}>
           <div role="dialog" aria-label="Confirm status change" className="space-y-4">
             <p className="text-sm text-muted-foreground">
               {activeAction.isConfirmOrder
-                ? t("orders.detail.createsInvoice")
+                ? t("detail.createsInvoice")
                 : t(activeAction.confirmMessageKey)}
             </p>
             {updateError ? (
               <SurfaceMessage tone="danger">
                 {updateError.includes("stock") || updateError.includes("Stock")
-                  ? t("orders.detail.stockReservationFailed")
+                  ? t("detail.stockReservationFailed")
                   : updateError}
                 {updateError.includes("stock") && (
-                  <span> — {t("orders.detail.adjustQuantities")}</span>
+                  <span> — {t("detail.adjustQuantities")}</span>
                 )}
               </SurfaceMessage>
             ) : null}
             <div className="flex gap-3">
               <Button type="button" onClick={() => handleStatusChange(activeAction.targetStatus)} disabled={updating}>
-                {updating ? t("orders.detail.updating") : `${t("yes")}, ${t(activeAction.labelKey)}`}
+                {updating ? t("detail.updating") : `${t("yes")}, ${t(activeAction.labelKey)}`}
               </Button>
               <Button type="button" variant="outline" onClick={() => { setActiveAction(null); setUpdateError(null); }}>
                 {t("cancel")}
@@ -521,10 +521,10 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
       ) : null}
 
       {isConfirmed && exec ? (
-        <SectionCard title={t("orders.detail.fulfillment")}>
+        <SectionCard title={t("detail.fulfillment")}>
           <div className="space-y-2 text-sm">
             <p>
-              <span className="font-medium">{t("orders.list.readyToShip")}:</span>{" "}
+              <span className="font-medium">{t("list.readyToShip")}:</span>{" "}
               {exec.ready_to_ship ? t("yes") : t("no")}
             </p>
             {exec.has_backorder && (
@@ -538,7 +538,7 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
               </p>
             )}
             <p>
-              <span className="font-medium">{t("orders.list.stockReserved")}:</span>{" "}
+              <span className="font-medium">{t("list.stockReserved")}:</span>{" "}
               {exec.reservation_status === "reserved" ? t("yes") : t("no")}
             </p>
           </div>
@@ -546,22 +546,22 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
       ) : null}
 
       {isConfirmed && exec ? (
-        <SectionCard title={t("orders.detail.billingContext")}>
+        <SectionCard title={t("detail.billingContext")}>
           <div className="space-y-2 text-sm">
             {order.invoice_id ? (
               <p>
-                <span className="font-medium">{t("orders.detail.invoice")}:</span>{" "}
+                <span className="font-medium">{t("detail.invoice")}:</span>{" "}
                 {order.invoice_number ?? order.invoice_id}
               </p>
             ) : (
               <p>
-                <span className="font-medium">{t("orders.detail.invoice")}:</span>{" "}
-                {t("orders.list.invoiceOnConfirmation")}
+                <span className="font-medium">{t("detail.invoice")}:</span>{" "}
+                {t("list.invoiceOnConfirmation")}
               </p>
             )}
             {billingMeta ? (
               <p>
-                <span className="font-medium">{t("orders.list.billing")}:</span>{" "}
+                <span className="font-medium">{t("list.billing")}:</span>{" "}
                 {t(billingMeta.labelKey)}
               </p>
             ) : null}
@@ -569,44 +569,44 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
         </SectionCard>
       ) : null}
 
-      <SectionCard title={t("orders.detail.orderSummary")} description={t("orders.detail.orderSummaryDescription")}>
+      <SectionCard title={t("detail.orderSummary")} description={t("detail.orderSummaryDescription")}>
         <dl className="gap-y-4">
-          <dt>{t("orders.detail.customer")}</dt>
+          <dt>{t("detail.customer")}</dt>
           <dd>{order.customer_name ?? order.customer_id}</dd>
-          <dt>{t("orders.detail.paymentTerms")}</dt>
+          <dt>{t("detail.paymentTerms")}</dt>
           <dd>{order.payment_terms_code} ({order.payment_terms_days} days)</dd>
-          <dt>{t("orders.detail.subtotal")}</dt>
+          <dt>{t("detail.subtotal")}</dt>
           <dd>${order.subtotal_amount}</dd>
           {Number(order.discount_amount ?? 0) > 0 || Number(order.discount_percent ?? 0) > 0 ? (
             <>
-              <dt>{t("orders.detail.discount")}</dt>
+              <dt>{t("detail.discount")}</dt>
               <dd>
                 {Number(order.discount_percent ?? 0) > 0 ? `${(Number(order.discount_percent) * 100).toFixed(2)}%` : null}
                 {Number(order.discount_amount ?? 0) > 0 ? ` ($${order.discount_amount})` : null}
               </dd>
             </>
           ) : null}
-          <dt>{t("orders.detail.tax")}</dt>
+          <dt>{t("detail.tax")}</dt>
           <dd>${order.tax_amount}</dd>
-          <dt>{t("orders.detail.total")}</dt>
+          <dt>{t("detail.total")}</dt>
           <dd><strong>${order.total_amount}</strong></dd>
           {salesTeam.length > 0 ? (
             <>
-              <dt>{t("orders.detail.totalCommission")}</dt>
+              <dt>{t("detail.totalCommission")}</dt>
               <dd><strong>${order.total_commission}</strong></dd>
             </>
           ) : null}
           {order.notes ? (
             <>
-              <dt>{t("orders.detail.notes")}</dt>
+              <dt>{t("detail.notes")}</dt>
               <dd>{order.notes}</dd>
             </>
           ) : null}
-          <dt>{t("orders.detail.created")}</dt>
+          <dt>{t("detail.created")}</dt>
           <dd>{new Date(order.created_at).toLocaleString()}</dd>
           {order.confirmed_at ? (
             <>
-              <dt>{t("orders.detail.confirmed")}</dt>
+              <dt>{t("detail.confirmed")}</dt>
               <dd>{new Date(order.confirmed_at).toLocaleString()}</dd>
             </>
           ) : null}
@@ -614,11 +614,11 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
       </SectionCard>
 
       {salesTeam.length > 0 ? (
-        <SectionCard title={t("orders.detail.commissionTitle")} description={t("orders.detail.commissionDescription")}>
+        <SectionCard title={t("detail.commissionTitle")} description={t("detail.commissionDescription")}>
           <div className="space-y-4">
             <div className="rounded-2xl border border-border/70 bg-background/50 p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                {t("orders.detail.totalCommission")}
+                {t("detail.totalCommission")}
               </p>
               <p className="mt-2 text-2xl font-semibold text-foreground">${order.total_commission}</p>
             </div>
@@ -629,7 +629,7 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
                     <div>
                       <p className="text-base font-semibold text-foreground">{member.sales_person}</p>
                       <p className="text-sm text-muted-foreground">
-                        {t("orders.detail.commissionSplit", {
+                        {t("detail.commissionSplit", {
                           allocation: member.allocated_percentage,
                           rate: member.commission_rate,
                         })}
@@ -646,21 +646,21 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
         </SectionCard>
       ) : null}
 
-      <SectionCard title={t("orders.detail.lineItems")} description={t("orders.detail.lineItemsDescription")}>
+      <SectionCard title={t("detail.lineItems")} description={t("detail.lineItemsDescription")}>
         <DataTable
           columns={[
             { id: "line_number", header: "#", sortable: true, getSortValue: (line) => line.line_number, cell: (line) => line.line_number },
-            { id: "description", header: t("orders.form.description"), sortable: true, getSortValue: (line) => line.description, cell: (line) => line.description },
-            { id: "quantity", header: t("orders.form.quantity"), sortable: true, getSortValue: (line) => Number(line.quantity), cell: (line) => line.quantity },
-            { id: "unit_price", header: t("orders.form.unitPrice"), sortable: true, getSortValue: (line) => Number(line.unit_price), cell: (line) => `$${line.unit_price}` },
-            { id: "list_unit_price", header: t("orders.detail.listPrice"), sortable: true, getSortValue: (line) => Number(line.list_unit_price || 0), cell: (line) => { const lp = Number(line.list_unit_price || 0); const up = Number(line.unit_price || 0); return lp > 0 && lp !== up ? `$${line.list_unit_price}` : "—"; } },
-            { id: "discount_amount", header: t("orders.detail.discount"), sortable: true, getSortValue: (line) => Number(line.discount_amount || 0), cell: (line) => { const da = Number(line.discount_amount || 0); const lp = Number(line.list_unit_price || 1); return da > 0 ? `${((da / lp) * 100).toFixed(1)}%` : "—"; } },
-            { id: "tax_amount", header: t("orders.detail.tax"), sortable: true, getSortValue: (line) => Number(line.tax_amount), cell: (line) => `$${line.tax_amount}` },
-            { id: "subtotal_amount", header: t("orders.detail.subtotal"), sortable: true, getSortValue: (line) => Number(line.subtotal_amount), cell: (line) => `$${line.subtotal_amount}` },
-            { id: "total_amount", header: t("orders.detail.total"), sortable: true, getSortValue: (line) => Number(line.total_amount), cell: (line) => `$${line.total_amount}` },
+            { id: "description", header: t("form.description"), sortable: true, getSortValue: (line) => line.description, cell: (line) => line.description },
+            { id: "quantity", header: t("form.quantity"), sortable: true, getSortValue: (line) => Number(line.quantity), cell: (line) => line.quantity },
+            { id: "unit_price", header: t("form.unitPrice"), sortable: true, getSortValue: (line) => Number(line.unit_price), cell: (line) => `$${line.unit_price}` },
+            { id: "list_unit_price", header: t("detail.listPrice"), sortable: true, getSortValue: (line) => Number(line.list_unit_price || 0), cell: (line) => { const lp = Number(line.list_unit_price || 0); const up = Number(line.unit_price || 0); return lp > 0 && lp !== up ? `$${line.list_unit_price}` : "—"; } },
+            { id: "discount_amount", header: t("detail.discount"), sortable: true, getSortValue: (line) => Number(line.discount_amount || 0), cell: (line) => { const da = Number(line.discount_amount || 0); const lp = Number(line.list_unit_price || 1); return da > 0 ? `${((da / lp) * 100).toFixed(1)}%` : "—"; } },
+            { id: "tax_amount", header: t("detail.tax"), sortable: true, getSortValue: (line) => Number(line.tax_amount), cell: (line) => `$${line.tax_amount}` },
+            { id: "subtotal_amount", header: t("detail.subtotal"), sortable: true, getSortValue: (line) => Number(line.subtotal_amount), cell: (line) => `$${line.subtotal_amount}` },
+            { id: "total_amount", header: t("detail.total"), sortable: true, getSortValue: (line) => Number(line.total_amount), cell: (line) => `$${line.total_amount}` },
             {
               id: "stock",
-              header: t("orders.form.stock"),
+              header: t("form.stock"),
               cell: (line) => (
                 <div className="text-sm">
                   {line.available_stock_snapshot != null ? <span>{line.available_stock_snapshot}</span> : null}
@@ -670,8 +670,8 @@ export function OrderDetail({ orderId, onBack }: OrderDetailProps) {
             },
           ]}
           data={order.lines}
-          emptyTitle={t("orders.detail.noLineItems")}
-          emptyDescription={t("orders.detail.noLineItemsDescription")}
+          emptyTitle={t("detail.noLineItems")}
+          emptyDescription={t("detail.noLineItemsDescription")}
           getRowId={(line) => line.id}
         />
       </SectionCard>

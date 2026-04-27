@@ -70,7 +70,7 @@ export function OrderForm({
   onCreated,
   onCancel,
 }: OrderFormProps) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("orders");
   const { items: paymentTerms, loading: termsLoading, error: termsError } = usePaymentTerms();
   const { create, submitting, error, fieldErrors } = useCreateOrder();
   const submittingRef = useRef(false);
@@ -113,7 +113,7 @@ export function OrderForm({
     }
   }, [fieldErrors, setError]);
 
-  if (termsLoading) return <p aria-busy="true">{t("orders.form.loading")}</p>;
+  if (termsLoading) return <p aria-busy="true">{t("form.loading")}</p>;
   if (termsError) return <div role="alert" className="text-sm text-destructive">{termsError}</div>;
 
   const customerId = watch("customer_id");
@@ -174,20 +174,20 @@ export function OrderForm({
   return (
     <section aria-label="Create order" className="space-y-5">
       <div className="space-y-1">
-        <h2 className="text-xl font-semibold tracking-tight">{t("orders.form.newOrderTitle")}</h2>
-        <p className="text-sm text-muted-foreground">{t("orders.form.newOrderDescription")}</p>
+        <h2 className="text-xl font-semibold tracking-tight">{t("form.newOrderTitle")}</h2>
+        <p className="text-sm text-muted-foreground">{t("form.newOrderDescription")}</p>
       </div>
 
       {conversionSource ? (
         <SurfaceMessage>
-          {t("orders.form.preselectedQuotation", {
+          {t("form.preselectedQuotation", {
             quotationId: conversionSource.quotationId,
             partyLabel: conversionSource.partyLabel,
           })}{" "}
-          {t("orders.form.confirmationBoundary")}
+          {t("form.confirmationBoundary")}
         </SurfaceMessage>
       ) : initialCustomerId ? (
-        <SurfaceMessage>{t("orders.form.preselectedCustomer")}</SurfaceMessage>
+        <SurfaceMessage>{t("form.preselectedCustomer")}</SurfaceMessage>
       ) : null}
 
       {error ? <SurfaceMessage tone="danger">{error}</SurfaceMessage> : null}
@@ -200,7 +200,7 @@ export function OrderForm({
       >
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <label className="space-y-2">
-            <span>{t("orders.form.customerId")}</span>
+            <span>{t("form.customerId")}</span>
             <Controller
               name="customer_id"
               control={control}
@@ -209,7 +209,7 @@ export function OrderForm({
                   value={field.value}
                   onChange={(value) => field.onChange(value)}
                   onClear={() => field.onChange("")}
-                  placeholder={t("orders.form.customerPlaceholder") ?? "Search customer by name or BAN…"}
+                  placeholder={t("form.customerPlaceholder") ?? "Search customer by name or BAN…"}
                 />
               )}
             />
@@ -219,7 +219,7 @@ export function OrderForm({
           </label>
 
           <label className="space-y-2">
-            <span>{t("orders.form.paymentTerms")}</span>
+            <span>{t("form.paymentTerms")}</span>
             <select id="ord-terms" {...register("payment_terms_code")}>
               {paymentTerms.map((term) => (
                 <option key={term.code} value={term.code}>
@@ -230,7 +230,7 @@ export function OrderForm({
           </label>
 
           <label className="space-y-2">
-            <span>{t("orders.form.notes")}</span>
+            <span>{t("form.notes")}</span>
             <Input id="ord-notes" type="text" {...register("notes")} placeholder="Optional notes" />
             <FieldError>
               {errors.notes?.message ? t(errors.notes.message) : null}
@@ -238,7 +238,7 @@ export function OrderForm({
           </label>
 
           <label className="space-y-2">
-            <span>{t("orders.form.discountAmount")}</span>
+            <span>{t("form.discountAmount")}</span>
             <Input
               id="ord-discount-amt"
               type="number"
@@ -253,7 +253,7 @@ export function OrderForm({
           </label>
 
           <label className="space-y-2">
-            <span>{t("orders.form.discountPercent")} (%)</span>
+            <span>{t("form.discountPercent")} (%)</span>
             <Input
               id="ord-discount-pct"
               type="number"
@@ -270,20 +270,20 @@ export function OrderForm({
         </div>
 
         <SectionCard
-          title={t("orders.form.attributionTitle")}
-          description={t("orders.form.attributionDescription")}
+          title={t("form.attributionTitle")}
+          description={t("form.attributionDescription")}
         >
           <div className="space-y-4">
             {conversionSource ? (
               <SurfaceMessage>
                 {attributionOrigin === "source_document"
-                  ? t("orders.form.attributionInherited")
-                  : t("orders.form.attributionOverrideHint")}
+                  ? t("form.attributionInherited")
+                  : t("form.attributionOverrideHint")}
               </SurfaceMessage>
             ) : null}
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <label className="space-y-2">
-                <span>{t("orders.form.utmSource")}</span>
+                <span>{t("form.utmSource")}</span>
                 <Input type="text" {...register("utm_source")} maxLength={120} />
                 <FieldError>
                   {errors.utm_source?.message ? t(errors.utm_source.message) : null}
@@ -291,7 +291,7 @@ export function OrderForm({
               </label>
 
               <label className="space-y-2">
-                <span>{t("orders.form.utmMedium")}</span>
+                <span>{t("form.utmMedium")}</span>
                 <Input type="text" {...register("utm_medium")} maxLength={120} />
                 <FieldError>
                   {errors.utm_medium?.message ? t(errors.utm_medium.message) : null}
@@ -299,7 +299,7 @@ export function OrderForm({
               </label>
 
               <label className="space-y-2">
-                <span>{t("orders.form.utmCampaign")}</span>
+                <span>{t("form.utmCampaign")}</span>
                 <Input type="text" {...register("utm_campaign")} maxLength={120} />
                 <FieldError>
                   {errors.utm_campaign?.message ? t(errors.utm_campaign.message) : null}
@@ -307,7 +307,7 @@ export function OrderForm({
               </label>
 
               <label className="space-y-2">
-                <span>{t("orders.form.utmContent")}</span>
+                <span>{t("form.utmContent")}</span>
                 <Input type="text" {...register("utm_content")} maxLength={200} />
                 <FieldError>
                   {errors.utm_content?.message ? t(errors.utm_content.message) : null}
@@ -318,8 +318,8 @@ export function OrderForm({
         </SectionCard>
 
         <SectionCard
-          title={t("orders.form.commissionTitle")}
-          description={t("orders.form.commissionDescription")}
+          title={t("form.commissionTitle")}
+          description={t("form.commissionDescription")}
         >
           <div className="space-y-4">
             {salesTeamFields.length > 0 ? (
@@ -330,16 +330,16 @@ export function OrderForm({
                     className="grid gap-3 rounded-2xl border border-border/70 bg-background/50 p-4 md:grid-cols-[minmax(0,1.3fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_auto]"
                   >
                     <label className="space-y-2">
-                      <span>{t("orders.form.salesPerson")}</span>
+                      <span>{t("form.salesPerson")}</span>
                       <Input
                         type="text"
                         {...register(`sales_team.${idx}.sales_person` as const)}
                         aria-label={`Commission rep ${idx + 1} salesperson`}
-                        placeholder={t("orders.form.salesPersonPlaceholder")}
+                        placeholder={t("form.salesPersonPlaceholder")}
                       />
                     </label>
                     <label className="space-y-2">
-                      <span>{t("orders.form.allocatedPercentage")}</span>
+                      <span>{t("form.allocatedPercentage")}</span>
                       <Input
                         type="number"
                         min={0}
@@ -350,7 +350,7 @@ export function OrderForm({
                       />
                     </label>
                     <label className="space-y-2">
-                      <span>{t("orders.form.commissionRate")}</span>
+                      <span>{t("form.commissionRate")}</span>
                       <Input
                         type="number"
                         min={0}
@@ -375,32 +375,32 @@ export function OrderForm({
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">{t("orders.form.commissionEmpty")}</p>
+              <p className="text-sm text-muted-foreground">{t("form.commissionEmpty")}</p>
             )}
 
             <div className="grid gap-3 rounded-2xl border border-dashed border-border/70 bg-background/40 p-4 md:grid-cols-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                  {t("orders.form.commissionBasis")}
+                  {t("form.commissionBasis")}
                 </p>
                 <p className="mt-1 text-lg font-semibold text-foreground">${commissionBasis.toFixed(2)}</p>
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                  {t("orders.form.allocatedTotal")}
+                  {t("form.allocatedTotal")}
                 </p>
                 <p className="mt-1 text-lg font-semibold text-foreground">{salesTeamAllocationTotal.toFixed(2)}%</p>
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                  {t("orders.form.estimatedCommission")}
+                  {t("form.estimatedCommission")}
                 </p>
                 <p className="mt-1 text-lg font-semibold text-foreground">${estimatedCommission.toFixed(2)}</p>
               </div>
             </div>
 
             <Button type="button" variant="outline" onClick={() => appendSalesTeamMember(emptyOrderSalesTeamMember())}>
-              {t("orders.form.addSalesPerson")}
+              {t("form.addSalesPerson")}
             </Button>
           </div>
         </SectionCard>
@@ -409,12 +409,12 @@ export function OrderForm({
           <Table aria-label="Order line items" className="min-w-[640px]">
             <TableHeader>
               <TableRow>
-                <TableHead>{t("orders.form.productId")}</TableHead>
-                <TableHead>{t("orders.form.description")}</TableHead>
-                <TableHead>{t("orders.form.quantity")}</TableHead>
-                <TableHead>{t("orders.form.unitPrice")}</TableHead>
-                <TableHead>{t("orders.form.discount")}</TableHead>
-                <TableHead>{t("orders.form.taxPolicy")}</TableHead>
+                <TableHead>{t("form.productId")}</TableHead>
+                <TableHead>{t("form.description")}</TableHead>
+                <TableHead>{t("form.quantity")}</TableHead>
+                <TableHead>{t("form.unitPrice")}</TableHead>
+                <TableHead>{t("form.discount")}</TableHead>
+                <TableHead>{t("form.taxPolicy")}</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -483,9 +483,9 @@ export function OrderForm({
                   </TableCell>
                   <TableCell>
                     <select {...register(`lines.${idx}.tax_policy_code` as const)} aria-label={`Line ${idx + 1} tax policy`}>
-                      <option value="standard">{t("orders.form.taxPolicyStandard")}</option>
-                      <option value="zero">{t("orders.form.taxPolicyZero")}</option>
-                      <option value="exempt">{t("orders.form.taxPolicyExempt")}</option>
+                      <option value="standard">{t("form.taxPolicyStandard")}</option>
+                      <option value="zero">{t("form.taxPolicyZero")}</option>
+                      <option value="exempt">{t("form.taxPolicyExempt")}</option>
                       <option value="special">Special</option>
                     </select>
                   </TableCell>
@@ -503,7 +503,7 @@ export function OrderForm({
         </div>
 
         <Button type="button" variant="outline" onClick={() => appendLine(emptyOrderFormLine())}>
-          {t("orders.form.addLine")}
+          {t("form.addLine")}
         </Button>
 
         {hasInvalidLines ? (
@@ -514,13 +514,13 @@ export function OrderForm({
 
         {hasInvalidSalesTeam ? (
           <SurfaceMessage tone="warning">
-            {t("orders.form.salesTeamIncomplete")}
+            {t("form.salesTeamIncomplete")}
           </SurfaceMessage>
         ) : null}
 
         {hasAllocationOverflow ? (
           <SurfaceMessage tone="danger">
-            {t("orders.form.salesTeamOverflow")}
+            {t("form.salesTeamOverflow")}
           </SurfaceMessage>
         ) : null}
 
@@ -530,7 +530,7 @@ export function OrderForm({
 
         <div className="flex gap-3">
           <Button type="submit" disabled={!canSubmit || submitting}>
-            {submitting ? t("orders.form.creating") : t("orders.form.createOrder")}
+            {submitting ? t("form.creating") : t("form.createOrder")}
           </Button>
           <Button type="button" variant="outline" onClick={onCancel}>
             {t("cancel")}
