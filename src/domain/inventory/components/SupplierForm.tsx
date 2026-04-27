@@ -150,7 +150,7 @@ export function SupplierForm({
 
       <div>
         <label htmlFor="supplier-contact-email" className="block text-sm font-medium">
-          t("supplierForm.contactEmail")
+          {t("supplierForm.contactEmail")}
         </label>
         <Input
           id="supplier-contact-email"
