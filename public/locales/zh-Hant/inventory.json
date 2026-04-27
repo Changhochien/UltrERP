@@ -935,5 +935,24 @@
     "warehouse": "倉庫",
     "allWarehouses": "所有倉庫",
     "clear": "清除篩選"
-  }
+  },
+  "fromWarehouse": "來源倉庫",
+  "toWarehouse": "目的倉庫",
+  "selectWarehouse": "選擇倉庫",
+  "product": "產品",
+  "quantity": "數量",
+  "notes": "備註",
+  "notesPlaceholder": "選填",
+  "productPlaceholder": "選擇或搜尋產品",
+  "quantityInteger": "數量（整數）",
+  "unknownWarehouse": "未知倉庫",
+  "loadingWarehouses": "載入倉庫中…",
+  "submitting": "提交中…",
+  "confirmTitle": "確認調撥",
+  "confirmDescription": "確認將 {{quantity}} 單位的「{{product}}」從「{{fromWarehouse}}」調撥至「{{toWarehouse}}」？",
+  "confirm": "確認",
+  "cancel": "取消",
+  "success": "成功調撥「{{product}}」：{{quantity}} 單位從「{{fromWarehouse}}」至「{{toWarehouse}}」",
+  "networkError": "網路錯誤，請重試",
+  "submit": "提交調撥"
 }

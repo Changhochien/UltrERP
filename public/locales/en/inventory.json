@@ -935,5 +935,24 @@
     "warehouse": "Warehouse",
     "allWarehouses": "All warehouses",
     "clear": "Clear Filters"
-  }
+  },
+  "fromWarehouse": "From Warehouse",
+  "toWarehouse": "To Warehouse",
+  "selectWarehouse": "Select Warehouse",
+  "product": "Product",
+  "quantity": "Quantity",
+  "notes": "Notes",
+  "notesPlaceholder": "Optional",
+  "productPlaceholder": "Select or search product",
+  "quantityInteger": "Quantity (integer)",
+  "unknownWarehouse": "Unknown Warehouse",
+  "loadingWarehouses": "Loading warehouses…",
+  "submitting": "Submitting…",
+  "confirmTitle": "Confirm Transfer",
+  "confirmDescription": "Confirm transfer of {{quantity}} units of \"{{product}}\" from \"{{fromWarehouse}}\" to \"{{toWarehouse}}\"?",
+  "confirm": "Confirm",
+  "cancel": "Cancel",
+  "success": "Successfully transferred \"{{product}}\": {{quantity}} units from \"{{fromWarehouse}}\" to \"{{toWarehouse}}\"",
+  "networkError": "Network error, please retry",
+  "submit": "Submit Transfer"
 }
