@@ -110,7 +110,7 @@ export function ProductDetailDrawer({
 }: ProductDetailDrawerProps) {
   const { product, loading, error } = useProductDetail(productId ?? "");
   const navigate = useNavigate();
-  const { t } = useTranslation("common", { keyPrefix: "inventory.productDetail" });
+  const { t } = useTranslation("inventory");
   const { selectedWarehouse } = useWarehouseContext();
 
   // Close on Escape

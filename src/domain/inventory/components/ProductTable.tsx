@@ -29,7 +29,7 @@ export function ProductTable({
   onSearchValueChange,
   hideToolbarSearch = false,
 }: ProductTableProps) {
-  const { t } = useTranslation("common", { keyPrefix: "inventory.productGrid" });
+  const { t } = useTranslation("inventory");
   const navigate = useNavigate();
   const {
     results,

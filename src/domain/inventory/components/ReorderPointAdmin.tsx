@@ -103,7 +103,7 @@ interface CandidateRow extends ReorderPointPreviewRow {
 }
 
 function ReorderPointAdmin() {
-  const { t } = useTranslation("common", { keyPrefix: "inventory.reorderPointAdmin" });
+  const { t } = useTranslation("inventory");
   const [safetyFactor, setSafetyFactor] = useState(0.5);
   const [lookbackDays, setLookbackDays] = useState<30 | 60 | 90 | 180 | 365>(90);
   const [warehouseId, setWarehouseId] = useState("");

@@ -9,7 +9,7 @@ interface CreateProductFormProps {
 }
 
 export function CreateProductForm({ onSuccess, onCancel }: CreateProductFormProps) {
-  const { t } = useTranslation("common", { keyPrefix: "inventory.createProductForm" });
+  const { t } = useTranslation("inventory");
 
   return (
     <ProductForm
