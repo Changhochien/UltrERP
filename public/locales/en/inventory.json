@@ -191,7 +191,14 @@
         "notes": "Notes",
         "createdAt": "Created At"
       }
-    }
+    },
+    "fromWarehouse": "From Warehouse",
+    "toWarehouse": "To Warehouse",
+    "selectWarehouse": "Select Warehouse",
+    "product": "Product",
+    "quantity": "Quantity",
+    "notes": "Notes",
+    "notesPlaceholder": "Optional"
   },
   "metricCards": {
     "totalSkus": "Total SKUs",

@@ -191,7 +191,14 @@
         "notes": "備註",
         "createdAt": "建立時間"
       }
-    }
+    },
+    "fromWarehouse": "來源倉庫",
+    "toWarehouse": "目的倉庫",
+    "selectWarehouse": "選擇倉庫",
+    "product": "產品",
+    "quantity": "數量",
+    "notes": "備註",
+    "notesPlaceholder": "選填"
   },
   "metricCards": {
     "totalSkus": "SKU總數",
