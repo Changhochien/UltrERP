@@ -46,6 +46,7 @@ so that work orders and planning use an explicit approved recipe instead of info
 - 2026-04-27: Quality review aligned the ORM BOM uniqueness metadata with the migration's partial active-BOM index so historical revisions can coexist.
 - 2026-04-27: Added a BOM detail route/page in the frontend so planners can inspect submitted materials and revision history in-app.
 - 2026-04-27: Focused manufacturing tests now lock the active-BOM uniqueness metadata used for revision-safe submission and supersession.
+- 2026-04-27: Added the protected BOM create page and authoring form so planners can create BOM headers and component lines directly from the mounted manufacturing workspace.
 
 ### Issues Fixed
 
@@ -74,6 +75,7 @@ so that work orders and planning use an explicit approved recipe instead of info
 - `src/domain/manufacturing/types.ts`
 - `src/domain/manufacturing/hooks/useBoms.ts`
 - `src/domain/manufacturing/components/BomList.tsx`
+- `src/domain/manufacturing/components/BomForm.tsx`
 - `src/domain/manufacturing/components/WorkOrderList.tsx`
 - `src/domain/manufacturing/components/WorkOrderForm.tsx`
 - `src/domain/manufacturing/components/WorkstationList.tsx`
@@ -82,6 +84,7 @@ so that work orders and planning use an explicit approved recipe instead of info
 - `src/domain/manufacturing/components/ProductionPlanList.tsx`
 - `src/domain/manufacturing/components/OeeDashboard.tsx`
 - `src/pages/manufacturing/BomListPage.tsx`
+- `src/pages/manufacturing/CreateBomPage.tsx`
 - `src/pages/manufacturing/WorkOrdersPage.tsx`
 - `src/pages/manufacturing/CreateWorkOrderPage.tsx`
 - `src/pages/manufacturing/WorkstationsPage.tsx`
@@ -100,6 +103,7 @@ so that work orders and planning use an explicit approved recipe instead of info
 | 2026-04-27 | Fixed HIGH severity issues |
 | 2026-04-27 | Fixed import paths and SQLAlchemy types |
 | 2026-04-27 | Fixed TypeScript errors in manufacturing components |
+| 2026-04-27 | Added BOM authoring workflow route, form, and mounted create entry point |
 
 ### Verification
 
@@ -107,3 +111,4 @@ so that work orders and planning use an explicit approved recipe instead of info
 - ✅ Manufacturing module imports correctly
 - ✅ Tests pass (85 API tests, 317 domain tests)
 - ✅ Added focused manufacturing metadata regression coverage for the active-BOM uniqueness model.
+- ✅ Frontend build and locale parity pass with the BOM create workflow mounted in the manufacturing shell.

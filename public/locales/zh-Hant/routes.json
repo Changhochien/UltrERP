@@ -79,6 +79,10 @@
     "description": "檢視製造品的草稿與已提交物料清單。",
     "label": "物料清單"
   },
+  "createBom": {
+    "description": "建立新的物料清單並定義其組件明細。",
+    "label": "建立 BOM"
+  },
   "bomDetail": {
     "description": "檢視單一 BOM 版本、材料明細與提交狀態。",
     "label": "BOM 詳情"
@@ -95,6 +99,10 @@
     "description": "管理工作站產能、工時費率與工作時間設定。",
     "label": "工作站"
   },
+  "createWorkstation": {
+    "description": "建立工作站並設定產能、工時費率與可用時段。",
+    "label": "建立工作站"
+  },
   "workstationDetail": {
     "description": "檢視單一工作站的費率、產能與可用時段。",
     "label": "工作站詳情"
@@ -102,6 +110,10 @@
   "routings": {
     "description": "定義作業順序並估算生產時間與人工成本。",
     "label": "製程路線"
+  },
+  "createRouting": {
+    "description": "建立製程路線範本，設定作業順序、工作站與工時。",
+    "label": "建立製程路線"
   },
   "routingDetail": {
     "description": "檢視單一製程路線範本並計算計畫時間與成本。",
@@ -114,6 +126,10 @@
   "productionPlans": {
     "description": "彙總需求為生產計畫並確認工單建立。",
     "label": "生產計畫"
+  },
+  "createProductionPlan": {
+    "description": "手動建立生產計畫並定義要確認的需求明細。",
+    "label": "建立生產計畫"
   },
   "productionPlanDetail": {
     "description": "檢視單一生產計畫的需求、短缺、產能與確認狀態。",

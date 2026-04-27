@@ -67,6 +67,10 @@
     "description": "Review submitted and draft bills of materials for manufactured products.",
     "label": "Bills of Materials"
   },
+  "createBom": {
+    "description": "Create a new bill of materials and define its component lines.",
+    "label": "Create BOM"
+  },
   "bomDetail": {
     "description": "Inspect one BOM revision, its materials, and submission status.",
     "label": "BOM Detail"
@@ -83,6 +87,10 @@
     "description": "Manage workstation capacity, hourly rates, and working-hour calendars.",
     "label": "Workstations"
   },
+  "createWorkstation": {
+    "description": "Create a workstation with capacity, hourly cost, and working-hour availability.",
+    "label": "Create Workstation"
+  },
   "workstationDetail": {
     "description": "Inspect one workstation's rate, capacity, and configured availability.",
     "label": "Workstation Detail"
@@ -90,6 +98,10 @@
   "routings": {
     "description": "Define operation sequences and estimate production time and labor cost.",
     "label": "Routings"
+  },
+  "createRouting": {
+    "description": "Create a routing template with operation sequence, workstation assignment, and timing.",
+    "label": "Create Routing"
   },
   "routingDetail": {
     "description": "Inspect one routing template and calculate planned time and cost.",
@@ -102,6 +114,10 @@
   "productionPlans": {
     "description": "Aggregate demand into production plans and firm work-order creation.",
     "label": "Production Plans"
+  },
+  "createProductionPlan": {
+    "description": "Create a production plan manually and define the demand lines to firm.",
+    "label": "Create Production Plan"
   },
   "productionPlanDetail": {
     "description": "Review one production plan's demand, shortages, capacity, and firming status.",

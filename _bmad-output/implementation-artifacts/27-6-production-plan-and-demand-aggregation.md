@@ -45,6 +45,7 @@ so that manufacturing capacity is planned against aggregated demand with clear s
 - 2026-04-27: Quality review populated production-plan line demand, stock, open-work-order, shortage, and capacity fields instead of leaving them empty.
 - 2026-04-27: Added a production-plan detail page so planners can inspect aggregated demand and firm plans from the frontend.
 - 2026-04-27: Focused manufacturing tests now cover aggregated demand defaults, proposed quantity, and capacity summary population.
+- 2026-04-27: Added the protected production-plan create page and manual line authoring form so planners can seed demand aggregation from the mounted frontend shell.
 
 ### Issues Fixed
 
@@ -64,8 +65,10 @@ so that manufacturing capacity is planned against aggregated demand with clear s
 **Frontend:**
 - `src/domain/manufacturing/components/ProductionPlanning.tsx`
 - `src/domain/manufacturing/components/ProductionPlanList.tsx`
+- `src/domain/manufacturing/components/ProductionPlanForm.tsx`
 - `src/pages/manufacturing/ProductionPlanningPage.tsx`
 - `src/pages/manufacturing/ProductionPlansPage.tsx`
+- `src/pages/manufacturing/CreateProductionPlanPage.tsx`
 
 ### Key Features
 
@@ -81,6 +84,7 @@ so that manufacturing capacity is planned against aggregated demand with clear s
 - ✅ Manufacturing module imports correctly
 - ✅ Tests pass (85 API tests, 317 domain tests)
 - ✅ Added focused unit coverage for production-plan demand aggregation defaults and computed proposed quantity.
+- ✅ Frontend build and locale parity pass with the production-plan create workflow mounted in navigation metadata.
 
 ### TypeScript Fixes (2026-04-27)
 - Fixed `.map()` callback type annotations in ProductionPlanList

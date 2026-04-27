@@ -21,6 +21,7 @@ import {
   ACCOUNTING_ROUTE,
   ADMIN_ROUTE,
   BALANCE_SHEET_ROUTE,
+  BOM_CREATE_ROUTE,
   BOM_DETAIL_ROUTE,
   BOM_LIST_ROUTE,
   BANK_RECONCILIATION_ROUTE,
@@ -70,6 +71,7 @@ import {
   OWNER_DASHBOARD_ROUTE,
   PAYMENTS_ROUTE,
   PRODUCTION_PLANNING_ROUTE,
+  PRODUCTION_PLAN_CREATE_ROUTE,
   PRODUCTION_PLANS_ROUTE,
   PRODUCTION_PLAN_DETAIL_ROUTE,
   PROCUREMENT_ROUTE,
@@ -83,6 +85,7 @@ import {
   PROCUREMENT_CREATE_GOODS_RECEIPT_ROUTE,
   PROFIT_AND_LOSS_ROUTE,
   PURCHASES_ROUTE,
+  ROUTING_CREATE_ROUTE,
   ROUTINGS_ROUTE,
   ROUTING_DETAIL_ROUTE,
   SETTINGS_ROUTE,
@@ -91,6 +94,7 @@ import {
   WORK_ORDERS_ROUTE,
   WORK_ORDER_CREATE_ROUTE,
   WORK_ORDER_DETAIL_ROUTE,
+  WORKSTATION_CREATE_ROUTE,
   WORKSTATIONS_ROUTE,
   WORKSTATION_DETAIL_ROUTE,
 } from "./lib/routes";
@@ -147,6 +151,10 @@ import { BankReconciliationPage } from "./pages/accounting/BankReconciliationPag
 import { CollectionsPage } from "./pages/accounting/CollectionsPage";
 import { BudgetsPage } from "./pages/accounting/BudgetsPage";
 import { BudgetVariancePage } from "./pages/accounting/BudgetVariancePage";
+import { CreateBomPage } from "./pages/manufacturing/CreateBomPage";
+import { CreateProductionPlanPage } from "./pages/manufacturing/CreateProductionPlanPage";
+import { CreateRoutingPage } from "./pages/manufacturing/CreateRoutingPage";
+import { CreateWorkstationPage } from "./pages/manufacturing/CreateWorkstationPage";
 import { BomDetailPage } from "./pages/manufacturing/BomDetailPage";
 import { BomListPage } from "./pages/manufacturing/BomListPage";
 import { CreateWorkOrderPage } from "./pages/manufacturing/CreateWorkOrderPage";
@@ -774,6 +782,16 @@ export default function App() {
             }
           />
           <Route
+            path={BOM_CREATE_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="manufacturing" requiredWrite>
+                <RoutedPage>
+                  <CreateBomPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
             path={BOM_DETAIL_ROUTE}
             element={
               <ProtectedAppRoute requiredFeature="manufacturing">
@@ -824,6 +842,16 @@ export default function App() {
             }
           />
           <Route
+            path={WORKSTATION_CREATE_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="manufacturing" requiredWrite>
+                <RoutedPage>
+                  <CreateWorkstationPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
             path={WORKSTATION_DETAIL_ROUTE}
             element={
               <ProtectedAppRoute requiredFeature="manufacturing">
@@ -839,6 +867,16 @@ export default function App() {
               <ProtectedAppRoute requiredFeature="manufacturing">
                 <RoutedPage>
                   <RoutingsPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={ROUTING_CREATE_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="manufacturing" requiredWrite>
+                <RoutedPage>
+                  <CreateRoutingPage />
                 </RoutedPage>
               </ProtectedAppRoute>
             }
@@ -869,6 +907,16 @@ export default function App() {
               <ProtectedAppRoute requiredFeature="manufacturing">
                 <RoutedPage>
                   <ProductionPlansPage />
+                </RoutedPage>
+              </ProtectedAppRoute>
+            }
+          />
+          <Route
+            path={PRODUCTION_PLAN_CREATE_ROUTE}
+            element={
+              <ProtectedAppRoute requiredFeature="manufacturing" requiredWrite>
+                <RoutedPage>
+                  <CreateProductionPlanPage />
                 </RoutedPage>
               </ProtectedAppRoute>
             }

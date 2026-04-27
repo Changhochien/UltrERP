@@ -45,6 +45,7 @@ so that work orders can calculate planned time and cost based on the production 
 - 2026-04-27: Quality review fixed routing cost estimation to use workstation hourly rates instead of defaulting every operation to zero cost.
 - 2026-04-27: Added routing and workstation detail pages, including an in-app routing calculation surface for planned time and labor cost.
 - 2026-04-27: Focused manufacturing tests now cover workstation-rate routing calculations used for planned time and cost.
+- 2026-04-27: Added protected workstation and routing create pages with inline authoring forms so manufacturing users can maintain both masters from the frontend workspace.
 
 ### File List
 
@@ -57,9 +58,13 @@ so that work orders can calculate planned time and cost based on the production 
 
 **Frontend:**
 - `src/domain/manufacturing/components/WorkstationList.tsx`
+- `src/domain/manufacturing/components/WorkstationForm.tsx`
 - `src/domain/manufacturing/components/RoutingList.tsx`
+- `src/domain/manufacturing/components/RoutingForm.tsx`
 - `src/pages/manufacturing/WorkstationsPage.tsx`
+- `src/pages/manufacturing/CreateWorkstationPage.tsx`
 - `src/pages/manufacturing/RoutingsPage.tsx`
+- `src/pages/manufacturing/CreateRoutingPage.tsx`
 
 ### Key Features
 
@@ -75,6 +80,7 @@ so that work orders can calculate planned time and cost based on the production 
 - ✅ Manufacturing module imports correctly
 - ✅ Tests pass (85 API tests, 317 domain tests)
 - ✅ Added focused unit coverage for routing time and workstation-rate cost calculation.
+- ✅ Frontend build and locale parity pass with mounted workstation and routing create workflows.
 
 ### TypeScript Fixes (2026-04-27)
 - Fixed `.map()` callback type annotations in RoutingList, WorkstationList

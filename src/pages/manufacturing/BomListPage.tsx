@@ -6,7 +6,7 @@ export function BomListPage() {
 	return (
 		<div className="space-y-6">
 			<h1 className="text-2xl font-bold text-gray-900">Bill of Materials</h1>
-			<BomList showCreateButton={false} />
+			<BomList />
 		</div>
 	);
 }

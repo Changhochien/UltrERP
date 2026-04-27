@@ -68,11 +68,14 @@ export const WORK_ORDERS_ROUTE = "/manufacturing/work-orders";
 export const WORK_ORDER_CREATE_ROUTE = "/manufacturing/work-orders/create";
 export const WORK_ORDER_DETAIL_ROUTE = "/manufacturing/work-orders/:workOrderId";
 export const WORKSTATIONS_ROUTE = "/manufacturing/workstations";
+export const WORKSTATION_CREATE_ROUTE = "/manufacturing/workstations/create";
 export const WORKSTATION_DETAIL_ROUTE = "/manufacturing/workstations/:workstationId";
 export const ROUTINGS_ROUTE = "/manufacturing/routings";
+export const ROUTING_CREATE_ROUTE = "/manufacturing/routings/create";
 export const ROUTING_DETAIL_ROUTE = "/manufacturing/routings/:routingId";
 export const PRODUCTION_PLANNING_ROUTE = "/manufacturing/planning";
 export const PRODUCTION_PLANS_ROUTE = "/manufacturing/production-plans";
+export const PRODUCTION_PLAN_CREATE_ROUTE = "/manufacturing/production-plans/create";
 export const PRODUCTION_PLAN_DETAIL_ROUTE = "/manufacturing/production-plans/:planId";
 export const OEE_DASHBOARD_ROUTE = "/manufacturing/oee";
 
