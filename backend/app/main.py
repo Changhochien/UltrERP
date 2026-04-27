@@ -104,10 +104,12 @@ def create_app() -> FastAPI:
 	api_v1.include_router(procurement_router, prefix="/procurement", tags=["procurement"])
 	api_v1.include_router(purchases_router, prefix="/purchases", tags=["purchases"])
 	api_v1.include_router(reports_router, prefix="/reports", tags=["reports"])
-	api_v1.include_router(settings_router, prefix="/settings", tags=["settings"])
+	# Specific settings routers MUST be registered before the catch-all settings_router
+	# to prevent {key} routes from shadowing specific endpoints like /currencies
 	api_v1.include_router(currency_router, prefix="/settings")
 	api_v1.include_router(exchange_rate_router, prefix="/settings")
 	api_v1.include_router(payment_terms_router, prefix="/settings")
+	api_v1.include_router(settings_router, prefix="/settings", tags=["settings"])
 	app.include_router(api_v1)
 
 	@app.api_route(
