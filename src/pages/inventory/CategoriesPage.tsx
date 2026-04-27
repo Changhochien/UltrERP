@@ -21,7 +21,7 @@ function toFieldError(errors?: Array<{ field: string; message: string }>) {
 }
 
 export function CategoriesPage() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("inventory");
   const { t: tRoutes } = useTranslation("routes");
   const navigate = useNavigate();
   const { canWrite } = usePermissions();
