@@ -32,7 +32,7 @@ export function StockTransferForm({
   onSuccess,
   onCancel,
 }: StockTransferFormProps) {
-  const { t } = useTranslation("inventory", { keyPrefix: "transferForm" });
+  const { t } = useTranslation("inventory");
   const { warehouses, loading, error: warehousesError } = useWarehouses();
   const [fromId, setFromId] = useState(defaultFromWarehouseId);
   const [toId, setToId] = useState("");

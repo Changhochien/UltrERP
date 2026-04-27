@@ -21,7 +21,7 @@ export function WarehouseSelector({
   allowAll = true,
   label,
 }: Props) {
-  const { t } = useTranslation("inventory", { keyPrefix: "warehouseSelector" });
+  const { t } = useTranslation("inventory");
   const { warehouses, loading, error } = useWarehouses();
 
   if (loading) return <Skeleton className="h-10 w-full sm:w-72" />;

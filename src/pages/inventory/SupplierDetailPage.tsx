@@ -23,7 +23,7 @@ function toFieldErrors(
 }
 
 export function SupplierDetailPage() {
-  const { t } = useTranslation("inventory", { keyPrefix: "supplierDetail" });
+  const { t } = useTranslation("inventory");
   const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
   const { supplierId } = useParams<{ supplierId: string }>();

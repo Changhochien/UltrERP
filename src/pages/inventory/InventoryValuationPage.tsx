@@ -10,7 +10,7 @@ import type { InventoryValuationItem } from "../../domain/inventory/types";
 import { buildInventorySectionTabs, getInventorySectionRoute, type InventorySectionTabValue } from "./inventoryPageTabs";
 
 function CostSourceBadge({ source }: { source: InventoryValuationItem["cost_source"] }) {
-  const { t } = useTranslation("inventory", { keyPrefix: "inventoryValuationPage" });
+  const { t } = useTranslation("inventory");
   const variant = source === "standard_cost"
     ? "success"
     : source === "latest_purchase"
@@ -25,7 +25,7 @@ function CostSourceBadge({ source }: { source: InventoryValuationItem["cost_sour
 }
 
 function InventoryValuationWorkspace() {
-  const { t } = useTranslation("inventory", { keyPrefix: "inventoryValuationPage" });
+  const { t } = useTranslation("inventory");
   const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
   const { selectedWarehouse, setSelectedWarehouse } = useWarehouseContext();

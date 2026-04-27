@@ -19,7 +19,7 @@ interface AnalyticsTabProps {
 }
 
 export function AnalyticsTab({ productId, warehouses }: AnalyticsTabProps) {
-  const { t } = useTranslation("inventory", { keyPrefix: "productDetail.analyticsTab" });
+  const { t } = useTranslation("inventory");
 
   const { items: salesItems, loading: salesLoading, error: salesError } = useProductSalesHistory(productId);
   const { customer: topCustomer, loading: customerLoading, error: customerError } = useProductTopCustomer(productId);
