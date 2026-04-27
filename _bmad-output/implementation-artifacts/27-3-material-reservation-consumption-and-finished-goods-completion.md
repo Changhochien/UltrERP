@@ -29,7 +29,7 @@ so that manufacturing updates stock deterministically and exposes shortages befo
 - [x] Task 2: Implement reservation, release, and shortage services. (AC: 1-2)
 - [x] Task 3: Implement work-order material issue and finished-goods completion. (AC: 1-4)
 - [x] Task 4: Expose APIs and frontend execution surfaces. (AC: 1-4)
-- [ ] Task 5: Add focused tests and validation. (AC: 1-4) - *Deferred to future sprint*
+- [x] Task 5: Add focused tests and validation. (AC: 1-4)
 
 ---
 
@@ -44,6 +44,7 @@ so that manufacturing updates stock deterministically and exposes shortages befo
 - 2026-04-27: Enhanced with actual stock mutations via `inventory.transfer_stock()` and finished goods receipt
 - 2026-04-27: Quality review corrected the reserve-service contract to use the dedicated reserve payload instead of the transfer schema.
 - 2026-04-27: Added a work-order detail execution surface so reserve, transfer, and completion actions are reachable from the frontend.
+- 2026-04-27: Focused manufacturing tests now cover shortage surfacing and default transfer quantities when the operator does not provide a per-line override map.
 
 ### Issues Fixed
 
@@ -58,6 +59,7 @@ so that manufacturing updates stock deterministically and exposes shortages befo
 - `backend/domains/manufacturing/service.py` (reserve, transfer, complete functions)
 - `backend/domains/manufacturing/routes.py` (reservation/transfer endpoints)
 - `backend/domains/inventory/commands/_stock.py` (transfer_stock)
+- `backend/tests/domains/manufacturing/test_work_orders_service.py` (reservation shortage and transfer-default regression tests)
 
 ### Enhancement (2026-04-27)
 
@@ -93,3 +95,4 @@ fg_stock.quantity += payload.produced_quantity
 - ✅ Manufacturing module imports correctly
 - ✅ Tests pass (85 API tests, 317 domain tests)
 - ✅ Frontend build validates the reserve/transfer/complete work-order execution surface.
+- ✅ Focused work-order service tests cover shortage signaling and default material-transfer behavior.

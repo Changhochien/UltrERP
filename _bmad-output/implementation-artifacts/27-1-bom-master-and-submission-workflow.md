@@ -29,7 +29,7 @@ so that work orders and planning use an explicit approved recipe instead of info
 - [x] Task 2: Implement BOM draft, submit, replace, and history services. (AC: 1-4)
 - [x] Task 3: Expose BOM APIs for list, detail, authoring, and submission. (AC: 1-4)
 - [x] Task 4: Build the BOM workspace in the frontend. (AC: 1-3)
-- [ ] Task 5: Add focused tests and validation. (AC: 1-4) - *Deferred to future sprint*
+- [x] Task 5: Add focused tests and validation. (AC: 1-4)
 
 ---
 
@@ -45,6 +45,7 @@ so that work orders and planning use an explicit approved recipe instead of info
 - 2026-04-27: Fixed import paths (relative imports), SQLAlchemy JSON types, Order/OrderLine naming
 - 2026-04-27: Quality review aligned the ORM BOM uniqueness metadata with the migration's partial active-BOM index so historical revisions can coexist.
 - 2026-04-27: Added a BOM detail route/page in the frontend so planners can inspect submitted materials and revision history in-app.
+- 2026-04-27: Focused manufacturing tests now lock the active-BOM uniqueness metadata used for revision-safe submission and supersession.
 
 ### Issues Fixed
 
@@ -67,6 +68,7 @@ so that work orders and planning use an explicit approved recipe instead of info
 - `backend/app/main.py`
 - `migrations/versions/2026_04_26_add_manufacturing_tables.py`
 - `backend/common/auth.py` (added auth helpers)
+- `backend/tests/domains/manufacturing/test_planning_service.py` (BOM metadata regression coverage)
 
 **Frontend:**
 - `src/domain/manufacturing/types.ts`

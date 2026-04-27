@@ -29,7 +29,7 @@ so that work orders can calculate planned time and cost based on the production 
 - [x] Task 2: Implement workstation and routing services. (AC: 1-4)
 - [x] Task 3: Implement time and cost calculation. (AC: 1-4)
 - [x] Task 4: Expose workstation and routing APIs and UI. (AC: 1-4)
-- [ ] Task 5: Add focused tests and validation. (AC: 1-4) - *Deferred to future sprint*
+- [x] Task 5: Add focused tests and validation. (AC: 1-4)
 
 ---
 
@@ -44,6 +44,7 @@ so that work orders can calculate planned time and cost based on the production 
 - 2026-04-27: Verified implementation completeness
 - 2026-04-27: Quality review fixed routing cost estimation to use workstation hourly rates instead of defaulting every operation to zero cost.
 - 2026-04-27: Added routing and workstation detail pages, including an in-app routing calculation surface for planned time and labor cost.
+- 2026-04-27: Focused manufacturing tests now cover workstation-rate routing calculations used for planned time and cost.
 
 ### File List
 
@@ -52,6 +53,7 @@ so that work orders can calculate planned time and cost based on the production 
 - `backend/domains/manufacturing/schemas.py` (Workstation, Routing schemas)
 - `backend/domains/manufacturing/service.py` (Workstation, Routing services, calculate_routing_cost_and_time)
 - `backend/domains/manufacturing/routes.py` (Workstation, Routing routes)
+- `backend/tests/domains/manufacturing/test_planning_service.py` (routing cost and time regression coverage)
 
 **Frontend:**
 - `src/domain/manufacturing/components/WorkstationList.tsx`

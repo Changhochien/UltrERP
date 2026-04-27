@@ -1168,6 +1168,7 @@ async def transfer_work_order_materials(
 	payload: WorkOrderTransfer,
 ) -> WorkOrderResponse:
 	"""Transfer materials for a work order (manufacture flow)."""
+	quantity_by_line = payload.quantity_by_line or {}
 	stmt = (
 		select(WorkOrder)
 		.where(
@@ -1194,7 +1195,7 @@ async def transfer_work_order_materials(
 		if payload.material_line_ids and line.id not in payload.material_line_ids:
 			continue
 		
-		transfer_qty = payload.quantity_by_line.get(line.id, line.required_quantity - line.transferred_quantity)
+		transfer_qty = quantity_by_line.get(line.id, line.required_quantity - line.transferred_quantity)
 		
 		if transfer_qty > line.required_quantity - line.transferred_quantity:
 			transfer_qty = line.required_quantity - line.transferred_quantity

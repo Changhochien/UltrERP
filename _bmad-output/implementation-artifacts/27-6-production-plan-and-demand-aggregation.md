@@ -29,7 +29,7 @@ so that manufacturing capacity is planned against aggregated demand with clear s
 - [x] Task 2: Implement demand aggregation logic. (AC: 1-4)
 - [x] Task 3: Implement plan firming and work order creation. (AC: 1-4)
 - [x] Task 4: Expose production plan APIs and UI. (AC: 1-4)
-- [ ] Task 5: Add focused tests and validation. (AC: 1-4) - *Deferred to future sprint*
+- [x] Task 5: Add focused tests and validation. (AC: 1-4)
 
 ---
 
@@ -44,6 +44,7 @@ so that manufacturing capacity is planned against aggregated demand with clear s
 - 2026-04-27: Fixed race condition in firm_production_plan
 - 2026-04-27: Quality review populated production-plan line demand, stock, open-work-order, shortage, and capacity fields instead of leaving them empty.
 - 2026-04-27: Added a production-plan detail page so planners can inspect aggregated demand and firm plans from the frontend.
+- 2026-04-27: Focused manufacturing tests now cover aggregated demand defaults, proposed quantity, and capacity summary population.
 
 ### Issues Fixed
 
@@ -58,6 +59,7 @@ so that manufacturing capacity is planned against aggregated demand with clear s
 - `backend/domains/manufacturing/schemas.py` (ProductionPlan schemas)
 - `backend/domains/manufacturing/service.py` (create_production_plan, firm_production_plan, list_production_plans)
 - `backend/domains/manufacturing/routes.py` (ProductionPlan routes)
+- `backend/tests/domains/manufacturing/test_planning_service.py` (production-plan aggregation regression coverage)
 
 **Frontend:**
 - `src/domain/manufacturing/components/ProductionPlanning.tsx`

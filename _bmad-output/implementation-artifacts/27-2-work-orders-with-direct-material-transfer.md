@@ -29,7 +29,7 @@ so that in-house production has an explicit execution record with a controlled l
 - [x] Task 2: Implement work-order creation and lifecycle services. (AC: 1-4)
 - [x] Task 3: Expose work-order APIs and read models. (AC: 1-4)
 - [x] Task 4: Build work-order list, detail, and authoring UI. (AC: 1-4)
-- [ ] Task 5: Add focused tests and validation. (AC: 1-4) - *Deferred to future sprint*
+- [x] Task 5: Add focused tests and validation. (AC: 1-4)
 
 ---
 
@@ -44,6 +44,7 @@ so that in-house production has an explicit execution record with a controlled l
 - 2026-04-27: Fixed HIGH severity issues - race condition (SELECT FOR UPDATE), stop/cancel reason validation
 - 2026-04-27: Quality review mounted the manufacturing work-order routes in the app shell and added a detail workspace for lifecycle actions.
 - 2026-04-27: Added review-driven work-order detail controls for submit, start, stop, cancel, reserve, transfer, and completion flows.
+- 2026-04-27: Focused manufacturing tests now cover stop-reason enforcement and the work-order lifecycle guardrails behind direct-transfer execution.
 
 ### Issues Fixed
 
@@ -59,6 +60,7 @@ so that in-house production has an explicit execution record with a controlled l
 - `backend/domains/manufacturing/schemas.py` (WorkOrder schemas)
 - `backend/domains/manufacturing/service.py` (WorkOrder services)
 - `backend/domains/manufacturing/routes.py` (WorkOrder routes)
+- `backend/tests/domains/manufacturing/test_work_orders_service.py` (status transition and direct-transfer workflow regression tests)
 
 **Frontend:**
 - `src/domain/manufacturing/components/WorkOrderList.tsx`
@@ -88,3 +90,4 @@ so that in-house production has an explicit execution record with a controlled l
 - ✅ Manufacturing module imports correctly
 - ✅ Tests pass (85 API tests, 317 domain tests)
 - ✅ Frontend build validates the mounted work-order workspace and detail execution surface.
+- ✅ Focused work-order service tests cover direct-transfer lifecycle validation and reason requirements.

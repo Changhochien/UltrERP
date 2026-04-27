@@ -29,7 +29,7 @@ so that I can evaluate material shortages and make informed build-vs-buy decisio
 - [x] Task 2: Implement proposal generation from demand signals. (AC: 1-4)
 - [x] Task 3: Implement net requirement and shortage calculation. (AC: 1-4)
 - [x] Task 4: Expose proposal APIs and UI. (AC: 1-4)
-- [ ] Task 5: Add focused tests and validation. (AC: 1-4) - *Deferred to future sprint*
+- [x] Task 5: Add focused tests and validation. (AC: 1-4)
 
 ---
 
@@ -44,6 +44,7 @@ so that I can evaluate material shortages and make informed build-vs-buy decisio
 - 2026-04-27: Fixed race condition in production planning services
 - 2026-04-27: Quality review fixed proposal generation to use the repo's confirmed `OrderLine` demand model instead of non-existent sales-order fields.
 - 2026-04-27: Quality review now marks prior proposed rows as stale and returns typed shortage arrays for the UI.
+- 2026-04-27: Focused manufacturing tests now lock proposal demand sourcing and stale-proposal rollover behavior.
 
 ### Issues Fixed
 
@@ -58,6 +59,7 @@ so that I can evaluate material shortages and make informed build-vs-buy decisio
 - `backend/domains/manufacturing/schemas.py` (Proposal schemas)
 - `backend/domains/manufacturing/service.py` (generate_proposals, decide_proposal, list_proposals)
 - `backend/domains/manufacturing/routes.py` (Proposal routes)
+- `backend/tests/domains/manufacturing/test_proposals_service.py` (proposal generation and stale rollover regression tests)
 
 ### Key Features
 

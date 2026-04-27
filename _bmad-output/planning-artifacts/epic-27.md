@@ -65,7 +65,7 @@ Add the minimally viable manufacturing foundation needed to define product recip
 6. Story 27.7 review mounted the OEE dashboard and manufacturing navigation so the dashboard is reachable in the protected app shell.
 7. Residual-gap review for Story 27.7 added downtime/OEE payload validation so impossible intervals, counts, and negative runtime telemetry are rejected before persistence.
 8. Residual-gap review for Story 27.7 added operator-facing dashboard forms to log downtime events and OEE production snapshots from the mounted manufacturing UI.
-9. Focused validation now covers reviewed backend slices with manufacturing unit tests, frontend build, locale parity checks, and dashboard interaction tests.
+9. Focused validation now covers Stories 27.1 through 27.7 with manufacturing service tests, frontend build, locale parity checks, and dashboard interaction tests.
 
 ## Dependency and Phase Order
 
