@@ -37,20 +37,20 @@ export function MetricCards({ warehouseId }: MetricCardsProps) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <MetricCard
-        title={t("totalSkus")}
+        title={t("metricCards.totalSkus")}
         value={productsLoading ? "—" : allTotal.toLocaleString()}
-        description={warehouseId ? t("filteredScope") : t("allWarehouses")}
+        description={warehouseId ? t("metricCards.filteredScope") : t("metricCards.allWarehouses")}
         badge={<Boxes className="size-5 text-muted-foreground" />}
       />
       <MetricCard
-        title={t("lowStock")}
+        title={t("metricCards.lowStock")}
         value={loading || alertsUnavailable ? "—" : String(pendingCount)}
-        description={alertsUnavailable ? t("alertsUnavailable") : t("totalAlerts", { count: alertTotal })}
+        description={alertsUnavailable ? t("metricCards.alertsUnavailable") : t("metricCards.totalAlerts", { count: alertTotal })}
         badge={
           !alertsUnavailable && pendingCount > 0 ? (
             <Badge variant="warning" className="gap-1.5 normal-case tracking-normal">
               <AlertTriangle className="size-3" />
-              {t("attention")}
+              {t("metricCards.attention")}
             </Badge>
           ) : (
             <Boxes className="size-5 text-muted-foreground" />
@@ -58,9 +58,9 @@ export function MetricCards({ warehouseId }: MetricCardsProps) {
         }
       />
       <MetricCard
-        title={t("pendingAlerts")}
+        title={t("metricCards.pendingAlerts")}
         value={loading || alertsUnavailable ? "—" : String(pendingCount)}
-        description={alertsUnavailable ? t("alertsUnavailable") : t("requireAction")}
+        description={alertsUnavailable ? t("metricCards.alertsUnavailable") : t("metricCards.requireAction")}
         badge={
           !alertsUnavailable && pendingCount > 0 ? (
             <Badge variant="destructive" className="gap-1.5 normal-case tracking-normal">
@@ -73,9 +73,9 @@ export function MetricCards({ warehouseId }: MetricCardsProps) {
         }
       />
       <MetricCard
-        title={t("reorderAlerts")}
+        title={t("metricCards.reorderAlerts")}
         value={loading || alertsUnavailable ? "—" : alertTotal.toLocaleString()}
-        description={alertsUnavailable ? t("alertsUnavailable") : t("acrossAllWarehouses")}
+        description={alertsUnavailable ? t("metricCards.alertsUnavailable") : t("metricCards.acrossAllWarehouses")}
         badge={<AlertTriangle className="size-5 text-muted-foreground" />}
       />
     </div>

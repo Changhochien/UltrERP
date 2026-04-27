@@ -102,7 +102,7 @@ export function ProductGrid({ onProductClick }: ProductGridProps) {
         >
           <option value="all">{t("allStatus")}</option>
           <option value="active">{t("active")}</option>
-          <option value="low">{t("lowStock")}</option>
+          <option value="low">{t("productGrid.lowStock")}</option>
           <option value="critical">{t("critical")}</option>
           <option value="inactive">{t("inactive")}</option>
         </select>
@@ -205,7 +205,7 @@ export function ProductGrid({ onProductClick }: ProductGridProps) {
                 <div className="product-card-warehouse-hint">
                   <div className="warehouse-hint-row">
                     <span>{t("scope")}</span>
-                    <span>{selectedWarehouse?.name ?? t("allWarehouses")}</span>
+                    <span>{selectedWarehouse?.name ?? t("productGrid.allWarehouses")}</span>
                   </div>
                   <div className="warehouse-hint-row">
                     <span>{t("status")}</span>

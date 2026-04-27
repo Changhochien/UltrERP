@@ -307,254 +307,254 @@
     "showPassword": "Settingspage Showpassword",
     "types": {
       "bool": "Settingspage Types Bool",
-      "literal": "Settingspage Types Literal",
-      "tuple": "Settingspage Types Tuple",
-      "json": "Settingspage Types Json",
-      "str": "Settingspage Types Str",
-      "int": "Settingspage Types Int"
+      "literal": "文字",
+      "tuple": "元組",
+      "json": "JSON",
+      "str": "字串",
+      "int": "整數"
     },
-    "hidePassword": "Settingspage Hidepassword",
-    "lastUpdated": "Settingspage Lastupdated",
-    "sensitive": "Settingspage Sensitive",
-    "emptyPlaceholder": "Settingspage Emptyplaceholder",
-    "by": "Settingspage By",
-    "nullable": "Settingspage Nullable",
-    "resetTitle": "Settingspage Resettitle",
-    "jsonPlaceholder": "Settingspage Jsonplaceholder"
+    "hidePassword": "隱藏密碼",
+    "lastUpdated": "上次更新",
+    "sensitive": "敏感",
+    "emptyPlaceholder": "空值",
+    "by": "由",
+    "nullable": "可為空",
+    "resetTitle": "重設為預設值",
+    "jsonPlaceholder": "輸入 JSON…"
   },
   "adminPage": {
     "users": {
       "dialog": {
-        "copyPassword": "Adminpage Users Dialog Copypassword",
-        "editTitle": "Adminpage Users Dialog Edittitle",
-        "editDescription": "Adminpage Users Dialog Editdescription",
-        "passwordGenerated": "Adminpage Users Dialog Passwordgenerated",
-        "generatePassword": "Adminpage Users Dialog Generatepassword",
-        "createDescription": "Adminpage Users Dialog Createdescription",
-        "createAction": "Adminpage Users Dialog Createaction",
-        "cancel": "Adminpage Users Dialog Cancel",
-        "passwordHelp": "Adminpage Users Dialog Passwordhelp",
-        "creating": "Adminpage Users Dialog Creating",
-        "passwordCopied": "Adminpage Users Dialog Passwordcopied",
-        "saving": "Adminpage Users Dialog Saving",
-        "createTitle": "Adminpage Users Dialog Createtitle",
-        "resetPasswordHelp": "Adminpage Users Dialog Resetpasswordhelp",
-        "save": "Adminpage Users Dialog Save"
+        "copyPassword": "複製密碼",
+        "editTitle": "編輯使用者",
+        "editDescription": "更新此使用者的資訊。",
+        "passwordGenerated": "密碼已產生",
+        "generatePassword": "產生密碼",
+        "createDescription": "為新使用者設定名稱、角色與電子郵件。",
+        "createAction": "建立使用者",
+        "cancel": "取消",
+        "passwordHelp": "密碼會在建立後顯示，之後無法再查閱。",
+        "creating": "建立中…",
+        "passwordCopied": "密碼已複製到剪貼簿",
+        "saving": "儲存中…",
+        "createTitle": "新增使用者",
+        "resetPasswordHelp": "此操作會產生新密碼並傳送至使用者電子郵件。",
+        "save": "儲存"
       },
       "errors": {
-        "emailRequired": "Adminpage Users Errors Emailrequired",
-        "passwordTooShort": "Adminpage Users Errors Passwordtooshort",
-        "copyFailed": "Adminpage Users Errors Copyfailed",
-        "formUnavailable": "Adminpage Users Errors Formunavailable",
-        "emailInvalid": "Adminpage Users Errors Emailinvalid",
-        "displayNameRequired": "Adminpage Users Errors Displaynamerequired",
-        "resetPasswordTooShort": "Adminpage Users Errors Resetpasswordtooshort"
+        "emailRequired": "電子郵件為必填",
+        "passwordTooShort": "密碼長度至少需要 8 個字元",
+        "copyFailed": "複製失敗",
+        "formUnavailable": "表單暫時無法使用",
+        "emailInvalid": "電子郵件格式無效",
+        "displayNameRequired": "顯示名稱為必填",
+        "resetPasswordTooShort": "重設密碼長度至少需要 8 個字元"
       },
       "columns": {
-        "actions": "Adminpage Users Columns Actions",
-        "displayName": "Adminpage Users Columns Displayname",
-        "role": "Adminpage Users Columns Role",
-        "email": "Adminpage Users Columns Email",
-        "status": "Adminpage Users Columns Status"
+        "actions": "操作",
+        "displayName": "顯示名稱",
+        "role": "角色",
+        "email": "電子郵件",
+        "status": "狀態"
       },
       "filters": {
-        "status": "Adminpage Users Filters Status",
-        "allStatuses": "Adminpage Users Filters Allstatuses",
-        "role": "Adminpage Users Filters Role",
-        "searchPlaceholder": "Adminpage Users Filters Searchplaceholder",
-        "search": "Adminpage Users Filters Search",
-        "allRoles": "Adminpage Users Filters Allroles"
+        "status": "狀態",
+        "allStatuses": "所有狀態",
+        "role": "角色",
+        "searchPlaceholder": "搜尋使用者…",
+        "search": "搜尋",
+        "allRoles": "所有角色"
       },
-      "description": "Adminpage Users Description",
+      "description": "管理您的工作區使用者帳戶、角色與權限。",
       "fields": {
-        "displayName": "Adminpage Users Fields Displayname",
-        "resetPassword": "Adminpage Users Fields Resetpassword",
-        "status": "Adminpage Users Fields Status",
-        "role": "Adminpage Users Fields Role",
-        "email": "Adminpage Users Fields Email",
-        "password": "Adminpage Users Fields Password"
+        "displayName": "顯示名稱",
+        "resetPassword": "重設密碼",
+        "status": "狀態",
+        "role": "角色",
+        "email": "電子郵件",
+        "password": "密碼"
       },
-      "addUser": "Adminpage Users Adduser",
-      "editUser": "Adminpage Users Edituser",
-      "emptyDescription": "Adminpage Users Emptydescription",
-      "emptyTitle": "Adminpage Users Emptytitle",
-      "title": "Adminpage Users Title"
+      "addUser": "新增使用者",
+      "editUser": "編輯使用者",
+      "emptyDescription": "目前尚無使用者。點選上方按鈕新增第一位使用者。",
+      "emptyTitle": "尚無使用者",
+      "title": "使用者管理"
     },
     "auditLog": {
       "filters": {
-        "actorPlaceholder": "Adminpage Auditlog Filters Actorplaceholder",
-        "createdAfter": "Adminpage Auditlog Filters Createdafter",
-        "action": "Adminpage Auditlog Filters Action",
-        "createdBefore": "Adminpage Auditlog Filters Createdbefore",
-        "entityTypePlaceholder": "Adminpage Auditlog Filters Entitytypeplaceholder",
-        "actorTypePlaceholder": "Adminpage Auditlog Filters Actortypeplaceholder",
-        "actor": "Adminpage Auditlog Filters Actor",
-        "actorType": "Adminpage Auditlog Filters Actortype",
-        "actionPlaceholder": "Adminpage Auditlog Filters Actionplaceholder",
-        "entityId": "Adminpage Auditlog Filters Entityid",
-        "entityIdPlaceholder": "Adminpage Auditlog Filters Entityidplaceholder",
-        "entityType": "Adminpage Auditlog Filters Entitytype"
+        "actorPlaceholder": "選擇操作者…",
+        "createdAfter": "建立時間（起）",
+        "action": "動作",
+        "createdBefore": "建立時間（訖）",
+        "entityTypePlaceholder": "選擇實體類型…",
+        "actorTypePlaceholder": "選擇操作者類型…",
+        "actor": "操作者",
+        "actorType": "操作者類型",
+        "actionPlaceholder": "選擇動作…",
+        "entityId": "實體 ID",
+        "entityIdPlaceholder": "輸入實體 ID…",
+        "entityType": "實體類型"
       },
       "presets": {
-        "thisMonth": "Adminpage Auditlog Presets Thismonth",
-        "clear": "Adminpage Auditlog Presets Clear",
-        "today": "Adminpage Auditlog Presets Today",
-        "last7Days": "Adminpage Auditlog Presets Last7Days"
+        "thisMonth": "本月",
+        "clear": "清除",
+        "today": "今天",
+        "last7Days": "最近 7 天"
       },
       "detailSheet": {
-        "description": "Adminpage Auditlog Detailsheet Description",
+        "description": "查看此作業的完整變更內容。",
         "fields": {
-          "correlationId": "Adminpage Auditlog Detailsheet Fields Correlationid",
-          "createdAt": "Adminpage Auditlog Detailsheet Fields Createdat",
-          "actor": "Adminpage Auditlog Detailsheet Fields Actor",
-          "beforeState": "Adminpage Auditlog Detailsheet Fields Beforestate",
-          "actorType": "Adminpage Auditlog Detailsheet Fields Actortype",
-          "notes": "Adminpage Auditlog Detailsheet Fields Notes",
-          "afterState": "Adminpage Auditlog Detailsheet Fields Afterstate",
-          "target": "Adminpage Auditlog Detailsheet Fields Target",
-          "action": "Adminpage Auditlog Detailsheet Fields Action"
+          "correlationId": "關聯 ID",
+          "createdAt": "建立時間",
+          "actor": "操作者",
+          "beforeState": "變更前",
+          "actorType": "操作者類型",
+          "notes": "備註",
+          "afterState": "變更後",
+          "target": "目標",
+          "action": "動作"
         },
-        "title": "Adminpage Auditlog Detailsheet Title",
-        "emptyState": "Adminpage Auditlog Detailsheet Emptystate"
+        "title": "作業詳情",
+        "emptyState": "尚無作業詳情"
       },
       "savedPresets": {
-        "save": "Adminpage Auditlog Savedpresets Save",
-        "empty": "Adminpage Auditlog Savedpresets Empty",
-        "namePlaceholder": "Adminpage Auditlog Savedpresets Nameplaceholder",
-        "name": "Adminpage Auditlog Savedpresets Name",
-        "delete": "Adminpage Auditlog Savedpresets Delete"
+        "save": "儲存預設",
+        "empty": "尚無已儲存的預設",
+        "namePlaceholder": "輸入預設名稱…",
+        "name": "名稱",
+        "delete": "刪除"
       },
       "export": {
-        "json": "Adminpage Auditlog Export Json",
-        "csv": "Adminpage Auditlog Export Csv"
+        "json": "JSON",
+        "csv": "CSV"
       },
       "columns": {
-        "actor": "Adminpage Auditlog Columns Actor",
-        "actorType": "Adminpage Auditlog Columns Actortype",
-        "target": "Adminpage Auditlog Columns Target",
-        "createdAt": "Adminpage Auditlog Columns Createdat",
-        "details": "Adminpage Auditlog Columns Details",
-        "action": "Adminpage Auditlog Columns Action"
+        "actor": "操作者",
+        "actorType": "類型",
+        "target": "目標",
+        "createdAt": "時間",
+        "details": "詳情",
+        "action": "動作"
       },
-      "title": "Adminpage Auditlog Title",
-      "emptyTitle": "Adminpage Auditlog Emptytitle",
+      "title": "稽核日誌",
+      "emptyTitle": "尚無稽核日誌",
       "actions": {
-        "view": "Adminpage Auditlog Actions View"
+        "view": "檢視"
       },
-      "description": "Adminpage Auditlog Description",
-      "emptyDescription": "Adminpage Auditlog Emptydescription"
+      "description": "追蹤所有系統作業與設定變更。",
+      "emptyDescription": "尚無稽核日誌記錄。"
     },
     "legacyRefresh": {
       "columns": {
-        "latestRun": "Adminpage Legacyrefresh Columns Latestrun",
-        "latestSuccess": "Adminpage Legacyrefresh Columns Latestsuccess",
-        "latestPromoted": "Adminpage Legacyrefresh Columns Latestpromoted"
+        "latestRun": "最近執行",
+        "latestSuccess": "最近成功",
+        "latestPromoted": "最近啟用"
       },
       "details": {
-        "summaryPath": "Adminpage Legacyrefresh Details Summarypath",
-        "currentMode": "Adminpage Legacyrefresh Details Currentmode",
-        "noAffectedDomains": "Adminpage Legacyrefresh Details Noaffecteddomains",
-        "affectedDomains": "Adminpage Legacyrefresh Details Affecteddomains",
-        "incrementalStatePath": "Adminpage Legacyrefresh Details Incrementalstatepath"
+        "summaryPath": "摘要路徑",
+        "currentMode": "目前模式",
+        "noAffectedDomains": "無受影響網域",
+        "affectedDomains": "受影響網域",
+        "incrementalStatePath": "增量狀態路徑"
       },
-      "title": "Adminpage Legacyrefresh Title",
+      "title": "Legacy 資料刷新",
       "fields": {
-        "dryRun": "Adminpage Legacyrefresh Fields Dryrun",
-        "schemaNamePlaceholder": "Adminpage Legacyrefresh Fields Schemanameplaceholder",
-        "mode": "Adminpage Legacyrefresh Fields Mode",
-        "tenantId": "Adminpage Legacyrefresh Fields Tenantid",
-        "lookbackDays": "Adminpage Legacyrefresh Fields Lookbackdays",
-        "reconciliationThreshold": "Adminpage Legacyrefresh Fields Reconciliationthreshold",
-        "schemaName": "Adminpage Legacyrefresh Fields Schemaname",
-        "tenantIdPlaceholder": "Adminpage Legacyrefresh Fields Tenantidplaceholder",
-        "sourceSchema": "Adminpage Legacyrefresh Fields Sourceschema"
+        "dryRun": "測試模式",
+        "schemaNamePlaceholder": "輸入結構描述名稱…",
+        "mode": "模式",
+        "tenantId": "組織 ID",
+        "lookbackDays": "回溯天數",
+        "reconciliationThreshold": "對帳門檻",
+        "schemaName": "結構描述名稱",
+        "tenantIdPlaceholder": "輸入組織 ID…",
+        "sourceSchema": "來源結構描述"
       },
       "trigger": {
-        "title": "Adminpage Legacyrefresh Trigger Title",
-        "launched": "Adminpage Legacyrefresh Trigger Launched",
-        "launching": "Adminpage Legacyrefresh Trigger Launching",
-        "description": "Adminpage Legacyrefresh Trigger Description",
-        "launch": "Adminpage Legacyrefresh Trigger Launch"
+        "title": "觸發刷新",
+        "launched": "已觸發",
+        "launching": "觸發中…",
+        "description": "手動執行資料刷新以同步 Legacy 資料。",
+        "launch": "執行刷新"
       },
       "lanes": {
-        "title": "Adminpage Legacyrefresh Lanes Title",
-        "description": "Adminpage Legacyrefresh Lanes Description",
-        "refresh": "Adminpage Legacyrefresh Lanes Refresh"
+        "title": "刷新資料流",
+        "description": "監控所有網域的刷新資料流狀態。",
+        "refresh": "重新整理"
       },
       "salesMonthly": {
-        "empty": "Adminpage Legacyrefresh Salesmonthly Empty",
+        "empty": "尚無月銷售資料",
         "actions": {
-          "checkingHealth": "Adminpage Legacyrefresh Salesmonthly Actions Checkinghealth",
-          "backfilling": "Adminpage Legacyrefresh Salesmonthly Actions Backfilling",
-          "backfill": "Adminpage Legacyrefresh Salesmonthly Actions Backfill",
-          "checkHealth": "Adminpage Legacyrefresh Salesmonthly Actions Checkhealth",
-          "repairingMissing": "Adminpage Legacyrefresh Salesmonthly Actions Repairingmissing",
-          "repairMissing": "Adminpage Legacyrefresh Salesmonthly Actions Repairmissing"
+          "checkingHealth": "檢查中…",
+          "backfilling": "回填中…",
+          "backfill": "回填資料",
+          "checkHealth": "檢查健康狀態",
+          "repairingMissing": "修復中…",
+          "repairMissing": "修復缺失"
         },
         "fields": {
-          "endMonthPlaceholder": "Adminpage Legacyrefresh Salesmonthly Fields Endmonthplaceholder",
-          "tenantId": "Adminpage Legacyrefresh Salesmonthly Fields Tenantid",
-          "startMonth": "Adminpage Legacyrefresh Salesmonthly Fields Startmonth",
-          "startMonthPlaceholder": "Adminpage Legacyrefresh Salesmonthly Fields Startmonthplaceholder",
-          "endMonth": "Adminpage Legacyrefresh Salesmonthly Fields Endmonth"
+          "endMonthPlaceholder": "選擇結束月份…",
+          "tenantId": "組織 ID",
+          "startMonth": "開始月份",
+          "startMonthPlaceholder": "選擇開始月份…",
+          "endMonth": "結束月份"
         },
         "status": {
-          "healthy": "Adminpage Legacyrefresh Salesmonthly Status Healthy",
-          "degraded": "Adminpage Legacyrefresh Salesmonthly Status Degraded"
+          "healthy": "健康",
+          "degraded": "異常"
         },
         "notices": {
-          "healthy": "Adminpage Legacyrefresh Salesmonthly Notices Healthy"
+          "healthy": "所有月銷售資料皆正常。"
         },
-        "description": "Adminpage Legacyrefresh Salesmonthly Description",
-        "title": "Adminpage Legacyrefresh Salesmonthly Title"
+        "description": "月銷售資料的維護與修復工具。",
+        "title": "月銷售資料"
       },
       "recentRuns": {
-        "empty": "Adminpage Legacyrefresh Recentruns Empty",
-        "description": "Adminpage Legacyrefresh Recentruns Description",
-        "title": "Adminpage Legacyrefresh Recentruns Title",
-        "refresh": "Adminpage Legacyrefresh Recentruns Refresh"
+        "empty": "尚無執行記錄",
+        "description": "最近一次執行的結果。",
+        "title": "最近執行",
+        "refresh": "重新整理"
       },
       "status": {
-        "locked": "Adminpage Legacyrefresh Status Locked",
-        "idle": "Adminpage Legacyrefresh Status Idle",
-        "blocked": "Adminpage Legacyrefresh Status Blocked",
-        "eligible": "Adminpage Legacyrefresh Status Eligible"
+        "locked": "鎖定中",
+        "idle": "閒置",
+        "blocked": "已阻塞",
+        "eligible": "可執行"
       },
       "modes": {
-        "incremental": "Adminpage Legacyrefresh Modes Incremental",
-        "fullRebaseline": "Adminpage Legacyrefresh Modes Fullrebaseline"
+        "incremental": "增量更新",
+        "fullRebaseline": "完整重建"
       },
-      "eyebrow": "Adminpage Legacyrefresh Eyebrow",
-      "loading": "Adminpage Legacyrefresh Loading",
-      "description": "Adminpage Legacyrefresh Description"
+      "eyebrow": "Legacy 刷新",
+      "loading": "載入中…",
+      "description": "管理 Legacy 資料刷新作業與監控狀態。"
     },
     "settingsHub": {
-      "description": "Adminpage Settingshub Description",
+      "description": "快速存取常用設定。",
       "items": {
-        "general": "Adminpage Settingshub Items General",
-        "data": "Adminpage Settingshub Items Data",
-        "security": "Adminpage Settingshub Items Security",
-        "appearance": "Adminpage Settingshub Items Appearance"
+        "general": "一般",
+        "data": "資料",
+        "security": "安全性",
+        "appearance": "外觀"
       },
-      "openSettings": "Adminpage Settingshub Opensettings",
-      "title": "Adminpage Settingshub Title"
+      "openSettings": "開啟設定",
+      "title": "設定"
     },
     "errors": {
-      "loadFailed": "Adminpage Errors Loadfailed",
-      "saveFailed": "Adminpage Errors Savefailed"
+      "loadFailed": "載入失敗",
+      "saveFailed": "儲存失敗"
     },
-    "title": "Adminpage Title",
+    "title": "系統管理",
     "permissions": {
       "columns": {
-        "feature": "Adminpage Permissions Columns Feature"
+        "feature": "功能"
       },
-      "description": "Adminpage Permissions Description",
-      "emptyTitle": "Adminpage Permissions Emptytitle",
-      "title": "Adminpage Permissions Title",
-      "emptyDescription": "Adminpage Permissions Emptydescription"
+      "description": "檢視與管理各項功能的功能開關與權限設定。",
+      "emptyTitle": "尚無停用的功能",
+      "title": "功能與權限",
+      "emptyDescription": "所有功能皆已啟用。點選功能列以停用。"
     },
-    "description": "Adminpage Description",
-    "eyebrow": "Adminpage Eyebrow"
+    "description": "說明",
+    "eyebrow": "系統管理"
   },
   "form": {
     "companyName": "Form Companyname",
@@ -860,7 +860,7 @@
     "currentStock": "Col Currentstock",
     "suggestedQty": "Col Suggestedqty",
     "onOrderQty": "Col Onorderqty",
-    "costSource": "Col Costsource",
+    "costSource": "成本來源",
     "ltSource": "Col Ltsource",
     "targetStock": "Col Targetstock",
     "shortageQty": "Col Shortageqty",
@@ -1032,15 +1032,15 @@
     "next": "Auditpagination Next"
   },
   "filters": {
-    "product": "Filters Product",
-    "clear": "Filters Clear",
-    "productPlaceholder": "Filters Productplaceholder",
-    "warehouse": "Filters Warehouse",
-    "allWarehouses": "Filters Allwarehouses"
+    "product": "產品",
+    "clear": "清除篩選",
+    "productPlaceholder": "搜尋產品…",
+    "warehouse": "倉庫",
+    "allWarehouses": "所有倉庫"
   },
   "costSource": {
-    "latest_purchase": "Costsource Latest Purchase",
-    "missing": "Costsource Missing"
+    "latest_purchase": "最近採購成本",
+    "missing": "未設定"
   },
   "monthlyDemand": {
     "title": "月需求量"

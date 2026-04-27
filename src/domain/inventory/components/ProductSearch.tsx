@@ -97,7 +97,7 @@ export function ProductSearch({ onProductClick }: ProductSearchProps) {
           <DataTableToolbar>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">
-                {t("scope")}: {selectedWarehouse?.name ?? t("allWarehouses")}
+                {t("productGrid.scope")}: {selectedWarehouse?.name ?? t("productGrid.allWarehouses")}
               </p>
             </div>
             <div className="flex w-full max-w-xl flex-col gap-3 md:flex-row md:items-center">

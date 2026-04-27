@@ -484,7 +484,7 @@ function ReorderPointAdmin() {
               onChange={(e) => setWarehouseId(e.target.value)}
               className="h-8 rounded-lg border border-input bg-background px-2 text-sm"
             >
-              <option value="">{t("allWarehouses")}</option>
+              <option value="">{t("reorderPointAdmin.allWarehouses")}</option>
               {warehouses.map((wh) => (
                 <option key={wh.id} value={wh.id}>{wh.name}</option>
               ))}

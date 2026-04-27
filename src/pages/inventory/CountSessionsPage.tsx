@@ -129,7 +129,7 @@ export function CountSessionsPage() {
               onChange={(event) => setSelectedWarehouseId(event.target.value)}
               className="w-full rounded-lg border border-input bg-background px-3 py-2"
             >
-              <option value="">{t("allWarehouses")}</option>
+              <option value="">{t("countSessionsPage.allWarehouses")}</option>
               {warehouses.map((warehouse) => (
                 <option key={warehouse.id} value={warehouse.id}>
                   {warehouse.name}

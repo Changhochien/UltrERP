@@ -45,7 +45,7 @@ export function WarehouseSelector({
           <SelectValue placeholder={t("selectWarehouse")} />
         </SelectTrigger>
         <SelectContent>
-          {allowAll ? <SelectItem value="all">{t("allWarehouses")}</SelectItem> : null}
+          {allowAll ? <SelectItem value="all">{t("warehouseSelector.allWarehouses")}</SelectItem> : null}
           {warehouses.map((wh) => (
             <SelectItem key={wh.id} value={wh.id}>
               {wh.name} ({wh.code})
