@@ -86,9 +86,11 @@
     "label": "供應商"
   },
   "inventoryReports": {
+    "description": "檢視庫存分析與庫存報表。",
     "label": "庫存報表"
   },
   "invoiceReports": {
+    "description": "檢視發票分析與財務報表。",
     "label": "發票報表"
   },
   "supplierDetail": {

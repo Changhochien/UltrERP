@@ -181,7 +181,7 @@
     "utmMedium": "UTM Medium",
     "utmSource": "UTM Source",
     "unitPrice": "Unit Price",
-    "customerPlaceholder": "Form Customerplaceholder"
+    "customerPlaceholder": "Search customer by name or BAN…"
   },
   "list": {
     "adjustFilter": "Adjust the search or filter criteria and try again.",

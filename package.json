@@ -13,6 +13,13 @@
     "lint": "eslint src vite.config.ts eslint.config.js",
     "test": "vitest run",
     "check:locale-parity": "npx ts-node scripts/check-locale-parity.ts",
+    "i18n:validate": "npx tsx scripts/i18n-validate.ts",
+    "i18n:check": "node scripts/i18n-check.ts",
+    "i18n:coverage": "npx tsx scripts/i18n-coverage.ts",
+    "i18n:types": "npx tsx scripts/generate-i18n-types.ts",
+    "i18n:all": "pnpm i18n:validate && pnpm i18n:check && pnpm i18n:types",
+    "i18n:auto-fix": "npx tsx scripts/i18n-auto-fix.ts",
+    "i18n:auto-fix:dry": "npx tsx scripts/i18n-auto-fix.ts --dry-run",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build"
   },

@@ -25,6 +25,8 @@
     "new": "新",
     "noOrdersYet": "尚無符合條件的訂單",
     "daysSinceLastOrder": "距離上次訂單 {{count}} 天",
+    "daysSinceLastOrder_one": "距離上次訂單 {{count}} 天",
+    "daysSinceLastOrder_other": "距離上次訂單 {{count}} 天",
     "noCategoryData": "目前尚無品類活動。",
     "noProductData": "目前尚無商品活動。",
     "product": "商品",

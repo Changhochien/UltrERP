@@ -1,4 +1,5 @@
 {
+  "create": "建立訂單",
   "detail": {
     "backorderCallout_one": "仍有 {count} 筆明細存在缺貨風險。請先調整庫存再出貨。",
     "backorderCallout_other": "仍有 {count} 筆明細存在缺貨風險。請先調整庫存再出貨。",
@@ -30,6 +31,7 @@
     "markFulfilledMessage": "將此訂單標記為已完成？",
     "markShipped": "標記為已出貨",
     "markShippedMessage": "將此訂單標記為已出貨？",
+    "shipOrder": "出貨訂單",
     "nextActions": "分組動作",
     "nextActionsDescription": "將商務、倉儲與帳務動作分開顯示，讓流程一眼可讀。",
     "noCommercialActions": "目前狀態沒有可執行的商務動作。",
@@ -179,7 +181,7 @@
     "utmMedium": "UTM 媒介",
     "utmSource": "UTM 來源",
     "unitPrice": "單價",
-    "customerPlaceholder": "Form Customerplaceholder"
+    "customerPlaceholder": "搜索客户名称或BAN…"
   },
   "list": {
     "adjustFilter": "請調整搜尋或篩選條件後再試一次。",

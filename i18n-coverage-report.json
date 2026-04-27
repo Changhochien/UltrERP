@@ -1,0 +1,148 @@
+{
+  "generated": "2026-04-27T14:04:37.994Z",
+  "locales": [
+    {
+      "locale": "en",
+      "total": 3789,
+      "translated": 3789,
+      "coverage": 100
+    },
+    {
+      "locale": "zh-Hant",
+      "total": 3789,
+      "translated": 3789,
+      "coverage": 100
+    }
+  ],
+  "namespaces": [
+    {
+      "name": "common",
+      "total": 1428,
+      "byLocale": {
+        "en": 714,
+        "zh-Hant": 714
+      }
+    },
+    {
+      "name": "shell",
+      "total": 165,
+      "byLocale": {
+        "en": 81,
+        "zh-Hant": 84
+      }
+    },
+    {
+      "name": "routes",
+      "total": 272,
+      "byLocale": {
+        "en": 136,
+        "zh-Hant": 136
+      }
+    },
+    {
+      "name": "auth",
+      "total": 20,
+      "byLocale": {
+        "en": 10,
+        "zh-Hant": 10
+      }
+    },
+    {
+      "name": "dashboard",
+      "total": 210,
+      "byLocale": {
+        "en": 105,
+        "zh-Hant": 105
+      }
+    },
+    {
+      "name": "admin",
+      "total": 386,
+      "byLocale": {
+        "en": 193,
+        "zh-Hant": 193
+      }
+    },
+    {
+      "name": "intelligence",
+      "total": 385,
+      "byLocale": {
+        "en": 192,
+        "zh-Hant": 193
+      }
+    },
+    {
+      "name": "crm",
+      "total": 1322,
+      "byLocale": {
+        "en": 661,
+        "zh-Hant": 661
+      }
+    },
+    {
+      "name": "customer",
+      "total": 336,
+      "byLocale": {
+        "en": 168,
+        "zh-Hant": 168
+      }
+    },
+    {
+      "name": "inventory",
+      "total": 1660,
+      "byLocale": {
+        "en": 830,
+        "zh-Hant": 830
+      }
+    },
+    {
+      "name": "orders",
+      "total": 448,
+      "byLocale": {
+        "en": 224,
+        "zh-Hant": 224
+      }
+    },
+    {
+      "name": "procurement",
+      "total": 198,
+      "byLocale": {
+        "en": 99,
+        "zh-Hant": 99
+      }
+    },
+    {
+      "name": "purchase",
+      "total": 102,
+      "byLocale": {
+        "en": 51,
+        "zh-Hant": 51
+      }
+    },
+    {
+      "name": "invoice",
+      "total": 178,
+      "byLocale": {
+        "en": 89,
+        "zh-Hant": 89
+      }
+    },
+    {
+      "name": "payments",
+      "total": 28,
+      "byLocale": {
+        "en": 14,
+        "zh-Hant": 14
+      }
+    },
+    {
+      "name": "settings",
+      "total": 444,
+      "byLocale": {
+        "en": 222,
+        "zh-Hant": 222
+      }
+    }
+  ],
+  "issues": []
+}
