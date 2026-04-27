@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 
-import InvoicePrintPreviewModal from "../../components/invoices/print/InvoicePrintPreviewModal";
+import InvoicePrintPreviewModal from "@/domain/invoices/components/print/InvoicePrintPreviewModal";
 import type {
 	InvoiceLineResponse,
 	InvoiceResponse,

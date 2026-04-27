@@ -6,9 +6,9 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { InvoiceResponse } from "../../domain/invoices/types";
-import { validatePrintReady } from "../../lib/print/invoices";
-import { exportInvoicePdf } from "../../lib/pdf/invoices";
+import type { InvoiceResponse } from "@/domain/invoices/types";
+import { validatePrintReady } from "@/lib/print/invoices";
+import { exportInvoicePdf } from "@/lib/pdf/invoices";
 
 interface InvoiceExportButtonProps {
 	invoice: InvoiceResponse;

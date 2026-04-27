@@ -1,12 +1,12 @@
 
 import { useTranslation } from "react-i18next";
 
-import type { InvoiceDraftLine } from "../../domain/invoices/types";
-import { INVOICE_TAX_POLICY_OPTIONS } from "../../domain/invoices/types";
+import type { InvoiceDraftLine } from "@/domain/invoices/types";
+import { INVOICE_TAX_POLICY_OPTIONS } from "@/domain/invoices/types";
 
-import { Badge } from "../ui/badge";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ProductCombobox } from "@/domain/inventory/components/ProductCombobox";
 import {
   Select,
@@ -14,7 +14,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../ui/select";
+} from "@/components/ui/select";
 
 interface InvoiceLinePreview {
   subtotalAmount: number;

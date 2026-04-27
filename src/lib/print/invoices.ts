@@ -12,7 +12,7 @@ import type {
 } from "../../domain/invoices/types";
 import type { CustomerResponse } from "../../domain/customers/types";
 
-type InvoicePrintPreviewModalModule = typeof import("../../components/invoices/print/InvoicePrintPreviewModal");
+type InvoicePrintPreviewModalModule = typeof import("@/domain/invoices/components/print/InvoicePrintPreviewModal");
 
 let invoicePrintPreviewModalPromise: Promise<InvoicePrintPreviewModalModule> | null = null;
 
@@ -44,7 +44,7 @@ function supportsUserTiming(): boolean {
 }
 
 export function loadInvoicePrintPreviewModal(): Promise<InvoicePrintPreviewModalModule> {
-	invoicePrintPreviewModalPromise ??= import("../../components/invoices/print/InvoicePrintPreviewModal")
+	invoicePrintPreviewModalPromise ??= import("@/domain/invoices/components/print/InvoicePrintPreviewModal")
 		.catch((error) => {
 			invoicePrintPreviewModalPromise = null;
 			throw error;

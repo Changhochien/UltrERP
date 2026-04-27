@@ -7,13 +7,13 @@
 
 import { useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "../../ui/button";
-import { Dialog, DialogContent, DialogTitle } from "../../ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import type {
 	InvoiceResponse,
 	PrintCustomerInfo,
 	SellerInfo,
-} from "../../../domain/invoices/types";
+} from "@/domain/invoices/types";
 import InvoicePrintSheet from "./InvoicePrintSheet";
 
 interface InvoicePrintPreviewModalProps {

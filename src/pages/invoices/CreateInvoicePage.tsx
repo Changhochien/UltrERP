@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { InvoiceLineEditor } from "../../components/invoices/InvoiceLineEditor";
-import { InvoiceTotalsCard } from "../../components/invoices/InvoiceTotalsCard";
+import { InvoiceLineEditor } from "@/domain/invoices/components/InvoiceLineEditor";
+import { InvoiceTotalsCard } from "@/domain/invoices/components/InvoiceTotalsCard";
 import { CustomerCombobox } from "@/domain/customers/components/CustomerCombobox";
 import { PageHeader, SectionCard, SurfaceMessage } from "../../components/layout/PageLayout";
 import { Button } from "../../components/ui/button";

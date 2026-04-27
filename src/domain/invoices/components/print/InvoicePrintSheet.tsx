@@ -10,7 +10,7 @@ import type {
 	InvoiceResponse,
 	PrintCustomerInfo,
 	SellerInfo,
-} from "../../../domain/invoices/types";
+} from "@/domain/invoices/types";
 import "./invoice-print.css";
 
 interface InvoicePrintSheetProps {

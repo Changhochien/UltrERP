@@ -3,7 +3,7 @@ import i18n from "i18next";
 import { afterEach, describe, expect, it } from "vitest";
 import zhHantTranslations from "../../../public/locales/zh-Hant/common.json";
 
-import InvoicePrintSheet from "../../components/invoices/print/InvoicePrintSheet";
+import InvoicePrintSheet from "@/domain/invoices/components/print/InvoicePrintSheet";
 import type {
 	InvoiceResponse,
 	PrintCustomerInfo,

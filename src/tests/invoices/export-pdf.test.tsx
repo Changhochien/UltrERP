@@ -4,7 +4,7 @@
 
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
-import InvoiceExportButton from "../../components/invoices/InvoiceExportButton";
+import InvoiceExportButton from "@/domain/invoices/components/InvoiceExportButton";
 import type { InvoiceResponse } from "../../domain/invoices/types";
 import { exportInvoicePdf } from "../../lib/pdf/invoices";
 

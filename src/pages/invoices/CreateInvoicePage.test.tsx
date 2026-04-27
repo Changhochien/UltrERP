@@ -13,11 +13,11 @@ vi.mock("@/domain/customers/components/CustomerCombobox", () => ({
   CustomerCombobox: () => <div data-testid="customer-combobox" />,
 }));
 
-vi.mock("../../components/invoices/InvoiceLineEditor", () => ({
+vi.mock("@/domain/invoices/components/InvoiceLineEditor", () => ({
   InvoiceLineEditor: () => <div data-testid="invoice-line-editor" />,
 }));
 
-vi.mock("../../components/invoices/InvoiceTotalsCard", () => ({
+vi.mock("@/domain/invoices/components/InvoiceTotalsCard", () => ({
   InvoiceTotalsCard: () => <div data-testid="invoice-totals-card" />,
 }));
 
