@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Badge } from "../ui/badge";
-import { Button } from "../ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
-import type { CustomerResponse } from "../../domain/customers/types";
-import { getCustomer } from "../../lib/api/customers";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import type { CustomerResponse } from "@/domain/customers/types";
+import { getCustomer } from "@/lib/api/customers";
 
 interface Props {
   customerId: string;

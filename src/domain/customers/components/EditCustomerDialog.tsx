@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { CustomerCreatePayload, CustomerResponse } from "../../domain/customers/types";
-import { getCustomer, updateCustomer } from "../../lib/api/customers";
-import type { DuplicateInfo } from "../../lib/api/customers";
+import type { CustomerCreatePayload, CustomerResponse } from "@/domain/customers/types";
+import { getCustomer, updateCustomer } from "@/lib/api/customers";
+import type { DuplicateInfo } from "@/lib/api/customers";
 import CustomerForm from "./CustomerForm";
 import DuplicateCustomerWarning from "./DuplicateCustomerWarning";
-import { useToast } from "../../hooks/useToast";
+import { useToast } from "@/hooks/useToast";
 
 interface Props {
   customerId: string;

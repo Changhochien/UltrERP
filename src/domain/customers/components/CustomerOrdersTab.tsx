@@ -4,14 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import { DataTable, DataTableToolbar, type DataTableColumn } from "../../components/layout/DataTable";
-import { Button } from "../../components/ui/button";
-import { StatusBadge } from "../../components/ui/StatusBadge";
-import { usePermissions } from "../../hooks/usePermissions";
-import { fetchOrders } from "../../lib/api/orders";
-import { ORDER_CREATE_ROUTE } from "../../lib/routes";
-import { statusLabel } from "../../domain/orders/hooks/useOrders";
-import type { OrderListItem } from "../../domain/orders/types";
+import { DataTable, DataTableToolbar, type DataTableColumn } from "@/components/layout/DataTable";
+import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { usePermissions } from "@/hooks/usePermissions";
+import { fetchOrders } from "@/lib/api/orders";
+import { ORDER_CREATE_ROUTE } from "@/lib/routes";
+import { statusLabel } from "@/domain/orders/hooks/useOrders";
+import type { OrderListItem } from "@/domain/orders/types";
 
 interface CustomerOrdersTabProps {
   customerId: string;

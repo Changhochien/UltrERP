@@ -9,7 +9,7 @@ import { setAppTimeGetter } from "../../lib/time";
 const successToastMock = vi.fn();
 const errorToastMock = vi.fn();
 
-vi.mock("../../components/customers/CustomerCombobox", () => ({
+vi.mock("@/domain/customers/components/CustomerCombobox", () => ({
   CustomerCombobox: () => <div data-testid="customer-combobox" />,
 }));
 

@@ -7,7 +7,7 @@ import { DataTable, DataTableToolbar, type DataTableSortState } from "../../../c
 import { Badge } from "../../../components/ui/badge";
 import { StatusBadge } from "../../../components/ui/StatusBadge";
 import { ActiveFilterBar } from "../../../components/filters/ActiveFilterBar";
-import { CustomerCombobox } from "../../../components/customers/CustomerCombobox";
+import { CustomerCombobox } from "@/domain/customers/components/CustomerCombobox";
 import type { CustomerSummary } from "../../customers/types";
 import { DateRangeFilter } from "../../../components/filters/DateRangeFilter";
 import { SearchInput } from "../../../components/filters/SearchInput";

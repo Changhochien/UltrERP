@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
-import { CustomerOrdersTab } from "../../components/customers/CustomerOrdersTab";
+import { CustomerOrdersTab } from "@/domain/customers/components/CustomerOrdersTab";
 
 const navigateMock = vi.fn();
 const fetchOrdersMock = vi.fn();

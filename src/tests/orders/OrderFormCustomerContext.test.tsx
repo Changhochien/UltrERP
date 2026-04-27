@@ -21,7 +21,7 @@ vi.mock("../../domain/orders/hooks/useOrders", () => ({
   }),
 }));
 
-vi.mock("../../components/customers/CustomerCombobox", () => ({
+vi.mock("@/domain/customers/components/CustomerCombobox", () => ({
   CustomerCombobox: ({ value, onChange, placeholder }: { value: string; onChange: (value: string) => void; placeholder?: string }) => (
     <input
       aria-label="Customer ID"

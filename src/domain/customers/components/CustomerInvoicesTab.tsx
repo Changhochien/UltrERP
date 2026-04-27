@@ -4,11 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import { DataTable, DataTableToolbar, type DataTableColumn } from "../../components/layout/DataTable";
-import { StatusBadge } from "../../components/ui/StatusBadge";
-import { fetchInvoices } from "../../lib/api/invoices";
-import { paymentStatusLabel } from "../../domain/invoices/hooks/useInvoices";
-import type { InvoiceListItem } from "../../domain/invoices/types";
+import { DataTable, DataTableToolbar, type DataTableColumn } from "@/components/layout/DataTable";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { fetchInvoices } from "@/lib/api/invoices";
+import { paymentStatusLabel } from "@/domain/invoices/hooks/useInvoices";
+import type { InvoiceListItem } from "@/domain/invoices/types";
 
 interface CustomerInvoicesTabProps {
   customerId: string;

@@ -3,7 +3,7 @@ import "../helpers/i18n";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import CustomerForm from "../../components/customers/CustomerForm";
+import CustomerForm from "@/domain/customers/components/CustomerForm";
 
 vi.mock("../../hooks/useCommercialDefaultsOptions", () => ({
   useCommercialDefaultsOptions: () => ({

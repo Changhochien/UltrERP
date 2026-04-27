@@ -9,7 +9,7 @@ import { SectionCard, SurfaceMessage } from "../../../components/layout/PageLayo
 import { Button } from "../../../components/ui/button";
 import { FieldError } from "../../../components/ui/field";
 import { Input } from "../../../components/ui/input";
-import { CustomerCombobox } from "../../../components/customers/CustomerCombobox";
+import { CustomerCombobox } from "@/domain/customers/components/CustomerCombobox";
 import { ProductCombobox } from "../../../components/products/ProductCombobox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table";
 import { usePaymentTerms, useCreateOrder } from "../hooks/useOrders";

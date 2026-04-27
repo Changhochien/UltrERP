@@ -3,13 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Button } from "../ui/button";
-import { DatePicker } from "../ui/DatePicker";
+import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/DatePicker";
 import {
   formatDatePickerValue,
   parseDatePickerInputValue,
   serializeDatePickerValue,
-} from "../ui/date-picker-utils";
+} from "@/components/ui/date-picker-utils";
 import {
   Table,
   TableBody,
@@ -17,10 +17,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../ui/table";
-import { SurfaceMessage } from "../layout/PageLayout";
-import { getCustomerStatement, type CustomerStatementResponse, type StatementLine } from "../../lib/api/customers";
-import { appTodayISO } from "../../lib/time";
+} from "@/components/ui/table";
+import { SurfaceMessage } from "@/components/layout/PageLayout";
+import { getCustomerStatement, type CustomerStatementResponse, type StatementLine } from "@/lib/api/customers";
+import { appTodayISO } from "@/lib/time";
 
 interface CustomerStatementTabProps {
   customerId: string;

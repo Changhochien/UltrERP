@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CustomerStatementTab } from "../../components/customers/CustomerStatementTab";
+import { CustomerStatementTab } from "@/domain/customers/components/CustomerStatementTab";
 import { getCustomerStatement } from "../../lib/api/customers";
 import { setAppTimeGetter } from "../../lib/time";
 

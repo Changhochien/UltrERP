@@ -170,7 +170,7 @@ vi.mock("../../hooks/usePermissions", () => ({
   }),
 }));
 
-vi.mock("../../components/customers/CustomerCombobox", () => ({
+vi.mock("@/domain/customers/components/CustomerCombobox", () => ({
   CustomerCombobox: () => <div>Customer filter</div>,
 }));
 

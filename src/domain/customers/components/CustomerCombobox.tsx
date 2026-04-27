@@ -3,24 +3,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Search } from "lucide-react";
 
-import { listCustomers, createCustomer, type DuplicateInfo } from "../../lib/api/customers";
-import type { CustomerSummary } from "../../domain/customers/types";
-import { useToast } from "../../hooks/useToast";
-import { cn } from "../../lib/utils";
+import { listCustomers, createCustomer, type DuplicateInfo } from "@/lib/api/customers";
+import type { CustomerSummary } from "@/domain/customers/types";
+import { useToast } from "@/hooks/useToast";
+import { cn } from "@/lib/utils";
 import {
   customerFormSchema,
   toCustomerCreatePayload,
   type CustomerFormValues,
-} from "../../lib/schemas/customer.schema";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { QuickEntryDialog } from "../ui/QuickEntryDialog";
-import { Spinner } from "../ui/Spinner";
+} from "@/lib/schemas/customer.schema";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { QuickEntryDialog } from "@/components/ui/QuickEntryDialog";
+import { Spinner } from "@/components/ui/Spinner";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "../ui/popover";
+} from "@/components/ui/popover";
 import {
   Command,
   CommandEmpty,
@@ -28,7 +28,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "../ui/command";
+} from "@/components/ui/command";
 
 interface CustomerComboboxProps {
   value: string;

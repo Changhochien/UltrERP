@@ -78,7 +78,7 @@ export const CHART_REGISTRY: ChartSurfaceRegistration[] = [
   // CUSTOMER CHARTS
   {
     id: "customers-revenue-trend",
-    componentPath: "src/components/customers/CustomerAnalyticsTab.tsx",
+    componentPath: "src/domain/customers/components/CustomerAnalyticsTab.tsx",
     tier: "summary",
     renderer: "recharts",
     owner: "customers",

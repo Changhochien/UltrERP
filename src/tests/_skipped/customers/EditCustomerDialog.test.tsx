@@ -1,7 +1,7 @@
 import { cleanup, render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { EditCustomerDialog } from "../../components/customers/EditCustomerDialog";
+import { EditCustomerDialog } from "@/domain/customers/components/EditCustomerDialog";
 
 afterEach(() => {
   cleanup();

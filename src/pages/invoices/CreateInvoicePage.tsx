@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { InvoiceLineEditor } from "../../components/invoices/InvoiceLineEditor";
 import { InvoiceTotalsCard } from "../../components/invoices/InvoiceTotalsCard";
-import { CustomerCombobox } from "../../components/customers/CustomerCombobox";
+import { CustomerCombobox } from "@/domain/customers/components/CustomerCombobox";
 import { PageHeader, SectionCard, SurfaceMessage } from "../../components/layout/PageLayout";
 import { Button } from "../../components/ui/button";
 import { DatePicker } from "../../components/ui/DatePicker";

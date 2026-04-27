@@ -1,8 +1,8 @@
 /** Paginated table of customer summaries. */
 
-import { DataTable } from "../layout/DataTable";
-import { Badge } from "../ui/badge";
-import type { CustomerSummary } from "../../domain/customers/types";
+import { DataTable } from "@/components/layout/DataTable";
+import { Badge } from "@/components/ui/badge";
+import type { CustomerSummary } from "@/domain/customers/types";
 
 interface Props {
   items: CustomerSummary[];

@@ -5,15 +5,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslation } from "react-i18next";
 import { useForm, type Resolver } from "react-hook-form";
 
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Field, FieldLabel, FieldError } from "../ui/field";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Field, FieldLabel, FieldError } from "@/components/ui/field";
 import {
   customerFormSchema,
   type CustomerFormValues,
   toCustomerCreatePayload,
-} from "../../lib/schemas/customer.schema";
-import { useCommercialDefaultsOptions } from "../../hooks/useCommercialDefaultsOptions";
+} from "@/lib/schemas/customer.schema";
+import { useCommercialDefaultsOptions } from "@/hooks/useCommercialDefaultsOptions";
 
 export interface CustomerFormProps {
   onSubmit: (payload: ReturnType<typeof toCustomerCreatePayload>) => void;

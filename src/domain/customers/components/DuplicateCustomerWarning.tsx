@@ -1,7 +1,7 @@
 /** Warning banner shown when a duplicate business number is detected during customer creation. */
 
-import type { DuplicateInfo } from "../../lib/api/customers";
-import { Button } from "../ui/button";
+import type { DuplicateInfo } from "@/lib/api/customers";
+import { Button } from "@/components/ui/button";
 
 export interface DuplicateCustomerWarningProps {
   duplicate: DuplicateInfo;

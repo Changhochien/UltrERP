@@ -5,7 +5,7 @@ import { useSearchParams } from "react-router-dom";
 import { useState } from "react";
 
 import { ActiveFilterBar } from "../../../components/filters/ActiveFilterBar";
-import { CustomerCombobox } from "../../../components/customers/CustomerCombobox";
+import { CustomerCombobox } from "@/domain/customers/components/CustomerCombobox";
 import type { CustomerSummary } from "../../customers/types";
 import { DataTableToolbar, type DataTableSortDirection, type DataTableSortState } from "../../../components/layout/DataTable";
 import { DateRangeFilter } from "../../../components/filters/DateRangeFilter";

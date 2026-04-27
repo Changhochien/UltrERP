@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 
-import { CustomerAnalyticsTab } from "../../components/customers/CustomerAnalyticsTab";
+import { CustomerAnalyticsTab } from "@/domain/customers/components/CustomerAnalyticsTab";
 import { AuthProvider } from "../../hooks/useAuth";
 import {
   getCustomerAnalyticsSummary,

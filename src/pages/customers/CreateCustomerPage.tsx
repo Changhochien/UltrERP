@@ -8,8 +8,8 @@ import { Button } from "../../components/ui/button";
 import type { CustomerCreatePayload, CustomerResponse } from "../../domain/customers/types";
 import { CUSTOMERS_ROUTE, type AppRoute } from "../../lib/routes";
 import { createCustomer, type DuplicateInfo } from "../../lib/api/customers";
-import CustomerForm from "../../components/customers/CustomerForm";
-import DuplicateCustomerWarning from "../../components/customers/DuplicateCustomerWarning";
+import CustomerForm from "@/domain/customers/components/CustomerForm";
+import DuplicateCustomerWarning from "@/domain/customers/components/DuplicateCustomerWarning";
 import { trackEvent, AnalyticsEvents } from "../../lib/analytics";
 import { useToast } from "../../hooks/useToast";
 
