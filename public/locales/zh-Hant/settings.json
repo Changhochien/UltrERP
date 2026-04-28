@@ -270,5 +270,6 @@
     "intelligence_product_performance_enabled_desc": "啟用商品績效分析",
     "intelligence_customer_buying_behavior_enabled": "Intelligence 客戶購買行為分析",
     "intelligence_customer_buying_behavior_enabled_desc": "啟用客戶購買行為分析"
-  }
+  },
+  "selectCurrency": "選擇貨幣"
 }

@@ -1,0 +1,25 @@
+{
+  "createBom": {
+    "title": "建立物料清單",
+    "description": "建立產品的 BOM 以供生產排程使用"
+  },
+  "createWorkOrder": {
+    "title": "建立工單",
+    "description": "建立生產工單以追蹤製造進度"
+  },
+  "createWorkstation": {
+    "title": "建立工作站",
+    "description": "新增製造工作站以配置產能"
+  },
+  "createRouting": {
+    "title": "建立製程路線",
+    "description": "定義製造作業的製程順序"
+  },
+  "createProductionPlan": {
+    "title": "建立生產計劃",
+    "description": "排程生產活動以滿足需求"
+  },
+  "bomDetail": {
+    "created": "建立於"
+  }
+}

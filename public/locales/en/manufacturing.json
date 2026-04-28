@@ -1,0 +1,25 @@
+{
+  "createBom": {
+    "title": "Create BOM",
+    "description": "Create a bill of materials for production scheduling"
+  },
+  "createWorkOrder": {
+    "title": "Create Work Order",
+    "description": "Create a production work order to track manufacturing progress"
+  },
+  "createWorkstation": {
+    "title": "Create Workstation",
+    "description": "Add a manufacturing workstation to configure capacity"
+  },
+  "createRouting": {
+    "title": "Create Routing",
+    "description": "Define the sequence of manufacturing operations"
+  },
+  "createProductionPlan": {
+    "title": "Create Production Plan",
+    "description": "Schedule production activities to meet demand"
+  },
+  "bomDetail": {
+    "created": "Created"
+  }
+}

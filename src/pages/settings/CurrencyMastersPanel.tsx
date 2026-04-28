@@ -568,7 +568,7 @@ export function CurrencyMastersPanel() {
                 onChange={(event) => setNewExchangeRate((current) => ({ ...current, sourceCurrencyCode: event.target.value }))}
                 disabled={!canEdit}
               >
-                <option value="">Select currency</option>
+                <option value="">{t("selectCurrency")}</option>
                 {activeCurrencies.map((currency) => (
                   <option key={currency.id} value={currency.code}>{currency.code}</option>
                 ))}
@@ -584,7 +584,7 @@ export function CurrencyMastersPanel() {
                 onChange={(event) => setNewExchangeRate((current) => ({ ...current, targetCurrencyCode: event.target.value }))}
                 disabled={!canEdit}
               >
-                <option value="">Select currency</option>
+                <option value="">{t("selectCurrency")}</option>
                 {activeCurrencies.map((currency) => (
                   <option key={currency.id} value={currency.code}>{currency.code}</option>
                 ))}

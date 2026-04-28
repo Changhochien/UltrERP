@@ -61,5 +61,9 @@
     "open": "未結",
     "paid": "已付款",
     "voided": "已作廢"
+  },
+  "createPage": {
+    "title": "建立採購訂單",
+    "description": "在建立採購訂單前，先從 RFQ 選擇得標的供應商報價"
   }
 }

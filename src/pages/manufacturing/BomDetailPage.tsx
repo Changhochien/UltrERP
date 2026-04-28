@@ -1,9 +1,12 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 
 import { useBom, useBomActions, useBomHistory } from "@/domain/manufacturing/hooks/useBoms";
 
 export function BomDetailPage() {
+  const { t } = useTranslation("manufacturing");
+
 	const { bomId } = useParams<{ bomId: string }>();
 	const { bom, isLoading, isError, refresh } = useBom(bomId ?? null);
 	const { history, refresh: refreshHistory } = useBomHistory(bom?.product_id ?? null);
@@ -112,7 +115,7 @@ export function BomDetailPage() {
 						<div key={entry.id} className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3">
 							<div>
 								<p className="text-sm font-medium text-gray-900">{entry.code} · Revision {entry.revision || "-"}</p>
-								<p className="text-xs text-gray-500">Created {new Date(entry.created_at).toLocaleString()}</p>
+								<p className="text-xs text-gray-500">{t("bomDetail.created")} {new Date(entry.created_at).toLocaleString()}</p>
 							</div>
 							<div className="flex items-center gap-2">
 								{entry.is_active && <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">Active</span>}

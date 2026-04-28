@@ -270,5 +270,6 @@
     "intelligence_product_performance_enabled_desc": "Enable product performance analysis",
     "intelligence_customer_buying_behavior_enabled": "Intelligence Customer Buying Behavior Enabled",
     "intelligence_customer_buying_behavior_enabled_desc": "Enable customer buying behavior analysis"
-  }
+  },
+  "selectCurrency": "Select currency"
 }

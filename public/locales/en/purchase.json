@@ -61,5 +61,9 @@
     "open": "Open",
     "paid": "Paid",
     "voided": "Voided"
+  },
+  "createPage": {
+    "title": "Create Purchase Order",
+    "description": "Select a winning supplier quotation from an RFQ before creating a purchase order"
   }
 }

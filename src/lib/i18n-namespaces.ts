@@ -13,6 +13,7 @@ export const I18N_NAMESPACES = [
   'auth',
   'accounting',
   'dashboard',
+  'manufacturing',
   'admin',
   'intelligence',
   'crm',
