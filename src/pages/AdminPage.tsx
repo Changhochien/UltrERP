@@ -356,10 +356,10 @@ const { t: tRoutes } = useTranslation("routes");
     if (role === "admin") {
       return tRoutes("admin.label");
     }
-    return t(`adminPage.users.roles.${role}`);
+    return t(`users.roles.${role}`);
   };
-  const statusLabel = (status: AdminUserStatus) => t(`adminPage.users.statuses.${status}`);
-  const permissionLabel = (level: PermissionLevelOrNone) => t(`adminPage.permissions.levels.${level}`);
+  const statusLabel = (status: AdminUserStatus) => t(`users.statuses.${status}`);
+  const permissionLabel = (level: PermissionLevelOrNone) => t(`permissions.levels.${level}`);
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const filteredUsers = users.filter((user) => {
@@ -1043,7 +1043,7 @@ const { t: tRoutes } = useTranslation("routes");
                 {
                   id: "feature",
                   header: t("permissions.columns.feature"),
-                  cell: (row) => t(`adminPage.permissions.features.${row.feature}`),
+                  cell: (row) => t(`permissions.features.${row.feature}`),
                 },
                 ...MATRIX_ROLES.map((role) => ({
                   id: role,
