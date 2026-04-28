@@ -10,16 +10,16 @@ import { RiskSignalFeed } from "../domain/intelligence/components/RiskSignalFeed
 import { PageHeader, SectionCard, SurfaceMessage } from "../components/layout/PageLayout";
 
 export function IntelligencePage() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("intelligence");
 const { t: tRoutes } = useTranslation("routes");
 
   return (
     <div className="space-y-6">
       <PageHeader
         breadcrumb={[{ label: tRoutes("intelligence.label") }]}
-        eyebrow={t("intelligence.page.eyebrow")}
-        title={t("intelligence.page.title")}
-        description={t("intelligence.page.description")}
+        eyebrow={t("page.eyebrow")}
+        title={t("page.title")}
+        description={t("page.description")}
       />
 
       <RiskSignalFeed />
@@ -37,11 +37,11 @@ const { t: tRoutes } = useTranslation("routes");
       <AffinityMatrix />
 
       <SectionCard
-        title={t("intelligence.page.workspaceTitle")}
-        description={t("intelligence.page.workspaceDescription")}
+        title={t("page.workspaceTitle")}
+        description={t("page.workspaceDescription")}
       >
         <SurfaceMessage>
-          {t("intelligence.page.placeholder")}
+          {t("page.placeholder")}
         </SurfaceMessage>
       </SectionCard>
     </div>

@@ -44,7 +44,7 @@ const QA_KEYS: QAAction[] = [
 ];
 
 export function DashboardPage() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("dashboard");
 const { t: tRoutes } = useTranslation("routes");
   const navigate = useNavigate();
   const { data, isLoading, error } = useRevenueSummary();
@@ -64,17 +64,17 @@ const { t: tRoutes } = useTranslation("routes");
         breadcrumb={[{ label: tRoutes("dashboard.label") }]}
         eyebrow={tRoutes("workspace.label")}
         title={APP_TITLE}
-        description={`${t("app.tagline")}. ${t("dashboard.pageDescription")}`}
+        description={`${t("app.tagline")}. ${t("pageDescription")}`}
         actions={(
           <div className="flex flex-wrap gap-3">
             {canWrite("orders") ? (
               <Button type="button" onClick={() => navigate(ORDER_CREATE_ROUTE)}>
-                {t("dashboard.quickActions.newOrder")}
+                {t("quickActions.newOrder")}
               </Button>
             ) : null}
             {canWrite("invoices") ? (
               <Button type="button" variant="outline" onClick={() => navigate(INVOICE_CREATE_ROUTE)}>
-                {t("dashboard.quickActions.newInvoice")}
+                {t("quickActions.newInvoice")}
               </Button>
             ) : null}
           </div>
@@ -90,8 +90,8 @@ const { t: tRoutes } = useTranslation("routes");
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
         <TopProductsCard />
         <SectionCard
-          title={t("dashboard.actionCenter.title")}
-          description={t("dashboard.actionCenter.description")}
+          title={t("actionCenter.title")}
+          description={t("actionCenter.description")}
           contentClassName="space-y-3"
         >
           <div className="grid gap-3">

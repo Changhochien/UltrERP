@@ -292,30 +292,30 @@ function validateForm(
   t: (key: string) => string,
 ): string | null {
   if (!dialogState) {
-    return t("adminPage.users.errors.formUnavailable");
+    return t("users.errors.formUnavailable");
   }
   if (dialogState.mode === "create") {
     if (!form.email.trim()) {
-      return t("adminPage.users.errors.emailRequired");
+      return t("users.errors.emailRequired");
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
-      return t("adminPage.users.errors.emailInvalid");
+      return t("users.errors.emailInvalid");
     }
   }
   if (!form.display_name.trim()) {
-    return t("adminPage.users.errors.displayNameRequired");
+    return t("users.errors.displayNameRequired");
   }
   if (dialogState.mode === "create" && form.password.trim().length < 8) {
-    return t("adminPage.users.errors.passwordTooShort");
+    return t("users.errors.passwordTooShort");
   }
   if (dialogState.mode === "edit" && form.password.trim() && form.password.trim().length < 8) {
-    return t("adminPage.users.errors.resetPasswordTooShort");
+    return t("users.errors.resetPasswordTooShort");
   }
   return null;
 }
 
 export function AdminPage() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("admin");
 const { t: tRoutes } = useTranslation("routes");
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
@@ -399,7 +399,7 @@ const { t: tRoutes } = useTranslation("routes");
       const response = await fetchUsers();
       setUsers(Array.isArray(response) ? response : []);
     } catch (err) {
-      setUsersError(err instanceof Error ? err.message : t("adminPage.errors.loadFailed"));
+      setUsersError(err instanceof Error ? err.message : t("errors.loadFailed"));
     } finally {
       setUsersLoading(false);
     }
@@ -427,7 +427,7 @@ const { t: tRoutes } = useTranslation("routes");
       setAuditLogs(items);
       setAuditTotal(total);
     } catch (err) {
-      setAuditError(err instanceof Error ? err.message : t("adminPage.errors.loadFailed"));
+      setAuditError(err instanceof Error ? err.message : t("errors.loadFailed"));
     } finally {
       setAuditLoading(false);
     }
@@ -586,7 +586,7 @@ const { t: tRoutes } = useTranslation("routes");
   function handleGeneratePassword() {
     const nextPassword = generateTemporaryPassword();
     setFormState((current) => ({ ...current, password: nextPassword }));
-    setDialogNotice(t("adminPage.users.dialog.passwordGenerated"));
+    setDialogNotice(t("users.dialog.passwordGenerated"));
     setDialogError(null);
   }
 
@@ -596,9 +596,9 @@ const { t: tRoutes } = useTranslation("routes");
     }
     try {
       await navigator.clipboard.writeText(formState.password);
-      setDialogNotice(t("adminPage.users.dialog.passwordCopied"));
+      setDialogNotice(t("users.dialog.passwordCopied"));
     } catch {
-      setDialogError(t("adminPage.users.errors.copyFailed"));
+      setDialogError(t("users.errors.copyFailed"));
     }
   }
 
@@ -639,7 +639,7 @@ const { t: tRoutes } = useTranslation("routes");
       await Promise.all([loadUsers(), loadAuditLogs()]);
       resetDialog();
     } catch (err) {
-      setDialogError(err instanceof Error ? err.message : t("adminPage.errors.saveFailed"));
+      setDialogError(err instanceof Error ? err.message : t("errors.saveFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -649,9 +649,9 @@ const { t: tRoutes } = useTranslation("routes");
     <>
       <div className="space-y-6">
         <PageHeader
-          eyebrow={t("adminPage.eyebrow")}
-          title={t("adminPage.title")}
-          description={t("adminPage.description")}
+          eyebrow={t("eyebrow")}
+          title={t("title")}
+          description={t("description")}
         />
 
         {usersError ? <SurfaceMessage tone="danger">{usersError}</SurfaceMessage> : null}
@@ -659,31 +659,31 @@ const { t: tRoutes } = useTranslation("routes");
 
         <div className="grid gap-4 lg:grid-cols-2">
           <SectionCard
-            title={t("adminPage.users.title")}
-            description={t("adminPage.users.description")}
+            title={t("users.title")}
+            description={t("users.description")}
             actions={(
-              <Button onClick={openCreateDialog}>{t("adminPage.users.addUser")}</Button>
+              <Button onClick={openCreateDialog}>{t("users.addUser")}</Button>
             )}
           >
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
               <div className="min-w-0 flex-1 space-y-2">
-                <Label htmlFor="admin-user-search">{t("adminPage.users.filters.search")}</Label>
+                <Label htmlFor="admin-user-search">{t("users.filters.search")}</Label>
                 <Input
                   id="admin-user-search"
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder={t("adminPage.users.filters.searchPlaceholder")}
+                  placeholder={t("users.filters.searchPlaceholder")}
                 />
               </div>
               <div className="space-y-2 sm:w-44">
-                <Label htmlFor="admin-role-filter">{t("adminPage.users.filters.role")}</Label>
+                <Label htmlFor="admin-role-filter">{t("users.filters.role")}</Label>
                 <select
                   id="admin-role-filter"
                   className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                   value={roleFilter}
                   onChange={(event) => setRoleFilter(event.target.value as "all" | AdminUserRole)}
                 >
-                  <option value="all">{t("adminPage.users.filters.allRoles")}</option>
+                  <option value="all">{t("users.filters.allRoles")}</option>
                   {ADMIN_USER_ROLES.map((role) => (
                     <option key={role} value={role}>
                       {roleLabel(role)}
@@ -692,7 +692,7 @@ const { t: tRoutes } = useTranslation("routes");
                 </select>
               </div>
               <div className="space-y-2 sm:w-44">
-                <Label htmlFor="admin-status-filter">{t("adminPage.users.filters.status")}</Label>
+                <Label htmlFor="admin-status-filter">{t("users.filters.status")}</Label>
                 <select
                   id="admin-status-filter"
                   className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -701,7 +701,7 @@ const { t: tRoutes } = useTranslation("routes");
                     setStatusFilter(event.target.value as "all" | AdminUserStatus)
                   }
                 >
-                  <option value="all">{t("adminPage.users.filters.allStatuses")}</option>
+                  <option value="all">{t("users.filters.allStatuses")}</option>
                   {ADMIN_USER_STATUSES.map((status) => (
                     <option key={status} value={status}>
                       {statusLabel(status)}
@@ -715,28 +715,28 @@ const { t: tRoutes } = useTranslation("routes");
               columns={[
                 {
                   id: "email",
-                  header: t("adminPage.users.columns.email"),
+                  header: t("users.columns.email"),
                   sortable: true,
                   getSortValue: (user) => user.email,
                   cell: (user) => <span className="font-medium">{user.email}</span>,
                 },
                 {
                   id: "display_name",
-                  header: t("adminPage.users.columns.displayName"),
+                  header: t("users.columns.displayName"),
                   sortable: true,
                   getSortValue: (user) => user.display_name,
                   cell: (user) => user.display_name,
                 },
                 {
                   id: "role",
-                  header: t("adminPage.users.columns.role"),
+                  header: t("users.columns.role"),
                   sortable: true,
                   getSortValue: (user) => user.role,
                   cell: (user) => roleLabel(user.role),
                 },
                 {
                   id: "status",
-                  header: t("adminPage.users.columns.status"),
+                  header: t("users.columns.status"),
                   sortable: true,
                   getSortValue: (user) => user.status,
                   cell: (user) => (
@@ -747,29 +747,29 @@ const { t: tRoutes } = useTranslation("routes");
                 },
                 {
                   id: "actions",
-                  header: t("adminPage.users.columns.actions"),
+                  header: t("users.columns.actions"),
                   cell: (user) => (
                     <Button variant="outline" size="sm" onClick={() => openEditDialog(user)}>
-                      {t("adminPage.users.editUser")}
+                      {t("users.editUser")}
                     </Button>
                   ),
                 },
               ]}
               data={filteredUsers}
-              summary={t("adminPage.users.summary", {
+              summary={t("users.summary", {
                 filtered: filteredUsers.length,
                 total: users.length,
               })}
               loading={usersLoading && users.length === 0}
-              emptyTitle={t("adminPage.users.emptyTitle")}
-              emptyDescription={t("adminPage.users.emptyDescription")}
+              emptyTitle={t("users.emptyTitle")}
+              emptyDescription={t("users.emptyDescription")}
               getRowId={(user) => user.id}
             />
           </SectionCard>
 
           <SectionCard
-            title={t("adminPage.auditLog.title")}
-            description={t("adminPage.auditLog.description")}
+            title={t("auditLog.title")}
+            description={t("auditLog.description")}
             actions={(
               <div className="flex gap-2">
                 <Button
@@ -778,7 +778,7 @@ const { t: tRoutes } = useTranslation("routes");
                   onClick={() => exportAuditLogs("csv")}
                   disabled={auditLogs.length === 0}
                 >
-                  {t("adminPage.auditLog.export.csv")}
+                  {t("auditLog.export.csv")}
                 </Button>
                 <Button
                   variant="outline"
@@ -786,7 +786,7 @@ const { t: tRoutes } = useTranslation("routes");
                   onClick={() => exportAuditLogs("json")}
                   disabled={auditLogs.length === 0}
                 >
-                  {t("adminPage.auditLog.export.json")}
+                  {t("auditLog.export.json")}
                 </Button>
               </div>
             )}
@@ -794,12 +794,12 @@ const { t: tRoutes } = useTranslation("routes");
             <div className="mb-4 rounded-2xl border border-border/70 bg-muted/15 p-4">
               <div className="flex flex-col gap-3 md:flex-row md:items-end">
                 <div className="min-w-0 flex-1 space-y-2">
-                  <Label htmlFor="admin-audit-preset-name">{t("adminPage.auditLog.savedPresets.name")}</Label>
+                  <Label htmlFor="admin-audit-preset-name">{t("auditLog.savedPresets.name")}</Label>
                   <Input
                     id="admin-audit-preset-name"
                     value={savedAuditPresetName}
                     onChange={(event) => setSavedAuditPresetName(event.target.value)}
-                    placeholder={t("adminPage.auditLog.savedPresets.namePlaceholder")}
+                    placeholder={t("auditLog.savedPresets.namePlaceholder")}
                   />
                 </div>
                 <Button
@@ -807,13 +807,13 @@ const { t: tRoutes } = useTranslation("routes");
                   onClick={saveCurrentAuditPreset}
                   disabled={!savedAuditPresetName.trim()}
                 >
-                  {t("adminPage.auditLog.savedPresets.save")}
+                  {t("auditLog.savedPresets.save")}
                 </Button>
               </div>
 
               {savedAuditPresets.length === 0 ? (
                 <p className="mt-3 text-sm text-muted-foreground">
-                  {t("adminPage.auditLog.savedPresets.empty")}
+                  {t("auditLog.savedPresets.empty")}
                 </p>
               ) : (
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -828,10 +828,10 @@ const { t: tRoutes } = useTranslation("routes");
                       <Button
                         variant="ghost"
                         size="sm"
-                        aria-label={t("adminPage.auditLog.savedPresets.delete")}
+                        aria-label={t("auditLog.savedPresets.delete")}
                         onClick={() => deleteSavedAuditPreset(preset.name)}
                       >
-                        {t("adminPage.auditLog.savedPresets.delete")}
+                        {t("auditLog.savedPresets.delete")}
                       </Button>
                     </div>
                   ))}
@@ -841,38 +841,38 @@ const { t: tRoutes } = useTranslation("routes");
 
             <div className="mb-4 flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={() => applyAuditDatePreset("today")}>
-                {t("adminPage.auditLog.presets.today")}
+                {t("auditLog.presets.today")}
               </Button>
               <Button variant="outline" size="sm" onClick={() => applyAuditDatePreset("last7Days")}>
-                {t("adminPage.auditLog.presets.last7Days")}
+                {t("auditLog.presets.last7Days")}
               </Button>
               <Button variant="outline" size="sm" onClick={() => applyAuditDatePreset("thisMonth")}>
-                {t("adminPage.auditLog.presets.thisMonth")}
+                {t("auditLog.presets.thisMonth")}
               </Button>
               <Button variant="ghost" size="sm" onClick={clearAuditDateRange}>
-                {t("adminPage.auditLog.presets.clear")}
+                {t("auditLog.presets.clear")}
               </Button>
             </div>
 
             <div className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <div className="space-y-2">
-                <Label htmlFor="admin-audit-actor">{t("adminPage.auditLog.filters.actor")}</Label>
+                <Label htmlFor="admin-audit-actor">{t("auditLog.filters.actor")}</Label>
                 <Input
                   id="admin-audit-actor"
                   value={auditFilters.actorId}
                   onChange={(event) => updateAuditFilter("actorId", event.target.value)}
-                  placeholder={t("adminPage.auditLog.filters.actorPlaceholder")}
+                  placeholder={t("auditLog.filters.actorPlaceholder")}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="admin-audit-actor-type">{t("adminPage.auditLog.filters.actorType")}</Label>
+                <Label htmlFor="admin-audit-actor-type">{t("auditLog.filters.actorType")}</Label>
                 <select
                   id="admin-audit-actor-type"
                   className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                   value={auditFilters.actorType}
                   onChange={(event) => updateAuditFilter("actorType", event.target.value)}
                 >
-                  <option value="">{t("adminPage.auditLog.filters.actorTypePlaceholder")}</option>
+                  <option value="">{t("auditLog.filters.actorTypePlaceholder")}</option>
                   {auditActorTypeOptions.map((actorType) => (
                     <option key={actorType} value={actorType}>
                       {actorType}
@@ -881,14 +881,14 @@ const { t: tRoutes } = useTranslation("routes");
                 </select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="admin-audit-action">{t("adminPage.auditLog.filters.action")}</Label>
+                <Label htmlFor="admin-audit-action">{t("auditLog.filters.action")}</Label>
                 <select
                   id="admin-audit-action"
                   className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                   value={auditFilters.action}
                   onChange={(event) => updateAuditFilter("action", event.target.value)}
                 >
-                  <option value="">{t("adminPage.auditLog.filters.actionPlaceholder")}</option>
+                  <option value="">{t("auditLog.filters.actionPlaceholder")}</option>
                   {auditActionOptions.map((action) => (
                     <option key={action} value={action}>
                       {action}
@@ -897,14 +897,14 @@ const { t: tRoutes } = useTranslation("routes");
                 </select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="admin-audit-entity-type">{t("adminPage.auditLog.filters.entityType")}</Label>
+                <Label htmlFor="admin-audit-entity-type">{t("auditLog.filters.entityType")}</Label>
                 <select
                   id="admin-audit-entity-type"
                   className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                   value={auditFilters.entityType}
                   onChange={(event) => updateAuditFilter("entityType", event.target.value)}
                 >
-                  <option value="">{t("adminPage.auditLog.filters.entityTypePlaceholder")}</option>
+                  <option value="">{t("auditLog.filters.entityTypePlaceholder")}</option>
                   {auditEntityOptions.map((entityType) => (
                     <option key={entityType} value={entityType}>
                       {entityType}
@@ -913,17 +913,17 @@ const { t: tRoutes } = useTranslation("routes");
                 </select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="admin-audit-entity-id">{t("adminPage.auditLog.filters.entityId")}</Label>
+                <Label htmlFor="admin-audit-entity-id">{t("auditLog.filters.entityId")}</Label>
                 <Input
                   id="admin-audit-entity-id"
                   value={auditFilters.entityId}
                   onChange={(event) => updateAuditFilter("entityId", event.target.value)}
-                  placeholder={t("adminPage.auditLog.filters.entityIdPlaceholder")}
+                  placeholder={t("auditLog.filters.entityIdPlaceholder")}
                 />
               </div>
               <div className="space-y-2">
                 <Label>
-                  {t("adminPage.auditLog.filters.createdAfter")} / {t("adminPage.auditLog.filters.createdBefore")}
+                  {t("auditLog.filters.createdAfter")} / {t("auditLog.filters.createdBefore")}
                 </Label>
                 <div className="grid gap-2 sm:grid-cols-2">
                   <div className="space-y-1">
@@ -931,12 +931,12 @@ const { t: tRoutes } = useTranslation("routes");
                       id="admin-audit-created-after-label"
                       className="text-xs text-muted-foreground"
                     >
-                      {t("adminPage.auditLog.filters.createdAfter")}
+                      {t("auditLog.filters.createdAfter")}
                     </span>
                     <DatePicker
                       id="admin-audit-created-after"
                       aria-labelledby="admin-audit-created-after-label"
-                      placeholder={t("adminPage.auditLog.filters.createdAfter")}
+                      placeholder={t("auditLog.filters.createdAfter")}
                       value={parseDatePickerInputValue(auditFilters.createdAfter)}
                       onChange={(value) =>
                         setAuditDateRange(
@@ -952,12 +952,12 @@ const { t: tRoutes } = useTranslation("routes");
                       id="admin-audit-created-before-label"
                       className="text-xs text-muted-foreground"
                     >
-                      {t("adminPage.auditLog.filters.createdBefore")}
+                      {t("auditLog.filters.createdBefore")}
                     </span>
                     <DatePicker
                       id="admin-audit-created-before"
                       aria-labelledby="admin-audit-created-before-label"
-                      placeholder={t("adminPage.auditLog.filters.createdBefore")}
+                      placeholder={t("auditLog.filters.createdBefore")}
                       value={parseDatePickerInputValue(auditFilters.createdBefore)}
                       onChange={(value) =>
                         setAuditDateRange(
@@ -976,52 +976,52 @@ const { t: tRoutes } = useTranslation("routes");
               columns={[
                 {
                   id: "created_at",
-                  header: t("adminPage.auditLog.columns.createdAt"),
+                  header: t("auditLog.columns.createdAt"),
                   getSortValue: (entry) => new Date(entry.created_at).getTime(),
                   cell: (entry) => new Date(entry.created_at).toLocaleString(),
                 },
                 {
                   id: "actor_id",
-                  header: t("adminPage.auditLog.columns.actor"),
+                  header: t("auditLog.columns.actor"),
                   getSortValue: (entry) => entry.actor_id,
                   cell: (entry) => entry.actor_id,
                 },
                 {
                   id: "actor_type",
-                  header: t("adminPage.auditLog.columns.actorType"),
+                  header: t("auditLog.columns.actorType"),
                   getSortValue: (entry) => entry.actor_type,
                   cell: (entry) => entry.actor_type,
                 },
                 {
                   id: "action",
-                  header: t("adminPage.auditLog.columns.action"),
+                  header: t("auditLog.columns.action"),
                   getSortValue: (entry) => entry.action,
                   cell: (entry) => entry.action,
                 },
                 {
                   id: "entity_id",
-                  header: t("adminPage.auditLog.columns.target"),
+                  header: t("auditLog.columns.target"),
                   getSortValue: (entry) => `${entry.entity_type}:${entry.entity_id}`,
                   cell: (entry) => `${entry.entity_type}:${entry.entity_id}`,
                 },
                 {
                   id: "details",
-                  header: t("adminPage.auditLog.columns.details"),
+                  header: t("auditLog.columns.details"),
                   cell: (entry) => (
                     <Button variant="ghost" size="sm" onClick={() => setSelectedAuditLog(entry)}>
-                      {t("adminPage.auditLog.actions.view")}
+                      {t("auditLog.actions.view")}
                     </Button>
                   ),
                 },
               ]}
               data={auditLogs}
-              summary={t("adminPage.auditLog.summary", {
+              summary={t("auditLog.summary", {
                 filtered: auditLogs.length,
                 total: auditTotal,
               })}
               loading={auditLoading && auditLogs.length === 0}
-              emptyTitle={t("adminPage.auditLog.emptyTitle")}
-              emptyDescription={t("adminPage.auditLog.emptyDescription")}
+              emptyTitle={t("auditLog.emptyTitle")}
+              emptyDescription={t("auditLog.emptyDescription")}
               page={auditPage}
               pageSize={AUDIT_PAGE_SIZE}
               totalItems={auditTotal}
@@ -1035,14 +1035,14 @@ const { t: tRoutes } = useTranslation("routes");
 
         <div className="grid gap-4 xl:grid-cols-2">
           <SectionCard
-            title={t("adminPage.permissions.title")}
-            description={t("adminPage.permissions.description")}
+            title={t("permissions.title")}
+            description={t("permissions.description")}
           >
             <DataTable
               columns={[
                 {
                   id: "feature",
-                  header: t("adminPage.permissions.columns.feature"),
+                  header: t("permissions.columns.feature"),
                   cell: (row) => t(`adminPage.permissions.features.${row.feature}`),
                 },
                 ...MATRIX_ROLES.map((role) => ({
@@ -1056,26 +1056,26 @@ const { t: tRoutes } = useTranslation("routes");
                 })),
               ]}
               data={permissionRows}
-              emptyTitle={t("adminPage.permissions.emptyTitle")}
-              emptyDescription={t("adminPage.permissions.emptyDescription")}
+              emptyTitle={t("permissions.emptyTitle")}
+              emptyDescription={t("permissions.emptyDescription")}
               getRowId={(row) => row.feature}
             />
           </SectionCard>
 
           <SectionCard
-            title={t("adminPage.settingsHub.title")}
-            description={t("adminPage.settingsHub.description")}
+            title={t("settingsHub.title")}
+            description={t("settingsHub.description")}
             actions={(
               <Link className={cn(buttonVariants({ variant: "outline", size: "sm" }))} to={SETTINGS_ROUTE}>
-                {t("adminPage.settingsHub.openSettings")}
+                {t("settingsHub.openSettings")}
               </Link>
             )}
           >
             <ul className="space-y-3 text-sm text-muted-foreground">
-              <li>{t("adminPage.settingsHub.items.general")}</li>
-              <li>{t("adminPage.settingsHub.items.security")}</li>
-              <li>{t("adminPage.settingsHub.items.appearance")}</li>
-              <li>{t("adminPage.settingsHub.items.data")}</li>
+              <li>{t("settingsHub.items.general")}</li>
+              <li>{t("settingsHub.items.security")}</li>
+              <li>{t("settingsHub.items.appearance")}</li>
+              <li>{t("settingsHub.items.data")}</li>
             </ul>
           </SectionCard>
         </div>
@@ -1096,13 +1096,13 @@ const { t: tRoutes } = useTranslation("routes");
           <DialogHeader>
             <DialogTitle>
               {dialogState?.mode === "edit"
-                ? t("adminPage.users.dialog.editTitle")
-                : t("adminPage.users.dialog.createTitle")}
+                ? t("users.dialog.editTitle")
+                : t("users.dialog.createTitle")}
             </DialogTitle>
             <DialogDescription id="admin-user-dialog-description">
               {dialogState?.mode === "edit"
-                ? t("adminPage.users.dialog.editDescription")
-                : t("adminPage.users.dialog.createDescription")}
+                ? t("users.dialog.editDescription")
+                : t("users.dialog.createDescription")}
             </DialogDescription>
           </DialogHeader>
 
@@ -1111,7 +1111,7 @@ const { t: tRoutes } = useTranslation("routes");
             {dialogNotice ? <SurfaceMessage tone="default">{dialogNotice}</SurfaceMessage> : null}
 
             <div className="space-y-2">
-              <Label htmlFor="admin-user-email">{t("adminPage.users.fields.email")}</Label>
+              <Label htmlFor="admin-user-email">{t("users.fields.email")}</Label>
               <Input
                 id="admin-user-email"
                 type="email"
@@ -1124,7 +1124,7 @@ const { t: tRoutes } = useTranslation("routes");
 
             <div className="space-y-2">
               <Label htmlFor="admin-user-display-name">
-                {t("adminPage.users.fields.displayName")}
+                {t("users.fields.displayName")}
               </Label>
               <Input
                 id="admin-user-display-name"
@@ -1138,7 +1138,7 @@ const { t: tRoutes } = useTranslation("routes");
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="admin-user-role">{t("adminPage.users.fields.role")}</Label>
+              <Label htmlFor="admin-user-role">{t("users.fields.role")}</Label>
               <select
                 id="admin-user-role"
                 className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -1161,7 +1161,7 @@ const { t: tRoutes } = useTranslation("routes");
 
             {dialogState?.mode === "edit" ? (
               <div className="space-y-2">
-                <Label htmlFor="admin-user-status">{t("adminPage.users.fields.status")}</Label>
+                <Label htmlFor="admin-user-status">{t("users.fields.status")}</Label>
                 <select
                   id="admin-user-status"
                   className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -1187,12 +1187,12 @@ const { t: tRoutes } = useTranslation("routes");
               <div className="flex items-center justify-between gap-2">
                 <Label htmlFor="admin-user-password">
                   {dialogState?.mode === "edit"
-                    ? t("adminPage.users.fields.resetPassword")
-                    : t("adminPage.users.fields.password")}
+                    ? t("users.fields.resetPassword")
+                    : t("users.fields.password")}
                 </Label>
                 <div className="flex gap-2">
                   <Button type="button" variant="outline" size="sm" onClick={handleGeneratePassword}>
-                    {t("adminPage.users.dialog.generatePassword")}
+                    {t("users.dialog.generatePassword")}
                   </Button>
                   <Button
                     type="button"
@@ -1203,7 +1203,7 @@ const { t: tRoutes } = useTranslation("routes");
                     }}
                     disabled={!formState.password.trim()}
                   >
-                    {t("adminPage.users.dialog.copyPassword")}
+                    {t("users.dialog.copyPassword")}
                   </Button>
                 </div>
               </div>
@@ -1218,23 +1218,23 @@ const { t: tRoutes } = useTranslation("routes");
               />
               <p className="text-xs text-muted-foreground">
                 {dialogState?.mode === "edit"
-                  ? t("adminPage.users.dialog.resetPasswordHelp")
-                  : t("adminPage.users.dialog.passwordHelp")}
+                  ? t("users.dialog.resetPasswordHelp")
+                  : t("users.dialog.passwordHelp")}
               </p>
             </div>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={resetDialog} disabled={submitting}>
-                {t("adminPage.users.dialog.cancel")}
+                {t("users.dialog.cancel")}
               </Button>
               <Button type="submit" disabled={submitting}>
                 {submitting
                   ? dialogState?.mode === "edit"
-                    ? t("adminPage.users.dialog.saving")
-                    : t("adminPage.users.dialog.creating")
+                    ? t("users.dialog.saving")
+                    : t("users.dialog.creating")
                   : dialogState?.mode === "edit"
-                    ? t("adminPage.users.dialog.save")
-                    : t("adminPage.users.dialog.createAction")}
+                    ? t("users.dialog.save")
+                    : t("users.dialog.createAction")}
               </Button>
             </DialogFooter>
           </form>
@@ -1251,8 +1251,8 @@ const { t: tRoutes } = useTranslation("routes");
       >
         <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-xl">
           <SheetHeader>
-            <SheetTitle>{t("adminPage.auditLog.detailSheet.title")}</SheetTitle>
-            <SheetDescription>{t("adminPage.auditLog.detailSheet.description")}</SheetDescription>
+            <SheetTitle>{t("auditLog.detailSheet.title")}</SheetTitle>
+            <SheetDescription>{t("auditLog.detailSheet.description")}</SheetDescription>
           </SheetHeader>
 
           {selectedAuditLog ? (
@@ -1260,66 +1260,66 @@ const { t: tRoutes } = useTranslation("routes");
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1">
                   <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    {t("adminPage.auditLog.detailSheet.fields.createdAt")}
+                    {t("auditLog.detailSheet.fields.createdAt")}
                   </p>
                   <p>{new Date(selectedAuditLog.created_at).toLocaleString()}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    {t("adminPage.auditLog.detailSheet.fields.action")}
+                    {t("auditLog.detailSheet.fields.action")}
                   </p>
                   <p>{selectedAuditLog.action}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    {t("adminPage.auditLog.detailSheet.fields.actor")}
+                    {t("auditLog.detailSheet.fields.actor")}
                   </p>
                   <p>{selectedAuditLog.actor_id}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    {t("adminPage.auditLog.detailSheet.fields.actorType")}
+                    {t("auditLog.detailSheet.fields.actorType")}
                   </p>
                   <p>{selectedAuditLog.actor_type}</p>
                 </div>
                 <div className="space-y-1 sm:col-span-2">
                   <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    {t("adminPage.auditLog.detailSheet.fields.target")}
+                    {t("auditLog.detailSheet.fields.target")}
                   </p>
                   <p>{`${selectedAuditLog.entity_type}:${selectedAuditLog.entity_id}`}</p>
                 </div>
                 <div className="space-y-1 sm:col-span-2">
                   <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    {t("adminPage.auditLog.detailSheet.fields.correlationId")}
+                    {t("auditLog.detailSheet.fields.correlationId")}
                   </p>
-                  <p>{selectedAuditLog.correlation_id ?? t("adminPage.auditLog.detailSheet.emptyState")}</p>
+                  <p>{selectedAuditLog.correlation_id ?? t("auditLog.detailSheet.emptyState")}</p>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                  {t("adminPage.auditLog.detailSheet.fields.notes")}
+                  {t("auditLog.detailSheet.fields.notes")}
                 </p>
                 <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-3 text-sm">
-                  {selectedAuditLog.notes ?? t("adminPage.auditLog.detailSheet.emptyState")}
+                  {selectedAuditLog.notes ?? t("auditLog.detailSheet.emptyState")}
                 </div>
               </div>
 
               <div className="space-y-2">
                 <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                  {t("adminPage.auditLog.detailSheet.fields.beforeState")}
+                  {t("auditLog.detailSheet.fields.beforeState")}
                 </p>
                 <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-xl border border-border/70 bg-muted/20 p-4 text-xs leading-6 text-foreground">
-                  {formatAuditState(selectedAuditLog.before_state) ?? t("adminPage.auditLog.detailSheet.emptyState")}
+                  {formatAuditState(selectedAuditLog.before_state) ?? t("auditLog.detailSheet.emptyState")}
                 </pre>
               </div>
 
               <div className="space-y-2">
                 <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                  {t("adminPage.auditLog.detailSheet.fields.afterState")}
+                  {t("auditLog.detailSheet.fields.afterState")}
                 </p>
                 <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-xl border border-border/70 bg-muted/20 p-4 text-xs leading-6 text-foreground">
-                  {formatAuditState(selectedAuditLog.after_state) ?? t("adminPage.auditLog.detailSheet.emptyState")}
+                  {formatAuditState(selectedAuditLog.after_state) ?? t("auditLog.detailSheet.emptyState")}
                 </pre>
               </div>
             </div>
@@ -1434,10 +1434,10 @@ function BatchPointerDisplay({ ptr, label }: { ptr: BatchPointer | null; label: 
 }
 
 function LaneStatusCard({ status }: { status: LegacyRefreshLaneStatus }) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("admin");
   const affectedDomainsLabel = status.affected_domains.length > 0
     ? status.affected_domains.join(", ")
-    : t("adminPage.legacyRefresh.details.noAffectedDomains");
+    : t("legacyRefresh.details.noAffectedDomains");
 
   return (
     <div className="rounded-2xl border border-border/70 bg-muted/10 p-4 space-y-3">
@@ -1451,16 +1451,16 @@ function LaneStatusCard({ status }: { status: LegacyRefreshLaneStatus }) {
         <div className="flex flex-col items-end gap-1">
           {status.lane_locked ? (
             <Badge variant="warning" className="normal-case tracking-normal">
-              {t("adminPage.legacyRefresh.status.locked")}
+              {t("legacyRefresh.status.locked")}
             </Badge>
           ) : (
             <Badge variant="success" className="normal-case tracking-normal">
-              {t("adminPage.legacyRefresh.status.idle")}
+              {t("legacyRefresh.status.idle")}
             </Badge>
           )}
           {status.promotion_eligible && (
             <Badge variant="success" className="normal-case tracking-normal">
-              {t("adminPage.legacyRefresh.status.eligible")}
+              {t("legacyRefresh.status.eligible")}
             </Badge>
           )}
           {status.promotion_classification && !status.promotion_eligible && (
@@ -1473,7 +1473,7 @@ function LaneStatusCard({ status }: { status: LegacyRefreshLaneStatus }) {
 
       {status.blocked_reason && (
         <SurfaceMessage tone="danger" className="text-xs">
-          {t("adminPage.legacyRefresh.status.blocked")}: {status.blocked_reason}
+          {t("legacyRefresh.status.blocked")}: {status.blocked_reason}
         </SurfaceMessage>
       )}
 
@@ -1486,19 +1486,19 @@ function LaneStatusCard({ status }: { status: LegacyRefreshLaneStatus }) {
       <div className="grid gap-3 rounded-xl border border-border/50 bg-background/70 p-3 text-xs sm:grid-cols-2">
         <div className="space-y-1">
           <p className="font-medium text-muted-foreground">
-            {t("adminPage.legacyRefresh.details.currentMode")}
+            {t("legacyRefresh.details.currentMode")}
           </p>
           <p>{status.current_batch_mode ? formatDisposition(status.current_batch_mode) : "-"}</p>
         </div>
         <div className="space-y-1">
           <p className="font-medium text-muted-foreground">
-            {t("adminPage.legacyRefresh.details.affectedDomains")}
+            {t("legacyRefresh.details.affectedDomains")}
           </p>
           <p>{affectedDomainsLabel}</p>
         </div>
         <div className="space-y-1 sm:col-span-2">
           <p className="font-medium text-muted-foreground">
-            {t("adminPage.legacyRefresh.details.summaryPath")}
+            {t("legacyRefresh.details.summaryPath")}
           </p>
           <p className="break-all font-mono text-[11px]">
             {status.latest_run?.summary_path ?? "-"}
@@ -1506,7 +1506,7 @@ function LaneStatusCard({ status }: { status: LegacyRefreshLaneStatus }) {
         </div>
         <div className="space-y-1 sm:col-span-2">
           <p className="font-medium text-muted-foreground">
-            {t("adminPage.legacyRefresh.details.incrementalStatePath")}
+            {t("legacyRefresh.details.incrementalStatePath")}
           </p>
           <p className="break-all font-mono text-[11px]">
             {status.incremental_state_path ?? "-"}
@@ -1517,15 +1517,15 @@ function LaneStatusCard({ status }: { status: LegacyRefreshLaneStatus }) {
       <div className="grid gap-3 sm:grid-cols-3">
         <BatchPointerDisplay
           ptr={status.latest_run}
-          label={t("adminPage.legacyRefresh.columns.latestRun")}
+          label={t("legacyRefresh.columns.latestRun")}
         />
         <BatchPointerDisplay
           ptr={status.latest_success}
-          label={t("adminPage.legacyRefresh.columns.latestSuccess")}
+          label={t("legacyRefresh.columns.latestSuccess")}
         />
         <BatchPointerDisplay
           ptr={status.latest_promoted}
-          label={t("adminPage.legacyRefresh.columns.latestPromoted")}
+          label={t("legacyRefresh.columns.latestPromoted")}
         />
       </div>
     </div>
@@ -1533,11 +1533,11 @@ function LaneStatusCard({ status }: { status: LegacyRefreshLaneStatus }) {
 }
 
 function RecentRunsTable({ runs }: { runs: RefreshJobRecord[] }) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("admin");
   if (runs.length === 0) {
     return (
       <p className="py-6 text-center text-sm text-muted-foreground">
-        {t("adminPage.legacyRefresh.recentRuns.empty")}
+        {t("legacyRefresh.recentRuns.empty")}
       </p>
     );
   }
@@ -1568,7 +1568,7 @@ function RecentRunsTable({ runs }: { runs: RefreshJobRecord[] }) {
             )}
             {run.promotion_eligible && (
               <Badge variant="success" className="normal-case tracking-normal">
-                {t("adminPage.legacyRefresh.status.eligible")}
+                {t("legacyRefresh.status.eligible")}
               </Badge>
             )}
           </div>
@@ -1579,7 +1579,7 @@ function RecentRunsTable({ runs }: { runs: RefreshJobRecord[] }) {
 }
 
 function LegacyRefreshSection() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("admin");
   const [lanes, setLanes] = useState<LegacyRefreshLaneStatus[]>([]);
   const [recentRuns, setRecentRuns] = useState<RefreshJobRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -1619,7 +1619,7 @@ function LegacyRefreshSection() {
     try {
       await Promise.all([loadLanes(), loadRecentRuns()]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("adminPage.errors.loadFailed"));
+      setError(err instanceof Error ? err.message : t("errors.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -1658,7 +1658,7 @@ function LegacyRefreshSection() {
         void loadAll();
       }
     } catch (err) {
-      setTriggerError(err instanceof Error ? err.message : t("adminPage.errors.saveFailed"));
+      setTriggerError(err instanceof Error ? err.message : t("errors.saveFailed"));
     } finally {
       setTriggerLoading(false);
     }
@@ -1681,11 +1681,11 @@ function LegacyRefreshSection() {
       setSalesMonthlyHealth(result);
       setSalesMonthlyNotice(
         result.is_healthy
-          ? t("adminPage.legacyRefresh.salesMonthly.notices.healthy")
-          : t("adminPage.legacyRefresh.salesMonthly.notices.degraded", { count: result.missing_month_count }),
+          ? t("legacyRefresh.salesMonthly.notices.healthy")
+          : t("legacyRefresh.salesMonthly.notices.degraded", { count: result.missing_month_count }),
       );
     } catch (err) {
-      setSalesMonthlyError(err instanceof Error ? err.message : t("adminPage.errors.loadFailed"));
+      setSalesMonthlyError(err instanceof Error ? err.message : t("errors.loadFailed"));
     } finally {
       setSalesMonthlyLoading(false);
     }
@@ -1717,12 +1717,12 @@ function LegacyRefreshSection() {
       const result = await repairSalesMonthlyMissing(tenantId, missingMonths);
       await refreshSalesMonthlyHealthAfterMutation();
       setSalesMonthlyNotice(
-        t("adminPage.legacyRefresh.salesMonthly.notices.repaired", {
+        t("legacyRefresh.salesMonthly.notices.repaired", {
           count: result.refreshed_month_count,
         }),
       );
     } catch (err) {
-      setSalesMonthlyError(err instanceof Error ? err.message : t("adminPage.errors.saveFailed"));
+      setSalesMonthlyError(err instanceof Error ? err.message : t("errors.saveFailed"));
     } finally {
       setSalesMonthlyAction(null);
     }
@@ -1744,12 +1744,12 @@ function LegacyRefreshSection() {
       );
       await refreshSalesMonthlyHealthAfterMutation();
       setSalesMonthlyNotice(
-        t("adminPage.legacyRefresh.salesMonthly.notices.backfilled", {
+        t("legacyRefresh.salesMonthly.notices.backfilled", {
           count: result.refreshed_month_count,
         }),
       );
     } catch (err) {
-      setSalesMonthlyError(err instanceof Error ? err.message : t("adminPage.errors.saveFailed"));
+      setSalesMonthlyError(err instanceof Error ? err.message : t("errors.saveFailed"));
     } finally {
       setSalesMonthlyAction(null);
     }
@@ -1758,49 +1758,49 @@ function LegacyRefreshSection() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow={t("adminPage.legacyRefresh.eyebrow")}
-        title={t("adminPage.legacyRefresh.title")}
-        description={t("adminPage.legacyRefresh.description")}
+        eyebrow={t("legacyRefresh.eyebrow")}
+        title={t("legacyRefresh.title")}
+        description={t("legacyRefresh.description")}
       />
 
       {error ? <SurfaceMessage tone="danger">{error}</SurfaceMessage> : null}
       {triggerError && <SurfaceMessage tone="warning">{triggerError}</SurfaceMessage>}
       {triggerResult && !("conflict" in triggerResult) && (
         <SurfaceMessage tone="success">
-          {t("adminPage.legacyRefresh.trigger.launched")}: {triggerResult.batch_id}
+          {t("legacyRefresh.trigger.launched")}: {triggerResult.batch_id}
         </SurfaceMessage>
       )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Trigger Control */}
         <SectionCard
-          title={t("adminPage.legacyRefresh.trigger.title")}
-          description={t("adminPage.legacyRefresh.trigger.description")}
+          title={t("legacyRefresh.trigger.title")}
+          description={t("legacyRefresh.trigger.description")}
         >
           <form className="space-y-4" onSubmit={handleTrigger}>
             <div className="space-y-2">
-              <Label htmlFor="lr-tenant-id">{t("adminPage.legacyRefresh.fields.tenantId")}</Label>
+              <Label htmlFor="lr-tenant-id">{t("legacyRefresh.fields.tenantId")}</Label>
               <Input
                 id="lr-tenant-id"
                 value={form.tenantId}
                 onChange={(e) => setForm((f) => ({ ...f, tenantId: e.target.value }))}
-                placeholder={t("adminPage.legacyRefresh.fields.tenantIdPlaceholder")}
+                placeholder={t("legacyRefresh.fields.tenantIdPlaceholder")}
                 required
               />
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="lr-schema-name">{t("adminPage.legacyRefresh.fields.schemaName")}</Label>
+                <Label htmlFor="lr-schema-name">{t("legacyRefresh.fields.schemaName")}</Label>
                 <Input
                   id="lr-schema-name"
                   value={form.schemaName}
                   onChange={(e) => setForm((f) => ({ ...f, schemaName: e.target.value }))}
-                  placeholder={t("adminPage.legacyRefresh.fields.schemaNamePlaceholder")}
+                  placeholder={t("legacyRefresh.fields.schemaNamePlaceholder")}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lr-source-schema">{t("adminPage.legacyRefresh.fields.sourceSchema")}</Label>
+                <Label htmlFor="lr-source-schema">{t("legacyRefresh.fields.sourceSchema")}</Label>
                 <Input
                   id="lr-source-schema"
                   value={form.sourceSchema}
@@ -1811,19 +1811,19 @@ function LegacyRefreshSection() {
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="lr-mode">{t("adminPage.legacyRefresh.fields.mode")}</Label>
+                <Label htmlFor="lr-mode">{t("legacyRefresh.fields.mode")}</Label>
                 <select
                   id="lr-mode"
                   className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                   value={form.mode}
                   onChange={(e) => setForm((f) => ({ ...f, mode: e.target.value as RefreshMode }))}
                 >
-                  <option value="incremental">{t("adminPage.legacyRefresh.modes.incremental")}</option>
-                  <option value="full-rebaseline">{t("adminPage.legacyRefresh.modes.fullRebaseline")}</option>
+                  <option value="incremental">{t("legacyRefresh.modes.incremental")}</option>
+                  <option value="full-rebaseline">{t("legacyRefresh.modes.fullRebaseline")}</option>
                 </select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lr-lookback">{t("adminPage.legacyRefresh.fields.lookbackDays")}</Label>
+                <Label htmlFor="lr-lookback">{t("legacyRefresh.fields.lookbackDays")}</Label>
                 <Input
                   id="lr-lookback"
                   type="number"
@@ -1835,7 +1835,7 @@ function LegacyRefreshSection() {
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="lr-threshold">{t("adminPage.legacyRefresh.fields.reconciliationThreshold")}</Label>
+                <Label htmlFor="lr-threshold">{t("legacyRefresh.fields.reconciliationThreshold")}</Label>
                 <Input
                   id="lr-threshold"
                   type="number"
@@ -1852,29 +1852,29 @@ function LegacyRefreshSection() {
                     onChange={(e) => setForm((f) => ({ ...f, dryRun: e.target.checked }))}
                     className="h-4 w-4 rounded border-input"
                   />
-                  {t("adminPage.legacyRefresh.fields.dryRun")}
+                  {t("legacyRefresh.fields.dryRun")}
                 </label>
               </div>
             </div>
             <Button type="submit" disabled={triggerLoading || !form.tenantId || !form.schemaName}>
-              {triggerLoading ? t("adminPage.legacyRefresh.trigger.launching") : t("adminPage.legacyRefresh.trigger.launch")}
+              {triggerLoading ? t("legacyRefresh.trigger.launching") : t("legacyRefresh.trigger.launch")}
             </Button>
           </form>
         </SectionCard>
 
         {/* Recent Runs */}
         <SectionCard
-          title={t("adminPage.legacyRefresh.recentRuns.title")}
-          description={t("adminPage.legacyRefresh.recentRuns.description")}
+          title={t("legacyRefresh.recentRuns.title")}
+          description={t("legacyRefresh.recentRuns.description")}
           actions={
             <Button variant="outline" size="sm" onClick={() => void loadRecentRuns()}>
-              {t("adminPage.legacyRefresh.recentRuns.refresh")}
+              {t("legacyRefresh.recentRuns.refresh")}
             </Button>
           }
         >
           {loading && recentRuns.length === 0 ? (
             <div className="py-6 text-center text-sm text-muted-foreground">
-              {t("adminPage.legacyRefresh.loading")}
+              {t("legacyRefresh.loading")}
             </div>
           ) : (
             <RecentRunsTable runs={recentRuns} />
@@ -1883,8 +1883,8 @@ function LegacyRefreshSection() {
       </div>
 
       <SectionCard
-        title={t("adminPage.legacyRefresh.salesMonthly.title")}
-        description={t("adminPage.legacyRefresh.salesMonthly.description")}
+        title={t("legacyRefresh.salesMonthly.title")}
+        description={t("legacyRefresh.salesMonthly.description")}
       >
         <div className="space-y-4">
           {salesMonthlyError ? <SurfaceMessage tone="danger">{salesMonthlyError}</SurfaceMessage> : null}
@@ -1892,7 +1892,7 @@ function LegacyRefreshSection() {
 
           <div className="grid gap-3 lg:grid-cols-3">
             <div className="space-y-2">
-              <Label htmlFor="lsm-tenant-id">{t("adminPage.legacyRefresh.salesMonthly.fields.tenantId")}</Label>
+              <Label htmlFor="lsm-tenant-id">{t("legacyRefresh.salesMonthly.fields.tenantId")}</Label>
               <Input
                 id="lsm-tenant-id"
                 value={salesMonthlyForm.tenantId}
@@ -1900,11 +1900,11 @@ function LegacyRefreshSection() {
                   ...current,
                   tenantId: event.target.value,
                 }))}
-                placeholder={t("adminPage.legacyRefresh.fields.tenantIdPlaceholder")}
+                placeholder={t("legacyRefresh.fields.tenantIdPlaceholder")}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="lsm-start-month">{t("adminPage.legacyRefresh.salesMonthly.fields.startMonth")}</Label>
+              <Label htmlFor="lsm-start-month">{t("legacyRefresh.salesMonthly.fields.startMonth")}</Label>
               <DatePicker
                 id="lsm-start-month"
                 value={parseDatePickerInputValue(salesMonthlyForm.startMonth)}
@@ -1912,11 +1912,11 @@ function LegacyRefreshSection() {
                   ...current,
                   startMonth: serializeDatePickerValue(value),
                 }))}
-                placeholder={t("adminPage.legacyRefresh.salesMonthly.fields.startMonthPlaceholder")}
+                placeholder={t("legacyRefresh.salesMonthly.fields.startMonthPlaceholder")}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="lsm-end-month">{t("adminPage.legacyRefresh.salesMonthly.fields.endMonth")}</Label>
+              <Label htmlFor="lsm-end-month">{t("legacyRefresh.salesMonthly.fields.endMonth")}</Label>
               <DatePicker
                 id="lsm-end-month"
                 value={parseDatePickerInputValue(salesMonthlyForm.endMonth)}
@@ -1924,7 +1924,7 @@ function LegacyRefreshSection() {
                   ...current,
                   endMonth: serializeDatePickerValue(value),
                 }))}
-                placeholder={t("adminPage.legacyRefresh.salesMonthly.fields.endMonthPlaceholder")}
+                placeholder={t("legacyRefresh.salesMonthly.fields.endMonthPlaceholder")}
               />
             </div>
           </div>
@@ -1939,8 +1939,8 @@ function LegacyRefreshSection() {
               disabled={salesMonthlyLoading || !salesMonthlyForm.tenantId.trim()}
             >
               {salesMonthlyLoading
-                ? t("adminPage.legacyRefresh.salesMonthly.actions.checkingHealth")
-                : t("adminPage.legacyRefresh.salesMonthly.actions.checkHealth")}
+                ? t("legacyRefresh.salesMonthly.actions.checkingHealth")
+                : t("legacyRefresh.salesMonthly.actions.checkHealth")}
             </Button>
             <Button
               type="button"
@@ -1951,8 +1951,8 @@ function LegacyRefreshSection() {
               disabled={salesMonthlyAction !== null || !salesMonthlyForm.tenantId.trim() || !salesMonthlyForm.startMonth}
             >
               {salesMonthlyAction === "backfill"
-                ? t("adminPage.legacyRefresh.salesMonthly.actions.backfilling")
-                : t("adminPage.legacyRefresh.salesMonthly.actions.backfill")}
+                ? t("legacyRefresh.salesMonthly.actions.backfilling")
+                : t("legacyRefresh.salesMonthly.actions.backfill")}
             </Button>
             <Button
               type="button"
@@ -1962,8 +1962,8 @@ function LegacyRefreshSection() {
               disabled={salesMonthlyAction !== null || (salesMonthlyHealth?.missing_month_count ?? 0) === 0}
             >
               {salesMonthlyAction === "repair"
-                ? t("adminPage.legacyRefresh.salesMonthly.actions.repairingMissing")
-                : t("adminPage.legacyRefresh.salesMonthly.actions.repairMissing")}
+                ? t("legacyRefresh.salesMonthly.actions.repairingMissing")
+                : t("legacyRefresh.salesMonthly.actions.repairMissing")}
             </Button>
           </div>
 
@@ -1972,21 +1972,21 @@ function LegacyRefreshSection() {
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={salesMonthlyHealth.is_healthy ? "success" : "warning"} className="normal-case tracking-normal">
                   {salesMonthlyHealth.is_healthy
-                    ? t("adminPage.legacyRefresh.salesMonthly.status.healthy")
-                    : t("adminPage.legacyRefresh.salesMonthly.status.degraded")}
+                    ? t("legacyRefresh.salesMonthly.status.healthy")
+                    : t("legacyRefresh.salesMonthly.status.degraded")}
                 </Badge>
                 <span className="text-muted-foreground">
-                  {t("adminPage.legacyRefresh.salesMonthly.summary.checkedMonths", {
+                  {t("legacyRefresh.salesMonthly.summary.checkedMonths", {
                     count: salesMonthlyHealth.checked_month_count,
                   })}
                 </span>
                 <span className="text-muted-foreground">
-                  {t("adminPage.legacyRefresh.salesMonthly.summary.missingMonths", {
+                  {t("legacyRefresh.salesMonthly.summary.missingMonths", {
                     count: salesMonthlyHealth.missing_month_count,
                   })}
                 </span>
                 <span className="text-muted-foreground">
-                  {t("adminPage.legacyRefresh.salesMonthly.summary.currentOpenMonth", {
+                  {t("legacyRefresh.salesMonthly.summary.currentOpenMonth", {
                     month: salesMonthlyHealth.current_open_month,
                   })}
                 </span>
@@ -1994,7 +1994,7 @@ function LegacyRefreshSection() {
 
               {salesMonthlyHealth.missing_month_count === 0 ? (
                 <p className="text-muted-foreground">
-                  {t("adminPage.legacyRefresh.salesMonthly.empty")}
+                  {t("legacyRefresh.salesMonthly.empty")}
                 </p>
               ) : (
                 <ul className="space-y-2">
@@ -2019,11 +2019,11 @@ function LegacyRefreshSection() {
       {/* Lane Status Cards */}
       {lanes.length > 0 && (
         <SectionCard
-          title={t("adminPage.legacyRefresh.lanes.title")}
-          description={t("adminPage.legacyRefresh.lanes.description")}
+          title={t("legacyRefresh.lanes.title")}
+          description={t("legacyRefresh.lanes.description")}
           actions={
             <Button variant="outline" size="sm" onClick={() => void loadLanes()}>
-              {t("adminPage.legacyRefresh.lanes.refresh")}
+              {t("legacyRefresh.lanes.refresh")}
             </Button>
           }
         >

@@ -47,5 +47,13 @@
     "statusOpen": "待處理",
     "statusResolved": "已處理",
     "statusCancelled": "已取消"
+  },
+  "page": {
+    "title": "付款",
+    "description": "對帳入帳付款"
+  },
+  "reconciliation": {
+    "title": "對帳工作區",
+    "description": "開放入帳付款的作業配對流程"
   }
 }

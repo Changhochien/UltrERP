@@ -47,5 +47,13 @@
     "statusOpen": "Open",
     "statusResolved": "Resolved",
     "statusCancelled": "Cancelled"
+  },
+  "page": {
+    "title": "Payments",
+    "description": "Reconcile inbound payments"
+  },
+  "reconciliation": {
+    "title": "Reconciliation Workspace",
+    "description": "Operational matching workflow for open inbound payments"
   }
 }
