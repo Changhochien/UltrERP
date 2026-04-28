@@ -12,7 +12,7 @@ import { useAuth } from "../hooks/useAuth";
 import { HOME_ROUTE } from "../lib/routes";
 
 export default function LoginPage() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("auth");
   const { isAuthenticated, login } = useAuth();
   const navigate = useNavigate();
 
