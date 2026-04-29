@@ -2049,6 +2049,13 @@ function LegacyRefreshSection() {
       return;
     }
 
+    if (
+      resolvedForm.mode === "full-rebaseline"
+      && !window.confirm(t("legacyRefresh.trigger.confirmFullRebaseline"))
+    ) {
+      return;
+    }
+
     setTriggerLoading(true);
     setTriggerError(null);
     setTriggerResult(null);

@@ -200,6 +200,7 @@
       "launch": "Launch Refresh",
       "launching": "Launching…",
       "launched": "Refresh job launched",
+      "confirmFullRebaseline": "Run a full rebaseline for this lane? This can take a long time and will replay the entire legacy refresh pipeline.",
       "missingLane": "Select a lane or fill in the tenant and schema before launching a refresh.",
       "bootstrapRequired": "Run Full Rebaseline once first. Incremental refresh needs a seeded lane state before it can run.",
       "missingLegacySourceSettingsTitle": "Legacy source settings are missing",

@@ -200,6 +200,7 @@
       "launch": "啟動刷新",
       "launching": "啟動中…",
       "launched": "刷新作業已啟動",
+      "confirmFullRebaseline": "要對此 lane 執行完整重建嗎？這可能需要很長時間，並會重跑整條 legacy refresh pipeline。",
       "missingLane": "請先選擇 lane，或輸入租戶與 Schema 後再啟動刷新。",
       "bootstrapRequired": "請先執行一次完整重建。增量刷新必須先有已建立的 lane state 才能執行。",
       "missingLegacySourceSettingsTitle": "缺少 legacy source 設定",

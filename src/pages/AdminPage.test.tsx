@@ -19,6 +19,7 @@ const optionalAuthMock = vi.hoisted(() => vi.fn(() => null));
 const translationMock = vi.hoisted(() => ({
   t: (key: string) => key,
 }));
+const originalWindowConfirm = window.confirm;
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => translationMock,
@@ -66,6 +67,7 @@ vi.mock("../lib/api/admin", async () => {
 
 afterEach(() => {
   cleanup();
+  window.confirm = originalWindowConfirm;
   vi.clearAllMocks();
   optionalAuthMock.mockReturnValue(null);
   dataTableMock.auditSortChange = undefined;
@@ -191,6 +193,28 @@ describe("AdminPage audit sorting", () => {
       ],
     });
     fetchLegacyRefreshRecentRunsMock.mockResolvedValue([]);
+    fetchSalesMonthlyHealthMock.mockResolvedValue({
+      window_start: "2026-03-01",
+      window_end: "2026-03-01",
+      is_healthy: false,
+      missing_month_count: 1,
+      missing_months: [
+        {
+          month_start: "2026-03-01",
+          transactional_order_count: 2,
+          transactional_revenue: "180.00",
+        },
+      ],
+      checked_month_count: 1,
+      current_open_month: "2026-04-01",
+      data_gap_acknowledged: true,
+    });
+    repairSalesMonthlyMissingMock.mockResolvedValue({
+      repaired_months: ["2026-03-01"],
+      refreshed_month_count: 1,
+      results: [],
+      idempotent: true,
+    });
 
     const { AdminPage } = await import("./AdminPage");
 
@@ -243,6 +267,8 @@ describe("AdminPage audit sorting", () => {
   });
 
   it("selects the most recent lane and launches the full quick action with the full lookback default", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
     fetchUsersMock.mockResolvedValue([]);
     fetchAuditLogsMock.mockResolvedValue({
       items: [],
@@ -508,6 +534,8 @@ describe("AdminPage audit sorting", () => {
   });
 
   it("prefills the first-run legacy refresh scope from auth and steers bootstrap lanes to full rebaseline", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
     optionalAuthMock.mockReturnValue({
       user: {
         sub: "admin@example.com",
@@ -592,6 +620,8 @@ describe("AdminPage audit sorting", () => {
   });
 
   it("shows a settings-guided warning when legacy source settings are missing", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
     fetchUsersMock.mockResolvedValue([]);
     fetchAuditLogsMock.mockResolvedValue({
       items: [],
@@ -654,6 +684,65 @@ describe("AdminPage audit sorting", () => {
     expect(screen.getByText("legacyRefresh.trigger.missingLegacySourceSettingsBody")).toBeTruthy();
     expect(screen.getByText("LEGACY_DB_HOST, LEGACY_DB_USER")).toBeTruthy();
     expect(screen.getAllByRole("link", { name: /settingsHub\.openSettings|Open Settings/i }).length).toBeGreaterThan(0);
+  });
+
+  it("does not launch a full rebaseline when confirmation is rejected", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+
+    fetchUsersMock.mockResolvedValue([]);
+    fetchAuditLogsMock.mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      page_size: 20,
+    });
+    fetchLegacyRefreshLanesMock.mockResolvedValue({
+      lanes: [
+        {
+          lane_key: "raw_legacy:tenant-1:public",
+          tenant_id: "tenant-1",
+          schema_name: "raw_legacy",
+          source_schema: "public",
+          lane_locked: false,
+          current_job_id: null,
+          lock_acquired_at: null,
+          latest_run: null,
+          latest_success: null,
+          latest_promoted: null,
+          current_batch_mode: "full-rebaseline",
+          promotion_eligible: false,
+          promotion_classification: null,
+          affected_domains: [],
+          root_failure: null,
+          blocked_reason: null,
+          incremental_state_path: "/tmp/state.json",
+          nightly_rebaseline_path: null,
+          summary_root: "/tmp",
+        },
+      ],
+    });
+    fetchLegacyRefreshRecentRunsMock.mockResolvedValue([]);
+
+    const { AdminPage } = await import("./AdminPage");
+
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(fetchLegacyRefreshLanesMock).toHaveBeenCalledTimes(1);
+    });
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: /quickActions\.fullRebaseline|Run Full Rebaseline/i }),
+      );
+    });
+
+    expect(window.confirm).toHaveBeenCalledWith("legacyRefresh.trigger.confirmFullRebaseline");
+    expect(triggerLegacyRefreshMock).not.toHaveBeenCalled();
   });
 
   it("restores the active refresh monitor after reload and shows richer completion metrics", async () => {
