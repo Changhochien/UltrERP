@@ -24,7 +24,10 @@ from domains.health.routes import router as health_router
 from domains.intelligence.routes import router as intelligence_router
 from domains.inventory.routes import router as inventory_router
 from domains.invoices.routes import router as invoices_router
-from domains.legacy_import.routes import router as legacy_refresh_router
+from domains.legacy_import.routes import (
+	router as legacy_refresh_router,
+	reconcile_orphaned_legacy_refresh_state,
+)
 from domains.legacy_import.staging import close_raw_connection_pool
 from domains.line.webhook import router as line_router
 from domains.manufacturing.routes import router as manufacturing_router
@@ -53,6 +56,8 @@ def create_app() -> FastAPI:
 		async with AsyncSessionLocal() as db:
 			await seed_settings_if_empty(db)
 			await seed_dev_users_if_empty(db)
+
+		reconcile_orphaned_legacy_refresh_state()
 
 		# Only enter MCP lifespan after all startup tasks succeed.
 		mcp_lifespan = mcp_app.router.lifespan_context

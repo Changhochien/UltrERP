@@ -4,6 +4,7 @@ import hashlib
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -215,6 +216,25 @@ class FakeSessionContext:
         return False
 
 
+class FakeSettingsScalarResult:
+    def __init__(self, rows: list[object]) -> None:
+        self._rows = rows
+
+    def scalars(self) -> FakeSettingsScalarResult:
+        return self
+
+    def all(self) -> list[object]:
+        return self._rows
+
+
+class FakeSettingsDbSession:
+    def __init__(self, rows: list[object]) -> None:
+        self._rows = rows
+
+    async def execute(self, _query):
+        return FakeSettingsScalarResult(self._rows)
+
+
 class FakeLegacyImportRunRecord:
     def __init__(self, **kwargs) -> None:
         self.id = uuid.uuid4()
@@ -227,6 +247,41 @@ class FakeLegacyImportTableRunRecord:
         self.id = uuid.uuid4()
         for key, value in kwargs.items():
             setattr(self, key, value)
+
+
+@pytest.mark.asyncio
+async def test_load_runtime_legacy_source_connection_settings_prefers_db_overrides(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        staging,
+        "settings",
+        SimpleNamespace(
+            legacy_db_host=None,
+            legacy_db_port=5432,
+            legacy_db_user=None,
+            legacy_db_password=None,
+            legacy_db_name=None,
+            legacy_db_client_encoding="BIG5",
+        ),
+    )
+    db_session = FakeSettingsDbSession(
+        [
+            SimpleNamespace(key="legacy_db_host", value="100.77.54.101"),
+            SimpleNamespace(key="legacy_db_user", value="postgres"),
+            SimpleNamespace(key="legacy_db_password", value="secret"),
+            SimpleNamespace(key="legacy_db_name", value="cao50001"),
+            SimpleNamespace(key="legacy_db_client_encoding", value="BIG5"),
+        ]
+    )
+
+    result = await staging.load_runtime_legacy_source_connection_settings(db_session)
+
+    assert result.host == "100.77.54.101"
+    assert result.user == "postgres"
+    assert result.password == "secret"
+    assert result.database == "cao50001"
+    assert result.port == 5432
 
 
 def patch_control_table_models(monkeypatch) -> None:

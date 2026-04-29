@@ -11,12 +11,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from common.time import utc_now
 from domains.legacy_import.incremental_state import (
     ELIGIBLE_PROMOTION_CLASSIFICATION,
     reseed_incremental_state_from_full_refresh,
 )
 from domains.legacy_import.promotion_policy import evaluate_overlap_policy
+from domains.legacy_import.staging import LegacySourceConnectionSettings
 from scripts.legacy_refresh_common import (
     RefreshDisposition,
     normalize_token,
@@ -116,6 +116,10 @@ def build_shadow_batch_id(
     return f"{batch_prefix}-{normalized.strftime('%Y%m%dT%H%M%SZ')}"
 
 
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 def _iso_now() -> str:
     return utc_now().isoformat()
 
@@ -140,6 +144,11 @@ def _build_state_record(
     promotion_readiness: bool,
     promotion_policy: dict[str, Any] | None = None,
     overlap_lock: dict[str, Any] | None = None,
+    root_failed_step: str | None = None,
+    root_error_message: str | None = None,
+    rebaseline_reason: str | None = None,
+    batch_mode: str | None = None,
+    affected_domains: Sequence[str] | None = None,
 ) -> dict[str, Any]:
     record = {
         "state_version": 1,
@@ -169,6 +178,16 @@ def _build_state_record(
         record["promotion_policy"] = promotion_policy
     if overlap_lock is not None:
         record["overlap_lock"] = overlap_lock
+    if root_failed_step is not None:
+        record["root_failed_step"] = root_failed_step
+    if root_error_message is not None:
+        record["root_error_message"] = root_error_message
+    if rebaseline_reason is not None:
+        record["rebaseline_reason"] = rebaseline_reason
+    if batch_mode is not None:
+        record["batch_mode"] = batch_mode
+    if affected_domains is not None:
+        record["affected_domains"] = list(affected_domains)
     return record
 
 
@@ -205,6 +224,11 @@ def _build_state_record_from_summary(
         analyst_review_required=bool(summary.get("analyst_review_required")),
         promotion_readiness=bool(summary.get("promotion_readiness")),
         promotion_policy=summary.get("promotion_policy"),
+        root_failed_step=summary.get("root_failed_step"),
+        root_error_message=summary.get("root_error_message"),
+        rebaseline_reason=summary.get("rebaseline_reason"),
+        batch_mode=summary.get("batch_mode"),
+        affected_domains=summary.get("affected_domains"),
     )
 
 
@@ -273,6 +297,11 @@ async def run_scheduled_shadow_refresh(
     batch_prefix: str,
     summary_root: Path | None = None,
     state_root: Path | None = None,
+    scheduler_run_id: str | None = None,
+    started_at: str | None = None,
+    batch_id: str | None = None,
+    lock_already_held: bool = False,
+    connection_settings: LegacySourceConnectionSettings | None = None,
 ) -> ScheduledShadowRefreshExecution:
     resolved_summary_root = summary_root or DEFAULT_SUMMARY_ROOT
     lane_paths = build_lane_state_paths(
@@ -286,9 +315,9 @@ async def run_scheduled_shadow_refresh(
     latest_success_path = lane_paths.latest_success_path
     lock_path = lane_paths.lock_path
 
-    scheduler_run_id = str(uuid.uuid4())
-    started_at = _iso_now()
-    batch_id = build_shadow_batch_id(batch_prefix)
+    scheduler_run_id = scheduler_run_id or str(uuid.uuid4())
+    started_at = started_at or _iso_now()
+    batch_id = batch_id or build_shadow_batch_id(batch_prefix)
     lock_payload = {
         "scheduler_run_id": scheduler_run_id,
         "tenant_id": str(tenant_id),
@@ -300,59 +329,63 @@ async def run_scheduled_shadow_refresh(
 
     lock_acquired = False
     try:
-        try:
-            write_lock_file_with_recovery(lock_path, lock_payload, now=utc_now())
-            lock_acquired = True
-        except FileExistsError:
-            completed_at = _iso_now()
-            promotion_policy = evaluate_overlap_policy(
-                batch_id=batch_id,
-                reconciliation_threshold=reconciliation_threshold,
-            ).as_record()
-            overlap_record = _build_state_record(
-                scheduler_run_id=scheduler_run_id,
-                batch_id=batch_id,
-                tenant_id=tenant_id,
-                schema_name=schema_name,
-                source_schema=source_schema,
-                started_at=started_at,
-                completed_at=completed_at,
-                reconciliation_threshold=reconciliation_threshold,
-                summary_path=None,
-                final_disposition=RefreshDisposition.OVERLAP_BLOCKED.value,
-                exit_code=DEFAULT_OVERLAP_EXIT_CODE,
-                validation_status="not-run",
-                blocking_issue_count=None,
-                reconciliation_gap_count=None,
-                analyst_review_required=False,
-                promotion_readiness=False,
-                promotion_policy=promotion_policy,
-                overlap_lock={
-                    "path": str(lock_path),
-                    "details": read_json_file(lock_path),
-                },
-            )
-            write_json_atomically(latest_run_path, overlap_record)
-            return ScheduledShadowRefreshExecution(
-                exit_code=DEFAULT_OVERLAP_EXIT_CODE,
-                batch_id=batch_id,
-                scheduler_run_id=scheduler_run_id,
-                summary_path=None,
-                latest_run_path=latest_run_path,
-                latest_success_path=latest_success_path,
-                state_record=overlap_record,
-                latest_success_updated=False,
-            )
+        if not lock_already_held:
+            try:
+                write_lock_file_with_recovery(lock_path, lock_payload, now=utc_now())
+                lock_acquired = True
+            except FileExistsError:
+                completed_at = _iso_now()
+                promotion_policy = evaluate_overlap_policy(
+                    batch_id=batch_id,
+                    reconciliation_threshold=reconciliation_threshold,
+                ).as_record()
+                overlap_record = _build_state_record(
+                    scheduler_run_id=scheduler_run_id,
+                    batch_id=batch_id,
+                    tenant_id=tenant_id,
+                    schema_name=schema_name,
+                    source_schema=source_schema,
+                    started_at=started_at,
+                    completed_at=completed_at,
+                    reconciliation_threshold=reconciliation_threshold,
+                    summary_path=None,
+                    final_disposition=RefreshDisposition.OVERLAP_BLOCKED.value,
+                    exit_code=DEFAULT_OVERLAP_EXIT_CODE,
+                    validation_status="not-run",
+                    blocking_issue_count=None,
+                    reconciliation_gap_count=None,
+                    analyst_review_required=False,
+                    promotion_readiness=False,
+                    promotion_policy=promotion_policy,
+                    overlap_lock={
+                        "path": str(lock_path),
+                        "details": read_json_file(lock_path),
+                    },
+                )
+                write_json_atomically(latest_run_path, overlap_record)
+                return ScheduledShadowRefreshExecution(
+                    exit_code=DEFAULT_OVERLAP_EXIT_CODE,
+                    batch_id=batch_id,
+                    scheduler_run_id=scheduler_run_id,
+                    summary_path=None,
+                    latest_run_path=latest_run_path,
+                    latest_success_path=latest_success_path,
+                    state_record=overlap_record,
+                    latest_success_updated=False,
+                )
 
-        refresh_execution = await run_legacy_refresh(
-            batch_id=batch_id,
-            tenant_id=tenant_id,
-            schema_name=schema_name,
-            source_schema=source_schema,
-            lookback_days=lookback_days,
-            reconciliation_threshold=reconciliation_threshold,
-            summary_root=resolved_summary_root,
-        )
+        refresh_kwargs = {
+            "batch_id": batch_id,
+            "tenant_id": tenant_id,
+            "schema_name": schema_name,
+            "source_schema": source_schema,
+            "lookback_days": lookback_days,
+            "reconciliation_threshold": reconciliation_threshold,
+            "summary_root": resolved_summary_root,
+        }
+        if connection_settings is not None:
+            refresh_kwargs["connection_settings"] = connection_settings
+        refresh_execution = await run_legacy_refresh(**refresh_kwargs)
         completed_at = _iso_now()
         state_record = _build_state_record_from_summary(
             scheduler_run_id=scheduler_run_id,

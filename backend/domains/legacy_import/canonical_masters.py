@@ -293,6 +293,7 @@ async def _import_customers(
 				contact_phone,
 				contact_email,
 				credit_limit,
+                default_discount_percent,
 				status,
                 customer_type,
                 legacy_master_snapshot,
@@ -300,7 +301,7 @@ async def _import_customers(
 				created_at,
 				updated_at
 			)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::json, 1, NOW(), NOW())
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::json, 1, NOW(), NOW())
 			ON CONFLICT (tenant_id, normalized_business_number) DO UPDATE SET
 				company_name = EXCLUDED.company_name,
 				billing_address = EXCLUDED.billing_address,
@@ -325,6 +326,7 @@ async def _import_customers(
             contact_phone,
             contact_email,
             Decimal("0.00"),
+            Decimal("0.0000"),
             "active",
             _as_text(row.get("customer_type")) or "unknown",
             json.dumps(legacy_master_snapshot),

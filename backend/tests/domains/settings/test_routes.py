@@ -75,7 +75,7 @@ def make_app_setting_row(
 
 
 async def test_get_settings_returns_all_settings() -> None:
-    """GET /api/v1/settings as admin returns 200 with all non-sensitive settings."""
+    """GET /api/v1/settings as admin returns editable settings plus allowed sensitive entries."""
     session = FakeAsyncSession()
     # get_all_settings: db.execute(select(AppSetting)) → empty
     session.queue_scalars([])
@@ -88,10 +88,19 @@ async def test_get_settings_returns_all_settings() -> None:
         # Should contain multiple categories
         categories = {s["category"] for s in sections}
         assert len(categories) >= 3
-        # Sensitive keys must not appear
+        # Hidden sensitive keys must not appear
         all_keys = {item["key"] for s in sections for item in s["items"]}
         for sensitive in SENSITIVE_KEYS:
             assert sensitive not in all_keys
+        assert "legacy_db_password" in all_keys
+        legacy_password = next(
+            item
+            for section in sections
+            for item in section["items"]
+            if item["key"] == "legacy_db_password"
+        )
+        assert legacy_password["is_sensitive"] is True
+        assert legacy_password["value"] == ""
     finally:
         teardown_session(prev)
 
@@ -159,6 +168,29 @@ async def test_patch_sensitive_key_forbidden() -> None:
         assert resp.status_code == 403
         body = resp.json()
         assert "sensitive" in body["detail"].lower()
+    finally:
+        teardown_session(prev)
+
+
+async def test_patch_legacy_db_password_returns_masked_value() -> None:
+    """PATCH legacy_db_password succeeds but never echoes the secret back."""
+    session = FakeAsyncSession()
+    session.queue_scalars([])
+    session.queue_scalars([])
+
+    prev = setup_session(session)
+    try:
+        resp = await http_patch(
+            "/api/v1/settings/legacy_db_password",
+            json={"value": "super-secret"},
+            headers=auth_header("admin"),
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["key"] == "legacy_db_password"
+        assert body["is_sensitive"] is True
+        assert body["value"] == ""
+        assert body["display_value"] == "********"
     finally:
         teardown_session(prev)
 

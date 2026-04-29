@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Eye,
@@ -72,11 +72,15 @@ export function SettingField({
   error,
 }: SettingFieldProps) {
   const { t } = useTranslation("common");
-  const [localValue, setLocalValue] = useState(item.is_null ? "" : item.value);
+  const [localValue, setLocalValue] = useState(item.is_sensitive ? "" : (item.is_null ? "" : item.value));
   const [showPassword, setShowPassword] = useState(false);
 
-  const hasChanged = localValue !== item.value;
-  const displayValue = item.is_null ? "" : item.value;
+  useEffect(() => {
+    setLocalValue(item.is_sensitive ? "" : (item.is_null ? "" : item.value));
+  }, [item.is_sensitive, item.is_null, item.value]);
+
+  const hasChanged = item.is_sensitive ? localValue.length > 0 : localValue !== item.value;
+  const displayValue = item.is_sensitive ? localValue : (item.is_null ? "" : item.value);
   const typeInfo = getSettingTypeInfo(item.value_type, t);
 
   function handleSave() {
@@ -93,10 +97,11 @@ export function SettingField({
         <div className="relative">
           <Input
             type={showPassword ? "text" : "password"}
-            value={displayValue}
+            value={localValue}
             onChange={(e) => setLocalValue(e.target.value)}
             disabled={saving}
             className="pr-10"
+            placeholder={item.is_null ? t("settingsPage.emptyPlaceholder") : item.display_value}
           />
           <button
             type="button"

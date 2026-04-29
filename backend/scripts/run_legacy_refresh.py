@@ -8,12 +8,13 @@ import json
 import uuid
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import asyncpg
 from common.config import PROJECT_ROOT
 from common.model_registry import register_all_models
-from common.time import utc_now
 from domains.legacy_import.canonical import run_canonical_import
 from domains.legacy_import.mapping import (
     export_product_mapping_review,
@@ -30,7 +31,11 @@ from domains.legacy_import.shared import (
     DOMAIN_SALES,
     DOMAIN_WAREHOUSES,
 )
-from domains.legacy_import.staging import run_live_stage_import
+from domains.legacy_import.staging import (
+    LegacySourceCompatibilityError,
+    LegacySourceConnectionSettings,
+    run_live_stage_import,
+)
 from domains.legacy_import.validation import validate_import_batch
 from domains.product_analytics.service import check_sales_monthly_health
 from scripts.backfill_purchase_receipts import backfill as backfill_purchase_receipts
@@ -152,6 +157,10 @@ def _artifact_token(value: str) -> str:
     return normalize_token(value)
 
 
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 def _iso_now() -> str:
     return utc_now().isoformat()
 
@@ -252,6 +261,44 @@ def _abort_refresh(
     raise _RefreshAbort(1)
 
 
+def _format_exception_detail(exc: Exception) -> str:
+    return str(exc).strip() or exc.__class__.__name__
+
+
+def _format_step_error(exc: Exception, *, step_name: str) -> str:
+    detail = _format_exception_detail(exc)
+    if step_name != "live-stage":
+        return detail
+
+    if isinstance(exc, OSError):
+        return f"Live legacy DB connection failed: {detail}"
+
+    if isinstance(exc, asyncpg.PostgresError):
+        sqlstate = str(getattr(exc, "sqlstate", "") or "")
+        if sqlstate.startswith(("08", "28", "3D", "53")) or sqlstate == "57P03":
+            return f"Live legacy DB connection failed: {detail}"
+        return f"Live legacy DB query failed: {detail}"
+
+    if isinstance(exc, LegacySourceCompatibilityError):
+        if detail.startswith("Missing legacy source settings:"):
+            return f"Live legacy source configuration failed: {detail}"
+        if detail.startswith("Requested live-source tables not found"):
+            return f"Live legacy table discovery failed: {detail}"
+        if detail.startswith("Missing required live-source tables"):
+            return f"Live legacy source contract check failed: {detail}"
+        if (
+            detail.startswith("Unsupported live-source column types")
+            or detail.startswith("No column metadata found")
+            or "read-only" in detail.lower()
+            or "verify LEGACY_DB_CLIENT_ENCODING" in detail
+            or "must be projected to text" in detail
+        ):
+            return f"Live legacy source compatibility failed: {detail}"
+        return f"Live legacy table load failed: {detail}"
+
+    return f"Live legacy table load failed: {detail}"
+
+
 async def _execute_step(
     summary: dict[str, Any],
     step_records: list[dict[str, Any]],
@@ -272,7 +319,7 @@ async def _execute_step(
             step_records,
             steps_by_name,
             step_name=step_name,
-            error=str(exc),
+            error=_format_step_error(exc, step_name=step_name),
             partial_state_preserved=partial_state_preserved,
         )
 
@@ -430,6 +477,7 @@ async def run_legacy_refresh(
     affected_domains: Sequence[str] | None = None,
     entity_scope: dict[str, dict[str, Any]] | None = None,
     last_successful_batch_ids: dict[str, str] | None = None,
+    connection_settings: LegacySourceConnectionSettings | None = None,
 ) -> LegacyRefreshExecution:
     if review_input_path is not None and not approved_by:
         raise ValueError("approved_by is required when review_input_path is provided")
@@ -484,6 +532,7 @@ async def run_legacy_refresh(
                     selected_tables=(),
                     tenant_id=tenant_id,
                     schema_name=schema_name,
+                    connection_settings=connection_settings,
                 ),
                 partial_state_preserved=False,
                 details_factory=lambda result: {

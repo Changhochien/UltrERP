@@ -10,9 +10,12 @@ const fetchUsersMock = vi.hoisted(() => vi.fn());
 const fetchAuditLogsMock = vi.hoisted(() => vi.fn());
 const fetchLegacyRefreshLanesMock = vi.hoisted(() => vi.fn());
 const fetchLegacyRefreshRecentRunsMock = vi.hoisted(() => vi.fn());
+const fetchLegacyRefreshJobStatusMock = vi.hoisted(() => vi.fn());
+const triggerLegacyRefreshMock = vi.hoisted(() => vi.fn());
 const fetchSalesMonthlyHealthMock = vi.hoisted(() => vi.fn());
 const repairSalesMonthlyMissingMock = vi.hoisted(() => vi.fn());
 const backfillSalesMonthlyMock = vi.hoisted(() => vi.fn());
+const optionalAuthMock = vi.hoisted(() => vi.fn(() => null));
 const translationMock = vi.hoisted(() => ({
   t: (key: string) => key,
 }));
@@ -20,6 +23,14 @@ const translationMock = vi.hoisted(() => ({
 vi.mock("react-i18next", () => ({
   useTranslation: () => translationMock,
 }));
+
+vi.mock("../hooks/useAuth", async () => {
+  const actual = await vi.importActual<typeof import("../hooks/useAuth")>("../hooks/useAuth");
+  return {
+    ...actual,
+    useOptionalAuth: () => optionalAuthMock(),
+  };
+});
 
 vi.mock("../components/layout/DataTable", () => ({
   DataTable: ({ sortState, onSortChange }: { sortState?: unknown; onSortChange?: (next: { columnId: string; direction: "asc" | "desc" } | null) => void }) => {
@@ -40,6 +51,10 @@ vi.mock("../lib/api/admin", async () => {
       fetchLegacyRefreshLanesMock(...args),
     fetchLegacyRefreshRecentRuns: (...args: Parameters<typeof fetchLegacyRefreshRecentRunsMock>) =>
       fetchLegacyRefreshRecentRunsMock(...args),
+    fetchLegacyRefreshJobStatus: (...args: Parameters<typeof fetchLegacyRefreshJobStatusMock>) =>
+      fetchLegacyRefreshJobStatusMock(...args),
+    triggerLegacyRefresh: (...args: Parameters<typeof triggerLegacyRefreshMock>) =>
+      triggerLegacyRefreshMock(...args),
     fetchSalesMonthlyHealth: (...args: Parameters<typeof fetchSalesMonthlyHealthMock>) =>
       fetchSalesMonthlyHealthMock(...args),
     repairSalesMonthlyMissing: (...args: Parameters<typeof repairSalesMonthlyMissingMock>) =>
@@ -52,7 +67,9 @@ vi.mock("../lib/api/admin", async () => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  optionalAuthMock.mockReturnValue(null);
   dataTableMock.auditSortChange = undefined;
+  window.localStorage.clear();
 });
 
 describe("AdminPage audit sorting", () => {
@@ -66,6 +83,12 @@ describe("AdminPage audit sorting", () => {
     });
     fetchLegacyRefreshLanesMock.mockResolvedValue({ lanes: [] });
     fetchLegacyRefreshRecentRunsMock.mockResolvedValue([]);
+    fetchLegacyRefreshJobStatusMock.mockResolvedValue({
+      job_id: "job-1",
+      batch_id: "legacy-incremental-001",
+      mode: "incremental",
+      status: "running",
+    });
     fetchSalesMonthlyHealthMock.mockResolvedValue({
       window_start: "2026-03-01",
       window_end: "2026-03-01",
@@ -188,14 +211,13 @@ describe("AdminPage audit sorting", () => {
       screen.getByText((text) => text.includes("Incremental reconciliation drift requires full rebaseline")),
     ).toBeTruthy();
 
-    fireEvent.change(
-      screen.getByLabelText("adminPage.legacyRefresh.salesMonthly.fields.tenantId"),
-      { target: { value: "tenant-1" } },
-    );
+    fireEvent.change(document.getElementById("lsm-tenant-id") as HTMLInputElement, {
+      target: { value: "tenant-1" },
+    });
 
     await act(async () => {
       fireEvent.click(
-        screen.getByRole("button", { name: "adminPage.legacyRefresh.salesMonthly.actions.checkHealth" }),
+        screen.getByRole("button", { name: /salesMonthly\.actions\.checkHealth|Check Health/i }),
       );
     });
 
@@ -211,13 +233,504 @@ describe("AdminPage audit sorting", () => {
 
     await act(async () => {
       fireEvent.click(
-        screen.getByRole("button", { name: "adminPage.legacyRefresh.salesMonthly.actions.repairMissing" }),
+        screen.getByRole("button", { name: /salesMonthly\.actions\.repairMissing|Repair Missing/i }),
       );
     });
 
     await waitFor(() => {
       expect(repairSalesMonthlyMissingMock).toHaveBeenCalledWith("tenant-1", ["2026-03-01"]);
     });
+  });
+
+  it("selects the most recent lane and launches the full quick action with the full lookback default", async () => {
+    fetchUsersMock.mockResolvedValue([]);
+    fetchAuditLogsMock.mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      page_size: 20,
+    });
+    fetchLegacyRefreshLanesMock
+      .mockResolvedValueOnce({
+        lanes: [
+          {
+            lane_key: "raw_legacy:tenant-older:public",
+            tenant_id: "tenant-older",
+            schema_name: "raw_legacy",
+            source_schema: "public",
+            lane_locked: false,
+            current_job_id: null,
+            lock_acquired_at: null,
+            latest_run: {
+              batch_id: "legacy-incremental-older",
+              summary_path: "/tmp/older-summary.json",
+              started_at: "2026-04-23T01:00:00+00:00",
+              completed_at: "2026-04-23T01:02:00+00:00",
+              final_disposition: "completed",
+              exit_code: 0,
+              validation_status: "passed",
+              blocking_issue_count: 0,
+              reconciliation_gap_count: 0,
+              promotion_policy: { classification: "eligible" },
+            },
+            latest_success: null,
+            latest_promoted: null,
+            current_batch_mode: "incremental",
+            promotion_eligible: true,
+            promotion_classification: "eligible",
+            affected_domains: [],
+            root_failure: null,
+            blocked_reason: null,
+            incremental_state_path: "/tmp/older-state.json",
+            nightly_rebaseline_path: null,
+            summary_root: "/tmp",
+          },
+          {
+            lane_key: "raw_legacy:tenant-newer:public",
+            tenant_id: "tenant-newer",
+            schema_name: "raw_legacy",
+            source_schema: "public",
+            lane_locked: false,
+            current_job_id: null,
+            lock_acquired_at: null,
+            latest_run: {
+              batch_id: "legacy-incremental-newer",
+              summary_path: "/tmp/newer-summary.json",
+              started_at: "2026-04-24T01:00:00+00:00",
+              completed_at: "2026-04-24T01:02:00+00:00",
+              final_disposition: "completed",
+              exit_code: 0,
+              validation_status: "passed",
+              blocking_issue_count: 0,
+              reconciliation_gap_count: 0,
+              promotion_policy: { classification: "eligible" },
+            },
+            latest_success: null,
+            latest_promoted: null,
+            current_batch_mode: "incremental",
+            promotion_eligible: true,
+            promotion_classification: "eligible",
+            affected_domains: [],
+            root_failure: null,
+            blocked_reason: null,
+            incremental_state_path: "/tmp/newer-state.json",
+            nightly_rebaseline_path: null,
+            summary_root: "/tmp",
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        lanes: [
+          {
+            lane_key: "raw_legacy:tenant-newer:public",
+            tenant_id: "tenant-newer",
+            schema_name: "raw_legacy",
+            source_schema: "public",
+            lane_locked: false,
+            current_job_id: null,
+            lock_acquired_at: null,
+            latest_run: {
+              batch_id: "legacy-shadow-20260424T010000Z",
+              summary_path: "/tmp/full-summary.json",
+              started_at: "2026-04-24T01:00:00+00:00",
+              completed_at: "2026-04-24T01:05:00+00:00",
+              final_disposition: "completed",
+              exit_code: 0,
+              validation_status: "passed",
+              blocking_issue_count: 0,
+              reconciliation_gap_count: 0,
+              promotion_policy: { classification: "eligible" },
+            },
+            latest_success: null,
+            latest_promoted: null,
+            current_batch_mode: "full-rebaseline",
+            promotion_eligible: true,
+            promotion_classification: "eligible",
+            affected_domains: ["sales", "inventory"],
+            root_failure: null,
+            blocked_reason: null,
+            incremental_state_path: "/tmp/newer-state.json",
+            nightly_rebaseline_path: "/tmp/nightly.json",
+            summary_root: "/tmp",
+          },
+        ],
+      });
+    fetchLegacyRefreshRecentRunsMock
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          job_id: "job-1",
+          batch_id: "legacy-shadow-20260424T010000Z",
+          mode: "full-rebaseline",
+          started_at: "2026-04-24T01:00:00+00:00",
+          completed_at: "2026-04-24T01:05:00+00:00",
+          final_disposition: "completed",
+          validation_status: "passed",
+          promotion_eligible: true,
+          blocked: false,
+          blocked_reason: null,
+        },
+      ]);
+    fetchLegacyRefreshJobStatusMock.mockResolvedValue({
+      job_id: "job-1",
+      batch_id: "legacy-shadow-20260424T010000Z",
+      mode: "full-rebaseline",
+      status: "completed",
+      final_disposition: "completed",
+      completed_at: "2026-04-24T01:05:00+00:00",
+      summary_path: "/tmp/full-summary.json",
+      promotion_eligible: true,
+    });
+    triggerLegacyRefreshMock.mockResolvedValue({
+      job_id: "job-1",
+      lane_key: "raw_legacy:tenant-newer:public",
+      mode: "full-rebaseline",
+      batch_id: "legacy-shadow-20260424T010000Z",
+      launched_at: "2026-04-24T01:00:00+00:00",
+      status: "queued",
+    });
+
+    const { AdminPage } = await import("./AdminPage");
+
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(fetchLegacyRefreshLanesMock).toHaveBeenCalledTimes(1);
+    });
+
+    const laneSelect = document.getElementById("lr-lane-select") as HTMLSelectElement;
+    expect(laneSelect.value).toBe("raw_legacy:tenant-newer:public");
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: /quickActions\.fullRebaseline|Run Full Rebaseline/i }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(triggerLegacyRefreshMock).toHaveBeenCalledWith({
+        tenant_id: "tenant-newer",
+        schema_name: "raw_legacy",
+        source_schema: "public",
+        mode: "full-rebaseline",
+        dry_run: false,
+        lookback_days: 10000,
+        reconciliation_threshold: 0,
+      });
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /quickActions\.showAdvanced|Advanced Settings/i }),
+    );
+
+    expect((document.getElementById("lr-tenant-id") as HTMLInputElement).value).toBe("tenant-newer");
+    expect((document.getElementById("lr-schema-name") as HTMLInputElement).value).toBe("raw_legacy");
+    expect(screen.getByText("legacyRefresh.monitor.succeeded")).toBeTruthy();
+    expect(screen.getAllByText("/tmp/full-summary.json").length).toBeGreaterThan(0);
+  });
+
+  it("uses direct job polling to mark an active refresh as running before lane history updates", async () => {
+    fetchUsersMock.mockResolvedValue([]);
+    fetchAuditLogsMock.mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      page_size: 20,
+    });
+    fetchLegacyRefreshLanesMock.mockResolvedValue({
+      lanes: [
+        {
+          lane_key: "raw_legacy:tenant-1:public",
+          tenant_id: "tenant-1",
+          schema_name: "raw_legacy",
+          source_schema: "public",
+          lane_locked: false,
+          current_job_id: null,
+          lock_acquired_at: null,
+          latest_run: null,
+          latest_success: null,
+          latest_promoted: null,
+          current_batch_mode: null,
+          promotion_eligible: false,
+          promotion_classification: null,
+          affected_domains: [],
+          root_failure: null,
+          blocked_reason: null,
+          incremental_state_path: "/tmp/incremental-state.json",
+          nightly_rebaseline_path: null,
+          summary_root: "/tmp",
+        },
+      ],
+    });
+    fetchLegacyRefreshRecentRunsMock.mockResolvedValue([]);
+    fetchLegacyRefreshJobStatusMock.mockResolvedValue({
+      job_id: "job-running-1",
+      batch_id: "legacy-incremental-20260428T010000Z",
+      mode: "incremental",
+      status: "running",
+    });
+    triggerLegacyRefreshMock.mockResolvedValue({
+      job_id: "job-running-1",
+      lane_key: "raw_legacy:tenant-1:public",
+      mode: "incremental",
+      batch_id: "legacy-incremental-20260428T010000Z",
+      launched_at: "2026-04-28T01:00:00+00:00",
+      status: "queued",
+    });
+
+    const { AdminPage } = await import("./AdminPage");
+
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(fetchLegacyRefreshLanesMock).toHaveBeenCalledTimes(1);
+    });
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: /quickActions\.incremental|Run Incremental Refresh/i }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(fetchLegacyRefreshJobStatusMock).toHaveBeenCalledWith("job-running-1");
+    });
+
+    expect(screen.getByText("legacyRefresh.monitor.running")).toBeTruthy();
+  });
+
+  it("prefills the first-run legacy refresh scope from auth and steers bootstrap lanes to full rebaseline", async () => {
+    optionalAuthMock.mockReturnValue({
+      user: {
+        sub: "admin@example.com",
+        role: "admin",
+        tenant_id: "00000000-0000-0000-0000-000000000001",
+      },
+      token: "token",
+      isAuthenticated: true,
+      isAuthLoading: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+    fetchUsersMock.mockResolvedValue([]);
+    fetchAuditLogsMock.mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      page_size: 20,
+    });
+    fetchLegacyRefreshLanesMock.mockResolvedValue({ lanes: [] });
+    fetchLegacyRefreshRecentRunsMock.mockResolvedValue([]);
+    fetchLegacyRefreshJobStatusMock.mockResolvedValue({
+      job_id: "job-auth-1",
+      batch_id: "legacy-incremental-20260428T010000Z",
+      mode: "incremental",
+      status: "queued",
+    });
+    triggerLegacyRefreshMock.mockResolvedValue({
+      job_id: "job-auth-1",
+      lane_key: "raw_legacy:00000000-0000-0000-0000-000000000001:public",
+      mode: "incremental",
+      batch_id: "legacy-incremental-20260428T010000Z",
+      launched_at: "2026-04-28T01:00:00+00:00",
+      status: "queued",
+    });
+
+    const { AdminPage } = await import("./AdminPage");
+
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(fetchLegacyRefreshLanesMock).toHaveBeenCalledTimes(1);
+      expect((document.getElementById("lr-tenant-id") as HTMLInputElement).value).toBe(
+        "00000000-0000-0000-0000-000000000001",
+      );
+    });
+
+    expect((document.getElementById("lr-schema-name") as HTMLInputElement).value).toBe("raw_legacy");
+    expect((document.getElementById("lsm-tenant-id") as HTMLInputElement).value).toBe(
+      "00000000-0000-0000-0000-000000000001",
+    );
+    expect(screen.queryByRole("button", { name: /quickActions\.showAdvanced|Advanced Settings/i })).toBeNull();
+    expect(screen.getByText("legacyRefresh.quickActions.advancedRequired")).toBeTruthy();
+    expect(screen.getByText("legacyRefresh.trigger.bootstrapRequired")).toBeTruthy();
+    expect((document.getElementById("lr-mode") as HTMLSelectElement).value).toBe("full-rebaseline");
+    expect(
+      (screen.getByRole("button", { name: /quickActions\.incremental|Run Incremental Refresh/i }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: /quickActions\.fullRebaseline|Run Full Rebaseline/i }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(triggerLegacyRefreshMock).toHaveBeenCalledWith({
+        tenant_id: "00000000-0000-0000-0000-000000000001",
+        schema_name: "raw_legacy",
+        source_schema: "public",
+        mode: "full-rebaseline",
+        dry_run: false,
+        lookback_days: 10000,
+        reconciliation_threshold: 0,
+      });
+    });
+  });
+
+  it("shows a settings-guided warning when legacy source settings are missing", async () => {
+    fetchUsersMock.mockResolvedValue([]);
+    fetchAuditLogsMock.mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      page_size: 20,
+    });
+    fetchLegacyRefreshLanesMock.mockResolvedValue({
+      lanes: [
+        {
+          lane_key: "raw_legacy:tenant-1:public",
+          tenant_id: "tenant-1",
+          schema_name: "raw_legacy",
+          source_schema: "public",
+          lane_locked: false,
+          current_job_id: null,
+          lock_acquired_at: null,
+          latest_run: null,
+          latest_success: null,
+          latest_promoted: null,
+          current_batch_mode: "full-rebaseline",
+          promotion_eligible: false,
+          promotion_classification: null,
+          affected_domains: [],
+          root_failure: null,
+          blocked_reason: null,
+          incremental_state_path: "/tmp/state.json",
+          nightly_rebaseline_path: null,
+          summary_root: "/tmp",
+        },
+      ],
+    });
+    fetchLegacyRefreshRecentRunsMock.mockResolvedValue([]);
+    triggerLegacyRefreshMock.mockResolvedValue({
+      lane_key: "raw_legacy:tenant-1:public",
+      conflict: "legacy-source-settings-missing",
+      detail: "Missing legacy source settings: LEGACY_DB_HOST, LEGACY_DB_USER",
+      existing_lock: null,
+    });
+
+    const { AdminPage } = await import("./AdminPage");
+
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(fetchLegacyRefreshLanesMock).toHaveBeenCalledTimes(1);
+    });
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: /quickActions\.fullRebaseline|Run Full Rebaseline/i }),
+      );
+    });
+
+    expect(screen.getByText("legacyRefresh.trigger.missingLegacySourceSettingsTitle")).toBeTruthy();
+    expect(screen.getByText("legacyRefresh.trigger.missingLegacySourceSettingsBody")).toBeTruthy();
+    expect(screen.getByText("LEGACY_DB_HOST, LEGACY_DB_USER")).toBeTruthy();
+    expect(screen.getAllByRole("link", { name: /settingsHub\.openSettings|Open Settings/i }).length).toBeGreaterThan(0);
+  });
+
+  it("restores the active refresh monitor after reload and shows richer completion metrics", async () => {
+    window.localStorage.setItem(
+      "ultrerp_legacy_refresh_active_job",
+      JSON.stringify({
+        jobId: "job-restored-1",
+        batchId: "legacy-shadow-20260428T020000Z",
+        laneKey: "raw_legacy:tenant-restored:public",
+        mode: "full-rebaseline",
+        launchedAt: "2026-04-28T02:00:00+00:00",
+      }),
+    );
+    fetchUsersMock.mockResolvedValue([]);
+    fetchAuditLogsMock.mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      page_size: 20,
+    });
+    fetchLegacyRefreshLanesMock.mockResolvedValue({
+      lanes: [
+        {
+          lane_key: "raw_legacy:tenant-restored:public",
+          tenant_id: "tenant-restored",
+          schema_name: "raw_legacy",
+          source_schema: "public",
+          lane_locked: false,
+          current_job_id: null,
+          lock_acquired_at: null,
+          latest_run: null,
+          latest_success: null,
+          latest_promoted: null,
+          current_batch_mode: "full-rebaseline",
+          promotion_eligible: true,
+          promotion_classification: "eligible",
+          affected_domains: [],
+          root_failure: null,
+          blocked_reason: null,
+          incremental_state_path: "/tmp/restored-state.json",
+          nightly_rebaseline_path: null,
+          summary_root: "/tmp",
+        },
+      ],
+    });
+    fetchLegacyRefreshRecentRunsMock.mockResolvedValue([]);
+    fetchLegacyRefreshJobStatusMock.mockResolvedValue({
+      job_id: "job-restored-1",
+      batch_id: "legacy-shadow-20260428T020000Z",
+      mode: "full-rebaseline",
+      status: "completed",
+      final_disposition: "completed",
+      completed_at: "2026-04-28T02:05:00+00:00",
+      validation_status: "passed",
+      blocking_issue_count: 987,
+      reconciliation_gap_count: 654,
+      summary_path: "/tmp/restored-summary.json",
+      promotion_eligible: true,
+    });
+
+    const { AdminPage } = await import("./AdminPage");
+
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(fetchLegacyRefreshJobStatusMock).toHaveBeenCalledWith("job-restored-1");
+    });
+
+    expect(screen.getByText("legacyRefresh.monitor.succeeded")).toBeTruthy();
+    expect(screen.getByText("passed")).toBeTruthy();
+    expect(screen.getByText("987")).toBeTruthy();
+    expect(screen.getByText("654")).toBeTruthy();
+    expect(screen.getByText("/tmp/restored-summary.json")).toBeTruthy();
   });
 
   it("triggers bounded sales-monthly backfill from the admin controls", async () => {
@@ -260,14 +773,13 @@ describe("AdminPage audit sorting", () => {
       expect(fetchLegacyRefreshLanesMock).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.change(
-      screen.getByLabelText("adminPage.legacyRefresh.salesMonthly.fields.tenantId"),
-      { target: { value: "tenant-1" } },
-    );
+    fireEvent.change(document.getElementById("lsm-tenant-id") as HTMLInputElement, {
+      target: { value: "tenant-1" },
+    });
 
     await act(async () => {
       fireEvent.click(
-        screen.getByRole("button", { name: "adminPage.legacyRefresh.salesMonthly.actions.backfill" }),
+        screen.getByRole("button", { name: /salesMonthly\.actions\.backfill|Backfill Range/i }),
       );
     });
 
@@ -314,18 +826,17 @@ describe("AdminPage audit sorting", () => {
     });
 
     const repairButton = screen.getByRole("button", {
-      name: "adminPage.legacyRefresh.salesMonthly.actions.repairMissing",
+      name: /salesMonthly\.actions\.repairMissing|Repair Missing/i,
     }) as HTMLButtonElement;
     expect(repairButton.disabled).toBe(true);
 
-    fireEvent.change(
-      screen.getByLabelText("adminPage.legacyRefresh.salesMonthly.fields.tenantId"),
-      { target: { value: "tenant-1" } },
-    );
+    fireEvent.change(document.getElementById("lsm-tenant-id") as HTMLInputElement, {
+      target: { value: "tenant-1" },
+    });
 
     await act(async () => {
       fireEvent.click(
-        screen.getByRole("button", { name: "adminPage.legacyRefresh.salesMonthly.actions.checkHealth" }),
+        screen.getByRole("button", { name: /salesMonthly\.actions\.checkHealth|Check Health/i }),
       );
     });
 
@@ -337,8 +848,8 @@ describe("AdminPage audit sorting", () => {
       );
     });
 
-    expect(screen.getByText("adminPage.legacyRefresh.salesMonthly.status.healthy")).toBeTruthy();
-    expect(screen.getByText("adminPage.legacyRefresh.salesMonthly.empty")).toBeTruthy();
+    expect(screen.getAllByText(/salesMonthly\.status\.healthy|Healthy/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/salesMonthly\.empty|No missing months|no gaps/i)).toBeTruthy();
     expect(repairButton.disabled).toBe(true);
   });
 });

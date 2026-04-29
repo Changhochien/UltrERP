@@ -24,17 +24,24 @@ from typing import Annotated, Any
 import redis.asyncio as redis
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from common.auth import require_role
+from common.config import settings
+from common.database import AsyncSessionLocal
+from domains.settings.models import AppSetting
 from scripts.legacy_refresh_common import RefreshDisposition
 from scripts.legacy_refresh_state import (
     build_lane_state_paths,
+    remove_file_if_exists,
     read_json_file,
     read_json_file_with_error,
+    recover_stale_lock,
     write_json_atomically,
     write_lock_file_with_recovery,
 )
 from scripts.run_incremental_legacy_refresh import (
+    build_incremental_plan_for_dry_run,
     build_incremental_batch_id,
     build_live_source_projection_for_lane,
     run_incremental_legacy_refresh,
@@ -44,8 +51,16 @@ from scripts.run_scheduled_legacy_shadow_refresh import (
     build_shadow_batch_id,
     run_scheduled_shadow_refresh,
 )
+from domains.legacy_import.staging import (
+    LegacySourceCompatibilityError,
+    LegacySourceConnectionSettings,
+    load_runtime_legacy_source_connection_settings,
+)
 
 logger = logging.getLogger(__name__)
+_PROCESS_STARTED_AT = datetime.now(timezone.utc)
+_ACTIVE_JOB_STATUSES = {"queued", "running"}
+_ORPHANED_JOB_FAILURE = "worker interrupted by server restart"
 
 
 class RefreshMode(str, Enum):
@@ -177,19 +192,62 @@ router = APIRouter(
 
 _REDIS_JOB_PREFIX = "legacy-refresh:job:"
 _REDIS_JOB_TTL = 86_400  # 24 hours
+_NULL_SENTINEL = "__NULL__"
+
+
+class RedisJobCacheUnavailable(RuntimeError):
+    """Raised when the optional Redis job cache is not configured."""
+
+
+async def _load_runtime_redis_url() -> str | None:
+    fallback = settings.redis_url
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                select(AppSetting).where(AppSetting.key == "redis_url")
+            )
+            row = result.scalar_one_or_none()
+    except Exception:
+        row = None
+
+    if row is not None:
+        if row.value == _NULL_SENTINEL:
+            return None
+        fallback = row.value
+
+    if fallback is None:
+        return None
+
+    resolved = str(fallback).strip()
+    return resolved or None
 
 
 async def _get_redis() -> redis.Redis:
-    """Return an async Redis client from the app-wide connection pool."""
-    from main import app as fastapi_app
+    """Return an async Redis client for legacy refresh job metadata."""
+    from app.main import app as fastapi_app
 
-    if not hasattr(fastapi_app.state, "redis"):
-        fastapi_app.state.redis = redis.from_url(
-            "redis://localhost",
-            encoding="utf-8",
-            decode_responses=True,
-        )
-    return fastapi_app.state.redis
+    redis_url = await _load_runtime_redis_url()
+    if redis_url is None:
+        raise RedisJobCacheUnavailable("Redis URL is not configured")
+
+    cached_client = getattr(fastapi_app.state, "legacy_refresh_redis", None)
+    cached_url = getattr(fastapi_app.state, "legacy_refresh_redis_url", None)
+    if cached_client is not None and cached_url == redis_url:
+        return cached_client
+
+    if cached_client is not None and cached_url != redis_url:
+        try:
+            await cached_client.aclose()
+        except Exception:
+            logger.debug("Failed to close stale legacy refresh Redis client", exc_info=True)
+
+    fastapi_app.state.legacy_refresh_redis = redis.from_url(
+        redis_url,
+        encoding="utf-8",
+        decode_responses=True,
+    )
+    fastapi_app.state.legacy_refresh_redis_url = redis_url
+    return fastapi_app.state.legacy_refresh_redis
 
 
 async def _write_redis_job(
@@ -216,6 +274,229 @@ def _iso_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _job_sentinel_path(lane_root: Path, job_id: str) -> Path:
+    return lane_root / f".job-{job_id}.json"
+
+
+def _parse_refresh_timestamp(value: object | None) -> datetime | None:
+    if not isinstance(value, str):
+        return None
+    candidate = value.strip()
+    if not candidate:
+        return None
+    if candidate.endswith("Z"):
+        candidate = candidate[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(candidate)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _resolve_job_started_at(job_payload: dict[str, Any], sentinel_path: Path) -> datetime | None:
+    started_at = _parse_refresh_timestamp(job_payload.get("started_at"))
+    if started_at is not None:
+        return started_at
+
+    launched_at = _parse_refresh_timestamp(job_payload.get("launched_at"))
+    if launched_at is not None:
+        return launched_at
+
+    try:
+        return datetime.fromtimestamp(sentinel_path.stat().st_mtime, tz=timezone.utc)
+    except FileNotFoundError:
+        return None
+
+
+def _mark_job_interrupted(sentinel_path: Path, job_payload: dict[str, Any]) -> None:
+    if str(job_payload.get("status", "")).strip().lower() not in _ACTIVE_JOB_STATUSES:
+        return
+
+    write_json_atomically(
+        sentinel_path,
+        {
+            **job_payload,
+            "status": "completed",
+            "completed_at": _iso_now(),
+            "exit_code": 1,
+            "final_disposition": RefreshDisposition.FAILED.value,
+            "root_failure": _ORPHANED_JOB_FAILURE,
+        },
+    )
+
+
+def _reconcile_orphaned_lane_state(lane_root: Path) -> int:
+    reconciled = 0
+    lock_path = lane_root / "scheduler.lock"
+
+    lock_payload = read_json_file(lock_path)
+    if isinstance(lock_payload, dict):
+        lock_started_at = _parse_refresh_timestamp(lock_payload.get("started_at"))
+        if lock_started_at is None:
+            try:
+                lock_started_at = datetime.fromtimestamp(lock_path.stat().st_mtime, tz=timezone.utc)
+            except FileNotFoundError:
+                lock_started_at = None
+        if lock_started_at is not None and lock_started_at < _PROCESS_STARTED_AT:
+            remove_file_if_exists(lock_path)
+
+    for sentinel_path in lane_root.glob(".job-*.json"):
+        job_payload = read_json_file(sentinel_path)
+        if not isinstance(job_payload, dict):
+            continue
+        if str(job_payload.get("status", "")).strip().lower() not in _ACTIVE_JOB_STATUSES:
+            continue
+
+        job_started_at = _resolve_job_started_at(job_payload, sentinel_path)
+        if job_started_at is None or job_started_at >= _PROCESS_STARTED_AT:
+            continue
+
+        _mark_job_interrupted(sentinel_path, job_payload)
+        reconciled += 1
+
+    return reconciled
+
+
+def reconcile_orphaned_legacy_refresh_state(summary_root: Path | None = None) -> int:
+    state_root = (summary_root or DEFAULT_SUMMARY_ROOT) / "state"
+    if not state_root.exists():
+        return 0
+
+    reconciled = 0
+    for lane_dir in state_root.iterdir():
+        if not lane_dir.is_dir():
+            continue
+        reconciled += _reconcile_orphaned_lane_state(lane_dir)
+    return reconciled
+
+
+async def _persist_job_metadata(
+    job_id: str,
+    lane_root: Path,
+    payload: dict[str, Any],
+) -> None:
+    write_json_atomically(_job_sentinel_path(lane_root, job_id), payload)
+    try:
+        r = await _get_redis()
+        await _write_redis_job(r, job_id, payload)
+    except RedisJobCacheUnavailable:
+        return
+    except Exception:
+        logger.warning(
+            "Redis unavailable: failed to sync job metadata for job_id=%s. "
+            "Sentinel file remains the source of truth.",
+            job_id,
+        )
+
+
+def _read_matching_latest_run(
+    lane_paths: Any,
+    batch_id: str,
+) -> dict[str, Any] | None:
+    raw = read_json_file(lane_paths.latest_run_path)
+    if not isinstance(raw, dict):
+        return None
+    if raw.get("batch_id") != batch_id:
+        return None
+    return raw
+
+
+def _derive_root_failure(latest_run_raw: dict[str, Any], latest_run: BatchPointer | None) -> str | None:
+    root_failure: str | None = None
+    root_failed_step = latest_run_raw.get("root_failed_step")
+    root_error_message = latest_run_raw.get("root_error_message")
+    if root_error_message:
+        root_failure = (
+            f"{root_failed_step}: {root_error_message}"
+            if root_failed_step
+            else str(root_error_message)
+        )
+    if root_failure is None and latest_run is not None and latest_run.final_disposition in (
+        RefreshDisposition.FAILED.value,
+        RefreshDisposition.VALIDATION_BLOCKED.value,
+    ):
+        if latest_run.blocking_issue_count and latest_run.blocking_issue_count > 0:
+            root_failure = (
+                f"validation blocked: {latest_run.blocking_issue_count} "
+                "blocking issues"
+            )
+        elif latest_run.final_disposition == RefreshDisposition.FAILED.value:
+            root_failure = "refresh execution failed"
+    return root_failure
+
+
+def _derive_blocked_reason(latest_run_raw: dict[str, Any], latest_run: BatchPointer | None) -> str | None:
+    blocked_reason: str | None = None
+    rebaseline_reason = latest_run_raw.get("rebaseline_reason")
+    if isinstance(rebaseline_reason, str) and rebaseline_reason.strip():
+        blocked_reason = rebaseline_reason.strip()
+    if blocked_reason is None and latest_run is not None:
+        disp = latest_run.final_disposition
+        if disp == RefreshDisposition.OVERLAP_BLOCKED.value:
+            blocked_reason = "concurrent refresh blocked"
+        elif disp == RefreshDisposition.VALIDATION_BLOCKED.value:
+            blocked_reason = "validation threshold exceeded"
+    return blocked_reason
+
+
+def _enrich_job_metadata_from_latest_run(
+    job_meta: dict[str, Any],
+    latest_run_raw: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if latest_run_raw is None:
+        return job_meta
+
+    promotion_policy = latest_run_raw.get("promotion_policy")
+    latest_run = BatchPointer(
+        batch_id=latest_run_raw.get("batch_id"),
+        summary_path=latest_run_raw.get("summary_path"),
+        started_at=latest_run_raw.get("started_at"),
+        completed_at=latest_run_raw.get("completed_at"),
+        final_disposition=latest_run_raw.get("final_disposition"),
+        exit_code=latest_run_raw.get("exit_code"),
+        validation_status=latest_run_raw.get("validation_status"),
+        blocking_issue_count=latest_run_raw.get("blocking_issue_count"),
+        reconciliation_gap_count=latest_run_raw.get("reconciliation_gap_count"),
+        promotion_policy=promotion_policy if isinstance(promotion_policy, dict) else None,
+    )
+
+    enriched = {
+        **job_meta,
+        "summary_path": latest_run.summary_path,
+        "started_at": latest_run.started_at or job_meta.get("started_at"),
+        "completed_at": latest_run.completed_at or job_meta.get("completed_at"),
+        "final_disposition": latest_run.final_disposition,
+        "exit_code": latest_run.exit_code,
+        "validation_status": latest_run.validation_status,
+        "blocking_issue_count": latest_run.blocking_issue_count,
+        "reconciliation_gap_count": latest_run.reconciliation_gap_count,
+        "promotion_policy": latest_run.promotion_policy,
+        "blocked_reason": _derive_blocked_reason(latest_run_raw, latest_run),
+        "root_failure": _derive_root_failure(latest_run_raw, latest_run),
+        "status": "completed",
+      }
+    return {key: value for key, value in enriched.items() if value is not None}
+
+
+def _read_job_sentinel(job_id: str) -> dict[str, Any] | None:
+    state_root = DEFAULT_SUMMARY_ROOT / "state"
+    if not state_root.exists():
+        return None
+
+    for lane_dir in state_root.iterdir():
+        if not lane_dir.is_dir():
+            continue
+        _reconcile_orphaned_lane_state(lane_dir)
+        sentinel_path = _job_sentinel_path(lane_dir, job_id)
+        if sentinel_path.exists():
+            raw = read_json_file(sentinel_path)
+            if raw:
+                return raw
+    return None
+
+
 def _load_lane_status(
     tenant_id: uuid.UUID,
     schema_name: str,
@@ -229,11 +510,13 @@ def _load_lane_status(
         summary_root=summary_root or DEFAULT_SUMMARY_ROOT,
     )
     lane_key = f"{schema_name}:{tenant_id}:{source_schema}"
+    _reconcile_orphaned_lane_state(lane_paths.lane_root)
 
     # Check lock
     lock_payload: dict[str, Any] | None = None
     lock_acquired_at: str | None = None
     lane_locked = False
+    recover_stale_lock(lane_paths.lock_path)
     try:
         lock_payload = read_json_file(lane_paths.lock_path)
         if lock_payload:
@@ -283,41 +566,9 @@ def _load_lane_status(
             elif classification is not None:
                 promotion_classification = classification
 
-    # Root failure
-    root_failure: str | None = None
-    if isinstance(latest_run_raw, dict):
-        root_failed_step = latest_run_raw.get("root_failed_step")
-        root_error_message = latest_run_raw.get("root_error_message")
-        if root_error_message:
-            root_failure = (
-                f"{root_failed_step}: {root_error_message}"
-                if root_failed_step
-                else str(root_error_message)
-            )
-    if root_failure is None and latest_run is not None and latest_run.final_disposition in (
-        RefreshDisposition.FAILED.value,
-        RefreshDisposition.VALIDATION_BLOCKED.value,
-    ):
-        if latest_run.blocking_issue_count and latest_run.blocking_issue_count > 0:
-            root_failure = (
-                f"validation blocked: {latest_run.blocking_issue_count} "
-                "blocking issues"
-            )
-        elif latest_run.final_disposition == RefreshDisposition.FAILED.value:
-            root_failure = "refresh execution failed"
+    root_failure = _derive_root_failure(latest_run_raw, latest_run)
 
-    # Blocked reason
-    blocked_reason: str | None = None
-    if isinstance(latest_run_raw, dict):
-        rebaseline_reason = latest_run_raw.get("rebaseline_reason")
-        if isinstance(rebaseline_reason, str) and rebaseline_reason.strip():
-            blocked_reason = rebaseline_reason.strip()
-    if blocked_reason is None and latest_run is not None:
-        disp = latest_run.final_disposition
-        if disp == RefreshDisposition.OVERLAP_BLOCKED.value:
-            blocked_reason = "concurrent refresh blocked"
-        elif disp == RefreshDisposition.VALIDATION_BLOCKED.value:
-            blocked_reason = "validation threshold exceeded"
+    blocked_reason = _derive_blocked_reason(latest_run_raw, latest_run)
 
     # Current batch mode from latest run
     current_batch_mode: str | None = None
@@ -380,20 +631,22 @@ async def _launch_full_rebaseline(
     lookback_days: int,
     reconciliation_threshold: int,
     job_id: str,
+    batch_id: str,
+    launched_at: str,
+    connection_settings: LegacySourceConnectionSettings,
 ) -> None:
     """Durable worker: launch full rebaseline via subprocess.
 
     This function runs in a background asyncio task, off the request thread.
     It writes a sentinel file atomically so the status API can report progress.
     """
-    batch_id = build_shadow_batch_id("legacy-shadow")
     lock_payload = {
         "scheduler_run_id": job_id,
         "tenant_id": str(tenant_id),
         "schema_name": schema_name,
         "source_schema": source_schema,
         "batch_id": batch_id,
-        "started_at": _iso_now(),
+        "started_at": launched_at,
     }
 
     lane_paths = build_lane_state_paths(
@@ -419,25 +672,59 @@ async def _launch_full_rebaseline(
             "tenant_id": str(tenant_id),
             "schema_name": schema_name,
             "source_schema": source_schema,
-            "started_at": _iso_now(),
+            "launched_at": launched_at,
+            "started_at": launched_at,
             "status": "running",
         }
-        sentinel_path = lane_paths.lane_root / f".job-{job_id}.json"
-        write_json_atomically(sentinel_path, job_meta)
+        await _persist_job_metadata(job_id, lane_paths.lane_root, job_meta)
 
-        result = await run_scheduled_shadow_refresh(
-            tenant_id=tenant_id,
-            schema_name=schema_name,
-            source_schema=source_schema,
-            lookback_days=lookback_days,
-            reconciliation_threshold=reconciliation_threshold,
-            batch_prefix="legacy-shadow",
-            summary_root=DEFAULT_SUMMARY_ROOT,
-        )
-        job_meta["status"] = "completed"
-        job_meta["exit_code"] = result.exit_code
-        job_meta["completed_at"] = _iso_now()
-        write_json_atomically(sentinel_path, job_meta)
+        try:
+            result = await run_scheduled_shadow_refresh(
+                tenant_id=tenant_id,
+                schema_name=schema_name,
+                source_schema=source_schema,
+                lookback_days=lookback_days,
+                reconciliation_threshold=reconciliation_threshold,
+                batch_prefix="legacy-shadow",
+                summary_root=DEFAULT_SUMMARY_ROOT,
+                scheduler_run_id=job_id,
+                started_at=launched_at,
+                batch_id=batch_id,
+                lock_already_held=True,
+                connection_settings=connection_settings,
+            )
+            job_meta["status"] = "completed"
+            job_meta["exit_code"] = result.exit_code
+            job_meta["completed_at"] = _iso_now()
+            job_meta = _enrich_job_metadata_from_latest_run(
+                job_meta,
+                _read_matching_latest_run(lane_paths, batch_id),
+            )
+            if result.exit_code != 0 and "final_disposition" not in job_meta:
+                job_meta["final_disposition"] = RefreshDisposition.FAILED.value
+            await _persist_job_metadata(job_id, lane_paths.lane_root, job_meta)
+        except asyncio.CancelledError:
+            cancelled_meta = {
+                **job_meta,
+                "status": "completed",
+                "completed_at": _iso_now(),
+                "exit_code": 1,
+                "final_disposition": RefreshDisposition.FAILED.value,
+                "root_failure": "worker cancelled before completion",
+            }
+            await _persist_job_metadata(job_id, lane_paths.lane_root, cancelled_meta)
+            raise
+        except Exception as exc:
+            logger.exception("Legacy full rebaseline worker failed for job_id=%s", job_id)
+            failure_meta = {
+                **job_meta,
+                "status": "completed",
+                "completed_at": _iso_now(),
+                "exit_code": 1,
+                "final_disposition": RefreshDisposition.FAILED.value,
+                "root_failure": str(exc),
+            }
+            await _persist_job_metadata(job_id, lane_paths.lane_root, failure_meta)
     finally:
         try:
             lane_paths.lock_path.unlink()
@@ -452,6 +739,9 @@ async def _launch_incremental(
     lookback_days: int,
     reconciliation_threshold: int,
     job_id: str,
+    batch_id: str,
+    launched_at: str,
+    connection_settings: LegacySourceConnectionSettings,
 ) -> None:
     """Durable worker: launch incremental refresh via subprocess.
 
@@ -464,14 +754,13 @@ async def _launch_incremental(
         summary_root=DEFAULT_SUMMARY_ROOT,
     )
 
-    batch_id = build_incremental_batch_id("legacy-incremental")
     lock_payload = {
         "scheduler_run_id": job_id,
         "tenant_id": str(tenant_id),
         "schema_name": schema_name,
         "source_schema": source_schema,
         "batch_id": batch_id,
-        "started_at": _iso_now(),
+        "started_at": launched_at,
     }
 
     try:
@@ -488,32 +777,64 @@ async def _launch_incremental(
             "tenant_id": str(tenant_id),
             "schema_name": schema_name,
             "source_schema": source_schema,
-            "started_at": _iso_now(),
+            "launched_at": launched_at,
+            "started_at": launched_at,
             "status": "running",
         }
-        sentinel_path = lane_paths.lane_root / f".job-{job_id}.json"
-        write_json_atomically(sentinel_path, job_meta)
+        await _persist_job_metadata(job_id, lane_paths.lane_root, job_meta)
 
-        source_projection = build_live_source_projection_for_lane(
-            tenant_id=tenant_id,
-            schema_name=schema_name,
-            source_schema=source_schema,
-        )
-        result = await run_incremental_legacy_refresh(
-            tenant_id=tenant_id,
-            schema_name=schema_name,
-            source_schema=source_schema,
-            lookback_days=lookback_days,
-            reconciliation_threshold=reconciliation_threshold,
-            batch_prefix="legacy-incremental",
-            source_projection=source_projection,
-            scheduler_run_id=job_id,
-            started_at=job_meta["started_at"],
-        )
-        job_meta["status"] = "completed"
-        job_meta["exit_code"] = result.exit_code
-        job_meta["completed_at"] = _iso_now()
-        write_json_atomically(sentinel_path, job_meta)
+        try:
+            source_projection = build_live_source_projection_for_lane(
+                tenant_id=tenant_id,
+                schema_name=schema_name,
+                source_schema=source_schema,
+                connection_settings=connection_settings,
+            )
+            result = await run_incremental_legacy_refresh(
+                tenant_id=tenant_id,
+                schema_name=schema_name,
+                source_schema=source_schema,
+                lookback_days=lookback_days,
+                reconciliation_threshold=reconciliation_threshold,
+                batch_prefix="legacy-incremental",
+                batch_id=batch_id,
+                source_projection=source_projection,
+                scheduler_run_id=job_id,
+                started_at=job_meta["started_at"],
+                connection_settings=connection_settings,
+            )
+            job_meta["status"] = "completed"
+            job_meta["exit_code"] = result.exit_code
+            job_meta["completed_at"] = _iso_now()
+            job_meta = _enrich_job_metadata_from_latest_run(
+                job_meta,
+                _read_matching_latest_run(lane_paths, batch_id),
+            )
+            if result.exit_code != 0 and "final_disposition" not in job_meta:
+                job_meta["final_disposition"] = RefreshDisposition.FAILED.value
+            await _persist_job_metadata(job_id, lane_paths.lane_root, job_meta)
+        except asyncio.CancelledError:
+            cancelled_meta = {
+                **job_meta,
+                "status": "completed",
+                "completed_at": _iso_now(),
+                "exit_code": 1,
+                "final_disposition": RefreshDisposition.FAILED.value,
+                "root_failure": "worker cancelled before completion",
+            }
+            await _persist_job_metadata(job_id, lane_paths.lane_root, cancelled_meta)
+            raise
+        except Exception as exc:
+            logger.exception("Legacy incremental refresh worker failed for job_id=%s", job_id)
+            failure_meta = {
+                **job_meta,
+                "status": "completed",
+                "completed_at": _iso_now(),
+                "exit_code": 1,
+                "final_disposition": RefreshDisposition.FAILED.value,
+                "root_failure": str(exc),
+            }
+            await _persist_job_metadata(job_id, lane_paths.lane_root, failure_meta)
     finally:
         try:
             lane_paths.lock_path.unlink()
@@ -552,6 +873,8 @@ async def trigger_legacy_refresh(
     )
 
     # Check for concurrent lane lock (AC3)
+    _reconcile_orphaned_lane_state(lane_paths.lane_root)
+    recover_stale_lock(lane_paths.lock_path)
     existing_lock = read_json_file(lane_paths.lock_path)
     if existing_lock is not None:
         return RefreshConflict(
@@ -562,6 +885,36 @@ async def trigger_legacy_refresh(
                 "Wait for it to complete or cancel it before launching a new one."
             ),
             existing_lock=existing_lock,
+        )
+
+    if request.mode == RefreshMode.INCREMENTAL:
+        try:
+            build_incremental_plan_for_dry_run(
+                tenant_id=request.tenant_id,
+                schema_name=request.schema_name,
+                source_schema=request.source_schema,
+                summary_root=DEFAULT_SUMMARY_ROOT,
+            )
+        except FileNotFoundError as exc:
+            return RefreshConflict(
+                lane_key=lane_key,
+                conflict="incremental-bootstrap-required",
+                detail=str(exc),
+            )
+        except ValueError as exc:
+            return RefreshConflict(
+                lane_key=lane_key,
+                conflict="incremental-state-invalid",
+                detail=str(exc),
+            )
+
+    try:
+        connection_settings = await load_runtime_legacy_source_connection_settings()
+    except LegacySourceCompatibilityError as exc:
+        return RefreshConflict(
+            lane_key=lane_key,
+            conflict="legacy-source-settings-missing",
+            detail=str(exc),
         )
 
     batch_id = (
@@ -590,6 +943,8 @@ async def trigger_legacy_refresh(
             "launched_at": launched_at,
             "status": "queued",
         })
+    except RedisJobCacheUnavailable:
+        pass
     except Exception:
         logger.warning(
             "Redis unavailable: failed to write job metadata for job_id=%s, lane_key=%s. "
@@ -608,6 +963,9 @@ async def trigger_legacy_refresh(
                 lookback_days=request.lookback_days,
                 reconciliation_threshold=request.reconciliation_threshold,
                 job_id=job_id,
+                batch_id=batch_id,
+                launched_at=launched_at,
+                connection_settings=connection_settings,
             )
         )
     else:
@@ -619,6 +977,9 @@ async def trigger_legacy_refresh(
                 lookback_days=request.lookback_days,
                 reconciliation_threshold=request.reconciliation_threshold,
                 job_id=job_id,
+                batch_id=batch_id,
+                launched_at=launched_at,
+                connection_settings=connection_settings,
             )
         )
 
@@ -701,11 +1062,12 @@ async def get_job_status(
 
     First checks Redis for live job metadata, then falls back to lane-state files.
     """
+    redis_job: dict[str, Any] | None = None
     try:
         r = await _get_redis()
         redis_job = await _read_redis_job(r, job_id)
-        if redis_job:
-            return redis_job
+    except RedisJobCacheUnavailable:
+        pass
     except Exception:
         logger.warning(
             "Redis unavailable: failed to read job metadata for job_id=%s. "
@@ -713,19 +1075,16 @@ async def get_job_status(
             job_id,
         )
 
-    # Fallback: scan lane-state directories for sentinel file
-    state_root = DEFAULT_SUMMARY_ROOT / "state"
-    if not state_root.exists():
-        raise HTTPException(status_code=404, detail="Job not found")
-
-    for lane_dir in state_root.iterdir():
-        if not lane_dir.is_dir():
-            continue
-        sentinel_path = lane_dir / f".job-{job_id}.json"
-        if sentinel_path.exists():
-            raw = read_json_file(sentinel_path)
-            if raw:
-                return raw
+    sentinel_job = _read_job_sentinel(job_id)
+    if redis_job and sentinel_job:
+        return {
+            **redis_job,
+            **sentinel_job,
+        }
+    if sentinel_job:
+        return sentinel_job
+    if redis_job:
+        return redis_job
 
     raise HTTPException(status_code=404, detail="Job not found")
 

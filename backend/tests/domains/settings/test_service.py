@@ -7,10 +7,12 @@ import pytest
 from domains.settings.service import (
     NULL_SENTINEL,
     SENSITIVE_KEYS,
+    VISIBLE_SENSITIVE_KEYS,
     _bool_decode,
     _bool_encode,
     _build_merged_dict,
     _revalidate_setting,
+    _serialize_setting_item,
 )
 
 
@@ -124,3 +126,30 @@ class TestSensitiveKeys:
             "object_store_access_key",
             "mcp_api_keys",
         }
+
+    def test_visible_sensitive_keys_allow_legacy_db_password(self) -> None:
+        assert VISIBLE_SENSITIVE_KEYS == {"legacy_db_password"}
+
+
+class TestSerializeSettingItem:
+    def test_masks_sensitive_value_without_marking_it_null(self) -> None:
+        item = _serialize_setting_item(
+            key="legacy_db_password",
+            meta_info={
+                "value_type": "str",
+                "allowed_values": None,
+                "nullable": True,
+                "is_sensitive": True,
+                "description": "Legacy PostgreSQL password",
+                "category": "legacy_import",
+            },
+            raw_value="super-secret",
+            is_null=False,
+            updated_at=None,
+            updated_by=None,
+        )
+
+        assert item.value == ""
+        assert item.display_value == "********"
+        assert item.is_null is False
+        assert item.is_sensitive is True

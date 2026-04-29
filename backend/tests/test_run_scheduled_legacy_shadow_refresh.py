@@ -9,10 +9,22 @@ from pathlib import Path
 import pytest
 
 import domains.legacy_import.incremental_state as incremental_state
+from domains.legacy_import.staging import LegacySourceConnectionSettings
 from scripts import run_scheduled_legacy_shadow_refresh as scheduled
 from scripts.run_legacy_refresh import LegacyRefreshExecution
 
 TENANT_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+
+
+def _connection_settings() -> LegacySourceConnectionSettings:
+    return LegacySourceConnectionSettings(
+        host="legacy-db.internal",
+        port=5432,
+        user="postgres",
+        password="secret",
+        database="cao50001",
+        client_encoding="BIG5",
+    )
 
 
 def _build_execution(
@@ -148,6 +160,52 @@ def test_run_scheduled_shadow_refresh_updates_latest_run_and_latest_success(
     assert latest_run["promotion_readiness"] is True
     assert latest_run["promotion_policy"]["classification"] == "eligible"
     assert latest_run["promotion_policy"]["reason_codes"] == []
+
+
+def test_run_scheduled_shadow_refresh_forwards_connection_settings(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    summary_root = tmp_path / "ops"
+    fixed_now = datetime(2026, 4, 18, 2, 3, 4, tzinfo=timezone.utc)
+    batch_id = "legacy-shadow-20260418T020304Z"
+    refresh_execution = _build_execution(
+        summary_root,
+        batch_id=batch_id,
+        final_disposition="completed",
+        exit_code=0,
+        validation_status="passed",
+        blocking_issue_count=0,
+        reconciliation_gap_count=0,
+        analyst_review_required=False,
+        promotion_readiness=True,
+        summary_name="refresh-success.json",
+    )
+    connection_settings = _connection_settings()
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(scheduled, "utc_now", lambda: fixed_now)
+
+    async def fake_run_legacy_refresh(**kwargs):
+        captured.update(kwargs)
+        return refresh_execution
+
+    monkeypatch.setattr(scheduled, "run_legacy_refresh", fake_run_legacy_refresh)
+
+    asyncio.run(
+        scheduled.run_scheduled_shadow_refresh(
+            tenant_id=TENANT_ID,
+            schema_name="raw_legacy",
+            source_schema="public",
+            lookback_days=10000,
+            reconciliation_threshold=0,
+            batch_prefix="legacy-shadow",
+            summary_root=summary_root,
+            connection_settings=connection_settings,
+        )
+    )
+
+    assert captured["connection_settings"] == connection_settings
 
 
 def test_completed_review_required_still_advances_latest_success(
@@ -376,6 +434,67 @@ def test_unsuccessful_runs_update_latest_run_without_replacing_latest_success(
     assert latest_run["batch_id"] == failure_batch_id
     assert latest_run["final_disposition"] == disposition
     assert latest_success == expected_success
+
+
+def test_failed_refresh_persists_detailed_failure_fields(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    summary_root = tmp_path / "ops"
+    fixed_now = datetime(2026, 4, 18, 2, 12, 0, tzinfo=timezone.utc)
+    batch_id = "legacy-shadow-20260418T021200Z"
+    refresh_execution = _build_execution(
+        summary_root,
+        batch_id=batch_id,
+        final_disposition="failed",
+        exit_code=1,
+        validation_status="pending",
+        blocking_issue_count=None,
+        reconciliation_gap_count=None,
+        analyst_review_required=False,
+        promotion_readiness=False,
+        summary_name="refresh-detailed-failure.json",
+    )
+    refresh_execution.summary.update(
+        {
+            "root_failed_step": "live-stage",
+            "root_error_message": "Missing legacy source settings: LEGACY_DB_HOST",
+            "rebaseline_reason": (
+                "Step live-stage failed: Missing legacy source settings: LEGACY_DB_HOST"
+            ),
+            "batch_mode": "full-rebaseline",
+            "affected_domains": ["sales"],
+        }
+    )
+
+    monkeypatch.setattr(scheduled, "utc_now", lambda: fixed_now)
+
+    async def fake_failure(**kwargs):
+        return refresh_execution
+
+    monkeypatch.setattr(scheduled, "run_legacy_refresh", fake_failure)
+
+    result = asyncio.run(
+        scheduled.run_scheduled_shadow_refresh(
+            tenant_id=TENANT_ID,
+            schema_name="raw_legacy",
+            source_schema="public",
+            lookback_days=10000,
+            reconciliation_threshold=0,
+            batch_prefix="legacy-shadow",
+            summary_root=summary_root,
+        )
+    )
+
+    latest_run = json.loads(result.latest_run_path.read_text(encoding="utf-8"))
+
+    assert latest_run["root_failed_step"] == "live-stage"
+    assert latest_run["root_error_message"] == "Missing legacy source settings: LEGACY_DB_HOST"
+    assert latest_run["rebaseline_reason"] == (
+        "Step live-stage failed: Missing legacy source settings: LEGACY_DB_HOST"
+    )
+    assert latest_run["batch_mode"] == "full-rebaseline"
+    assert latest_run["affected_domains"] == ["sales"]
 
 
 def test_overlap_preserves_previous_latest_success(monkeypatch, tmp_path: Path) -> None:

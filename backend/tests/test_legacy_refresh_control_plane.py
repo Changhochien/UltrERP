@@ -12,11 +12,17 @@ from __future__ import annotations
 import json
 import tempfile
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 
 import pytest
+import domains.legacy_import.routes as legacy_refresh_routes
 
+from domains.legacy_import.staging import (
+    LegacySourceCompatibilityError,
+    LegacySourceConnectionSettings,
+)
 from domains.legacy_import.routes import (
     RefreshConflict,
     RefreshJobLaunched,
@@ -93,6 +99,40 @@ def completed_run(temp_lane: tuple[Path, uuid.UUID, str, str]) -> dict:
     return record
 
 
+class FakeRedis:
+    def __init__(self, initial: dict[str, Any] | None = None):
+        self.store = dict(initial or {})
+
+    async def set(self, key: str, value: str, ex: int | None = None) -> None:
+        self.store[key] = value
+
+    async def get(self, key: str) -> str | None:
+        return self.store.get(key)
+
+
+def _test_connection_settings() -> LegacySourceConnectionSettings:
+    return LegacySourceConnectionSettings(
+        host="legacy-db.internal",
+        port=5432,
+        user="postgres",
+        password="secret",
+        database="cao50001",
+        client_encoding="BIG5",
+    )
+
+
+@pytest.fixture(autouse=True)
+def configured_legacy_source_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_load_runtime_legacy_source_connection_settings(*_args, **_kwargs):
+        return _test_connection_settings()
+
+    monkeypatch.setattr(
+        legacy_refresh_routes,
+        "load_runtime_legacy_source_connection_settings",
+        fake_load_runtime_legacy_source_connection_settings,
+    )
+
+
 # ── AC1: Trigger endpoint ──────────────────────────────────────
 
 
@@ -135,8 +175,8 @@ async def test_trigger_requires_tenant_id():
 
 
 @pytest.mark.asyncio
-async def test_trigger_incremental_mode_valid() -> None:
-    """Trigger with valid incremental payload returns 202 and job metadata."""
+async def test_trigger_incremental_requires_bootstrap_state() -> None:
+    """Incremental trigger is rejected until a full rebaseline seeds lane state."""
     session = FakeAsyncSession()
     previous = setup_session(session)
     try:
@@ -153,12 +193,8 @@ async def test_trigger_incremental_mode_valid() -> None:
         )
         assert resp.status_code == 202
         data = resp.json()
-        assert "job_id" in data
-        assert data["mode"] == "incremental"
-        assert "batch_id" in data
-        assert data["status"] == "queued"
-        assert "lane_key" in data
-        assert "launched_at" in data
+        assert data["conflict"] == "incremental-bootstrap-required"
+        assert "Run a full rebaseline" in data["detail"]
     finally:
         teardown_session(previous)
 
@@ -185,6 +221,99 @@ async def test_trigger_full_rebaseline_mode_valid() -> None:
 
 
 @pytest.mark.asyncio
+async def test_trigger_full_rebaseline_requires_legacy_source_settings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = FakeAsyncSession()
+    previous = setup_session(session)
+
+    async def fake_missing_runtime_legacy_source_connection_settings(*_args, **_kwargs):
+        raise LegacySourceCompatibilityError(
+            "Missing legacy source settings: LEGACY_DB_HOST, LEGACY_DB_USER"
+        )
+
+    monkeypatch.setattr(
+        legacy_refresh_routes,
+        "load_runtime_legacy_source_connection_settings",
+        fake_missing_runtime_legacy_source_connection_settings,
+    )
+    try:
+        resp = await http_post(
+            "/api/v1/admin/legacy-refresh/trigger",
+            json={
+                "tenant_id": str(uuid.uuid4()),
+                "schema_name": "test_schema",
+                "mode": "full-rebaseline",
+            },
+        )
+        assert resp.status_code == 202
+        data = resp.json()
+        assert data["conflict"] == "legacy-source-settings-missing"
+        assert "LEGACY_DB_HOST" in data["detail"]
+    finally:
+        teardown_session(previous)
+
+
+@pytest.mark.asyncio
+async def test_trigger_passes_returned_batch_id_into_worker(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, Any] = {}
+    tenant_id = uuid.uuid4()
+    summary_root = Path(tempfile.mkdtemp())
+
+    lane_paths = build_lane_state_paths(
+        tenant_id=tenant_id,
+        schema_name="test_schema",
+        source_schema="public",
+        summary_root=summary_root,
+    )
+    lane_paths.lane_root.mkdir(parents=True, exist_ok=True)
+    write_json_atomically(
+        lane_paths.incremental_state_path,
+        {"bootstrap_required": False, "domains": {}},
+    )
+
+    async def fake_get_redis() -> FakeRedis:
+        return FakeRedis()
+
+    def fake_launch_incremental(**kwargs: Any):
+        captured.update(kwargs)
+
+        async def _noop() -> None:
+            return None
+
+        return _noop()
+
+    def fake_create_task(coro: Any) -> None:
+        coro.close()
+        return None
+
+    monkeypatch.setattr(legacy_refresh_routes, "_get_redis", fake_get_redis)
+    monkeypatch.setattr(legacy_refresh_routes, "_launch_incremental", fake_launch_incremental)
+    monkeypatch.setattr(legacy_refresh_routes.asyncio, "create_task", fake_create_task)
+    monkeypatch.setattr(legacy_refresh_routes, "DEFAULT_SUMMARY_ROOT", summary_root)
+    monkeypatch.setattr(
+        legacy_refresh_routes,
+        "build_incremental_plan_for_dry_run",
+        lambda **kwargs: {"domains": {}, "bootstrap_required": False},
+    )
+
+    result = await legacy_refresh_routes.trigger_legacy_refresh(
+        RefreshTriggerRequest(
+            tenant_id=tenant_id,
+            schema_name="test_schema",
+            source_schema="public",
+            mode=RefreshMode.INCREMENTAL,
+        ),
+        {"sub": "admin@example.com", "role": "admin"},
+    )
+
+    assert isinstance(result, RefreshJobLaunched)
+    assert captured["batch_id"] == result.batch_id
+    assert captured["launched_at"] == result.launched_at
+    assert captured["connection_settings"] == _test_connection_settings()
+
+
+@pytest.mark.asyncio
 async def test_trigger_dry_run_flag_passed() -> None:
     """Trigger with dry_run=true is accepted."""
     session = FakeAsyncSession()
@@ -195,7 +324,7 @@ async def test_trigger_dry_run_flag_passed() -> None:
             json={
                 "tenant_id": str(uuid.uuid4()),
                 "schema_name": "test_schema",
-                "mode": "incremental",
+                "mode": "full-rebaseline",
                 "dry_run": True,
             },
         )
@@ -430,6 +559,134 @@ async def test_status_polling_returns_current_job(
 
 
 @pytest.mark.asyncio
+async def test_get_job_status_prefers_sentinel_over_stale_redis(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tenant_id = uuid.uuid4()
+    lane_paths = build_lane_state_paths(
+        tenant_id=tenant_id,
+        schema_name="test_schema",
+        source_schema="public",
+        summary_root=tmp_path,
+    )
+    lane_paths.lane_root.mkdir(parents=True, exist_ok=True)
+
+    job_id = str(uuid.uuid4())
+    redis_key = f"legacy-refresh:job:{job_id}"
+    fake_redis = FakeRedis({
+        redis_key: json.dumps({
+            "job_id": job_id,
+            "batch_id": "legacy-shadow-stale",
+            "status": "queued",
+            "actor_id": "admin@example.com",
+        }),
+    })
+    sentinel_payload = {
+        "job_id": job_id,
+        "batch_id": "legacy-shadow-stale",
+        "status": "completed",
+        "final_disposition": RefreshDisposition.COMPLETED.value,
+        "summary_path": str(tmp_path / "summary.json"),
+        "completed_at": "2026-04-28T02:00:00+00:00",
+    }
+    write_json_atomically(lane_paths.lane_root / f".job-{job_id}.json", sentinel_payload)
+
+    async def fake_get_redis() -> FakeRedis:
+        return fake_redis
+
+    monkeypatch.setattr(legacy_refresh_routes, "DEFAULT_SUMMARY_ROOT", tmp_path)
+    monkeypatch.setattr(legacy_refresh_routes, "_get_redis", fake_get_redis)
+
+    status = await legacy_refresh_routes.get_job_status(job_id)
+
+    assert status["status"] == "completed"
+    assert status["final_disposition"] == RefreshDisposition.COMPLETED.value
+    assert status["summary_path"] == str(tmp_path / "summary.json")
+    assert status["actor_id"] == "admin@example.com"
+
+
+@pytest.mark.asyncio
+async def test_status_ignores_stale_lane_lock(
+    temp_lane: tuple[Path, uuid.UUID, str, str],
+) -> None:
+    """Status should not report a lock once the lane lock is stale."""
+    tmp_path, tenant_id, schema_name, source_schema = temp_lane
+    lane_paths = build_lane_state_paths(
+        tenant_id=tenant_id,
+        schema_name=schema_name,
+        source_schema=source_schema,
+        summary_root=tmp_path,
+    )
+
+    stale_started_at = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
+    write_json_atomically(
+        lane_paths.lock_path,
+        {
+            "scheduler_run_id": str(uuid.uuid4()),
+            "batch_id": "legacy-shadow-stale",
+            "started_at": stale_started_at,
+        },
+    )
+
+    status = _load_lane_status(tenant_id, schema_name, source_schema, summary_root=tmp_path)
+
+    assert status.lane_locked is False
+    assert status.current_job_id is None
+    assert lane_paths.lock_path.exists() is False
+
+
+@pytest.mark.asyncio
+async def test_trigger_recovers_stale_lane_lock_before_conflict(
+    temp_lane: tuple[Path, uuid.UUID, str, str],
+) -> None:
+    """Trigger should launch a new job when the existing lane lock is stale."""
+    tmp_path, tenant_id, schema_name, source_schema = temp_lane
+    lane_paths = build_lane_state_paths(
+        tenant_id=tenant_id,
+        schema_name=schema_name,
+        source_schema=source_schema,
+        summary_root=DEFAULT_SUMMARY_ROOT,
+    )
+    lane_paths.lane_root.mkdir(parents=True, exist_ok=True)
+
+    stale_started_at = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
+    write_json_atomically(
+        lane_paths.lock_path,
+        {
+            "scheduler_run_id": str(uuid.uuid4()),
+            "batch_id": "legacy-shadow-stale",
+            "started_at": stale_started_at,
+        },
+    )
+
+    session = FakeAsyncSession()
+    previous = setup_session(session)
+    try:
+        resp = await http_post(
+            "/api/v1/admin/legacy-refresh/trigger",
+            json={
+                "tenant_id": str(tenant_id),
+                "schema_name": schema_name,
+                "source_schema": source_schema,
+                "mode": "full-rebaseline",
+            },
+        )
+        assert resp.status_code == 202
+        data = resp.json()
+        assert "conflict" not in data
+        assert data["mode"] == "full-rebaseline"
+        assert data["job_id"]
+    finally:
+        import shutil
+        try:
+            shutil.rmtree(lane_paths.lane_root)
+        except FileNotFoundError:
+            pass
+        teardown_session(previous)
+
+
+@pytest.mark.asyncio
 async def test_recent_runs_endpoint_returns_job_records(
     temp_lane: tuple[Path, uuid.UUID, str, str],
     completed_run: dict,
@@ -449,6 +706,8 @@ async def test_recent_runs_endpoint_returns_job_records(
     completed_record = {
         **completed_run,
         "batch_id": "legacy-shadow-completed-test",
+        "started_at": "2099-04-24T12:00:00+00:00",
+        "completed_at": "2099-04-24T12:05:00+00:00",
         "final_disposition": RefreshDisposition.COMPLETED.value,
     }
     write_json_atomically(lane_paths.latest_run_path, completed_record)
@@ -457,7 +716,7 @@ async def test_recent_runs_endpoint_returns_job_records(
     session = FakeAsyncSession()
     previous = setup_session(session)
     try:
-        resp = await http_get("/api/v1/admin/legacy-refresh/recent-runs?limit=10")
+        resp = await http_get("/api/v1/admin/legacy-refresh/recent-runs?limit=50")
         assert resp.status_code == 200
         data = resp.json()
         assert isinstance(data, list)
@@ -497,8 +756,8 @@ async def test_recent_runs_blocked_reason(
     blocked_record = {
         "scheduler_run_id": str(uuid.uuid4()),
         "batch_id": "legacy-shadow-blocked",
-        "started_at": "2024-04-24T14:00:00+00:00",
-        "completed_at": "2024-04-24T14:00:01+00:00",
+        "started_at": "2099-04-24T14:00:00+00:00",
+        "completed_at": "2099-04-24T14:00:01+00:00",
         "final_disposition": RefreshDisposition.OVERLAP_BLOCKED.value,
         "exit_code": 2,
         "promotion_policy": {"classification": "blocked", "reason_codes": ["overlap"]},
@@ -508,7 +767,7 @@ async def test_recent_runs_blocked_reason(
     session = FakeAsyncSession()
     previous = setup_session(session)
     try:
-        resp = await http_get("/api/v1/admin/legacy-refresh/recent-runs?limit=10")
+        resp = await http_get("/api/v1/admin/legacy-refresh/recent-runs?limit=50")
         assert resp.status_code == 200
         data = resp.json()
         run = next((r for r in data if r["batch_id"] == "legacy-shadow-blocked"), None)

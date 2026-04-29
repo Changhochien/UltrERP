@@ -14,12 +14,15 @@ from typing import Any, AsyncIterator, Protocol, Sequence
 
 import asyncpg
 from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from sqlalchemy.ext.asyncio import AsyncSession
 from common.config import settings
 from common.database import AsyncSessionLocal
+from common.database import AsyncSessionLocal
 from common.models.legacy_import import LegacyImportRun, LegacyImportTableRun
+from domains.settings.models import AppSetting
 from common.tenant import DEFAULT_TENANT_ID
 from domains.legacy_import.shared import resolve_dump_data_dir
 
@@ -287,6 +290,91 @@ class LegacySourceCompatibilityReport:
 
 class LegacySourceCompatibilityError(RuntimeError):
     """Raised when the live legacy source cannot satisfy the staging contract."""
+
+
+_NULL_SENTINEL = "__NULL__"
+_LEGACY_SOURCE_SETTING_KEYS = (
+    "legacy_db_host",
+    "legacy_db_port",
+    "legacy_db_user",
+    "legacy_db_password",
+    "legacy_db_name",
+    "legacy_db_client_encoding",
+)
+
+
+def _legacy_source_setting_values_from_env() -> dict[str, object | None]:
+    return {
+        "legacy_db_host": settings.legacy_db_host,
+        "legacy_db_port": settings.legacy_db_port,
+        "legacy_db_user": settings.legacy_db_user,
+        "legacy_db_password": settings.legacy_db_password,
+        "legacy_db_name": settings.legacy_db_name,
+        "legacy_db_client_encoding": settings.legacy_db_client_encoding,
+    }
+
+
+def _normalized_legacy_source_value(value: object | None) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text or text == _NULL_SENTINEL:
+        return None
+    return text
+
+
+def _legacy_source_connection_settings_from_values(
+    values: dict[str, object | None],
+) -> LegacySourceConnectionSettings:
+    host = _normalized_legacy_source_value(values.get("legacy_db_host"))
+    user = _normalized_legacy_source_value(values.get("legacy_db_user"))
+    password = _normalized_legacy_source_value(values.get("legacy_db_password"))
+    database = _normalized_legacy_source_value(values.get("legacy_db_name"))
+
+    missing: list[str] = []
+    if host is None:
+        missing.append("LEGACY_DB_HOST")
+    if user is None:
+        missing.append("LEGACY_DB_USER")
+    if password is None:
+        missing.append("LEGACY_DB_PASSWORD")
+    if database is None:
+        missing.append("LEGACY_DB_NAME")
+    if missing:
+        raise LegacySourceCompatibilityError(
+            "Missing legacy source settings: " + ", ".join(missing)
+        )
+
+    port_value = values.get("legacy_db_port")
+    port = int(port_value) if port_value is not None else 5432
+    client_encoding = (
+        _normalized_legacy_source_value(values.get("legacy_db_client_encoding")) or "BIG5"
+    )
+
+    return LegacySourceConnectionSettings(
+        host=host,
+        port=port,
+        user=user,
+        password=password,
+        database=database,
+        client_encoding=client_encoding,
+    )
+
+
+async def load_runtime_legacy_source_connection_settings(
+    db_session: AsyncSession | None = None,
+) -> LegacySourceConnectionSettings:
+    if db_session is None:
+        async with AsyncSessionLocal() as owned_session:
+            return await load_runtime_legacy_source_connection_settings(owned_session)
+
+    values = _legacy_source_setting_values_from_env()
+    result = await db_session.execute(
+        select(AppSetting).where(AppSetting.key.in_(_LEGACY_SOURCE_SETTING_KEYS))
+    )
+    for row in result.scalars().all():
+        values[row.key] = None if row.value == _NULL_SENTINEL else row.value
+    return _legacy_source_connection_settings_from_values(values)
 
 
 class RawStageConnection(Protocol):
@@ -587,25 +675,8 @@ def parse_legacy_row(raw_line: str) -> list[str]:
 
 
 def _read_legacy_source_connection_settings() -> LegacySourceConnectionSettings:
-    values = {
-        "LEGACY_DB_HOST": settings.legacy_db_host,
-        "LEGACY_DB_USER": settings.legacy_db_user,
-        "LEGACY_DB_PASSWORD": settings.legacy_db_password,
-        "LEGACY_DB_NAME": settings.legacy_db_name,
-    }
-    missing = [key for key, value in values.items() if value is None or str(value).strip() == ""]
-    if missing:
-        raise LegacySourceCompatibilityError(
-            "Missing legacy source settings: " + ", ".join(missing)
-        )
-
-    return LegacySourceConnectionSettings(
-        host=str(settings.legacy_db_host).strip(),
-        port=int(settings.legacy_db_port),
-        user=str(settings.legacy_db_user).strip(),
-        password=str(settings.legacy_db_password),
-        database=str(settings.legacy_db_name).strip(),
-        client_encoding=str(settings.legacy_db_client_encoding).strip() or "BIG5",
+    return _legacy_source_connection_settings_from_values(
+        _legacy_source_setting_values_from_env()
     )
 
 

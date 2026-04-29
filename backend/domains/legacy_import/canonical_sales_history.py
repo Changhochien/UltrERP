@@ -444,11 +444,11 @@ async def _import_sales_history(
 					description = EXCLUDED.description,
                     product_name_snapshot=COALESCE(
                         order_lines.product_name_snapshot,
-                        EXCLUDED.product_name_snapshot,
+                        EXCLUDED.product_name_snapshot
                     ),
                     product_category_snapshot=COALESCE(
                         order_lines.product_category_snapshot,
-                        EXCLUDED.product_category_snapshot,
+                        EXCLUDED.product_category_snapshot
                     ),
 					available_stock_snapshot = EXCLUDED.available_stock_snapshot
 				""",

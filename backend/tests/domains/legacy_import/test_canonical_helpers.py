@@ -6,6 +6,7 @@ import pytest
 
 import domains.legacy_import.canonical as canonical
 import domains.legacy_import.source_resolution as source_resolution
+from domains.legacy_import.canonical_common import _lineage_record_query_for_holding
 from tests.domains.legacy_import.canonical_test_support import (
     FakeCanonicalConnection,
     QueryCaptureConnection,
@@ -163,12 +164,26 @@ async def test_ensure_canonical_support_tables_create_run_lineage_and_holding_ta
     await canonical._ensure_canonical_support_tables(connection, "raw_legacy")
 
     ddl = "\n".join(query for query, _ in connection.execute_calls)
+    normalized_ddl = " ".join(ddl.split())
     assert 'CREATE TABLE IF NOT EXISTS "raw_legacy".canonical_import_runs' in ddl
     assert 'CREATE TABLE IF NOT EXISTS "raw_legacy".canonical_import_step_runs' in ddl
     assert 'CREATE TABLE IF NOT EXISTS "raw_legacy".canonical_record_lineage' in ddl
     assert 'CREATE TABLE IF NOT EXISTS "raw_legacy".unsupported_history_holding' in ddl
     assert 'CREATE TABLE IF NOT EXISTS "raw_legacy".source_row_resolution' in ddl
     assert 'CREATE TABLE IF NOT EXISTS "raw_legacy".source_row_resolution_events' in ddl
+    assert (
+        'CREATE INDEX IF NOT EXISTS canonical_record_lineage_source_identity '
+        'ON "raw_legacy".canonical_record_lineage'
+    ) in normalized_ddl
+
+
+def test_holding_lineage_query_conflicts_on_canonical_table() -> None:
+    normalized_query = " ".join(_lineage_record_query_for_holding("raw_legacy").split())
+
+    assert (
+        "ON CONFLICT ( batch_id, tenant_id, canonical_table, source_table, "
+        "source_identifier, source_row_number )"
+    ) in normalized_query
 
 
 @pytest.mark.asyncio

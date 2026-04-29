@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from domains.legacy_import.staging import LegacySourceConnectionSettings
 from scripts import run_incremental_legacy_refresh as incremental
 from scripts.legacy_refresh_common import RefreshBatchMode
 from scripts.legacy_refresh_state import build_lane_state_paths, write_json_atomically
@@ -17,6 +18,17 @@ from scripts.run_legacy_refresh import (
 )
 
 TENANT_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+
+
+def _connection_settings() -> LegacySourceConnectionSettings:
+    return LegacySourceConnectionSettings(
+        host="legacy-db.internal",
+        port=5432,
+        user="postgres",
+        password="secret",
+        database="cao50001",
+        client_encoding="BIG5",
+    )
 
 
 def _seed_incremental_state(tmp_path: Path) -> Path:
@@ -391,6 +403,7 @@ def test_build_live_source_projection_for_lane_uses_nightly_rebaseline_anchor(
     summary_root = _seed_incremental_state(tmp_path)
     captured: dict[str, object] = {}
     sentinel = object()
+    connection_settings = _connection_settings()
 
     def fake_build_live_source_projection(**kwargs):
         captured.update(kwargs)
@@ -407,10 +420,12 @@ def test_build_live_source_projection_for_lane_uses_nightly_rebaseline_anchor(
         schema_name="raw_legacy",
         source_schema="public",
         summary_root=summary_root,
+        connection_settings=connection_settings,
     )
 
     assert projection is sentinel
     assert captured["source_schema"] == "public"
+    assert captured["connection_settings"] == connection_settings
     bootstrap_state = captured["bootstrap_rebaseline_state"]
     assert isinstance(bootstrap_state, dict)
     assert bootstrap_state["batch_id"] == "legacy-shadow-20260418T020304Z"
@@ -447,6 +462,7 @@ def test_run_incremental_writes_delta_manifest_and_scopes_active_domains(
 ) -> None:
     summary_root = _seed_incremental_state(tmp_path)
     captured: dict = {}
+    connection_settings = _connection_settings()
 
     async def fake_run_legacy_refresh(**kwargs):
         captured.update(kwargs)
@@ -492,11 +508,13 @@ def test_run_incremental_writes_delta_manifest_and_scopes_active_domains(
             reconciliation_threshold=0,
             summary_root=summary_root,
             source_projection=projection,
+            connection_settings=connection_settings,
         )
     )
 
     assert captured["batch_mode"] == RefreshBatchMode.INCREMENTAL.value
     assert captured["affected_domains"] == ("parties",)
+    assert captured["connection_settings"] == connection_settings
     lane_paths = build_lane_state_paths(
         tenant_id=TENANT_ID,
         schema_name="raw_legacy",

@@ -239,6 +239,9 @@ async def test_run_canonical_import_orders_dependencies_and_holding(
     order_line_args = next(
         args for query, args in connection.execute_calls if "INSERT INTO order_lines" in query
     )
+    order_line_query = next(
+        query for query, _ in connection.execute_calls if "INSERT INTO order_lines" in query
+    )
     customer_args = next(
         args for query, args in connection.execute_calls if "INSERT INTO customers" in query
     )
@@ -254,8 +257,9 @@ async def test_run_canonical_import_orders_dependencies_and_holding(
     invoice_args = next(
         args for query, args in connection.execute_calls if "INSERT INTO invoices" in query
     )
-    assert customer_args[10] == "unknown"
-    customer_snapshot = json.loads(cast(str, customer_args[11]))
+    assert customer_args[9] == Decimal("0.0000")
+    assert customer_args[11] == "unknown"
+    customer_snapshot = json.loads(cast(str, customer_args[12]))
     supplier_snapshot = json.loads(cast(str, supplier_args[6]))
     product_snapshot = json.loads(cast(str, product_args[9]))
     assert order_args[4] == "fulfilled"
@@ -280,6 +284,8 @@ async def test_run_canonical_import_orders_dependencies_and_holding(
     assert order_line_args[15] == "Variant belt"
     assert order_line_args[16] == "Variant belt"
     assert order_line_args[17] == "Legacy Belt"
+    assert "EXCLUDED.product_name_snapshot,\n                    )" not in order_line_query
+    assert "EXCLUDED.product_category_snapshot,\n                    )" not in order_line_query
     assert (
         canonical._tenant_scoped_uuid(tenant_id, "product", UNKNOWN_PRODUCT_CODE) in order_line_args
     )

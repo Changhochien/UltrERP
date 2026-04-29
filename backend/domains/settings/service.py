@@ -28,6 +28,7 @@ SENSITIVE_KEYS = {
     "object_store_access_key",
     "mcp_api_keys",
 }
+VISIBLE_SENSITIVE_KEYS = {"legacy_db_password"}
 NULL_SENTINEL = "__NULL__"
 
 
@@ -95,6 +96,41 @@ def _revalidate_setting(key: str, raw_value: str) -> str:
         return str(getattr(validated, key))
     except ValidationError as e:
         raise HTTPException(422, detail=e.errors())
+
+
+def _serialize_setting_item(
+    *,
+    key: str,
+    meta_info: dict,
+    raw_value: str,
+    is_null: bool,
+    updated_at: object,
+    updated_by: str | None,
+) -> SettingItem:
+    value_type = meta_info["value_type"]
+    display_value = raw_value
+    value = raw_value
+
+    if meta_info["is_sensitive"]:
+        value = ""
+        display_value = "" if is_null else "********"
+    elif value_type == "bool" and raw_value not in (NULL_SENTINEL,):
+        display_value = str(_bool_decode(raw_value)).lower()
+
+    return SettingItem(
+        key=key,
+        value=value if not is_null else "",
+        display_value=display_value,
+        value_type=value_type,
+        allowed_values=meta_info.get("allowed_values"),
+        nullable=meta_info.get("nullable", False),
+        is_null=is_null,
+        is_sensitive=meta_info["is_sensitive"],
+        description=meta_info["description"],
+        category=meta_info["category"],
+        updated_at=updated_at,
+        updated_by=updated_by,
+    )
 
 
 async def get_setting(db: AsyncSession, key: str) -> str:
@@ -168,17 +204,11 @@ async def set_setting(db: AsyncSession, key: str, value: str, actor_id: UUID, te
     updated_at = existing.updated_at if existing else None
     updated_by_str = str(existing.updated_by) if existing and existing.updated_by else None
 
-    return SettingItem(
+    return _serialize_setting_item(
         key=key,
-        value=cleaned if not is_null else "",
-        display_value="********" if meta_info["is_sensitive"] else cleaned,
-        value_type=meta_info["value_type"],
-        allowed_values=meta_info.get("allowed_values"),
-        nullable=nullable,
+        meta_info=meta_info,
+        raw_value=cleaned,
         is_null=is_null,
-        is_sensitive=meta_info["is_sensitive"],
-        description=meta_info["description"],
-        category=meta_info["category"],
         updated_at=updated_at,
         updated_by=updated_by_str,
     )
@@ -195,7 +225,7 @@ async def get_all_settings(db: AsyncSession) -> list[SettingSection]:
 
     sections: dict[str, dict] = {}
     for key, meta_info in meta.items():
-        if meta_info["is_sensitive"]:
+        if meta_info["is_sensitive"] and key not in VISIBLE_SENSITIVE_KEYS:
             continue
 
         category = meta_info["category"]
@@ -224,27 +254,15 @@ async def get_all_settings(db: AsyncSession) -> list[SettingSection]:
         elif raw_value == NULL_SENTINEL:
             is_null = True
 
-        value_type = meta_info["value_type"]
-        display_value = raw_value
-
-        if value_type == "bool" and raw_value not in (NULL_SENTINEL,):
-            display_value = str(_bool_decode(raw_value)).lower()
-
         updated_at = db_row.updated_at if db_row else None
         updated_by_str = str(db_row.updated_by) if db_row and db_row.updated_by else None
 
         sections[category]["items"].append(
-            SettingItem(
+            _serialize_setting_item(
                 key=key,
-                value=raw_value if not meta_info["is_sensitive"] else "********",
-                display_value=display_value,
-                value_type=value_type,
-                allowed_values=meta_info.get("allowed_values"),
-                nullable=meta_info.get("nullable", False),
+                meta_info=meta_info,
+                raw_value=raw_value,
                 is_null=is_null,
-                is_sensitive=meta_info["is_sensitive"],
-                description=meta_info["description"],
-                category=category,
                 updated_at=updated_at,
                 updated_by=updated_by_str,
             )

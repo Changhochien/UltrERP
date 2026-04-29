@@ -536,6 +536,42 @@ def test_run_legacy_refresh_records_partial_failure_summary(
     assert summary["steps"][2]["status"] == "skipped"
 
 
+def test_run_legacy_refresh_formats_live_stage_timeout_error(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    batch_id = "legacy-shadow-live-stage-timeout"
+
+    async def fake_live_stage_import(**kwargs):
+        raise TimeoutError()
+
+    monkeypatch.setattr(refresh, "run_live_stage_import", fake_live_stage_import)
+
+    execution = asyncio.run(
+        refresh.run_legacy_refresh(
+            batch_id=batch_id,
+            tenant_id=TENANT_ID,
+            schema_name="raw_legacy",
+            source_schema="public",
+            lookback_days=10000,
+            reconciliation_threshold=0,
+            summary_root=tmp_path / "operations",
+        )
+    )
+
+    summary = json.loads(execution.summary_path.read_text(encoding="utf-8"))
+
+    assert execution.exit_code == 1
+    assert summary["final_disposition"] == "failed"
+    assert summary["failed_step"] == "live-stage"
+    assert summary["root_error_message"] == "Live legacy DB connection failed: TimeoutError"
+    assert summary["rebaseline_reason"] == (
+        "Step live-stage failed: Live legacy DB connection failed: TimeoutError"
+    )
+    assert summary["steps"][0]["status"] == "failed"
+    assert summary["steps"][0]["error"] == "Live legacy DB connection failed: TimeoutError"
+
+
 def test_run_legacy_refresh_same_batch_rerun_writes_new_summary(
     monkeypatch,
     tmp_path: Path,

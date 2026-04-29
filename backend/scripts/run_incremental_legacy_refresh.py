@@ -38,6 +38,7 @@ from domains.legacy_import.delta_discovery import (
     discover_delta,
 )
 from domains.legacy_import.live_delta_projection import build_live_source_projection
+from domains.legacy_import.staging import LegacySourceConnectionSettings
 from domains.legacy_import.incremental_refresh import build_incremental_refresh_plan
 from domains.legacy_import.incremental_state import (
     record_incremental_candidate_result,
@@ -370,6 +371,7 @@ def build_live_source_projection_for_lane(
     source_schema: str,
     summary_root: Path | None = None,
     state_root: Path | None = None,
+    connection_settings: LegacySourceConnectionSettings | None = None,
 ) -> SourceProjection:
     plan = build_incremental_plan_for_dry_run(
         tenant_id=tenant_id,
@@ -384,6 +386,7 @@ def build_live_source_projection_for_lane(
     return build_live_source_projection(
         source_schema=source_schema,
         bootstrap_rebaseline_state=bootstrap_rebaseline_state,
+        connection_settings=connection_settings,
     )
 
 
@@ -513,8 +516,10 @@ async def run_incremental_legacy_refresh(
     summary_root: Path | None = None,
     state_root: Path | None = None,
     source_projection: SourceProjection | None = None,
+    batch_id: str | None = None,
     scheduler_run_id: str | None = None,
     started_at: str | None = None,
+    connection_settings: LegacySourceConnectionSettings | None = None,
 ) -> LegacyRefreshExecution:
     resolved_summary_root = summary_root or DEFAULT_SUMMARY_ROOT
     resolved_scheduler_run_id = scheduler_run_id or str(uuid.uuid4())
@@ -539,7 +544,7 @@ async def run_incremental_legacy_refresh(
     # downstream scope so unrelated watermarks do not advance.
     affected_domains: tuple[str, ...] = discovery.active_domains
 
-    batch_id = build_incremental_batch_id(batch_prefix)
+    batch_id = batch_id or build_incremental_batch_id(batch_prefix)
 
     manifest = build_delta_manifest(
         run_id=str(uuid.uuid4()),
@@ -594,20 +599,23 @@ async def run_incremental_legacy_refresh(
             summary=summary,
         )
 
-    result = await run_legacy_refresh(
-        batch_id=batch_id,
-        tenant_id=tenant_id,
-        schema_name=schema_name,
-        source_schema=source_schema,
-        lookback_days=lookback_days,
-        reconciliation_threshold=reconciliation_threshold,
-        auto_apply_reconciliation_corrections=auto_apply_reconciliation_corrections,
-        summary_root=resolved_summary_root,
-        batch_mode=RefreshBatchMode.INCREMENTAL,
-        affected_domains=affected_domains,
-        entity_scope=_build_entity_scope(manifest, affected_domains),
-        last_successful_batch_ids=_build_last_successful_batch_ids(plan, affected_domains),
-    )
+    refresh_kwargs = {
+        "batch_id": batch_id,
+        "tenant_id": tenant_id,
+        "schema_name": schema_name,
+        "source_schema": source_schema,
+        "lookback_days": lookback_days,
+        "reconciliation_threshold": reconciliation_threshold,
+        "auto_apply_reconciliation_corrections": auto_apply_reconciliation_corrections,
+        "summary_root": resolved_summary_root,
+        "batch_mode": RefreshBatchMode.INCREMENTAL,
+        "affected_domains": affected_domains,
+        "entity_scope": _build_entity_scope(manifest, affected_domains),
+        "last_successful_batch_ids": _build_last_successful_batch_ids(plan, affected_domains),
+    }
+    if connection_settings is not None:
+        refresh_kwargs["connection_settings"] = connection_settings
+    result = await run_legacy_refresh(**refresh_kwargs)
     _publish_incremental_lane_state(
         lane_paths=lane_paths,
         scheduler_run_id=resolved_scheduler_run_id,

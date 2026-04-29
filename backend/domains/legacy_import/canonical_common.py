@@ -179,10 +179,26 @@ async def _ensure_canonical_support_tables(connection, schema_name: str) -> None
 		)
 		"""
     )
+    source_identity_index_is_unique = await connection.fetchval(
+        """
+        SELECT index_meta.indisunique
+        FROM pg_class AS index_class
+        JOIN pg_namespace AS index_namespace
+            ON index_namespace.oid = index_class.relnamespace
+        JOIN pg_index AS index_meta
+            ON index_meta.indexrelid = index_class.oid
+        WHERE index_namespace.nspname = $1
+            AND index_class.relname = 'canonical_record_lineage_source_identity'
+        """,
+        schema_name,
+    )
+    if source_identity_index_is_unique:
+        await connection.execute(
+            f"DROP INDEX IF EXISTS {quoted_schema}.canonical_record_lineage_source_identity"
+        )
     await connection.execute(
         f"""
-		CREATE UNIQUE INDEX IF NOT EXISTS {quoted_schema}.
-			canonical_record_lineage_source_identity
+        CREATE INDEX IF NOT EXISTS canonical_record_lineage_source_identity
 			ON {quoted_schema}.canonical_record_lineage (
 				batch_id,
 				tenant_id,
@@ -218,7 +234,12 @@ HOLDING_LINEAGE_TABLE = "__holding__"
 
 
 def _lineage_record_query_for_holding(schema_name: str) -> str:
-    """Lineage upsert query that matches on source identifiers only."""
+    """Lineage upsert query for holding-path rows.
+
+    Holding rows participate in the same multi-target lineage model as other
+    canonical records, so their conflict key must remain scoped by
+    ``canonical_table``.
+    """
     quoted_schema = _quoted_identifier(schema_name)
     return f"""
 		INSERT INTO {quoted_schema}.canonical_record_lineage (
@@ -235,6 +256,7 @@ def _lineage_record_query_for_holding(schema_name: str) -> str:
         ON CONFLICT (
             batch_id,
             tenant_id,
+            canonical_table,
             source_table,
             source_identifier,
             source_row_number

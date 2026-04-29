@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
 } from "react";
@@ -43,6 +44,7 @@ import {
   backfillSalesMonthly,
   createUser,
   fetchAuditLogs,
+  fetchLegacyRefreshJobStatus,
   fetchLegacyRefreshLanes,
   fetchLegacyRefreshRecentRuns,
   fetchSalesMonthlyHealth,
@@ -60,6 +62,7 @@ import {
   type BatchPointer,
   type LegacyRefreshConflict,
   type LegacyRefreshJobLaunched,
+  type LegacyRefreshJobStatus,
   type LegacyRefreshLaneStatus,
   type RefreshJobRecord,
   type RefreshMode,
@@ -70,6 +73,7 @@ import {
   type AppFeature,
   type PermissionLevel,
 } from "../hooks/usePermissions";
+import { useOptionalAuth } from "../hooks/useAuth";
 
 type UserDialogState =
   | { mode: "create" }
@@ -1346,13 +1350,171 @@ interface LegacyRefreshTriggerFormState {
   reconciliationThreshold: number;
 }
 
+interface ActiveLegacyRefreshJobState {
+  jobId: string;
+  batchId: string;
+  laneKey: string;
+  mode: RefreshMode;
+  launchedAt: string;
+}
+
+interface ActiveLegacyRefreshJobFeedback extends ActiveLegacyRefreshJobState {
+  phase: "queued" | "running" | "succeeded" | "review-required" | "failed";
+  finalDisposition: string | null;
+  completedAt: string | null;
+  validationStatus: string | null;
+  blockingIssueCount: number | null;
+  reconciliationGapCount: number | null;
+  blockedReason: string | null;
+  rootFailure: string | null;
+  summaryPath: string | null;
+  promotionEligible: boolean;
+}
+
+const SUCCESSFUL_REFRESH_DISPOSITIONS = new Set([
+  "completed",
+  "completed-no-op",
+]);
+
+const REVIEW_REQUIRED_REFRESH_DISPOSITIONS = new Set([
+  "completed-review-required",
+]);
+
+const LEGACY_REFRESH_ACTIVE_JOB_STORAGE_KEY = "ultrerp_legacy_refresh_active_job";
+const LEGACY_REFRESH_SELECTED_LANE_STORAGE_KEY = "ultrerp_legacy_refresh_selected_lane";
+const DEFAULT_LEGACY_REFRESH_SCHEMA_NAME = "raw_legacy";
+const DEFAULT_INCREMENTAL_LOOKBACK_DAYS = 0;
+const DEFAULT_FULL_REBASELINE_LOOKBACK_DAYS = 10000;
+
+function loadStoredLegacyRefreshActiveJob(): ActiveLegacyRefreshJobState | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(LEGACY_REFRESH_ACTIVE_JOB_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw) as Partial<ActiveLegacyRefreshJobState>;
+    if (
+      typeof parsed.jobId !== "string"
+      || typeof parsed.batchId !== "string"
+      || typeof parsed.laneKey !== "string"
+      || (parsed.mode !== "incremental" && parsed.mode !== "full-rebaseline")
+      || typeof parsed.launchedAt !== "string"
+    ) {
+      return null;
+    }
+    return {
+      jobId: parsed.jobId,
+      batchId: parsed.batchId,
+      laneKey: parsed.laneKey,
+      mode: parsed.mode,
+      launchedAt: parsed.launchedAt,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function persistLegacyRefreshActiveJob(activeJob: ActiveLegacyRefreshJobState | null) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  if (!activeJob) {
+    window.localStorage.removeItem(LEGACY_REFRESH_ACTIVE_JOB_STORAGE_KEY);
+    return;
+  }
+  window.localStorage.setItem(LEGACY_REFRESH_ACTIVE_JOB_STORAGE_KEY, JSON.stringify(activeJob));
+}
+
+function loadStoredLegacyRefreshLaneKey(): string {
+  if (typeof window === "undefined") {
+    return "";
+  }
+  return window.localStorage.getItem(LEGACY_REFRESH_SELECTED_LANE_STORAGE_KEY) ?? "";
+}
+
+function persistLegacyRefreshLaneKey(laneKey: string | null) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  if (!laneKey) {
+    window.localStorage.removeItem(LEGACY_REFRESH_SELECTED_LANE_STORAGE_KEY);
+    return;
+  }
+  window.localStorage.setItem(LEGACY_REFRESH_SELECTED_LANE_STORAGE_KEY, laneKey);
+}
+
+function defaultLegacyRefreshLookbackDays(mode: RefreshMode): number {
+  return mode === "full-rebaseline"
+    ? DEFAULT_FULL_REBASELINE_LOOKBACK_DAYS
+    : DEFAULT_INCREMENTAL_LOOKBACK_DAYS;
+}
+
+function legacyRefreshLaneSortTimestamp(status: LegacyRefreshLaneStatus): number {
+  const candidate = status.latest_run?.started_at ?? status.latest_success?.started_at ?? null;
+  if (!candidate) {
+    return 0;
+  }
+  const parsed = Date.parse(candidate);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function sortLegacyRefreshLanes(lanes: LegacyRefreshLaneStatus[]): LegacyRefreshLaneStatus[] {
+  return [...lanes].sort((left, right) => {
+    const timestampDiff = legacyRefreshLaneSortTimestamp(right) - legacyRefreshLaneSortTimestamp(left);
+    if (timestampDiff !== 0) {
+      return timestampDiff;
+    }
+    return left.lane_key.localeCompare(right.lane_key);
+  });
+}
+
+function formatLegacyRefreshLaneLabel(status: LegacyRefreshLaneStatus): string {
+  const scope = status.source_schema === "public" ? "" : ` / ${status.source_schema}`;
+  return `${status.schema_name} / ${status.tenant_id}${scope}`;
+}
+
+function matchingBatchPointer(
+  pointer: BatchPointer | null,
+  batchId: string,
+): BatchPointer | null {
+  return pointer?.batch_id === batchId ? pointer : null;
+}
+
+function asNonEmptyString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function parseLegacySourceSettingsErrorMessage(value: string | null): string[] {
+  const prefix = "Missing legacy source settings:";
+  if (!value || !value.startsWith(prefix)) {
+    return [];
+  }
+  return value
+    .slice(prefix.length)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function asBoolean(value: unknown): boolean | null {
+  return typeof value === "boolean" ? value : null;
+}
+
+function asNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
 const DEFAULT_REFRESH_FORM: LegacyRefreshTriggerFormState = {
   tenantId: "",
-  schemaName: "",
+  schemaName: DEFAULT_LEGACY_REFRESH_SCHEMA_NAME,
   sourceSchema: "public",
   mode: "incremental",
   dryRun: false,
-  lookbackDays: 0,
+  lookbackDays: DEFAULT_INCREMENTAL_LOOKBACK_DAYS,
   reconciliationThreshold: 0,
 };
 
@@ -1580,13 +1742,19 @@ function RecentRunsTable({ runs }: { runs: RefreshJobRecord[] }) {
 
 function LegacyRefreshSection() {
   const { t } = useTranslation("admin");
+  const auth = useOptionalAuth();
+  const authTenantId = auth?.user?.tenant_id ?? "";
   const [lanes, setLanes] = useState<LegacyRefreshLaneStatus[]>([]);
+  const [selectedLaneKey, setSelectedLaneKey] = useState<string>(() => loadStoredLegacyRefreshLaneKey());
   const [recentRuns, setRecentRuns] = useState<RefreshJobRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [triggerLoading, setTriggerLoading] = useState(false);
   const [triggerResult, setTriggerResult] = useState<LegacyRefreshJobLaunched | LegacyRefreshConflict | null>(null);
   const [triggerError, setTriggerError] = useState<string | null>(null);
+  const [activeJob, setActiveJob] = useState<ActiveLegacyRefreshJobState | null>(() => loadStoredLegacyRefreshActiveJob());
+  const [activeJobStatus, setActiveJobStatus] = useState<LegacyRefreshJobStatus | null>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [form, setForm] = useState<LegacyRefreshTriggerFormState>(DEFAULT_REFRESH_FORM);
   const [salesMonthlyForm, setSalesMonthlyForm] = useState<SalesMonthlyOpsFormState>(DEFAULT_SALES_MONTHLY_FORM);
   const [salesMonthlyHealth, setSalesMonthlyHealth] = useState<SalesMonthlyHealthStatus | null>(null);
@@ -1594,11 +1762,111 @@ function LegacyRefreshSection() {
   const [salesMonthlyNotice, setSalesMonthlyNotice] = useState<string | null>(null);
   const [salesMonthlyLoading, setSalesMonthlyLoading] = useState(false);
   const [salesMonthlyAction, setSalesMonthlyAction] = useState<"repair" | "backfill" | null>(null);
+  const laneHydratedRef = useRef(false);
+
+  const selectedLane = useMemo(
+    () => lanes.find((lane) => lane.lane_key === selectedLaneKey) ?? null,
+    [lanes, selectedLaneKey],
+  );
+  const activeJobFeedback = useMemo<ActiveLegacyRefreshJobFeedback | null>(() => {
+    if (!activeJob) {
+      return null;
+    }
+
+    const jobLane = lanes.find((lane) => lane.lane_key === activeJob.laneKey) ?? null;
+    const latestRun = matchingBatchPointer(jobLane?.latest_run ?? null, activeJob.batchId);
+    const recentRun = recentRuns.find(
+      (run) => run.job_id === activeJob.jobId || run.batch_id === activeJob.batchId,
+    ) ?? null;
+
+    const jobStatusValue = asNonEmptyString(activeJobStatus?.status);
+    const finalDisposition = asNonEmptyString(activeJobStatus?.final_disposition)
+      ?? latestRun?.final_disposition
+      ?? recentRun?.final_disposition
+      ?? null;
+    const completedAt = asNonEmptyString(activeJobStatus?.completed_at)
+      ?? latestRun?.completed_at
+      ?? recentRun?.completed_at
+      ?? null;
+    const exitCode = asNumber(activeJobStatus?.exit_code);
+    const validationStatus = asNonEmptyString(activeJobStatus?.validation_status)
+      ?? latestRun?.validation_status
+      ?? recentRun?.validation_status
+      ?? null;
+    const blockingIssueCount = asNumber(activeJobStatus?.blocking_issue_count)
+      ?? latestRun?.blocking_issue_count
+      ?? null;
+    const reconciliationGapCount = asNumber(activeJobStatus?.reconciliation_gap_count)
+      ?? latestRun?.reconciliation_gap_count
+      ?? null;
+    const summaryPath = asNonEmptyString(activeJobStatus?.summary_path) ?? latestRun?.summary_path ?? null;
+    const blockedReason = asNonEmptyString(activeJobStatus?.blocked_reason)
+      ?? jobLane?.blocked_reason
+      ?? recentRun?.blocked_reason
+      ?? null;
+    const rootFailure = asNonEmptyString(activeJobStatus?.root_failure) ?? jobLane?.root_failure ?? null;
+    const promotionEligible = asBoolean(activeJobStatus?.promotion_eligible)
+      ?? Boolean(jobLane?.promotion_eligible || recentRun?.promotion_eligible);
+
+    let phase: ActiveLegacyRefreshJobFeedback["phase"] = "queued";
+
+    if (finalDisposition) {
+      if (SUCCESSFUL_REFRESH_DISPOSITIONS.has(finalDisposition)) {
+        phase = "succeeded";
+      } else if (REVIEW_REQUIRED_REFRESH_DISPOSITIONS.has(finalDisposition)) {
+        phase = "review-required";
+      } else {
+        phase = "failed";
+      }
+    } else if (jobStatusValue === "running") {
+      phase = "running";
+    } else if (jobStatusValue === "completed") {
+      phase = exitCode === 0 ? "succeeded" : "failed";
+    } else if (jobStatusValue === "failed") {
+      phase = "failed";
+    } else if (jobLane?.current_job_id === activeJob.jobId) {
+      phase = "running";
+    }
+
+    return {
+      ...activeJob,
+      phase,
+      finalDisposition,
+      completedAt,
+      validationStatus,
+      blockingIssueCount,
+      reconciliationGapCount,
+      blockedReason,
+      rootFailure,
+      summaryPath,
+      promotionEligible,
+    };
+  }, [activeJob, activeJobStatus, lanes, recentRuns]);
+  const advancedScopeRequired = lanes.length === 0 || !selectedLaneKey;
+  const canToggleAdvanced = !advancedScopeRequired;
+  const showAdvanced = advancedScopeRequired || advancedOpen;
+
+  const applyLaneToForms = useCallback((lane: LegacyRefreshLaneStatus) => {
+    setForm((current) => ({
+      ...current,
+      tenantId: lane.tenant_id,
+      schemaName: lane.schema_name || DEFAULT_LEGACY_REFRESH_SCHEMA_NAME,
+      sourceSchema: lane.source_schema || "public",
+    }));
+    setSalesMonthlyForm((current) => (
+      current.tenantId.trim()
+        ? current
+        : {
+            ...current,
+            tenantId: lane.tenant_id,
+          }
+    ));
+  }, []);
 
   const loadLanes = useCallback(async () => {
     try {
       const result = await fetchLegacyRefreshLanes();
-      setLanes(result.lanes);
+      setLanes(sortLegacyRefreshLanes(result.lanes));
     } catch (err) {
       console.error("Failed to load lanes:", err);
     }
@@ -1635,26 +1903,179 @@ function LegacyRefreshSection() {
     return () => clearInterval(pollInterval);
   }, [loadAll, loadLanes, loadRecentRuns]);
 
-  async function handleTrigger(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  useEffect(() => {
+    if (lanes.length === 0) {
+      if (selectedLaneKey) {
+        setSelectedLaneKey("");
+        persistLegacyRefreshLaneKey(null);
+      }
+      return;
+    }
+
+    if (selectedLaneKey && lanes.some((lane) => lane.lane_key === selectedLaneKey)) {
+      persistLegacyRefreshLaneKey(selectedLaneKey);
+      return;
+    }
+
+    const fallbackKey = lanes[0]?.lane_key ?? "";
+    if (!fallbackKey) {
+      return;
+    }
+    setSelectedLaneKey(fallbackKey);
+    persistLegacyRefreshLaneKey(fallbackKey);
+  }, [lanes, selectedLaneKey]);
+
+  useEffect(() => {
+    if (laneHydratedRef.current || !selectedLane) {
+      return;
+    }
+    if (form.tenantId.trim() || form.schemaName.trim()) {
+      laneHydratedRef.current = true;
+      return;
+    }
+    applyLaneToForms(selectedLane);
+    laneHydratedRef.current = true;
+  }, [applyLaneToForms, form.schemaName, form.tenantId, selectedLane]);
+
+  useEffect(() => {
+    if (!authTenantId || selectedLane) {
+      return;
+    }
+    setForm((current) => (
+      current.tenantId.trim()
+        ? current
+        : {
+            ...current,
+            tenantId: authTenantId,
+            schemaName: current.schemaName || DEFAULT_LEGACY_REFRESH_SCHEMA_NAME,
+            sourceSchema: current.sourceSchema || "public",
+          }
+    ));
+    setSalesMonthlyForm((current) => (
+      current.tenantId.trim()
+        ? current
+        : {
+            ...current,
+            tenantId: authTenantId,
+          }
+    ));
+  }, [authTenantId, selectedLane]);
+
+  useEffect(() => {
+    persistLegacyRefreshActiveJob(activeJob);
+  }, [activeJob]);
+
+  useEffect(() => {
+    if (!activeJob) {
+      setActiveJobStatus(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function pollActiveJobStatus() {
+      try {
+        const status = await fetchLegacyRefreshJobStatus(activeJob.jobId);
+        if (!cancelled) {
+          setActiveJobStatus(status);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Failed to load active legacy refresh job status:", err);
+        }
+      }
+    }
+
+    void pollActiveJobStatus();
+    const pollInterval = window.setInterval(() => {
+      void pollActiveJobStatus();
+    }, LEGACY_REFRESH_POLL_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(pollInterval);
+    };
+  }, [activeJob]);
+
+  function handleLaneSelection(nextLaneKey: string) {
+    setSelectedLaneKey(nextLaneKey);
+    persistLegacyRefreshLaneKey(nextLaneKey || null);
+    if (!nextLaneKey) {
+      setAdvancedOpen(true);
+      return;
+    }
+    const nextLane = lanes.find((lane) => lane.lane_key === nextLaneKey);
+    if (!nextLane) {
+      return;
+    }
+    applyLaneToForms(nextLane);
+    laneHydratedRef.current = true;
+  }
+
+  function handleModeChange(nextMode: RefreshMode) {
+    if (nextMode === "incremental" && !selectedLane?.incremental_state_path) {
+      setTriggerError(t("legacyRefresh.trigger.bootstrapRequired"));
+      return;
+    }
+    setForm((current) => {
+      const currentDefaultLookback = defaultLegacyRefreshLookbackDays(current.mode);
+      const nextDefaultLookback = defaultLegacyRefreshLookbackDays(nextMode);
+      return {
+        ...current,
+        mode: nextMode,
+        lookbackDays:
+          current.lookbackDays === currentDefaultLookback
+            ? nextDefaultLookback
+            : current.lookbackDays,
+      };
+    });
+  }
+
+  async function launchRefresh(nextForm: LegacyRefreshTriggerFormState) {
+    const resolvedForm: LegacyRefreshTriggerFormState = {
+      ...nextForm,
+      tenantId: nextForm.tenantId.trim(),
+      schemaName: nextForm.schemaName.trim() || DEFAULT_LEGACY_REFRESH_SCHEMA_NAME,
+      sourceSchema: nextForm.sourceSchema.trim() || "public",
+    };
+
+    if (!resolvedForm.tenantId || !resolvedForm.schemaName) {
+      setTriggerError(t("legacyRefresh.trigger.missingLane"));
+      return;
+    }
+
+    if (resolvedForm.mode === "incremental" && !selectedLane?.incremental_state_path) {
+      setTriggerError(t("legacyRefresh.trigger.bootstrapRequired"));
+      return;
+    }
+
     setTriggerLoading(true);
     setTriggerError(null);
     setTriggerResult(null);
 
     try {
       const result = await triggerLegacyRefresh({
-        tenant_id: form.tenantId,
-        schema_name: form.schemaName,
-        source_schema: form.sourceSchema,
-        mode: form.mode,
-        dry_run: form.dryRun,
-        lookback_days: form.lookbackDays,
-        reconciliation_threshold: form.reconciliationThreshold,
+        tenant_id: resolvedForm.tenantId,
+        schema_name: resolvedForm.schemaName,
+        source_schema: resolvedForm.sourceSchema,
+        mode: resolvedForm.mode,
+        dry_run: resolvedForm.dryRun,
+        lookback_days: resolvedForm.lookbackDays,
+        reconciliation_threshold: resolvedForm.reconciliationThreshold,
       });
+      setForm(resolvedForm);
       setTriggerResult(result);
       if ("conflict" in result) {
         setTriggerError(result.detail);
       } else {
+        setActiveJobStatus(result);
+        setActiveJob({
+          jobId: result.job_id,
+          batchId: result.batch_id,
+          laneKey: result.lane_key,
+          mode: result.mode,
+          launchedAt: result.launched_at,
+        });
         void loadAll();
       }
     } catch (err) {
@@ -1662,6 +2083,33 @@ function LegacyRefreshSection() {
     } finally {
       setTriggerLoading(false);
     }
+  }
+
+  async function handleTrigger(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await launchRefresh(form);
+  }
+
+  async function handleQuickTrigger(mode: RefreshMode) {
+    const scopedTenantId = selectedLane?.tenant_id ?? form.tenantId;
+    const scopedSchemaName = selectedLane?.schema_name ?? form.schemaName;
+    const scopedSourceSchema = selectedLane?.source_schema ?? form.sourceSchema;
+    if (!scopedTenantId.trim() || !scopedSchemaName.trim()) {
+      setAdvancedOpen(true);
+      setTriggerError(t("legacyRefresh.trigger.missingLane"));
+      return;
+    }
+    const nextForm: LegacyRefreshTriggerFormState = {
+      ...form,
+      tenantId: scopedTenantId,
+      schemaName: scopedSchemaName,
+      sourceSchema: scopedSourceSchema,
+      mode,
+      dryRun: false,
+      lookbackDays: defaultLegacyRefreshLookbackDays(mode),
+    };
+    setForm(nextForm);
+    await launchRefresh(nextForm);
   }
 
   async function handleSalesMonthlyHealthCheck() {
@@ -1755,6 +2203,77 @@ function LegacyRefreshSection() {
     }
   }
 
+  const quickActionLaneLabel = selectedLane
+    ? formatLegacyRefreshLaneLabel(selectedLane)
+    : form.tenantId.trim() && form.schemaName.trim()
+      ? `${form.schemaName} / ${form.tenantId}`
+      : t("legacyRefresh.quickActions.noLaneSelected");
+  const latestQuickActionRun = selectedLane?.latest_run ?? selectedLane?.latest_success ?? null;
+  const incrementalBootstrapRequired = !selectedLane?.incremental_state_path;
+  const canLaunchQuickAction = Boolean(
+    (selectedLane?.tenant_id ?? form.tenantId).trim()
+    && (selectedLane?.schema_name ?? form.schemaName).trim(),
+  );
+  const canLaunchIncrementalQuickAction = canLaunchQuickAction && !incrementalBootstrapRequired;
+  const canSubmitTrigger = Boolean(
+    !triggerLoading
+    && form.tenantId.trim()
+    && form.schemaName.trim()
+    && !(form.mode === "incremental" && incrementalBootstrapRequired)
+  );
+  const missingLegacySourceSettings = parseLegacySourceSettingsErrorMessage(triggerError);
+  const activeJobTone = activeJobFeedback?.phase === "succeeded"
+    ? "success"
+    : activeJobFeedback?.phase === "review-required"
+      ? "warning"
+      : activeJobFeedback?.phase === "failed"
+        ? "danger"
+        : "default";
+  const activeJobBadgeVariant = activeJobFeedback?.phase === "succeeded"
+    ? "success"
+    : activeJobFeedback?.phase === "review-required"
+      ? "warning"
+      : activeJobFeedback?.phase === "failed"
+        ? "destructive"
+        : "info";
+  const activeJobHeadlineKey = activeJobFeedback?.phase === "succeeded"
+    ? "legacyRefresh.monitor.succeeded"
+    : activeJobFeedback?.phase === "review-required"
+      ? "legacyRefresh.monitor.reviewRequired"
+      : activeJobFeedback?.phase === "failed"
+        ? "legacyRefresh.monitor.failed"
+        : activeJobFeedback?.phase === "running"
+          ? "legacyRefresh.monitor.running"
+          : "legacyRefresh.monitor.queued";
+  const activeJobDetailKey = activeJobFeedback?.phase === "succeeded"
+    ? "legacyRefresh.monitor.successDetail"
+    : activeJobFeedback?.phase === "review-required"
+      ? "legacyRefresh.monitor.reviewRequiredDetail"
+      : activeJobFeedback?.phase === "failed"
+        ? "legacyRefresh.monitor.failedDetail"
+        : activeJobFeedback?.phase === "running"
+          ? "legacyRefresh.monitor.runningDetail"
+          : "legacyRefresh.monitor.queuedDetail";
+
+  useEffect(() => {
+    if (!incrementalBootstrapRequired) {
+      return;
+    }
+    setForm((current) => {
+      if (current.mode !== "incremental") {
+        return current;
+      }
+      return {
+        ...current,
+        mode: "full-rebaseline",
+        lookbackDays:
+          current.lookbackDays === DEFAULT_INCREMENTAL_LOOKBACK_DAYS
+            ? DEFAULT_FULL_REBASELINE_LOOKBACK_DAYS
+            : current.lookbackDays,
+      };
+    });
+  }, [incrementalBootstrapRequired]);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -1764,7 +2283,23 @@ function LegacyRefreshSection() {
       />
 
       {error ? <SurfaceMessage tone="danger">{error}</SurfaceMessage> : null}
-      {triggerError && <SurfaceMessage tone="warning">{triggerError}</SurfaceMessage>}
+      {triggerError && missingLegacySourceSettings.length === 0 && (
+        <SurfaceMessage tone="warning">{triggerError}</SurfaceMessage>
+      )}
+      {missingLegacySourceSettings.length > 0 && (
+        <SurfaceMessage tone="warning">
+          <div className="space-y-2">
+            <p className="font-medium">{t("legacyRefresh.trigger.missingLegacySourceSettingsTitle")}</p>
+            <p className="text-sm text-muted-foreground">
+              {t("legacyRefresh.trigger.missingLegacySourceSettingsBody")}
+            </p>
+            <p className="font-mono text-xs break-all">{missingLegacySourceSettings.join(", ")}</p>
+            <Link className={cn(buttonVariants({ variant: "outline", size: "sm" }), "w-fit")} to={SETTINGS_ROUTE}>
+              {t("settingsHub.openSettings")}
+            </Link>
+          </div>
+        </SurfaceMessage>
+      )}
       {triggerResult && !("conflict" in triggerResult) && (
         <SurfaceMessage tone="success">
           {t("legacyRefresh.trigger.launched")}: {triggerResult.batch_id}
@@ -1777,89 +2312,262 @@ function LegacyRefreshSection() {
           title={t("legacyRefresh.trigger.title")}
           description={t("legacyRefresh.trigger.description")}
         >
-          <form className="space-y-4" onSubmit={handleTrigger}>
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="lr-tenant-id">{t("legacyRefresh.fields.tenantId")}</Label>
-              <Input
-                id="lr-tenant-id"
-                value={form.tenantId}
-                onChange={(e) => setForm((f) => ({ ...f, tenantId: e.target.value }))}
-                placeholder={t("legacyRefresh.fields.tenantIdPlaceholder")}
-                required
-              />
+              <Label htmlFor="lr-lane-select">{t("legacyRefresh.fields.lane")}</Label>
+              <select
+                id="lr-lane-select"
+                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                value={selectedLaneKey}
+                onChange={(e) => handleLaneSelection(e.target.value)}
+              >
+                <option value="">{t("legacyRefresh.fields.manualLaneOption")}</option>
+                {lanes.map((lane) => (
+                  <option key={lane.lane_key} value={lane.lane_key}>
+                    {formatLegacyRefreshLaneLabel(lane)}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">{t("legacyRefresh.fields.laneHelp")}</p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="lr-schema-name">{t("legacyRefresh.fields.schemaName")}</Label>
-                <Input
-                  id="lr-schema-name"
-                  value={form.schemaName}
-                  onChange={(e) => setForm((f) => ({ ...f, schemaName: e.target.value }))}
-                  placeholder={t("legacyRefresh.fields.schemaNamePlaceholder")}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="lr-source-schema">{t("legacyRefresh.fields.sourceSchema")}</Label>
-                <Input
-                  id="lr-source-schema"
-                  value={form.sourceSchema}
-                  onChange={(e) => setForm((f) => ({ ...f, sourceSchema: e.target.value }))}
-                  placeholder="public"
-                />
-              </div>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="lr-mode">{t("legacyRefresh.fields.mode")}</Label>
-                <select
-                  id="lr-mode"
-                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                  value={form.mode}
-                  onChange={(e) => setForm((f) => ({ ...f, mode: e.target.value as RefreshMode }))}
+
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                onClick={() => {
+                  void handleQuickTrigger("incremental");
+                }}
+                disabled={triggerLoading || !canLaunchIncrementalQuickAction}
+              >
+                {t("legacyRefresh.quickActions.incremental")}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  void handleQuickTrigger("full-rebaseline");
+                }}
+                disabled={triggerLoading || !canLaunchQuickAction}
+              >
+                {t("legacyRefresh.quickActions.fullRebaseline")}
+              </Button>
+              {canToggleAdvanced && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setAdvancedOpen((current) => !current)}
                 >
-                  <option value="incremental">{t("legacyRefresh.modes.incremental")}</option>
-                  <option value="full-rebaseline">{t("legacyRefresh.modes.fullRebaseline")}</option>
-                </select>
+                  {showAdvanced
+                    ? t("legacyRefresh.quickActions.hideAdvanced")
+                    : t("legacyRefresh.quickActions.showAdvanced")}
+                </Button>
+              )}
+            </div>
+
+            {!canToggleAdvanced && (
+              <p className="text-xs text-muted-foreground">
+                {t("legacyRefresh.quickActions.advancedRequired")}
+              </p>
+            )}
+
+            {incrementalBootstrapRequired && (
+              <SurfaceMessage tone="warning" className="text-xs">
+                {t("legacyRefresh.trigger.bootstrapRequired")}
+              </SurfaceMessage>
+            )}
+
+            <div className="grid gap-3 rounded-xl border border-border/60 bg-muted/10 p-4 text-sm sm:grid-cols-2">
+              <div className="space-y-1">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  {t("legacyRefresh.quickActions.currentLane")}
+                </p>
+                <p className="break-all font-mono text-xs">{quickActionLaneLabel}</p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="lr-lookback">{t("legacyRefresh.fields.lookbackDays")}</Label>
-                <Input
-                  id="lr-lookback"
-                  type="number"
-                  min={0}
-                  value={form.lookbackDays}
-                  onChange={(e) => setForm((f) => ({ ...f, lookbackDays: parseInt(e.target.value) || 0 }))}
-                />
+              <div className="space-y-1">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  {t("legacyRefresh.quickActions.lastRun")}
+                </p>
+                {latestQuickActionRun ? (
+                  <div className="space-y-1 text-xs">
+                    <p>{latestQuickActionRun.started_at ? new Date(latestQuickActionRun.started_at).toLocaleString() : "-"}</p>
+                    {latestQuickActionRun.final_disposition ? (
+                      <Badge variant={dispositionVariant(latestQuickActionRun.final_disposition)} className="normal-case tracking-normal">
+                        {formatDisposition(latestQuickActionRun.final_disposition)}
+                      </Badge>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">{t("legacyRefresh.quickActions.noRunHistory")}</p>
+                )}
               </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="lr-threshold">{t("legacyRefresh.fields.reconciliationThreshold")}</Label>
-                <Input
-                  id="lr-threshold"
-                  type="number"
-                  min={0}
-                  value={form.reconciliationThreshold}
-                  onChange={(e) => setForm((f) => ({ ...f, reconciliationThreshold: parseInt(e.target.value) || 0 }))}
-                />
-              </div>
-              <div className="flex items-end pb-1">
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={form.dryRun}
-                    onChange={(e) => setForm((f) => ({ ...f, dryRun: e.target.checked }))}
-                    className="h-4 w-4 rounded border-input"
+
+            {activeJobFeedback && (
+              <SurfaceMessage tone={activeJobTone}>
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                        {t("legacyRefresh.monitor.title")}
+                      </p>
+                      <p className="text-sm font-medium">{t(activeJobHeadlineKey)}</p>
+                      <p className="text-xs text-muted-foreground">{t(activeJobDetailKey)}</p>
+                    </div>
+                    <Badge variant={activeJobBadgeVariant} className="normal-case tracking-normal">
+                      {activeJobFeedback.finalDisposition
+                        ? formatDisposition(activeJobFeedback.finalDisposition)
+                        : t(`legacyRefresh.monitor.badges.${activeJobFeedback.phase}`)}
+                    </Badge>
+                  </div>
+
+                  <div className="grid gap-3 text-xs sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <p className="font-medium text-muted-foreground">{t("legacyRefresh.monitor.batch")}</p>
+                      <p className="font-mono break-all">{activeJobFeedback.batchId}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-medium text-muted-foreground">{t("legacyRefresh.monitor.mode")}</p>
+                      <p>{t(`legacyRefresh.modes.${activeJobFeedback.mode === "full-rebaseline" ? "fullRebaseline" : "incremental"}`)}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-medium text-muted-foreground">{t("legacyRefresh.monitor.startedAt")}</p>
+                      <p>{new Date(activeJobFeedback.launchedAt).toLocaleString()}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-medium text-muted-foreground">{t("legacyRefresh.monitor.completedAt")}</p>
+                      <p>{activeJobFeedback.completedAt ? new Date(activeJobFeedback.completedAt).toLocaleString() : "-"}</p>
+                    </div>
+                    {activeJobFeedback.validationStatus && (
+                      <div className="space-y-1">
+                        <p className="font-medium text-muted-foreground">{t("legacyRefresh.monitor.validationStatus")}</p>
+                        <p>{activeJobFeedback.validationStatus}</p>
+                      </div>
+                    )}
+                    {activeJobFeedback.blockingIssueCount !== null && (
+                      <div className="space-y-1">
+                        <p className="font-medium text-muted-foreground">{t("legacyRefresh.monitor.blockingIssueCount")}</p>
+                        <p>{activeJobFeedback.blockingIssueCount}</p>
+                      </div>
+                    )}
+                    {activeJobFeedback.reconciliationGapCount !== null && (
+                      <div className="space-y-1">
+                        <p className="font-medium text-muted-foreground">{t("legacyRefresh.monitor.reconciliationGapCount")}</p>
+                        <p>{activeJobFeedback.reconciliationGapCount}</p>
+                      </div>
+                    )}
+                    <div className="space-y-1">
+                      <p className="font-medium text-muted-foreground">{t("legacyRefresh.monitor.promotionEligible")}</p>
+                      <p>{activeJobFeedback.promotionEligible ? t("legacyRefresh.monitor.yes") : t("legacyRefresh.monitor.no")}</p>
+                    </div>
+                    {activeJobFeedback.blockedReason && (
+                      <div className="space-y-1">
+                        <p className="font-medium text-muted-foreground">{t("legacyRefresh.monitor.blockedReason")}</p>
+                        <p>{activeJobFeedback.blockedReason}</p>
+                      </div>
+                    )}
+                    {activeJobFeedback.rootFailure && (
+                      <div className="space-y-1 sm:col-span-2">
+                        <p className="font-medium text-muted-foreground">{t("legacyRefresh.monitor.rootFailure")}</p>
+                        <p>{activeJobFeedback.rootFailure}</p>
+                      </div>
+                    )}
+                    {activeJobFeedback.summaryPath && (
+                      <div className="space-y-1 sm:col-span-2">
+                        <p className="font-medium text-muted-foreground">{t("legacyRefresh.monitor.summaryPath")}</p>
+                        <p className="font-mono break-all">{activeJobFeedback.summaryPath}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </SurfaceMessage>
+            )}
+
+            {showAdvanced && (
+              <form className="space-y-4 rounded-xl border border-border/60 bg-background/60 p-4" onSubmit={handleTrigger}>
+                <div className="space-y-2">
+                  <Label htmlFor="lr-tenant-id">{t("legacyRefresh.fields.tenantId")}</Label>
+                  <Input
+                    id="lr-tenant-id"
+                    value={form.tenantId}
+                    onChange={(e) => setForm((f) => ({ ...f, tenantId: e.target.value }))}
+                    placeholder={t("legacyRefresh.fields.tenantIdPlaceholder")}
+                    required
                   />
-                  {t("legacyRefresh.fields.dryRun")}
-                </label>
-              </div>
-            </div>
-            <Button type="submit" disabled={triggerLoading || !form.tenantId || !form.schemaName}>
-              {triggerLoading ? t("legacyRefresh.trigger.launching") : t("legacyRefresh.trigger.launch")}
-            </Button>
-          </form>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="lr-schema-name">{t("legacyRefresh.fields.schemaName")}</Label>
+                    <Input
+                      id="lr-schema-name"
+                      value={form.schemaName}
+                      onChange={(e) => setForm((f) => ({ ...f, schemaName: e.target.value }))}
+                      placeholder={t("legacyRefresh.fields.schemaNamePlaceholder")}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lr-source-schema">{t("legacyRefresh.fields.sourceSchema")}</Label>
+                    <Input
+                      id="lr-source-schema"
+                      value={form.sourceSchema}
+                      onChange={(e) => setForm((f) => ({ ...f, sourceSchema: e.target.value }))}
+                      placeholder="public"
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="lr-mode">{t("legacyRefresh.fields.mode")}</Label>
+                    <select
+                      id="lr-mode"
+                      className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                      value={form.mode}
+                      onChange={(e) => handleModeChange(e.target.value as RefreshMode)}
+                    >
+                      <option value="incremental" disabled={incrementalBootstrapRequired}>{t("legacyRefresh.modes.incremental")}</option>
+                      <option value="full-rebaseline">{t("legacyRefresh.modes.fullRebaseline")}</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lr-lookback">{t("legacyRefresh.fields.lookbackDays")}</Label>
+                    <Input
+                      id="lr-lookback"
+                      type="number"
+                      min={0}
+                      value={form.lookbackDays}
+                      onChange={(e) => setForm((f) => ({ ...f, lookbackDays: parseInt(e.target.value, 10) || 0 }))}
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="lr-threshold">{t("legacyRefresh.fields.reconciliationThreshold")}</Label>
+                    <Input
+                      id="lr-threshold"
+                      type="number"
+                      min={0}
+                      value={form.reconciliationThreshold}
+                      onChange={(e) => setForm((f) => ({ ...f, reconciliationThreshold: parseInt(e.target.value, 10) || 0 }))}
+                    />
+                  </div>
+                  <div className="flex items-end pb-1">
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={form.dryRun}
+                        onChange={(e) => setForm((f) => ({ ...f, dryRun: e.target.checked }))}
+                        className="h-4 w-4 rounded border-input"
+                      />
+                      {t("legacyRefresh.fields.dryRun")}
+                    </label>
+                  </div>
+                </div>
+                <Button type="submit" disabled={!canSubmitTrigger}>
+                  {triggerLoading ? t("legacyRefresh.trigger.launching") : t("legacyRefresh.trigger.launch")}
+                </Button>
+              </form>
+            )}
+          </div>
         </SectionCard>
 
         {/* Recent Runs */}
