@@ -718,6 +718,28 @@ async def test_probe_live_source_connection_collects_metadata_and_streams_rows()
 
 
 @pytest.mark.asyncio
+async def test_discover_live_source_tables_ignores_ephemeral_report_scratch_tables() -> None:
+    connection = FakeLegacySourceConnection(
+        fetch_rows_by_query={
+            "FROM pg_catalog.pg_tables": [
+                {"tablename": "rpt01tmptb1164418"},
+                {"tablename": "rptstkstore1358528773729"},
+                {"tablename": "temp123report"},
+                {"tablename": "bak20260430"},
+                {"tablename": "_tmp_live_report"},
+                {"tablename": "$$$session_report"},
+                {"tablename": "tbscust"},
+            ],
+        },
+    )
+
+    assert await staging._discover_live_source_tables(
+        connection,
+        schema_name="public",
+    ) == ("tbscust",)
+
+
+@pytest.mark.asyncio
 async def test_run_live_stage_import_uses_shared_loader_and_descriptor(
     monkeypatch,
 ) -> None:
@@ -1554,7 +1576,10 @@ async def test_stage_table_fails_on_purchase_line_header_fk_violation(tmp_path: 
     )
     table = DiscoveredLegacyTable("tbsslipdtj", data_file, expected_row_count=1)
     connection = FakeRawStageConnection(
-        fetchvals_by_query={"to_regclass": "raw_legacy.tbsslipj"},
+        fetchvals_by_query={
+            "to_regclass": "raw_legacy.tbsslipj",
+            "SELECT EXISTS": True,
+        },
         fetch_rows_by_query={
             'FROM "raw_legacy"."tbsslipdtj"': [{"missing_value": "PO-001"}],
         },
@@ -1567,6 +1592,88 @@ async def test_stage_table_fails_on_purchase_line_header_fk_violation(tmp_path: 
             schema_name="raw_legacy",
             batch_id="batch-016",
         )
+
+
+@pytest.mark.asyncio
+async def test_stage_table_defers_purchase_line_header_fk_until_headers_load(
+    tmp_path: Path,
+) -> None:
+    data_file = tmp_path / "tbsslipdtj.csv"
+    data_file.write_text(
+        '"\'1\', \'PO-001\', \'1\', \'X\', \'X\', \'P001\'"\n',
+        encoding="utf-8",
+    )
+    table = DiscoveredLegacyTable("tbsslipdtj", data_file, expected_row_count=1)
+    connection = FakeRawStageConnection(
+        fetchvals_by_query={"to_regclass": "raw_legacy.tbsslipj"},
+        fetch_rows_by_query={
+            'FROM "raw_legacy"."tbsslipdtj"': [{"missing_value": "PO-001"}],
+        },
+    )
+
+    result = await stage_table(
+        connection,
+        table=table,
+        schema_name="raw_legacy",
+        batch_id="batch-016",
+    )
+
+    assert result.validation_message == "fk_validation_deferred: doc_number -> tbsslipj"
+
+
+@pytest.mark.asyncio
+async def test_finalize_deferred_stage_validations_clears_resolved_purchase_fk() -> None:
+    connection = FakeRawStageConnection(
+        fetchvals_by_query={
+            "to_regclass": "raw_legacy.tbsslipj",
+            "SELECT EXISTS": True,
+        },
+        fetch_rows_by_query={'FROM "raw_legacy"."tbsslipdtj"': []},
+    )
+    table_audit = staging.AttemptTableAudit(
+        table_name="tbsslipdtj",
+        source_file="public.tbsslipdtj",
+        expected_row_count=1,
+        loaded_row_count=1,
+        column_count=6,
+        status="completed",
+        error_message="fk_validation_deferred: doc_number -> tbsslipj",
+    )
+    table_run = SimpleNamespace(
+        table_name="tbsslipdtj",
+        status="completed",
+        error_message="fk_validation_deferred: doc_number -> tbsslipj",
+        completed_at=None,
+    )
+
+    results = await staging._finalize_deferred_stage_validations(
+        connection,
+        schema_name="raw_legacy",
+        batch_id="batch-016",
+        results=[
+            staging.StageTableResult(
+                table_name="tbsslipdtj",
+                row_count=1,
+                column_count=6,
+                source_file="public.tbsslipdtj",
+                validation_message="fk_validation_deferred: doc_number -> tbsslipj",
+            )
+        ],
+        table_audits_by_name={"tbsslipdtj": table_audit},
+        table_runs_by_name={"tbsslipdtj": table_run},
+        fail_fast_tables=set(),
+    )
+
+    assert results == [
+        staging.StageTableResult(
+            table_name="tbsslipdtj",
+            row_count=1,
+            column_count=6,
+            source_file="public.tbsslipdtj",
+        )
+    ]
+    assert table_audit.error_message is None
+    assert table_run.error_message is None
 
 
 @pytest.mark.asyncio

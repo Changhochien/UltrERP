@@ -307,6 +307,62 @@ async def test_run_product_mapping_seed_is_transactional(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
+async def test_run_product_mapping_seed_counts_preserved_review_import_as_resolved(
+    monkeypatch,
+) -> None:
+    connection = FakeMappingConnection(
+        {
+            "normalized_products": [
+                {"legacy_code": "RB052"},
+            ],
+            "tbsslipdtx": [
+                {
+                    "product_code": "RB052-6",
+                    "warehouse_code": "1000",
+                    "row_count": 3,
+                },
+            ],
+            "product_code_mapping": [
+                {
+                    "legacy_code": "RB052-6",
+                    "target_code": "RB052",
+                    "resolution_type": "analyst_review",
+                    "confidence": Decimal("0.85"),
+                    "affected_row_count": 3,
+                    "first_seen_batch_id": "previous-batch",
+                    "last_seen_batch_id": "previous-batch",
+                    "review_notes": "Confirmed by analyst",
+                    "approval_source": "review-import",
+                    "approved_by": "analyst@example.com",
+                    "approved_at": None,
+                }
+            ],
+        }
+    )
+
+    async def fake_open_raw_connection() -> FakeMappingConnection:
+        return connection
+
+    monkeypatch.setattr(mapping, "_open_raw_connection", fake_open_raw_connection)
+
+    result = await mapping.run_product_mapping_seed(batch_id="batch-004")
+
+    assert result.mapping_count == 1
+    assert result.unknown_count == 0
+    assert result.orphan_code_count == 0
+    assert result.orphan_row_count == 0
+    upsert_calls = [
+        args
+        for query, args in connection.execute_calls
+        if 'INSERT INTO "raw_legacy".product_code_mapping (' in query
+    ]
+    assert upsert_calls
+    assert upsert_calls[0][1] == "RB052-6"
+    assert upsert_calls[0][2] == "RB052"
+    assert upsert_calls[0][3] == "analyst_review"
+
+
+@pytest.mark.asyncio
 async def test_export_product_mapping_review_writes_csv(monkeypatch, tmp_path) -> None:
     connection = FakeMappingConnection(
         {
@@ -516,7 +572,10 @@ async def test_import_product_mapping_review_ensures_unknown_placeholder_for_kee
 
 
 @pytest.mark.asyncio
-async def test_import_product_mapping_review_synthesizes_missing_self_target(monkeypatch, tmp_path) -> None:
+async def test_import_product_mapping_review_synthesizes_missing_self_target(
+    monkeypatch,
+    tmp_path,
+) -> None:
     input_path = tmp_path / "review.csv"
     input_path.write_text(
         (
@@ -598,7 +657,10 @@ async def test_import_product_mapping_review_rejects_missing_non_self_target(
 
     monkeypatch.setattr(mapping, "_open_raw_connection", fake_open_raw_connection)
 
-    with pytest.raises(ValueError, match="Approved target_code is not available in normalized products"):
+    with pytest.raises(
+        ValueError,
+        match="Approved target_code is not available in normalized products",
+    ):
         await mapping.import_product_mapping_review(
             batch_id="batch-003",
             input_path=input_path,

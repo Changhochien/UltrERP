@@ -121,6 +121,37 @@ def test_evaluate_promotion_policy_marks_analyst_review_as_exception_required() 
     assert decision.override_allowed is True
 
 
+def test_evaluate_promotion_policy_treats_clean_validation_as_success() -> None:
+    decision = promotion_policy.evaluate_promotion_policy(
+        latest_success_state=_candidate_state(
+            validation_status="clean",
+            final_disposition="completed-review-required",
+            analyst_review_required=True,
+            promotion_readiness=False,
+        ),
+        summary=_summary(
+            validation_status="clean",
+            final_disposition="completed-review-required",
+            analyst_review_status="review-required",
+            analyst_review_required=True,
+            promotion_readiness=False,
+        ),
+        expected_lane_identity={
+            "tenant_id": "00000000-0000-0000-0000-000000000001",
+            "schema_name": "raw_legacy",
+            "source_schema": "public",
+        },
+        lock_active=False,
+    )
+
+    assert (
+        decision.classification
+        == promotion_policy.PromotionPolicyClassification.EXCEPTION_REQUIRED
+    )
+    assert decision.reason_codes == ("analyst-review",)
+    assert decision.override_allowed is True
+
+
 def test_evaluate_promotion_policy_blocks_validation_failures() -> None:
     decision = promotion_policy.evaluate_promotion_policy(
         latest_success_state=_candidate_state(validation_status="blocked", blocking_issue_count=2),

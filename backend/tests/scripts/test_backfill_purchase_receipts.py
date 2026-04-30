@@ -85,6 +85,36 @@ class TestFetchPurchaseReceiptRowsScopeFiltering:
         assert "INV002" in params["scope_doc_numbers"]
 
     @pytest.mark.asyncio
+    async def test_incremental_mode_accepts_manifest_shaped_closure_keys(self) -> None:
+        mock_session = AsyncMock(spec=AsyncSession)
+        mock_result = MagicMock()
+        mock_result.fetchall.return_value = [
+            MagicMock(_mapping={"doc_number": "INV001", "line_number": "1"}),
+        ]
+        mock_session.execute.return_value = mock_result
+
+        entity_scope = {
+            "purchase-invoices": {
+                "closure_keys": [
+                    {"document_number": "INV001"},
+                    {"document-number": "INV002"},
+                ],
+            }
+        }
+
+        await stock_backfill.fetch_purchase_receipt_rows(
+            mock_session,
+            cutoff=date(2024, 1, 1),
+            today=date(2024, 12, 31),
+            entity_scope=entity_scope,
+            affected_domains=["purchase-invoices"],
+        )
+
+        params = mock_session.execute.call_args[0][1]
+        assert "INV001" in params["scope_doc_numbers"]
+        assert "INV002" in params["scope_doc_numbers"]
+
+    @pytest.mark.asyncio
     async def test_incremental_mode_with_empty_closure_keys_returns_all(self) -> None:
         """When entity_scope has empty closure_keys, return all rows (no filter)."""
         mock_session = AsyncMock(spec=AsyncSession)

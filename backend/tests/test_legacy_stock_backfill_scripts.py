@@ -351,7 +351,7 @@ def test_build_reconciliation_rows_can_ignore_existing_corrections() -> None:
     }
 
 
-def test_build_correction_adjustments_inverts_gap_with_deterministic_id() -> None:
+def test_build_snapshot_baseline_adjustments_anchors_to_inventory_snapshot() -> None:
     tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
     row = stock_backfill.ReconciliationRow(
         product_id=uuid.UUID("00000000-0000-0000-0000-000000000111"),
@@ -365,26 +365,50 @@ def test_build_correction_adjustments_inverts_gap_with_deterministic_id() -> Non
         },
     )
 
-    corrections = stock_backfill.build_correction_adjustments(
+    baselines = stock_backfill.build_snapshot_baseline_adjustments(
         [row],
         tenant_id=tenant_id,
         as_of_day=date(2026, 4, 12),
-        min_abs_gap=10,
     )
 
-    assert len(corrections) == 1
-    correction = corrections[0]
-    assert correction.quantity_change == -12
-    assert correction.reason_code == ReasonCode.CORRECTION.value
-    assert correction.actor_id == "reconciliation-plan"
-    assert correction.id == stock_backfill.tenant_scoped_uuid(
+    assert len(baselines) == 1
+    baseline = baselines[0]
+    assert baseline.quantity_change == -12
+    assert baseline.reason_code == ReasonCode.LEGACY_SNAPSHOT_BASELINE.value
+    assert baseline.actor_id == "legacy-snapshot-baseline"
+    assert baseline.id == stock_backfill.tenant_scoped_uuid(
         tenant_id,
-        "inventory-reconciliation-correction",
+        "legacy-snapshot-baseline",
         str(row.product_id),
         str(row.warehouse_id),
-        "2026-04-12",
     )
-    assert "gap=12" in correction.notes
+    assert "current_stock=3" in baseline.notes
+
+
+def test_build_snapshot_baseline_adjustments_updates_existing_baseline_row() -> None:
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    product_id = uuid.UUID("00000000-0000-0000-0000-000000000111")
+    warehouse_id = uuid.UUID("00000000-0000-0000-0000-000000000211")
+    row = stock_backfill.ReconciliationRow(
+        product_id=product_id,
+        warehouse_id=warehouse_id,
+        expected_adjustment_sum=10,
+        actual_stock=15,
+        gap=-5,
+        reason_breakdown={
+            ReasonCode.SUPPLIER_DELIVERY.value: 10,
+            ReasonCode.LEGACY_SNAPSHOT_BASELINE.value: 0,
+        },
+    )
+
+    baselines = stock_backfill.build_snapshot_baseline_adjustments(
+        [row],
+        tenant_id=tenant_id,
+        as_of_day=date(2026, 4, 12),
+    )
+
+    assert len(baselines) == 1
+    assert baselines[0].quantity_change == 5
 
 
 def test_format_reconciliation_table_includes_reason_breakdown() -> None:

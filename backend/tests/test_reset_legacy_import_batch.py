@@ -17,9 +17,8 @@ def test_build_reset_plan_orders_lineaged_tables_before_control_rows() -> None:
         lineage_count=9,
         step_run_count=5,
         run_count=1,
-        extra_counts={"sales_backfill": 6, "correction_rows": 0},
+        extra_counts={"sales_backfill": 6},
         include_sales_backfill=True,
-        include_correction_rows=False,
     )
 
     assert [item.label for item in plan] == [
@@ -48,9 +47,8 @@ def test_build_reset_plan_omits_optional_extra_slices_when_disabled() -> None:
         lineage_count=5,
         step_run_count=1,
         run_count=1,
-        extra_counts={"sales_backfill": 4, "correction_rows": 3},
+        extra_counts={"sales_backfill": 4},
         include_sales_backfill=False,
-        include_correction_rows=False,
     )
 
     assert [item.label for item in plan] == [

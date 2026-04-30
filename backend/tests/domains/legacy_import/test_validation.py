@@ -573,6 +573,80 @@ def test_build_validation_report_scope_key_changes_when_mapping_state_changes() 
     assert report_clean.replay.scope_key != report_with_unknowns.replay.scope_key
 
 
+def test_build_validation_report_warns_on_ephemeral_source_table_disappearance() -> None:
+    report = validation.build_validation_report(
+        batch_id="batch-ephemeral",
+        tenant_id=uuid.UUID("00000000-0000-0000-0000-000000001552"),
+        schema_name="raw_legacy",
+        attempt_number=1,
+        stage_rows=(
+            validation.StageReconciliationRow(
+                table_name="rpt01tmptb1164418",
+                source_file="public.rpt01tmptb1164418",
+                expected_row_count=None,
+                loaded_row_count=0,
+                status="failed",
+                error_message='relation "public.rpt01tmptb1164418" does not exist',
+            ),
+        ),
+        mapping_summary=validation.ProductMappingValidationSummary(
+            mapping_count=1,
+            candidate_count=0,
+            unknown_count=0,
+            orphan_code_count=0,
+            orphan_row_count=0,
+        ),
+        failed_stages=(),
+        counts={"lineage_count": 1, "holding_count": 0},
+        cutoff_date="2024-08-31",
+        previous_scope_run=None,
+    )
+
+    assert report.status == "warning"
+    assert report.blocking_issue_count == 0
+    assert report.issues[0].code == "stage-load-failed"
+    assert report.issues[0].severity == 2
+    assert report.issues[0].details["transient_source_table"] is True
+    assert report.artifact_metadata is not None
+    assert report.artifact_metadata.requires_rebaseline is False
+
+
+def test_build_validation_report_still_blocks_non_ephemeral_stage_failures() -> None:
+    report = validation.build_validation_report(
+        batch_id="batch-required-failure",
+        tenant_id=uuid.UUID("00000000-0000-0000-0000-000000001552"),
+        schema_name="raw_legacy",
+        attempt_number=1,
+        stage_rows=(
+            validation.StageReconciliationRow(
+                table_name="tbscust",
+                source_file="public.tbscust",
+                expected_row_count=None,
+                loaded_row_count=0,
+                status="failed",
+                error_message='relation "public.tbscust" does not exist',
+            ),
+        ),
+        mapping_summary=validation.ProductMappingValidationSummary(
+            mapping_count=1,
+            candidate_count=0,
+            unknown_count=0,
+            orphan_code_count=0,
+            orphan_row_count=0,
+        ),
+        failed_stages=(),
+        counts={"lineage_count": 1, "holding_count": 0},
+        cutoff_date="2024-08-31",
+        previous_scope_run=None,
+    )
+
+    assert report.status == "blocked"
+    assert report.blocking_issue_count == 1
+    assert report.issues[0].code == "stage-load-failed"
+    assert report.issues[0].severity == 1
+    assert report.issues[0].details["transient_source_table"] is False
+
+
 @pytest.mark.asyncio
 async def test_validate_import_batch_flags_missing_legacy_header_snapshots(
     monkeypatch,

@@ -358,6 +358,7 @@ async def test_drain_path_resolves_existing_holding_state(monkeypatch) -> None:
     )
     holding_id = source_resolution.build_holding_id(
         tenant_id,
+        batch_id="batch-ap-drain",
         domain_name="payment_history",
         source_table="tbsspay",
         source_identifier="SUP-PAY-001",

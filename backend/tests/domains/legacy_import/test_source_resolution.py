@@ -188,6 +188,41 @@ def _identity_key(
     return (tenant_id, batch_id, source_table, source_identifier, source_row_number)
 
 
+def test_build_holding_id_is_batch_scoped_and_stable() -> None:
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000720")
+
+    first_batch_id = source_resolution.build_holding_id(
+        tenant_id,
+        batch_id="batch-holding-a",
+        domain_name="payment_history",
+        source_table="tbsspay",
+        source_identifier="SUP-PAY-001",
+        source_row_number=1,
+        row_identity=1,
+    )
+    first_batch_replay_id = source_resolution.build_holding_id(
+        tenant_id,
+        batch_id="batch-holding-a",
+        domain_name="payment_history",
+        source_table="tbsspay",
+        source_identifier="SUP-PAY-001",
+        source_row_number=1,
+        row_identity=1,
+    )
+    second_batch_id = source_resolution.build_holding_id(
+        tenant_id,
+        batch_id="batch-holding-b",
+        domain_name="payment_history",
+        source_table="tbsspay",
+        source_identifier="SUP-PAY-001",
+        source_row_number=1,
+        row_identity=1,
+    )
+
+    assert first_batch_id == first_batch_replay_id
+    assert first_batch_id != second_batch_id
+
+
 async def _canonical_lineage_write(
     connection: FakeResolutionConnection,
     *,

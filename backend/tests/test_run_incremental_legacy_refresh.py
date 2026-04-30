@@ -630,7 +630,10 @@ def test_run_incremental_publishes_lane_state_and_advances_watermarks(
         "source-change-ts": "2026-04-18T03:00:00+00:00",
         "party-code": "P-001",
     }
-    assert updated_state["domains"]["parties"]["last_successful_batch_id"] == result.summary["batch_id"]
+    assert (
+        updated_state["domains"]["parties"]["last_successful_batch_id"]
+        == result.summary["batch_id"]
+    )
 
 
 def test_run_incremental_threads_entity_scope_and_last_successful_batch_ids(

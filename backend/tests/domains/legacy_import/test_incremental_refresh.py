@@ -7,6 +7,10 @@ import pytest
 import domains.legacy_import.incremental_refresh as incremental_refresh
 import domains.legacy_import.incremental_state as incremental_state
 from scripts.legacy_refresh_state import build_lane_state_paths
+from scripts.run_legacy_refresh import (
+    _canonical_domains_for_incremental,
+    _normalization_domains_for_incremental,
+)
 
 TENANT_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 
@@ -86,6 +90,29 @@ def test_supported_incremental_domain_contracts_stay_within_reviewed_tables() ->
     assert sales_contract.parent_child_batch_rule == "header-and-line-pair"
 
 
+def test_incremental_transaction_domains_expand_to_master_normalization_dependencies() -> None:
+    domains = _normalization_domains_for_incremental(("sales", "purchase-invoices"))
+
+    assert domains == ("parties", "products", "warehouses")
+    assert "sales" not in domains
+    assert "purchase-invoices" not in domains
+
+
+def test_incremental_domains_expand_to_canonical_step_dependencies() -> None:
+    domains = _canonical_domains_for_incremental(("inventory", "sales", "purchase-invoices"))
+
+    assert domains == (
+        "products",
+        "warehouses",
+        "inventory",
+        "customers",
+        "sales_history",
+        "suppliers",
+        "receiving_audit",
+        "purchase_history",
+    )
+
+
 def test_reseed_incremental_state_from_full_refresh_tracks_rebaseline_and_bootstrap() -> None:
     state = incremental_state.reseed_incremental_state_from_full_refresh(
         tenant_id=TENANT_ID,
@@ -115,6 +142,35 @@ def test_reseed_incremental_state_from_full_refresh_tracks_rebaseline_and_bootst
         and domain_state["bootstrap_required"] is True
         for domain_state in state["domains"].values()
     )
+
+
+def test_reseed_incremental_state_from_full_refresh_commits_baseline_watermarks() -> None:
+    state = incremental_state.reseed_incremental_state_from_full_refresh(
+        tenant_id=TENANT_ID,
+        schema_name="raw_legacy",
+        source_schema="public",
+        latest_success_state=_latest_success_state(batch_id="legacy-shadow-20260418T020304Z"),
+        latest_promoted_state=_promoted_state(batch_id="legacy-shadow-20260417T020304Z"),
+        recorded_at="2026-04-18T02:10:00+00:00",
+        baseline_watermarks={
+            "sales": {
+                "document-date": "2026-04-30",
+                "document-number": "1150430001",
+                "line-number": 3,
+            }
+        },
+    )
+
+    sales_state = state["domains"]["sales"]
+    assert sales_state["bootstrap_required"] is False
+    assert sales_state["last_successful_watermark"] == {
+        "document-date": "2026-04-30",
+        "document-number": "1150430001",
+        "line-number": 3,
+    }
+    assert sales_state["last_successful_batch_id"] == "legacy-shadow-20260418T020304Z"
+    assert sales_state["last_successful_recorded_at"] == "2026-04-18T02:10:00+00:00"
+    assert state["domains"]["products"]["bootstrap_required"] is True
 
 
 def test_record_incremental_candidate_result_keeps_prior_watermarks_when_blocked() -> None:

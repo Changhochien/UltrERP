@@ -16,6 +16,18 @@ from scripts.run_legacy_refresh import LegacyRefreshExecution
 TENANT_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 
 
+@pytest.fixture(autouse=True)
+def _stub_incremental_baseline_watermarks(monkeypatch):
+    async def fake_fetch_staged_incremental_watermarks(**kwargs):
+        return {}
+
+    monkeypatch.setattr(
+        scheduled,
+        "fetch_staged_incremental_watermarks",
+        fake_fetch_staged_incremental_watermarks,
+    )
+
+
 def _connection_settings() -> LegacySourceConnectionSettings:
     return LegacySourceConnectionSettings(
         host="legacy-db.internal",
@@ -208,6 +220,55 @@ def test_run_scheduled_shadow_refresh_forwards_connection_settings(
     assert captured["connection_settings"] == connection_settings
 
 
+def test_cli_scheduled_shadow_refresh_loads_runtime_connection_settings(
+    monkeypatch,
+) -> None:
+    connection_settings = _connection_settings()
+    captured: dict[str, object] = {}
+
+    async def fake_load_runtime_legacy_source_connection_settings():
+        return connection_settings
+
+    async def fake_run_scheduled_shadow_refresh(**kwargs):
+        captured.update(kwargs)
+        return scheduled.ScheduledShadowRefreshExecution(
+            exit_code=0,
+            batch_id="legacy-shadow-20260418T020304Z",
+            scheduler_run_id="scheduler-run-id",
+            summary_path=None,
+            latest_run_path=Path("latest-run.json"),
+            latest_success_path=Path("latest-success.json"),
+            state_record={},
+            latest_success_updated=False,
+        )
+
+    monkeypatch.setattr(
+        scheduled,
+        "load_runtime_legacy_source_connection_settings",
+        fake_load_runtime_legacy_source_connection_settings,
+    )
+    monkeypatch.setattr(
+        scheduled,
+        "run_scheduled_shadow_refresh",
+        fake_run_scheduled_shadow_refresh,
+    )
+    args = scheduled.build_parser().parse_args(
+        [
+            "--tenant-id",
+            str(TENANT_ID),
+            "--schema",
+            "raw_legacy",
+            "--source-schema",
+            "public",
+        ]
+    )
+
+    result = asyncio.run(scheduled._run_cli_scheduled_shadow_refresh(args))
+
+    assert result.exit_code == 0
+    assert captured["connection_settings"] == connection_settings
+
+
 def test_completed_review_required_still_advances_latest_success(
     monkeypatch,
     tmp_path: Path,
@@ -293,6 +354,28 @@ def test_successful_full_refresh_reseeds_incremental_state_and_rebaseline_refere
 
     monkeypatch.setattr(scheduled, "run_legacy_refresh", fake_run_legacy_refresh)
 
+    async def fake_fetch_staged_incremental_watermarks(**kwargs):
+        assert kwargs["schema_name"] == "raw_legacy"
+        assert kwargs["source_schema"] == "public"
+        assert kwargs["batch_id"] == batch_id
+        return {
+            "sales": {
+                "document-date": "2026-04-30",
+                "document-number": "1150430001",
+                "line-number": 3,
+            },
+            "products": {
+                "source-change-ts": "2026-04-29T12:00:00.000000+00:00",
+                "product-code": "P-001",
+            },
+        }
+
+    monkeypatch.setattr(
+        scheduled,
+        "fetch_staged_incremental_watermarks",
+        fake_fetch_staged_incremental_watermarks,
+    )
+
     result = asyncio.run(
         scheduled.run_scheduled_shadow_refresh(
             tenant_id=TENANT_ID,
@@ -327,11 +410,15 @@ def test_successful_full_refresh_reseeds_incremental_state_and_rebaseline_refere
     assert set(incremental_snapshot["domains"]) == {
         contract.name for contract in incremental_state.supported_incremental_domain_contracts()
     }
-    assert all(
-        domain_state["bootstrap_required"] is True
-        and domain_state["last_successful_watermark"] is None
-        for domain_state in incremental_snapshot["domains"].values()
-    )
+    assert incremental_snapshot["domains"]["sales"]["bootstrap_required"] is False
+    assert incremental_snapshot["domains"]["sales"]["last_successful_watermark"] == {
+        "document-date": "2026-04-30",
+        "document-number": "1150430001",
+        "line-number": 3,
+    }
+    assert incremental_snapshot["domains"]["sales"]["last_successful_batch_id"] == batch_id
+    assert incremental_snapshot["domains"]["products"]["bootstrap_required"] is False
+    assert incremental_snapshot["domains"]["warehouses"]["bootstrap_required"] is True
 
 
 @pytest.mark.parametrize(

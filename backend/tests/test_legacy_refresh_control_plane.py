@@ -14,6 +14,7 @@ import tempfile
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -311,11 +312,12 @@ async def test_trigger_passes_returned_batch_id_into_worker(monkeypatch: pytest.
     assert captured["batch_id"] == result.batch_id
     assert captured["launched_at"] == result.launched_at
     assert captured["connection_settings"] == _test_connection_settings()
+    assert captured["dry_run"] is False
 
 
 @pytest.mark.asyncio
-async def test_trigger_dry_run_flag_passed() -> None:
-    """Trigger with dry_run=true is accepted."""
+async def test_trigger_full_rebaseline_dry_run_rejected() -> None:
+    """Full rebaseline dry-run is rejected instead of silently running live."""
     session = FakeAsyncSession()
     previous = setup_session(session)
     try:
@@ -329,8 +331,85 @@ async def test_trigger_dry_run_flag_passed() -> None:
             },
         )
         assert resp.status_code == 202
+        data = resp.json()
+        assert data["conflict"] == "dry-run-unsupported"
     finally:
         teardown_session(previous)
+
+
+@pytest.mark.asyncio
+async def test_incremental_worker_honors_dry_run(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    tenant_id = uuid.uuid4()
+    schema_name = "test_schema"
+    source_schema = "public"
+    lane_paths = build_lane_state_paths(
+        tenant_id=tenant_id,
+        schema_name=schema_name,
+        source_schema=source_schema,
+        summary_root=tmp_path,
+    )
+    lane_paths.lane_root.mkdir(parents=True, exist_ok=True)
+
+    captured_payloads: list[dict[str, Any]] = []
+
+    async def fake_persist_job_metadata(job_id: str, lane_root: Path, payload: dict[str, Any]) -> None:
+        captured_payloads.append(dict(payload))
+
+    def fake_run_incremental_legacy_refresh(**kwargs: Any):
+        raise AssertionError("dry-run worker must not execute live incremental refresh")
+
+    monkeypatch.setattr(legacy_refresh_routes, "DEFAULT_SUMMARY_ROOT", tmp_path)
+    monkeypatch.setattr(legacy_refresh_routes, "_persist_job_metadata", fake_persist_job_metadata)
+    monkeypatch.setattr(
+        legacy_refresh_routes,
+        "build_live_source_projection_for_lane",
+        lambda **kwargs: object(),
+    )
+    monkeypatch.setattr(
+        legacy_refresh_routes,
+        "build_incremental_discovery_for_dry_run",
+        lambda **kwargs: (
+            {"domains": {}},
+            SimpleNamespace(
+                planned_domains=("sales", "purchase-invoices"),
+                active_domains=("sales",),
+                no_op_domains=("purchase-invoices",),
+            ),
+        ),
+    )
+    monkeypatch.setattr(
+        legacy_refresh_routes,
+        "build_delta_manifest",
+        lambda **kwargs: {
+            "batch_id": kwargs["batch_id"],
+            "active_domains": ["sales"],
+        },
+    )
+    monkeypatch.setattr(
+        legacy_refresh_routes,
+        "run_incremental_legacy_refresh",
+        fake_run_incremental_legacy_refresh,
+    )
+
+    await legacy_refresh_routes._launch_incremental(
+        tenant_id=tenant_id,
+        schema_name=schema_name,
+        source_schema=source_schema,
+        lookback_days=0,
+        reconciliation_threshold=0,
+        job_id="job-1",
+        batch_id="legacy-incremental-dry-run",
+        launched_at="2024-04-24T12:00:00+00:00",
+        connection_settings=_test_connection_settings(),
+        dry_run=True,
+    )
+
+    assert captured_payloads[-1]["status"] == "completed"
+    assert captured_payloads[-1]["exit_code"] == 0
+    assert captured_payloads[-1]["dry_run"] is True
+    assert captured_payloads[-1]["final_disposition"] == RefreshDisposition.COMPLETED_NO_OP.value
+    assert captured_payloads[-1]["affected_domains"] == ["sales"]
+    assert (lane_paths.lane_root / "legacy-incremental-dry-run-dry-run-manifest.json").exists()
 
 
 # ── AC2: Status endpoint ───────────────────────────────────────
@@ -454,6 +533,121 @@ async def test_status_surfaces_incremental_scope_and_detailed_failure_reason(
     assert status.affected_domains == ["sales", "products"]
     assert status.root_failure == "verify_reconciliation: Targeted reconciliation exceeded threshold"
     assert status.blocked_reason == "Incremental reconciliation drift requires full rebaseline"
+
+
+@pytest.mark.asyncio
+async def test_status_prefers_active_lock_and_promoted_success_over_stale_latest_run(
+    temp_lane: tuple[Path, uuid.UUID, str, str],
+) -> None:
+    tmp_path, tenant_id, schema_name, source_schema = temp_lane
+    lane_paths = build_lane_state_paths(
+        tenant_id=tenant_id,
+        schema_name=schema_name,
+        source_schema=source_schema,
+        summary_root=tmp_path,
+    )
+
+    blocked_run = {
+        "batch_id": "legacy-shadow-20240424T150000Z",
+        "batch_mode": "full-rebaseline",
+        "final_disposition": RefreshDisposition.VALIDATION_BLOCKED.value,
+        "validation_status": "blocked",
+        "blocking_issue_count": 3,
+        "promotion_policy": {"classification": "blocked"},
+    }
+    clean_success = {
+        "batch_id": "legacy-shadow-20240424T120000Z",
+        "batch_mode": "full-rebaseline",
+        "final_disposition": RefreshDisposition.COMPLETED.value,
+        "validation_status": "clean",
+        "blocking_issue_count": 0,
+        "reconciliation_gap_count": 0,
+        "promotion_policy": {"classification": "eligible", "reason_codes": []},
+    }
+    promoted_success = {
+        "batch_id": clean_success["batch_id"],
+        "promotion_result": "promoted",
+        "promotion_policy_classification": "eligible",
+        "validation_status": "clean",
+        "blocking_issue_count": 0,
+        "reconciliation_gap_count": 0,
+        "promoted_at": "2024-04-24T13:00:00+00:00",
+    }
+    active_lock = {
+        "scheduler_run_id": "job-incremental",
+        "batch_id": "legacy-incremental-20240424T160000Z",
+        "started_at": _iso_now(),
+    }
+    write_json_atomically(lane_paths.latest_run_path, blocked_run)
+    write_json_atomically(lane_paths.latest_success_path, clean_success)
+    write_json_atomically(lane_paths.latest_promoted_path, promoted_success)
+    write_json_atomically(lane_paths.lock_path, active_lock)
+
+    status = _load_lane_status(tenant_id, schema_name, source_schema, summary_root=tmp_path)
+
+    assert status.lane_locked is True
+    assert status.current_batch_mode == "incremental"
+    assert status.current_job_id == "job-incremental"
+    assert status.root_failure is None
+    assert status.blocked_reason is None
+    assert status.promotion_eligible is False
+    assert status.promotion_classification == "promoted"
+    assert status.latest_promoted is not None
+    assert status.latest_promoted.final_disposition == "promoted"
+
+
+@pytest.mark.asyncio
+async def test_status_keeps_blocked_candidate_out_of_lane_level_state_when_working_batch_promoted(
+    temp_lane: tuple[Path, uuid.UUID, str, str],
+) -> None:
+    tmp_path, tenant_id, schema_name, source_schema = temp_lane
+    lane_paths = build_lane_state_paths(
+        tenant_id=tenant_id,
+        schema_name=schema_name,
+        source_schema=source_schema,
+        summary_root=tmp_path,
+    )
+
+    blocked_run = {
+        "batch_id": "legacy-shadow-20240424T150000Z",
+        "batch_mode": "full-rebaseline",
+        "final_disposition": RefreshDisposition.VALIDATION_BLOCKED.value,
+        "validation_status": "blocked",
+        "blocking_issue_count": 3,
+        "rebaseline_reason": "3 blocking issue(s) must be resolved",
+        "promotion_policy": {"classification": "blocked"},
+    }
+    clean_success = {
+        "batch_id": "legacy-shadow-20240424T120000Z",
+        "batch_mode": "full-rebaseline",
+        "final_disposition": RefreshDisposition.COMPLETED.value,
+        "validation_status": "clean",
+        "blocking_issue_count": 0,
+        "reconciliation_gap_count": 0,
+        "promotion_policy": {"classification": "eligible", "reason_codes": []},
+    }
+    promoted_success = {
+        "batch_id": clean_success["batch_id"],
+        "promotion_result": "promoted",
+        "promotion_policy_classification": "eligible",
+        "validation_status": "clean",
+        "blocking_issue_count": 0,
+        "reconciliation_gap_count": 0,
+        "promoted_at": "2024-04-24T13:00:00+00:00",
+    }
+    write_json_atomically(lane_paths.latest_run_path, blocked_run)
+    write_json_atomically(lane_paths.latest_success_path, clean_success)
+    write_json_atomically(lane_paths.latest_promoted_path, promoted_success)
+
+    status = _load_lane_status(tenant_id, schema_name, source_schema, summary_root=tmp_path)
+
+    assert status.lane_locked is False
+    assert status.latest_run is not None
+    assert status.latest_run.final_disposition == RefreshDisposition.VALIDATION_BLOCKED.value
+    assert status.root_failure is None
+    assert status.blocked_reason is None
+    assert status.promotion_eligible is False
+    assert status.promotion_classification == "promoted"
 
 
 @pytest.mark.asyncio
@@ -734,6 +928,76 @@ async def test_recent_runs_endpoint_returns_job_records(
             shutil.rmtree(lane_paths.lane_root)
         except FileNotFoundError:
             pass
+        teardown_session(previous)
+
+
+@pytest.mark.asyncio
+async def test_lanes_endpoint_parses_hyphenated_uuid_lane_dirs(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    lane_paths = build_lane_state_paths(
+        tenant_id=tenant_id,
+        schema_name="raw_legacy",
+        source_schema="public",
+        summary_root=tmp_path,
+    )
+    record = {
+        "state_version": 1,
+        "scheduler_run_id": str(uuid.uuid4()),
+        "batch_id": "legacy-shadow-20260430T065740Z",
+        "summary_path": str(tmp_path / "summary.json"),
+        "started_at": "2026-04-30T06:57:40+00:00",
+        "completed_at": "2026-04-30T07:38:59+00:00",
+        "final_disposition": RefreshDisposition.COMPLETED.value,
+        "exit_code": 0,
+        "validation_status": "clean",
+        "blocking_issue_count": 0,
+        "reconciliation_gap_count": 0,
+        "promotion_readiness": True,
+        "promotion_policy": {
+            "classification": "eligible",
+            "reason_codes": [],
+        },
+    }
+    write_json_atomically(lane_paths.latest_run_path, record)
+    write_json_atomically(lane_paths.latest_success_path, record)
+    write_json_atomically(
+        lane_paths.incremental_state_path,
+        {"latest_success_batch_id": record["batch_id"]},
+    )
+    foreign_tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000002")
+    foreign_lane_paths = build_lane_state_paths(
+        tenant_id=foreign_tenant_id,
+        schema_name="raw_legacy",
+        source_schema="public",
+        summary_root=tmp_path,
+    )
+    write_json_atomically(
+        foreign_lane_paths.latest_run_path,
+        {
+            **record,
+            "batch_id": "legacy-shadow-foreign-tenant",
+            "scheduler_run_id": str(uuid.uuid4()),
+        },
+    )
+    monkeypatch.setattr(legacy_refresh_routes, "DEFAULT_SUMMARY_ROOT", tmp_path)
+
+    session = FakeAsyncSession()
+    previous = setup_session(session)
+    try:
+        resp = await http_get("/api/v1/admin/legacy-refresh/lanes")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data["lanes"]) == 1
+        lane = data["lanes"][0]
+        assert lane["lane_key"] == f"raw_legacy:{tenant_id}:public"
+        assert lane["latest_run"]["batch_id"] == record["batch_id"]
+        assert lane["latest_success"]["batch_id"] == record["batch_id"]
+        assert lane["incremental_state_path"] == str(lane_paths.incremental_state_path)
+        assert lane["promotion_eligible"] is True
+    finally:
         teardown_session(previous)
 
 
