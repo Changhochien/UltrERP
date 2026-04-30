@@ -6,7 +6,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
-from typing import TYPE_CHECKING, Literal, TypedDict, cast
+from typing import TYPE_CHECKING, Literal, Sequence, TypedDict, cast
 
 from sqlalchemy import and_, case, func, literal, or_, select, text
 from sqlalchemy.exc import IntegrityError
@@ -394,7 +394,6 @@ async def backfill_missing_invoice_line_unit_costs(
 
     # Story 15.27: Extract products closure keys for scope filtering (AC2).
     scoped_product_ids: frozenset[uuid.UUID] | None = None
-    is_incremental = entity_scope is not None or affected_domains is not None
 
     if entity_scope:
         products_scope = entity_scope.get("products")

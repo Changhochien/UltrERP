@@ -257,8 +257,14 @@ def _candidate_is_promotion_eligible(
     )
 
 
-def _bootstrap_domain_state(contract: IncrementalDomainContract) -> dict[str, Any]:
-    return {
+def _bootstrap_domain_state(
+    contract: IncrementalDomainContract,
+    *,
+    baseline_watermark: Mapping[str, object] | None = None,
+    latest_success_batch_id: object | None = None,
+    recorded_at: str | None = None,
+) -> dict[str, Any]:
+    state = {
         "source_tables": list(contract.source_tables),
         "watermark_source": contract.watermark_source,
         "cursor_components": list(contract.cursor_components),
@@ -271,6 +277,12 @@ def _bootstrap_domain_state(contract: IncrementalDomainContract) -> dict[str, An
         "last_successful_recorded_at": None,
         "bootstrap_required": True,
     }
+    if baseline_watermark is not None:
+        state["last_successful_watermark"] = deepcopy(dict(baseline_watermark))
+        state["last_successful_batch_id"] = latest_success_batch_id
+        state["last_successful_recorded_at"] = recorded_at
+        state["bootstrap_required"] = False
+    return state
 
 
 def reseed_incremental_state_from_full_refresh(
@@ -281,7 +293,11 @@ def reseed_incremental_state_from_full_refresh(
     latest_success_state: Mapping[str, object] | None,
     latest_promoted_state: Mapping[str, object] | None,
     recorded_at: str,
+    baseline_watermarks: Mapping[str, Mapping[str, object]] | None = None,
 ) -> dict[str, Any]:
+    latest_success = _shadow_candidate_metadata(latest_success_state)
+    latest_success_batch_id = (latest_success or {}).get("batch_id")
+    baseline_watermarks = baseline_watermarks or {}
     return {
         "state_version": INCREMENTAL_STATE_VERSION,
         "contract_version": INCREMENTAL_CONTRACT_VERSION,
@@ -294,17 +310,20 @@ def reseed_incremental_state_from_full_refresh(
         "schema_name": schema_name,
         "source_schema": source_schema,
         "recorded_at": recorded_at,
-        "current_shadow_candidate": _shadow_candidate_metadata(latest_success_state),
-        "last_successful_shadow_candidate": _shadow_candidate_metadata(
-            latest_success_state
-        ),
+        "current_shadow_candidate": deepcopy(latest_success),
+        "last_successful_shadow_candidate": deepcopy(latest_success),
         "latest_promoted_working_batch": _promoted_batch_metadata(latest_promoted_state),
         "last_nightly_full_rebaseline": _rebaseline_metadata(
             latest_success_state,
             recorded_at=recorded_at,
         ),
         "domains": {
-            contract.name: _bootstrap_domain_state(contract)
+            contract.name: _bootstrap_domain_state(
+                contract,
+                baseline_watermark=_mapping(baseline_watermarks.get(contract.name)),
+                latest_success_batch_id=latest_success_batch_id,
+                recorded_at=recorded_at,
+            )
             for contract in SUPPORTED_INCREMENTAL_DOMAIN_CONTRACTS
         },
     }

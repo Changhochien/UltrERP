@@ -7,7 +7,7 @@ import csv
 import hashlib
 import re
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, AsyncIterator, Protocol, Sequence
@@ -30,8 +30,13 @@ _IDENTIFIER_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _MANIFEST_ROW_RE = re.compile(r"^\|\s*([a-z0-9_]+)\s*\|\s*([0-9,]+)\s*\|")
 _NUMERIC_LITERAL_RE = re.compile(r"^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][-+]?\d+)?$")
 _READ_ONLY_SQL_RE = re.compile(r"^(SELECT|SHOW)\b", re.IGNORECASE | re.DOTALL)
+_EPHEMERAL_LIVE_SOURCE_TABLE_RE = re.compile(
+    r"^(?:rpt\d+tmptb\d+|rptstk[a-z0-9_]*|\$\$\$[a-z0-9_]*|_tmp[a-z0-9_]*|temp\d+[a-z0-9_]*|bak\d+[a-z0-9_]*)$",
+    re.IGNORECASE,
+)
 _STAGE_COPY_BATCH_SIZE = 25_000
 _LIVE_SOURCE_CURSOR_PREFETCH = 1_000
+_DEFERRED_FK_VALIDATION_PREFIX = "fk_validation_deferred:"
 _SUPPORTED_LEGACY_SOURCE_DATA_TYPES = frozenset(
     {
         "character",
@@ -52,6 +57,11 @@ _LEGACY_PYTHON_CODEC_ALIASES = {
     "big5-hkscs": "big5hkscs",
     "cp950": "big5hkscs",
 }
+
+
+def is_ephemeral_live_source_table(table_name: str) -> bool:
+    normalized_table_name = table_name.rsplit(".", maxsplit=1)[-1].strip('"')
+    return bool(_EPHEMERAL_LIVE_SOURCE_TABLE_RE.match(normalized_table_name))
 
 
 @dataclass(slots=True, frozen=True)
@@ -819,7 +829,13 @@ async def _discover_live_source_tables(
         """,
         schema_name,
     )
-    return tuple(str(_row_value(row, "tablename", 0)) for row in rows)
+    return tuple(
+        table_name
+        for row in rows
+        if not is_ephemeral_live_source_table(
+            table_name := str(_row_value(row, "tablename", 0))
+        )
+    )
 
 
 async def _load_live_source_column_metadata(
@@ -1250,6 +1266,30 @@ async def _stage_table_exists(
     return await connection.fetchval("SELECT to_regclass($1)", relation) is not None
 
 
+async def _stage_table_has_batch_rows(
+    connection: RawStageConnection,
+    *,
+    schema_name: str,
+    table_name: str,
+    batch_id: str,
+) -> bool:
+    quoted_schema = _quoted_identifier(schema_name)
+    quoted_table = _quoted_identifier(table_name)
+    return bool(
+        await connection.fetchval(
+            f"""
+			SELECT EXISTS (
+				SELECT 1
+				FROM {quoted_schema}.{quoted_table}
+				WHERE _batch_id = $1
+				LIMIT 1
+			)
+			""",
+            batch_id,
+        )
+    )
+
+
 def _missing_stage_values(rows: list[object]) -> list[str]:
     values: list[str] = []
     for row in rows:
@@ -1305,6 +1345,14 @@ async def _validate_staged_table(
             table_name="tbsslipj",
         ):
             return "fk_validation_skipped: tbsslipj not staged"
+
+        if not await _stage_table_has_batch_rows(
+            connection,
+            schema_name=schema_name,
+            table_name="tbsslipj",
+            batch_id=batch_id,
+        ):
+            return f"{_DEFERRED_FK_VALIDATION_PREFIX} doc_number -> tbsslipj"
 
         rows = await connection.fetch(
             f"""
@@ -1584,6 +1632,56 @@ async def _record_failed_stage_attempt(
                 )
 
 
+def _is_deferred_fk_validation(message: str | None) -> bool:
+    return bool(message and message.startswith(_DEFERRED_FK_VALIDATION_PREFIX))
+
+
+async def _finalize_deferred_stage_validations(
+    connection: RawStageConnection,
+    *,
+    schema_name: str,
+    batch_id: str,
+    results: list[StageTableResult],
+    table_audits_by_name: dict[str, AttemptTableAudit],
+    table_runs_by_name: dict[str, LegacyImportTableRun],
+    fail_fast_tables: set[str],
+) -> list[StageTableResult]:
+    finalized_results: list[StageTableResult] = []
+    for result in results:
+        if not _is_deferred_fk_validation(result.validation_message):
+            finalized_results.append(result)
+            continue
+
+        table_audit = table_audits_by_name.get(result.table_name)
+        table_run = table_runs_by_name.get(result.table_name)
+        try:
+            validation_message = await _validate_staged_table(
+                connection,
+                schema_name=schema_name,
+                table_name=result.table_name,
+                batch_id=batch_id,
+            )
+        except Exception as exc:
+            error_message = str(exc)
+            if table_audit is not None:
+                table_audit.status = "failed"
+                table_audit.error_message = error_message
+            if table_run is not None:
+                table_run.status = "failed"
+                table_run.error_message = error_message
+                table_run.completed_at = datetime.now(tz=UTC)
+            if result.table_name in fail_fast_tables:
+                raise
+            continue
+
+        if table_audit is not None:
+            table_audit.error_message = validation_message
+        if table_run is not None:
+            table_run.error_message = validation_message
+        finalized_results.append(replace(result, validation_message=validation_message))
+    return finalized_results
+
+
 async def run_stage_import_from_source(
     *,
     batch_id: str,
@@ -1598,6 +1696,8 @@ async def run_stage_import_from_source(
     requested_tables = list(selected_scope) if selected_scope else None
     results: list[StageTableResult] = []
     table_audits: list[AttemptTableAudit] = []
+    table_audits_by_name: dict[str, AttemptTableAudit] = {}
+    table_runs_by_name: dict[str, LegacyImportTableRun] = {}
     attempt_number: int | None = None
     try:
         async with AsyncSessionLocal() as session:
@@ -1645,6 +1745,7 @@ async def run_stage_import_from_source(
                         expected_row_count=table.expected_row_count,
                     )
                     table_audits.append(table_audit)
+                    table_audits_by_name[table.table_name] = table_audit
 
                     table_run = LegacyImportTableRun(
                         run_id=run.id,
@@ -1654,6 +1755,7 @@ async def run_stage_import_from_source(
                         status="running",
                     )
                     session.add(table_run)
+                    table_runs_by_name[table.table_name] = table_run
                     await session.flush()
 
                     try:
@@ -1685,6 +1787,17 @@ async def run_stage_import_from_source(
                     table_run.completed_at = datetime.now(tz=UTC)
                     results.append(result)
                     await session.flush()
+
+                results = await _finalize_deferred_stage_validations(
+                    connection,
+                    schema_name=resolved_schema,
+                    batch_id=batch_id,
+                    results=results,
+                    table_audits_by_name=table_audits_by_name,
+                    table_runs_by_name=table_runs_by_name,
+                    fail_fast_tables=fail_fast_tables,
+                )
+                await session.flush()
 
                 run.status = "completed"
                 run.completed_at = datetime.now(tz=UTC)

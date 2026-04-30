@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -37,6 +37,21 @@ SUPPORTED_INCREMENTAL_DOMAINS = frozenset(
     }
 )
 
+_EXECUTE_MANY_BATCH_SIZE = 5_000
+
+
+def _iter_execute_many_batches(
+    rows: Iterable[Sequence[object]],
+) -> Iterable[list[Sequence[object]]]:
+    batch: list[Sequence[object]] = []
+    for row in rows:
+        batch.append(row)
+        if len(batch) >= _EXECUTE_MANY_BATCH_SIZE:
+            yield batch
+            batch = []
+    if batch:
+        yield batch
+
 
 def coerce_mapping(record: Mapping[str, object] | object) -> dict[str, object]:
     if isinstance(record, Mapping):
@@ -66,15 +81,13 @@ def resolve_dump_data_dir(explicit_path: Path | None, *, argument_name: str) -> 
 async def execute_many(
     connection: Any,
     query: str,
-    rows: Sequence[Sequence[object]],
+    rows: Iterable[Sequence[object]],
 ) -> None:
-    if not rows:
-        return
-
     executemany = getattr(connection, "executemany", None)
-    if callable(executemany):
-        await executemany(query, rows)
-        return
+    for batch in _iter_execute_many_batches(rows):
+        if callable(executemany):
+            await executemany(query, batch)
+            continue
 
-    for row in rows:
-        await connection.execute(query, *row)
+        for row in batch:
+            await connection.execute(query, *row)

@@ -350,6 +350,7 @@ async def _try_upsert_holding_and_lineage(
     try:
         holding_id = source_resolution.build_holding_id(
             tenant_id,
+            batch_id=batch_id,
             domain_name=domain_name,
             source_table=source_table,
             source_identifier=source_identifier,

@@ -623,6 +623,7 @@ async def run_ap_payment_import(
                             row_identity=row_identity,
                             holding_id=source_resolution.build_holding_id(
                                 tenant_id,
+                                batch_id=batch_id,
                                 domain_name="payment_history",
                                 source_table=table_name,
                                 source_identifier=source_identifier,
@@ -650,6 +651,7 @@ async def run_ap_payment_import(
                         row_identity=row_identity,
                         holding_id=source_resolution.build_holding_id(
                             tenant_id,
+                            batch_id=batch_id,
                             domain_name="payment_history",
                             source_table=table_name,
                             source_identifier=source_identifier,

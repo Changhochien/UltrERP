@@ -377,19 +377,19 @@ async def _fetch_sales_detail_product_context(
     quoted_schema = _quoted_identifier(schema_name)
     rows = await connection.fetch(
         f"""
-		SELECT
-			NULLIF(TRIM(col_8), '') AS name,
-			NULLIF(TRIM(col_18), '') AS unit,
-			_source_row_number AS source_row_number
-		FROM {quoted_schema}.tbsslipdtx
-		WHERE _batch_id = $1
-		  AND TRIM(col_7) = $2
-		ORDER BY
-			CASE WHEN NULLIF(TRIM(col_8), '') IS NULL THEN 1 ELSE 0 END,
-			CASE WHEN NULLIF(TRIM(col_18), '') IS NULL THEN 1 ELSE 0 END,
-			_source_row_number
-		LIMIT 1
-		""",
+                SELECT
+                        NULLIF(TRIM(col_8), '') AS name,
+                        NULLIF(TRIM(col_18), '') AS unit,
+                        _source_row_number AS source_row_number
+                FROM {quoted_schema}.tbsslipdtx
+                WHERE _batch_id = $1
+                    AND TRIM(col_7) = $2
+                ORDER BY
+                        CASE WHEN NULLIF(TRIM(col_8), '') IS NULL THEN 1 ELSE 0 END,
+                        CASE WHEN NULLIF(TRIM(col_18), '') IS NULL THEN 1 ELSE 0 END,
+                        _source_row_number
+                LIMIT 1
+                """,
         batch_id,
         legacy_code,
     )
@@ -712,6 +712,27 @@ async def _upsert_product_code_mappings(
         )
 
 
+def _effective_unresolved_mapping_counts(
+    seed_result: ProductMappingSeedResult,
+    existing_mappings: dict[str, dict[str, object]],
+) -> tuple[int, int, int]:
+    unknown_count = 0
+    orphan_code_count = 0
+    orphan_row_count = 0
+    for mapping in seed_result.mappings:
+        existing = existing_mappings.get(mapping.legacy_code)
+        resolution_type = mapping.resolution_type
+        if existing and existing.get("approval_source") == "review-import":
+            resolution_type = str(existing.get("resolution_type") or resolution_type)
+
+        if resolution_type == "unknown":
+            unknown_count += 1
+            orphan_code_count += 1
+            orphan_row_count += mapping.affected_row_count
+
+    return unknown_count, orphan_code_count, orphan_row_count
+
+
 async def run_product_mapping_seed(
     *,
     batch_id: str,
@@ -773,15 +794,19 @@ async def run_product_mapping_seed(
     finally:
         await connection.close()
 
+    unknown_count, orphan_code_count, orphan_row_count = (
+        _effective_unresolved_mapping_counts(seed_result, existing_mappings)
+    )
+
     return ProductMappingBatchResult(
         batch_id=batch_id,
         schema_name=schema_name,
         mapping_count=len(seed_result.mappings),
         candidate_count=len(seed_result.candidates),
         exact_match_count=seed_result.exact_match_count,
-        unknown_count=seed_result.unknown_count,
-        orphan_code_count=seed_result.orphan_code_count,
-        orphan_row_count=seed_result.orphan_row_count,
+        unknown_count=unknown_count,
+        orphan_code_count=orphan_code_count,
+        orphan_row_count=orphan_row_count,
     )
 
 

@@ -34,11 +34,6 @@ EXTRA_SLICES = {
         "reason_code": "SALES_RESERVATION",
         "description": "tenant-scoped sales backfill rows (not batch-scoped)",
     },
-    "correction_rows": {
-        "actor_id": "reconciliation-plan",
-        "reason_code": "CORRECTION",
-        "description": "tenant-scoped correction proposal rows (not batch-scoped)",
-    },
 }
 
 
@@ -61,7 +56,6 @@ def build_reset_plan(
     run_count: int,
     extra_counts: dict[str, int],
     include_sales_backfill: bool,
-    include_correction_rows: bool,
 ) -> list[ResetPlanItem]:
     items: list[ResetPlanItem] = []
 
@@ -84,16 +78,6 @@ def build_reset_plan(
                         label="sales_backfill",
                         count=extra_counts["sales_backfill"],
                         description=EXTRA_SLICES["sales_backfill"]["description"],
-                        batch_scoped=False,
-                    )
-                )
-
-            if include_correction_rows and extra_counts.get("correction_rows", 0):
-                items.append(
-                    ResetPlanItem(
-                        label="correction_rows",
-                        count=extra_counts["correction_rows"],
-                        description=EXTRA_SLICES["correction_rows"]["description"],
                         batch_scoped=False,
                     )
                 )
@@ -319,7 +303,6 @@ async def reset_legacy_import_batch(
     tenant_id: uuid.UUID = DEFAULT_TENANT_ID,
     schema_name: str = DEFAULT_SCHEMA_NAME,
     include_sales_backfill: bool = False,
-    include_correction_rows: bool = False,
     dry_run: bool = True,
 ) -> None:
     async with AsyncSessionLocal() as session:
@@ -353,7 +336,6 @@ async def reset_legacy_import_batch(
             run_count=run_count,
             extra_counts=extra_counts,
             include_sales_backfill=include_sales_backfill,
-            include_correction_rows=include_correction_rows,
         )
 
         print(f"Batch ID                : {batch_id}")
@@ -361,7 +343,6 @@ async def reset_legacy_import_batch(
         print(f"Tenant ID               : {tenant_id}")
         print(f"Dry run                 : {dry_run}")
         print(f"Include sales backfill  : {include_sales_backfill}")
-        print(f"Include correction rows : {include_correction_rows}")
         print()
 
         if not plan:
@@ -396,14 +377,6 @@ async def reset_legacy_import_batch(
                         label="sales_backfill",
                     )
                     print(f"Deleted {deleted} sales backfill rows.")
-
-                if include_correction_rows and extra_counts.get("correction_rows", 0):
-                    deleted = await _delete_extra_slice(
-                        session,
-                        tenant_id=tenant_id,
-                        label="correction_rows",
-                    )
-                    print(f"Deleted {deleted} correction rows.")
 
         if resolution_event_count:
             deleted = await session.execute(
@@ -505,11 +478,6 @@ def main() -> None:
         help="Also delete tenant-scoped sales backfill rows created by Story 18.2.",
     )
     parser.add_argument(
-        "--include-correction-rows",
-        action="store_true",
-        help="Also delete tenant-scoped CORRECTION rows created by reconciliation tooling.",
-    )
-    parser.add_argument(
         "--live",
         action="store_true",
         help="Persist the reset. Dry-run is the default.",
@@ -522,7 +490,6 @@ def main() -> None:
             tenant_id=uuid.UUID(args.tenant_id),
             schema_name=args.schema_name,
             include_sales_backfill=args.include_sales_backfill,
-            include_correction_rows=args.include_correction_rows,
             dry_run=not args.live,
         )
     )

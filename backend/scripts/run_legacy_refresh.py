@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 import asyncpg
+
 from common.config import PROJECT_ROOT
 from common.model_registry import register_all_models
 from domains.legacy_import.canonical import run_canonical_import
@@ -38,6 +39,7 @@ from domains.legacy_import.staging import (
 )
 from domains.legacy_import.validation import validate_import_batch
 from domains.product_analytics.service import check_sales_monthly_health
+from scripts._legacy_stock_adjustments import apply_legacy_snapshot_baseline
 from scripts.backfill_purchase_receipts import backfill as backfill_purchase_receipts
 from scripts.backfill_sales_reservations import backfill as backfill_sales_reservations
 from scripts.legacy_refresh_common import (
@@ -73,6 +75,30 @@ SUPPORTED_FULL_REFRESH_DOMAINS = frozenset(
     }
 )
 
+_MASTER_NORMALIZATION_DOMAINS = frozenset(
+    {DOMAIN_PARTIES, DOMAIN_PRODUCTS, DOMAIN_WAREHOUSES, DOMAIN_INVENTORY}
+)
+_INCREMENTAL_NORMALIZATION_DEPENDENCIES: dict[str, tuple[str, ...]] = {
+    DOMAIN_SALES: (DOMAIN_PARTIES, DOMAIN_PRODUCTS),
+    DOMAIN_PURCHASE_INVOICES: (DOMAIN_PARTIES, DOMAIN_PRODUCTS, DOMAIN_WAREHOUSES),
+    DOMAIN_INVENTORY: (DOMAIN_PRODUCTS, DOMAIN_WAREHOUSES),
+}
+
+_INCREMENTAL_CANONICAL_DOMAINS: dict[str, tuple[str, ...]] = {
+    DOMAIN_PARTIES: ("customers", "suppliers"),
+    DOMAIN_PRODUCTS: ("products",),
+    DOMAIN_WAREHOUSES: ("warehouses",),
+    DOMAIN_INVENTORY: ("products", "warehouses", "inventory"),
+    DOMAIN_SALES: ("customers", "products", "sales_history"),
+    DOMAIN_PURCHASE_INVOICES: (
+        "suppliers",
+        "products",
+        "warehouses",
+        "receiving_audit",
+        "purchase_history",
+    ),
+}
+
 STEP_ORDER = (
     "live-stage",
     "normalize",
@@ -85,6 +111,7 @@ STEP_ORDER = (
     "sales_monthly_health_check",
     "backfill_purchase_receipts",
     "backfill_sales_reservations",
+    "apply_snapshot_baseline",
     "verify_reconciliation",
 )
 STEP_INDEX: dict[str, int] = {name: idx for idx, name in enumerate(STEP_ORDER)}
@@ -105,6 +132,45 @@ class _RefreshAbort(Exception):
 
 def _failure_reason(step_name: str) -> str:
     return f"aborted-after-{step_name}-failure"
+
+
+def _normalization_domains_for_incremental(
+    affected_domains: Sequence[str] | None,
+) -> tuple[str, ...] | None:
+    if affected_domains is None:
+        return None
+
+    selected: list[str] = []
+    seen: set[str] = set()
+    for domain in affected_domains:
+        if domain in _MASTER_NORMALIZATION_DOMAINS and domain not in seen:
+            selected.append(domain)
+            seen.add(domain)
+        for dependency in _INCREMENTAL_NORMALIZATION_DEPENDENCIES.get(domain, ()):
+            if dependency in seen:
+                continue
+            selected.append(dependency)
+            seen.add(dependency)
+
+    return tuple(selected)
+
+
+def _canonical_domains_for_incremental(
+    affected_domains: Sequence[str] | None,
+) -> tuple[str, ...] | None:
+    if affected_domains is None:
+        return None
+
+    selected: list[str] = []
+    seen: set[str] = set()
+    for domain in affected_domains:
+        for canonical_domain in _INCREMENTAL_CANONICAL_DOMAINS.get(domain, (domain,)):
+            if canonical_domain in seen:
+                continue
+            selected.append(canonical_domain)
+            seen.add(canonical_domain)
+
+    return tuple(selected)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -400,6 +466,7 @@ def _initial_summary(
         "validation_json_path": None,
         "validation_markdown_path": None,
         "reconciliation_gap_count": None,
+        "snapshot_baseline": None,
         "reconciliation_threshold_used": reconciliation_threshold,
         "analyst_review_required": False,
         "analyst_review_supplied": review_input_path is not None,
@@ -543,7 +610,11 @@ async def run_legacy_refresh(
 
             # Story 15.25: Determine normalization parameters based on batch mode.
             norm_batch_mode = batch_mode
-            norm_selected_domains = affected_domains
+            norm_selected_domains = (
+                _normalization_domains_for_incremental(affected_domains)
+                if normalized_batch_mode == RefreshBatchMode.INCREMENTAL
+                else affected_domains
+            )
             norm_last_batch_ids = last_successful_batch_ids
 
             await _execute_step(
@@ -680,6 +751,11 @@ async def run_legacy_refresh(
                     )
 
             # Story 15.26: Pass incremental scope to canonical import
+            canonical_selected_domains = (
+                _canonical_domains_for_incremental(affected_domains)
+                if normalized_batch_mode == RefreshBatchMode.INCREMENTAL
+                else affected_domains
+            )
             canonical_result = await _execute_step(
                 summary,
                 step_records,
@@ -689,7 +765,7 @@ async def run_legacy_refresh(
                     batch_id=batch_id,
                     tenant_id=tenant_id,
                     schema_name=schema_name,
-                    selected_domains=affected_domains,
+                    selected_domains=canonical_selected_domains,
                     entity_scope=entity_scope,
                     batch_mode=batch_mode,
                     last_successful_batch_ids=last_successful_batch_ids,
@@ -997,6 +1073,22 @@ async def run_legacy_refresh(
                     reason=_failure_reason(failed_step_name),
                 )
                 return LegacyRefreshExecution(1, summary_path, summary)
+
+            if is_incremental:
+                _skip_step(
+                    steps_by_name["apply_snapshot_baseline"],
+                    reason="snapshot baseline is refreshed only during full rebaseline",
+                )
+            else:
+                baseline_details = await _execute_step(
+                    summary,
+                    step_records,
+                    steps_by_name,
+                    "apply_snapshot_baseline",
+                    lambda: apply_legacy_snapshot_baseline(tenant_id=tenant_id),
+                    partial_state_preserved=True,
+                )
+                summary["snapshot_baseline"] = baseline_details
 
             reconciliation_gap_count = await _execute_step(
                 summary,

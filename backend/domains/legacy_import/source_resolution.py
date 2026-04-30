@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass
 
 from domains.legacy_import.normalization import deterministic_legacy_uuid
@@ -26,6 +26,7 @@ _ALLOWED_STATUSES = (
 _MULTI_TARGET_RESOLUTION_NOTE = (
     "Resolved to multiple canonical targets; consult canonical_record_lineage."
 )
+_RESOLVE_SOURCE_ROWS_BATCH_SIZE = 5_000
 
 
 @dataclass(slots=True, frozen=True)
@@ -42,6 +43,7 @@ class ResolvedSourceRow:
 def build_holding_id(
     tenant_id: uuid.UUID,
     *,
+    batch_id: str,
     domain_name: str,
     source_table: str,
     source_identifier: str,
@@ -51,6 +53,7 @@ def build_holding_id(
     return deterministic_legacy_uuid(
         "unsupported-history",
         str(tenant_id),
+        batch_id,
         domain_name,
         source_table,
         source_identifier,
@@ -146,6 +149,13 @@ def _source_identity_key(
     source_row_number: int,
 ) -> tuple[str, str, int]:
     return (source_table, source_identifier, source_row_number)
+
+
+def _iter_resolved_source_row_batches(
+    rows: list[ResolvedSourceRow],
+) -> Iterable[list[ResolvedSourceRow]]:
+    for index in range(0, len(rows), _RESOLVE_SOURCE_ROWS_BATCH_SIZE):
+        yield rows[index : index + _RESOLVE_SOURCE_ROWS_BATCH_SIZE]
 
 
 async def _fetch_current_resolution(
@@ -558,6 +568,7 @@ async def _upsert_holding_payload(
 			source_identifier,
 			source_row_number
 		) DO UPDATE SET
+            id = EXCLUDED.id,
 			domain_name = EXCLUDED.domain_name,
 			payload = EXCLUDED.payload,
 			notes = EXCLUDED.notes,
@@ -786,6 +797,29 @@ async def resolve_source_row(
 
 
 async def resolve_source_rows(
+    connection,
+    *,
+    schema_name: str,
+    run_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    batch_id: str,
+    rows: list[ResolvedSourceRow],
+) -> None:
+    if not rows:
+        return
+
+    for row_batch in _iter_resolved_source_row_batches(rows):
+        await _resolve_source_row_batch(
+            connection,
+            schema_name=schema_name,
+            run_id=run_id,
+            tenant_id=tenant_id,
+            batch_id=batch_id,
+            rows=row_batch,
+        )
+
+
+async def _resolve_source_row_batch(
     connection,
     *,
     schema_name: str,

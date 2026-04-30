@@ -18,8 +18,6 @@ Scope of Story 15.23 is intentionally minimal:
 
 from __future__ import annotations
 
-DEFAULT_INCREMENTAL_LOOKBACK_DAYS = 0
-
 import argparse
 import asyncio
 import json
@@ -37,12 +35,11 @@ from domains.legacy_import.delta_discovery import (
     build_delta_manifest,
     discover_delta,
 )
-from domains.legacy_import.live_delta_projection import build_live_source_projection
-from domains.legacy_import.staging import LegacySourceConnectionSettings
 from domains.legacy_import.incremental_refresh import build_incremental_refresh_plan
 from domains.legacy_import.incremental_state import (
     record_incremental_candidate_result,
 )
+from domains.legacy_import.live_delta_projection import build_live_source_projection
 from domains.legacy_import.shared import (
     DOMAIN_INVENTORY,
     DOMAIN_PARTIES,
@@ -51,6 +48,7 @@ from domains.legacy_import.shared import (
     DOMAIN_SALES,
     DOMAIN_WAREHOUSES,
 )
+from domains.legacy_import.staging import LegacySourceConnectionSettings
 from scripts.legacy_refresh_common import (
     RefreshBatchMode,
     RefreshDisposition,
@@ -59,19 +57,20 @@ from scripts.legacy_refresh_common import (
     parse_non_negative_int,
     parse_tenant_uuid,
 )
-from scripts.legacy_runtime_schema import ensure_legacy_refresh_schema_current
 from scripts.legacy_refresh_state import (
     build_lane_state_paths,
     lane_key,
     read_json_file,
     write_json_atomically,
 )
+from scripts.legacy_runtime_schema import ensure_legacy_refresh_schema_current
 from scripts.run_legacy_refresh import (
     DEFAULT_SUMMARY_ROOT,
     LegacyRefreshExecution,
     run_legacy_refresh,
 )
 
+DEFAULT_INCREMENTAL_LOOKBACK_DAYS = 0
 DEFAULT_BATCH_PREFIX = "legacy-incremental"
 _INCREMENTAL_SUCCESS_DISPOSITIONS = frozenset(
     {
@@ -169,14 +168,6 @@ def build_parser() -> argparse.ArgumentParser:
         type=parse_non_negative_int,
         default=0,
         help="Allowed flagged reconciliation gaps before the run blocks (default: 0)",
-    )
-    parser.add_argument(
-        "--auto-apply-reconciliation-corrections",
-        action="store_true",
-        help=(
-            "Generate reconciliation correction proposals and automatically apply "
-            "the actionable subset before the run blocks."
-        ),
     )
     parser.add_argument(
         "--batch-prefix",
@@ -511,7 +502,6 @@ async def run_incremental_legacy_refresh(
     source_schema: str,
     lookback_days: int,
     reconciliation_threshold: int,
-    auto_apply_reconciliation_corrections: bool = False,
     batch_prefix: str = DEFAULT_BATCH_PREFIX,
     summary_root: Path | None = None,
     state_root: Path | None = None,
@@ -606,7 +596,6 @@ async def run_incremental_legacy_refresh(
         "source_schema": source_schema,
         "lookback_days": lookback_days,
         "reconciliation_threshold": reconciliation_threshold,
-        "auto_apply_reconciliation_corrections": auto_apply_reconciliation_corrections,
         "summary_root": resolved_summary_root,
         "batch_mode": RefreshBatchMode.INCREMENTAL,
         "affected_domains": affected_domains,
@@ -721,7 +710,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             source_schema=args.source_schema,
             lookback_days=args.lookback_days,
             reconciliation_threshold=args.reconciliation_threshold,
-                auto_apply_reconciliation_corrections=args.auto_apply_reconciliation_corrections,
             batch_prefix=args.batch_prefix,
             source_projection=cli_source_projection,
         )

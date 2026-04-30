@@ -22,8 +22,112 @@ from domains.legacy_import.canonical_persistence import (
 )
 from domains.legacy_import.mapping import UNKNOWN_PRODUCT_CODE
 from domains.legacy_import.normalization import deterministic_legacy_uuid
+from domains.legacy_import.shared import execute_many
 
 _LEGACY_RECEIVING_SOURCE = "tbsslipdtj"
+_PURCHASE_HISTORY_HEADER_BATCH_SIZE = 1_000
+_PURCHASE_HISTORY_LINE_BATCH_SIZE = 5_000
+
+_SUPPLIER_INVOICE_UPSERT_QUERY = """
+            INSERT INTO supplier_invoices (
+                id,
+                tenant_id,
+                supplier_id,
+                invoice_number,
+                invoice_date,
+                currency_code,
+                subtotal_amount,
+                tax_amount,
+                total_amount,
+                remaining_payable_amount,
+                conversion_rate,
+                conversion_effective_date,
+                applied_rate_source,
+                currency_source,
+                payment_terms_source,
+                base_subtotal_amount,
+                base_tax_amount,
+                base_total_amount,
+                remaining_base_payable_amount,
+                status,
+                notes,
+                legacy_header_snapshot,
+                created_at,
+                updated_at
+            )
+            VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+                $11, $12, $13, $14, $15, $16, $17, $18, $19,
+                $20, $21, $22::json, $23, $23
+            )
+            ON CONFLICT (id) DO UPDATE SET
+                supplier_id = EXCLUDED.supplier_id,
+                invoice_number = EXCLUDED.invoice_number,
+                invoice_date = EXCLUDED.invoice_date,
+                currency_code = EXCLUDED.currency_code,
+                subtotal_amount = EXCLUDED.subtotal_amount,
+                tax_amount = EXCLUDED.tax_amount,
+                total_amount = EXCLUDED.total_amount,
+                remaining_payable_amount = EXCLUDED.remaining_payable_amount,
+                conversion_rate = EXCLUDED.conversion_rate,
+                conversion_effective_date = EXCLUDED.conversion_effective_date,
+                applied_rate_source = EXCLUDED.applied_rate_source,
+                currency_source = EXCLUDED.currency_source,
+                payment_terms_source = EXCLUDED.payment_terms_source,
+                base_subtotal_amount = EXCLUDED.base_subtotal_amount,
+                base_tax_amount = EXCLUDED.base_tax_amount,
+                base_total_amount = EXCLUDED.base_total_amount,
+                remaining_base_payable_amount = EXCLUDED.remaining_base_payable_amount,
+                status = EXCLUDED.status,
+                notes = EXCLUDED.notes,
+                legacy_header_snapshot = EXCLUDED.legacy_header_snapshot,
+                updated_at = NOW()
+            """
+
+_SUPPLIER_INVOICE_LINE_UPSERT_QUERY = """
+                INSERT INTO supplier_invoice_lines (
+                    id,
+                    supplier_invoice_id,
+                    tenant_id,
+                    line_number,
+                    product_id,
+                    product_code_snapshot,
+                    description,
+                    quantity,
+                    unit_price,
+                    subtotal_amount,
+                    tax_type,
+                    tax_rate,
+                    tax_amount,
+                    total_amount,
+                    base_unit_price,
+                    base_subtotal_amount,
+                    base_tax_amount,
+                    base_total_amount,
+                    created_at
+                )
+                VALUES (
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+                    $11, $12, $13, $14, $15, $16, $17, $18, NOW()
+                )
+                ON CONFLICT (id) DO UPDATE SET
+                    supplier_invoice_id = EXCLUDED.supplier_invoice_id,
+                    line_number = EXCLUDED.line_number,
+                    product_id = EXCLUDED.product_id,
+                    product_code_snapshot = EXCLUDED.product_code_snapshot,
+                    description = EXCLUDED.description,
+                    quantity = EXCLUDED.quantity,
+                    unit_price = EXCLUDED.unit_price,
+                    subtotal_amount = EXCLUDED.subtotal_amount,
+                    tax_type = EXCLUDED.tax_type,
+                    tax_rate = EXCLUDED.tax_rate,
+                    tax_amount = EXCLUDED.tax_amount,
+                    total_amount = EXCLUDED.total_amount,
+                    base_unit_price = EXCLUDED.base_unit_price,
+                    base_subtotal_amount = EXCLUDED.base_subtotal_amount,
+                    base_tax_amount = EXCLUDED.base_tax_amount,
+                    base_total_amount = EXCLUDED.base_total_amount
+                """
 
 
 def _tenant_scoped_uuid(tenant_id: uuid.UUID, kind: str, *parts: str) -> uuid.UUID:
@@ -112,6 +216,36 @@ def _allocate_tax_amounts(
     return allocations
 
 
+async def _flush_purchase_history_rows(
+    connection,
+    schema_name: str,
+    run_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    batch_id: str,
+    invoice_rows: list[tuple[object, ...]],
+    invoice_line_rows: list[tuple[object, ...]],
+    pending_lineage: list[PendingLineageResolution],
+) -> None:
+    if invoice_rows:
+        await execute_many(connection, _SUPPLIER_INVOICE_UPSERT_QUERY, invoice_rows)
+        invoice_rows.clear()
+
+    if invoice_line_rows:
+        await execute_many(connection, _SUPPLIER_INVOICE_LINE_UPSERT_QUERY, invoice_line_rows)
+        invoice_line_rows.clear()
+
+    if pending_lineage:
+        await _flush_lineage_resolutions(
+            connection,
+            schema_name,
+            run_id,
+            tenant_id,
+            batch_id,
+            pending_lineage,
+        )
+        pending_lineage.clear()
+
+
 async def _import_purchase_history(
     connection,
     schema_name: str,
@@ -131,6 +265,8 @@ async def _import_purchase_history(
     invoice_count = 0
     invoice_line_count = 0
     lineage_count = 0
+    invoice_rows: list[tuple[object, ...]] = []
+    invoice_line_rows: list[tuple[object, ...]] = []
     pending_lineage: list[PendingLineageResolution] = []
 
     for header in headers:
@@ -174,85 +310,32 @@ async def _import_purchase_history(
         supplier_invoice_status = _map_purchase_invoice_status(header.get("must_pay_amount"))
         legacy_header_snapshot = _build_purchase_header_snapshot(header)
 
-        await connection.execute(
-            """
-			INSERT INTO supplier_invoices (
-				id,
-				tenant_id,
-				supplier_id,
-				invoice_number,
-				invoice_date,
-				currency_code,
-				subtotal_amount,
-				tax_amount,
-				total_amount,
+        invoice_rows.append(
+            (
+                supplier_invoice_id,
+                tenant_id,
+                supplier_id,
+                invoice_number,
+                invoice_date,
+                _currency_code(header.get("currency_code")),
+                subtotal_amount,
+                tax_amount,
+                total_amount,
                 remaining_payable_amount,
-                conversion_rate,
-                conversion_effective_date,
-                applied_rate_source,
-                currency_source,
-                payment_terms_source,
-                base_subtotal_amount,
-                base_tax_amount,
-                base_total_amount,
-                remaining_base_payable_amount,
-				status,
-				notes,
-                legacy_header_snapshot,
-				created_at,
-				updated_at
-			)
-            VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-                $11, $12, $13, $14, $15, $16, $17, $18, $19,
-                $20, $21, $22::json, $23, $23
+                Decimal("1.0000000000"),
+                invoice_date,
+                "identity",
+                "legacy_compatibility",
+                "legacy_compatibility",
+                subtotal_amount,
+                tax_amount,
+                total_amount,
+                remaining_payable_amount,
+                supplier_invoice_status,
+                _as_text(header.get("notes")) or None,
+                json.dumps(legacy_header_snapshot),
+                created_at,
             )
-			ON CONFLICT (id) DO UPDATE SET
-				supplier_id = EXCLUDED.supplier_id,
-				invoice_number = EXCLUDED.invoice_number,
-				invoice_date = EXCLUDED.invoice_date,
-				currency_code = EXCLUDED.currency_code,
-				subtotal_amount = EXCLUDED.subtotal_amount,
-				tax_amount = EXCLUDED.tax_amount,
-				total_amount = EXCLUDED.total_amount,
-                remaining_payable_amount = EXCLUDED.remaining_payable_amount,
-                conversion_rate = EXCLUDED.conversion_rate,
-                conversion_effective_date = EXCLUDED.conversion_effective_date,
-                applied_rate_source = EXCLUDED.applied_rate_source,
-                currency_source = EXCLUDED.currency_source,
-                payment_terms_source = EXCLUDED.payment_terms_source,
-                base_subtotal_amount = EXCLUDED.base_subtotal_amount,
-                base_tax_amount = EXCLUDED.base_tax_amount,
-                base_total_amount = EXCLUDED.base_total_amount,
-                remaining_base_payable_amount = EXCLUDED.remaining_base_payable_amount,
-				status = EXCLUDED.status,
-				notes = EXCLUDED.notes,
-                legacy_header_snapshot = EXCLUDED.legacy_header_snapshot,
-				updated_at = NOW()
-			""",
-            supplier_invoice_id,
-            tenant_id,
-            supplier_id,
-            invoice_number,
-            invoice_date,
-            _currency_code(header.get("currency_code")),
-            subtotal_amount,
-            tax_amount,
-            total_amount,
-            remaining_payable_amount,
-            Decimal("1.0000000000"),
-            invoice_date,
-            "identity",
-            "legacy_compatibility",
-            "legacy_compatibility",
-            subtotal_amount,
-            tax_amount,
-            total_amount,
-            remaining_payable_amount,
-            supplier_invoice_status,
-            _as_text(header.get("notes")) or None,
-            json.dumps(legacy_header_snapshot),
-            created_at,
         )
         pending_lineage.append(
             PendingLineageResolution(
@@ -298,69 +381,27 @@ async def _import_purchase_history(
                 str(line_number),
             )
 
-            await connection.execute(
-                """
-				INSERT INTO supplier_invoice_lines (
-					id,
-					supplier_invoice_id,
-					tenant_id,
-					line_number,
-					product_id,
-					product_code_snapshot,
-					description,
-					quantity,
-					unit_price,
-					subtotal_amount,
-					tax_type,
-					tax_rate,
-					tax_amount,
-					total_amount,
-                    base_unit_price,
-                    base_subtotal_amount,
-                    base_tax_amount,
-                    base_total_amount,
-					created_at
-				)
-                VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-                    $11, $12, $13, $14, $15, $16, $17, $18, NOW()
+            invoice_line_rows.append(
+                (
+                    supplier_invoice_line_id,
+                    supplier_invoice_id,
+                    tenant_id,
+                    line_number,
+                    product_id,
+                    legacy_product_code,
+                    _as_text(line.get("product_name")) or legacy_product_code,
+                    quantity,
+                    unit_price,
+                    subtotal,
+                    tax_type,
+                    tax_rate,
+                    line_tax_amount,
+                    line_total,
+                    unit_price,
+                    subtotal,
+                    line_tax_amount,
+                    line_total,
                 )
-				ON CONFLICT (id) DO UPDATE SET
-					supplier_invoice_id = EXCLUDED.supplier_invoice_id,
-					line_number = EXCLUDED.line_number,
-					product_id = EXCLUDED.product_id,
-					product_code_snapshot = EXCLUDED.product_code_snapshot,
-					description = EXCLUDED.description,
-					quantity = EXCLUDED.quantity,
-					unit_price = EXCLUDED.unit_price,
-					subtotal_amount = EXCLUDED.subtotal_amount,
-					tax_type = EXCLUDED.tax_type,
-					tax_rate = EXCLUDED.tax_rate,
-					tax_amount = EXCLUDED.tax_amount,
-                    total_amount = EXCLUDED.total_amount,
-                    base_unit_price = EXCLUDED.base_unit_price,
-                    base_subtotal_amount = EXCLUDED.base_subtotal_amount,
-                    base_tax_amount = EXCLUDED.base_tax_amount,
-                    base_total_amount = EXCLUDED.base_total_amount
-				""",
-                supplier_invoice_line_id,
-                supplier_invoice_id,
-                tenant_id,
-                line_number,
-                product_id,
-                legacy_product_code,
-                _as_text(line.get("product_name")) or legacy_product_code,
-                quantity,
-                unit_price,
-                subtotal,
-                tax_type,
-                tax_rate,
-                line_tax_amount,
-                line_total,
-                unit_price,
-                subtotal,
-                line_tax_amount,
-                line_total,
             )
             pending_lineage.append(
                 PendingLineageResolution(
@@ -374,12 +415,29 @@ async def _import_purchase_history(
             invoice_line_count += 1
             lineage_count += 1
 
-    await _flush_lineage_resolutions(
+        if (
+            len(invoice_rows) >= _PURCHASE_HISTORY_HEADER_BATCH_SIZE
+            or len(invoice_line_rows) >= _PURCHASE_HISTORY_LINE_BATCH_SIZE
+        ):
+            await _flush_purchase_history_rows(
+                connection,
+                schema_name,
+                run_id,
+                tenant_id,
+                batch_id,
+                invoice_rows,
+                invoice_line_rows,
+                pending_lineage,
+            )
+
+    await _flush_purchase_history_rows(
         connection,
         schema_name,
         run_id,
         tenant_id,
         batch_id,
+        invoice_rows,
+        invoice_line_rows,
         pending_lineage,
     )
     return invoice_count, invoice_line_count, lineage_count

@@ -8,6 +8,7 @@ from enum import StrEnum
 from typing import Any
 
 SUCCESSFUL_REFRESH_DISPOSITIONS = frozenset({"completed", "completed-review-required"})
+SUCCESSFUL_VALIDATION_STATUSES = frozenset({"passed", "clean"})
 
 
 def _as_text(value: object | None) -> str | None:
@@ -577,9 +578,15 @@ def evaluate_promotion_policy(
         reconciliation_threshold = gate_reconciliation_threshold
     if gate_blocking_issue_count is None:
         summary_artifact_errors.append("summary.validation.blocking_issue_count is required")
-    if gate_reconciliation_gap_count is None and validation_status == "passed":
+    if (
+        gate_reconciliation_gap_count is None
+        and validation_status in SUCCESSFUL_VALIDATION_STATUSES
+    ):
         summary_artifact_errors.append("summary.reconciliation.gap_count is required")
-    if gate_reconciliation_threshold is None and validation_status == "passed":
+    if (
+        gate_reconciliation_threshold is None
+        and validation_status in SUCCESSFUL_VALIDATION_STATUSES
+    ):
         summary_artifact_errors.append("summary.reconciliation.threshold is required")
 
     summary_promotion_readiness = _mapping_flag(
@@ -650,7 +657,10 @@ def evaluate_promotion_policy(
             lock_active=lock_active,
         )
 
-    if validation_status != "passed" or (blocking_issue_count or 0) > 0:
+    if (
+        validation_status not in SUCCESSFUL_VALIDATION_STATUSES
+        or (blocking_issue_count or 0) > 0
+    ):
         return _decision(
             classification=PromotionPolicyClassification.BLOCKED,
             reason_codes=("validation",),

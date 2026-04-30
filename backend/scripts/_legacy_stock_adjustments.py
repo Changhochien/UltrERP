@@ -6,11 +6,13 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
 from itertools import batched
+from typing import Mapping
 
 from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from common.database import AsyncSessionLocal
 from common.models.stock_adjustment import ReasonCode, StockAdjustment
 from domains.legacy_import.mapping import UNKNOWN_PRODUCT_CODE
 from domains.legacy_import.normalization import (
@@ -22,6 +24,7 @@ ACTOR_ID = "backfill-script"
 CANONICAL_LEGACY_IMPORT_ACTOR_ID = "legacy_import"
 LEGACY_SALES_REDUNDANT_WAREHOUSE_ID = uuid.UUID("e0e9028a-7d6c-5abd-976a-735586cedc34")
 LEGACY_SALES_REDUNDANT_NOTE = "backfill from raw_legacy.tbsslipx+tbsslipdtx"
+LEGACY_SNAPSHOT_BASELINE_ACTOR_ID = "legacy-snapshot-baseline"
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,6 +108,43 @@ def _coerce_quantity_for_integer_schema(
 
 def _as_timestamp(day: date) -> datetime:
     return datetime(day.year, day.month, day.day, tzinfo=UTC)
+
+
+def _extract_scope_values(
+    entity_scope: dict[str, dict[str, object]] | None,
+    *,
+    domain: str,
+    field_names: tuple[str, ...],
+) -> frozenset[str] | None:
+    if not entity_scope:
+        return None
+
+    domain_scope = entity_scope.get(domain)
+    if not isinstance(domain_scope, Mapping):
+        return None
+
+    closure_keys = domain_scope.get("closure_keys")
+    if not isinstance(closure_keys, (list, tuple, frozenset)) or not closure_keys:
+        return None
+
+    values: set[str] = set()
+    for key_entry in closure_keys:
+        if isinstance(key_entry, Mapping):
+            for field_name in field_names:
+                value = key_entry.get(field_name)
+                if value is None:
+                    continue
+                text_value = _as_text(value)
+                if text_value:
+                    values.add(text_value)
+                    break
+            continue
+
+        text_value = _as_text(key_entry)
+        if text_value:
+            values.add(text_value)
+
+    return frozenset(values) if values else None
 
 
 def _resolve_product_id(
@@ -439,10 +479,25 @@ async def fetch_sales_rows(
     *,
     cutoff: date,
     today: date,
+    entity_scope: dict[str, dict[str, object]] | None = None,
+    affected_domains: Sequence[str] | None = None,
 ) -> list[dict[str, object]]:
+    params: dict[str, object] = {"cutoff": str(cutoff), "today": str(today)}
+    scoped_doc_numbers = _extract_scope_values(
+        entity_scope,
+        domain="sales",
+        field_names=("document_number", "document-number"),
+    )
+    is_incremental = entity_scope is not None or affected_domains is not None
+
+    scope_filter = ""
+    if is_incremental and scoped_doc_numbers:
+        scope_filter = "AND dtx.col_2 = ANY(:scope_doc_numbers)"
+        params["scope_doc_numbers"] = tuple(scoped_doc_numbers)
+
     result = await session.execute(
         text(
-            """
+            f"""
             SELECT
                 dtx.col_2 AS doc_number,
                 dtx.col_3 AS line_number,
@@ -459,10 +514,11 @@ async def fetch_sales_rows(
               AND dtx.col_23 IS NOT NULL
               AND dtx.col_23 <> ''
               AND CAST(dtx.col_23 AS numeric) != 0
+                            {scope_filter}
             ORDER BY x.col_3, dtx.col_2, dtx.col_3
             """
         ),
-        {"cutoff": str(cutoff), "today": str(today)},
+                params,
     )
     return [dict(row._mapping) for row in result.fetchall()]
 
@@ -485,15 +541,12 @@ async def fetch_purchase_receipt_rows(
     params: dict[str, object] = {"cutoff": str(cutoff), "today": str(today)}
 
     # Story 15.27: Extract purchase-invoices closure keys for scope filtering (AC2).
-    scoped_doc_numbers: frozenset[str] | None = None
     is_incremental = entity_scope is not None or affected_domains is not None
-
-    if entity_scope:
-        purchase_scope = entity_scope.get("purchase-invoices")
-        if purchase_scope and isinstance(purchase_scope, dict):
-            closure_keys = purchase_scope.get("closure_keys")
-            if closure_keys and isinstance(closure_keys, (list, tuple)):
-                scoped_doc_numbers = frozenset(str(k) for k in closure_keys)
+    scoped_doc_numbers = _extract_scope_values(
+        entity_scope,
+        domain="purchase-invoices",
+        field_names=("document_number", "document-number"),
+    )
 
     # Build the query with optional scope filter
     scope_filter = ""
@@ -580,16 +633,47 @@ def build_reconciliation_rows(
     return rows
 
 
-def build_correction_adjustments(
+async def delete_legacy_reconciliation_corrections(
+    session: AsyncSession,
+    *,
+    tenant_id: uuid.UUID,
+) -> int:
+    result = await session.execute(
+        text(
+            """
+            DELETE FROM public.stock_adjustment
+            WHERE tenant_id = :tenant_id
+              AND reason_code = 'CORRECTION'
+              AND actor_id IN ('reconciliation-plan', 'reconciliation-apply')
+              AND (
+                notes LIKE 'Inventory reconciliation correction proposal%'
+                OR notes LIKE 'Approved inventory reconciliation correction%'
+              )
+            """
+        ),
+        {"tenant_id": str(tenant_id)},
+    )
+    return result.rowcount or 0
+
+
+def build_snapshot_baseline_adjustments(
     rows: Sequence[ReconciliationRow],
     *,
     tenant_id: uuid.UUID,
     as_of_day: date,
-    min_abs_gap: int = 1,
 ) -> list[StockAdjustmentPayload]:
-    corrections: list[StockAdjustmentPayload] = []
+    baseline_reason = ReasonCode.LEGACY_SNAPSHOT_BASELINE.value
+    baselines: list[StockAdjustmentPayload] = []
+
     for row in rows:
-        if row.gap == 0 or abs(row.gap) < min_abs_gap:
+        existing_baseline_quantity = row.reason_breakdown.get(baseline_reason, 0)
+        non_baseline_adjustment_sum = sum(
+            quantity
+            for reason_code, quantity in row.reason_breakdown.items()
+            if reason_code != baseline_reason
+        )
+        baseline_quantity = row.actual_stock - non_baseline_adjustment_sum
+        if baseline_quantity == 0 and existing_baseline_quantity == 0:
             continue
 
         reason_summary = (
@@ -598,32 +682,71 @@ def build_correction_adjustments(
             )
             or "-"
         )
-        corrections.append(
+        baselines.append(
             StockAdjustmentPayload(
                 id=tenant_scoped_uuid(
                     tenant_id,
-                    "inventory-reconciliation-correction",
+                    "legacy-snapshot-baseline",
                     str(row.product_id),
                     str(row.warehouse_id),
-                    as_of_day.isoformat(),
                 ),
                 tenant_id=tenant_id,
                 product_id=row.product_id,
                 warehouse_id=row.warehouse_id,
-                quantity_change=-row.gap,
-                reason_code=ReasonCode.CORRECTION.value,
-                actor_id="reconciliation-plan",
+                quantity_change=baseline_quantity,
+                reason_code=baseline_reason,
+                actor_id=LEGACY_SNAPSHOT_BASELINE_ACTOR_ID,
                 notes=(
-                    "Inventory reconciliation correction proposal "
+                    "Legacy inventory snapshot baseline "
                     f"as of {as_of_day.isoformat()} "
-                    f"(gap={row.gap}; expected_adjustment_sum={row.expected_adjustment_sum}; "
-                    f"actual_stock={row.actual_stock}; reasons={reason_summary})"
+                    f"(current_stock={row.actual_stock}; "
+                    f"non_baseline_adjustment_sum={non_baseline_adjustment_sum}; "
+                    f"reasons={reason_summary})"
                 ),
                 created_at=_day_start_utc(as_of_day),
             )
         )
 
-    return corrections
+    return baselines
+
+
+async def apply_legacy_snapshot_baseline(
+    *,
+    tenant_id: uuid.UUID,
+    as_of_day: date | None = None,
+) -> dict[str, object]:
+    baseline_day = as_of_day or datetime.now(UTC).date()
+    async with AsyncSessionLocal() as session:
+        retired_correction_count = await delete_legacy_reconciliation_corrections(
+            session,
+            tenant_id=tenant_id,
+        )
+        adjustment_rows = await fetch_reconciliation_adjustment_rows(
+            session,
+            tenant_id=tenant_id,
+        )
+        inventory_rows = await fetch_reconciliation_inventory_rows(
+            session,
+            tenant_id=tenant_id,
+        )
+        reconciliation_rows = build_reconciliation_rows(
+            adjustment_rows=adjustment_rows,
+            inventory_rows=inventory_rows,
+        )
+        baseline_adjustments = build_snapshot_baseline_adjustments(
+            reconciliation_rows,
+            tenant_id=tenant_id,
+            as_of_day=baseline_day,
+        )
+        upserted_count = await upsert_stock_adjustments(session, baseline_adjustments)
+        await session.commit()
+
+    return {
+        "as_of_day": baseline_day.isoformat(),
+        "reason_code": ReasonCode.LEGACY_SNAPSHOT_BASELINE.value,
+        "baseline_adjustment_count": upserted_count,
+        "retired_legacy_correction_count": retired_correction_count,
+    }
 
 
 def format_reconciliation_table(rows: list[ReconciliationRow]) -> str:

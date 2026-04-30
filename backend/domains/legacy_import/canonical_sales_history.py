@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 import json
 import uuid
 from decimal import Decimal
@@ -21,6 +22,11 @@ from domains.legacy_import.canonical_persistence import (
 )
 from domains.legacy_import.mapping import UNKNOWN_PRODUCT_CODE
 from domains.legacy_import.normalization import deterministic_legacy_uuid
+from domains.legacy_import.shared import execute_many
+
+_SALES_HISTORY_HEADER_BATCH_SIZE = 1_000
+_SALES_HISTORY_LINE_BATCH_SIZE = 5_000
+_SALES_HISTORY_ARRAY_BATCH_SIZE = 5_000
 
 
 def _tenant_scoped_uuid(tenant_id: uuid.UUID, kind: str, *parts: str) -> uuid.UUID:
@@ -97,6 +103,106 @@ def _resolve_order_line_product_snapshots(
     )
 
 
+def _iter_uuid_batches(values: list[uuid.UUID]) -> Iterable[list[uuid.UUID]]:
+    unique_values = list(dict.fromkeys(values))
+    for index in range(0, len(unique_values), _SALES_HISTORY_ARRAY_BATCH_SIZE):
+        yield unique_values[index : index + _SALES_HISTORY_ARRAY_BATCH_SIZE]
+
+
+async def _link_orders_to_invoices(
+    connection,
+    tenant_id: uuid.UUID,
+    order_invoice_links: list[tuple[uuid.UUID, uuid.UUID]],
+) -> None:
+    unique_links = list(dict(order_invoice_links).items())
+    for index in range(0, len(unique_links), _SALES_HISTORY_ARRAY_BATCH_SIZE):
+        link_batch = unique_links[index : index + _SALES_HISTORY_ARRAY_BATCH_SIZE]
+        await connection.execute(
+            """
+            UPDATE orders AS order_target
+            SET invoice_id = link.invoice_id, updated_at = NOW()
+            FROM UNNEST($1::UUID[], $2::UUID[]) AS link (order_id, invoice_id)
+            WHERE order_target.id = link.order_id
+                AND order_target.tenant_id = $3
+            """,
+            [order_id for order_id, invoice_id in link_batch],
+            [invoice_id for order_id, invoice_id in link_batch],
+            tenant_id,
+        )
+
+
+async def _refresh_order_totals(
+    connection,
+    tenant_id: uuid.UUID,
+    order_ids: list[uuid.UUID],
+) -> None:
+    for order_id_batch in _iter_uuid_batches(order_ids):
+        await connection.execute(
+            """
+            WITH imported_orders AS (
+                SELECT UNNEST($2::UUID[]) AS order_id
+            ),
+            line_totals AS (
+                SELECT
+                    order_id,
+                    SUM(subtotal_amount) AS subtotal,
+                    SUM(tax_amount) AS tax,
+                    SUM(total_amount) AS total
+                FROM order_lines
+                WHERE tenant_id = $1 AND order_id = ANY($2::UUID[])
+                GROUP BY order_id
+            )
+            UPDATE orders AS order_target
+            SET subtotal_amount = COALESCE(line_totals.subtotal, 0.00),
+                tax_amount = COALESCE(line_totals.tax, 0.00),
+                total_amount = COALESCE(line_totals.total, 0.00),
+                updated_at = NOW()
+            FROM imported_orders
+            LEFT JOIN line_totals ON line_totals.order_id = imported_orders.order_id
+            WHERE order_target.tenant_id = $1
+                AND order_target.id = imported_orders.order_id
+            """,
+            tenant_id,
+            order_id_batch,
+        )
+
+
+async def _refresh_invoice_totals(
+    connection,
+    tenant_id: uuid.UUID,
+    invoice_ids: list[uuid.UUID],
+) -> None:
+    for invoice_id_batch in _iter_uuid_batches(invoice_ids):
+        await connection.execute(
+            """
+            WITH imported_invoices AS (
+                SELECT UNNEST($2::UUID[]) AS invoice_id
+            ),
+            line_totals AS (
+                SELECT
+                    invoice_id,
+                    SUM(subtotal_amount) AS subtotal,
+                    SUM(tax_amount) AS tax,
+                    SUM(total_amount) AS total
+                FROM invoice_lines
+                WHERE tenant_id = $1 AND invoice_id = ANY($2::UUID[])
+                GROUP BY invoice_id
+            )
+            UPDATE invoices AS invoice_target
+            SET subtotal_amount = COALESCE(line_totals.subtotal, 0.00),
+                tax_amount = COALESCE(line_totals.tax, 0.00),
+                total_amount = COALESCE(line_totals.total, 0.00),
+                updated_at = NOW()
+            FROM imported_invoices
+            LEFT JOIN line_totals ON line_totals.invoice_id = imported_invoices.invoice_id
+            WHERE invoice_target.tenant_id = $1
+                AND invoice_target.id = imported_invoices.invoice_id
+            """,
+            tenant_id,
+            invoice_id_batch,
+        )
+
+
 async def _import_sales_history(
     connection,
     schema_name: str,
@@ -111,54 +217,28 @@ async def _import_sales_history(
     product_snapshot_by_code: dict[str, dict[str, str | None]],
     product_mappings: dict[str, str],
 ) -> tuple[int, int, int, int, int]:
-    lines_by_doc: dict[str, list[dict[str, object]]] = {}
-    for row in lines:
-        lines_by_doc.setdefault(_as_text(row.get("doc_number")), []).append(row)
-
-    order_count = 0
-    order_line_count = 0
-    invoice_count = 0
-    invoice_line_count = 0
-    lineage_count = 0
-    pending_lineage: list[PendingLineageResolution] = []
-
-    for header in headers:
-        doc_number = _as_text(header.get("doc_number"))
-        customer_code = _as_text(header.get("customer_code"))
-        customer_id = customer_by_code.get(customer_code)
-        if customer_id is None:
-            continue
-
-        invoice_date = _as_legacy_date(header.get("invoice_date"))
-        created_at = _as_timestamp(invoice_date)
-        order_id = _tenant_scoped_uuid(tenant_id, "order", doc_number)
-        invoice_id = _tenant_scoped_uuid(tenant_id, "invoice", doc_number)
-        order_status = _map_legacy_order_status(_as_text(header.get("source_status")))
-        legacy_header_snapshot = _build_sales_header_snapshot(header)
-
-        await connection.execute(
-            """
-			INSERT INTO orders (
-				id,
-				tenant_id,
-				customer_id,
-				order_number,
-				status,
-				payment_terms_code,
-				payment_terms_days,
-				subtotal_amount,
+    order_upsert_query = """
+            INSERT INTO orders (
+                id,
+                tenant_id,
+                customer_id,
+                order_number,
+                status,
+                payment_terms_code,
+                payment_terms_days,
+                subtotal_amount,
                 discount_amount,
                 discount_percent,
-				tax_amount,
-				total_amount,
-				invoice_id,
-				notes,
+                tax_amount,
+                total_amount,
+                invoice_id,
+                notes,
                 legacy_header_snapshot,
-				created_by,
-				created_at,
-				updated_at,
-				confirmed_at
-			)
+                created_by,
+                created_at,
+                updated_at,
+                confirmed_at
+            )
             VALUES (
                 $1,
                 $2,
@@ -180,67 +260,41 @@ async def _import_sales_history(
                 $12,
                 $12
             )
-			ON CONFLICT (id) DO UPDATE SET
-				customer_id = EXCLUDED.customer_id,
-				order_number = EXCLUDED.order_number,
-				status = EXCLUDED.status,
-				subtotal_amount = EXCLUDED.subtotal_amount,
+            ON CONFLICT (id) DO UPDATE SET
+                customer_id = EXCLUDED.customer_id,
+                order_number = EXCLUDED.order_number,
+                status = EXCLUDED.status,
+                subtotal_amount = EXCLUDED.subtotal_amount,
                 discount_amount = EXCLUDED.discount_amount,
                 discount_percent = EXCLUDED.discount_percent,
-				tax_amount = EXCLUDED.tax_amount,
-				total_amount = EXCLUDED.total_amount,
-				notes = EXCLUDED.notes,
+                tax_amount = EXCLUDED.tax_amount,
+                total_amount = EXCLUDED.total_amount,
+                notes = EXCLUDED.notes,
                 legacy_header_snapshot = EXCLUDED.legacy_header_snapshot,
-				created_by = EXCLUDED.created_by,
-				updated_at = NOW(),
-				confirmed_at = EXCLUDED.confirmed_at
-			""",
-            order_id,
-            tenant_id,
-            customer_id,
-            doc_number,
-            order_status,
-            _as_decimal(header.get("subtotal"), "0.00"),
-            _as_decimal(header.get("tax_amount"), "0.00"),
-            _as_decimal(header.get("total_amount"), "0.00"),
-            _as_text(header.get("remark")) or None,
-            json.dumps(legacy_header_snapshot),
-            _as_text(header.get("created_by")) or "legacy-import",
-            created_at,
-        )
-        pending_lineage.append(
-            PendingLineageResolution(
-                canonical_table="orders",
-                canonical_id=order_id,
-                source_table="tbsslipx",
-                source_identifier=doc_number,
-                source_row_number=_as_int(header.get("source_row_number")),
-            )
-        )
-        order_count += 1
-        lineage_count += 1
-
-        await connection.execute(
+                created_by = EXCLUDED.created_by,
+                updated_at = NOW(),
+                confirmed_at = EXCLUDED.confirmed_at
             """
-			INSERT INTO invoices (
-				id,
-				tenant_id,
-				invoice_number,
-				invoice_date,
-				customer_id,
-				buyer_type,
-				buyer_identifier_snapshot,
-				currency_code,
-				subtotal_amount,
-				tax_amount,
-				total_amount,
-				status,
-				version,
+    invoice_upsert_query = """
+            INSERT INTO invoices (
+                id,
+                tenant_id,
+                invoice_number,
+                invoice_date,
+                customer_id,
+                buyer_type,
+                buyer_identifier_snapshot,
+                currency_code,
+                subtotal_amount,
+                tax_amount,
+                total_amount,
+                status,
+                version,
                 legacy_header_snapshot,
-				order_id,
-				created_at,
-				updated_at
-			)
+                order_id,
+                created_at,
+                updated_at
+            )
             VALUES (
                 $1,
                 $2,
@@ -260,46 +314,228 @@ async def _import_sales_history(
                 $14,
                 $14
             )
-			ON CONFLICT (id) DO UPDATE SET
-				invoice_number = EXCLUDED.invoice_number,
-				invoice_date = EXCLUDED.invoice_date,
-				customer_id = EXCLUDED.customer_id,
-				buyer_type = EXCLUDED.buyer_type,
-				buyer_identifier_snapshot = EXCLUDED.buyer_identifier_snapshot,
-				currency_code = EXCLUDED.currency_code,
-				subtotal_amount = EXCLUDED.subtotal_amount,
-				tax_amount = EXCLUDED.tax_amount,
-				total_amount = EXCLUDED.total_amount,
-				status = EXCLUDED.status,
+            ON CONFLICT (id) DO UPDATE SET
+                invoice_number = EXCLUDED.invoice_number,
+                invoice_date = EXCLUDED.invoice_date,
+                customer_id = EXCLUDED.customer_id,
+                buyer_type = EXCLUDED.buyer_type,
+                buyer_identifier_snapshot = EXCLUDED.buyer_identifier_snapshot,
+                currency_code = EXCLUDED.currency_code,
+                subtotal_amount = EXCLUDED.subtotal_amount,
+                tax_amount = EXCLUDED.tax_amount,
+                total_amount = EXCLUDED.total_amount,
+                status = EXCLUDED.status,
                 legacy_header_snapshot = EXCLUDED.legacy_header_snapshot,
-				order_id = EXCLUDED.order_id,
-				updated_at = NOW()
-			""",
-            invoice_id,
-            tenant_id,
-            doc_number,
-            invoice_date,
-            customer_id,
-            business_number_by_code.get(customer_code) or "00000000",
-            _currency_code(header.get("currency_code")),
-            _as_decimal(header.get("subtotal"), "0.00"),
-            _as_decimal(header.get("tax_amount"), "0.00"),
-            _as_decimal(header.get("total_amount"), "0.00"),
-            _map_legacy_status_to_canonical(_as_text(header.get("source_status"))),
-            json.dumps(legacy_header_snapshot),
-            order_id,
-            created_at,
-        )
-        await connection.execute(
+                order_id = EXCLUDED.order_id,
+                updated_at = NOW()
             """
-			UPDATE orders
-			SET invoice_id = $1, updated_at = NOW()
-			WHERE id = $2 AND tenant_id = $3
-			""",
-            invoice_id,
-            order_id,
-            tenant_id,
+    order_line_upsert_query = """
+                INSERT INTO order_lines (
+                    id,
+                    tenant_id,
+                    order_id,
+                    product_id,
+                    line_number,
+                    quantity,
+                    list_unit_price,
+                    unit_price,
+                    discount_amount,
+                    tax_policy_code,
+                    tax_type,
+                    tax_rate,
+                    tax_amount,
+                    subtotal_amount,
+                    total_amount,
+                    description,
+                    product_name_snapshot,
+                    product_category_snapshot,
+                    available_stock_snapshot,
+                    backorder_note,
+                    created_at
+                )
+                VALUES (
+                    $1,
+                    $2,
+                    $3,
+                    $4,
+                    $5,
+                    $6,
+                    $7,
+                    $8,
+                    $9,
+                    $10,
+                    $11,
+                    $12,
+                    $13,
+                    $14,
+                    $15,
+                    $16,
+                    $17,
+                    $18,
+                    $19,
+                    $20,
+                    NOW()
+                )
+                ON CONFLICT (id) DO UPDATE SET
+                    product_id = EXCLUDED.product_id,
+                    line_number = EXCLUDED.line_number,
+                    quantity = EXCLUDED.quantity,
+                    list_unit_price = EXCLUDED.list_unit_price,
+                    unit_price = EXCLUDED.unit_price,
+                    discount_amount = EXCLUDED.discount_amount,
+                    tax_policy_code = EXCLUDED.tax_policy_code,
+                    tax_type = EXCLUDED.tax_type,
+                    tax_rate = EXCLUDED.tax_rate,
+                    tax_amount = EXCLUDED.tax_amount,
+                    subtotal_amount = EXCLUDED.subtotal_amount,
+                    total_amount = EXCLUDED.total_amount,
+                    description = EXCLUDED.description,
+                    product_name_snapshot=COALESCE(
+                        order_lines.product_name_snapshot,
+                        EXCLUDED.product_name_snapshot
+                    ),
+                    product_category_snapshot=COALESCE(
+                        order_lines.product_category_snapshot,
+                        EXCLUDED.product_category_snapshot
+                    ),
+                    available_stock_snapshot = EXCLUDED.available_stock_snapshot
+                """
+    invoice_line_upsert_query = """
+                INSERT INTO invoice_lines (
+                    id,
+                    invoice_id,
+                    tenant_id,
+                    line_number,
+                    product_id,
+                    product_code_snapshot,
+                    description,
+                    quantity,
+                    unit_price,
+                    subtotal_amount,
+                    tax_type,
+                    tax_rate,
+                    tax_amount,
+                    total_amount,
+                    zero_tax_rate_reason,
+                    created_at
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NULL, NOW())
+                ON CONFLICT (id) DO UPDATE SET
+                    invoice_id = EXCLUDED.invoice_id,
+                    line_number = EXCLUDED.line_number,
+                    product_id = EXCLUDED.product_id,
+                    product_code_snapshot = EXCLUDED.product_code_snapshot,
+                    description = EXCLUDED.description,
+                    quantity = EXCLUDED.quantity,
+                    unit_price = EXCLUDED.unit_price,
+                    subtotal_amount = EXCLUDED.subtotal_amount,
+                    tax_type = EXCLUDED.tax_type,
+                    tax_rate = EXCLUDED.tax_rate,
+                    tax_amount = EXCLUDED.tax_amount,
+                    total_amount = EXCLUDED.total_amount
+                """
+
+    lines_by_doc: dict[str, list[dict[str, object]]] = {}
+    for row in lines:
+        lines_by_doc.setdefault(_as_text(row.get("doc_number")), []).append(row)
+
+    order_count = 0
+    order_line_count = 0
+    invoice_count = 0
+    invoice_line_count = 0
+    lineage_count = 0
+    pending_lineage: list[PendingLineageResolution] = []
+    order_rows: list[tuple[object, ...]] = []
+    invoice_rows: list[tuple[object, ...]] = []
+    order_line_rows: list[tuple[object, ...]] = []
+    invoice_line_rows: list[tuple[object, ...]] = []
+    order_invoice_links: list[tuple[uuid.UUID, uuid.UUID]] = []
+    order_total_ids: list[uuid.UUID] = []
+    invoice_total_ids: list[uuid.UUID] = []
+
+    async def flush_sales_rows() -> None:
+        if not order_rows:
+            return
+
+        await execute_many(connection, order_upsert_query, order_rows)
+        await execute_many(connection, invoice_upsert_query, invoice_rows)
+        await _link_orders_to_invoices(connection, tenant_id, order_invoice_links)
+        await execute_many(connection, order_line_upsert_query, order_line_rows)
+        await execute_many(connection, invoice_line_upsert_query, invoice_line_rows)
+        await _refresh_order_totals(connection, tenant_id, order_total_ids)
+        await _refresh_invoice_totals(connection, tenant_id, invoice_total_ids)
+
+        order_rows.clear()
+        invoice_rows.clear()
+        order_line_rows.clear()
+        invoice_line_rows.clear()
+        order_invoice_links.clear()
+        order_total_ids.clear()
+        invoice_total_ids.clear()
+
+    for header in headers:
+        doc_number = _as_text(header.get("doc_number"))
+        customer_code = _as_text(header.get("customer_code"))
+        customer_id = customer_by_code.get(customer_code)
+        if customer_id is None:
+            continue
+
+        invoice_date = _as_legacy_date(header.get("invoice_date"))
+        created_at = _as_timestamp(invoice_date)
+        order_id = _tenant_scoped_uuid(tenant_id, "order", doc_number)
+        invoice_id = _tenant_scoped_uuid(tenant_id, "invoice", doc_number)
+        order_status = _map_legacy_order_status(_as_text(header.get("source_status")))
+        legacy_header_snapshot = _build_sales_header_snapshot(header)
+
+        order_rows.append(
+            (
+                order_id,
+                tenant_id,
+                customer_id,
+                doc_number,
+                order_status,
+                _as_decimal(header.get("subtotal"), "0.00"),
+                _as_decimal(header.get("tax_amount"), "0.00"),
+                _as_decimal(header.get("total_amount"), "0.00"),
+                _as_text(header.get("remark")) or None,
+                json.dumps(legacy_header_snapshot),
+                _as_text(header.get("created_by")) or "legacy-import",
+                created_at,
+            )
         )
+        pending_lineage.append(
+            PendingLineageResolution(
+                canonical_table="orders",
+                canonical_id=order_id,
+                source_table="tbsslipx",
+                source_identifier=doc_number,
+                source_row_number=_as_int(header.get("source_row_number")),
+            )
+        )
+        order_count += 1
+        lineage_count += 1
+
+        invoice_rows.append(
+            (
+                invoice_id,
+                tenant_id,
+                doc_number,
+                invoice_date,
+                customer_id,
+                business_number_by_code.get(customer_code) or "00000000",
+                _currency_code(header.get("currency_code")),
+                _as_decimal(header.get("subtotal"), "0.00"),
+                _as_decimal(header.get("tax_amount"), "0.00"),
+                _as_decimal(header.get("total_amount"), "0.00"),
+                _map_legacy_status_to_canonical(_as_text(header.get("source_status"))),
+                json.dumps(legacy_header_snapshot),
+                order_id,
+                created_at,
+            )
+        )
+        order_invoice_links.append((order_id, invoice_id))
+        order_total_ids.append(order_id)
+        invoice_total_ids.append(invoice_id)
         pending_lineage.append(
             PendingLineageResolution(
                 canonical_table="invoices",
@@ -380,98 +616,29 @@ async def _import_sales_history(
                 tenant_id, "invoice-line", doc_number, str(line_number)
             )
 
-            await connection.execute(
-                """
-				INSERT INTO order_lines (
-					id,
-					tenant_id,
-					order_id,
-					product_id,
-					line_number,
-					quantity,
-					list_unit_price,
-					unit_price,
-					discount_amount,
-					tax_policy_code,
-					tax_type,
-					tax_rate,
-					tax_amount,
-					subtotal_amount,
-					total_amount,
-					description,
+            order_line_rows.append(
+                (
+                    order_line_id,
+                    tenant_id,
+                    order_id,
+                    product_id,
+                    line_number,
+                    quantity,
+                    actual_list_price,
+                    unit_price,
+                    discount_amount,
+                    tax_policy_code,
+                    tax_type,
+                    tax_rate,
+                    line_tax_amount,
+                    subtotal,
+                    line_total,
+                    _as_text(line.get("product_name")) or legacy_product_code,
                     product_name_snapshot,
                     product_category_snapshot,
-					available_stock_snapshot,
-					backorder_note,
-					created_at
-				)
-                VALUES (
-                    $1,
-                    $2,
-                    $3,
-                    $4,
-                    $5,
-                    $6,
-                    $7,
-                    $8,
-                    $9,
-                    $10,
-                    $11,
-                    $12,
-                    $13,
-                    $14,
-                    $15,
-                    $16,
-                    $17,
-                    $18,
-                    $19,
-                    $20,
-                    NOW()
+                    _as_decimal(line.get("available_stock_snapshot"), "0"),
+                    None,
                 )
-				ON CONFLICT (id) DO UPDATE SET
-					product_id = EXCLUDED.product_id,
-					line_number = EXCLUDED.line_number,
-					quantity = EXCLUDED.quantity,
-					list_unit_price = EXCLUDED.list_unit_price,
-					unit_price = EXCLUDED.unit_price,
-					discount_amount = EXCLUDED.discount_amount,
-					tax_policy_code = EXCLUDED.tax_policy_code,
-					tax_type = EXCLUDED.tax_type,
-					tax_rate = EXCLUDED.tax_rate,
-					tax_amount = EXCLUDED.tax_amount,
-					subtotal_amount = EXCLUDED.subtotal_amount,
-					total_amount = EXCLUDED.total_amount,
-					description = EXCLUDED.description,
-                    product_name_snapshot=COALESCE(
-                        order_lines.product_name_snapshot,
-                        EXCLUDED.product_name_snapshot
-                    ),
-                    product_category_snapshot=COALESCE(
-                        order_lines.product_category_snapshot,
-                        EXCLUDED.product_category_snapshot
-                    ),
-					available_stock_snapshot = EXCLUDED.available_stock_snapshot
-				""",
-                order_line_id,
-                tenant_id,
-                order_id,
-                product_id,
-                line_number,
-                quantity,
-                actual_list_price,
-                unit_price,
-                discount_amount,
-                tax_policy_code,
-                tax_type,
-                tax_rate,
-                line_tax_amount,
-                subtotal,
-                line_total,
-                _as_text(line.get("product_name")) or legacy_product_code,
-                product_name_snapshot,
-                product_category_snapshot,
-                _as_decimal(line.get("available_stock_snapshot"), "0"),
-                None,
             )
             pending_lineage.append(
                 PendingLineageResolution(
@@ -485,55 +652,23 @@ async def _import_sales_history(
             order_line_count += 1
             lineage_count += 1
 
-            await connection.execute(
-                """
-				INSERT INTO invoice_lines (
-					id,
-					invoice_id,
-					tenant_id,
-					line_number,
-					product_id,
-					product_code_snapshot,
-					description,
-					quantity,
-					unit_price,
-					subtotal_amount,
-					tax_type,
-					tax_rate,
-					tax_amount,
-					total_amount,
-					zero_tax_rate_reason,
-					created_at
-				)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NULL, NOW())
-				ON CONFLICT (id) DO UPDATE SET
-					invoice_id = EXCLUDED.invoice_id,
-					line_number = EXCLUDED.line_number,
-					product_id = EXCLUDED.product_id,
-					product_code_snapshot = EXCLUDED.product_code_snapshot,
-					description = EXCLUDED.description,
-					quantity = EXCLUDED.quantity,
-					unit_price = EXCLUDED.unit_price,
-					subtotal_amount = EXCLUDED.subtotal_amount,
-					tax_type = EXCLUDED.tax_type,
-					tax_rate = EXCLUDED.tax_rate,
-					tax_amount = EXCLUDED.tax_amount,
-					total_amount = EXCLUDED.total_amount
-				""",
-                invoice_line_id,
-                invoice_id,
-                tenant_id,
-                line_number,
-                product_id,
-                legacy_product_code,
-                _as_text(line.get("product_name")) or legacy_product_code,
-                quantity,
-                unit_price,
-                subtotal,
-                tax_type,
-                tax_rate,
-                line_tax_amount,
-                line_total,
+            invoice_line_rows.append(
+                (
+                    invoice_line_id,
+                    invoice_id,
+                    tenant_id,
+                    line_number,
+                    product_id,
+                    legacy_product_code,
+                    _as_text(line.get("product_name")) or legacy_product_code,
+                    quantity,
+                    unit_price,
+                    subtotal,
+                    tax_type,
+                    tax_rate,
+                    line_tax_amount,
+                    line_total,
+                )
             )
             pending_lineage.append(
                 PendingLineageResolution(
@@ -547,46 +682,13 @@ async def _import_sales_history(
             invoice_line_count += 1
             lineage_count += 1
 
-        line_totals = await connection.fetch(
-            """
-            SELECT
-                SUM(subtotal_amount) AS subtotal,
-                SUM(tax_amount) AS tax,
-                SUM(total_amount) AS total
-            FROM order_lines
-            WHERE tenant_id = $1 AND order_id = $2
-            """,
-            tenant_id,
-            order_id,
-        )
-        if line_totals and line_totals[0]:
-            row = line_totals[0]
-            recalc_subtotal = row["subtotal"] or Decimal("0.00")
-            recalc_tax = row["tax"] or Decimal("0.00")
-            recalc_total = row["total"] or Decimal("0.00")
-            await connection.execute(
-                """
-                UPDATE orders
-                SET subtotal_amount = $1, tax_amount = $2, total_amount = $3, updated_at = NOW()
-                WHERE id = $4
-                """,
-                recalc_subtotal,
-                recalc_tax,
-                recalc_total,
-                order_id,
-            )
-            await connection.execute(
-                """
-                UPDATE invoices
-                SET subtotal_amount = $1, tax_amount = $2, total_amount = $3, updated_at = NOW()
-                WHERE id = $4
-                """,
-                recalc_subtotal,
-                recalc_tax,
-                recalc_total,
-                invoice_id,
-            )
+        if (
+            len(order_rows) >= _SALES_HISTORY_HEADER_BATCH_SIZE
+            or len(order_line_rows) >= _SALES_HISTORY_LINE_BATCH_SIZE
+        ):
+            await flush_sales_rows()
 
+    await flush_sales_rows()
     await _flush_lineage_resolutions(
         connection,
         schema_name,

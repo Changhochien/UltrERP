@@ -89,6 +89,8 @@ async def backfill(
             session,
             cutoff=cutoff,
             today=simulated_today,
+            entity_scope=entity_scope,
+            affected_domains=affected_domains,
         )
         adjustments = build_sales_adjustments(
             rows=legacy_rows,

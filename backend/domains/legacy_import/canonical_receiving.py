@@ -23,12 +23,14 @@ from domains.legacy_import.canonical_persistence import (
 from domains.legacy_import.canonical_readers import _iter_query_rows
 from domains.legacy_import.mapping import UNKNOWN_PRODUCT_CODE
 from domains.legacy_import.normalization import deterministic_legacy_uuid
+from domains.legacy_import.shared import execute_many
 from domains.legacy_import.shared import resolve_row_identity as _resolve_row_identity
 from domains.legacy_import.staging import _quoted_identifier
 
 _LOGGER = logging.getLogger(__name__)
 
 LEGACY_RECEIVING_SOURCE = "tbsslipdtj"
+_RECEIVING_AUDIT_BATCH_SIZE = 5_000
 
 # Mutable run-scoped accumulator reset by canonical.py at the start of each run.
 _receiving_date_fallback_counts: dict[str, int] = {}
@@ -112,6 +114,50 @@ def _resolve_legacy_receiving_created_at(
     return _as_timestamp(None)
 
 
+async def _flush_receiving_audit_rows(
+    connection,
+    schema_name: str,
+    run_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    batch_id: str,
+    adjustment_rows: list[tuple[object, ...]],
+    pending_lineage: list[PendingLineageResolution],
+) -> None:
+    if adjustment_rows:
+        await execute_many(
+            connection,
+            """
+			INSERT INTO stock_adjustment (
+				id,
+				tenant_id,
+				product_id,
+				warehouse_id,
+				quantity_change,
+				reason_code,
+				actor_id,
+				notes,
+				transfer_id,
+				created_at
+			)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            ON CONFLICT (id) DO NOTHING
+			""",
+            adjustment_rows,
+        )
+        adjustment_rows.clear()
+
+    if pending_lineage:
+        await _flush_lineage_resolutions(
+            connection,
+            schema_name,
+            run_id,
+            tenant_id,
+            batch_id,
+            pending_lineage,
+        )
+        pending_lineage.clear()
+
+
 async def _import_legacy_receiving_audit(
     connection,
     schema_name: str,
@@ -127,6 +173,7 @@ async def _import_legacy_receiving_audit(
     count = 0
     lineage_count = 0
     holding_count = 0
+    adjustment_rows: list[tuple[object, ...]] = []
     pending_lineage: list[PendingLineageResolution] = []
     headers_by_doc = {
         _as_text(header.get("doc_number")): header
@@ -199,33 +246,19 @@ async def _import_legacy_receiving_audit(
         if quantity_note:
             notes = f"{notes}; {quantity_note}"
 
-        await connection.execute(
-            """
-			INSERT INTO stock_adjustment (
-				id,
-				tenant_id,
-				product_id,
-				warehouse_id,
-				quantity_change,
-				reason_code,
-				actor_id,
-				notes,
-				transfer_id,
-				created_at
-			)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-            ON CONFLICT (id) DO NOTHING
-			""",
-            stock_adjustment_id,
-            tenant_id,
-            product_id,
-            warehouse_id,
-            quantity_change,
-            ReasonCode.SUPPLIER_DELIVERY.value,
-            "legacy_import",
-            notes,
-            None,
-            created_at,
+        adjustment_rows.append(
+            (
+                stock_adjustment_id,
+                tenant_id,
+                product_id,
+                warehouse_id,
+                quantity_change,
+                ReasonCode.SUPPLIER_DELIVERY.value,
+                "legacy_import",
+                notes,
+                None,
+                created_at,
+            )
         )
         pending_lineage.append(
             PendingLineageResolution(
@@ -239,12 +272,24 @@ async def _import_legacy_receiving_audit(
         count += 1
         lineage_count += 1
 
-    await _flush_lineage_resolutions(
+        if len(adjustment_rows) >= _RECEIVING_AUDIT_BATCH_SIZE:
+            await _flush_receiving_audit_rows(
+                connection,
+                schema_name,
+                run_id,
+                tenant_id,
+                batch_id,
+                adjustment_rows,
+                pending_lineage,
+            )
+
+    await _flush_receiving_audit_rows(
         connection,
         schema_name,
         run_id,
         tenant_id,
         batch_id,
+        adjustment_rows,
         pending_lineage,
     )
     fallback_count = sum(_receiving_date_fallback_counts.values())

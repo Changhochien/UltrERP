@@ -22,9 +22,17 @@ from typing import Mapping, TypedDict
 from common.config import PROJECT_ROOT, settings
 from common.tenant import DEFAULT_TENANT_ID
 from domains.legacy_import.normalization import normalize_legacy_date
-from domains.legacy_import.staging import _open_raw_connection, _quoted_identifier
+from domains.legacy_import.staging import (
+    _open_raw_connection,
+    _quoted_identifier,
+    is_ephemeral_live_source_table,
+)
 
 _ARTIFACT_TOKEN_RE = re.compile(r"[^A-Za-z0-9._-]+")
+_MISSING_RELATION_ERROR_RE = re.compile(
+    r"\brelation\b.*\bdoes not exist\b",
+    re.IGNORECASE | re.DOTALL,
+)
 
 
 @dataclass(slots=True, frozen=True)
@@ -87,6 +95,14 @@ class MigrationValidationIssue:
     @property
     def blocking(self) -> bool:
         return self.severity == 1
+
+
+def _is_ephemeral_stage_table_disappearance(row: StageReconciliationRow) -> bool:
+    return bool(
+        row.error_message
+        and is_ephemeral_live_source_table(row.table_name)
+        and _MISSING_RELATION_ERROR_RE.search(row.error_message)
+    )
 
 
 @dataclass(slots=True, frozen=True)
@@ -449,14 +465,21 @@ def build_validation_report(
                 )
             )
         if row.status == "failed":
+            ephemeral_disappearance = _is_ephemeral_stage_table_disappearance(row)
             issues.append(
                 MigrationValidationIssue(
                     code="stage-load-failed",
-                    severity=1,
-                    message=f"Stage table {row.table_name} failed to load.",
+                    severity=2 if ephemeral_disappearance else 1,
+                    message=(
+                        f"Ephemeral live-source table {row.table_name} disappeared during staging; "
+                        "the table is treated as a transient report scratch table."
+                        if ephemeral_disappearance
+                        else f"Stage table {row.table_name} failed to load."
+                    ),
                     details={
                         "table_name": row.table_name,
                         "error_message": row.error_message,
+                        "transient_source_table": ephemeral_disappearance,
                     },
                 )
             )

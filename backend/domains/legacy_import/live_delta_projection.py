@@ -20,13 +20,17 @@ from domains.legacy_import.shared import (
 )
 from domains.legacy_import.staging import (
     LegacySourceConnectionSettings,
+    _load_live_source_column_metadata,
     _open_legacy_source_connection,
+    _open_raw_connection,
 )
 
 _IDENTIFIER_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _EXCEL_SERIAL_EPOCH = datetime(1899, 12, 30, tzinfo=UTC)
 _DEFAULT_CHANGE_TS = datetime(1900, 1, 1, tzinfo=UTC)
 _MAX_EXCEL_SERIAL = 2_958_465
+_NUMERIC_TEXT_RE = r"^[0-9]+(\.[0-9]+)?$"
+_INTEGER_TEXT_RE = r"^-?[0-9]+$"
 
 
 def _quoted_identifier(value: str) -> str:
@@ -37,6 +41,10 @@ def _quoted_identifier(value: str) -> str:
 
 def _column_ref(alias: str, column_name: str) -> str:
     return f"{alias}.{_quoted_identifier(column_name)}"
+
+
+def _nullif_text_expression(alias: str, column_name: str) -> str:
+    return f"NULLIF({_column_ref(alias, column_name)}::text, '')"
 
 
 def _parse_iso_datetime(value: object | None) -> datetime | None:
@@ -120,6 +128,48 @@ def _change_ts_expression(
     return f"COALESCE({', '.join(parts)})"
 
 
+def _staged_change_ts_expression(
+    alias: str,
+    *,
+    timestamp_column: str | None = None,
+    modify_column: str | None = None,
+    date_column: str | None = None,
+) -> str:
+    parts: list[str] = []
+    if timestamp_column is not None:
+        timestamp_text = _nullif_text_expression(alias, timestamp_column)
+        parts.append(
+            "CASE "
+            f"WHEN {timestamp_text} IS NOT NULL "
+            f"AND length({timestamp_text}) >= 14 "
+            f"AND substr({timestamp_text}, 1, 4) BETWEEN '1900' AND '9999' "
+            "THEN to_timestamp(substr("
+            f"{timestamp_text}, 1, 14), 'YYYYMMDDHH24MISS') + "
+            "(COALESCE(NULLIF(substr("
+            f"{timestamp_text}, 15, 6), ''), '0')::numeric * interval '0.000001 second') "
+            "END"
+        )
+    if modify_column is not None:
+        modify_text = _nullif_text_expression(alias, modify_column)
+        parts.append(
+            f"CASE WHEN {modify_text} IS NOT NULL "
+            f"AND {modify_text} ~ '{_NUMERIC_TEXT_RE}' "
+            f"AND {modify_text}::numeric > 0 "
+            f"AND {modify_text}::numeric <= {_MAX_EXCEL_SERIAL} "
+            "THEN TIMESTAMP '1899-12-30 00:00:00' + "
+            f"({modify_text}::numeric * interval '1 day') END"
+        )
+    if date_column is not None:
+        date_text = _nullif_text_expression(alias, date_column)
+        parts.append(
+            f"CASE WHEN {date_text} IS NOT NULL "
+            f"AND {date_text} ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}' "
+            f"THEN {date_text}::timestamp END"
+        )
+    parts.append("TIMESTAMP '1900-01-01 00:00:00'")
+    return f"COALESCE({', '.join(parts)})"
+
+
 def _master_cursor_clause(
     *,
     change_ts_expr: str,
@@ -195,6 +245,581 @@ async def _fetch_records(
         return await connection.fetch(query, *parameters)
     finally:
         await connection.close()
+
+
+async def _fetch_latest_master_watermark(
+    *,
+    source_schema: str,
+    table_name: str,
+    code_column: str,
+    code_key: str,
+    timestamp_column: str | None = None,
+    modify_column: str | None = None,
+    date_column: str | None = None,
+    connection_settings: LegacySourceConnectionSettings | None,
+) -> dict[str, Any] | None:
+    quoted_schema = _quoted_identifier(source_schema)
+    change_ts_expr = _change_ts_expression(
+        "src",
+        timestamp_column=timestamp_column,
+        modify_column=modify_column,
+        date_column=date_column,
+    )
+    code_ref = _column_ref("src", code_column)
+    query = f"""
+        SELECT
+            ({change_ts_expr})::text AS change_ts_text,
+            EXTRACT(EPOCH FROM {change_ts_expr}) AS change_ts_epoch,
+            {code_ref} AS code_value
+        FROM {quoted_schema}.{_quoted_identifier(table_name)} AS src
+        WHERE NULLIF({code_ref}::text, '') IS NOT NULL
+        ORDER BY change_ts_epoch DESC, code_value DESC
+        LIMIT 1
+    """
+    rows = await _fetch_records(query=query, parameters=[], connection_settings=connection_settings)
+    if not rows:
+        return None
+    row = rows[0]
+    code_value = str(row["code_value"] or "").strip()
+    if not code_value:
+        return None
+    return {
+        "source-change-ts": _format_change_ts(row["change_ts_text"]),
+        code_key: code_value,
+    }
+
+
+async def _fetch_latest_inventory_watermark(
+    *,
+    source_schema: str,
+    connection_settings: LegacySourceConnectionSettings | None,
+) -> dict[str, Any] | None:
+    quoted_schema = _quoted_identifier(source_schema)
+    house_change_ts = _change_ts_expression("house", timestamp_column="stimestamp")
+    stock_change_ts = _change_ts_expression(
+        "stock",
+        timestamp_column="stimestamp",
+        modify_column="dtmodify",
+        date_column="dtindate",
+    )
+    query = f"""
+        SELECT change_ts_text, warehouse_code, product_code
+        FROM (
+            SELECT
+                ({house_change_ts})::text AS change_ts_text,
+                EXTRACT(EPOCH FROM {house_change_ts}) AS change_ts_epoch,
+                {_column_ref('house', 'shouseno')} AS warehouse_code,
+                {_column_ref('house', 'sstkno')} AS product_code
+            FROM {quoted_schema}.{_quoted_identifier('tbsstkhouse')} AS house
+            WHERE NULLIF({_column_ref('house', 'shouseno')}::text, '') IS NOT NULL
+                AND NULLIF({_column_ref('house', 'sstkno')}::text, '') IS NOT NULL
+
+            UNION ALL
+
+            SELECT
+                ({stock_change_ts})::text AS change_ts_text,
+                EXTRACT(EPOCH FROM {stock_change_ts}) AS change_ts_epoch,
+                {_column_ref('house', 'shouseno')} AS warehouse_code,
+                {_column_ref('stock', 'sstkno')} AS product_code
+            FROM {quoted_schema}.{_quoted_identifier('tbsstock')} AS stock
+            INNER JOIN {quoted_schema}.{_quoted_identifier('tbsstkhouse')} AS house
+                ON {_column_ref('house', 'sstkno')} = {_column_ref('stock', 'sstkno')}
+            WHERE NULLIF({_column_ref('house', 'shouseno')}::text, '') IS NOT NULL
+                AND NULLIF({_column_ref('stock', 'sstkno')}::text, '') IS NOT NULL
+        ) AS inventory_watermarks
+        ORDER BY change_ts_epoch DESC, warehouse_code DESC, product_code DESC
+        LIMIT 1
+    """
+    rows = await _fetch_records(query=query, parameters=[], connection_settings=connection_settings)
+    if not rows:
+        return None
+    row = rows[0]
+    warehouse_code = str(row["warehouse_code"] or "").strip()
+    product_code = str(row["product_code"] or "").strip()
+    if not warehouse_code or not product_code:
+        return None
+    return {
+        "source-change-ts": _format_change_ts(row["change_ts_text"]),
+        "warehouse-code": warehouse_code,
+        "product-code": product_code,
+    }
+
+
+async def _fetch_latest_document_watermark(
+    *,
+    source_schema: str,
+    header_table: str,
+    detail_table: str,
+    connection_settings: LegacySourceConnectionSettings | None,
+) -> dict[str, Any] | None:
+    quoted_schema = _quoted_identifier(source_schema)
+    query = f"""
+        SELECT document_date, document_number, line_number
+        FROM (
+            SELECT
+                {_column_ref('header', 'dtslipdate')} AS document_date,
+                {_column_ref('header', 'sslipno')} AS document_number,
+                0 AS line_number
+            FROM {quoted_schema}.{_quoted_identifier(header_table)} AS header
+            WHERE {_column_ref('header', 'dtslipdate')} IS NOT NULL
+                AND NULLIF({_column_ref('header', 'sslipno')}::text, '') IS NOT NULL
+
+            UNION ALL
+
+            SELECT
+                {_column_ref('detail', 'dtslipdate')} AS document_date,
+                {_column_ref('detail', 'sslipno')} AS document_number,
+                {_column_ref('detail', 'iidno')} AS line_number
+            FROM {quoted_schema}.{_quoted_identifier(detail_table)} AS detail
+            INNER JOIN {quoted_schema}.{_quoted_identifier(header_table)} AS header
+                ON {_column_ref('header', 'skind')} = {_column_ref('detail', 'skind')}
+                AND {_column_ref('header', 'sslipno')} = {_column_ref('detail', 'sslipno')}
+            WHERE {_column_ref('detail', 'dtslipdate')} IS NOT NULL
+                AND NULLIF({_column_ref('detail', 'sslipno')}::text, '') IS NOT NULL
+        ) AS document_watermarks
+        ORDER BY document_date DESC, document_number DESC, line_number DESC
+        LIMIT 1
+    """
+    rows = await _fetch_records(query=query, parameters=[], connection_settings=connection_settings)
+    if not rows:
+        return None
+    row = rows[0]
+    document_number = str(row["document_number"] or "").strip()
+    if not document_number:
+        return None
+    return {
+        "document-date": str(row["document_date"]),
+        "document-number": document_number,
+        "line-number": int(row["line_number"]),
+    }
+
+
+async def fetch_current_incremental_watermarks(
+    *,
+    source_schema: str,
+    connection_settings: LegacySourceConnectionSettings | None = None,
+) -> dict[str, dict[str, Any]]:
+    domain_watermarks = {
+        DOMAIN_PARTIES: await _fetch_latest_master_watermark(
+            source_schema=source_schema,
+            table_name="tbscust",
+            code_column="scustno",
+            code_key="party-code",
+            timestamp_column="stimestamp",
+            modify_column="dtmodify",
+            date_column="dtcreatedate",
+            connection_settings=connection_settings,
+        ),
+        DOMAIN_PRODUCTS: await _fetch_latest_master_watermark(
+            source_schema=source_schema,
+            table_name="tbsstock",
+            code_column="sstkno",
+            code_key="product-code",
+            timestamp_column="stimestamp",
+            modify_column="dtmodify",
+            date_column="dtindate",
+            connection_settings=connection_settings,
+        ),
+        DOMAIN_WAREHOUSES: await _fetch_latest_master_watermark(
+            source_schema=source_schema,
+            table_name="tbsstkhouse",
+            code_column="shouseno",
+            code_key="warehouse-code",
+            timestamp_column="stimestamp",
+            connection_settings=connection_settings,
+        ),
+        DOMAIN_INVENTORY: await _fetch_latest_inventory_watermark(
+            source_schema=source_schema,
+            connection_settings=connection_settings,
+        ),
+        DOMAIN_SALES: await _fetch_latest_document_watermark(
+            source_schema=source_schema,
+            header_table="tbsslipx",
+            detail_table="tbsslipdtx",
+            connection_settings=connection_settings,
+        ),
+        DOMAIN_PURCHASE_INVOICES: await _fetch_latest_document_watermark(
+            source_schema=source_schema,
+            header_table="tbsslipj",
+            detail_table="tbsslipdtj",
+            connection_settings=connection_settings,
+        ),
+    }
+    return {
+        domain_name: watermark
+        for domain_name, watermark in domain_watermarks.items()
+        if watermark is not None
+    }
+
+
+async def _load_source_stage_column_map(
+    *,
+    source_schema: str,
+    table_names: tuple[str, ...],
+    connection_settings: LegacySourceConnectionSettings | None,
+) -> dict[str, dict[str, str]]:
+    connection = await _open_legacy_source_connection(connection_settings)
+    try:
+        mapping: dict[str, dict[str, str]] = {}
+        for table_name in table_names:
+            columns = await _load_live_source_column_metadata(
+                connection,
+                schema_name=source_schema,
+                table_name=table_name,
+            )
+            mapping[table_name] = {
+                column.column_name: f"col_{column.ordinal_position}"
+                for column in columns
+            }
+        return mapping
+    finally:
+        await connection.close()
+
+
+def _stage_column(
+    source_columns: Mapping[str, Mapping[str, str]],
+    table_name: str,
+    column_name: str,
+) -> str | None:
+    table_columns = source_columns.get(table_name)
+    if not isinstance(table_columns, Mapping):
+        return None
+    return table_columns.get(column_name)
+
+
+def _require_stage_column(
+    source_columns: Mapping[str, Mapping[str, str]],
+    table_name: str,
+    column_name: str,
+) -> str:
+    column = _stage_column(source_columns, table_name, column_name)
+    if column is None:
+        raise ValueError(
+            f"Cannot compute staged incremental watermark: source column "
+            f"{table_name}.{column_name} was not staged"
+        )
+    return column
+
+
+async def _fetch_latest_staged_master_watermark(
+    raw_connection,
+    *,
+    schema_name: str,
+    source_columns: Mapping[str, Mapping[str, str]],
+    table_name: str,
+    batch_id: str,
+    code_column: str,
+    code_key: str,
+    timestamp_column: str | None = None,
+    modify_column: str | None = None,
+    date_column: str | None = None,
+) -> dict[str, Any] | None:
+    quoted_schema = _quoted_identifier(schema_name)
+    quoted_table = _quoted_identifier(table_name)
+    code_ref = _column_ref(
+        "stage",
+        _require_stage_column(source_columns, table_name, code_column),
+    )
+    change_ts_expr = _staged_change_ts_expression(
+        "stage",
+        timestamp_column=_stage_column(source_columns, table_name, timestamp_column)
+        if timestamp_column is not None
+        else None,
+        modify_column=_stage_column(source_columns, table_name, modify_column)
+        if modify_column is not None
+        else None,
+        date_column=_stage_column(source_columns, table_name, date_column)
+        if date_column is not None
+        else None,
+    )
+    query = f"""
+        SELECT
+            ({change_ts_expr})::text AS change_ts_text,
+            EXTRACT(EPOCH FROM {change_ts_expr}) AS change_ts_epoch,
+            {code_ref} AS code_value
+        FROM {quoted_schema}.{quoted_table} AS stage
+        WHERE stage._batch_id = $1
+            AND NULLIF({code_ref}::text, '') IS NOT NULL
+        ORDER BY change_ts_epoch DESC, code_value DESC
+        LIMIT 1
+    """
+    rows = await raw_connection.fetch(query, batch_id)
+    if not rows:
+        return None
+    row = rows[0]
+    code_value = str(row["code_value"] or "").strip()
+    if not code_value:
+        return None
+    return {
+        "source-change-ts": _format_change_ts(row["change_ts_text"]),
+        code_key: code_value,
+    }
+
+
+async def _fetch_latest_staged_inventory_watermark(
+    raw_connection,
+    *,
+    schema_name: str,
+    source_columns: Mapping[str, Mapping[str, str]],
+    batch_id: str,
+) -> dict[str, Any] | None:
+    quoted_schema = _quoted_identifier(schema_name)
+    house_table = _quoted_identifier("tbsstkhouse")
+    stock_table = _quoted_identifier("tbsstock")
+    house_warehouse_ref = _column_ref(
+        "house",
+        _require_stage_column(source_columns, "tbsstkhouse", "shouseno"),
+    )
+    house_product_ref = _column_ref(
+        "house",
+        _require_stage_column(source_columns, "tbsstkhouse", "sstkno"),
+    )
+    stock_product_ref = _column_ref(
+        "stock",
+        _require_stage_column(source_columns, "tbsstock", "sstkno"),
+    )
+    house_change_ts = _staged_change_ts_expression(
+        "house",
+        timestamp_column=_stage_column(source_columns, "tbsstkhouse", "stimestamp"),
+    )
+    stock_change_ts = _staged_change_ts_expression(
+        "stock",
+        timestamp_column=_stage_column(source_columns, "tbsstock", "stimestamp"),
+        modify_column=_stage_column(source_columns, "tbsstock", "dtmodify"),
+        date_column=_stage_column(source_columns, "tbsstock", "dtindate"),
+    )
+    query = f"""
+        SELECT change_ts_text, warehouse_code, product_code
+        FROM (
+            SELECT
+                ({house_change_ts})::text AS change_ts_text,
+                EXTRACT(EPOCH FROM {house_change_ts}) AS change_ts_epoch,
+                {house_warehouse_ref} AS warehouse_code,
+                {house_product_ref} AS product_code
+            FROM {quoted_schema}.{house_table} AS house
+            WHERE house._batch_id = $1
+                AND NULLIF({house_warehouse_ref}::text, '') IS NOT NULL
+                AND NULLIF({house_product_ref}::text, '') IS NOT NULL
+
+            UNION ALL
+
+            SELECT
+                ({stock_change_ts})::text AS change_ts_text,
+                EXTRACT(EPOCH FROM {stock_change_ts}) AS change_ts_epoch,
+                {house_warehouse_ref} AS warehouse_code,
+                {stock_product_ref} AS product_code
+            FROM {quoted_schema}.{stock_table} AS stock
+            INNER JOIN {quoted_schema}.{house_table} AS house
+                ON house._batch_id = stock._batch_id
+                AND {house_product_ref} = {stock_product_ref}
+            WHERE stock._batch_id = $1
+                AND NULLIF({house_warehouse_ref}::text, '') IS NOT NULL
+                AND NULLIF({stock_product_ref}::text, '') IS NOT NULL
+        ) AS inventory_watermarks
+        ORDER BY change_ts_epoch DESC, warehouse_code DESC, product_code DESC
+        LIMIT 1
+    """
+    rows = await raw_connection.fetch(query, batch_id)
+    if not rows:
+        return None
+    row = rows[0]
+    warehouse_code = str(row["warehouse_code"] or "").strip()
+    product_code = str(row["product_code"] or "").strip()
+    if not warehouse_code or not product_code:
+        return None
+    return {
+        "source-change-ts": _format_change_ts(row["change_ts_text"]),
+        "warehouse-code": warehouse_code,
+        "product-code": product_code,
+    }
+
+
+async def _fetch_latest_staged_document_watermark(
+    raw_connection,
+    *,
+    schema_name: str,
+    source_columns: Mapping[str, Mapping[str, str]],
+    batch_id: str,
+    header_table: str,
+    detail_table: str,
+) -> dict[str, Any] | None:
+    quoted_schema = _quoted_identifier(schema_name)
+    quoted_header = _quoted_identifier(header_table)
+    quoted_detail = _quoted_identifier(detail_table)
+    header_date_ref = _column_ref(
+        "header",
+        _require_stage_column(source_columns, header_table, "dtslipdate"),
+    )
+    header_doc_ref = _column_ref(
+        "header",
+        _require_stage_column(source_columns, header_table, "sslipno"),
+    )
+    header_kind_ref = _column_ref(
+        "header",
+        _require_stage_column(source_columns, header_table, "skind"),
+    )
+    detail_date_ref = _column_ref(
+        "detail",
+        _require_stage_column(source_columns, detail_table, "dtslipdate"),
+    )
+    detail_doc_ref = _column_ref(
+        "detail",
+        _require_stage_column(source_columns, detail_table, "sslipno"),
+    )
+    detail_kind_ref = _column_ref(
+        "detail",
+        _require_stage_column(source_columns, detail_table, "skind"),
+    )
+    detail_line_ref = _column_ref(
+        "detail",
+        _require_stage_column(source_columns, detail_table, "iidno"),
+    )
+    header_date_text = f"NULLIF({header_date_ref}::text, '')"
+    detail_date_text = f"NULLIF({detail_date_ref}::text, '')"
+    header_date = (
+        f"CASE WHEN {header_date_text} ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}' "
+        f"THEN {header_date_text}::date END"
+    )
+    detail_date = (
+        f"CASE WHEN {detail_date_text} ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}' "
+        f"THEN {detail_date_text}::date END"
+    )
+    detail_line_text = f"NULLIF({detail_line_ref}::text, '')"
+    detail_line = (
+        f"CASE WHEN {detail_line_text} ~ '{_INTEGER_TEXT_RE}' "
+        f"THEN {detail_line_text}::integer ELSE 0 END"
+    )
+    query = f"""
+        SELECT document_date, document_number, line_number
+        FROM (
+            SELECT
+                {header_date} AS document_date,
+                {header_doc_ref} AS document_number,
+                0 AS line_number
+            FROM {quoted_schema}.{quoted_header} AS header
+            WHERE header._batch_id = $1
+                AND {header_date_text} ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}'
+                AND NULLIF({header_doc_ref}::text, '') IS NOT NULL
+
+            UNION ALL
+
+            SELECT
+                {detail_date} AS document_date,
+                {detail_doc_ref} AS document_number,
+                {detail_line} AS line_number
+            FROM {quoted_schema}.{quoted_detail} AS detail
+            INNER JOIN {quoted_schema}.{quoted_header} AS header
+                ON header._batch_id = detail._batch_id
+                AND {header_kind_ref} = {detail_kind_ref}
+                AND {header_doc_ref} = {detail_doc_ref}
+            WHERE detail._batch_id = $1
+                AND {detail_date_text} ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}'
+                AND NULLIF({detail_doc_ref}::text, '') IS NOT NULL
+        ) AS document_watermarks
+        ORDER BY document_date DESC, document_number DESC, line_number DESC
+        LIMIT 1
+    """
+    rows = await raw_connection.fetch(query, batch_id)
+    if not rows:
+        return None
+    row = rows[0]
+    document_number = str(row["document_number"] or "").strip()
+    if not document_number or row["document_date"] is None:
+        return None
+    return {
+        "document-date": str(row["document_date"]),
+        "document-number": document_number,
+        "line-number": int(row["line_number"]),
+    }
+
+
+async def fetch_staged_incremental_watermarks(
+    *,
+    schema_name: str,
+    source_schema: str,
+    batch_id: str,
+    connection_settings: LegacySourceConnectionSettings | None = None,
+) -> dict[str, dict[str, Any]]:
+    source_columns = await _load_source_stage_column_map(
+        source_schema=source_schema,
+        table_names=(
+            "tbscust",
+            "tbsstock",
+            "tbsstkhouse",
+            "tbsslipx",
+            "tbsslipdtx",
+            "tbsslipj",
+            "tbsslipdtj",
+        ),
+        connection_settings=connection_settings,
+    )
+    raw_connection = await _open_raw_connection()
+    try:
+        domain_watermarks = {
+            DOMAIN_PARTIES: await _fetch_latest_staged_master_watermark(
+                raw_connection,
+                schema_name=schema_name,
+                source_columns=source_columns,
+                table_name="tbscust",
+                batch_id=batch_id,
+                code_column="scustno",
+                code_key="party-code",
+                timestamp_column="stimestamp",
+                modify_column="dtmodify",
+                date_column="dtcreatedate",
+            ),
+            DOMAIN_PRODUCTS: await _fetch_latest_staged_master_watermark(
+                raw_connection,
+                schema_name=schema_name,
+                source_columns=source_columns,
+                table_name="tbsstock",
+                batch_id=batch_id,
+                code_column="sstkno",
+                code_key="product-code",
+                timestamp_column="stimestamp",
+                modify_column="dtmodify",
+                date_column="dtindate",
+            ),
+            DOMAIN_WAREHOUSES: await _fetch_latest_staged_master_watermark(
+                raw_connection,
+                schema_name=schema_name,
+                source_columns=source_columns,
+                table_name="tbsstkhouse",
+                batch_id=batch_id,
+                code_column="shouseno",
+                code_key="warehouse-code",
+                timestamp_column="stimestamp",
+            ),
+            DOMAIN_INVENTORY: await _fetch_latest_staged_inventory_watermark(
+                raw_connection,
+                schema_name=schema_name,
+                source_columns=source_columns,
+                batch_id=batch_id,
+            ),
+            DOMAIN_SALES: await _fetch_latest_staged_document_watermark(
+                raw_connection,
+                schema_name=schema_name,
+                source_columns=source_columns,
+                batch_id=batch_id,
+                header_table="tbsslipx",
+                detail_table="tbsslipdtx",
+            ),
+            DOMAIN_PURCHASE_INVOICES: await _fetch_latest_staged_document_watermark(
+                raw_connection,
+                schema_name=schema_name,
+                source_columns=source_columns,
+                batch_id=batch_id,
+                header_table="tbsslipj",
+                detail_table="tbsslipdtj",
+            ),
+        }
+        return {
+            domain_name: watermark
+            for domain_name, watermark in domain_watermarks.items()
+            if watermark is not None
+        }
+    finally:
+        await raw_connection.close()
 
 
 def _change_dt(value: object | None) -> datetime | None:

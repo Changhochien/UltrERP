@@ -15,8 +15,13 @@ from domains.legacy_import.incremental_state import (
     ELIGIBLE_PROMOTION_CLASSIFICATION,
     reseed_incremental_state_from_full_refresh,
 )
+from domains.legacy_import.live_delta_projection import fetch_staged_incremental_watermarks
 from domains.legacy_import.promotion_policy import evaluate_overlap_policy
-from domains.legacy_import.staging import LegacySourceConnectionSettings
+from domains.legacy_import.staging import (
+    LegacySourceCompatibilityError,
+    LegacySourceConnectionSettings,
+    load_runtime_legacy_source_connection_settings,
+)
 from scripts.legacy_refresh_common import (
     RefreshDisposition,
     normalize_token,
@@ -423,6 +428,12 @@ async def run_scheduled_shadow_refresh(
             await asyncio.gather(*publication_tasks)
 
             if promotion_eligible:
+                baseline_watermarks = await fetch_staged_incremental_watermarks(
+                    schema_name=schema_name,
+                    source_schema=source_schema,
+                    batch_id=batch_id,
+                    connection_settings=connection_settings,
+                )
                 incremental_state_record = reseed_incremental_state_from_full_refresh(
                     tenant_id=tenant_id,
                     schema_name=schema_name,
@@ -432,6 +443,7 @@ async def run_scheduled_shadow_refresh(
                         lane_paths.latest_promoted_path
                     ),
                     recorded_at=completed_at,
+                    baseline_watermarks=baseline_watermarks,
                 )
                 await _write_json_atomically_async(
                     lane_paths.incremental_state_path,
@@ -453,19 +465,29 @@ async def run_scheduled_shadow_refresh(
             remove_file_if_exists(lock_path)
 
 
+async def _run_cli_scheduled_shadow_refresh(
+    args: argparse.Namespace,
+) -> ScheduledShadowRefreshExecution:
+    try:
+        connection_settings = await load_runtime_legacy_source_connection_settings()
+    except LegacySourceCompatibilityError:
+        connection_settings = None
+
+    return await run_scheduled_shadow_refresh(
+        tenant_id=args.tenant_id,
+        schema_name=args.schema,
+        source_schema=args.source_schema,
+        lookback_days=args.lookback_days,
+        reconciliation_threshold=args.reconciliation_threshold,
+        batch_prefix=args.batch_prefix,
+        connection_settings=connection_settings,
+    )
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    result = asyncio.run(
-        run_scheduled_shadow_refresh(
-            tenant_id=args.tenant_id,
-            schema_name=args.schema,
-            source_schema=args.source_schema,
-            lookback_days=args.lookback_days,
-            reconciliation_threshold=args.reconciliation_threshold,
-            batch_prefix=args.batch_prefix,
-        )
-    )
+    result = asyncio.run(_run_cli_scheduled_shadow_refresh(args))
     _print_operator_summary(result)
     return result.exit_code
 

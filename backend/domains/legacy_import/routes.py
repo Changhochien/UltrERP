@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
@@ -41,8 +42,10 @@ from scripts.legacy_refresh_state import (
     write_lock_file_with_recovery,
 )
 from scripts.run_incremental_legacy_refresh import (
+    build_incremental_discovery_for_dry_run,
     build_incremental_plan_for_dry_run,
     build_incremental_batch_id,
+    build_delta_manifest,
     build_live_source_projection_for_lane,
     run_incremental_legacy_refresh,
 )
@@ -193,6 +196,9 @@ router = APIRouter(
 _REDIS_JOB_PREFIX = "legacy-refresh:job:"
 _REDIS_JOB_TTL = 86_400  # 24 hours
 _NULL_SENTINEL = "__NULL__"
+_LANE_DIR_NAME_PATTERN = re.compile(
+    r"^(?P<schema_name>.+)-(?P<tenant_id>[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})-(?P<source_schema>.+)$"
+)
 
 
 class RedisJobCacheUnavailable(RuntimeError):
@@ -276,6 +282,17 @@ def _iso_now() -> str:
 
 def _job_sentinel_path(lane_root: Path, job_id: str) -> Path:
     return lane_root / f".job-{job_id}.json"
+
+
+def _parse_lane_dir_name(name: str) -> tuple[str, uuid.UUID, str] | None:
+    match = _LANE_DIR_NAME_PATTERN.match(name)
+    if match is None:
+        return None
+    try:
+        tenant_id = uuid.UUID(match.group("tenant_id"))
+    except ValueError:
+        return None
+    return match.group("schema_name"), tenant_id, match.group("source_schema")
 
 
 def _parse_refresh_timestamp(value: object | None) -> datetime | None:
@@ -532,12 +549,20 @@ def _load_lane_status(
         if raw is None:
             return None
         pp = raw.get("promotion_policy")
+        if not isinstance(pp, dict):
+            promotion_classification = raw.get("promotion_policy_classification")
+            promotion_result = raw.get("promotion_result")
+            if promotion_classification is not None or promotion_result is not None:
+                pp = {
+                    "classification": promotion_classification or promotion_result,
+                    "result": promotion_result,
+                }
         return BatchPointer(
             batch_id=raw.get("batch_id"),
             summary_path=raw.get("summary_path"),
-            started_at=raw.get("started_at"),
-            completed_at=raw.get("completed_at"),
-            final_disposition=raw.get("final_disposition"),
+            started_at=raw.get("started_at") or raw.get("promoted_at") or raw.get("evaluated_at"),
+            completed_at=raw.get("completed_at") or raw.get("promoted_at"),
+            final_disposition=raw.get("final_disposition") or raw.get("promotion_result"),
             exit_code=raw.get("exit_code"),
             validation_status=raw.get("validation_status"),
             blocking_issue_count=raw.get("blocking_issue_count"),
@@ -556,23 +581,56 @@ def _load_lane_status(
     # Promotion eligibility
     promotion_eligible = False
     promotion_classification: str | None = None
+    latest_success_already_promoted = bool(
+        latest_success is not None
+        and latest_promoted is not None
+        and latest_success.batch_id
+        and latest_success.batch_id == latest_promoted.batch_id
+        and latest_promoted.final_disposition in {"promoted", "noop"}
+    )
+    latest_run_is_promoted_success = bool(
+        latest_run is not None
+        and latest_success is not None
+        and latest_success_already_promoted
+        and latest_run.batch_id == latest_success.batch_id
+    )
     for ptr in (latest_run, latest_success):
         if ptr is not None and ptr.promotion_policy:
             classification = ptr.promotion_policy.get("classification")
             if classification == "eligible":
+                if latest_success_already_promoted and ptr.batch_id == latest_success.batch_id:
+                    if promotion_classification is None:
+                        promotion_classification = "promoted"
+                    continue
                 promotion_eligible = True
                 promotion_classification = classification
                 break
             elif classification is not None:
                 promotion_classification = classification
+    if latest_success_already_promoted and not promotion_eligible:
+        promotion_classification = "promoted"
 
-    root_failure = _derive_root_failure(latest_run_raw, latest_run)
+    surface_latest_run_failure = not (
+        lane_locked
+        or (latest_success_already_promoted and not latest_run_is_promoted_success)
+    )
+    root_failure = _derive_root_failure(latest_run_raw, latest_run) if surface_latest_run_failure else None
 
-    blocked_reason = _derive_blocked_reason(latest_run_raw, latest_run)
+    blocked_reason = (
+        _derive_blocked_reason(latest_run_raw, latest_run)
+        if surface_latest_run_failure
+        else None
+    )
 
     # Current batch mode from latest run
     current_batch_mode: str | None = None
-    if isinstance(latest_run_raw, dict):
+    if isinstance(lock_payload, dict):
+        lock_batch_id = str(lock_payload.get("batch_id") or "")
+        if "incremental" in lock_batch_id:
+            current_batch_mode = "incremental"
+        elif "shadow" in lock_batch_id or "full" in lock_batch_id:
+            current_batch_mode = "full-rebaseline"
+    if current_batch_mode is None and isinstance(latest_run_raw, dict):
         raw_batch_mode = latest_run_raw.get("batch_mode")
         if isinstance(raw_batch_mode, str) and raw_batch_mode.strip():
             current_batch_mode = raw_batch_mode.strip()
@@ -634,6 +692,7 @@ async def _launch_full_rebaseline(
     batch_id: str,
     launched_at: str,
     connection_settings: LegacySourceConnectionSettings,
+    dry_run: bool = False,
 ) -> None:
     """Durable worker: launch full rebaseline via subprocess.
 
@@ -672,6 +731,7 @@ async def _launch_full_rebaseline(
             "tenant_id": str(tenant_id),
             "schema_name": schema_name,
             "source_schema": source_schema,
+            "dry_run": dry_run,
             "launched_at": launched_at,
             "started_at": launched_at,
             "status": "running",
@@ -742,6 +802,7 @@ async def _launch_incremental(
     batch_id: str,
     launched_at: str,
     connection_settings: LegacySourceConnectionSettings,
+    dry_run: bool = False,
 ) -> None:
     """Durable worker: launch incremental refresh via subprocess.
 
@@ -777,6 +838,7 @@ async def _launch_incremental(
             "tenant_id": str(tenant_id),
             "schema_name": schema_name,
             "source_schema": source_schema,
+            "dry_run": dry_run,
             "launched_at": launched_at,
             "started_at": launched_at,
             "status": "running",
@@ -790,6 +852,40 @@ async def _launch_incremental(
                 source_schema=source_schema,
                 connection_settings=connection_settings,
             )
+            if dry_run:
+                plan, discovery = await asyncio.to_thread(
+                    build_incremental_discovery_for_dry_run,
+                    tenant_id=tenant_id,
+                    schema_name=schema_name,
+                    source_schema=source_schema,
+                    source_projection=source_projection,
+                )
+                manifest_preview = build_delta_manifest(
+                    run_id=str(uuid.uuid4()),
+                    batch_id=batch_id,
+                    tenant_id=tenant_id,
+                    schema_name=schema_name,
+                    source_schema=source_schema,
+                    recorded_at=_iso_now(),
+                    plan=plan,
+                    discovery=discovery,
+                )
+                dry_run_manifest_path = lane_paths.lane_root / f"{batch_id}-dry-run-manifest.json"
+                write_json_atomically(dry_run_manifest_path, manifest_preview)
+                completed_meta = {
+                    **job_meta,
+                    "status": "completed",
+                    "exit_code": 0,
+                    "completed_at": _iso_now(),
+                    "final_disposition": RefreshDisposition.COMPLETED_NO_OP.value,
+                    "planned_domains": list(discovery.planned_domains),
+                    "affected_domains": list(discovery.active_domains),
+                    "no_op_domains": list(discovery.no_op_domains),
+                    "dry_run_manifest_path": str(dry_run_manifest_path),
+                }
+                await _persist_job_metadata(job_id, lane_paths.lane_root, completed_meta)
+                return
+
             result = await run_incremental_legacy_refresh(
                 tenant_id=tenant_id,
                 schema_name=schema_name,
@@ -908,6 +1004,13 @@ async def trigger_legacy_refresh(
                 detail=str(exc),
             )
 
+    if request.mode == RefreshMode.FULL_REBASELINE and request.dry_run:
+        return RefreshConflict(
+            lane_key=lane_key,
+            conflict="dry-run-unsupported",
+            detail="Dry-run is supported for incremental refresh only.",
+        )
+
     try:
         connection_settings = await load_runtime_legacy_source_connection_settings()
     except LegacySourceCompatibilityError as exc:
@@ -966,6 +1069,7 @@ async def trigger_legacy_refresh(
                 batch_id=batch_id,
                 launched_at=launched_at,
                 connection_settings=connection_settings,
+                dry_run=request.dry_run,
             )
         )
     else:
@@ -980,6 +1084,7 @@ async def trigger_legacy_refresh(
                 batch_id=batch_id,
                 launched_at=launched_at,
                 connection_settings=connection_settings,
+                dry_run=request.dry_run,
             )
         )
 
@@ -1022,7 +1127,9 @@ async def get_lane_status(
     summary="List all legacy refresh lanes",
     description="Returns status for all lanes that have been touched by the refresh pipeline.",
 )
-async def list_lanes() -> RefreshLanesResponse:
+async def list_lanes(
+    current_user: Annotated[dict, Depends(require_role("admin", "owner"))],
+) -> RefreshLanesResponse:
     """Return status for all known lanes.
 
     Lanes are discovered by scanning the state root for subdirectories.
@@ -1031,20 +1138,25 @@ async def list_lanes() -> RefreshLanesResponse:
     if not state_root.exists():
         return RefreshLanesResponse(lanes=[])
 
+    try:
+        tenant_filter = uuid.UUID(str(current_user["tenant_id"]))
+    except (KeyError, TypeError, ValueError):
+        raise HTTPException(status_code=401, detail="Invalid token")
+
     lanes: list[RefreshLaneStatus] = []
     for lane_dir in state_root.iterdir():
         if not lane_dir.is_dir():
             continue
-        # Lane dir names encode the lane key: schema_name-tenant_id-source_schema
-        parts = lane_dir.name.rsplit("-", 2)
-        if len(parts) != 3:
+        parsed_lane = _parse_lane_dir_name(lane_dir.name)
+        if parsed_lane is None:
             continue
         try:
-            schema_name, tenant_str, source_schema = parts
-            tid = uuid.UUID(tenant_str)
-            status = _load_lane_status(tid, schema_name, source_schema)
+            schema_name, tenant_id, source_schema = parsed_lane
+            if tenant_id != tenant_filter:
+                continue
+            status = _load_lane_status(tenant_id, schema_name, source_schema)
             lanes.append(status)
-        except (ValueError, OSError):
+        except OSError:
             continue
 
     return RefreshLanesResponse(lanes=lanes)

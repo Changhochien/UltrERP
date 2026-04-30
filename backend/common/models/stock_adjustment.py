@@ -22,7 +22,7 @@ class ReasonCode(str, enum.Enum):
 
 	User-selectable: RECEIVED, DAMAGED, RETURNED, CORRECTION, OTHER
 	System-only: SUPPLIER_DELIVERY, TRANSFER_OUT, TRANSFER_IN,
-	PHYSICAL_COUNT
+	PHYSICAL_COUNT, LEGACY_SNAPSHOT_BASELINE
 	"""
 
 	RECEIVED = "RECEIVED"
@@ -36,6 +36,7 @@ class ReasonCode(str, enum.Enum):
 	PHYSICAL_COUNT = "PHYSICAL_COUNT"
 	SALES_RESERVATION = "SALES_RESERVATION"
 	SALES_RELEASE = "SALES_RELEASE"
+	LEGACY_SNAPSHOT_BASELINE = "LEGACY_SNAPSHOT_BASELINE"
 
 	@classmethod
 	def user_selectable(cls) -> list[ReasonCode]:
@@ -50,6 +51,7 @@ class ReasonCode(str, enum.Enum):
 			cls.PHYSICAL_COUNT,
 			cls.SALES_RESERVATION,
 			cls.SALES_RELEASE,
+			cls.LEGACY_SNAPSHOT_BASELINE,
 		]
 
 
