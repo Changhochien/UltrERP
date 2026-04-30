@@ -17,3 +17,10 @@ legacy data/
 
 .gstack/
 legacy-migration-pipeline/extracted_data/
+
+# BMAD operational output - large time-stamped artifacts
+_bmad-output/operations/legacy-refresh/state/*/delta-manifest-*.json
+_bmad-output/operations/legacy-refresh/state/*/*.json
+_bmad-output/validation/legacy-import/*-validation.json
+_bmad-output/operations/legacy-refresh/raw_legacy-*-incremental-*.json
+_bmad-output/operations/legacy-refresh/product-review/*.csv
