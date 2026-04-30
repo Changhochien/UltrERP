@@ -10,7 +10,7 @@ import { cn } from "../../../lib/utils";
 import { useLowStockAlerts } from "../hooks/useDashboard";
 
 export function LowStockAlertsCard() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("dashboard");
   const { data, isLoading, error } = useLowStockAlerts();
 
   const alerts = data?.items ?? [];
@@ -24,8 +24,8 @@ export function LowStockAlertsCard() {
     <Card data-testid="low-stock-card" className="h-full">
       <CardHeader className="flex flex-row items-start justify-between gap-4">
         <div className="space-y-1">
-          <CardTitle>{t("dashboard.lowStock.title")}</CardTitle>
-          <p className="text-sm text-muted-foreground">{t("dashboard.lowStock.description")}</p>
+          <CardTitle>{t("lowStock.title")}</CardTitle>
+          <p className="text-sm text-muted-foreground">{t("lowStock.description")}</p>
         </div>
         {!isLoading && !error && alerts.length > 0 ? (
           <Badge
@@ -55,7 +55,7 @@ export function LowStockAlertsCard() {
 
         {!isLoading && !error && alerts.length === 0 && (
           <p className="rounded-xl border px-4 py-6 text-sm alert-success" data-testid="low-stock-ok">
-            {t("dashboard.lowStock.allOk")}
+            {t("lowStock.allOk")}
           </p>
         )}
 
@@ -94,7 +94,7 @@ export function LowStockAlertsCard() {
                     </Badge>
                   </div>
                   <p className="mt-3 text-sm text-muted-foreground">
-                    {t("dashboard.lowStock.stock", { current: alert.current_stock, point: alert.reorder_point })}
+                    {t("lowStock.stock", { current: alert.current_stock, point: alert.reorder_point })}
                   </p>
                 </li>
               );

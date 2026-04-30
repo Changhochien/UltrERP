@@ -211,7 +211,7 @@ const { t: tRoutes } = useTranslation("routes");
         showSuccessToast(
           t("opportunities.detailPage.transitionSuccessTitle"),
           t("opportunities.detailPage.transitionSuccessDescription", {
-            status: t(`crm.opportunities.statusValues.${result.data.status}`),
+            status: t(`opportunities.statusValues.${result.data.status}`),
           }),
         );
         return;
@@ -278,14 +278,14 @@ const { t: tRoutes } = useTranslation("routes");
         ]}
         eyebrow={t("opportunities.detailPage.eyebrow")}
         title={opportunity.opportunity_title}
-        description={`${opportunity.party_label} · ${t(`crm.opportunities.statusValues.${opportunity.status}`)}`}
+        description={`${opportunity.party_label} · ${t(`opportunities.statusValues.${opportunity.status}`)}`}
       />
 
       <SectionCard title={t("opportunities.detailPage.profileTitle")} description={t("opportunities.detailPage.profileDescription")}>
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={STATUS_VARIANT[opportunity.status]} className="normal-case tracking-normal">
-              {t(`crm.opportunities.statusValues.${opportunity.status}`)}
+              {t(`opportunities.statusValues.${opportunity.status}`)}
             </Badge>
             <Badge variant="outline" className="normal-case tracking-normal">
               {t(`crm.opportunities.partyValues.${opportunity.opportunity_from}`)}
@@ -317,7 +317,7 @@ const { t: tRoutes } = useTranslation("routes");
               >
                 {availableStatusOptions.map((status) => (
                   <option key={status} value={status}>
-                    {t(`crm.opportunities.statusValues.${status}`)}
+                    {t(`opportunities.statusValues.${status}`)}
                   </option>
                 ))}
               </select>

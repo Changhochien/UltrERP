@@ -45,7 +45,8 @@ const QA_KEYS: QAAction[] = [
 
 export function DashboardPage() {
   const { t } = useTranslation("dashboard");
-const { t: tRoutes } = useTranslation("routes");
+  const { t: tShell } = useTranslation("shell");
+  const { t: tRoutes } = useTranslation("routes");
   const navigate = useNavigate();
   const { data, isLoading, error } = useRevenueSummary();
   const { canAccess, canWrite } = usePermissions();
@@ -53,8 +54,8 @@ const { t: tRoutes } = useTranslation("routes");
   const quickActions = QA_KEYS
     .filter((qa) => (qa.write ? canWrite(qa.perm) : canAccess(qa.perm)))
     .map((qa) => ({
-      label: t(`dashboard.quickActions.${qa.key}`),
-      description: t(`dashboard.quickActions.${qa.key}Description`),
+      label: t(`quickActions.${qa.key}`),
+      description: t(`quickActions.${qa.key}Description`),
       to: qa.route,
     }));
 
@@ -64,7 +65,7 @@ const { t: tRoutes } = useTranslation("routes");
         breadcrumb={[{ label: tRoutes("dashboard.label") }]}
         eyebrow={tRoutes("workspace.label")}
         title={APP_TITLE}
-        description={`${t("app.tagline")}. ${t("pageDescription")}`}
+        description={`${tShell("app.tagline")}. ${t("pageDescription")}`}
         actions={(
           <div className="flex flex-wrap gap-3">
             {canWrite("orders") ? (

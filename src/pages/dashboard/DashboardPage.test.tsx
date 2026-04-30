@@ -79,11 +79,11 @@ describe("DashboardPage", () => {
     expect(screen.getByText("TopProductsCard")).toBeTruthy();
     expect(screen.getByText("LowStockAlertsCard")).toBeTruthy();
 
-    expect(screen.getByText("dashboard.quickActions.customers")).toBeTruthy();
-    expect(screen.getAllByText("dashboard.quickActions.newOrder")).toHaveLength(2);
+    expect(screen.getByText("quickActions.customers")).toBeTruthy();
+    expect(screen.getAllByText("quickActions.newOrder")).toHaveLength(2);
 
-    expect(screen.queryByText("dashboard.quickActions.newInvoice")).toBeNull();
-    expect(screen.queryByText("dashboard.quickActions.admin")).toBeNull();
+    expect(screen.queryByText("quickActions.newInvoice")).toBeNull();
+    expect(screen.queryByText("quickActions.admin")).toBeNull();
   });
 
   it("navigates from the primary quick actions", () => {
@@ -95,8 +95,8 @@ describe("DashboardPage", () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getAllByText("dashboard.quickActions.newOrder")[0]!);
-    fireEvent.click(screen.getAllByText("dashboard.quickActions.newInvoice")[0]!);
+    fireEvent.click(screen.getAllByText("quickActions.newOrder")[0]!);
+    fireEvent.click(screen.getAllByText("quickActions.newInvoice")[0]!);
 
     expect(navigateMock).toHaveBeenNthCalledWith(1, ORDER_CREATE_ROUTE);
     expect(navigateMock).toHaveBeenNthCalledWith(2, INVOICE_CREATE_ROUTE);

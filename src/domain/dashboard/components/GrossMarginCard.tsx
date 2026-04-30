@@ -21,13 +21,13 @@ interface GrossMarginCardProps {
 }
 
 export function GrossMarginCard({ data, isLoading, error }: GrossMarginCardProps) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("dashboard");
 
   if (isLoading) {
     return (
       <SectionCard
-        title={t("dashboard.grossMargin.title")}
-        description={t("dashboard.grossMargin.description")}
+        title={t("grossMargin.title")}
+        description={t("grossMargin.description")}
         className="h-full"
         contentClassName="space-y-4"
       >
@@ -42,8 +42,8 @@ export function GrossMarginCard({ data, isLoading, error }: GrossMarginCardProps
   if (error) {
     return (
       <SectionCard
-        title={t("dashboard.grossMargin.title")}
-        description={t("dashboard.grossMargin.description")}
+        title={t("grossMargin.title")}
+        description={t("grossMargin.description")}
         className="h-full"
         contentClassName="space-y-4"
       >
@@ -58,8 +58,8 @@ export function GrossMarginCard({ data, isLoading, error }: GrossMarginCardProps
   if (!data.available) {
     return (
       <SectionCard
-        title={t("dashboard.grossMargin.title")}
-        description={t("dashboard.grossMargin.description")}
+        title={t("grossMargin.title")}
+        description={t("grossMargin.description")}
         className="h-full"
         contentClassName="space-y-4"
       >
@@ -68,7 +68,7 @@ export function GrossMarginCard({ data, isLoading, error }: GrossMarginCardProps
           className="flex items-center gap-2 text-sm text-muted-foreground"
         >
           <Info className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>{t("dashboard.grossMargin.unavailable")}</span>
+          <span>{t("grossMargin.unavailable")}</span>
         </div>
       </SectionCard>
     );
@@ -118,20 +118,20 @@ export function GrossMarginCard({ data, isLoading, error }: GrossMarginCardProps
   return (
     <div data-testid="gross-margin-card">
       <MetricCard
-        title={t("dashboard.grossMargin.title")}
+        title={t("grossMargin.title")}
         value={hasMarginPercent ? `${marginPercent.toFixed(1)}%` : "—"}
-        description={t("dashboard.grossMargin.vsPreviousPeriod")}
+        description={t("grossMargin.vsPreviousPeriod")}
         trendLabel={trendDisplay !== "—" ? trendDisplay : undefined}
         trendDirection={trendDisplay !== "—" ? trendDirection : undefined}
         points={sparkPoints}
       />
       <div className="mt-3 grid grid-cols-2 gap-4">
         <div>
-          <p className="text-xs text-muted-foreground">{t("dashboard.grossMargin.revenue")}</p>
+          <p className="text-xs text-muted-foreground">{t("grossMargin.revenue")}</p>
           <p className="text-sm font-semibold">{formatTWD(data.revenue)}</p>
         </div>
         <div>
-          <p className="text-xs text-muted-foreground">{t("dashboard.grossMargin.cogs")}</p>
+          <p className="text-xs text-muted-foreground">{t("grossMargin.cogs")}</p>
           <p className="text-sm font-semibold">{formatTWD(data.cogs)}</p>
         </div>
       </div>

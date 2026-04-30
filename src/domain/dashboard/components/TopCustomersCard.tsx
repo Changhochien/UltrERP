@@ -32,13 +32,13 @@ function shiftAnchorDate(anchorDate: string, monthStep: number): string {
 }
 
 export function TopCustomersCard() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("dashboard");
   const { data, isLoading, error, refetch, period, setPeriod, anchorDate, setAnchorDate } = useTopCustomers("month");
   const periodStepMonths = period === "month" ? 1 : period === "quarter" ? 3 : 12;
 
   if (isLoading) {
     return (
-      <SectionCard title={t("dashboard.topCustomers.title")} description={t("dashboard.topCustomers.description")}>
+      <SectionCard title={t("topCustomers.title")} description={t("topCustomers.description")}>
         <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-8 w-full" />
@@ -50,7 +50,7 @@ export function TopCustomersCard() {
 
   if (error) {
     return (
-      <SectionCard title={t("dashboard.topCustomers.title")} description={t("dashboard.topCustomers.description")}>
+      <SectionCard title={t("topCustomers.title")} description={t("topCustomers.description")}>
         <SurfaceMessage tone="danger">{error}</SurfaceMessage>
         <button onClick={refetch} className="mt-2 text-sm text-primary hover:underline">
           {t("retry")}
@@ -62,25 +62,25 @@ export function TopCustomersCard() {
   if (!data) return null;
 
   const listedRevenueTotal = data.customers.reduce((sum, customer) => sum + Number(customer.total_revenue), 0);
-  const periodRange = t("dashboard.topCustomers.periodRange", {
+  const periodRange = t("topCustomers.periodRange", {
     start: formatBackendCalendarDate(data.start_date, "yyyy-MM-dd"),
     end: formatBackendCalendarDate(data.end_date, "yyyy-MM-dd"),
   });
 
   return (
-    <SectionCard title={t("dashboard.topCustomers.title")} description={t("dashboard.topCustomers.description")}>
+    <SectionCard title={t("topCustomers.title")} description={t("topCustomers.description")}>
       <Tabs value={period} onValueChange={(v) => setPeriod(v as "month" | "quarter" | "year")} className="mb-4">
         <TabsList>
-          <TabsTrigger value="month">{t("dashboard.topCustomers.month")}</TabsTrigger>
-          <TabsTrigger value="quarter">{t("dashboard.topCustomers.quarter")}</TabsTrigger>
-          <TabsTrigger value="year">{t("dashboard.topCustomers.year")}</TabsTrigger>
+          <TabsTrigger value="month">{t("topCustomers.month")}</TabsTrigger>
+          <TabsTrigger value="quarter">{t("topCustomers.quarter")}</TabsTrigger>
+          <TabsTrigger value="year">{t("topCustomers.year")}</TabsTrigger>
         </TabsList>
       </Tabs>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Button
           variant="outline"
           size="icon-sm"
-          aria-label={t("dashboard.topCustomers.previousPeriod")}
+          aria-label={t("topCustomers.previousPeriod")}
           onClick={() => setAnchorDate(shiftAnchorDate(anchorDate, -periodStepMonths))}
         >
           <ChevronLeft className="size-4" />
@@ -89,7 +89,7 @@ export function TopCustomersCard() {
           id="top-customers-anchor-month"
           type="month"
           value={anchorDate.slice(0, 7)}
-          aria-label={t("dashboard.topCustomers.anchorMonth")}
+          aria-label={t("topCustomers.anchorMonth")}
           className="h-8 w-full sm:w-44"
           onChange={(event) => {
             if (!event.target.value) return;
@@ -99,7 +99,7 @@ export function TopCustomersCard() {
         <Button
           variant="outline"
           size="icon-sm"
-          aria-label={t("dashboard.topCustomers.nextPeriod")}
+          aria-label={t("topCustomers.nextPeriod")}
           onClick={() => setAnchorDate(shiftAnchorDate(anchorDate, periodStepMonths))}
         >
           <ChevronRight className="size-4" />
@@ -107,15 +107,15 @@ export function TopCustomersCard() {
       </div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
         <span>{periodRange}</span>
-        <span>{t("dashboard.topCustomers.topTotal", { count: data.customers.length, amount: formatTWD(listedRevenueTotal) })}</span>
+        <span>{t("topCustomers.topTotal", { count: data.customers.length, amount: formatTWD(listedRevenueTotal) })}</span>
       </div>
       <Table data-testid="top-customers-table">
         <TableHeader>
           <TableRow>
             <TableHead className="w-12">#</TableHead>
-            <TableHead>{t("dashboard.topCustomers.company")}</TableHead>
-            <TableHead className="text-right">{t("dashboard.topCustomers.revenue")}</TableHead>
-            <TableHead className="text-right">{t("dashboard.topCustomers.invoices")}</TableHead>
+            <TableHead>{t("topCustomers.company")}</TableHead>
+            <TableHead className="text-right">{t("topCustomers.revenue")}</TableHead>
+            <TableHead className="text-right">{t("topCustomers.invoices")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -125,7 +125,7 @@ export function TopCustomersCard() {
               <TableCell>
                 <div className="font-medium">{customer.company_name}</div>
                 <div className="text-xs text-muted-foreground">
-                  {t("dashboard.topCustomers.lastInvoice", {
+                  {t("topCustomers.lastInvoice", {
                     date: formatBackendCalendarDate(customer.last_invoice_date, "yyyy-MM-dd"),
                   })}
                 </div>
@@ -133,7 +133,7 @@ export function TopCustomersCard() {
               <TableCell className="text-right">
                 <div className="font-mono">{formatTWD(customer.total_revenue)}</div>
                 <div className="text-xs text-muted-foreground">
-                  {t("dashboard.topCustomers.avgInvoice", {
+                  {t("topCustomers.avgInvoice", {
                     amount: formatTWD(
                       customer.invoice_count > 0
                         ? Number(customer.total_revenue) / customer.invoice_count
@@ -148,7 +148,7 @@ export function TopCustomersCard() {
           {data.customers.length === 0 && (
             <TableRow>
               <TableCell colSpan={4} className="text-center text-muted-foreground">
-                {t("dashboard.topCustomers.noData")}
+                {t("topCustomers.noData")}
               </TableCell>
             </TableRow>
           )}

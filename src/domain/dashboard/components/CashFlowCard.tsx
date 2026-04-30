@@ -159,14 +159,14 @@ function ChartInner({
       </svg>
       <div className="flex gap-4 pt-1 text-xs" style={{ paddingLeft: margin.left }}>
         <span className="flex items-center gap-1">
-          <span className="size-2 rounded-full bg-green-500" /> {t("dashboard.cashFlow.inflows")}
+          <span className="size-2 rounded-full bg-green-500" /> {t("cashFlow.inflows")}
         </span>
         <span className="flex items-center gap-1">
-          <span className="size-2 rounded-full bg-red-500" /> {t("dashboard.cashFlow.outflows")}
+          <span className="size-2 rounded-full bg-red-500" /> {t("cashFlow.outflows")}
         </span>
         {chartData.length <= 8 && (
           <span className="flex items-center gap-1">
-            <span className="size-2 rounded-full bg-blue-500" /> {t("dashboard.cashFlow.net")}
+            <span className="size-2 rounded-full bg-blue-500" /> {t("cashFlow.net")}
           </span>
         )}
       </div>
@@ -196,7 +196,7 @@ function ChartInner({
 }
 
 export function CashFlowCard({ data, isLoading, error, onRetry }: CashFlowCardProps) {
-  const { t, i18n } = useTranslation("common");
+  const { t, i18n } = useTranslation("dashboard");
   const locale = i18n.resolvedLanguage ?? i18n.language ?? "en";
 
   if (isLoading) {
@@ -219,7 +219,7 @@ export function CashFlowCard({ data, isLoading, error, onRetry }: CashFlowCardPr
     return (
       <Card data-testid="cash-flow-card" className="h-full">
         <CardHeader className="pb-2">
-          <CardTitle>{t("dashboard.cashFlow.title")}</CardTitle>
+          <CardTitle>{t("cashFlow.title")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div data-testid="cash-flow-error" className="flex flex-col gap-3">
@@ -265,8 +265,8 @@ export function CashFlowCard({ data, isLoading, error, onRetry }: CashFlowCardPr
   return (
     <Card data-testid="cash-flow-card" className="h-full">
       <CardHeader className="pb-2">
-        <CardTitle>{t("dashboard.cashFlow.title")}</CardTitle>
-        <p className="text-sm text-muted-foreground">{t("dashboard.cashFlow.description")}</p>
+        <CardTitle>{t("cashFlow.title")}</CardTitle>
+        <p className="text-sm text-muted-foreground">{t("cashFlow.description")}</p>
       </CardHeader>
       <CardContent className="space-y-4 pt-0">
         <div data-testid="cash-flow-chart" className="h-48 w-full">
@@ -280,18 +280,18 @@ export function CashFlowCard({ data, isLoading, error, onRetry }: CashFlowCardPr
         <div data-testid="cash-flow-summary" className="flex gap-6 pt-2 border-t">
           <div>
             <p className="text-xs text-muted-foreground">
-              {t("dashboard.cashFlow.totalInflows")}
+              {t("cashFlow.totalInflows")}
             </p>
             <p className="text-sm font-semibold text-[#22c55e]">{formatTWD(totalInflows, locale)}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">
-              {t("dashboard.cashFlow.totalOutflows")}
+              {t("cashFlow.totalOutflows")}
             </p>
             <p className="text-sm font-semibold text-[#ef4444]">{formatTWD(totalOutflows, locale)}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">{t("dashboard.cashFlow.netCashFlow")}</p>
+            <p className="text-xs text-muted-foreground">{t("cashFlow.netCashFlow")}</p>
             <p
               className={`text-sm font-semibold ${totalNet >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}
             >

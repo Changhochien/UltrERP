@@ -37,7 +37,7 @@ interface APAgingCardProps {
 }
 
 export function APAgingCard({ data, isLoading, error, onRetry }: APAgingCardProps) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("dashboard");
 
   if (isLoading) {
     return (
@@ -59,7 +59,7 @@ export function APAgingCard({ data, isLoading, error, onRetry }: APAgingCardProp
     return (
       <Card data-testid="ap-aging-card" className="h-full">
         <CardHeader className="pb-2">
-          <CardTitle>{t("dashboard.apAging.title")}</CardTitle>
+          <CardTitle>{t("apAging.title")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div data-testid="ap-aging-error" className="flex flex-col gap-3">
@@ -80,9 +80,9 @@ export function APAgingCard({ data, isLoading, error, onRetry }: APAgingCardProp
   return (
     <Card data-testid="ap-aging-card" className="h-full">
       <CardHeader className="pb-2">
-        <CardTitle>{t("dashboard.apAging.title")}</CardTitle>
+        <CardTitle>{t("apAging.title")}</CardTitle>
         <p className="text-sm text-muted-foreground">
-          {t("dashboard.apAging.asOf", { date: data.as_of_date })}
+          {t("apAging.asOf", { date: data.as_of_date })}
         </p>
       </CardHeader>
       <CardContent className="space-y-4 pt-0">
@@ -106,7 +106,7 @@ export function APAgingCard({ data, isLoading, error, onRetry }: APAgingCardProp
                 {formatTWD(bucket.amount)}
               </span>
               <span className="text-xs text-muted-foreground">
-                {t("dashboard.apAging.invoices", { count: bucket.invoice_count })}
+                {t("apAging.invoices", { count: bucket.invoice_count })}
               </span>
             </div>
           ))}
@@ -115,11 +115,11 @@ export function APAgingCard({ data, isLoading, error, onRetry }: APAgingCardProp
         {/* Summary row */}
         <div data-testid="ap-aging-summary" className="flex gap-6 pt-2 border-t">
           <div>
-            <p className="text-xs text-muted-foreground">{t("dashboard.apAging.totalOutstanding")}</p>
+            <p className="text-xs text-muted-foreground">{t("apAging.totalOutstanding")}</p>
             <p className="text-sm font-semibold text-foreground">{formatTWD(data.total_outstanding)}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">{t("dashboard.apAging.totalOverdue")}</p>
+            <p className="text-xs text-muted-foreground">{t("apAging.totalOverdue")}</p>
             <p className="text-sm font-semibold text-destructive">{formatTWD(data.total_overdue)}</p>
           </div>
         </div>

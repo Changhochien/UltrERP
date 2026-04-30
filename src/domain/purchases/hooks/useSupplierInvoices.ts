@@ -107,10 +107,10 @@ export function supplierInvoiceStatusBadgeVariant(
 }
 
 export function useSupplierInvoiceStatusLabel() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("purchase");
 
   return useCallback(
-    (status: SupplierInvoiceStatus) => t(`purchase.status.${status}`),
+    (status: SupplierInvoiceStatus) => t(`status.${status}`),
     [t],
   );
 }

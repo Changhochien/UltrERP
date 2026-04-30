@@ -21,7 +21,7 @@ interface SupplierInvoiceListProps {
 const STATUS_OPTIONS: SupplierInvoiceStatus[] = ["open", "paid", "voided"];
 
 export function SupplierInvoiceList({ onSelect }: SupplierInvoiceListProps) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("purchase");
   const statusLabel = useSupplierInvoiceStatusLabel();
   const [statusFilter, setStatusFilter] = useState<"" | SupplierInvoiceStatus>("");
   const [sortState, setSortState] = useState<DataTableSortState | null>({
@@ -37,40 +37,40 @@ export function SupplierInvoiceList({ onSelect }: SupplierInvoiceListProps) {
   const allStatusCount = statusTotals.open + statusTotals.paid + statusTotals.voided;
 
   return (
-    <section aria-label={t("purchase.list.ariaLabel")}>
+    <section aria-label={t("list.ariaLabel")}>
       <DataTable
         columns={[
           {
             id: "invoice_number",
-            header: t("purchase.list.columns.invoiceNumber"),
+            header: t("list.columns.invoiceNumber"),
             sortable: true,
             cell: (item) => <span className="font-medium">{item.invoice_number}</span>,
           },
           {
             id: "invoice_date",
-            header: t("purchase.list.columns.invoiceDate"),
+            header: t("list.columns.invoiceDate"),
             sortable: true,
             cell: (item) => item.invoice_date,
           },
           {
             id: "supplier_name",
-            header: t("purchase.list.columns.supplier"),
+            header: t("list.columns.supplier"),
             cell: (item) => item.supplier_name,
           },
           {
             id: "total_amount",
-            header: t("purchase.list.columns.total"),
+            header: t("list.columns.total"),
             sortable: true,
             cell: (item) => `${item.currency_code} ${item.total_amount}`,
           },
           {
             id: "line_count",
-            header: t("purchase.list.columns.lines"),
+            header: t("list.columns.lines"),
             cell: (item) => item.line_count,
           },
           {
             id: "status",
-            header: t("purchase.list.columns.status"),
+            header: t("list.columns.status"),
             cell: (item) => (
               <StatusBadge status={item.status} label={statusLabel(item.status)} />
             ),
@@ -79,23 +79,23 @@ export function SupplierInvoiceList({ onSelect }: SupplierInvoiceListProps) {
         data={items}
         loading={loading}
         error={error}
-        emptyTitle={t("purchase.list.emptyTitle")}
-        emptyDescription={t("purchase.list.emptyDescription")}
+        emptyTitle={t("list.emptyTitle")}
+        emptyDescription={t("list.emptyDescription")}
         toolbar={(
           <DataTableToolbar>
             <div className="space-y-1">
               <h2 className="text-lg font-semibold tracking-tight">
-                {t("purchase.list.title")}
+                {t("list.title")}
               </h2>
               <p className="text-sm text-muted-foreground">
-                {t("purchase.list.description")}
+                {t("list.description")}
               </p>
               <div className="flex flex-wrap items-center gap-2 pt-1">
                 <span className="text-xs text-muted-foreground">
-                  {t("purchase.list.statusOverview")}
+                  {t("list.statusOverview")}
                 </span>
                 <Badge variant="outline" className="normal-case tracking-normal">
-                  {t("purchase.list.allStatuses")} {allStatusCount}
+                  {t("list.allStatuses")} {allStatusCount}
                 </Badge>
                 {STATUS_OPTIONS.map((status) => (
                   <StatusBadge
@@ -107,16 +107,16 @@ export function SupplierInvoiceList({ onSelect }: SupplierInvoiceListProps) {
               </div>
             </div>
             <label className="flex flex-col items-start gap-2 text-sm font-medium text-foreground sm:flex-row sm:items-center sm:gap-3">
-              <span>{t("purchase.list.statusFilter")}</span>
+              <span>{t("list.statusFilter")}</span>
               <select
                 value={statusFilter}
                 onChange={(event) =>
                   setStatusFilter(event.target.value as "" | SupplierInvoiceStatus)
                 }
-                aria-label={t("purchase.list.statusFilter")}
+                aria-label={t("list.statusFilter")}
                 className="w-full sm:w-48"
               >
-                <option value="">{t("purchase.list.allStatuses")}</option>
+                <option value="">{t("list.allStatuses")}</option>
                 {STATUS_OPTIONS.map((status) => (
                   <option key={status} value={status}>
                     {statusLabel(status)}
@@ -128,7 +128,7 @@ export function SupplierInvoiceList({ onSelect }: SupplierInvoiceListProps) {
         )}
         summary={
           items.length > 0
-            ? t("purchase.list.summary", { count: items.length, total })
+            ? t("list.summary", { count: items.length, total })
             : undefined
         }
         page={page}
@@ -141,7 +141,7 @@ export function SupplierInvoiceList({ onSelect }: SupplierInvoiceListProps) {
         onSortChange={setSortState}
         getRowId={(item) => item.id}
         rowLabel={(item) =>
-          t("purchase.list.rowLabel", { invoiceNumber: item.invoice_number })
+          t("list.rowLabel", { invoiceNumber: item.invoice_number })
         }
         onRowClick={(item) => onSelect(item.id)}
       />

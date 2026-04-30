@@ -50,17 +50,17 @@ export function InvoiceLineEditor({
   onChange,
   onRemove,
 }: InvoiceLineEditorProps) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("invoice");
   return (
     <fieldset className="space-y-4 rounded-2xl border border-border/80 bg-background/70 p-4 shadow-sm">
       <legend className="px-1 text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-        {t("invoice.lineEditor.lineNumber", { index: index + 1 })}
+        {t("lineEditor.lineNumber", { index: index + 1 })}
       </legend>
       <div className="grid gap-4">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-1.5">
             <label htmlFor={`line-${index}-product-code`} className="text-sm font-medium">
-              {t("invoice.lineEditor.productCode")}
+              {t("lineEditor.productCode")}
             </label>
             <ProductCombobox
               value={line.product_id ?? ""}
@@ -72,7 +72,7 @@ export function InvoiceLineEditor({
 
           <div className="space-y-1.5">
             <label htmlFor={`line-${index}-description`} className="text-sm font-medium">
-              {t("invoice.lineEditor.description")} *
+              {t("lineEditor.description")} *
             </label>
             <Input
               id={`line-${index}-description`}
@@ -88,7 +88,7 @@ export function InvoiceLineEditor({
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="space-y-1.5">
             <label htmlFor={`line-${index}-quantity`} className="text-sm font-medium">
-              {t("invoice.lineEditor.quantity")} *
+              {t("lineEditor.quantity")} *
             </label>
             <Input
               id={`line-${index}-quantity`}
@@ -103,7 +103,7 @@ export function InvoiceLineEditor({
 
           <div className="space-y-1.5">
             <label htmlFor={`line-${index}-unit-price`} className="text-sm font-medium">
-              {t("invoice.lineEditor.unitPrice")} *
+              {t("lineEditor.unitPrice")} *
             </label>
             <Input
               id={`line-${index}-unit-price`}
@@ -118,7 +118,7 @@ export function InvoiceLineEditor({
 
           <div className="space-y-1.5">
             <label htmlFor={`line-${index}-tax-policy`} className="text-sm font-medium">
-              {t("invoice.lineEditor.taxPolicy")} *
+              {t("lineEditor.taxPolicy")} *
             </label>
             <Select
               value={line.tax_policy_code}
@@ -140,7 +140,7 @@ export function InvoiceLineEditor({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">{t("invoice.lineEditor.lineTotal")}</label>
+            <label className="text-sm font-medium">{t("lineEditor.lineTotal")}</label>
             <div className="flex h-10 items-center rounded-xl border border-input bg-muted/30 px-3 text-sm font-medium">
               {currencyCode} {formatAmount(preview.totalAmount)}
             </div>
@@ -149,23 +149,23 @@ export function InvoiceLineEditor({
 
         <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           <Badge variant="outline" className="justify-center normal-case tracking-normal">
-            {t("invoice.lineEditor.taxType", { type: preview.taxType })}
+            {t("lineEditor.taxType", { type: preview.taxType })}
           </Badge>
           <Badge variant="outline" className="justify-center normal-case tracking-normal">
-            {t("invoice.lineEditor.rate", { rate: (preview.taxRate * 100).toFixed(0) })}
+            {t("lineEditor.rate", { rate: (preview.taxRate * 100).toFixed(0) })}
           </Badge>
           <Badge variant="outline" className="justify-center normal-case tracking-normal">
-            {t("invoice.lineEditor.subtotal", { currency: currencyCode, amount: formatAmount(preview.subtotalAmount) })}
+            {t("lineEditor.subtotal", { currency: currencyCode, amount: formatAmount(preview.subtotalAmount) })}
           </Badge>
           <Badge variant="outline" className="justify-center normal-case tracking-normal">
-            {t("invoice.lineEditor.tax", { currency: currencyCode, amount: formatAmount(preview.taxAmount) })}
+            {t("lineEditor.tax", { currency: currencyCode, amount: formatAmount(preview.taxAmount) })}
           </Badge>
         </div>
 
         {canRemove && (
           <div>
             <Button type="button" variant="outline" onClick={onRemove}>
-              {t("invoice.lineEditor.removeLine")}
+              {t("lineEditor.removeLine")}
             </Button>
           </div>
         )}

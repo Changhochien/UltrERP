@@ -37,7 +37,7 @@ interface ARAgingCardProps {
 }
 
 export function ARAgingCard({ data, isLoading, error, onRetry }: ARAgingCardProps) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("dashboard");
 
   if (isLoading) {
     return (
@@ -59,7 +59,7 @@ export function ARAgingCard({ data, isLoading, error, onRetry }: ARAgingCardProp
     return (
       <Card data-testid="ar-aging-card" className="h-full">
         <CardHeader className="pb-2">
-          <CardTitle>{t("dashboard.arAging.title")}</CardTitle>
+          <CardTitle>{t("arAging.title")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div data-testid="ar-aging-error" className="flex flex-col gap-3">
@@ -80,9 +80,9 @@ export function ARAgingCard({ data, isLoading, error, onRetry }: ARAgingCardProp
   return (
     <Card data-testid="ar-aging-card" className="h-full">
       <CardHeader className="pb-2">
-        <CardTitle>{t("dashboard.arAging.title")}</CardTitle>
+        <CardTitle>{t("arAging.title")}</CardTitle>
         <p className="text-sm text-muted-foreground">
-          {t("dashboard.arAging.asOf", { date: data.as_of_date })}
+          {t("arAging.asOf", { date: data.as_of_date })}
         </p>
       </CardHeader>
       <CardContent className="space-y-4 pt-0">
@@ -106,7 +106,7 @@ export function ARAgingCard({ data, isLoading, error, onRetry }: ARAgingCardProp
                 {formatTWD(bucket.amount)}
               </span>
               <span className="text-xs text-muted-foreground">
-                {t("dashboard.arAging.invoices", { count: bucket.invoice_count })}
+                {t("arAging.invoices", { count: bucket.invoice_count })}
               </span>
             </div>
           ))}
@@ -115,11 +115,11 @@ export function ARAgingCard({ data, isLoading, error, onRetry }: ARAgingCardProp
         {/* Summary row */}
         <div data-testid="ar-aging-summary" className="flex gap-6 pt-2 border-t">
           <div>
-            <p className="text-xs text-muted-foreground">{t("dashboard.arAging.totalOutstanding")}</p>
+            <p className="text-xs text-muted-foreground">{t("arAging.totalOutstanding")}</p>
             <p className="text-sm font-semibold text-foreground">{formatTWD(data.total_outstanding)}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">{t("dashboard.arAging.totalOverdue")}</p>
+            <p className="text-xs text-muted-foreground">{t("arAging.totalOverdue")}</p>
             <p className="text-sm font-semibold text-destructive">{formatTWD(data.total_overdue)}</p>
           </div>
         </div>

@@ -71,7 +71,7 @@ export function OpportunityResultsTable({
           getSortValue: (opportunity) => opportunity.status,
           cell: (opportunity) => (
             <Badge variant={statusVariant(opportunity.status)} className="normal-case tracking-normal">
-              {t(`crm.opportunities.statusValues.${opportunity.status}`)}
+              {t(`opportunities.statusValues.${opportunity.status}`)}
             </Badge>
           ),
         },

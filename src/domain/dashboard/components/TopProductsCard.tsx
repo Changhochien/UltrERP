@@ -15,7 +15,7 @@ function formatTWD(value: string): string {
 }
 
 export function TopProductsCard() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("dashboard");
   const [period, setPeriod] = useState<"day" | "week">("day");
   const { data, isLoading, error } = useTopProducts(period);
 
@@ -23,8 +23,8 @@ export function TopProductsCard() {
     <Card data-testid="top-products-card" className="h-full">
       <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
-          <CardTitle>{t("dashboard.topProducts.title")}</CardTitle>
-          <p className="text-sm text-muted-foreground">{t("dashboard.topProducts.description")}</p>
+          <CardTitle>{t("topProducts.title")}</CardTitle>
+          <p className="text-sm text-muted-foreground">{t("topProducts.description")}</p>
         </div>
         <div className="flex items-center gap-2" role="group" aria-label="Period toggle">
           <Button
@@ -35,7 +35,7 @@ export function TopProductsCard() {
             onClick={() => setPeriod("day")}
             aria-pressed={period === "day"}
           >
-            {t("dashboard.topProducts.today")}
+            {t("topProducts.today")}
           </Button>
           <Button
             type="button"
@@ -45,7 +45,7 @@ export function TopProductsCard() {
             onClick={() => setPeriod("week")}
             aria-pressed={period === "week"}
           >
-            {t("dashboard.topProducts.thisWeek")}
+            {t("topProducts.thisWeek")}
           </Button>
         </div>
       </CardHeader>
@@ -62,7 +62,7 @@ export function TopProductsCard() {
 
         {!isLoading && !error && data && data.items.length === 0 && (
           <p className="rounded-xl border border-border/70 bg-muted/35 px-4 py-6 text-sm text-muted-foreground" data-testid="top-products-empty">
-            {t("dashboard.topProducts.noData")}
+            {t("topProducts.noData")}
           </p>
         )}
 
@@ -71,10 +71,10 @@ export function TopProductsCard() {
             <Table data-testid="top-products-table">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-16">{t("dashboard.topProducts.rank")}</TableHead>
-                <TableHead>{t("dashboard.topProducts.product")}</TableHead>
-                <TableHead>{t("dashboard.topProducts.qtySold")}</TableHead>
-                <TableHead className="text-right">{t("dashboard.topProducts.revenue")}</TableHead>
+                <TableHead className="w-16">{t("topProducts.rank")}</TableHead>
+                <TableHead>{t("topProducts.product")}</TableHead>
+                <TableHead>{t("topProducts.qtySold")}</TableHead>
+                <TableHead className="text-right">{t("topProducts.revenue")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

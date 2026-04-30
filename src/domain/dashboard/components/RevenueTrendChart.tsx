@@ -31,7 +31,7 @@ interface RevenueTrendChartProps {
 }
 
 export function RevenueTrendChart(props: RevenueTrendChartProps) {
-  const { t, i18n } = useTranslation("common");
+  const { t, i18n } = useTranslation("dashboard");
   const {
     data,
     isLoading,
@@ -46,10 +46,10 @@ export function RevenueTrendChart(props: RevenueTrendChartProps) {
 
   const periodLabel =
     period === "month"
-      ? t("dashboard.revenueTrend.30d")
+      ? t("revenueTrend.30d")
       : period === "quarter"
-        ? t("dashboard.revenueTrend.90d")
-        : t("dashboard.revenueTrend.1y");
+        ? t("revenueTrend.90d")
+        : t("revenueTrend.1y");
 
   const xInterval: number | "preserveStartEnd" = period === "month" ? 6 : "preserveStartEnd";
 
@@ -59,7 +59,7 @@ export function RevenueTrendChart(props: RevenueTrendChartProps) {
 
   const loadMoreContent = (): React.ReactNode => {
     if (!hasMore) return null;
-    const label = isLoadingMore ? t("loading") : t("dashboard.revenueTrend.loadMore");
+    const label = isLoadingMore ? t("loading") : t("revenueTrend.loadMore");
     return (
       <div className="mt-3 flex justify-center">
         <Button variant="outline" size="sm" onClick={onLoadMore} disabled={isLoadingMore}>
@@ -71,14 +71,14 @@ export function RevenueTrendChart(props: RevenueTrendChartProps) {
 
   return (
     <SectionCard
-      title={t("dashboard.revenueTrend.title")}
+      title={t("revenueTrend.title")}
       description={periodLabel}
       actions={
         <Tabs value={period} onValueChange={(v) => onPeriodChange(v as "month" | "quarter" | "year")}>
           <TabsList>
-            <TabsTrigger value="month">{t("dashboard.revenueTrend.month")}</TabsTrigger>
-            <TabsTrigger value="quarter">{t("dashboard.revenueTrend.quarter")}</TabsTrigger>
-            <TabsTrigger value="year">{t("dashboard.revenueTrend.year")}</TabsTrigger>
+            <TabsTrigger value="month">{t("revenueTrend.month")}</TabsTrigger>
+            <TabsTrigger value="quarter">{t("revenueTrend.quarter")}</TabsTrigger>
+            <TabsTrigger value="year">{t("revenueTrend.year")}</TabsTrigger>
           </TabsList>
         </Tabs>
       }
@@ -158,7 +158,7 @@ export function RevenueTrendChart(props: RevenueTrendChartProps) {
           </ResponsiveContainer>
           {showZoomNavigator ? (
             <p className="mt-2 text-xs text-muted-foreground">
-              {t("dashboard.revenueTrend.zoomHint")}
+              {t("revenueTrend.zoomHint")}
             </p>
           ) : null}
           {loadMoreContent()}

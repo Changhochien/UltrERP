@@ -19,11 +19,11 @@ interface RevenueCardProps {
 }
 
 export function RevenueCard({ data, isLoading, error }: RevenueCardProps) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("dashboard");
 
   if (isLoading) {
     return (
-      <SectionCard title={t("dashboard.revenue.revenueComparison")} description={t("dashboard.revenue.description")} className="h-full" contentClassName="space-y-4">
+      <SectionCard title={t("revenue.revenueComparison")} description={t("revenue.description")} className="h-full" contentClassName="space-y-4">
         <div data-testid="revenue-card-loading" className="space-y-3">
           <Skeleton className="h-10 w-32" />
           <Skeleton className="h-20 w-full" />
@@ -34,7 +34,7 @@ export function RevenueCard({ data, isLoading, error }: RevenueCardProps) {
 
   if (error) {
     return (
-      <SectionCard title={t("dashboard.revenue.revenueComparison")} description={t("dashboard.revenue.description")} className="h-full" contentClassName="space-y-4">
+      <SectionCard title={t("revenue.revenueComparison")} description={t("revenue.description")} className="h-full" contentClassName="space-y-4">
         <div data-testid="revenue-card-error">
           <SurfaceMessage tone="danger">{error}</SurfaceMessage>
         </div>
@@ -71,9 +71,9 @@ export function RevenueCard({ data, isLoading, error }: RevenueCardProps) {
   return (
     <div data-testid="revenue-card">
       <MetricCard
-        title={t("dashboard.revenue.title")}
+        title={t("revenue.title")}
         value={formatTWD(data.today_revenue)}
-        description={t("dashboard.revenue.yesterday", { date: data.yesterday_date, amount: formatTWD(data.yesterday_revenue) })}
+        description={t("revenue.yesterday", { date: data.yesterday_date, amount: formatTWD(data.yesterday_revenue) })}
         points={[yesterdayRevenue * 0.88, yesterdayRevenue, (yesterdayRevenue + todayRevenue) / 2, todayRevenue]}
         badge={(
           <Badge
@@ -82,8 +82,8 @@ export function RevenueCard({ data, isLoading, error }: RevenueCardProps) {
             className={cn("normal-case tracking-normal", changeClass)}
             aria-label={
               changePercent === null
-                ? t("dashboard.revenue.noChangeData")
-                : t("dashboard.revenue.revenueChange", { change: changeDisplay })
+                ? t("revenue.noChangeData")
+                : t("revenue.revenueChange", { change: changeDisplay })
             }
           >
             {changeDisplay}

@@ -132,7 +132,7 @@ const { t: tRoutes } = useTranslation("routes");
               >
                 <option value="">{t("opportunities.listPage.allStatuses")}</option>
                 {STATUS_OPTIONS.map((status) => (
-                  <option key={status} value={status}>{t(`crm.opportunities.statusValues.${status}`)}</option>
+                  <option key={status} value={status}>{t(`opportunities.statusValues.${status}`)}</option>
                 ))}
               </select>
             </label>
@@ -146,7 +146,7 @@ const { t: tRoutes } = useTranslation("routes");
                 </span>
                 {query ? <Badge variant="outline">{t("opportunities.listPage.searchBadge", { query })}</Badge> : null}
                 {statusFilter ? (
-                  <Badge variant="outline">{t("opportunities.listPage.statusBadge", { status: t(`crm.opportunities.statusValues.${statusFilter}`) })}</Badge>
+                  <Badge variant="outline">{t("opportunities.listPage.statusBadge", { status: t(`opportunities.statusValues.${statusFilter}`) })}</Badge>
                 ) : null}
               </div>
               <Button

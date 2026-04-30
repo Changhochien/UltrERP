@@ -37,7 +37,7 @@ export function OpportunityPipelineSummary({ items }: OpportunityPipelineSummary
       {STATUS_ORDER.map((status) => (
         <div key={status} className="rounded-xl border border-border/70 bg-muted/20 px-4 py-4">
           <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-            {t(`crm.opportunities.statusValues.${status}`)}
+            {t(`opportunities.statusValues.${status}`)}
           </p>
           <p className="mt-2 text-2xl font-semibold text-foreground">{counts[status]}</p>
         </div>

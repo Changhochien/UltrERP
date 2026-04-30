@@ -39,10 +39,10 @@ export interface InvoiceTaxPolicyOption {
 }
 
 export const INVOICE_TAX_POLICY_OPTIONS: InvoiceTaxPolicyOption[] = [
-	{ code: "standard", labelKey: "invoice.taxPolicy.standard", taxType: 1, taxRate: 0.05 },
-	{ code: "zero", labelKey: "invoice.taxPolicy.zero", taxType: 2, taxRate: 0 },
-	{ code: "exempt", labelKey: "invoice.taxPolicy.exempt", taxType: 3, taxRate: 0 },
-	{ code: "special", labelKey: "invoice.taxPolicy.special", taxType: 4, taxRate: 0.1 },
+	{ code: "standard", labelKey: "taxPolicy.standard", taxType: 1, taxRate: 0.05 },
+	{ code: "zero", labelKey: "taxPolicy.zero", taxType: 2, taxRate: 0 },
+	{ code: "exempt", labelKey: "taxPolicy.exempt", taxType: 3, taxRate: 0 },
+	{ code: "special", labelKey: "taxPolicy.special", taxType: 4, taxRate: 0.1 },
 ];
 
 export interface SellerInfo {

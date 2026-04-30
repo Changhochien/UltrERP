@@ -1462,6 +1462,40 @@ function legacyRefreshLaneSortTimestamp(status: LegacyRefreshLaneStatus): number
   return Number.isNaN(parsed) ? 0 : parsed;
 }
 
+function legacyRefreshTimestampMs(value: string | null | undefined): number | null {
+  if (!value) {
+    return null;
+  }
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function legacyRefreshPointerSupersedesActiveJob(
+  pointer: BatchPointer | null,
+  activeJob: ActiveLegacyRefreshJobState,
+): boolean {
+  if (!pointer?.batch_id || pointer.batch_id === activeJob.batchId) {
+    return false;
+  }
+  const pointerStartedAt = legacyRefreshTimestampMs(pointer.started_at ?? pointer.completed_at);
+  const activeStartedAt = legacyRefreshTimestampMs(activeJob.launchedAt);
+  return pointerStartedAt !== null && activeStartedAt !== null && pointerStartedAt > activeStartedAt;
+}
+
+function legacyRefreshActiveJobWasSuperseded(
+  activeJob: ActiveLegacyRefreshJobState,
+  lanes: LegacyRefreshLaneStatus[],
+): boolean {
+  const jobLane = lanes.find((lane) => lane.lane_key === activeJob.laneKey);
+  if (!jobLane) {
+    return false;
+  }
+  return (
+    legacyRefreshPointerSupersedesActiveJob(jobLane.latest_run, activeJob)
+    || legacyRefreshPointerSupersedesActiveJob(jobLane.latest_success, activeJob)
+  );
+}
+
 function sortLegacyRefreshLanes(lanes: LegacyRefreshLaneStatus[]): LegacyRefreshLaneStatus[] {
   return [...lanes].sort((left, right) => {
     const timestampDiff = legacyRefreshLaneSortTimestamp(right) - legacyRefreshLaneSortTimestamp(left);
@@ -1966,16 +2000,25 @@ function LegacyRefreshSection() {
   }, [activeJob]);
 
   useEffect(() => {
+    if (!activeJob || !legacyRefreshActiveJobWasSuperseded(activeJob, lanes)) {
+      return;
+    }
+    setActiveJob(null);
+    setActiveJobStatus(null);
+  }, [activeJob, lanes]);
+
+  useEffect(() => {
     if (!activeJob) {
       setActiveJobStatus(null);
       return;
     }
 
     let cancelled = false;
+    const currentActiveJob = activeJob;
 
     async function pollActiveJobStatus() {
       try {
-        const status = await fetchLegacyRefreshJobStatus(activeJob.jobId);
+        const status = await fetchLegacyRefreshJobStatus(currentActiveJob.jobId);
         if (!cancelled) {
           setActiveJobStatus(status);
         }
@@ -2023,6 +2066,7 @@ function LegacyRefreshSection() {
       return {
         ...current,
         mode: nextMode,
+        dryRun: nextMode === "incremental" ? current.dryRun : false,
         lookbackDays:
           current.lookbackDays === currentDefaultLookback
             ? nextDefaultLookback
@@ -2037,6 +2081,7 @@ function LegacyRefreshSection() {
       tenantId: nextForm.tenantId.trim(),
       schemaName: nextForm.schemaName.trim() || DEFAULT_LEGACY_REFRESH_SCHEMA_NAME,
       sourceSchema: nextForm.sourceSchema.trim() || "public",
+      dryRun: nextForm.mode === "incremental" && nextForm.dryRun,
     };
 
     if (!resolvedForm.tenantId || !resolvedForm.schemaName) {
@@ -2075,7 +2120,14 @@ function LegacyRefreshSection() {
       if ("conflict" in result) {
         setTriggerError(result.detail);
       } else {
-        setActiveJobStatus(result);
+        setActiveJobStatus({
+          job_id: result.job_id,
+          batch_id: result.batch_id,
+          mode: result.mode,
+          status: result.status,
+          lane_key: result.lane_key,
+          launched_at: result.launched_at,
+        });
         setActiveJob({
           jobId: result.job_id,
           batchId: result.batch_id,
@@ -2561,7 +2613,8 @@ function LegacyRefreshSection() {
                     <label className="flex items-center gap-2 text-sm">
                       <input
                         type="checkbox"
-                        checked={form.dryRun}
+                        checked={form.mode === "incremental" && form.dryRun}
+                        disabled={form.mode !== "incremental"}
                         onChange={(e) => setForm((f) => ({ ...f, dryRun: e.target.checked }))}
                         className="h-4 w-4 rounded border-input"
                       />

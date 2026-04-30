@@ -15,7 +15,7 @@ const triggerLegacyRefreshMock = vi.hoisted(() => vi.fn());
 const fetchSalesMonthlyHealthMock = vi.hoisted(() => vi.fn());
 const repairSalesMonthlyMissingMock = vi.hoisted(() => vi.fn());
 const backfillSalesMonthlyMock = vi.hoisted(() => vi.fn());
-const optionalAuthMock = vi.hoisted(() => vi.fn(() => null));
+const optionalAuthMock = vi.hoisted(() => vi.fn<() => unknown>(() => null));
 const translationMock = vi.hoisted(() => ({
   t: (key: string) => key,
 }));
@@ -820,6 +820,105 @@ describe("AdminPage audit sorting", () => {
     expect(screen.getByText("987")).toBeTruthy();
     expect(screen.getByText("654")).toBeTruthy();
     expect(screen.getByText("/tmp/restored-summary.json")).toBeTruthy();
+  });
+
+  it("clears a stored failed refresh monitor when a newer lane success exists", async () => {
+    window.localStorage.setItem(
+      "ultrerp_legacy_refresh_active_job",
+      JSON.stringify({
+        jobId: "job-stale-failed",
+        batchId: "legacy-shadow-20260429T041104Z",
+        laneKey: "raw_legacy:00000000-0000-0000-0000-000000000001:public",
+        mode: "full-rebaseline",
+        launchedAt: "2026-04-29T04:11:04+00:00",
+      }),
+    );
+    fetchUsersMock.mockResolvedValue([]);
+    fetchAuditLogsMock.mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      page_size: 20,
+    });
+    fetchLegacyRefreshLanesMock.mockResolvedValue({
+      lanes: [
+        {
+          lane_key: "raw_legacy:00000000-0000-0000-0000-000000000001:public",
+          tenant_id: "00000000-0000-0000-0000-000000000001",
+          schema_name: "raw_legacy",
+          source_schema: "public",
+          lane_locked: false,
+          current_job_id: null,
+          lock_acquired_at: null,
+          latest_run: {
+            batch_id: "legacy-shadow-20260430T065740Z",
+            summary_path: "/tmp/current-summary.json",
+            started_at: "2026-04-30T06:57:40+00:00",
+            completed_at: "2026-04-30T07:38:59+00:00",
+            final_disposition: "completed",
+            exit_code: 0,
+            validation_status: "clean",
+            blocking_issue_count: 0,
+            reconciliation_gap_count: 0,
+            promotion_policy: { classification: "eligible" },
+          },
+          latest_success: {
+            batch_id: "legacy-shadow-20260430T065740Z",
+            summary_path: "/tmp/current-summary.json",
+            started_at: "2026-04-30T06:57:40+00:00",
+            completed_at: "2026-04-30T07:38:59+00:00",
+            final_disposition: "completed",
+            exit_code: 0,
+            validation_status: "clean",
+            blocking_issue_count: 0,
+            reconciliation_gap_count: 0,
+            promotion_policy: { classification: "eligible" },
+          },
+          latest_promoted: null,
+          current_batch_mode: "full-rebaseline",
+          promotion_eligible: true,
+          promotion_classification: "eligible",
+          affected_domains: [],
+          root_failure: null,
+          blocked_reason: null,
+          incremental_state_path: "/tmp/incremental-state.json",
+          nightly_rebaseline_path: null,
+          summary_root: "/tmp",
+        },
+      ],
+    });
+    fetchLegacyRefreshRecentRunsMock.mockResolvedValue([]);
+    fetchLegacyRefreshJobStatusMock.mockResolvedValue({
+      job_id: "job-stale-failed",
+      batch_id: "legacy-shadow-20260429T041104Z",
+      mode: "full-rebaseline",
+      status: "completed",
+      final_disposition: "failed",
+      root_failure: "canonical-import: connection has been released back to the pool",
+    });
+
+    const { AdminPage } = await import("./AdminPage");
+
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText("legacy-shadow-20260430T065740Z").length).toBeGreaterThan(0);
+    });
+
+    await waitFor(() => {
+      expect(window.localStorage.getItem("ultrerp_legacy_refresh_active_job")).toBeNull();
+    });
+
+    expect(screen.queryByText("legacy-shadow-20260429T041104Z")).toBeNull();
+    expect(screen.queryByText("canonical-import: connection has been released back to the pool")).toBeNull();
+    expect(
+      (screen.getByRole("button", { name: /quickActions\.incremental|Run Incremental Refresh/i }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(false);
   });
 
   it("triggers bounded sales-monthly backfill from the admin controls", async () => {
