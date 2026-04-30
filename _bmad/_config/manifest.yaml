@@ -1,38 +1,44 @@
 installation:
-  version: 6.3.0
+  version: 6.6.0
   installDate: 2026-03-30T00:34:53.421Z
-  lastUpdated: 2026-04-18T00:44:00.620Z
+  lastUpdated: 2026-04-30T14:40:51.526Z
 modules:
   - name: core
-    version: 6.3.0
+    version: 6.6.0
     installDate: 2026-03-30T00:34:52.944Z
-    lastUpdated: 2026-04-18T00:44:00.307Z
+    lastUpdated: 2026-04-30T14:40:51.395Z
     source: built-in
     npmPackage: null
     repoUrl: null
   - name: bmm
-    version: 6.3.0
+    version: 6.6.0
     installDate: 2026-03-30T00:34:47.397Z
-    lastUpdated: 2026-04-18T00:44:00.307Z
+    lastUpdated: 2026-04-30T14:40:51.396Z
     source: built-in
     npmPackage: null
     repoUrl: null
   - name: tea
-    version: 1.7.2
+    version: v1.15.1
     installDate: 2026-03-30T00:34:51.091Z
-    lastUpdated: 2026-04-18T00:44:00.382Z
+    lastUpdated: 2026-04-30T14:40:51.439Z
     source: external
     npmPackage: bmad-method-test-architecture-enterprise
     repoUrl: https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise
+    channel: stable
+    sha: 7c94bdc6e3d2c8c3cad09eb0a32a42fade0e9079
   - name: wds
-    version: 0.3.1
+    version: v0.1.0
     installDate: 2026-03-30T00:34:49.351Z
-    lastUpdated: 2026-04-18T00:44:00.620Z
+    lastUpdated: 2026-04-30T14:40:51.526Z
     source: community
     npmPackage: bmad-method-wds-expansion
     repoUrl: https://github.com/bmad-code-org/bmad-method-wds-expansion
+    channel: stable
+    sha: 50312755ca93d6667f9a9087cfe72cfd378b5329
+    registryApprovedTag: v0.1.0
 ides:
   - claude-code
   - codex
-  - gemini
   - github-copilot
+  - gemini
+  - pi
